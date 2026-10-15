@@ -80,7 +80,7 @@
         { "focus": "Value@0", "say": "New orders now start as pending instead of paid." },
         { "focus": 1, "say": "A pending order gets twenty four hours to be paid." },
         { "focus": 2, "say": "A job looks for expired orders every five minutes." },
-        { "focus": "Value@3", "say": "A declined card is retried three times instead of never." },
+        { "focus": "Value@3", "mark": "circle", "note": "up from zero", "say": "A declined card is retried three times instead of never." },
         { "focus": 4, "say": "The refund window goes away with the refunded state." }
       ]
     },

@@ -94,7 +94,9 @@
         },
         {
           "focus": "agent",
-          "say": "That agent owns the ticket until it is resolved, whoever else helps."
+          "say": "That agent owns the ticket until it is resolved, whoever else helps.",
+          "mark": "circle",
+          "note": "one owner, start to finish"
         },
         {
           "focus": [

@@ -17,7 +17,7 @@
     {
       "type": "arch",
       "chapter": "Where it fits",
-      "narration": "Requests now pass through a rate limiter backed by Redis before reaching the orders service, which writes to the database and then publishes to the event queue.",
+      "narration": "Requests now pass through a rate limiter backed by Redis before they reach the orders service.",
       "nodes": [
         {
           "id": "client",
@@ -97,6 +97,37 @@
           "to": "events",
           "label": "order.created",
           "change": "added"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "api->redis",
+            "redis"
+          ],
+          "say": "The API first counts each request in Redis."
+        },
+        {
+          "focus": "redis",
+          "mark": "arrow",
+          "note": "no fallback",
+          "say": "Nothing catches a Redis error, so if Redis is down, every order fails."
+        },
+        {
+          "focus": [
+            "api->orders",
+            "orders",
+            "pricing",
+            "pg"
+          ],
+          "say": "Only then does the orders service price the items and save the order."
+        },
+        {
+          "focus": [
+            "api->events",
+            "events"
+          ],
+          "say": "After the save, the API publishes to the new event queue."
         }
       ]
     },
@@ -370,9 +401,18 @@
       "chapter": "Wiring it in",
       "narration": "The server mounts the limiter on the orders route and publishes an event after the order is saved.",
       "hunkId": "h3",
-      "focusLinesAfter": [
-        8,
-        12
+      "steps": [
+        {
+          "lines": 8,
+          "say": "The orders route mounts the limiter with a one minute window and a limit of twenty.",
+          "mark": "circle",
+          "token": "max: 20",
+          "note": "per IP, per minute"
+        },
+        {
+          "lines": 12,
+          "say": "After the insert, the route publishes order created and waits for it."
+        }
       ],
       "calloutText": "publish runs after the insert, so a queue outage fails the request.",
       "view": "morph"
