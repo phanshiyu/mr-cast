@@ -40,7 +40,10 @@ export type NodeKind = 'service' | 'db' | 'queue' | 'client';
 interface SceneBase {
   /** Short title shown in the chapter sidebar. Defaults to a per-type label. */
   chapter?: string;
-  /** Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice. A code scene with `steps` says it before the first step. */
+  /**
+   * Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice.
+   * The voice starts once the scene has drawn in. A scene with `steps` says it before the first step.
+   */
   narration: string;
 }
 
@@ -114,11 +117,17 @@ export interface FlowStep {
   action: string;
   /** The data as it looks after this step (JSON, a struct, a short code snippet...). */
   payload?: string;
+  /**
+   * Spoken while this step is the current one; it becomes current just before its words. Give every step
+   * a `say` or none. Without them the current step moves through the steps while the narration plays.
+   */
+  say?: string;
 }
 
 export interface FlowScene extends SceneBase {
   type: 'flow';
   title?: string;
+  /** With a `say` on each, `narration` is the intro spoken before the first step. */
   steps: FlowStep[];
 }
 
@@ -151,6 +160,18 @@ export interface SequenceScene extends SceneBase {
   participants: SequenceParticipant[];
   /** In time order, top to bottom. */
   messages: SequenceMessage[];
+  /**
+   * Walk the messages in order, each step with its own words: the participants draw first, then each step's
+   * messages draw in just before its `say` is spoken. `narration` is then the intro spoken before the first step.
+   */
+  steps?: SequenceStep[];
+}
+
+export interface SequenceStep {
+  /** Message index (0-based) or an inclusive "a-b" range, after the previous step's messages. */
+  messages: number | string;
+  /** Spoken as these messages draw in. */
+  say: string;
 }
 
 export type Change = 'added' | 'removed' | 'modified';
@@ -186,6 +207,18 @@ export interface ErScene extends SceneBase {
   title?: string;
   entities: ErEntity[];
   relations: ErRelation[];
+  /**
+   * Walk the tables one at a time, each with its own words. The whole model draws first, then each step's
+   * table lights up just before its `say` is spoken while the rest dims. `narration` is then the intro.
+   */
+  steps?: ErStep[];
+}
+
+export interface ErStep {
+  /** An entity id. */
+  entity: string;
+  /** Spoken while the table is lit. */
+  say: string;
 }
 
 export interface StateNode {
@@ -212,6 +245,22 @@ export interface StateScene extends SceneBase {
   initial?: string;
   states: StateNode[];
   transitions: StateTransition[];
+  /**
+   * Walk the machine one state or transition at a time, each with its own words. The whole machine draws
+   * first, then each step's item lights up just before its `say` is spoken while the rest dims.
+   * `narration` is then the intro spoken before the first step.
+   */
+  steps?: StateStep[];
+}
+
+/** Set `state` or `transition`. */
+export interface StateStep {
+  /** A state id. */
+  state?: string;
+  /** A transition index (0-based). */
+  transition?: number;
+  /** Spoken while it is lit. */
+  say: string;
 }
 
 export interface MermaidScene extends SceneBase {
@@ -304,6 +353,19 @@ export interface ChartScene extends SceneBase {
   better?: 'lower' | 'higher';
   /** Calls out one point: the value at label `at` of series `series` (a series name, default the last series). */
   annotation?: { at: string; series?: string; text: string };
+  /**
+   * Walk the labels one at a time, each with its own words. The whole chart draws first, then each step's
+   * label lights up just before its `say` is spoken while the rest dims; the annotation appears with the
+   * step on its label. `narration` is then the intro spoken before the first step.
+   */
+  steps?: ChartStep[];
+}
+
+export interface ChartStep {
+  /** One of the labels. */
+  label: string;
+  /** Spoken while the label is lit. */
+  say: string;
 }
 
 export interface TimelineEvent {
@@ -328,10 +390,22 @@ export interface TimelineScene extends SceneBase {
   title?: string;
   /** Unit of every `at`, `from` and `to`. */
   unit: 'ms' | 's' | 'min' | 'h' | 'd';
-  /** Revealed left to right. Up to 8. */
+  /** Revealed left to right. Up to 8. With `steps`, list them in order of `at`. */
   events: TimelineEvent[];
   /** Intervals drawn as bands under the axis, such as a wait, a window or a phase. Up to 4. */
   spans?: TimelineSpan[];
+  /**
+   * Walk the events in order, each step with its own words: the axis draws first, then the playhead moves
+   * to each step's events just before its `say` is spoken. `narration` is then the intro spoken before the first step.
+   */
+  steps?: TimelineStep[];
+}
+
+export interface TimelineStep {
+  /** Event index (0-based) or an inclusive "a-b" range, after the previous step's events. */
+  events: number | string;
+  /** Spoken as the playhead reaches these events. */
+  say: string;
 }
 
 export interface FileEntry {

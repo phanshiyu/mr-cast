@@ -1,8 +1,10 @@
 import { ArrowRight, Check } from 'lucide-react';
 import type { Token } from 'prism-react-renderer';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { FlowScene, FlowStep } from '../types';
 import { plainCodeColor, tokenColor, tokenizeLines } from '../utils/highlight';
+import { spotlightStarts } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
@@ -10,6 +12,9 @@ import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fitFon
 const LIST_W = 600;
 const COLUMN_GAP = 56;
 const TRANSITION = 14;
+const ROWS_START = 4;
+/** Every row has started landing by this frame, so the list is in by the end of the build. */
+const ROWS_END = 16;
 
 /** Pretty-printed JSON when the payload parses, otherwise the raw text. */
 function formatPayload(payload: string): { text: string; language: string } {
@@ -111,23 +116,28 @@ const PayloadCard: React.FC<{ step: FlowStep; height: number }> = ({ step, heigh
   );
 };
 
-export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFrames }) => {
+export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const hasTitle = Boolean(scene.title);
   const box = contentBox(hasTitle);
   const steps = scene.steps;
-  const perStep = durationInFrames / steps.length;
-  const active = Math.min(steps.length - 1, Math.floor(frame / perStep));
-  const local = frame - active * perStep;
+  // With a `say` per step, step k is current from its segment; without, the steps share the narration.
+  const said = segments.length > 1;
+  const starts = spotlightStarts(segments, steps.length, buildFrames('flow'));
+  const reached = starts.filter((start) => frame >= start).length - 1;
+  const active = said ? reached : Math.max(0, reached);
+  const local = active < 0 ? 0 : frame - starts[active]!;
+  const rowStagger = Math.min(4, (ROWS_END - ROWS_START) / Math.max(1, steps.length - 1));
   const stepH = Math.min(170, box.height / steps.length);
   const panelW = box.width - LIST_W - COLUMN_GAP;
   const stripH = 76;
   const cardH = box.height - stripH - 20;
-  const progress = interpolate(frame, [0, durationInFrames], [0, 1], clamp);
 
-  const enter = active === 0 ? 1 : interpolate(local, [0, TRANSITION], [0, 1], clamp);
+  const enter = active <= 0 && !said ? 1 : interpolate(local, [0, TRANSITION], [0, 1], clamp);
+  const progress = active < 0 ? 0 : (active + enter) / steps.length;
   const previous = active > 0 && local < TRANSITION ? steps[active - 1]! : null;
+  const current = active < 0 ? null : steps[active]!;
   const next = steps[active + 1];
 
   return (
@@ -141,7 +151,7 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
               left: 23,
               top: 24,
               width: 3,
-              height: stepH * (steps.length - 1) * Math.min(1, active / Math.max(1, steps.length - 1)),
+              height: stepH * (steps.length - 1) * Math.max(0, Math.min(1, active / Math.max(1, steps.length - 1))),
               background: colors.accent,
             }}
           />
@@ -152,7 +162,7 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
               index={i}
               height={stepH}
               state={i < active ? 'past' : i === active ? 'active' : 'future'}
-              appear={spring({ frame: frame - 4 - i * 4, fps, config: { damping: 18 } })}
+              appear={spring({ frame: frame - ROWS_START - i * rowStagger, fps, config: { damping: 18 } })}
             />
           ))}
         </div>
@@ -172,12 +182,12 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
               boxSizing: 'border-box',
             }}
           >
-            <span style={{ color: colors.accent, fontWeight: 700, maxWidth: panelW * 0.4, ...ellipsis }}>{steps[active]!.actor}</span>
+            <span style={{ color: current ? colors.accent : colors.faint, fontWeight: 700, maxWidth: panelW * 0.4, ...ellipsis }}>{current ? current.actor : 'start'}</span>
             <ArrowRight size={26} color={next ? colors.muted : colors.faint} style={{ flexShrink: 0 }} />
             <span style={{ color: next ? colors.text : colors.faint, maxWidth: panelW * 0.4, ...ellipsis }}>{next ? next.actor : 'done'}</span>
             <div style={{ flex: 1 }} />
             <span style={{ color: colors.faint, fontSize: 20, flexShrink: 0 }}>
-              step {active + 1}/{steps.length}
+              step {Math.max(0, active + 1)}/{steps.length}
             </span>
           </div>
           <div
@@ -192,14 +202,17 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
             }}
           >
             <div style={{ position: 'absolute', left: 0, top: 0, height: 4, width: `${progress * 100}%`, background: colors.accent, opacity: 0.7 }} />
+            {current ? null : <PayloadCard step={{ actor: '', action: scene.title ?? `${steps.length} steps` }} height={cardH} />}
             {previous ? (
               <div style={{ position: 'absolute', inset: 0, opacity: 1 - enter, transform: `translateX(${-enter * 80}px)` }}>
                 <PayloadCard step={previous} height={cardH} />
               </div>
             ) : null}
-            <div style={{ position: 'absolute', inset: 0, opacity: enter, transform: `translateX(${(1 - enter) * 80}px)` }}>
-              <PayloadCard step={steps[active]!} height={cardH} />
-            </div>
+            {current ? (
+              <div style={{ position: 'absolute', inset: 0, opacity: enter, transform: `translateX(${(1 - enter) * 80}px)` }}>
+                <PayloadCard step={current} height={cardH} />
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

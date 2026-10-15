@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, StateScene } from '../types';
 import {
   ARROW_LEN,
@@ -14,12 +15,16 @@ import {
   type RoutedTransition,
   type StateLayout,
 } from '../utils/stateLayout';
+import { spotlight, type Emphasis } from '../utils/spotlight';
+import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
 
 const EDGE = 'rgba(170, 178, 200, 0.7)';
 const START = 8;
+const STATES_END = 20;
+const TRANSITION_FRAMES = 12;
 
 const changeTone: Record<Change, { color: string; bg: string; marker: string; label: string }> = {
   added: { color: colors.add, bg: colors.addBg, marker: '+', label: 'added' },
@@ -29,21 +34,21 @@ const changeTone: Record<Change, { color: string; bg: string; marker: string; la
 
 const toneColor = (change: Change | undefined) => (change ? changeTone[change].color : EDGE);
 
-/** Frames at which each part of the scene arrives, scaled so short scenes still finish their beats. */
+/** Frames at which each part of the scene arrives; all of it inside the build. */
 interface Timeline {
   entryAt: number;
   stateAt: Map<string, number>;
   transitionAt: (index: number) => number;
-  transitionFrames: number;
-  /** Pulse moment per changed item, keyed `s:${id}` or `t:${index}`. */
+  /** Step and pulse moment per stepped item, keyed `s:${id}` or `t:${index}`. */
+  stepOf: Map<string, number>;
   pulseAt: Map<string, number>;
 }
 
-function buildTimeline(layout: StateLayout, durationInFrames: number): Timeline {
+function buildTimeline(scene: StateScene, layout: StateLayout, segments: readonly SpokenSegment[]): Timeline {
   const { states, transitions, layerOf } = layout;
   const stateOrder = [...states].sort((a, b) => a.layer - b.layer || a.row - b.row);
-  const stateStagger = Math.min(7, (durationInFrames * 0.15) / Math.max(1, states.length));
-  const stateStart = START + (layout.entry ? 6 : 0);
+  const stateStart = START + (layout.entry ? 4 : 0);
+  const stateStagger = Math.min(7, (STATES_END - stateStart) / Math.max(1, states.length - 1));
   const stateAt = new Map(stateOrder.map((p, i) => [p.state.id, stateStart + i * stateStagger]));
 
   const span = (t: RoutedTransition) => [layerOf.get(t.transition.from)!, layerOf.get(t.transition.to)!];
@@ -51,24 +56,16 @@ function buildTimeline(layout: StateLayout, durationInFrames: number): Timeline 
     .map((_, i) => i)
     .sort((a, b) => Math.min(...span(transitions[a]!)) - Math.min(...span(transitions[b]!)) || Math.max(...span(transitions[a]!)) - Math.max(...span(transitions[b]!)));
   const transitionRank = new Map(transitionOrder.map((t, i) => [t, i]));
-  const transitionsStart = stateStart + states.length * stateStagger + 10;
-  const transitionFrames = Math.min(18, durationInFrames * 0.08);
-  const transitionStagger = Math.min(7, (durationInFrames * 0.14) / Math.max(1, transitions.length));
-  const pulseStart = transitionsStart + transitions.length * transitionStagger + transitionFrames + 6;
-
-  // Walk the machine left to right: each changed state, then the changed transitions leaving its layer.
-  const changed = [
-    ...states.flatMap((p) => (p.state.change ? [{ key: `s:${p.state.id}`, layer: p.layer, kind: 0, order: p.row }] : [])),
-    ...transitions.flatMap((t, i) => (t.transition.change ? [{ key: `t:${i}`, layer: layerOf.get(t.transition.from)!, kind: 1, order: i }] : [])),
-  ].sort((a, b) => a.layer - b.layer || a.kind - b.kind || a.order - b.order);
-  const step = Math.min(30, Math.max(5, (durationInFrames * 0.8 - pulseStart) / Math.max(1, changed.length)));
+  const transitionsStart = STATES_END + 4;
+  const transitionStagger = Math.min(5, (buildFrames('state') - transitionsStart - TRANSITION_FRAMES - 4) / Math.max(1, transitions.length - 1));
+  const steps = (scene.steps ?? []).map((step, k) => ({ key: step.state !== undefined ? `s:${step.state}` : `t:${step.transition}`, from: segments[k + 1]?.from ?? 0 }));
 
   return {
     entryAt: START,
     stateAt,
     transitionAt: (index) => transitionsStart + transitionRank.get(index)! * transitionStagger,
-    transitionFrames,
-    pulseAt: new Map(changed.map((c, i) => [c.key, pulseStart + i * step])),
+    stepOf: new Map(steps.map((step, k) => [step.key, k])),
+    pulseAt: new Map(steps.map((step) => [step.key, step.from])),
   };
 }
 
@@ -80,7 +77,7 @@ function arrowHead(tip: Pt, dir: Pt): string {
   return `M ${tip.x} ${tip.y} L ${base.x - dir.y * half} ${base.y + dir.x * half} L ${base.x + dir.y * half} ${base.y - dir.x * half} Z`;
 }
 
-const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number | undefined; frame: number }> = ({ placed, start, pulseAt, frame }) => {
+const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number | undefined; emphasis: Emphasis; frame: number }> = ({ placed, start, pulseAt, emphasis, frame }) => {
   const { state } = placed;
   const { fps } = useVideoConfig();
   const appear = spring({ frame: frame - start, fps, config: { damping: 16, stiffness: 110 } });
@@ -93,6 +90,7 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number 
   const glow = tone && !removed ? `0 0 0 6px ${tone.bg}, 0 0 ${40 + 30 * pulse}px ${tone.color}${removed ? '33' : '55'}` : '0 14px 36px rgba(0,0,0,0.45)';
   const ring = tone ? `, 0 0 0 ${4 + 10 * pulse}px ${tone.color}${Math.round(pulse * 140).toString(16).padStart(2, '0')}` : '';
   const inner = state.final ? `inset 0 0 0 5px ${colors.raised}, inset 0 0 0 7px ${border}` : '';
+  const lit = emphasis.glow > 0 ? `0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${40 * emphasis.glow}px ${colors.accentGlow}` : '';
 
   return (
     <div
@@ -106,8 +104,8 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number 
         borderRadius: placed.h / 2,
         background: state.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : state.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : colors.raised,
         border: `2px ${removed ? 'dashed' : 'solid'} ${border}`,
-        boxShadow: [glow + ring, inner].filter(Boolean).join(', '),
-        opacity: appear * (removed ? 0.62 : 1),
+        boxShadow: [glow + ring, lit, inner].filter(Boolean).join(', '),
+        opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity,
         transform: `translateY(${(1 - appear) * 20}px) scale(${(0.9 + 0.1 * appear) * (1 + 0.05 * pulse)})`,
         display: 'flex',
         alignItems: 'center',
@@ -151,22 +149,22 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number 
   );
 };
 
-const TransitionPath: React.FC<{ routed: RoutedTransition; index: number; draw: number; pulse: number }> = ({ routed, index, draw, pulse }) => {
+const TransitionPath: React.FC<{ routed: RoutedTransition; index: number; draw: number; pulse: number; emphasis: Emphasis }> = ({ routed, index, draw, pulse, emphasis }) => {
   const change = routed.transition.change;
   const color = toneColor(change);
   const removed = change === 'removed';
   const id = `state-reveal-${index}`;
   return (
-    <g opacity={draw > 0 ? (removed ? 0.78 : 1) : 0}>
+    <g opacity={draw > 0 ? (removed ? 0.78 : 1) * emphasis.opacity : 0}>
       <mask id={id} maskUnits="userSpaceOnUse">
         <path d={routed.d} fill="none" stroke="#fff" strokeWidth={14} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
       </mask>
-      {change ? (
+      {change || emphasis.glow > 0 ? (
         <path
           d={routed.d}
           fill="none"
-          stroke={color}
-          strokeOpacity={(removed ? 0.1 : 0.22) + 0.45 * pulse}
+          stroke={change ? color : colors.accent}
+          strokeOpacity={(change ? (removed ? 0.1 : 0.22) : 0) + 0.45 * Math.max(pulse, emphasis.glow * 0.6)}
           strokeWidth={10 + 8 * pulse}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -188,7 +186,7 @@ const TransitionPath: React.FC<{ routed: RoutedTransition; index: number; draw: 
   );
 };
 
-const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; pulse: number }> = ({ routed, appear, pulse }) => {
+const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; pulse: number; emphasis: Emphasis }> = ({ routed, appear, pulse, emphasis }) => {
   const { label, transition } = routed;
   if (!label) return null;
   const change = transition.change;
@@ -203,7 +201,7 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
         height: label.h,
         boxSizing: 'border-box',
         transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.12 * pulse)})`,
-        opacity: appear * (change === 'removed' ? 0.85 : 1),
+        opacity: appear * (change === 'removed' ? 0.85 : 1) * emphasis.opacity,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -265,15 +263,17 @@ const Legend: React.FC<{ scene: StateScene }> = ({ scene }) => {
   );
 };
 
-export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, durationInFrames }) => {
+export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useMemo(() => layoutState(scene.states, scene.transitions, scene.initial), [scene.states, scene.transitions, scene.initial]);
-  const timeline = useMemo(() => buildTimeline(layout, durationInFrames), [layout, durationInFrames]);
+  const timeline = useMemo(() => buildTimeline(scene, layout, segments), [scene, layout, segments]);
+  const { emphasis } = spotlight(frame, segments.slice(1).map((segment) => segment.from));
+  const emphasisOf = (key: string) => emphasis(timeline.stepOf.get(key) ?? null);
   const box = contentBox(Boolean(scene.title));
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.25);
   const draws = layout.transitions.map((_, i) =>
-    interpolate(frame, [timeline.transitionAt(i), timeline.transitionAt(i) + timeline.transitionFrames], [0, 1], clamp),
+    interpolate(frame, [timeline.transitionAt(i), timeline.transitionAt(i) + TRANSITION_FRAMES], [0, 1], clamp),
   );
   const entryAppear = spring({ frame: frame - timeline.entryAt, fps, config: { damping: 14, stiffness: 140 } });
   const entryDraw = interpolate(frame, [timeline.entryAt + 4, timeline.entryAt + 14], [0, 1], clamp);
@@ -291,7 +291,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, duration
               </g>
             ) : null}
             {layout.transitions.map((routed, i) => (
-              <TransitionPath key={i} routed={routed} index={i} draw={draws[i]!} pulse={pulseOf(frame, timeline.pulseAt.get(`t:${i}`))} />
+              <TransitionPath key={i} routed={routed} index={i} draw={draws[i]!} pulse={pulseOf(frame, timeline.pulseAt.get(`t:${i}`))} emphasis={emphasisOf(`t:${i}`)} />
             ))}
           </svg>
           {layout.states.map((placed) => (
@@ -301,10 +301,11 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, duration
               frame={frame}
               start={timeline.stateAt.get(placed.state.id)!}
               pulseAt={timeline.pulseAt.get(`s:${placed.state.id}`)}
+              emphasis={emphasisOf(`s:${placed.state.id}`)}
             />
           ))}
           {layout.transitions.map((routed, i) => (
-            <TransitionLabel key={i} routed={routed} appear={interpolate(draws[i]!, [0.55, 1], [0, 1], clamp)} pulse={pulseOf(frame, timeline.pulseAt.get(`t:${i}`))} />
+            <TransitionLabel key={i} routed={routed} appear={interpolate(draws[i]!, [0.55, 1], [0, 1], clamp)} pulse={pulseOf(frame, timeline.pulseAt.get(`t:${i}`))} emphasis={emphasisOf(`t:${i}`)} />
           ))}
         </div>
       </div>

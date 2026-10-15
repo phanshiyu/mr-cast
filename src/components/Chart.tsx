@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { ChartScene } from '../types';
 import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, type ChartLayout, type Direction } from '../utils/chartLayout';
+import { spotlight, type Emphasis } from '../utils/spotlight';
 import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -21,23 +23,46 @@ interface Point {
   value: number;
 }
 
-/** When each part arrives, scaled so short scenes still finish their beats before the spotlight. */
-function buildTimeline(scene: ChartScene, durationInFrames: number) {
+/** Frames a bar takes to grow and its value label to land. */
+const GROW_FRAMES = 22;
+/** Frames after the last line point for its value label to land. */
+const LABEL_FRAMES = 12;
+
+/** When each part arrives; all of it inside the build. */
+function buildTimeline(scene: ChartScene) {
   const n = scene.labels.length;
   const k = scene.series.length;
-  const growFrames = 22;
+  const start = START + 10;
+  const end = buildFrames('chart');
   if (scene.kind === 'bar') {
-    const stagger = Math.min(6, (durationInFrames * 0.3) / (n * k));
-    const barAt = (i: number, s: number) => START + 10 + (i * k + s) * stagger;
-    const doneAt = barAt(n - 1, k - 1) + growFrames;
-    return { barAt, slotDoneAt: (i: number) => barAt(i, k - 1) + growFrames - 6, drawAt: () => 0, drawFrames: 0, doneAt };
+    const stagger = Math.min(6, (end - GROW_FRAMES - start) / Math.max(1, n * k - 1));
+    const barAt = (i: number, s: number) => start + (i * k + s) * stagger;
+    const doneAt = barAt(n - 1, k - 1) + GROW_FRAMES;
+    return { barAt, slotDoneAt: (i: number) => barAt(i, k - 1) + 10, drawAt: () => 0, drawFrames: 0, doneAt };
   }
   // Lines draw one after another, so "before" is on screen before "after" sweeps across it.
-  const drawFrames = Math.min(48, (durationInFrames * 0.4) / k);
-  const drawAt = (s: number) => START + 12 + s * drawFrames * 0.75;
+  const drawFrames = Math.min(48, (end - LABEL_FRAMES - start) / (0.75 * (k - 1) + 1));
+  const drawAt = (s: number) => start + s * drawFrames * 0.75;
   const doneAt = drawAt(k - 1) + drawFrames;
-  return { barAt: () => 0, slotDoneAt: (i: number) => drawAt(k - 1) + drawFrames * ((i + 0.5) / n) + 6, drawAt, drawFrames, doneAt };
+  return { barAt: () => 0, slotDoneAt: (i: number) => drawAt(k - 1) + drawFrames * ((i + 0.5) / n), drawAt, drawFrames, doneAt };
 }
+
+/** A soft column behind the label a step lights. */
+const SlotGlow: React.FC<{ layout: ChartLayout; i: number; emphasis: Emphasis }> = ({ layout, i, emphasis }) =>
+  emphasis.glow > 0 ? (
+    <div
+      style={{
+        position: 'absolute',
+        left: layout.xs[i]! - layout.slotW / 2 + 6,
+        width: layout.slotW - 12,
+        top: layout.plot.y0,
+        height: layout.xLabelTop - layout.plot.y0 + 40,
+        borderRadius: 16,
+        background: `rgba(124, 140, 255, ${0.08 * emphasis.glow})`,
+        boxShadow: `inset 0 0 0 2px ${colors.accent}${Math.round(emphasis.glow * 110).toString(16).padStart(2, '0')}`,
+      }}
+    />
+  ) : null;
 
 const Legend: React.FC<{ scene: ChartScene }> = ({ scene }) => (
   <div style={{ display: 'flex', gap: 26, fontSize: 21, color: colors.muted, flexShrink: 0, paddingBottom: 6, alignItems: 'center' }}>
@@ -96,7 +121,7 @@ const Grid: React.FC<{ layout: ChartLayout; unit: string | undefined; appear: nu
   );
 };
 
-const XLabels: React.FC<{ layout: ChartLayout; appear: number }> = ({ layout, appear }) => (
+const XLabels: React.FC<{ layout: ChartLayout; appear: number; emphasisOf: (i: number) => Emphasis }> = ({ layout, appear, emphasisOf }) => (
   <>
     {layout.xLabels.map((lines, i) => (
       <div
@@ -110,8 +135,8 @@ const XLabels: React.FC<{ layout: ChartLayout; appear: number }> = ({ layout, ap
           fontSize: layout.xLabelFont,
           lineHeight: `${Math.round(layout.xLabelFont * 1.3)}px`,
           fontWeight: 600,
-          color: '#c9cedb',
-          opacity: appear,
+          color: emphasisOf(i).glow > 0 ? colors.text : '#c9cedb',
+          opacity: appear * emphasisOf(i).opacity,
         }}
       >
         {lines.map((l, j) => (
@@ -175,13 +200,14 @@ const Badge: React.FC<{ x: number; y: number; text: string; direction: Direction
   );
 };
 
-const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; barAt: (i: number, s: number) => number; noted: Point | null; pulse: number }> = ({
+const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; barAt: (i: number, s: number) => number; noted: Point | null; pulse: number; emphasisOf: (i: number) => Emphasis }> = ({
   scene,
   layout,
   frame,
   barAt,
   noted,
   pulse,
+  emphasisOf,
 }) => {
   const { fps } = useVideoConfig();
   const k = scene.series.length;
@@ -201,7 +227,7 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
           const label = interpolate(frame, [at + 12, at + 20], [0, 1], clamp);
           const ring = noted && noted.label === i && noted.series === s ? `, 0 0 0 ${3 + 6 * pulse}px ${tone.color}${Math.round(40 + 120 * pulse).toString(16).padStart(2, '0')}` : '';
           return (
-            <div key={`${i}-${s}`}>
+            <div key={`${i}-${s}`} style={{ opacity: emphasisOf(i).opacity }}>
               <div
                 style={{
                   position: 'absolute',
@@ -223,7 +249,14 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
   );
 };
 
-const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; drawAt: (s: number) => number; drawFrames: number }> = ({ scene, layout, frame, drawAt, drawFrames }) => {
+const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; drawAt: (s: number) => number; drawFrames: number; emphasisOf: (i: number) => Emphasis }> = ({
+  scene,
+  layout,
+  frame,
+  drawAt,
+  drawFrames,
+  emphasisOf,
+}) => {
   const { x0, x1, y1 } = layout.plot;
   const k = scene.series.length;
   const labelEvery = k <= 2 && scene.labels.length <= 8;
@@ -268,7 +301,7 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
             const tone = tones[seriesTone(scene.series, s)];
             const at = drawAt(s) + drawFrames * ((layout.xs[i]! - layout.xs[0]!) / Math.max(1, x1 - x0));
             const pop = interpolate(frame, [at, at + 8], [0, 1], clamp);
-            return <circle key={`${s}-${i}`} cx={layout.xs[i]} cy={layout.y(v)} r={8 * pop} fill={colors.bg} stroke={tone.color} strokeWidth={4} />;
+            return <circle key={`${s}-${i}`} cx={layout.xs[i]} cy={layout.y(v)} r={(8 + 3 * emphasisOf(i).glow) * pop} fill={colors.bg} stroke={tone.color} strokeWidth={4} />;
           }),
         )}
       </svg>
@@ -285,7 +318,7 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
               y={layout.y(v)}
               text={formatValue(v, scene.unit)}
               color={s === k - 1 ? colors.text : '#b9c0d0'}
-              appear={interpolate(frame, [at, at + 8], [0, 1], clamp)}
+              appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * emphasisOf(i).opacity}
               below={below}
               size={VALUE_FONT}
             />
@@ -374,16 +407,23 @@ const Note: React.FC<{ note: NoteBox; appear: number }> = ({ note, appear }) => 
   </div>
 );
 
-export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrames }) => {
+export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutChart(scene, box.width, box.height), [scene, box.width, box.height]);
-  const timeline = buildTimeline(scene, durationInFrames);
+  const timeline = buildTimeline(scene);
+  // Each step lights its label while the rest dim.
+  const stepFroms = segments.slice(1).map((segment) => segment.from);
+  const { emphasis } = spotlight(frame, stepFroms);
+  const stepOf = new Map((scene.steps ?? []).map((step, k) => [scene.labels.indexOf(step.label), k]));
+  const emphasisOf = (i: number) => emphasis(stepOf.get(i) ?? null);
   const gridIn = interpolate(frame, [START, START + 14], [0, 1], clamp);
   const pair = scene.series.length === 2;
   const point = annotationPoint(scene, layout);
-  const noteAt = Math.max(timeline.doneAt + 10, durationInFrames * 0.45);
+  // The note lands with the build, or with the step that names its label.
+  const noteStep = scene.annotation ? (scene.steps ?? []).findIndex((step) => step.label === scene.annotation!.at) : -1;
+  const noteAt = noteStep >= 0 ? stepFroms[noteStep]! : timeline.doneAt - 8;
   const noteIn = spring({ frame: frame - noteAt, fps, config: { damping: 16, stiffness: 120 } });
   const notePulse = interpolate(frame, [noteAt + 4, noteAt + 12, noteAt + 40], [0, 1, 0.35], clamp);
   const note = point && scene.annotation ? placeNote(scene.annotation.text, point, layout, box.width) : null;
@@ -393,15 +433,18 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrame
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.chart} title={scene.title} aside={<Legend scene={scene} />}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
+        {scene.labels.map((_, i) => (
+          <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />
+        ))}
         <Grid layout={layout} unit={scene.unit} appear={gridIn} />
-        <XLabels layout={layout} appear={gridIn} />
+        <XLabels layout={layout} appear={gridIn} emphasisOf={emphasisOf} />
         {note && point ? (
           <Leader note={note} point={point} end={leaderEnd} appear={noteIn} pulse={notePulse} color={tones[seriesTone(scene.series, point.series)].color} ring={scene.kind === 'line'} />
         ) : null}
         {scene.kind === 'bar' ? (
-          <Bars scene={scene} layout={layout} frame={frame} barAt={timeline.barAt} noted={point} pulse={notePulse} />
+          <Bars scene={scene} layout={layout} frame={frame} barAt={timeline.barAt} noted={point} pulse={notePulse} emphasisOf={emphasisOf} />
         ) : (
-          <Lines scene={scene} layout={layout} frame={frame} drawAt={timeline.drawAt} drawFrames={timeline.drawFrames} />
+          <Lines scene={scene} layout={layout} frame={frame} drawAt={timeline.drawAt} drawFrames={timeline.drawFrames} emphasisOf={emphasisOf} />
         )}
         {pair
           ? scene.labels.map((_, i) => {
@@ -409,7 +452,11 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrame
               if (!d) return null;
               const at = timeline.slotDoneAt(i);
               const appear = spring({ frame: frame - at, fps, config: { damping: 12, stiffness: 150 } });
-              return <Badge key={i} x={layout.xs[i]!} y={slotTop(scene, layout, i)} text={d.text} direction={d.direction} appear={appear} />;
+              return (
+                <div key={i} style={{ opacity: emphasisOf(i).opacity }}>
+                  <Badge x={layout.xs[i]!} y={slotTop(scene, layout, i)} text={d.text} direction={d.direction} appear={appear} />
+                </div>
+              );
             })
           : null}
         {note ? <Note note={note} appear={noteIn} /> : null}

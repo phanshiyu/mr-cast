@@ -1,6 +1,7 @@
 // Pure formatting for CLI output. No IO: callers pass data in, get strings back.
 
 import { sceneFiles } from '../../shared/files.mjs';
+import { sceneSteps } from '../../shared/steps.mjs';
 
 const LINE_WIDTH = 110;
 const HEADER_WIDTH = 60;
@@ -215,6 +216,14 @@ function sceneGist(scene, hunks) {
   }
 }
 
+/** A diagram's gist, with its step count when it walks steps. Code scenes list their steps themselves. */
+function gistWithSteps(scene, hunks) {
+  const gist = sceneGist(scene, hunks);
+  const steps = scene.type === 'code' ? 0 : sceneSteps(scene).length;
+  if (!steps) return gist;
+  return scene.type === 'flow' ? `${gist}, each spoken` : `${gist} · ${plural(steps, 'step')} spoken`;
+}
+
 /** `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. */
 export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, style, pace = '' }) {
   const scenes = storyboard.scenes;
@@ -226,7 +235,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, st
   scenes.forEach((scene, i) => {
     const chapter = clip(scene.chapter ?? '', chapterWidth).padEnd(chapterWidth);
     const head = `${String(i + 1).padStart(number)}. ${scene.type.padEnd(typeWidth)}  ${chapter}  `;
-    out.push(`${head}${clip(sceneGist(scene, hunks), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
+    out.push(`${head}${clip(gistWithSteps(scene, hunks), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
   });
   out.push('');
   const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}${pace}`;

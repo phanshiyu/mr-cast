@@ -44,3 +44,30 @@ export function spotlight(frame: number, starts: readonly number[]) {
     },
   };
 }
+
+/** The step being shown at `frame`: k from segment k + 1's start, or -1 before the first step. */
+export function currentStep(segments: readonly SpokenSegment[], frame: number): number {
+  let current = -1;
+  for (let k = 1; k < segments.length; k++) if (frame >= segments[k]!.from) current = k - 1;
+  return current;
+}
+
+/**
+ * When each of `count` ordered items starts to appear. With steps, step k reveals every item up to
+ * index `lasts[k]` from its segment's start, `stagger` frames apart, and the last step also brings
+ * any items after it. Without steps the items arrive one after another from `from` to `to`, inside
+ * the scene's build.
+ */
+export function revealStarts(segments: readonly SpokenSegment[], count: number, lasts: readonly number[], from: number, to: number, stagger: number): number[] {
+  if (segments.length > 1 && lasts.length) {
+    const starts: number[] = [];
+    lasts.forEach((last, k) => {
+      const at = segments[k + 1]!.from;
+      const end = k === lasts.length - 1 ? count - 1 : last;
+      for (let j = 0; starts.length <= end; j++) starts.push(at + j * stagger);
+    });
+    return starts;
+  }
+  const gap = count > 1 ? (to - from) / (count - 1) : 0;
+  return Array.from({ length: count }, (_, i) => from + i * gap);
+}

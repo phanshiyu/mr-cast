@@ -1,7 +1,8 @@
-// Checks for the table, chart, timeline and files scenes, mirroring src/types.ts. Each pushes
-// human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
+// Checks for the table, chart, timeline and files scenes and for every diagram's steps, mirroring
+// src/types.ts. Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
 import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+import { indexRange } from '../../shared/steps.mjs';
 
 const CHANGES = ['added', 'removed', 'modified'];
 const TABLE_COLUMNS_MAX = 6;
@@ -9,6 +10,8 @@ const TABLE_ROWS_MAX = 10;
 // A cell wraps to two lines; past this it is cut at a typical column width.
 const TABLE_CELL_LONG = 70;
 const HIGHLIGHT_STEPS_MAX = 5;
+// A diagram walked in more steps than this drags; split the scene.
+const DIAGRAM_STEPS_MAX = 8;
 export const TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
 const CHART_KINDS = ['bar', 'line'];
 const CHART_LABELS_MAX = 12;
@@ -43,10 +46,10 @@ function checkHighlight(list, path, errors, warnings, { plural, one }, valid) {
 }
 
 /**
- * `steps` on a table or files scene: each { [key], say } lights one item while its words play, in order,
- * and replaces `highlight`.
+ * `steps` that light one item each: each { [key], say } lights its item while its words play, in order.
+ * On a table or files scene they replace `highlight`.
  */
-function checkSpotlightSteps(s, p, key, errors, warnings, what, valid) {
+export function checkSpotlightSteps(s, p, key, errors, warnings, what, valid) {
   if (s.steps === undefined) return;
   if (!Array.isArray(s.steps) || s.steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { ${key}, say }`);
   s.steps.forEach((step, i) => {
@@ -113,6 +116,7 @@ export function checkChart(s, p, errors, warnings) {
   });
   if (s.series.length > CHART_SERIES_MAX) warnings.push(`${p}.series: ${s.series.length} series; more than ${CHART_SERIES_MAX} are hard to tell apart`);
   if (s.kind === 'bar' && n * s.series.length > CHART_BARS_MAX) warnings.push(`${p}: ${n * s.series.length} bars; keep it to ${CHART_BARS_MAX} so each bar can carry its value`);
+  checkSpotlightSteps(s, p, 'label', errors, warnings, { plural: 'labels', one: 'one of the labels' }, (label) => s.labels.includes(label));
   const note = s.annotation;
   if (note === undefined) return;
   if (!note || typeof note !== 'object') return errors.push(`${p}.annotation: must be { at, series?, text }`);
@@ -139,6 +143,11 @@ export function checkTimeline(s, p, errors, warnings) {
       if (e?.tone !== undefined && !TONES.includes(e.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
     });
     if (s.events.length > TIMELINE_EVENTS_MAX) warnings.push(`${p}.events: ${s.events.length} events; more than ${TIMELINE_EVENTS_MAX} get cramped, so split the timeline into two scenes`);
+  }
+  if (Array.isArray(s.events) && s.events.length) {
+    checkRevealSteps(s, p, 'events', s.events.length, 'event', errors, warnings);
+    const ats = s.events.map((e) => e?.at);
+    if (s.steps !== undefined && ats.some((at, j) => j > 0 && at < ats[j - 1])) errors.push(`${p}.events: steps walk the events left to right, so list them in order of at`);
   }
   if (s.spans === undefined) return;
   if (!Array.isArray(s.spans)) return errors.push(`${p}.spans: must be an array of { from, to, label, tone? }`);
@@ -193,4 +202,63 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
   const what = { plural: 'file paths', one: 'a path this scene lists' };
   checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, what, (path) => paths.has(path));
   checkSpotlightSteps(s, p, 'path', errors, warnings, what, (path) => paths.has(path));
+}
+
+/**
+ * `steps` on a sequence or timeline: each { [key], say } reveals its items, an index or an "a-b"
+ * range, after the previous step's, so the steps walk the items in order.
+ */
+export function checkRevealSteps(s, p, key, count, what, errors, warnings) {
+  if (s.steps === undefined) return;
+  if (!Array.isArray(s.steps) || s.steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { ${key}, say }`);
+  const covered = new Set();
+  let next = 0;
+  s.steps.forEach((step, i) => {
+    const q = `${p}.steps[${i}]`;
+    if (!step || typeof step !== 'object') return errors.push(`${q}: must be an object { ${key}, say }`);
+    if (!isStr(step.say)) errors.push(`${q}.say: required string, the words spoken as its ${what}s appear`);
+    const range = indexRange(step[key]);
+    if (!range) return errors.push(`${q}.${key}: ${JSON.stringify(step[key])} is not a ${what} index (0-based) or an "a-b" range of them`);
+    const [a, b] = range;
+    if (b >= count) return errors.push(`${q}.${key}: there is no ${what} ${b}; the scene has ${what}s 0 to ${count - 1}`);
+    if (a < next) return errors.push(`${q}.${key}: starts at ${a}, but an earlier step already reaches ${next - 1}; each step shows the ${what}s after the previous step's`);
+    for (let n = a; n <= b; n++) covered.add(n);
+    next = b + 1;
+  });
+  const missed = Array.from({ length: count }, (_, n) => n).filter((n) => !covered.has(n));
+  if (missed.length && covered.size) warnings.push(`${p}.steps: no step names ${what}${missed.length === 1 ? '' : 's'} ${missed.join(', ')}, so ${missed.length === 1 ? 'it appears' : 'they appear'} with a neighbouring step unnamed; give every ${what} a step`);
+  if (s.steps.length > DIAGRAM_STEPS_MAX) warnings.push(`${p}.steps: ${s.steps.length} steps; keep at most ${DIAGRAM_STEPS_MAX} per scene and split the rest into another scene`);
+}
+
+/** `steps` on a state scene: each lights one `state` id or one `transition` index while its words play. */
+export function checkStateSteps(s, p, ids, errors, warnings) {
+  if (s.steps === undefined) return;
+  if (!Array.isArray(s.steps) || s.steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { state, say } or { transition, say }`);
+  const seen = new Set();
+  const transitions = Array.isArray(s.transitions) ? s.transitions.length : 0;
+  s.steps.forEach((step, i) => {
+    const q = `${p}.steps[${i}]`;
+    if (!step || typeof step !== 'object') return errors.push(`${q}: must be an object { state, say } or { transition, say }`);
+    if (!isStr(step.say)) errors.push(`${q}.say: required string, the words spoken while it is lit`);
+    const keys = ['state', 'transition'].filter((k) => step[k] !== undefined);
+    if (keys.length !== 1) return errors.push(`${q}: set exactly one of state (a state id) or transition (a transition index)`);
+    if (keys[0] === 'state' && !ids.has(step.state)) return errors.push(`${q}.state: unknown state id ${JSON.stringify(step.state)}`);
+    if (keys[0] === 'transition' && !(Number.isInteger(step.transition) && step.transition >= 0 && step.transition < transitions)) {
+      return errors.push(`${q}.transition: ${JSON.stringify(step.transition)} is not a transition index from 0 to ${transitions - 1}`);
+    }
+    const item = `${keys[0]} ${JSON.stringify(step[keys[0]])}`;
+    if (seen.has(item)) errors.push(`${q}: ${item} is lit by an earlier step; each step lights a different one`);
+    seen.add(item);
+  });
+  if (s.steps.length > DIAGRAM_STEPS_MAX) warnings.push(`${p}.steps: ${s.steps.length} steps; keep at most ${DIAGRAM_STEPS_MAX} per scene`);
+}
+
+/** A flow speaks per step when its steps carry `say`: every step, or none. */
+export function checkFlowSays(s, p, errors) {
+  const said = s.steps.filter((step) => step?.say !== undefined);
+  if (!said.length) return;
+  if (said.length < s.steps.length) return errors.push(`${p}.steps: ${said.length} of ${s.steps.length} steps have a say; give every step a say to speak each one as it becomes current, or none`);
+  s.steps.forEach((step, j) => {
+    if (!isStr(step.say)) errors.push(`${p}.steps[${j}].say: must be a non-empty string`);
+  });
 }

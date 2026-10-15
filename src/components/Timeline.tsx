@@ -1,32 +1,73 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { indexRange } from '../../shared/steps.mjs';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { TimelineScene } from '../types';
 import { formatValue } from '../utils/chartLayout';
 import { DETAIL_FONT, LABEL_FONT, SPAN_H, STAMP_FONT, layoutTimeline, type PlacedEvent, type PlacedSpan, type TimelineLayout } from '../utils/timelineLayout';
+import { revealStarts } from '../utils/spotlight';
+import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
 import { tones } from './tones';
 
 const START = 10;
+/** Frames an event takes to rise in after the playhead reaches it. */
+const RISE_FRAMES = 14;
+/** Frames the playhead takes to move to a step's events. */
+const TRAVEL_FRAMES = 12;
 
 /**
- * The playhead visits every event and span edge left to right, one stop per equal share of the
- * scene, so each event holds the screen about as long as the narration spends on it.
+ * The playhead's keyframes, as frames and x positions. Without steps it sweeps every event and span
+ * edge during the build, so the whole timeline is drawn before the voice. With steps it waits at the
+ * start, then moves to each step's last event as that step begins, and the last step runs to the end.
  */
-function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, durationInFrames: number) {
+function playheadKeys(scene: TimelineScene, layout: TimelineLayout, segments: readonly SpokenSegment[]) {
   const values = [...new Set([...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((s) => [s.from, s.to])])].sort((a, b) => a - b);
-  const xs = values.map(layout.x);
-  const first = START + 16;
-  const last = Math.max(first + 20, Math.round(durationInFrames * 0.78));
-  const times = xs.map((_, i) => (xs.length === 1 ? first : first + (i / (xs.length - 1)) * (last - first)));
   const startX = layout.ticks[0]!.x;
-  const inputs = [START + 4, ...times];
-  const outputs = [startX, ...xs];
+  const endX = layout.x(values[values.length - 1]!);
+  const times = [START + 4];
+  const xs = [startX];
+  const steps = scene.steps ?? [];
+  if (steps.length && segments.length > 1) {
+    steps.forEach((step, k) => {
+      const at = segments[k + 1]!.from;
+      const last = indexRange(step.events)?.[1] ?? 0;
+      const target = k === steps.length - 1 ? endX : layout.x(scene.events[last]?.at ?? values[0]!);
+      times.push(at, at + TRAVEL_FRAMES);
+      xs.push(xs[xs.length - 1]!, target);
+    });
+  } else {
+    const first = START + 12;
+    const last = buildFrames('timeline') - RISE_FRAMES;
+    values.forEach((value, i) => {
+      times.push(values.length === 1 ? first : first + (i / (values.length - 1)) * (last - first));
+      xs.push(layout.x(value));
+    });
+  }
+  return { times, xs };
+}
+
+function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, segments: readonly SpokenSegment[]) {
+  const { times, xs } = playheadKeys(scene, layout, segments);
+  /** The first frame the playhead reaches `value`. */
+  const reachedAt = (value: number) => {
+    const x = layout.x(value);
+    if (x <= xs[0]!) return times[0]!;
+    for (let i = 1; i < xs.length; i++) {
+      if (xs[i]! > xs[i - 1]! && x <= xs[i]!) return times[i - 1]! + ((x - xs[i - 1]!) / (xs[i]! - xs[i - 1]!)) * (times[i]! - times[i - 1]!);
+    }
+    return times[times.length - 1]!;
+  };
+  // An event at the playhead's start still waits for its step.
+  const lasts = (scene.steps ?? []).map((step) => indexRange(step.events)?.[1] ?? 0);
+  const stepFrom = revealStarts(segments, scene.events.length, lasts, 0, 0, 0);
   return {
-    playX: (frame: number) => interpolate(frame, inputs, outputs, clamp),
-    reachedAt: (value: number) => times[values.indexOf(value)]!,
-    last,
+    playX: (frame: number) => interpolate(frame, times, xs, clamp),
+    reachedAt,
+    eventAt: (index: number) => Math.max(reachedAt(scene.events[index]!.at), stepFrom[index]!),
+    last: times[times.length - 1]!,
   };
 }
 
@@ -139,11 +180,11 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
   );
 };
 
-export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, durationInFrames }) => {
+export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutTimeline(scene, box.width), [scene, box.width]);
-  const playhead = useMemo(() => buildPlayhead(scene, layout, durationInFrames), [scene, layout, durationInFrames]);
+  const playhead = useMemo(() => buildPlayhead(scene, layout, segments), [scene, layout, segments]);
   const scale = Math.min(1, box.height / layout.height);
   const playX = playhead.playX(frame);
   const axisIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
@@ -185,11 +226,11 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, durationI
         ))}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
           {layout.events.map((placed) => (
-            <EventMark key={placed.index} placed={placed} axisY={axisY} at={playhead.reachedAt(placed.event.at)} frame={frame} />
+            <EventMark key={placed.index} placed={placed} axisY={axisY} at={playhead.eventAt(placed.index)} frame={frame} />
           ))}
         </svg>
         {layout.events.map((placed) => (
-          <EventCard key={placed.index} placed={placed} at={playhead.reachedAt(placed.event.at)} frame={frame} />
+          <EventCard key={placed.index} placed={placed} at={playhead.eventAt(placed.index)} frame={frame} />
         ))}
         <div
           style={{

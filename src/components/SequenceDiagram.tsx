@@ -1,6 +1,8 @@
 import { Box, Database, Layers, Monitor, Server, StickyNote, type LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { indexRange } from '../../shared/steps.mjs';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { MessageKind, NodeKind, SequenceScene } from '../types';
 import {
   BAR_W,
@@ -12,6 +14,7 @@ import {
   type Pt,
   type SequenceLayout,
 } from '../utils/sequenceLayout';
+import { currentStep, revealStarts } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -20,11 +23,15 @@ const kindIcon: Record<NodeKind, LucideIcon> = { service: Server, db: Database, 
 const kindLabel: Record<NodeKind, string> = { service: 'service', db: 'datastore', queue: 'queue', client: 'client' };
 
 const HEADER_START = 6;
+const HEADERS_END = 14;
 const LIFELINE_START = 12;
 const LIFELINE_FRAMES = 16;
-const MESSAGES_START = 26;
-/** Messages finish arriving by this share of the scene so the narration can walk through them. */
-const MESSAGES_END = 0.86;
+const MESSAGES_START = 20;
+const DRAW_FRAMES = 10;
+/** Frames from a message's start until its label has faded in. */
+const MESSAGE_FRAMES = DRAW_FRAMES * 1.2;
+/** Frames between the messages one step reveals. */
+const STEP_STAGGER = 4;
 const HEAD = 14;
 
 const neutralStroke = '#c4cad8';
@@ -270,14 +277,6 @@ const NoteCard: React.FC<{ placed: PlacedMessage; appear: number }> = ({ placed,
   );
 };
 
-/** Frame at which each message starts drawing, spread evenly up to MESSAGES_END of the scene. */
-function messageTimeline(count: number, durationInFrames: number) {
-  const start = Math.min(MESSAGES_START, durationInFrames * 0.12);
-  const end = Math.max(start + count, durationInFrames * MESSAGES_END);
-  const step = count > 1 ? (end - start) / count : end - start;
-  return { starts: Array.from({ length: count }, (_, i) => start + i * step), drawFrames: Math.max(4, Math.min(14, step * 0.7)) };
-}
-
 /** The y down to which activation bars are revealed: the arrow of the latest message that has landed. */
 function revealFront(layout: SequenceLayout, starts: number[], drawFrames: number, frame: number): number {
   const ys = layout.messages.map((m) => m.points[m.points.length - 1]!.y);
@@ -287,16 +286,21 @@ function revealFront(layout: SequenceLayout, starts: number[], drawFrames: numbe
   return interpolate(frame, [...input, lastEnd + 8], [...ys, layout.height], clamp);
 }
 
-export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, durationInFrames }) => {
+export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutSequence(scene.participants, scene.messages, box), [scene.participants, scene.messages, box.width, box.height]);
-  const { starts, drawFrames } = messageTimeline(layout.messages.length, durationInFrames);
-  const current = starts.reduce((cur, s, i) => (frame >= s ? i : cur), -1);
-  const front = revealFront(layout, starts, drawFrames, frame);
+  // Without steps every message draws in before the voice; with them, each step's messages draw with its words.
+  const ranges = (scene.steps ?? []).map((step): [number, number] => indexRange(step.messages) ?? [0, 0]);
+  const count = layout.messages.length;
+  const starts = revealStarts(segments, count, ranges.map(([, last]) => last), MESSAGES_START, buildFrames('sequence') - MESSAGE_FRAMES, STEP_STAGGER);
+  const step = currentStep(segments, frame);
+  const lit: [number, number] | null = step < 0 ? null : [ranges[step]![0], step === ranges.length - 1 ? count - 1 : ranges[step]![1]];
+  const isLit = (i: number) => lit !== null && i >= lit[0] && i <= lit[1];
+  const front = revealFront(layout, starts, DRAW_FRAMES, frame);
   const lifeline = interpolate(frame, [LIFELINE_START, LIFELINE_START + LIFELINE_FRAMES], [0, 1], clamp);
-  const headerStagger = Math.min(5, (durationInFrames * 0.06) / Math.max(1, layout.participants.length));
+  const headerStagger = Math.min(5, (HEADERS_END - HEADER_START) / Math.max(1, layout.participants.length - 1));
   const scale = Math.min(1, box.width / layout.width, box.height / layout.height);
 
   return (
@@ -304,15 +308,15 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, du
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-            {current >= 0 ? (
+            {lit ? (
               <rect
                 x={-12}
-                y={layout.messages[current]!.top}
+                y={layout.messages[lit[0]]!.top}
                 width={layout.width + 24}
-                height={layout.messages[current]!.bottom - layout.messages[current]!.top}
+                height={layout.messages[lit[1]]!.bottom - layout.messages[lit[0]]!.top}
                 rx={12}
-                fill={layout.messages[current]!.message.modified ? 'rgba(124,140,255,0.07)' : 'rgba(255,255,255,0.035)'}
-                opacity={interpolate(frame, [starts[current]!, starts[current]! + drawFrames], [0, 1], clamp)}
+                fill={layout.messages.slice(lit[0], lit[1] + 1).some((m) => m.message.modified) ? 'rgba(124,140,255,0.07)' : 'rgba(255,255,255,0.035)'}
+                opacity={interpolate(frame, [starts[lit[0]]!, starts[lit[0]]! + DRAW_FRAMES], [0, 1], clamp)}
               />
             ) : null}
             {layout.participants.map((p) => (
@@ -347,8 +351,8 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, du
               <MessageArrow
                 key={i}
                 placed={m}
-                current={i === current}
-                draw={interpolate(frame, [starts[i]!, starts[i]! + drawFrames], [0, 1], clamp)}
+                current={isLit(i)}
+                draw={interpolate(frame, [starts[i]!, starts[i]! + DRAW_FRAMES], [0, 1], clamp)}
               />
             ))}
           </svg>
@@ -362,10 +366,10 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, du
             />
           ))}
           {layout.messages.map((m, i) => {
-            const appear = interpolate(frame, [starts[i]! + drawFrames * 0.5, starts[i]! + drawFrames * 1.2], [0, 1], clamp);
+            const appear = interpolate(frame, [starts[i]! + DRAW_FRAMES * 0.5, starts[i]! + MESSAGE_FRAMES], [0, 1], clamp);
             return (
               <div key={i}>
-                <MessageLabel placed={m} appear={appear} current={i === current} />
+                <MessageLabel placed={m} appear={appear} current={isLit(i)} />
                 {m.note ? <NoteCard placed={m} appear={appear} /> : null}
               </div>
             );

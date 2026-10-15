@@ -1,8 +1,10 @@
 import { KeyRound, Link2, Table2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, ErField, ErScene } from '../types';
 import { HEADER_H, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import { spotlight, type Emphasis } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
@@ -11,6 +13,10 @@ const AMBER = '#fbbf24';
 const AMBER_BG = 'rgba(251, 191, 36, 0.13)';
 const EDGE = 'rgba(170, 178, 200, 0.7)';
 const CARD_START = 8;
+const CARDS_END = 18;
+const RELATION_FRAMES = 12;
+/** Frames after a card starts landing that its changed fields light up. */
+const FIELDS_AFTER = 10;
 
 const changeTone: Record<Change, { color: string; bg: string; marker: string; label: string }> = {
   added: { color: colors.add, bg: colors.addBg, marker: '+', label: 'added' },
@@ -24,34 +30,28 @@ const entityPill: Record<Change, { text: string; color: string }> = {
   modified: { text: 'changed', color: colors.accent },
 };
 
-/** Frames at which each part of the scene arrives, scaled so short scenes still finish their beats. */
+/** Frames at which each part of the scene arrives; all of it inside the build. */
 interface Timeline {
   cardAt: (index: number) => number;
   relationAt: (index: number) => number;
-  relationFrames: number;
   /** Highlight moment per changed field, keyed `${entityId}/${fieldIndex}`. */
   fieldAt: Map<string, number>;
 }
 
-function buildTimeline(layout: ReturnType<typeof layoutEr>, durationInFrames: number): Timeline {
+function buildTimeline(layout: ReturnType<typeof layoutEr>): Timeline {
   const cardOrder = [...layout.entities].sort((a, b) => a.row - b.row || a.col - b.col);
   const cardRank = new Map(cardOrder.map((p, i) => [p.entity.id, i]));
-  const cardStagger = Math.min(6, (durationInFrames * 0.15) / layout.entities.length);
-  const relationsStart = CARD_START + layout.entities.length * cardStagger + 14;
-  const relationFrames = Math.min(18, durationInFrames * 0.08);
+  const cardStagger = Math.min(6, (CARDS_END - CARD_START) / Math.max(1, layout.entities.length - 1));
+  const cardAt = (id: string) => CARD_START + cardRank.get(id)! * cardStagger;
+  const relationsStart = CARDS_END + 6;
   const relationOrder = layout.relations.map((_, i) => i).sort((a, b) => Number(!!layout.relations[a]!.relation.change) - Number(!!layout.relations[b]!.relation.change));
   const relationRank = new Map(relationOrder.map((r, i) => [r, i]));
-  const relationStagger = Math.min(7, (durationInFrames * 0.12) / Math.max(1, layout.relations.length));
-  const highlightStart = relationsStart + layout.relations.length * relationStagger + relationFrames + 6;
-
-  // Storyboard order, which is the order the narration names tables in.
-  const changed = layout.entities.flatMap((p) => p.entity.fields.flatMap((f, i) => (f.change ? [`${p.entity.id}/${i}`] : [])));
-  const step = Math.min(30, Math.max(4, (durationInFrames * 0.78 - highlightStart) / Math.max(1, changed.length)));
+  const relationStagger = Math.min(5, (buildFrames('er') - relationsStart - RELATION_FRAMES - 4) / Math.max(1, layout.relations.length - 1));
+  const changed = layout.entities.flatMap((p) => p.entity.fields.flatMap((f, i) => (f.change ? [{ key: `${p.entity.id}/${i}`, at: cardAt(p.entity.id) + FIELDS_AFTER }] : [])));
   return {
-    cardAt: (index) => CARD_START + cardRank.get(layout.entities[index]!.entity.id)! * cardStagger,
+    cardAt: (index) => cardAt(layout.entities[index]!.entity.id),
     relationAt: (index) => relationsStart + relationRank.get(index)! * relationStagger,
-    relationFrames,
-    fieldAt: new Map(changed.map((key, i) => [key, highlightStart + i * step])),
+    fieldAt: new Map(changed.map(({ key, at }) => [key, at])),
   };
 }
 
@@ -162,11 +162,12 @@ const FieldRow: React.FC<{ field: ErField; index: number; at: number | undefined
   );
 };
 
-const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number; fieldAt: Map<string, number> }> = ({
+const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number; fieldAt: Map<string, number>; emphasis: Emphasis }> = ({
   placed,
   start,
   frame,
   fieldAt,
+  emphasis,
 }) => {
   const { entity } = placed;
   const { fps } = useVideoConfig();
@@ -196,8 +197,8 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
         background: entity.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised,
         border: `2px solid ${borderColor}`,
         borderStyle: removed ? 'dashed' : 'solid',
-        boxShadow: glow,
-        opacity: appear * (removed ? 0.6 : 1),
+        boxShadow: emphasis.glow > 0 ? `${glow}, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}` : glow,
+        opacity: appear * (removed ? 0.6 : 1) * emphasis.opacity,
         transform: `translateY(${(1 - appear) * 24}px) scale(${0.92 + 0.08 * appear})`,
       }}
     >
@@ -249,7 +250,7 @@ function endMark(end: RelationEnd, many: boolean): string {
 
 const relationColor = (change: Change | undefined) => (change === 'added' ? colors.add : change === 'removed' ? colors.del : change === 'modified' ? colors.accent : EDGE);
 
-const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: number }> = ({ routed, index, draw }) => {
+const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: number; opacity: number }> = ({ routed, index, draw, opacity }) => {
   const { relation } = routed;
   const color = relationColor(relation.change);
   const fromMany = relation.cardinality === 'many-to-many';
@@ -257,7 +258,7 @@ const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: numb
   const removed = relation.change === 'removed';
   const id = `er-reveal-${index}`;
   return (
-    <g opacity={draw > 0 ? (removed ? 0.8 : 1) : 0}>
+    <g opacity={draw > 0 ? (removed ? 0.8 : 1) * opacity : 0}>
       <mask id={id} maskUnits="userSpaceOnUse">
         <path d={routed.d} fill="none" stroke="#fff" strokeWidth={12} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
       </mask>
@@ -347,13 +348,17 @@ const Legend: React.FC<{ scene: ErScene }> = ({ scene }) => {
   );
 };
 
-export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, durationInFrames }) => {
+export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const layout = useMemo(() => layoutEr(scene.entities, scene.relations), [scene.entities, scene.relations]);
-  const timeline = useMemo(() => buildTimeline(layout, durationInFrames), [layout, durationInFrames]);
+  const timeline = useMemo(() => buildTimeline(layout), [layout]);
+  // Each step lights its table while the rest dim; a relation stays as bright as its brighter end.
+  const { emphasis } = spotlight(frame, segments.slice(1).map((segment) => segment.from));
+  const stepOf = new Map((scene.steps ?? []).map((step, k) => [step.entity, k]));
+  const emphasisOf = (id: string) => emphasis(stepOf.get(id) ?? null);
   const box = contentBox(Boolean(scene.title));
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.3);
-  const draws = layout.relations.map((_, i) => interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + timeline.relationFrames], [0, 1], clamp));
+  const draws = layout.relations.map((_, i) => interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + RELATION_FRAMES], [0, 1], clamp));
 
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.er} title={scene.title} aside={<Legend scene={scene} />}>
@@ -361,7 +366,7 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, durationInFram
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
             {layout.relations.map((routed, i) => (
-              <RelationPath key={i} routed={routed} index={i} draw={draws[i]!} />
+              <RelationPath key={i} routed={routed} index={i} draw={draws[i]!} opacity={Math.max(emphasisOf(routed.relation.from).opacity, emphasisOf(routed.relation.to).opacity)} />
             ))}
           </svg>
           {layout.entities.map((placed, i) => (
@@ -371,6 +376,7 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, durationInFram
               frame={frame}
               fieldAt={timeline.fieldAt}
               start={timeline.cardAt(i)}
+              emphasis={emphasisOf(placed.entity.id)}
             />
           ))}
           {layout.relations.map((routed, i) =>

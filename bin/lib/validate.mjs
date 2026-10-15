@@ -3,7 +3,7 @@
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
-import { checkChart, checkFiles, checkTable, checkTimeline } from './validate-scenes.mjs';
+import { checkChart, checkFiles, checkFlowSays, checkRevealSteps, checkSpotlightSteps, checkStateSteps, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
@@ -433,7 +433,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
     if (s.chapter !== undefined && typeof s.chapter !== 'string') errors.push(`${p}.chapter: must be a string`);
     if (simple) checkReadability(s, p, warnings);
     const words = wordCount(s.narration);
-    if (DIAGRAM_WORDS_LIMITED.includes(s.type) && words > DIAGRAM_WORDS_MAX) warnings.push(`${p}.narration: ${words} words over the ${s.type} diagram; keep it to ${DIAGRAM_WORDS_MAX} so the viewer can follow the diagram while it builds, and move the rest to a later scene`);
+    if (DIAGRAM_WORDS_LIMITED.includes(s.type) && words > DIAGRAM_WORDS_MAX) warnings.push(`${p}.narration: ${words} words over the ${s.type} diagram; keep it to ${DIAGRAM_WORDS_MAX} so the viewer can take the diagram in, and move the rest to a later scene${s.type === 'sequence' ? ' or into steps' : ''}`);
 
     switch (s.type) {
       case 'intent':
@@ -493,6 +493,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (st?.payload !== undefined && typeof st.payload !== 'string') errors.push(`${p}.steps[${j}].payload: must be a string (stringify JSON yourself)`);
         });
         if (s.steps.length > 8) warnings.push(`${p}.steps: ${s.steps.length} steps; consider splitting into two flow scenes`);
+        checkFlowSays(s, p, errors);
         break;
 
       case 'sequence': {
@@ -511,6 +512,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (m?.note !== undefined && typeof m.note !== 'string') errors.push(`${q}.note: must be a string`);
         });
         if (s.messages.length > 12) warnings.push(`${p}.messages: ${s.messages.length} messages; consider splitting into two sequence scenes`);
+        checkRevealSteps(s, p, 'messages', s.messages.length, 'message', errors, warnings);
         break;
       }
 
@@ -535,6 +537,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (!CARDINALITIES.includes(r?.cardinality)) errors.push(`${q}.cardinality: must be one of ${CARDINALITIES.join(', ')}`);
           if (r?.change !== undefined && !CHANGES.includes(r.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
+        checkSpotlightSteps(s, p, 'entity', errors, warnings, { plural: 'entity ids', one: 'an entity id' }, (id) => ids.has(id));
         break;
       }
 
@@ -554,6 +557,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (t?.label !== undefined && typeof t.label !== 'string') errors.push(`${q}.label: must be a string`);
           if (t?.change !== undefined && !CHANGES.includes(t.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
+        checkStateSteps(s, p, ids, errors, warnings);
         break;
       }
 
