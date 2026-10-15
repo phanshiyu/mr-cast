@@ -1,4 +1,5 @@
 import { badgesWidth } from './marks';
+import type { Box, LayoutBoxes } from './penGeometry';
 import type { ShownFile } from '../../shared/files.mjs';
 
 const MONO_ADVANCE = 0.61;
@@ -152,4 +153,24 @@ export function layoutFiles(rows: readonly TreeRow[], width: number, height: num
   const columns = options[1]!.columns;
   const scale = height / attempt(columns, width, MIN_FONT, counts).height;
   return { ...attempt(columns, width / scale, MIN_FONT, counts), maxLines, scale };
+}
+
+/**
+ * The box of each file a step can focus, by its key in shared/targets.mjs, in layout units: its icon and
+ * name. A note keeps off every name, line count and note.
+ */
+export function filesBoxes(layout: FilesLayout): LayoutBoxes {
+  const iconW = Math.round(layout.font * 0.95) + Math.round(layout.font * 0.4);
+  const boxes = new Map<string, Box>();
+  const obstacles: Box[] = [];
+  for (const { row, x, y } of layout.rows) {
+    const left = x + layout.nameX + row.depth * layout.indent;
+    const name = { x: left, y: y + 4, width: Math.min(iconW + row.name.length * layout.font * MONO_ADVANCE, layout.nameX + layout.nameW - (left - x)), height: layout.rowH - 8 };
+    obstacles.push(name);
+    if (row.kind !== 'file') continue;
+    boxes.set(`f:${row.file.path}`, name);
+    if (layout.countsX !== null) obstacles.push({ x: x + layout.countsX, y, width: layout.noteX - layout.countsX - 12, height: layout.rowH });
+    if (row.note) obstacles.push({ x: x + layout.noteX, y, width: Math.min(layout.noteW, row.note.length * layout.font * 0.5), height: layout.rowH });
+  }
+  return { boxes, obstacles };
 }

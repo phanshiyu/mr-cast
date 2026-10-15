@@ -3,7 +3,9 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, TableScene } from '../types';
 import { brighter, focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
-import { COL_GAP, HEADER_FONT, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, cellFont, layoutTable, type PlacedCell, type PlacedRow, type TableLayout } from '../utils/tableLayout';
+import { COL_GAP, HEADER_FONT, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, cellFont, layoutTable, type PlacedCell, type PlacedRow, type TableLayout, tableBoxes } from '../utils/tableLayout';
+import { staged } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { ChangeLegend } from './ChangeLegend';
 import { badgesOf, changeTone, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
@@ -161,6 +163,8 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
     return { ...own, opacity: Math.max(own.opacity, ...scene.columns.map((_, col) => cellEmphasis(row, col).opacity)) };
   };
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
+  const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
+  const marks = useMemo(() => staged(tableBoxes(layout), { left: 0, top, scale: layout.scale }, box), [layout, top, box.width, box.height]);
   const used = new Set<Change>(layout.rows.flatMap((r) => (r.change ? [r.change] : [])));
 
   return (
@@ -169,7 +173,7 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
         style={{
           position: 'absolute',
           left: 0,
-          top: Math.max(0, box.height - layout.height * layout.scale) * 0.3,
+          top,
           width: layout.width,
           height: layout.height,
           transform: `scale(${layout.scale})`,
@@ -201,6 +205,7 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
           <Row key={i} placed={placed} layout={layout} at={rowAt(i)} emphasis={rowEmphasis(i)} cellGlow={(col) => cellEmphasis(i, col).glow} frame={frame} />
         ))}
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

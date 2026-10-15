@@ -1,5 +1,6 @@
 import { badgeWords } from './marks';
 import type { StateNode, StateTransition } from '../types';
+import { around, type Box, type LayoutBoxes } from './penGeometry';
 import { wrapLabel } from './wrapLabel';
 
 export interface Pt {
@@ -507,4 +508,19 @@ function separateLabels(routes: Route[], states: PlacedState[]): void {
     }
     if (!moved) break;
   }
+}
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a state's
+ * card, a transition's label (or the end of its arrow, when it has none). A note keeps off both.
+ */
+export function stateBoxes(layout: StateLayout): LayoutBoxes {
+  const card = (p: PlacedState): Box => ({ x: p.x, y: p.y, width: p.w, height: p.h });
+  const transition = (r: RoutedTransition): Box =>
+    r.label ? around(r.label, r.label.w, r.label.h) : around({ x: r.tip.x - r.dir.x * 40, y: r.tip.y - r.dir.y * 40 }, 36, 36);
+  const boxes = new Map<string, Box>([
+    ...layout.states.map((p): [string, Box] => [`s:${p.state.id}`, card(p)]),
+    ...layout.transitions.map((r, i): [string, Box] => [`t:${i}`, transition(r)]),
+  ]);
+  return { boxes, obstacles: [...layout.states.map(card), ...layout.transitions.flatMap((r) => (r.label ? [transition(r)] : []))] };
 }

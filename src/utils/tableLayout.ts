@@ -1,3 +1,4 @@
+import type { Box, LayoutBoxes } from './penGeometry';
 import { rowBadgeRoom } from './marks';
 import type { TableCell, TableRow } from '../types';
 import { wrapLabel } from './wrapLabel';
@@ -176,4 +177,30 @@ export function layoutTable(columns: readonly string[], rows: readonly TableRow[
   if (fallback) return fallback;
   const scale = height / attempt(columns, rows, width, MIN_FONT).height;
   return { ...attempt(columns, rows, width / scale, MIN_FONT), scale };
+}
+
+/** Text a cell shows, line by line, as the table scene draws it. */
+const cellLines = (cell: PlacedCell): string[] =>
+  cell.kind === 'text' ? cell.lines : cell.inline ? [`${cell.before[0]} → ${cell.after[0]}`] : [...cell.before, ...cell.after];
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a row, a
+ * column from its header down, and the text of one cell. A note keeps off the headers and the text of every cell.
+ */
+export function tableBoxes(layout: TableLayout): LayoutBoxes {
+  const boxes = new Map<string, Box>();
+  const last = layout.rows[layout.rows.length - 1];
+  layout.cols.forEach((col, c) => boxes.set(`c:${c}`, { x: col.x - 10, y: 4, width: col.w + 20, height: (last ? last.y + last.h : HEADER_H) - 4 }));
+  layout.rows.forEach((row, r) => {
+    boxes.set(`r:${r}`, { x: 0, y: row.y, width: layout.width, height: row.h });
+    row.cells.forEach((cell, c) => {
+      const lines = cellLines(cell);
+      const font = cellFont(layout.font, cell.mono);
+      const width = Math.min(layout.cols[c]!.w, Math.max(...lines.map((l) => l.length)) * font * (cell.mono ? 0.61 : 0.53));
+      const height = lines.length * layout.lineHeight;
+      boxes.set(`x:${r}/${c}`, { x: layout.cols[c]!.x, y: row.y + (row.h - height) / 2, width: Math.max(24, width), height });
+    });
+  });
+  const obstacles = [{ x: 0, y: 0, width: layout.width, height: HEADER_H }, ...[...boxes].flatMap(([key, b]) => (key.startsWith('x:') ? [b] : []))];
+  return { boxes, obstacles };
 }

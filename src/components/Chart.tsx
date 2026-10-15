@@ -4,7 +4,9 @@ import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ChartScene } from '../types';
 import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, type ChartLayout, type Direction } from '../utils/chartLayout';
+import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
 import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
+import { PenMarks } from './PenMarks';
 import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -344,6 +346,41 @@ function slotTop(scene: ChartScene, layout: ChartLayout, i: number): number {
   return layout.y(Math.max(...scene.series.map((s) => s.values[i]!))) - valueH - 6;
 }
 
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs: a value's number and the top
+ * of its bar or its point, a label's text, a series' values together. A note keeps off the bars, the
+ * numbers, the labels, the change badges and the annotation.
+ */
+function chartTargets(scene: ChartScene, layout: ChartLayout, size: { width: number; height: number }): MarkTargets {
+  const font = scene.kind === 'bar' && layout.barW < 64 ? 17 : VALUE_FONT;
+  const valueH = font * 1.25 + 14;
+  const boxes = new Map<string, Box>();
+  const obstacles: Box[] = [];
+  const lines = scene.kind === 'line' ? scene.series.flatMap((s) => s.values.slice(1).flatMap((v, i) => Array.from({ length: 8 }, (_, t) => ({ x: layout.xs[i]! + ((layout.xs[i + 1]! - layout.xs[i]!) * t) / 8, y: layout.y(s.values[i]!) + ((layout.y(v) - layout.y(s.values[i]!)) * t) / 8 })))) : [];
+  scene.series.forEach((series, s) =>
+    series.values.forEach((v, l) => {
+      const top = layout.y(v);
+      const value =
+        scene.kind === 'bar'
+          ? { x: barX(layout, layout.xs[l]!, s, scene.series.length) - 6, y: top - valueH, width: layout.barW + 12, height: valueH + Math.min(40, layout.plot.y1 - top) }
+          : { x: layout.xs[l]! - 34, y: top - valueH, width: 68, height: valueH + 16 };
+      boxes.set(`p:${s}/${l}`, value);
+      obstacles.push(scene.kind === 'bar' ? { x: value.x, y: value.y, width: value.width, height: layout.plot.y1 - value.y } : value);
+    }),
+  );
+  scene.labels.forEach((_, i) => {
+    const text = layout.xLabels[i]!;
+    const width = Math.min(layout.slotW, Math.max(...text.map((t) => t.length)) * layout.xLabelFont * 0.55 + 8);
+    const label = { x: layout.xs[i]! - width / 2, y: layout.xLabelTop - 4, width, height: text.length * layout.xLabelFont * 1.3 + 8 };
+    boxes.set(`l:${i}`, label);
+    obstacles.push(label);
+    if (scene.series.length === 2) obstacles.push({ x: layout.xs[i]! - 60, y: slotTop(scene, layout, i) - BADGE_H, width: 120, height: BADGE_H });
+  });
+  scene.series.forEach((_, s) => boxes.set(`s:${s}`, union(scene.labels.map((__, l) => boxes.get(`p:${s}/${l}`)))!));
+  if (scene.annotation) obstacles.push({ x: layout.plot.x0, y: 0, width: layout.plot.x1 - layout.plot.x0, height: ANNOTATION_BAND });
+  return { boxes, obstacles, lines, area: areaOf(size) };
+}
+
 function annotationPoint(scene: ChartScene, layout: ChartLayout): Point | null {
   const note = scene.annotation;
   if (!note) return null;
@@ -420,6 +457,7 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutChart(scene, box.width, box.height), [scene, box.width, box.height]);
+  const marks = useMemo(() => chartTargets(scene, layout, box), [scene, layout, box.width, box.height]);
   const timeline = buildTimeline(scene);
   // Each step lights its labels, series or values while the rest dim. A label stays bright while any of its values is lit.
   const stepFroms = segments.slice(1).map((segment) => segment.from);
@@ -474,6 +512,7 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
           : null}
         {note ? <Note note={note} appear={noteIn} /> : null}
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

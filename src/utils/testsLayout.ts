@@ -1,3 +1,4 @@
+import type { Box as PenBox, LayoutBoxes } from './penGeometry';
 import { rowBadgeRoom } from './marks';
 import type { TestCase } from '../types';
 import { wrapLabel } from './wrapLabel';
@@ -144,4 +145,23 @@ export function layoutTests(cases: readonly TestCase[], gaps: readonly string[],
   // A wider layout wraps less, so it is never taller: scaling by the first estimate always fits.
   const scale = height / attempt(cases, gaps, width, MIN_FONT).height;
   return { ...attempt(cases, gaps, width / scale, MIN_FONT), scale };
+}
+
+const boxOf = (b: Box) => ({ x: b.x, y: b.y, width: b.w, height: b.h });
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a case's
+ * row and a gap's line. A note keeps off the names, what they prove, and the gaps.
+ */
+export function testsBoxes(layout: TestsLayout): LayoutBoxes {
+  const m = layout.matrix;
+  const boxes = new Map<string, PenBox>([
+    ...layout.rows.map((row, i): [string, PenBox] => [`c:${i}`, boxOf(row)]),
+    ...layout.gaps.map((gap, i): [string, PenBox] => [`g:${i}`, boxOf(gap)]),
+  ]);
+  const obstacles = [
+    ...layout.rows.flatMap((row) => (m ? [{ x: m.nameX, y: row.y, width: m.nameW, height: row.h }, { x: m.provesX, y: row.y, width: m.provesW, height: row.h }] : [boxOf(row)])),
+    ...layout.gaps.map(boxOf),
+  ];
+  return { boxes, obstacles };
 }

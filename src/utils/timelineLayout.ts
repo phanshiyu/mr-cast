@@ -1,5 +1,6 @@
 import type { TimelineEvent, TimelineScene, TimelineSpan } from '../types';
 import { formatValue, niceTicks } from './chartLayout';
+import type { Box, LayoutBoxes } from './penGeometry';
 import { wrapLabel } from './wrapLabel';
 
 export const LABEL_FONT = 23;
@@ -131,4 +132,20 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
     width,
     height,
   };
+}
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: an event's
+ * card and a span's bar. A note keeps off the cards, the bars, their labels and the axis.
+ */
+export function timelineBoxes(layout: TimelineLayout): LayoutBoxes {
+  const card = (e: PlacedEvent): Box => ({ x: e.box.x, y: e.box.y, width: e.box.w, height: e.box.h });
+  const bar = (s: PlacedSpan): Box => ({ x: s.x0, y: s.y, width: Math.max(8, s.x1 - s.x0), height: SPAN_H });
+  const boxes = new Map<string, Box>([
+    ...layout.events.map((e): [string, Box] => [`ev:${e.index}`, card(e)]),
+    ...layout.spans.map((s, i): [string, Box] => [`sp:${i}`, bar(s)]),
+  ]);
+  const labels = layout.spans.flatMap((s) => (s.inside ? [] : [{ x: s.x1 + 12, y: s.y, width: s.label.length * 10, height: SPAN_H }]));
+  const axis = { x: 0, y: layout.axisY - 26, width: layout.width, height: 70 };
+  return { boxes, obstacles: [...boxes.values(), ...labels, axis] };
 }

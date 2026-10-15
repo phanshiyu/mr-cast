@@ -1,10 +1,14 @@
 import type { ArchEdge, ArchNode, ArchScene } from '../types';
+import { badgeWords } from './marks';
+import { around, type Box, type LayoutBoxes } from './penGeometry';
 import { wrapLabel } from './wrapLabel';
 
 export const NODE_W = 320;
 /** Widest a card grows when the frame has room across, so long titles keep the full font. */
 const NODE_W_MAX = 440;
 export const NODE_H = 104;
+/** How far a card's badges rise above its top edge. */
+const BADGE_LIFT = 16;
 /** Largest scale a small graph is drawn at. */
 const MAX_SCALE = 1.3;
 /** Margin around the graph across the layers. */
@@ -86,6 +90,10 @@ export interface RoutedEdge {
   /** SVG path data. */
   d: string;
   label: EdgeLabelBox | null;
+  /** The point where its label sits or would sit, in layout units. */
+  mid: Pt;
+  /** Points along it, in layout units. */
+  points: Pt[];
 }
 
 export interface PlacedGroup {
@@ -501,7 +509,7 @@ function layoutPass(
     labels.set(i, { ...size, ...at });
     obstacles.push(grow({ x: at.x - size.width / 2, y: at.y - size.height / 2, width: size.width, height: size.height }, 4));
   }
-  const routed = valid.map((e, i): RoutedEdge => ({ edge: e, index: edges.indexOf(e), d: curves[i]!.d, label: labels.get(i) ?? null }));
+  const routed = valid.map((e, i): RoutedEdge => ({ edge: e, index: edges.indexOf(e), d: curves[i]!.d, label: labels.get(i) ?? null, mid: curves[i]!.at(curves[i]!.t0), points: curves[i]!.points }));
 
   const hasSameLayer = valid.some((e) => layer(e.to) === layer(e.from));
   const uSize = uOf(layerCount - 1) + U + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
@@ -549,4 +557,29 @@ export function fitArch(
     best = { layout, scale, titleFont: font };
   }
   return best;
+}
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a node's
+ * card, an edge's label (or its middle, when it has none), a group's box. A note keeps off the cards,
+ * the labels and the group names.
+ */
+export function archBoxes(layout: ArchLayout): LayoutBoxes {
+  // Badges sit on a card's top edge, so a mark around the card takes them in.
+  const card = (p: PositionedNode): Box => {
+    const lift = badgeWords(p.node).length ? BADGE_LIFT : 0;
+    return { x: p.x, y: p.y - lift, width: layout.nodeWidth, height: NODE_H + lift };
+  };
+  const edge = (r: RoutedEdge): Box => (r.label ? around(r.label, r.label.width, r.label.height) : around(r.mid, 40, 40));
+  const boxes = new Map<string, Box>([
+    ...layout.nodes.map((p): [string, Box] => [`n:${p.node.id}`, card(p)]),
+    ...layout.edges.map((r): [string, Box] => [`e:${r.index}`, edge(r)]),
+    ...layout.groups.map((g): [string, Box] => [`g:${g.name}`, g]),
+  ]);
+  const obstacles = [
+    ...layout.nodes.map(card),
+    ...layout.edges.flatMap((r) => (r.label ? [edge(r)] : [])),
+    ...layout.groups.map((g) => ({ x: g.x, y: g.y, width: g.width, height: GROUP_HEAD })),
+  ];
+  return { boxes, obstacles, lines: layout.edges.flatMap((r) => r.points) };
 }

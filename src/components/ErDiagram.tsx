@@ -3,7 +3,9 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, ErField, ErRelation, ErScene } from '../types';
-import { HEADER_H, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import { erBoxes, HEADER_H, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import { centredStage, staged } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { CHANGE_WORD } from '../utils/marks';
 import { Badge, badgesOf, EMPHASIS, emphasisRing, type BadgeSpec } from './marks';
@@ -396,6 +398,7 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, duratio
     brighter(emphasisOf(`r:${i}`), { ...brighter(entityEmphasis(routed.relation.from), entityEmphasis(routed.relation.to)), glow: 0, bar: 0 });
   const box = contentBox(Boolean(scene.title));
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.3);
+  const marks = useMemo(() => staged(erBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
   const draws = layout.relations.map((_, i) => interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + RELATION_FRAMES], [0, 1], clamp));
 
   return (
@@ -425,6 +428,7 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, duratio
           )}
         </div>
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

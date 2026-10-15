@@ -1,4 +1,6 @@
 import type { MessageKind, SequenceMessage, SequenceParticipant } from '../types';
+import { badgeWords } from './marks';
+import type { Box, LayoutBoxes } from './penGeometry';
 import { splitInTwo, wrapLabel } from './wrapLabel';
 
 export const CARD_H = 84;
@@ -268,4 +270,25 @@ export function layoutSequence(
     messages: placed,
     activations,
   };
+}
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a
+ * participant's card, and a message's row between the lifelines it joins. A note keeps off both.
+ */
+export function sequenceBoxes(layout: SequenceLayout): LayoutBoxes {
+  const card = (p: PlacedParticipant): Box => {
+    const lift = badgeWords(p.participant).length ? 14 : 0;
+    return { x: p.x - layout.cardW / 2, y: layout.cardTop - lift, width: layout.cardW, height: CARD_H + lift };
+  };
+  const message = (m: PlacedMessage): Box => {
+    const xs = m.points.map((p) => p.x);
+    const [x0, x1] = [Math.min(...xs) - (m.self ? 10 : 0), Math.max(...xs) + (m.self ? LOOP_W : 0)];
+    return { x: x0, y: m.top, width: Math.max(40, x1 - x0), height: m.bottom - m.top };
+  };
+  const boxes = new Map<string, Box>([
+    ...layout.participants.map((p): [string, Box] => [`p:${p.participant.id}`, card(p)]),
+    ...layout.messages.map((m, i): [string, Box] => [`m:${i}`, message(m)]),
+  ]);
+  return { boxes, obstacles: [...boxes.values()] };
 }

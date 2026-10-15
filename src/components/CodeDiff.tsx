@@ -7,6 +7,9 @@ import type { CodeScene, CodeStep, DiffLine, Hunk } from '../types';
 import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
 import { lineFocusRanges } from '../../shared/focus.mjs';
+import { tokenHits } from '../../shared/pen-marks.mjs';
+import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import { layoutSteps, StepDiagram, type FlowSteps } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
@@ -286,6 +289,60 @@ function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number
   });
 }
 
+/** Advance of `fonts.mono` per em as the render browser draws it (Menlo), for placing a token on its line. */
+const MONO_DRAWN = 0.602;
+
+interface CodeGeometry {
+  hunk: Hunk;
+  view: View;
+  slots: readonly Slot[];
+  metrics: CodeMetrics;
+  panelW: number;
+  /** Content-box y of the top of the code viewport. */
+  viewportTop: number;
+}
+
+/**
+ * Where step k's lines and token sit once its camera move has settled: rows above it at the height they
+ * have while it plays (removed lines stay until the steps leave them), scrolled to the step's stop.
+ */
+function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, rowTops: (k: number) => number[], stop: number, area: { width: number; height: number }, extra: readonly Box[]): MarkTargets {
+  const { hunk, view, slots, metrics } = g;
+  const step = steps[k]!;
+  const advance = metrics.fontSize * MONO_DRAWN;
+  const inner = g.panelW - 2;
+  const half = (inner - 1) / 2;
+  /** Content-box x where the code of hunk line `i` starts, on the side the row shows it. */
+  const codeX = (slot: Slot, i: number) =>
+    view === 'morph' ? 1 + morphGutterW(hunk) : slot.right === i && slot.left !== i ? 1 + half + 1 + SPLIT_GUTTER_W : 1 + SPLIT_GUTTER_W;
+  const tops = rowTops(k);
+  const textBoxes: { line: number; box: Box; x: number; y: number }[] = slots.flatMap((slot, r) => {
+    const y = g.viewportTop + tops[r]! - stop;
+    const sides = view === 'morph' ? [slot.left] : step.oldLines !== undefined && step.lines === undefined ? [slot.left, slot.right] : [slot.right, slot.left];
+    return [...new Set(sides)].flatMap((i) => {
+      if (i === null) return [];
+      const x = codeX(slot, i);
+      const width = Math.max(24, codeColumns(hunk.lines[i]!.text) * advance);
+      return [{ line: i, x, y, box: { x: x - 4, y: y + 2, width: width + 8, height: metrics.rowH - 4 } }];
+    });
+  });
+  const boxes = new Map<string, Box>();
+  const own = slots.flatMap((slot, r) => (slot.step === k ? [r] : []));
+  const ownLines = new Set(own.flatMap((r) => [slots[r]!.left, slots[r]!.right]));
+  const lines = union(textBoxes.filter((t) => ownLines.has(t.line) && hunk.lines[t.line]!.text.trim()).map((t) => t.box));
+  if (lines) boxes.set('lines', lines);
+  const hit = tokenHits(hunk, step)[0];
+  const at = hit ? textBoxes.find((t) => t.line === hit.line) : undefined;
+  if (hit && at) {
+    const text = hunk.lines[hit.line]!.text;
+    const x = at.x + codeColumns(text.slice(0, hit.at)) * advance;
+    const textH = Math.round(metrics.fontSize * 1.3);
+    boxes.set('token', { x, y: at.y + (metrics.rowH - textH) / 2, width: codeColumns(step.token!) * advance, height: textH });
+  }
+  const visible = textBoxes.filter((t) => t.box.y + t.box.height > g.viewportTop && t.box.y < g.viewportTop + (area.height - g.viewportTop));
+  return { boxes, obstacles: [...visible.map((t) => t.box), ...extra], area: areaOf(area) };
+}
+
 const MissingHunk: React.FC<{ hunkId: string }> = ({ hunkId }) => (
   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
     <div
@@ -445,6 +502,32 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
     0,
   );
 
+  // Pen marks: where each step's rows settle, at the heights they have while that step plays.
+  const lastOld = steps ? steps.reduce((last, step, k) => (step.lines === undefined && step.oldLines !== undefined ? k : last), -1) : -1;
+  const rowTops = (k: number) => {
+    let top = 0;
+    return rows.map((row, r) => {
+      const at = top;
+      const line = hunk.lines[slots[r]!.left ?? slots[r]!.right!]!;
+      top += view === 'morph' && line.type === 'del' ? (k <= lastOld ? metrics.rowH : 0) : view === 'morph' ? row.finalHeight || metrics.rowH : row.height;
+      return at;
+    });
+  };
+  const panelTop = HEADER_H + HEADER_GAP;
+  const markTargets = (k: number): MarkTargets | null => {
+    if (!steps) return null;
+    const extra: Box[] = [{ x: 0, y: 0, width: box.width, height: HEADER_H }];
+    if (calloutBeside) extra.push({ x: panelW + CALLOUT_GAP, y: panelTop + calloutTop, width: CALLOUT_W, height: calloutH });
+    if (stepLayout) extra.push({ x: diagramLeft, y: panelTop + diagramTop, width: diagramW, height: stepLayout.height + flowCalloutBlock });
+    if (calloutBelow) extra.push({ x: 0, y: panelTop + panelH + 28, width: box.width, height: CALLOUT_BELOW_H });
+    const targets = codeTargets({ hunk, view, slots, metrics, panelW, viewportTop: panelTop + PANEL_PAD }, steps, k, rowTops, stops[k] ?? 0, box, extra);
+    // The camera and the collapsing lines may still be on their way: carry the mark along with the code.
+    const first = slots.findIndex((slot) => slot.step === k);
+    const settled = first < 0 ? 0 : rowTops(k)[first]! - (stops[k] ?? 0);
+    const live = first < 0 ? 0 : placed[first]!.top - scroll;
+    return { ...targets, shift: { x: 0, y: live - settled } };
+  };
+
   /** Panel y of a step's code range as the camera shows it, kept inside the viewport. */
   const anchorY = (span: { top: number; bottom: number }) => PANEL_PAD + Math.min(viewportH, Math.max(0, (Number.isFinite(span.top) ? (span.top + span.bottom) / 2 : 0) - scroll));
 
@@ -603,6 +686,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
           </div>
         ) : null}
       </div>
+      <PenMarks scene={scene} hunks={{ [hunk.id]: hunk }} segments={segments} targets={markTargets} />
     </div>
   );
 };

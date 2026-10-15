@@ -1,7 +1,10 @@
 import { AlertTriangle, FileCode2, ShieldAlert, ShieldCheck, type LucideIcon } from 'lucide-react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { HunkMap, IntentScene, Risk } from '../types';
+import type { Box, MarkTargets } from '../utils/penGeometry';
 import { focusSpotlight } from '../utils/spotlight';
+import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, defaultChapter, ellipsis, fitFontSize, fonts, riskColors } from './theme';
@@ -37,6 +40,19 @@ const Chip: React.FC<{ color?: string; children: React.ReactNode }> = ({ color =
     {children}
   </div>
 );
+
+/** Where `el` sits inside `root`, from layout offsets, which transforms and the player's scaling leave alone. */
+function boxIn(el: HTMLElement, root: HTMLElement): Box {
+  let [x, y] = [0, 0];
+  for (let at: HTMLElement | null = el; at && at !== root; at = at.offsetParent as HTMLElement | null) {
+    x += at.offsetLeft;
+    y += at.offsetTop;
+  }
+  return { x, y, width: el.offsetWidth, height: el.offsetHeight };
+}
+
+/** A lit bullet slides this far right. */
+const LIT_SHIFT = 12;
 
 const RiskBadge: React.FC<{ risk: Risk; appear: number }> = ({ risk, appear }) => {
   const RiskIcon = riskIcon[risk];
@@ -77,6 +93,25 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
   const pop = (delay: number) => spring({ frame: frame - delay, fps, config: { damping: 18, stiffness: 120 } });
   const bullets = scene.bullets.slice(0, 6);
   const bulletSize = bullets.length > 4 ? 32 : 36;
+  // The card flows like a page, so it is the one scene that measures where its bullets landed.
+  const root = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const texts = useRef<(HTMLDivElement | null)[]>([]);
+  const [marks, setMarks] = useState<MarkTargets | null>(null);
+  const marked = scene.steps?.some((step) => step.mark) ?? false;
+  useLayoutEffect(() => {
+    if (!marked || !root.current || !list.current) return;
+    const area = { x: 0, y: 0, width: root.current.offsetWidth, height: root.current.offsetHeight };
+    const bulletBoxes = texts.current.flatMap((el, i): [string, Box][] => {
+      if (!el) return [];
+      const b = boxIn(el, root.current!);
+      return [[`b:${i}`, { ...b, x: b.x - 34 + LIT_SHIFT, width: b.width + 34 }]];
+    });
+    const above = { x: 0, y: 0, width: area.width, height: boxIn(list.current, root.current).y - 8 };
+    const next = { boxes: new Map(bulletBoxes), obstacles: [above, ...bulletBoxes.map(([, b]) => b)], area };
+    // Measured after every render, since the card can be laid out before it is shown; set only on a change.
+    setMarks((now) => (now && JSON.stringify([...now.boxes, now.area]) === JSON.stringify([...next.boxes, next.area]) ? now : next));
+  });
 
   return (
     <SceneShell
@@ -95,7 +130,7 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
         ) : undefined
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', paddingBottom: 24, boxSizing: 'border-box' }}>
+      <div ref={root} style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', paddingBottom: 24, boxSizing: 'border-box' }}>
         <div style={{ fontSize: 28, color: colors.muted, fontWeight: 500, ...ellipsis }}>
           {storyboard.title}
           {storyboard.subtitle ? <span style={{ color: colors.faint }}>{'  ·  '}{storyboard.subtitle}</span> : null}
@@ -116,7 +151,7 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
           {scene.summary}
         </div>
         {scene.risk ? <RiskBadge risk={scene.risk} appear={pop(12)} /> : null}
-        <div style={{ marginTop: 44, display: 'flex', flexDirection: 'column', gap: 20, minHeight: 0 }}>
+        <div ref={list} style={{ marginTop: 44, display: 'flex', flexDirection: 'column', gap: 20, minHeight: 0 }}>
           {bullets.map((bullet, i) => {
             const p = pop(20 + i * 7);
             const e = emphasisOf(`b:${i}`);
@@ -142,12 +177,13 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
                     transform: `translateY(-6px) scale(${1 + 0.5 * e.glow})`,
                   }}
                 />
-                <div style={{ fontSize: bulletSize, lineHeight: 1.3, color: e.glow > 0 ? colors.text : 'rgba(242,244,248,0.9)', fontWeight: e.glow > 0 ? 600 : 400, ...ellipsis }}>{bullet}</div>
+                <div ref={(el) => { texts.current[i] = el; }} style={{ fontSize: bulletSize, lineHeight: 1.3, color: e.glow > 0 ? colors.text : 'rgba(242,244,248,0.9)', fontWeight: e.glow > 0 ? 600 : 400, ...ellipsis }}>{bullet}</div>
               </div>
             );
           })}
         </div>
       </div>
+      {marks ? <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} /> : null}
     </SceneShell>
   );
 };

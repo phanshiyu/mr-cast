@@ -16,8 +16,9 @@ import {
   type PlacedCase,
   type PlacedGap,
   type TestsLayout,
-  ROW_BADGE,
-} from '../utils/testsLayout';
+  ROW_BADGE, testsBoxes } from '../utils/testsLayout';
+import { staged } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { wrapLabel } from '../utils/wrapLabel';
 import { CHANGE_WORD } from '../utils/marks';
@@ -360,6 +361,8 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const layout = useMemo(() => layoutTests(scene.cases, scene.gaps, box.width, box.height), [scene.cases, scene.gaps, box.width, box.height]);
   const timeline = useMemo(() => buildTimeline(layout), [layout]);
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
+  const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
+  const marks = useMemo(() => staged(testsBoxes(layout), { left: 0, top, scale: layout.scale }, box), [layout, top, box.width, box.height]);
 
   return (
     <SceneShell
@@ -373,7 +376,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
         style={{
           position: 'absolute',
           left: 0,
-          top: Math.max(0, box.height - layout.height * layout.scale) * 0.3,
+          top,
           width: box.width / layout.scale,
           height: layout.height,
           transform: `scale(${layout.scale})`,
@@ -386,6 +389,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
         ))}
         <GapsPanel layout={layout} titles={titles} at={timeline.panelAt} gapAt={timeline.gapAt} frame={frame} gapEmphasis={(i) => emphasisOf(`g:${i}`)} />
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

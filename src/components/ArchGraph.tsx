@@ -2,11 +2,13 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ArchEdge, ArchNode, ArchScene, Change } from '../types';
-import { GROUP_NAME, LABEL_FONT, LABEL_LINE_HEIGHT, LABEL_PAD, NODE_H, fitArch, groupNameMax, type ArchDirection, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
+import { GROUP_NAME, LABEL_FONT, LABEL_LINE_HEIGHT, LABEL_PAD, NODE_H, archBoxes, fitArch, groupNameMax, type ArchDirection, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
+import { centredStage, staged } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { ChangeLegend } from './ChangeLegend';
 import { changeTone, EMPHASIS } from './marks';
 import { NodeCard, sharedTitleFont } from './NodeCard';
+import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -180,6 +182,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
     [scene.nodes, scene.edges, scene.layout],
   );
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
+  const marks = useMemo(() => staged(archBoxes(layout), centredStage(contentBox(false), layout, scale), contentBox(false)), [layout, scale]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.
   const layerStagger = Math.min(6, (NODES_END - NODE_START) / Math.max(1, layout.layerCount - 1));
@@ -250,6 +253,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
           )}
         </div>
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

@@ -14,7 +14,10 @@ import {
   type Pt,
   type RoutedTransition,
   type StateLayout,
+  stateBoxes,
 } from '../utils/stateLayout';
+import { centredStage, staged } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { ChangeLegend } from './ChangeLegend';
@@ -226,6 +229,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, hunks, d
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = contentBox(Boolean(scene.title));
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.25);
+  const marks = useMemo(() => staged(stateBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
   const draws = layout.transitions.map((_, i) =>
     interpolate(frame, [timeline.transitionAt(i), timeline.transitionAt(i) + TRANSITION_FRAMES], [0, 1], clamp),
   );
@@ -263,6 +267,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, hunks, d
           ))}
         </div>
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

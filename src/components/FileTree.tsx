@@ -4,7 +4,9 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneFiles } from '../../shared/files.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { FilesScene } from '../types';
-import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow } from '../utils/filesLayout';
+import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow, filesBoxes } from '../utils/filesLayout';
+import { staged } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { Badge, badgesOf, changeTone } from './marks';
 import { SceneShell } from './SceneShell';
@@ -198,6 +200,8 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
   const files = useMemo(() => sceneFiles(scene, hunks), [scene, hunks]);
   const rows = useMemo(() => treeRows(files, scene.notes ?? {}), [files, scene.notes]);
   const layout = useMemo(() => layoutFiles(rows, box.width, box.height), [rows, box.width, box.height]);
+  const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
+  const marks = useMemo(() => staged(filesBoxes(layout), { left: 0, top, scale: layout.scale }, box), [layout, top, box.width, box.height]);
   // With steps, each lights the files it focuses. Without, the narration walks `highlight` in order, or
   // else every file with a note, top to bottom.
   const walked = scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
@@ -214,7 +218,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
         style={{
           position: 'absolute',
           left: 0,
-          top: Math.max(0, box.height - layout.height * layout.scale) * 0.3,
+          top,
           width: layout.totalWidth,
           height: layout.height,
           transform: `scale(${layout.scale})`,
@@ -228,6 +232,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
           return <Row key={i} placed={placed} layout={layout} at={rowAt(i)} emphasis={shown} frame={frame} />;
         })}
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

@@ -11,8 +11,9 @@ import {
   layoutSequence,
   type PlacedMessage,
   type Pt,
-  type SequenceLayout,
-} from '../utils/sequenceLayout';
+  type SequenceLayout, sequenceBoxes } from '../utils/sequenceLayout';
+import { centredStage, staged } from '../utils/penGeometry';
+import { PenMarks } from './PenMarks';
 import { currentStep, focusSpotlight, revealStarts } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
 import { badgesOf, CornerBadges, EMPHASIS } from './marks';
@@ -215,6 +216,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const lifeline = interpolate(frame, [LIFELINE_START, LIFELINE_START + LIFELINE_FRAMES], [0, 1], clamp);
   const headerStagger = Math.min(5, (HEADERS_END - HEADER_START) / Math.max(1, layout.participants.length - 1));
   const scale = Math.min(1, box.width / layout.width, box.height / layout.height);
+  const marks = useMemo(() => staged(sequenceBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
 
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.sequence} title={scene.title}>
@@ -293,6 +295,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
           })}
         </div>
       </div>
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
   );
 };

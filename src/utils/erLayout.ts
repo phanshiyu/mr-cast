@@ -1,3 +1,5 @@
+import { badgeWords } from './marks';
+import { around, type Box, type LayoutBoxes } from './penGeometry';
 import type { ErEntity, ErField, ErRelation } from '../types';
 
 export const HEADER_H = 64;
@@ -481,4 +483,26 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
     width: Math.max(...xs) - Math.min(...xs) + 2 * PAD,
     height: Math.max(...ys) - Math.min(...ys) + 2 * PAD,
   };
+}
+
+/** How far a card's badges rise above its top edge. */
+const BADGE_LIFT = 15;
+
+/**
+ * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: an entity's
+ * card, a field's row, a relation's label (or its middle). A note keeps off the cards and the labels.
+ */
+export function erBoxes(layout: ErLayout): LayoutBoxes {
+  const card = (e: PlacedEntity): Box => {
+    const lift = badgeWords(e.entity).length ? BADGE_LIFT : 0;
+    return { x: e.x, y: e.y - lift, width: e.w, height: e.h + lift };
+  };
+  const relation = (r: RoutedRelation): Box => (r.relation.label ? around(r.mid, 2 * labelHalfWidth(r.relation.label), 2 * LABEL_HALF_H) : around(r.mid, 40, 40));
+  const boxes = new Map<string, Box>([
+    ...layout.entities.map((e): [string, Box] => [`e:${e.entity.id}`, card(e)]),
+    ...layout.entities.flatMap((e) => e.entity.fields.map((_, k): [string, Box] => [`f:${e.entity.id}/${k}`, { x: e.x + 6, y: e.y + HEADER_H + k * ROW_H + 2, width: e.w - 12, height: ROW_H - 4 }])),
+    ...layout.relations.map((r, i): [string, Box] => [`r:${i}`, relation(r)]),
+  ]);
+  const obstacles = [...layout.entities.map(card), ...layout.relations.flatMap((r) => (r.relation.label ? [relation(r)] : []))];
+  return { boxes, obstacles, lines: layout.relations.flatMap((r) => r.points) };
 }
