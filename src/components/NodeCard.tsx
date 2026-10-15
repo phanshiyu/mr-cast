@@ -17,7 +17,7 @@ export function nodeMark(node: DiagramNode): { color: string; bg: string } | nul
 
 const NO_EMPHASIS: Emphasis = { opacity: 1, bar: 0, glow: 0 };
 
-/** A node of an arch or sequence scene: icon, label and caption, marked by its change or as a key part. */
+/** A node of a graph or sequence scene: icon, label and caption, marked by its change or as a key part. */
 export const NodeCard: React.FC<{
   node: DiagramNode;
   x: number;

@@ -121,7 +121,7 @@ export interface IntentScene extends SceneBase {
 }
 
 /**
- * A card in an arch or sequence scene: a service, a database, a person, a team, a document, a device.
+ * A card in a graph or sequence scene: a service, a database, a person, a team, a document, a device.
  * Older storyboards wrote `kind` ("service", "db", "queue" or "client") for the icon and caption, and
  * `modified: true`, which reads as `change: "modified"` in a diff walkthrough and `highlight` in an explanation.
  */
@@ -139,12 +139,12 @@ export interface DiagramNode extends Marks {
   tone?: Tone;
 }
 
-export interface ArchNode extends DiagramNode {
+export interface GraphNode extends DiagramNode {
   /** Name of a group, e.g. "Support team". Nodes with the same group are drawn inside one labelled box. */
   group?: string;
 }
 
-export interface ArchEdge {
+export interface GraphEdge {
   from: string;
   to: string;
   label?: string;
@@ -162,10 +162,10 @@ export interface ArchEdge {
   highlight?: boolean;
 }
 
-export interface ArchScene extends SceneBase {
-  type: 'arch';
-  nodes: ArchNode[];
-  edges: ArchEdge[];
+export interface GraphScene extends SceneBase {
+  type: 'graph';
+  nodes: GraphNode[];
+  edges: GraphEdge[];
   /** "LR" (default) lays the graph out left to right; "TB" top to bottom, which suits hierarchies such as people and teams. */
   layout?: 'LR' | 'TB';
   /**
@@ -507,7 +507,7 @@ export interface FilesScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene;
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene;
 
 export interface Storyboard {
   title: string;

@@ -1,4 +1,4 @@
-// Checks for diagram nodes (arch nodes, sequence participants) and the arch scene, mirroring src/types.ts.
+// Checks for diagram nodes (graph nodes, sequence participants) and the graph scene, mirroring src/types.ts.
 // Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
 import lucideNames from 'lucide-react/dynamicIconImports.mjs';
@@ -17,7 +17,7 @@ const ICON_FILES = new Map(Object.entries(lucideNames).map(([name, load]) => [na
 const ICONS = [...ICON_FILES].flatMap(([name, file]) => (name === file ? [name] : []));
 const ICON_SET = new Set(ICONS);
 // Past this many nodes each card shrinks below a comfortable reading size on the 1080p frame.
-const ARCH_NODES_MAX = 12;
+const GRAPH_NODES_MAX = 12;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
@@ -32,7 +32,7 @@ export function checkIcon(icon, q, errors) {
   errors.push(`${q}: "${icon}" is not a Lucide icon${hint || '; pick one from https://lucide.dev/icons'}`);
 }
 
-/** The fields a node shares across arch and sequence scenes, plus the older `kind` and `modified`. Marks are checked in validate-marks.mjs. */
+/** The fields a node shares across graph and sequence scenes, plus the older `kind` and `modified`. Marks are checked in validate-marks.mjs. */
 export function checkNodeFields(n, q, errors, warnings) {
   if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
   checkIcon(n?.icon, `${q}.icon`, errors);
@@ -56,7 +56,7 @@ function checkGroups(nodes, p, errors, warnings) {
   }
 }
 
-export function checkArch(s, p, errors, warnings) {
+export function checkGraph(s, p, errors, warnings) {
   if (s.layout !== undefined && !LAYOUTS.includes(s.layout)) errors.push(`${p}.layout: must be "LR" (left to right) or "TB" (top to bottom)`);
   if (!Array.isArray(s.nodes) || s.nodes.length === 0) return errors.push(`${p}.nodes: required non-empty array`);
   const ids = new Set();
@@ -69,14 +69,14 @@ export function checkArch(s, p, errors, warnings) {
     for (const k of ['x', 'y']) if (n && k in n) warnings.push(`${q}.${k}: ignored, layout is automatic`);
   });
   checkGroups(s.nodes, p, errors, warnings);
-  if (s.nodes.length > ARCH_NODES_MAX) warnings.push(`${p}.nodes: ${s.nodes.length} nodes; keep it to ${ARCH_NODES_MAX} or fewer so the cards stay legible, and split the rest into another scene`);
+  if (s.nodes.length > GRAPH_NODES_MAX) warnings.push(`${p}.nodes: ${s.nodes.length} nodes; keep it to ${GRAPH_NODES_MAX} or fewer so the cards stay legible, and split the rest into another scene`);
   if (!Array.isArray(s.edges)) return errors.push(`${p}.edges: required array (may be empty)`);
   s.edges.forEach((e, j) => {
     const q = `${p}.edges[${j}]`;
     for (const k of ['from', 'to']) {
       if (!ids.has(e?.[k])) errors.push(`${q}.${k}: unknown node id ${JSON.stringify(e?.[k])}${typeof e?.[k] === 'string' ? didYouMean(e[k], [...ids]) : ''}`);
     }
-    if (ids.has(e?.from) && e?.from === e?.to) warnings.push(`${q}: from and to are both "${e.from}"; an arch edge joins two nodes, so it is not drawn`);
+    if (ids.has(e?.from) && e?.from === e?.to) warnings.push(`${q}: from and to are both "${e.from}"; a graph edge joins two nodes, so it is not drawn`);
     if (e?.label !== undefined && typeof e.label !== 'string') errors.push(`${q}.label: must be a string`);
     if (e?.direction !== undefined && !DIRECTIONS.includes(e.direction)) errors.push(`${q}.direction: must be one of ${DIRECTIONS.join(', ')}`);
     if (e?.style !== undefined && !EDGE_STYLES.includes(e.style)) errors.push(`${q}.style: must be one of ${EDGE_STYLES.join(', ')}`);

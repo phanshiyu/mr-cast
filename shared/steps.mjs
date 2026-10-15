@@ -5,7 +5,7 @@
 const own = (scene) => scene.steps;
 const STEPS_OF = {
   code: own,
-  arch: own,
+  graph: own,
   sequence: own,
   er: own,
   state: own,

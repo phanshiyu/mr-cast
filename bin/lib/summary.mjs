@@ -159,7 +159,7 @@ function sceneGist(scene, hunks) {
   switch (scene.type) {
     case 'intent':
       return `${scene.risk ? `${scene.risk} risk · ` : ''}${scene.summary}`;
-    case 'arch': {
+    case 'graph': {
       const groups = new Set(scene.nodes.flatMap((n) => (n.group ? [n.group] : []))).size;
       const changed = scene.nodes.filter((n) => n.change).length;
       const key = scene.nodes.filter((n) => n.highlight).length;

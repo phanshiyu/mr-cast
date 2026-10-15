@@ -40,7 +40,7 @@ const list = (items, q, kind) => (Array.isArray(items) ? items.flatMap((item, j)
 
 /** Every markable item of a scene, with its path for messages. */
 const ITEMS = {
-  arch: (s, p) => [...list(s.nodes, `${p}.nodes`, 'node'), ...list(s.edges, `${p}.edges`, 'edge')],
+  graph: (s, p) => [...list(s.nodes, `${p}.nodes`, 'node'), ...list(s.edges, `${p}.edges`, 'edge')],
   sequence: (s, p) => [...list(s.participants, `${p}.participants`, 'node'), ...list(s.messages, `${p}.messages`, 'message')],
   er: (s, p) => [
     ...list(s.entities, `${p}.entities`, 'entity').flatMap((e) => [e, ...list(e.item.fields, `${e.q}.fields`, 'field')]),
@@ -52,7 +52,7 @@ const ITEMS = {
   files: (s, p) => list(s.files, `${p}.files`, 'file'),
   tests: (s, p) => list(s.cases, `${p}.cases`, 'testCase'),
 };
-const DIAGRAMS = ['arch', 'sequence', 'er', 'state'];
+const DIAGRAMS = ['graph', 'sequence', 'er', 'state'];
 
 /**
  * The change an item shows, as the renderer will draw it: its own `change`, an older `modified: true` on a

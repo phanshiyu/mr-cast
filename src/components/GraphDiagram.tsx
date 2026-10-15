@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
-import type { ArchEdge, ArchNode, ArchScene, Change } from '../types';
-import { GROUP_NAME, LABEL_PAD, NODE_H, archBoxes, fitArch, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
+import type { GraphEdge, GraphNode, GraphScene, Change } from '../types';
+import { GROUP_NAME, LABEL_PAD, NODE_H, graphBoxes, fitGraph, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
 import { centredStage, staged } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { ChangeLegend } from './ChangeLegend';
@@ -24,19 +24,19 @@ const MUTED = 'rgba(170,178,200,0.55)';
 const MARKERS = { muted: 'rgba(170,178,200,0.8)', emphasis: EMPHASIS.color, accent: colors.accent, added: colors.add, removed: colors.del } as const;
 type MarkerTone = keyof typeof MARKERS;
 
-const isHighlighted = (n: ArchNode | undefined) => Boolean(n?.highlight && !n.change);
+const isHighlighted = (n: GraphNode | undefined) => Boolean(n?.highlight && !n.change);
 
 /**
  * An edge's colour: its own change, else highlighted, either itself or by joining two highlighted nodes,
  * else plain. An edge between two changed nodes stays plain: only its own `change` says the diff touched it.
  */
-function edgeTone(edge: ArchEdge, nodes: ReadonlyMap<string, ArchNode>): { stroke: string; marker: MarkerTone } {
+function edgeTone(edge: GraphEdge, nodes: ReadonlyMap<string, GraphNode>): { stroke: string; marker: MarkerTone } {
   if (edge.change) return { stroke: changeTone[edge.change].color, marker: edge.change === 'modified' ? 'accent' : edge.change };
   if (edge.highlight || (isHighlighted(nodes.get(edge.from)) && isHighlighted(nodes.get(edge.to)))) return { stroke: EMPHASIS.color, marker: 'emphasis' };
   return { stroke: MUTED, marker: 'muted' };
 }
 
-const edgeStyle = (edge: ArchEdge) => edge.style ?? ((edge.direction ?? 'forward') === 'forward' ? 'flow' : 'solid');
+const edgeStyle = (edge: GraphEdge) => edge.style ?? ((edge.direction ?? 'forward') === 'forward' ? 'flow' : 'solid');
 
 const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone: ReturnType<typeof edgeTone>; emphasis: Emphasis }> = ({ routed, draw, frame, tone, emphasis }) => {
   const { edge } = routed;
@@ -49,7 +49,7 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
     markerStart: direction === 'both' ? marker : undefined,
     opacity: interpolate(draw, [0.85, 1], [0, 1], clamp),
   };
-  const id = `arch-reveal-${routed.index}`;
+  const id = `graph-reveal-${routed.index}`;
   return (
     <g opacity={draw > 0 ? emphasis.opacity * (removed ? 0.78 : 1) : 0}>
       {emphasis.glow > 0 || (edge.change && !removed) || edge.highlight ? (
@@ -100,7 +100,7 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
   );
 };
 
-const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: ArchEdge; appear: number; emphasis: Emphasis }> = ({ label, edge, appear, emphasis }) => {
+const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: GraphEdge; appear: number; emphasis: Emphasis }> = ({ label, edge, appear, emphasis }) => {
   const { change } = edge;
   const highlight = edge.highlight && !change;
   const color = change ? changeTone[change].color : highlight ? EMPHASIS.color : colors.muted;
@@ -151,24 +151,24 @@ const GroupBox: React.FC<{ group: PlacedGroup; appear: number; emphasis: Emphasi
 );
 
 /** Nodes carry badges; the legend decodes the colours of changed edges, so it shows only when an edge changes. */
-function legendChanges(scene: ArchScene): Set<Change> {
+function legendChanges(scene: GraphScene): Set<Change> {
   if (!scene.edges.some((e) => e.change)) return new Set();
   return new Set([...scene.nodes, ...scene.edges].flatMap((x) => (x.change ? [x.change] : [])));
 }
 
-export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames, segments }) => {
+export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { layout, scale } = useMemo(() => fitArch(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false)), [scene.nodes, scene.edges, scene.layout]);
+  const { layout, scale } = useMemo(() => fitGraph(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false)), [scene.nodes, scene.edges, scene.layout]);
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
-  const marks = useMemo(() => staged(archBoxes(layout), centredStage(contentBox(false), layout, scale), contentBox(false)), [layout, scale]);
+  const marks = useMemo(() => staged(graphBoxes(layout), centredStage(contentBox(false), layout, scale), contentBox(false)), [layout, scale]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.
   const layerStagger = Math.min(6, (NODES_END - NODE_START) / Math.max(1, layout.layerCount - 1));
-  const edgeStagger = Math.min(4, (buildFrames('arch') - NODES_END - EDGE_LABEL_END) / Math.max(1, layout.edges.length - 1));
+  const edgeStagger = Math.min(4, (buildFrames('graph') - NODES_END - EDGE_LABEL_END) / Math.max(1, layout.edges.length - 1));
   const edgeAt = (i: number) => NODES_END + i * edgeStagger;
   const changes = legendChanges(scene);
-  const nodeEmphasis = (node: ArchNode) => {
+  const nodeEmphasis = (node: GraphNode) => {
     const own = node.group ? brighter(emphasisOf(`n:${node.id}`), emphasisOf(`g:${node.group}`)) : emphasisOf(`n:${node.id}`);
     return asBrightAs(own, scene.edges.flatMap((e, i) => (e.from === node.id || e.to === node.id ? [emphasisOf(`e:${i}`)] : [])));
   };

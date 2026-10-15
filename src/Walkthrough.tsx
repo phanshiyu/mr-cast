@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
-import { ArchGraph } from './components/ArchGraph';
+import { GraphDiagram } from './components/GraphDiagram';
 import { Captions } from './components/Captions';
 import { Chart } from './components/Chart';
 import { CodeDiff } from './components/CodeDiff';
@@ -16,12 +16,12 @@ import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
-import type { ArchScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
   intent: IntentScene;
-  arch: ArchScene;
+  graph: GraphScene;
   code: CodeScene;
   flow: FlowScene;
   sequence: SequenceScene;
@@ -37,7 +37,7 @@ interface SceneByType {
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
   intent: IntentCard,
-  arch: ArchGraph,
+  graph: GraphDiagram,
   code: CodeDiff,
   flow: DataFlow,
   sequence: SequenceDiagram,

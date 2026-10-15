@@ -35,7 +35,7 @@ export const SAFE = { left: 104, right: 104, top: 64, bottom: CAPTION_BAND };
 
 export const defaultChapter: Record<Scene['type'], string> = {
   intent: 'Overview',
-  arch: 'Architecture',
+  graph: 'Architecture',
   code: 'Code change',
   flow: 'Data flow',
   sequence: 'Sequence',

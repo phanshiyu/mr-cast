@@ -32,7 +32,7 @@ export const SCENE_EXIT_FRAMES = 8;
 export const BUILD_SECONDS = {
   intent: 0,
   code: 0,
-  arch: 1.5,
+  graph: 1.5,
   sequence: 1.5,
   flow: 1.2,
   er: 1.5,

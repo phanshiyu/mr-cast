@@ -3,17 +3,17 @@
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
-import { checkArch, checkIcon, checkNodeFields } from './validate-diagram.mjs';
+import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
-import { normalizeStoryboard } from '../../shared/normalize.mjs';
+import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -237,7 +237,7 @@ function checkCoverage(sb, hunks, errors, warnings) {
   return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene };
 }
 
-const DIAGRAM_TYPES = ['arch', 'sequence', 'flow', 'er', 'state', 'mermaid'];
+const DIAGRAM_TYPES = ['graph', 'sequence', 'flow', 'er', 'state', 'mermaid'];
 // Overview scenes that draw facts or the list of files rather than structure: they belong before the code,
 // but do not show how the pieces fit.
 const OVERVIEW_TYPES = ['table', 'chart', 'timeline', 'files'];
@@ -270,10 +270,10 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
   if (firstDiagram > firstCode && firstCode >= 0) {
     warnings.push(`scenes[${firstCode}] shows code before the first diagram (scenes[${firstDiagram}]); move a diagram ahead of the code so the viewer sees the shape of the ${explain ? 'idea' : 'change'} first`);
   } else if (explain && firstDiagram < 0 && firstCode >= 0) {
-    warnings.push('no scene draws the idea before the code; add an arch, sequence, flow, er or state scene ahead of the first code scene');
+    warnings.push('no scene draws the idea before the code; add a graph, sequence, flow, er or state scene ahead of the first code scene');
   } else if (!explain && firstDiagram < 0 && logicFiles.length >= 2) {
     const names = logicFiles.slice(0, 4).join(', ') + (logicFiles.length > 4 ? ', ...' : '');
-    warnings.push(`the diff changes logic in ${logicFiles.length} files (${names}) and no scene draws how they fit together; add an arch, sequence, flow, er or state scene before the code`);
+    warnings.push(`the diff changes logic in ${logicFiles.length} files (${names}) and no scene draws how they fit together; add a graph, sequence, flow, er or state scene before the code`);
   }
   if (firstCode >= 0) {
     for (const { s, i } of indexed) {
@@ -360,7 +360,7 @@ async function checkMermaid(diagrams, errors, warnings) {
 }
 
 /** Diagrams where the viewer learns the names every later scene uses, so their narration stays short. */
-const DIAGRAM_WORDS_LIMITED = ['arch', 'sequence'];
+const DIAGRAM_WORDS_LIMITED = ['graph', 'sequence'];
 const DIAGRAM_WORDS_MAX = 35;
 
 /** Sentences of a spoken text, split at a full stop, question mark or exclamation mark followed by a space. */
@@ -419,7 +419,9 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
  *   "simple" (`--simple`) is explained line by line in plain words, so steps are short, every changed
  *   line of a shown hunk has a step, and sentences stay short.
  */
-export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {}) {
+export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = {}) {
+  // An older `arch` scene is a `graph`: renamed here so every check below sees one name.
+  const sb = upgradeTypes(raw);
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -450,8 +452,8 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         else if (s.bullets.length > INTENT_BULLETS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${INTENT_BULLETS_MAX}, so keep the ones that matter most and say the rest`);
         break;
 
-      case 'arch':
-        checkArch(s, p, errors, warnings);
+      case 'graph':
+        checkGraph(s, p, errors, warnings);
         break;
 
       case 'code': {

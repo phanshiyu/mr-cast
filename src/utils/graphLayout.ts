@@ -1,6 +1,6 @@
 import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { ArchEdge, ArchNode, ArchScene } from '../types';
+import type { GraphEdge, GraphNode, GraphScene } from '../types';
 import { badgeWords } from './marks';
 import { cardTexts, sharedTitleSize, type CardText } from './nodeText';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
@@ -35,7 +35,7 @@ const ARROW_CLEAR = 24;
 /** Width of the strip around a group's border that a label must not cover. */
 const BORDER_CLEAR = 6;
 
-export type ArchDirection = NonNullable<ArchScene['layout']>;
+export type GraphDirection = NonNullable<GraphScene['layout']>;
 
 /**
  * The layout runs in layer coordinates: `u` along the layers (the direction edges point) and `v` across
@@ -58,7 +58,7 @@ interface Axes {
 }
 
 /** Top to bottom the frame is short for its layers, so the layers keep less margin there. */
-function axesFor(direction: ArchDirection, nodeW: number): Axes {
+function axesFor(direction: GraphDirection, nodeW: number): Axes {
   return direction === 'LR'
     ? { U: nodeW, V: NODE_H, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
     : { U: NODE_H, V: nodeW, uGap: 64, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
@@ -70,7 +70,7 @@ export interface Pt {
 }
 
 export interface PositionedNode {
-  node: ArchNode;
+  node: GraphNode;
   layer: number;
   /** Top-left corner in layout units. */
   x: number;
@@ -87,7 +87,7 @@ export interface EdgeLabelBox {
 }
 
 export interface RoutedEdge {
-  edge: ArchEdge;
+  edge: GraphEdge;
   index: number;
   /** SVG path data. */
   d: string;
@@ -112,7 +112,7 @@ export interface PlacedGroup {
   label: Fit;
 }
 
-export interface ArchLayout {
+export interface GraphLayout {
   nodes: PositionedNode[];
   edges: RoutedEdge[];
   groups: PlacedGroup[];
@@ -126,18 +126,18 @@ export interface ArchLayout {
 
 /** A node in layer coordinates: `u` and `v` are its corner nearest the origin. */
 interface Placed {
-  node: ArchNode;
+  node: GraphNode;
   layer: number;
   u: number;
   v: number;
 }
 
 /** Edges that close a cycle, found by DFS in input order so the result is deterministic. */
-function backEdges(nodes: readonly ArchNode[], edges: readonly ArchEdge[]): Set<ArchEdge> {
-  const out = new Map<string, ArchEdge[]>();
+function backEdges(nodes: readonly GraphNode[], edges: readonly GraphEdge[]): Set<GraphEdge> {
+  const out = new Map<string, GraphEdge[]>();
   for (const e of edges) out.set(e.from, [...(out.get(e.from) ?? []), e]);
   const state = new Map<string, 'active' | 'done'>();
-  const back = new Set<ArchEdge>();
+  const back = new Set<GraphEdge>();
   const visit = (id: string) => {
     state.set(id, 'active');
     for (const e of out.get(id) ?? []) {
@@ -151,7 +151,7 @@ function backEdges(nodes: readonly ArchNode[], edges: readonly ArchEdge[]): Set<
   return back;
 }
 
-function assignLayers(nodes: readonly ArchNode[], dagEdges: readonly ArchEdge[]): Map<string, number> {
+function assignLayers(nodes: readonly GraphNode[], dagEdges: readonly GraphEdge[]): Map<string, number> {
   const preds = new Map<string, string[]>();
   for (const e of dagEdges) preds.set(e.to, [...(preds.get(e.to) ?? []), e.from]);
   const layer = new Map<string, number>();
@@ -167,7 +167,7 @@ function assignLayers(nodes: readonly ArchNode[], dagEdges: readonly ArchEdge[])
 }
 
 /** One down and one up barycenter sweep; ties keep input order because Array.sort is stable. */
-function orderLayers(columns: ArchNode[][], dagEdges: readonly ArchEdge[]): void {
+function orderLayers(columns: GraphNode[][], dagEdges: readonly GraphEdge[]): void {
   const neighbours = (id: string, dir: 'in' | 'out') =>
     dagEdges.filter((e) => (dir === 'in' ? e.to === id : e.from === id)).map((e) => (dir === 'in' ? e.from : e.to));
   const sweep = (from: number, to: number, step: number, dir: 'in' | 'out') => {
@@ -205,7 +205,7 @@ interface Band {
   v0: number;
 }
 
-function bandsOf(nodes: readonly ArchNode[], columns: readonly ArchNode[][]): Band[] {
+function bandsOf(nodes: readonly GraphNode[], columns: readonly GraphNode[][]): Band[] {
   const bands: Band[] = [];
   for (const name of new Set(nodes.map((n) => n.group ?? null))) {
     const counts = columns.map((col) => col.filter((n) => (n.group ?? null) === name).length);
@@ -342,7 +342,7 @@ function overlap(a: Rect, b: Rect): number {
 export const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
 
 /** Widest a group's name may run: top to bottom it keeps to half the box, clear of edges entering at the middle. */
-export const groupNameMax = (g: { width: number }, direction: ArchDirection) => (direction === 'TB' ? g.width / 2 - 34 : g.width - 44);
+export const groupNameMax = (g: { width: number }, direction: GraphDirection) => (direction === 'TB' ? g.width / 2 - 34 : g.width - 44);
 
 /** What a label must stay clear of in a group: its four borders and its name. */
 function groupObstacles(g: PlacedGroup): Rect[] {
@@ -401,7 +401,7 @@ function placeLabel(curve: Curve, size: { width: number; height: number }, obsta
  * the tallest (top to bottom) or widest (left to right) label between those two layers. A gap where a
  * label still finds no clear spot, say beside another label, grows by that label and is laid out again.
  */
-export function layoutArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], direction: ArchDirection = 'LR', nodeW = NODE_W): ArchLayout {
+export function layoutGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[], direction: GraphDirection = 'LR', nodeW = NODE_W): GraphLayout {
   const extra: number[] = [];
   for (let pass = 0; ; pass++) {
     const { layout, crowded } = layoutPass(nodes, edges, direction, nodeW, extra);
@@ -412,12 +412,12 @@ export function layoutArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[
 
 /** One layout with each gap `extra[l]` larger; `crowded` maps a gap to how much a label there lacks room for. */
 function layoutPass(
-  nodes: readonly ArchNode[],
-  edges: readonly ArchEdge[],
-  direction: ArchDirection,
+  nodes: readonly GraphNode[],
+  edges: readonly GraphEdge[],
+  direction: GraphDirection,
   nodeW: number,
   extra: readonly number[],
-): { layout: ArchLayout; crowded: Map<number, number> } {
+): { layout: GraphLayout; crowded: Map<number, number> } {
   const axes = axesFor(direction, nodeW);
   const { U, V, vGap, xy } = axes;
   const ids = new Set(nodes.map((n) => n.id));
@@ -428,11 +428,11 @@ function layoutPass(
   const layer = (id: string) => layerOf.get(id)!;
 
   const layerCount = Math.max(1, ...nodes.map((n) => layer(n.id) + 1));
-  const columns: ArchNode[][] = Array.from({ length: layerCount }, () => []);
+  const columns: GraphNode[][] = Array.from({ length: layerCount }, () => []);
   for (const n of nodes) columns[layer(n.id)]!.push(n);
   orderLayers(columns, dag);
   const bands = bandsOf(nodes, columns);
-  const bandOf = (n: ArchNode) => bands.find((b) => b.name === (n.group ?? null) && b.first <= layer(n.id) && layer(n.id) <= b.last)!;
+  const bandOf = (n: GraphNode) => bands.find((b) => b.name === (n.group ?? null) && b.first <= layer(n.id) && layer(n.id) <= b.last)!;
   for (const col of columns) col.sort((a, b) => bandOf(a).track - bandOf(b).track);
 
   // The group name sits above its nodes: along v left to right, along u top to bottom.
@@ -542,21 +542,21 @@ function layoutPass(
 }
 
 /** Scale that fits a layout into `box`, never above MAX_SCALE. */
-const fitScale = (layout: ArchLayout, box: { width: number; height: number }) => Math.min(box.width / layout.width, box.height / layout.height, MAX_SCALE);
+const fitScale = (layout: GraphLayout, box: { width: number; height: number }) => Math.min(box.width / layout.width, box.height / layout.height, MAX_SCALE);
 
 /**
  * The layout that draws largest in `box`. Cards widen from NODE_W towards NODE_W_MAX while that lets
  * every title take a larger font (one size shared by all cards) and does not shrink the graph: top to
  * bottom a wider card only spends room across a frame that is wide for its height.
  */
-export function fitArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], direction: ArchDirection, box: { width: number; height: number }): { layout: ArchLayout; scale: number } {
-  const base = layoutArch(nodes, edges, direction, NODE_W);
+export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[], direction: GraphDirection, box: { width: number; height: number }): { layout: GraphLayout; scale: number } {
+  const base = layoutGraph(nodes, edges, direction, NODE_W);
   const floor = fitScale(base, box);
   let best = { layout: base, scale: floor, titleFont: sharedTitleSize(nodes, NODE_W, NODE_H, 'large') };
   for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
     const font = sharedTitleSize(nodes, w, NODE_H, 'large');
     if (font <= best.titleFont) continue;
-    const layout = layoutArch(nodes, edges, direction, w);
+    const layout = layoutGraph(nodes, edges, direction, w);
     const scale = fitScale(layout, box);
     if (scale < floor * 0.995) break;
     best = { layout, scale, titleFont: font };
@@ -569,7 +569,7 @@ export function fitArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], 
  * card, an edge's label (or its middle, when it has none), a group's box. A note keeps off the cards,
  * the labels and the group names.
  */
-export function archBoxes(layout: ArchLayout): LayoutBoxes {
+export function graphBoxes(layout: GraphLayout): LayoutBoxes {
   // Badges sit on a card's top edge, so a mark around the card takes them in.
   const card = (p: PositionedNode): Box => {
     const lift = badgeWords(p.node).length ? BADGE_LIFT : 0;

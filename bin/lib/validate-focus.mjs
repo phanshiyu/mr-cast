@@ -10,7 +10,7 @@ const DIAGRAM_STEPS_MAX = 8;
 
 /** What a scene type's refs look like, for the error when a ref names nothing. */
 const REF_HELP = {
-  arch: 'a node id, an edge "from->to" or "a-b", a group "group:Name", or an edge index',
+  graph: 'a node id, an edge "from->to" or "a-b", a group "group:Name", or an edge index',
   sequence: 'a message index, an "a-b" range of them, or a participant id',
   er: 'an entity id, a field "entity.field", a relation "from->to", or a relation index',
   state: 'a state id, a transition "from->to", a transition label, or a transition index',

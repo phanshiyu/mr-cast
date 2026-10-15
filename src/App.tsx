@@ -21,7 +21,7 @@ type LoadState =
   // identity, and this component re-renders on every frame.
   | { status: 'ready'; walkthrough: WalkthroughProps; meta: Meta | null };
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, arch: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree };
+const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree };
 
 class DataError extends Error {
   constructor(readonly file: string, message: string) {

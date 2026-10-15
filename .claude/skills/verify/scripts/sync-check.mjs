@@ -32,7 +32,9 @@ if (!dataDir || !mp4 || !outDir) {
   process.exit(2);
 }
 const silent = process.argv.includes('--no-voice');
-const storyboard = JSON.parse(readFileSync(path.join(dataDir, 'storyboard.json'), 'utf8'));
+const normalize = await import(path.join(REPO, 'shared/normalize.mjs'));
+// A storyboard enters through the same rename the CLI applies, so an older `arch` scene times as a graph.
+const storyboard = (normalize.upgradeTypes ?? ((sb) => sb))(JSON.parse(readFileSync(path.join(dataDir, 'storyboard.json'), 'utf8')));
 const voicePath = path.join(dataDir, 'voiceover.json');
 const voiceover = !silent && existsSync(voicePath) ? JSON.parse(readFileSync(voicePath, 'utf8')) : null;
 mkdirSync(outDir, { recursive: true });

@@ -33,7 +33,7 @@ const pairName = (e) => `${e?.from}->${e?.to}`;
 
 /** Per scene type: `resolve(scene, ref, hunks)` gives item keys or null, `names(scene, hunks)` the refs to suggest. */
 const TARGETS = {
-  arch: {
+  graph: {
     resolve(scene, ref) {
       const ids = new Set(list(scene.nodes).map((n) => n?.id));
       const edges = list(scene.edges);
