@@ -263,6 +263,18 @@ export interface TableScene extends SceneBase {
   rows: TableRow[];
   /** Row indexes (0-based) to spotlight one at a time, in the order the narration names them. */
   highlight?: number[];
+  /**
+   * Walk rows one at a time, each with its own words: the row lights up just before its `say` is spoken.
+   * `narration` is then the intro spoken before the first step. Replaces `highlight`.
+   */
+  steps?: TableStep[];
+}
+
+export interface TableStep {
+  /** Row index (0-based). */
+  row: number;
+  /** Spoken while the row is lit. */
+  say: string;
 }
 
 /** Colour of a series, event or span. Neutral is grey, accent is the highlight blue, good green, bad red, warn amber. */
@@ -344,6 +356,18 @@ export interface FilesScene extends SceneBase {
   notes?: Record<string, string>;
   /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
   highlight?: string[];
+  /**
+   * Walk files one at a time, each with its own words: the file lights up just before its `say` is spoken.
+   * `narration` is then the intro spoken before the first step. Replaces `highlight`.
+   */
+  steps?: FileStep[];
+}
+
+export interface FileStep {
+  /** A path in the tree. */
+  path: string;
+  /** Spoken while the file is lit. */
+  say: string;
 }
 
 export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene;

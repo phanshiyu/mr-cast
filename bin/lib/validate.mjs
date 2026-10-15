@@ -360,7 +360,7 @@ const excerpt = (text) => (text.length > 50 ? `${text.slice(0, 47)}...` : text);
 /** Simple style: every spoken text of the scene in short sentences, for a viewer reading in a second language. */
 function checkReadability(scene, p, warnings) {
   const spoken = [[`${p}.narration`, scene.narration]];
-  if (scene.type === 'code' && Array.isArray(scene.steps)) scene.steps.forEach((step, j) => spoken.push([`${p}.steps[${j}].say`, step?.say]));
+  if (Array.isArray(scene.steps)) scene.steps.forEach((step, j) => spoken.push([`${p}.steps[${j}].say`, step?.say]));
   let total = 0;
   let count = 0;
   for (const [path, text] of spoken) {

@@ -4,7 +4,7 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneFiles } from '../../shared/files.mjs';
 import type { FilesScene } from '../types';
 import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow } from '../utils/filesLayout';
-import { spotlight, type Emphasis } from '../utils/spotlight';
+import { spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { changeTone } from './ChangeLegend';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -186,18 +186,20 @@ const Totals: React.FC<{ files: ReturnType<typeof sceneFiles> }> = ({ files }) =
   );
 };
 
-export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durationInFrames }) => {
+export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const files = useMemo(() => sceneFiles(scene, hunks), [scene, hunks]);
   const rows = useMemo(() => treeRows(files, scene.notes ?? {}), [files, scene.notes]);
   const layout = useMemo(() => layoutFiles(rows, box.width, box.height), [rows, box.width, box.height]);
-  // Spotlight `highlight` in its order, or else every file with a note, top to bottom.
-  const stepPaths = scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
+  // Spotlight the steps or `highlight` in their order, or else every file with a note, top to bottom.
+  const stepPaths = scene.steps?.length
+    ? scene.steps.map((step) => step.path)
+    : scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
   const rowStagger = Math.min(6, (durationInFrames * 0.25) / Math.max(1, rows.length));
   const rowAt = (i: number) => START + 4 + i * rowStagger;
   const introEnd = Math.max(Math.round(durationInFrames * 0.15), rowAt(rows.length) + 24);
-  const { emphasis } = spotlight(frame, introEnd, durationInFrames, stepPaths.length);
+  const { emphasis } = spotlight(frame, spotlightStarts(segments, stepPaths.length, introEnd));
 
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.files} title={scene.title} aside={<Totals files={files} />}>

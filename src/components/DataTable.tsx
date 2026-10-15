@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Change, TableScene } from '../types';
-import { spotlight, type Emphasis } from '../utils/spotlight';
+import { spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { COL_GAP, HEADER_FONT, HEADER_H, MARKER_W, PAD_X, cellFont, layoutTable, type PlacedCell, type PlacedRow, type TableLayout } from '../utils/tableLayout';
 import { ChangeLegend, changeTone } from './ChangeLegend';
 import { SceneShell } from './SceneShell';
@@ -13,6 +13,7 @@ const STRUCK = '#c98a93';
 
 /** The rows the scene steps through: `highlight`, or else every changed row top to bottom. */
 function stepRows(scene: TableScene, layout: TableLayout): number[] {
+  if (scene.steps?.length) return scene.steps.map((step) => step.row);
   if (scene.highlight?.length) return scene.highlight;
   return layout.rows.flatMap((r, i) => (r.change ? [i] : []));
 }
@@ -114,7 +115,7 @@ const Row: React.FC<{ placed: PlacedRow; layout: TableLayout; at: number; emphas
   );
 };
 
-export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, durationInFrames }) => {
+export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutTable(scene.columns, scene.rows, box.width, box.height), [scene.columns, scene.rows, box.width, box.height]);
@@ -122,7 +123,7 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, durationInF
   const rowStagger = Math.min(9, (durationInFrames * 0.25) / Math.max(1, layout.rows.length));
   const rowAt = (i: number) => START + 6 + i * rowStagger;
   const introEnd = Math.max(Math.round(durationInFrames * 0.15), rowAt(layout.rows.length) + 14);
-  const { emphasis } = spotlight(frame, introEnd, durationInFrames, steps.length);
+  const { emphasis } = spotlight(frame, spotlightStarts(segments, steps.length, introEnd));
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
   const used = new Set<Change>(layout.rows.flatMap((r) => (r.change ? [r.change] : [])));
 

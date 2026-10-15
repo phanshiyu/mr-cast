@@ -1,4 +1,5 @@
 import { interpolate } from 'remotion';
+import type { SpokenSegment } from './timing';
 
 const STEP_FADE = 14;
 const DIM_OPACITY = 0.42;
@@ -14,17 +15,24 @@ export interface Emphasis {
 }
 
 /**
- * Spotlights items one at a time, the way a code scene walks its focus ranges: after `introEnd` each
- * step takes an equal share of the time until 90% of the scene, the current item at full strength,
- * visited ones softer, the rest dimmed. Items outside the steps dim once the first step starts.
+ * When each spotlighted item lights up. With steps (segments after the narration), item k lights with
+ * segment k + 1, just before its voice names it. Without them, the items share the narration's speech,
+ * from when the scene has built in until its last word, so the light never runs far ahead of the voice.
  */
-export function spotlight(frame: number, introEnd: number, durationInFrames: number, count: number) {
-  const stepsEnd = Math.max(introEnd, Math.round(durationInFrames * 0.9));
-  const starts = Array.from({ length: count }, (_, k) => introEnd + (k * (stepsEnd - introEnd)) / count);
+export function spotlightStarts(segments: readonly SpokenSegment[], count: number, introEnd: number): number[] {
+  if (segments.length > 1) return Array.from({ length: count }, (_, k) => segments[k + 1]?.from ?? segments[segments.length - 1]!.from);
+  const narration = segments[0]!;
+  const start = Math.max(introEnd, narration.voiceFrom);
+  const end = Math.max(start, narration.voiceFrom + narration.speakingFrames);
+  return Array.from({ length: count }, (_, k) => start + (k * (end - start)) / count);
+}
+
+/** Spotlights items one at a time from `starts`: the current item at full strength, visited ones softer, the rest dimmed. Items outside the steps dim once the first step starts. */
+export function spotlight(frame: number, starts: readonly number[]) {
+  const count = starts.length;
   const reached = (k: number) => (k < count ? interpolate(frame, [starts[k]!, starts[k]! + STEP_FADE], [0, 1], clamp) : 0);
   const dim = reached(0);
   return {
-    starts,
     emphasis(step: number | null): Emphasis {
       const now = step === null ? 0 : reached(step);
       const passed = step === null ? 0 : reached(step + 1);

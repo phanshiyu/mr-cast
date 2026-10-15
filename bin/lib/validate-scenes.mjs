@@ -42,6 +42,22 @@ function checkHighlight(list, path, errors, warnings, { plural, one }, valid) {
   if (list.length > HIGHLIGHT_STEPS_MAX) warnings.push(`${path}: ${list.length} steps; spotlight at most ${HIGHLIGHT_STEPS_MAX} so each holds long enough to read`);
 }
 
+/**
+ * `steps` on a table or files scene: each { [key], say } lights one item while its words play, in order,
+ * and replaces `highlight`.
+ */
+function checkSpotlightSteps(s, p, key, errors, warnings, what, valid) {
+  if (s.steps === undefined) return;
+  if (!Array.isArray(s.steps) || s.steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { ${key}, say }`);
+  s.steps.forEach((step, i) => {
+    if (!step || typeof step !== 'object') return errors.push(`${p}.steps[${i}]: must be an object { ${key}, say }`);
+    if (!isStr(step.say)) errors.push(`${p}.steps[${i}].say: required string, the words spoken while it is lit`);
+  });
+  const items = s.steps.map((step) => step?.[key]);
+  checkHighlight(items, `${p}.steps`, errors, warnings, what, valid);
+  if (s.highlight !== undefined) warnings.push(`${p}.highlight: steps replace highlight, so remove it`);
+}
+
 export function checkTable(s, p, errors, warnings) {
   if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
   if (!Array.isArray(s.columns) || s.columns.length === 0 || !s.columns.every(isStr)) {
@@ -68,7 +84,10 @@ export function checkTable(s, p, errors, warnings) {
   });
   if (s.rows.length > TABLE_ROWS_MAX) warnings.push(`${p}.rows: ${s.rows.length} rows; more than ${TABLE_ROWS_MAX} get cramped, so split the table into two scenes`);
   const rows = s.rows.length;
-  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, { plural: 'row indexes', one: `a row index from 0 to ${rows - 1}` }, (n) => Number.isInteger(n) && n >= 0 && n < rows);
+  const isRow = (n) => Number.isInteger(n) && n >= 0 && n < rows;
+  const what = { plural: 'row indexes', one: `a row index from 0 to ${rows - 1}` };
+  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, what, isRow);
+  checkSpotlightSteps(s, p, 'row', errors, warnings, what, isRow);
 }
 
 export function checkChart(s, p, errors, warnings) {
@@ -171,5 +190,7 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
       else if (note.trim().length > FILE_NOTE_LONG) warnings.push(`${q}: ${note.trim().length} characters; keep a note under ${FILE_NOTE_LONG} so it fits on its row`);
     }
   }
-  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, { plural: 'file paths', one: 'a path this scene lists' }, (path) => paths.has(path));
+  const what = { plural: 'file paths', one: 'a path this scene lists' };
+  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, what, (path) => paths.has(path));
+  checkSpotlightSteps(s, p, 'path', errors, warnings, what, (path) => paths.has(path));
 }
