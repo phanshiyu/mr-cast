@@ -15,7 +15,7 @@ The CLI is `{{MR_CAST}}/bin/mr-cast`. The wrapper finds a working Node itself, s
 
 It prints the installed version and the latest version on npm, then what `upgrade` would do: run `npm install -g`, print the steps for a git clone, or print the npm command for an install it cannot update itself. If it cannot reach npm, tell the user and stop.
 
-Tell the user the installed and latest versions. If a newer version is out, point them to https://github.com/phanshiyu/mr-cast/releases for what changed. If they have the latest version, say so and stop.
+Tell the user the installed and latest versions. If a newer version is out, point them to https://github.com/phanshiyu/mr-cast/blob/main/CHANGELOG.md for what changed. If they have the latest version, say so and stop.
 
 ## 2. Upgrade
 

@@ -8,7 +8,7 @@ import { PACKAGE, compareVersions, fetchLatest, isGitClone, writeCache } from '.
 
 const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const INSTALL_ARGS = ['install', '-g', `${PACKAGE}@latest`];
-const RELEASES = 'https://github.com/phanshiyu/mr-cast/releases';
+const RELEASES = 'https://github.com/phanshiyu/mr-cast/blob/main/CHANGELOG.md';
 const EACCES_DOCS = 'https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally';
 
 /** npm's global node_modules, or null when npm is not on PATH. */
