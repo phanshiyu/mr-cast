@@ -1,7 +1,19 @@
 {
   "title": "Order lifecycle overhaul",
-  "subtitle": "Scene gallery: state and Mermaid scenes",
+  "subtitle": "Scene gallery: state, Mermaid and tests scenes",
   "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Why this change",
+      "narration": "Orders now start unpaid and expire after a day, and refunds leave the order lifecycle. The tests cover each new transition, but not a payment racing the timeout.",
+      "summary": "Start orders as pending, cancel unpaid orders after 24 hours, and drop the refunded state.",
+      "risk": "medium",
+      "bullets": [
+        "A payment that lands while the timeout job cancels the order",
+        "Orders already refunded when the migration runs",
+        "Clients that still read the refunded status"
+      ]
+    },
     {
       "type": "state",
       "chapter": "Order states",
@@ -38,6 +50,25 @@
       "chapter": "Class view",
       "narration": "A Mermaid class diagram shows the new payment strategy interface and its two implementations.",
       "code": "classDiagram\n  class PaymentStrategy {\n    <<interface>>\n    +charge(order) Receipt\n  }\n  class CardPayment {\n    +charge(order) Receipt\n  }\n  class WalletPayment {\n    +charge(order) Receipt\n  }\n  PaymentStrategy <|.. CardPayment\n  PaymentStrategy <|.. WalletPayment"
+    },
+    {
+      "type": "tests",
+      "chapter": "What the tests prove",
+      "title": "Order lifecycle tests",
+      "subject": "transition in src/orders/lifecycle.ts",
+      "narration": "Five tests cover the new lifecycle. New orders start pending, paying moves them to paid, a failed charge keeps them pending, and the timeout cancels only unpaid orders. Nothing tests a payment racing the timeout.",
+      "cases": [
+        {"name": "creates new orders as pending", "proves": "A new order starts as pending instead of paid"},
+        {"name": "pay moves a pending order to paid", "proves": "A successful charge sets the status to paid and records the payment id"},
+        {"name": "a failed charge keeps the order pending", "proves": "A declined card leaves the order pending so the customer can retry"},
+        {"name": "cancels orders unpaid after 24 hours", "proves": "The timeout job cancels pending orders older than a day and leaves paid ones alone", "status": "modified"},
+        {"name": "ship moves a paid order to shipped", "proves": "The shipping transition is unchanged", "status": "existing"},
+        {"name": "refunds a delivered order", "proves": "Delivered orders could move to refunded, a state that no longer exists", "status": "removed"}
+      ],
+      "gaps": [
+        "A payment that succeeds while the timeout job is cancelling the same order",
+        "Orders already in the refunded state when the migration runs"
+      ]
     }
   ]
 }

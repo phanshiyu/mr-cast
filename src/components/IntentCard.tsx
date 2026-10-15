@@ -51,14 +51,16 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
       durationInFrames={durationInFrames}
       eyebrow={scene.chapter ?? defaultChapter.intent}
       aside={
-        <div style={{ display: 'flex', gap: 12, opacity: interpolate(frame, [10, 22], [0, 1], clamp) }}>
-          <Chip>
-            <FileCode2 size={22} />
-            {stats.files} {stats.files === 1 ? 'file' : 'files'}
-          </Chip>
-          <Chip color={colors.add}>+{stats.additions}</Chip>
-          <Chip color={colors.del}>−{stats.deletions}</Chip>
-        </div>
+        stats.files ? (
+          <div style={{ display: 'flex', gap: 12, opacity: interpolate(frame, [10, 22], [0, 1], clamp) }}>
+            <Chip>
+              <FileCode2 size={22} />
+              {stats.files} {stats.files === 1 ? 'file' : 'files'}
+            </Chip>
+            <Chip color={colors.add}>+{stats.additions}</Chip>
+            <Chip color={colors.del}>−{stats.deletions}</Chip>
+          </div>
+        ) : undefined
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', paddingBottom: 24, boxSizing: 'border-box' }}>

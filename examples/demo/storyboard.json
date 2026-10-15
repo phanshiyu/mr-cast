@@ -5,14 +5,13 @@
     {
       "type": "intent",
       "chapter": "Why this change",
-      "narration": "This merge request protects the orders endpoint from bursts of traffic and starts emitting an event every time an order is created.",
+      "narration": "This merge request protects the orders endpoint from bursts of traffic, prices orders from the pricing service, and emits an event for every new order. It adds no tests, so the review rests on reading the code.",
       "summary": "Add Redis-backed rate limiting to POST /orders and publish order.created events.",
       "risk": "medium",
       "bullets": [
-        "Fixed-window limiter: 20 requests per minute per IP",
-        "Prices now come from the pricing service instead of a constant",
-        "New order.created event on the queue",
-        "Removes the unused in-memory throttle"
+        "A Redis outage now fails every order request, because the limiter has no fallback",
+        "publish runs after the insert, so a queue outage returns an error for an order that was saved",
+        "No tests cover the limiter, the pricing lookup, or the new event"
       ]
     },
     {
@@ -181,33 +180,36 @@
       ]
     },
     {
-      "type": "code",
-      "chapter": "The limiter",
-      "narration": "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit. Past twenty requests it answers 429 with a Retry-After header.",
-      "hunkId": "h2",
-      "focusLinesAfter": [
-        "11-18"
-      ],
-      "calloutText": "Expiry is set once per window, so the key cleans itself up."
-    },
-    {
-      "type": "code",
-      "chapter": "Wiring it in",
-      "narration": "The server mounts the limiter on the orders route and publishes an event after the order is saved.",
-      "hunkId": "h3",
-      "focusLinesAfter": [
-        8,
-        12
-      ],
-      "calloutText": "publish runs after the insert, so a queue outage fails the request.",
-      "view": "morph"
-    },
-    {
-      "type": "code",
-      "chapter": "Real prices",
-      "narration": "Order totals used a hard-coded price of ten. They now look up each SKU in parallel, and empty orders are rejected up front.",
-      "hunkId": "h6",
-      "calloutText": "Pricing lookups run in parallel with Promise.all."
+      "type": "flow",
+      "chapter": "A request, step by step",
+      "title": "POST /orders",
+      "narration": "Follow one request. The limiter counts it, the service prices the items and saves the order, and the API publishes a compact event before responding.",
+      "steps": [
+        {
+          "actor": "Client",
+          "action": "Sends the order",
+          "payload": "{ \"userId\": \"u_42\", \"items\": [{ \"sku\": \"tea\", \"qty\": 2 }] }"
+        },
+        {
+          "actor": "rateLimit",
+          "action": "Counts the request in Redis",
+          "payload": "rl:10.0.0.7:29384112 → 3"
+        },
+        {
+          "actor": "createOrder",
+          "action": "Prices items and inserts",
+          "payload": "{ \"id\": \"o_9f\", \"total\": 8.4, \"status\": \"pending\" }"
+        },
+        {
+          "actor": "publish",
+          "action": "Emits order.created",
+          "payload": "{ \"orderId\": \"o_9f\", \"total\": 8.4 }"
+        },
+        {
+          "actor": "API",
+          "action": "Responds 201 Created"
+        }
+      ]
     },
     {
       "type": "er",
@@ -293,35 +295,46 @@
       ]
     },
     {
-      "type": "flow",
-      "chapter": "A request, step by step",
-      "title": "POST /orders",
-      "narration": "Follow one request. The limiter counts it, the service prices the items and saves the order, and the API publishes a compact event before responding.",
-      "steps": [
-        {
-          "actor": "Client",
-          "action": "Sends the order",
-          "payload": "{ \"userId\": \"u_42\", \"items\": [{ \"sku\": \"tea\", \"qty\": 2 }] }"
-        },
-        {
-          "actor": "rateLimit",
-          "action": "Counts the request in Redis",
-          "payload": "rl:10.0.0.7:29384112 → 3"
-        },
-        {
-          "actor": "createOrder",
-          "action": "Prices items and inserts",
-          "payload": "{ \"id\": \"o_9f\", \"total\": 8.4, \"status\": \"pending\" }"
-        },
-        {
-          "actor": "publish",
-          "action": "Emits order.created",
-          "payload": "{ \"orderId\": \"o_9f\", \"total\": 8.4 }"
-        },
-        {
-          "actor": "API",
-          "action": "Responds 201 Created"
-        }
+      "type": "code",
+      "chapter": "The limiter",
+      "narration": "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit. Past twenty requests it answers 429 with a Retry-After header.",
+      "hunkId": "h2",
+      "focusLinesAfter": [
+        "11-18"
+      ],
+      "calloutText": "Expiry is set once per window, so the key cleans itself up."
+    },
+    {
+      "type": "code",
+      "chapter": "Wiring it in",
+      "narration": "The server mounts the limiter on the orders route and publishes an event after the order is saved.",
+      "hunkId": "h3",
+      "focusLinesAfter": [
+        8,
+        12
+      ],
+      "calloutText": "publish runs after the insert, so a queue outage fails the request.",
+      "view": "morph"
+    },
+    {
+      "type": "code",
+      "chapter": "Real prices",
+      "narration": "Order totals used a hard-coded price of ten. They now look up each SKU in parallel, and empty orders are rejected up front.",
+      "hunkId": "h6",
+      "calloutText": "Pricing lookups run in parallel with Promise.all."
+    },
+    {
+      "type": "tests",
+      "chapter": "What is tested",
+      "title": "Test coverage",
+      "subject": "rateLimit, createOrder and the orders route",
+      "narration": "This change adds no tests. Nothing checks that the twenty first request in a minute gets too many requests, what happens when Redis or the queue is down, or that empty orders are rejected.",
+      "cases": [],
+      "gaps": [
+        "The twenty first request in a minute from one IP gets 429 with a Retry-After header",
+        "When Redis is down the limiter throws, so every order request fails",
+        "When the queue is down after the insert, the client gets an error for an order that was saved",
+        "Empty orders are rejected and totals use prices from the pricing service"
       ]
     }
   ]
