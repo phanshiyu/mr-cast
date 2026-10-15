@@ -80,8 +80,8 @@ function readJson(file, missingHint) {
   }
 }
 
-/** The data directory: --dir when given, else the command's default. */
 const DIR_OPTION = { dir: { type: 'string' } };
+/** The data directory: --dir when given, else the command's default. */
 const resolveDir = (values, defaultDir) => (values.dir ? path.resolve(values.dir) : defaultDir());
 const diffDataDir = () => dataDir(repoRoot());
 const explainDataDir = () => path.join(dataDir(findRepoRoot() ?? process.cwd()), 'explain');
@@ -348,11 +348,11 @@ function explainInit(argv, defaultDir) {
   const root = findRepoRoot();
   if (root && !values.dir) ensureExcluded(root);
   const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
+  if (fs.existsSync(files.meta) && readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --dir`);
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
   let previous = {};
   try { previous = JSON.parse(fs.readFileSync(files.meta, 'utf8')); } catch { /* new directory */ }
-  if (previous.mode !== undefined && previous.mode !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --dir`);
   fs.mkdirSync(dir, { recursive: true });
   if (!fs.existsSync(files.hunks)) writeJson(files.hunks, {});
   writeJson(files.meta, {
