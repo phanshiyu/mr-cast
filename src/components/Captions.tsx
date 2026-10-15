@@ -1,13 +1,20 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+import type { Voiceover } from '../types';
 import { spokenWordIndex } from '../utils/timing';
 import { captionPage } from '../utils/captions';
 import { CAPTION_BAND, clamp, colors, fonts } from './theme';
 
 const MAX_CHARS = 72;
 
-export const Captions: React.FC<{ narration: string; durationInFrames: number }> = ({ narration, durationInFrames }) => {
+interface CaptionsProps {
+  narration: string;
+  durationInFrames: number;
+  voiceover: Voiceover | null | undefined;
+}
+
+export const Captions: React.FC<CaptionsProps> = ({ narration, durationInFrames, voiceover }) => {
   const frame = useCurrentFrame();
-  const current = spokenWordIndex(narration, frame);
+  const current = spokenWordIndex(narration, frame, voiceover);
   const { words, lines } = captionPage(narration, current, MAX_CHARS);
   const opacity = interpolate(frame, [0, 8, durationInFrames - 6, durationInFrames], [0, 1, 1, 0], clamp);
 

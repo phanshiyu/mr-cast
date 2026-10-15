@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { AbsoluteFill, Sequence } from 'remotion';
+import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
 import { ArchGraph } from './components/ArchGraph';
 import { Captions } from './components/Captions';
 import { CodeDiff } from './components/CodeDiff';
@@ -8,7 +8,7 @@ import { IntentCard } from './components/IntentCard';
 import type { SceneProps } from './components/sceneProps';
 import { colors, fonts } from './components/theme';
 import type { ArchScene, CodeScene, FlowScene, IntentScene, WalkthroughProps } from './types';
-import { timeline } from './utils/timing';
+import { VOICE_LEAD_FRAMES, timeline } from './utils/timing';
 
 interface SceneByType {
   intent: IntentScene;
@@ -39,13 +39,18 @@ const Backdrop: React.FC = () => (
   />
 );
 
-export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions }) => (
+export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl }) => (
   <AbsoluteFill style={{ backgroundColor: colors.bg, fontFamily: fonts.sans }}>
     <Backdrop />
-    {timeline(storyboard).map(({ scene, index, from, durationInFrames }) => (
+    {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, clip }) => (
       <Sequence key={index} from={from} durationInFrames={durationInFrames} name={`${index + 1}. ${scene.chapter ?? scene.type}`}>
         {renderScene(scene.type, { scene, hunks, storyboard, durationInFrames })}
-        {showCaptions ? <Captions narration={scene.narration} durationInFrames={durationInFrames} /> : null}
+        {clip && audioBaseUrl !== undefined ? (
+          <Sequence from={VOICE_LEAD_FRAMES} layout="none" name="voice-over">
+            <Html5Audio src={audioBaseUrl + clip.src} />
+          </Sequence>
+        ) : null}
+        {showCaptions ? <Captions narration={scene.narration} durationInFrames={durationInFrames} voiceover={voiceover} /> : null}
       </Sequence>
     ))}
   </AbsoluteFill>

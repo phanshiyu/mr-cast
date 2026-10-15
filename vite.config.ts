@@ -4,21 +4,22 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
 
-/** Dev-only stand-in for the CLI server: serves /data/<name>.json and a /events change stream. */
+/** Dev-only stand-in for the CLI server: serves /data/<name>.json, /data/audio/<clip>.wav and a /events change stream. */
 function mrCastData(dir: string): Plugin {
   return {
     name: 'mr-cast-data',
     configureServer(server) {
       server.middlewares.use('/data', (req, res, next) => {
         const name = (req.url ?? '').split('?')[0]!.replace(/^\//, '');
-        if (!/^[\w.-]+\.json$/.test(name)) return next();
+        const isAudio = /^audio\/[0-9a-f]{8}\.wav$/.test(name);
+        if (!isAudio && !/^[\w.-]+\.json$/.test(name)) return next();
         const file = path.join(dir, name);
         if (!existsSync(file)) {
           res.statusCode = 404;
           res.end(`${name} not found in ${dir}`);
           return;
         }
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', isAudio ? 'audio/wav' : 'application/json');
         res.setHeader('Cache-Control', 'no-store');
         res.end(readFileSync(file));
       });

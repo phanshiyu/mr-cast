@@ -29,6 +29,6 @@ export const RemotionRoot: React.FC = () => (
     height={HEIGHT}
     durationInFrames={totalDurationInFrames(defaultProps.storyboard)}
     defaultProps={defaultProps}
-    calculateMetadata={({ props }) => ({ durationInFrames: totalDurationInFrames(props.storyboard) })}
+    calculateMetadata={({ props }) => ({ durationInFrames: totalDurationInFrames(props.storyboard, props.voiceover) })}
   />
 );

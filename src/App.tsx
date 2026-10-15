@@ -1,8 +1,8 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { Code2, GitBranch, Network, Target, Workflow, type LucideIcon } from 'lucide-react';
+import { Code2, GitBranch, Network, Play, Target, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultChapter } from './components/theme';
-import type { HunkMap, Scene, Storyboard } from './types';
+import type { HunkMap, Scene, Storyboard, Voiceover } from './types';
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenWordIndex, timeline, totalDurationInFrames, type TimedScene } from './utils/timing';
 import { Walkthrough } from './Walkthrough';
@@ -16,7 +16,7 @@ interface Meta {
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; file: string; message: string }
-  | { status: 'ready'; storyboard: Storyboard; hunks: HunkMap; meta: Meta | null };
+  | { status: 'ready'; storyboard: Storyboard; hunks: HunkMap; meta: Meta | null; voiceover: Voiceover | null };
 
 const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, arch: Network, code: Code2, flow: Workflow };
 
@@ -43,15 +43,16 @@ async function fetchJson<T>(file: string): Promise<T> {
 
 async function loadAll(): Promise<LoadState> {
   try {
-    const [storyboard, hunks, meta] = await Promise.all([
+    const [storyboard, hunks, meta, voiceover] = await Promise.all([
       fetchJson<Storyboard>('storyboard.json'),
       fetchJson<HunkMap>('hunks.json'),
       fetchJson<Meta>('meta.json').catch(() => null),
+      fetchJson<Voiceover>('voiceover.json').catch(() => null),
     ]);
     if (!Array.isArray(storyboard.scenes) || storyboard.scenes.length === 0) {
       throw new DataError('storyboard.json', 'expected a non-empty "scenes" array');
     }
-    return { status: 'ready', storyboard, hunks, meta };
+    return { status: 'ready', storyboard, hunks, meta, voiceover };
   } catch (err) {
     if (err instanceof DataError) return { status: 'error', file: err.file, message: err.message };
     return { status: 'error', file: 'unknown', message: String(err) };
@@ -82,8 +83,9 @@ export const App: React.FC = () => {
   }, [reload]);
 
   const ready = state.status === 'ready' ? state : null;
-  const chapters = useMemo(() => (ready ? timeline(ready.storyboard) : []), [ready]);
-  const total = ready ? totalDurationInFrames(ready.storyboard) : 1;
+  const chapters = useMemo(() => (ready ? timeline(ready.storyboard, ready.voiceover) : []), [ready]);
+  const total = ready ? totalDurationInFrames(ready.storyboard, ready.voiceover) : 1;
+  const voiced = chapters.some((c) => c.clip);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -145,7 +147,7 @@ export const App: React.FC = () => {
     );
   }
 
-  const { storyboard, hunks, meta } = state;
+  const { storyboard, hunks, meta, voiceover } = state;
   const active = chapters[current]!;
   const branch = meta?.branch ?? meta?.head;
 
@@ -207,20 +209,25 @@ export const App: React.FC = () => {
             <Player
               ref={playerRef}
               component={Walkthrough}
-              inputProps={{ storyboard, hunks, showCaptions: false }}
+              inputProps={{ storyboard, hunks, showCaptions: false, voiceover, audioBaseUrl: './data/' }}
               durationInFrames={total}
               compositionWidth={WIDTH}
               compositionHeight={HEIGHT}
               fps={FPS}
               controls
-              autoPlay
-              initiallyMuted
+              showVolumeControls
+              // Browsers block autoplay with sound, so a voiced walkthrough waits for a click.
+              autoPlay={!voiced}
+              initiallyMuted={!voiced}
+              renderPoster={voiced ? renderPlayPoster : undefined}
+              showPosterWhenUnplayed
+              posterFillMode="player-size"
               spaceKeyToPlayOrPause={false}
               acknowledgeRemotionLicense
               style={{ width: '100%', aspectRatio: '16 / 9' }}
             />
           </div>
-          <SubtitleHud narration={active.scene.narration} frameInScene={frame - active.from} />
+          <SubtitleHud narration={active.scene.narration} frameInScene={frame - active.from} voiceover={voiceover} />
           <footer className="text-xs text-slate-500">
             <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter
           </footer>
@@ -234,8 +241,17 @@ const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300">{children}</kbd>
 );
 
-const SubtitleHud: React.FC<{ narration: string; frameInScene: number }> = ({ narration, frameInScene }) => {
-  const current = spokenWordIndex(narration, frameInScene);
+const renderPlayPoster = () => (
+  <div className="flex h-full w-full cursor-pointer items-center justify-center bg-black/40">
+    <div className="flex items-center gap-3 rounded-full bg-indigo-500 px-7 py-4 text-lg font-semibold text-white shadow-xl shadow-black/40">
+      <Play size={24} fill="currentColor" />
+      Play with voice-over
+    </div>
+  </div>
+);
+
+const SubtitleHud: React.FC<{ narration: string; frameInScene: number; voiceover: Voiceover | null }> = ({ narration, frameInScene, voiceover }) => {
+  const current = spokenWordIndex(narration, frameInScene, voiceover);
   const { words, lines } = captionPage(narration, current, 90);
   return (
     <div className="min-h-[5.5rem] rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-4 text-center text-lg leading-relaxed">
