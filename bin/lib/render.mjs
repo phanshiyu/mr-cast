@@ -2,7 +2,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,7 @@ import { bundle } from '@remotion/bundler';
 import { ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { sceneDurationInFrames, settledFrame } from '../../shared/timing.mjs';
 import { cacheDir } from './cache.mjs';
+import { withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
 
@@ -18,6 +19,9 @@ const ENTRY = path.join(ROOT, 'src/remotion/index.ts');
 const BUNDLE_CACHE = cacheDir('bundle');
 const BROWSER_CACHE = cacheDir('remotion');
 const COMPOSITION_ID = 'Walkthrough';
+/** Bundles of other source hashes (another install, an older version) unused this long are deleted. */
+const BUNDLE_MAX_IDLE_MS = 60 * 60 * 1000;
+const TMP_PREFIX = '.tmp-';
 
 async function listFiles(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -40,19 +44,53 @@ async function sourceHash() {
   return hash.digest('hex').slice(0, 16);
 }
 
-/** Reuses the webpack bundle while src/ and shared/ are unchanged; bundling takes several seconds. */
+/**
+ * Deletes bundles and abandoned temp dirs of other hashes that no render has touched for an hour.
+ * Renders running from another install touch their bundle on every use, so theirs stay.
+ */
+async function pruneBundles(key) {
+  const now = Date.now();
+  for (const name of await readdir(BUNDLE_CACHE)) {
+    if (name === key) continue;
+    const dir = path.join(BUNDLE_CACHE, name);
+    try {
+      if (now - (await stat(dir)).mtimeMs > BUNDLE_MAX_IDLE_MS) await rm(dir, { recursive: true, force: true });
+    } catch { /* another process removed it */ }
+  }
+}
+
+/**
+ * Reuses the webpack bundle while src/ and shared/ are unchanged; bundling takes several seconds.
+ * Concurrent renders share the cache: each bundles into its own temp dir and renames it into place, so
+ * <cache>/bundle/<hash> only ever holds a complete bundle and is never deleted while its hash is current.
+ */
 async function getServeUrl() {
   const key = await sourceHash();
   const outDir = path.join(BUNDLE_CACHE, key);
-  if (existsSync(path.join(outDir, 'index.html'))) return outDir;
-  await rm(outDir, { recursive: true, force: true });
   await mkdir(BUNDLE_CACHE, { recursive: true });
-  // webpack's own cache would go to node_modules/.cache inside the package; the bundle cache above makes it redundant.
-  const serveUrl = await bundle({ entryPoint: ENTRY, outDir, enableCaching: false });
-  for (const stale of await readdir(BUNDLE_CACHE)) {
-    if (stale !== key) await rm(path.join(BUNDLE_CACHE, stale), { recursive: true, force: true });
+  if (!existsSync(path.join(outDir, 'index.html'))) {
+    const tmp = await mkdtemp(path.join(BUNDLE_CACHE, `${TMP_PREFIX}${key}-`));
+    try {
+      // webpack's own cache would go to node_modules/.cache inside the package; the bundle cache makes it redundant.
+      await bundle({ entryPoint: ENTRY, outDir: tmp, enableCaching: false });
+      try {
+        await rename(tmp, outDir);
+      } catch (err) {
+        if (!['EEXIST', 'ENOTEMPTY', 'EPERM'].includes(err.code)) throw err;
+        // Another render finished first, or a pre-0.6 render left a partial bundle there.
+        if (!existsSync(path.join(outDir, 'index.html'))) {
+          await rm(outDir, { recursive: true, force: true });
+          await rename(tmp, outDir);
+        }
+      }
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
   }
-  return serveUrl;
+  const now = new Date();
+  await utimes(outDir, now, now);
+  await pruneBundles(key);
+  return outDir;
 }
 
 async function withRetry(label, fn) {
@@ -93,19 +131,23 @@ async function serveAudio(dataDir) {
 /**
  * Remotion has no option for where it downloads Chrome: it walks up from process.cwd() to the nearest
  * package.json and uses that folder's node_modules/.remotion. Our own package.json pins the walk to the cache.
+ * The lock keeps concurrent renders from downloading into the same folder at once.
  */
 async function ensureChrome() {
   await mkdir(BROWSER_CACHE, { recursive: true });
-  await writeFile(path.join(BROWSER_CACHE, 'package.json'), '{ "private": true }\n');
-  const cwd = process.cwd();
-  process.chdir(BROWSER_CACHE);
-  try {
-    const status = await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
-    if (!status.path) throw new Error(`Chrome Headless Shell is missing from ${BROWSER_CACHE} after downloading it`);
-    return status.path;
-  } finally {
-    process.chdir(cwd);
-  }
+  return withLock(`${BROWSER_CACHE}.lock`, async () => {
+    const pkg = path.join(BROWSER_CACHE, 'package.json');
+    if (!existsSync(pkg)) await writeFile(pkg, '{ "private": true }\n');
+    const cwd = process.cwd();
+    process.chdir(BROWSER_CACHE);
+    try {
+      const status = await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
+      if (!status.path) throw new Error(`Chrome Headless Shell is missing from ${BROWSER_CACHE} after downloading it`);
+      return status.path;
+    } finally {
+      process.chdir(cwd);
+    }
+  }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading Chrome Headless Shell`));
 }
 
 async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl }) {

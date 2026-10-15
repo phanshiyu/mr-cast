@@ -5,6 +5,7 @@ import path from 'node:path';
 import { DEFAULT_VOICE, narrationKey } from '../../shared/voice.mjs';
 import { cacheDir } from './cache.mjs';
 import { UserError } from './errors.mjs';
+import { withLock } from './lock.mjs';
 
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 /** The weights transformers.js fetches for dtype q8; its absence means this load downloads them. */
@@ -34,7 +35,11 @@ export function readVoiceover(dataDir) {
 
 let model = null;
 
-/** Loads Kokoro once per process. A failed load is forgotten so the next call retries. */
+/**
+ * Loads Kokoro once per process. A failed load is forgotten so the next call retries.
+ * transformers.js writes each download straight to its final path in the cache, where another process
+ * would take the partial file for a cached one, so loads hold a lock while the weights may be downloading.
+ */
 function loadModel(onProgress) {
   model ??= (async () => {
     const modelDir = cacheDir('models');
@@ -42,8 +47,11 @@ function loadModel(onProgress) {
       const { env } = await import('@huggingface/transformers');
       env.cacheDir = modelDir;
       const { KokoroTTS, TextSplitterStream } = await import('kokoro-js');
-      if (!fs.existsSync(path.join(modelDir, MODEL_ID, 'onnx', MODEL_FILE))) onProgress?.({ type: 'download', cacheDir: modelDir });
-      const tts = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: 'q8', device: 'cpu' });
+      fs.mkdirSync(modelDir, { recursive: true });
+      const tts = await withLock(`${modelDir}.lock`, () => {
+        if (!fs.existsSync(path.join(modelDir, MODEL_ID, 'onnx', MODEL_FILE))) onProgress?.({ type: 'download', cacheDir: modelDir });
+        return KokoroTTS.from_pretrained(MODEL_ID, { dtype: 'q8', device: 'cpu' });
+      }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish loading the voice model`));
       return { tts, TextSplitterStream };
     } catch (err) {
       model = null;
