@@ -1,5 +1,6 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
+import { expandLineRefs, focusRanges } from '../../shared/focus.mjs';
 import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
@@ -11,6 +12,11 @@ const CHANGES = ['added', 'removed', 'modified'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 
 const MAX_LINE_RANGE = 10000;
+// A code scene walks its focus ranges top to bottom; long or many ranges turn it back into a wall of code.
+const FOCUS_RANGE_COMFORTABLE = 8;
+const FOCUS_RANGE_MAX = 15;
+const FOCUS_RANGES_PER_SCENE = 3;
+const UNFOCUSED_CHANGE_MAX = 12;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
@@ -41,16 +47,31 @@ function checkFocusInHunk(refs, hunk, side, path, warnings) {
   warnings.push(`${path}: lines ${missing.join(', ')} are outside ${hunk.id} (${span})`);
 }
 
-export function expandLineRefs(refs = []) {
-  const out = new Set();
-  for (const r of refs) {
-    if (typeof r === 'number') out.add(r);
-    else {
-      const [a, b = a] = r.split('-').map((s) => parseInt(s, 10));
-      for (let n = Math.min(a, b); n <= Math.max(a, b); n++) out.add(n);
+const formatRange = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
+
+function checkFocusSize(scene, hunk, p, errors, warnings) {
+  const sides = [
+    { key: 'focusLinesAfter', ranges: focusRanges(expandLineRefs(scene.focusLinesAfter ?? [])) },
+    { key: 'focusLinesBefore', ranges: focusRanges(expandLineRefs(scene.focusLinesBefore ?? [])) },
+  ];
+  for (const { key, ranges } of sides) {
+    for (const [a, b] of ranges) {
+      const size = b - a + 1;
+      if (size <= FOCUS_RANGE_COMFORTABLE) continue;
+      const msg = `${p}.${key}: range ${a}-${b} is ${size} lines; highlight at most ${FOCUS_RANGE_COMFORTABLE} (${FOCUS_RANGE_MAX} max) and move the rest to another code scene`;
+      (size > FOCUS_RANGE_MAX ? errors : warnings).push(msg);
     }
   }
-  return out;
+  const used = sides.filter((s) => s.ranges.length);
+  const count = used.reduce((n, s) => n + s.ranges.length, 0);
+  if (count > FOCUS_RANGES_PER_SCENE) {
+    const list = used.map((s) => `${s.key} ${s.ranges.map(formatRange).join(', ')}`).join('; ');
+    warnings.push(`${p}: ${count} focus ranges (${list}); keep at most ${FOCUS_RANGES_PER_SCENE} per scene and split the rest into another code scene`);
+  }
+  const changed = hunk ? hunk.additions + hunk.deletions : 0;
+  if (count === 0 && changed > UNFOCUSED_CHANGE_MAX) {
+    errors.push(`${p}: hunk ${hunk.id} changes ${changed} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
+  }
 }
 
 /** Checks a non-empty array of items with unique string ids; returns the id set, or null if the array is unusable. */
@@ -121,6 +142,7 @@ export function validateStoryboard(sb, hunks) {
         const beforeOk = checkLineRefs(s.focusLinesBefore, `${p}.focusLinesBefore`, errors);
         if (hunk && afterOk) checkFocusInHunk(s.focusLinesAfter, hunk, 'new', `${p}.focusLinesAfter`, warnings);
         if (hunk && beforeOk) checkFocusInHunk(s.focusLinesBefore, hunk, 'old', `${p}.focusLinesBefore`, warnings);
+        if ((afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined)) checkFocusSize(s, hunk, p, errors, warnings);
         if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
         if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
         break;
