@@ -11,7 +11,8 @@ import { locateJsonError } from './lib/json.mjs';
 import { ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
 import { startServer } from './lib/server.mjs';
-import { changedHunkIds, formatDuration, formatIndex, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
+import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
+import { narrationKey } from '../shared/voice.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
@@ -27,6 +28,7 @@ const USAGE = `usage: mr-cast <command> [options]
       --max-lines  changed lines shown per hunk in the index (default 14)
       --all-files  include lockfiles, minified and build output
   validate        check .mr-cast/storyboard.json against hunks.json
+  outline         print a short plan of the storyboard (scenes, length, coverage) to show before rendering
   voice [--voice name]
                   speak each scene's narration with Kokoro into .mr-cast/audio (default voice af_heart)
   play [--port N] [--no-open] [--voice name] [--no-voice]
@@ -38,7 +40,7 @@ const USAGE = `usage: mr-cast <command> [options]
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
   every command above takes --name <slug> to keep a separate walkthrough in .mr-cast/<slug>, so
-  several can coexist and render at once; validate, voice, play, render and still also take
+  several can coexist and render at once; all but extract also take
   --dir <path> to use any data directory
 
   explain init [--title text] [--name slug] [--reset]
@@ -47,7 +49,7 @@ const USAGE = `usage: mr-cast <command> [options]
                   reopening one keeps its storyboard unless --reset
   explain snippet <file> <start>-<end> | <file>:<start>-<end> ...
                   add real source lines (at most 80 per snippet) as code for scenes, ids s1, s2, ...
-  explain validate | voice | play | render | still
+  explain validate | outline | voice | play | render | still
                   the commands above, on the explanation's directory
       every explain command takes --name <slug> (default: the most recent init) or --dir <path>
 
@@ -340,6 +342,15 @@ async function still(argv, resolveRun) {
   for (const f of files) console.log(path.resolve(f));
 }
 
+async function outline(argv, resolveRun) {
+  const { values } = parseArgs({ args: argv, options: DIR_OPTION });
+  const { dir, hunks, storyboard, result } = await loadValidProject(resolveRun(values).dir);
+  const voiceover = readVoiceover(dir);
+  const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => voiceover.clips[narrationKey(s.narration, voiceover.voice)]);
+  const seconds = storyboardSeconds(storyboard, voiceover);
+  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced }));
+}
+
 function installSkillCommand(argv) {
   parseArgs({ args: argv, options: {} });
   for (const file of installSkill(ROOT)) console.log(`wrote ${file}`);
@@ -407,7 +418,7 @@ function explainSnippet(argv, resolveRun) {
   console.log(formatSnippets({ added, hunks, hunksPath: rel(hunksPath), storyboardPath: rel(path.join(dir, 'storyboard.json')) }));
 }
 
-const EXPLAIN_COMMANDS = { init: explainInit, snippet: explainSnippet, validate, voice, play, render, still };
+const EXPLAIN_COMMANDS = { init: explainInit, snippet: explainSnippet, validate, outline, voice, play, render, still };
 
 async function explain([sub, ...rest]) {
   const run = EXPLAIN_COMMANDS[sub];
@@ -415,7 +426,7 @@ async function explain([sub, ...rest]) {
   await run(rest, explainRun);
 }
 
-const COMMANDS = { extract, validate, voice, play, render, still, explain, 'install-skill': installSkillCommand };
+const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand };
 
 function version() {
   const { version: own } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));

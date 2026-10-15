@@ -145,3 +145,63 @@ export function formatSnippets({ added, hunks, hunksPath, storyboardPath }) {
   out.push(`line numbers are the file's own; use them in focusLinesAfter · next: write ${storyboardPath}, then \`mr-cast explain validate\``);
   return out.join('\n');
 }
+
+const count = (items, word) => plural(Array.isArray(items) ? items.length : 0, word);
+const refs = (lines) => lines.map(String).join(', ');
+
+/** What a scene shows, in one line: the code and focus for a code scene, the size of a diagram. */
+function sceneGist(scene, hunks) {
+  const titled = (text) => (scene.title ? `${scene.title} · ${text}` : text);
+  switch (scene.type) {
+    case 'intent':
+      return `${scene.risk ? `${scene.risk} risk · ` : ''}${scene.summary}`;
+    case 'arch': {
+      const key = scene.nodes.filter((n) => n.modified).length;
+      return `${count(scene.nodes, 'node')}, ${count(scene.edges, 'edge')}${key ? `, ${key} highlighted` : ''}`;
+    }
+    case 'code': {
+      const hunk = hunks[scene.hunkId];
+      const parts = [`${scene.hunkId} ${hunk?.file ?? '?'}`];
+      if (scene.focusLinesAfter?.length) parts.push(`lines ${refs(scene.focusLinesAfter)}`);
+      if (scene.focusLinesBefore?.length) parts.push(`old lines ${refs(scene.focusLinesBefore)}`);
+      if (!scene.focusLinesAfter?.length && !scene.focusLinesBefore?.length) parts.push(hunk?.status === 'source' ? 'whole snippet' : 'changed lines');
+      if (scene.flow?.length) parts.push(`flow ${count(scene.flow, 'step')}`);
+      return parts.join(' · ');
+    }
+    case 'flow':
+      return titled(count(scene.steps, 'step'));
+    case 'sequence':
+      return titled(`${count(scene.participants, 'participant')}, ${count(scene.messages, 'message')}`);
+    case 'er':
+      return titled(`${scene.entities.length} ${scene.entities.length === 1 ? 'entity' : 'entities'}, ${count(scene.relations, 'relation')}`);
+    case 'state':
+      return titled(`${count(scene.states, 'state')}, ${count(scene.transitions, 'transition')}`);
+    case 'mermaid':
+      return titled(`mermaid ${scene.code.trim().split(/\s/)[0]}`);
+    case 'tests':
+      return `${scene.subject ? `${scene.subject} · ` : ''}${count(scene.cases, 'case')}, ${count(scene.gaps, 'gap')}`;
+    default:
+      return '';
+  }
+}
+
+/** `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. */
+export function formatOutline({ storyboard, hunks, coverage, seconds, voiced }) {
+  const scenes = storyboard.scenes;
+  const out = [storyboard.title, ...(storyboard.subtitle ? [storyboard.subtitle] : [])];
+  const number = String(scenes.length).length;
+  const typeWidth = Math.max(...scenes.map((s) => s.type.length));
+  const chapterWidth = Math.min(24, Math.max(...scenes.map((s) => (s.chapter ?? '').length)));
+  out.push('');
+  scenes.forEach((scene, i) => {
+    const chapter = clip(scene.chapter ?? '', chapterWidth).padEnd(chapterWidth);
+    const head = `${String(i + 1).padStart(number)}. ${scene.type.padEnd(typeWidth)}  ${chapter}  `;
+    out.push(`${head}${clip(sceneGist(scene, hunks), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
+  });
+  out.push('');
+  const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}`;
+  out.push(`${plural(scenes.length, 'scene')} · ${length}`);
+  const covered = formatCoverage(coverage);
+  if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
+  return out.join('\n');
+}
