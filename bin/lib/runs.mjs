@@ -1,32 +1,36 @@
 // Where a command's data lives. A run is { dir, name }: the data directory and its slug, or a null
-// name for the default diff run in .mr-cast/ and for an explicit --dir.
+// name for an explicit --dir.
 //
-//   .mr-cast/                  default diff run (hunks.json, storyboard.json, audio/, stills/)
-//   .mr-cast/<name>/           named diff run (extract --name <name>)
+//   .mr-cast/<name>/           one run each: a branch's diff (extract) or an explanation (init)
+//   .mr-cast/.current          name of the run later commands use: the one extract or init made last
+//
+// Data from mr-cast 0.11 and earlier stays where it was and is reached with --dir:
+//
+//   .mr-cast/                  the default diff run's own files (hunks.json, storyboard.json, audio/, stills/)
 //   .mr-cast/explain/<name>/   one explanation each
-//   .mr-cast/explain/.current  name of the most recently initialised explanation
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { UserError } from './errors.mjs';
-import { dataDir, findRepoRoot, repoRoot } from './git.mjs';
+import { dataDir, findRepoRoot } from './git.mjs';
 
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const NAME_MAX = 40;
-// Subdirectories of the default diff run that a named run must not shadow.
+// Folders of 0.11 data that a run must not shadow.
 const RESERVED = new Set(['explain', 'audio', 'stills']);
-const CURRENT_FILE = '.current';
+export const CURRENT_FILE = '.current';
 
-/** Whether `name` (an entry of .mr-cast/) is a named diff run's directory rather than part of the default run. */
+/** Whether `name` (an entry of .mr-cast/) can be a run's directory rather than 0.11 data. */
 export const isRunName = (name) => NAME.test(name) && !RESERVED.has(name);
 
-/** Whether `name` (an entry of .mr-cast/explain/) can be an explanation's directory. */
+/** Whether `name` (an entry of .mr-cast/explain/) can be a 0.11 explanation's directory. */
 export const isExplanationName = (name) => NAME.test(name);
 
 export function parseRunName(value) {
   if (!NAME.test(value) || value.length > NAME_MAX) {
     throw new UserError(`--name "${value}" must be lowercase letters, digits and single dashes, at most ${NAME_MAX} characters, e.g. rate-limit`);
   }
+  if (RESERVED.has(value)) throw new UserError(`--name ${value} is reserved for .mr-cast/${value}, which earlier versions used; pick another name`);
   return value;
 }
 
@@ -51,37 +55,31 @@ export function slugify(text, maxWords = 6) {
 /** The default MP4 name: the storyboard title's slug, else the run's name, else "walkthrough". */
 export const videoName = (storyboard, run) => `${slugify(storyboard.title) || run.name || 'walkthrough'}.mp4`;
 
-/** `--dir` wins; else `.mr-cast/<name>` for --name; else `.mr-cast`. */
-export function diffRun(values) {
-  if (values.dir) return { dir: path.resolve(values.dir), name: null };
-  const root = dataDir(repoRoot());
-  if (!values.name) return { dir: root, name: null };
-  const name = parseRunName(values.name);
-  if (RESERVED.has(name)) throw new UserError(`--name ${name} is reserved for .mr-cast/${name}; pick another name`);
-  return { dir: path.join(root, name), name };
+/** The .mr-cast directory: in the git repository, else in the current directory. */
+export const runsRoot = () => dataDir(findRepoRoot() ?? process.cwd());
+
+/** meta.json of a run directory, or null when it has none or it is unreadable. */
+export function readRunMeta(dir) {
+  try {
+    const meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'));
+    return meta && typeof meta === 'object' ? meta : null;
+  } catch {
+    return null;
+  }
 }
 
-/** The directory holding every explanation: .mr-cast/explain in the git repo, else in the current directory. */
-export const explainRoot = () => path.join(dataDir(findRepoRoot() ?? process.cwd()), 'explain');
+const isExplanationMeta = (meta) => meta?.mode === 'explain';
 
-const isExplanation = (dir) => {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')).mode === 'explain';
-  } catch {
-    return false;
-  }
-};
-
-function listExplanations(root) {
+function listRuns(root) {
   let names = [];
   try { names = fs.readdirSync(root); } catch { /* none yet */ }
-  return names.filter((n) => NAME.test(n) && isExplanation(path.join(root, n)));
+  return names.filter((n) => isRunName(n) && readRunMeta(path.join(root, n)));
 }
 
 export function readCurrent(root) {
   try {
     const name = fs.readFileSync(path.join(root, CURRENT_FILE), 'utf8').trim();
-    return NAME.test(name) ? name : null;
+    return isRunName(name) ? name : null;
   } catch {
     return null;
   }
@@ -96,55 +94,85 @@ export function writeCurrent(root, name) {
 
 export const clearCurrent = (root) => fs.rmSync(path.join(root, CURRENT_FILE), { force: true });
 
-function missingExplanation(root, what) {
-  const known = listExplanations(root);
-  const hint = known.length ? `explanations here: ${known.join(', ')}` : 'run `mr-cast explain init --title "..."` first';
-  return new UserError(`${what}; ${hint}`);
+/** Where 0.11 left a walkthrough in `root`, as --dir arguments, so a missing run can point at them. */
+function olderData(root) {
+  const found = [];
+  if (fs.existsSync(path.join(root, 'storyboard.json')) || fs.existsSync(path.join(root, 'hunks.json'))) found.push(path.relative(process.cwd(), root) || '.');
+  let explained = [];
+  try { explained = fs.readdirSync(path.join(root, 'explain')).filter(isExplanationName); } catch { /* none */ }
+  for (const name of explained) found.push(path.relative(process.cwd(), path.join(root, 'explain', name)));
+  return found;
+}
+
+function missingRun(root, what) {
+  const known = listRuns(root);
+  const hints = [known.length ? `runs here: ${known.join(', ')}` : 'start one with `mr-cast extract` or `mr-cast init --title "..."`'];
+  const older = olderData(root);
+  if (older.length) hints.push(`walkthroughs from mr-cast 0.11 or earlier: ${older.map((d) => `--dir ${d}`).join(', ')}`);
+  return new UserError(`${what}; ${hints.join('; ')}`);
 }
 
 /**
- * The explanation an `explain <verb>` works on: --dir, else --name, else the most recently initialised one
- * (announced on stderr, since the caller did not name it).
+ * The run a command after extract or init works on: --dir, else --name, else the current run (announced on
+ * stderr, since the caller did not name it).
  */
-export function explainRun(values) {
+export function currentRun(values) {
   if (values.dir) return { dir: path.resolve(values.dir), name: null };
-  const root = explainRoot();
+  const root = runsRoot();
   if (values.name) {
     const name = parseRunName(values.name);
     const dir = path.join(root, name);
-    if (!isExplanation(dir)) throw missingExplanation(root, `no explanation named "${name}"`);
+    if (!readRunMeta(dir)) throw missingRun(root, `no run named "${name}"`);
     return { dir, name };
   }
   const name = readCurrent(root);
-  if (!name || !isExplanation(path.join(root, name))) throw missingExplanation(root, 'no current explanation');
-  console.error(`mr-cast: using explanation "${name}" (the most recent; pass --name to pick another)`);
+  if (!name || !readRunMeta(path.join(root, name))) throw missingRun(root, 'no current run');
+  console.error(`mr-cast: using run "${name}" (the most recent; pass --name to pick another)`);
   return { dir: path.join(root, name), name };
 }
 
+/** The first of `base`, `base-2`, `base-3`, ... whose directory is free or holds a run `matches` accepts. */
+function claimName(root, base, matches) {
+  for (let n = 1; ; n++) {
+    const name = n === 1 ? base : `${base.slice(0, NAME_MAX - String(n).length - 1)}-${n}`;
+    const dir = path.join(root, name);
+    if (RESERVED.has(name)) continue;
+    if (!fs.existsSync(dir) || matches(readRunMeta(dir))) return { dir, name };
+  }
+}
+
 /**
- * The explanation `explain init` creates or reopens. --name is taken as given. Otherwise the slug comes from
- * --title; a directory with that slug holding a different explanation gets a numbered suffix. With neither,
- * init reopens the current explanation.
+ * The run `extract` writes the diff of `branch` into. --name is taken as given, unless it holds an explanation.
+ * Otherwise the slug comes from the branch name, and a directory with that slug holding anything but this
+ * branch's diff gets a numbered suffix.
  */
-export function initExplainRun(values) {
-  if (values.dir) return { dir: path.resolve(values.dir), name: null };
-  const root = explainRoot();
+export function branchRun(root, values, branch) {
   if (values.name) {
     const name = parseRunName(values.name);
-    return { dir: path.join(root, name), name };
+    const dir = path.join(root, name);
+    if (isExplanationMeta(readRunMeta(dir))) throw new UserError(`.mr-cast/${name} holds an explanation (made by \`mr-cast init\`); pass another --name`);
+    return { dir, name };
+  }
+  return claimName(root, slugify(branch, 12) || 'branch', (meta) => meta !== null && !isExplanationMeta(meta) && meta.branch === branch);
+}
+
+/**
+ * The run `init` creates or reopens. --name is taken as given, unless it holds a diff. Otherwise the slug comes
+ * from --title, and a directory with that slug holding anything but this explanation gets a numbered suffix.
+ * With neither, init reopens the current run when it is an explanation.
+ */
+export function explanationRun(root, values) {
+  if (values.name) {
+    const name = parseRunName(values.name);
+    const dir = path.join(root, name);
+    const meta = readRunMeta(dir);
+    if (meta && !isExplanationMeta(meta)) throw new UserError(`.mr-cast/${name} holds a branch walkthrough (made by \`mr-cast extract\`); pass another --name`);
+    return { dir, name };
   }
   const title = values.title ?? null;
   if (title === null) {
     const current = readCurrent(root);
-    if (current) return { dir: path.join(root, current), name: current };
+    if (current && isExplanationMeta(readRunMeta(path.join(root, current)))) return { dir: path.join(root, current), name: current };
   }
-  const base = slugify(title) || 'explanation';
-  for (let n = 1; ; n++) {
-    const name = n === 1 ? base : `${base.slice(0, NAME_MAX - String(n).length - 1)}-${n}`;
-    const dir = path.join(root, name);
-    if (!fs.existsSync(dir)) return { dir, name };
-    let meta = null;
-    try { meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch { /* not ours */ }
-    if (meta?.mode === 'explain' && (meta.title ?? null) === title) return { dir, name };
-  }
+  return claimName(root, slugify(title) || 'explanation', (meta) => isExplanationMeta(meta) && (meta.title ?? null) === title);
 }

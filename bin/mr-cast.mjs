@@ -8,88 +8,76 @@ import { UserError } from './lib/errors.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
-import { dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
+import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
-import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
+import { branchRun, currentRun, explanationRun, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
+import { AUDIENCE_OPTIONS, PACE_OPTIONS, VOICE_OPTIONS, lastChoices, mergeSettings, parseSettings, rememberChoices, requestedSettings } from './lib/settings.mjs';
 import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
-import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
+import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, plural, summarizeFiles } from './lib/summary.mjs';
 import { DEFAULT_VOICE, PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
-import { ensureVoiceover, parsePace, readVoiceover, resolvePace } from './lib/voice.mjs';
+import { ensureVoiceover, readVoiceover, resolvePace } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const { version: VERSION } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
 const USAGE = `usage: mr-cast <command> [options]
 
-  extract [base] [--working] [--simple] [--context N] [--max-lines N] [--all-files] [--name slug]
-      Diff the current branch against base (default: origin/HEAD, main, master, ...),
-      write .mr-cast/hunks.json and print a hunk index.
-      --working    diff merge-base against the working tree (staged + unstaged)
-      --simple     the walkthrough explains the code line by line in plain words; validate then
-                   wants a step of at most 3 lines for every changed line and short sentences
-      --context    context lines per hunk (default 4)
-      --max-lines  changed lines shown per hunk in the index (default 14)
-      --all-files  include lockfiles, minified and build output
-  snippet <file> <start>-<end> | <file>:<start>-<end> ...
-                  add real source lines (at most 80 per snippet) beside the diff as code for scenes,
-                  ids s1, s2, ...: callers, definitions, types or config the change depends on;
-                  a later extract keeps them
-  validate [--pace p] [--speed x]
-                  check .mr-cast/storyboard.json against hunks.json, including each step's lines,
-                  rows, files, messages, events, states, tables or labels
-  outline [--pace p] [--speed x]
-                  print a short plan of the storyboard (scenes, steps, length, coverage) to show before rendering
-  voice [--voice name] [--pace p] [--speed x]
-                  speak each scene's narration and steps with Kokoro into .mr-cast/audio (default voice af_heart)
-  play [--port N] [--no-open] [--voice name] [--pace p] [--speed x] [--no-voice]
-                  serve the live player (default port 4747)
-  render [--out file.mp4] [--voice name] [--pace p] [--speed x] [--no-voice]
-                  render the walkthrough to MP4 with chapter markers, named after the storyboard title
-                  (default .mr-cast/<title-slug>.mp4)
-                  play and render voice the narration first unless --no-voice
-      --voice      Kokoro voice; saved in voiceover.json, so later runs keep it
-      --pace       slower, normal (default) or faster: the voice's speed (0.85, 1, 1.15) and the
-                   pauses around it (x1.5, x1, x0.85); saved like --voice
-      --speed      the voice's speed alone, from 0.5 to 2; overrides the speed --pace sets
-                   validate and outline only estimate the length at --pace and --speed
-  still [sceneIndex...] [--out dir]
-                  render PNG stills of scenes (0-based; default all, .mr-cast/stills)
-  every command above takes --name <slug> to keep a separate walkthrough in .mr-cast/<slug>, so
-  several can coexist and render at once; all but extract also take
-  --dir <path> to use any data directory
+In Claude Code, type /mr-cast or ask for "a video of this branch" or "animate that". The skill runs the
+commands under "Used by the Claude Code skills" for you.
 
-  explain init [--title text] [--name slug] [--simple] [--reset]
-                  start an explanation in .mr-cast/explain/<slug> (in the git repo, else the current
-                  directory); the slug comes from the title unless --name; prints the directory;
-                  reopening one keeps its storyboard unless --reset; --simple as for extract
-  explain snippet <file> <start>-<end> | <file>:<start>-<end> ...
-                  add real source lines as code for scenes, like snippet above
-  explain validate | outline | voice | play | render | still
-                  the commands above, on the explanation's directory
-      every explain command takes --name <slug> (default: the most recent init) or --dir <path>
-
+  install-skill     install the mr-cast, mr-cast-prune and mr-cast-upgrade skills into ~/.claude
+                    (or $CLAUDE_CONFIG_DIR), and remove what earlier versions installed there
+  uninstall-skill   remove every skill mr-cast installed
+  upgrade [--check] update mr-cast from npm, then its skills; --check only reports the versions
   prune [id...] [--older-than days] [--json]
-                  list what mr-cast can delete to free disk space: walkthroughs, their videos, stills
-                  and voice clips in .mr-cast (in the git repo, else the current directory), and the
-                  shared cache in ~/.cache/mr-cast; with ids from that list, delete exactly those
-      --older-than  list only what has not changed in this many days
-      --json        print the list as JSON
+                    list what mr-cast stored (walkthroughs, videos, voice clips, downloads) with sizes;
+                    with ids from that list, delete exactly those
+  version           print the mr-cast and Node versions (also --version, -v)
+  help [--all]      this message; --all adds every command and option
 
-  install-skill   install the mr-cast-review, mr-cast-explain, mr-cast-prune and mr-cast-upgrade Claude
-                  Code skills and the /mr-cast-render and /mr-cast-explain-render commands into
-                  ~/.claude, and remove the skills and commands earlier versions installed that this
-                  one no longer does; later commands refresh them after an upgrade
-  uninstall-skill remove every skill and command mr-cast installed into ~/.claude
-  upgrade [--check]
-                  update mr-cast to the latest version on npm (npm install -g), then its skills;
-                  --check only reports the installed and latest versions
-  version         print the mr-cast and Node versions (also --version, -v)
-  help            show this message`;
+Used by the Claude Code skills:
+  status            the branch's changes against its base, uncommitted files, and the last audience and pace
+  extract [base] [--working]
+                    start a walkthrough of the branch's diff in .mr-cast/<branch> and print a hunk index;
+                    --working diffs the merge base against uncommitted changes
+  init --title text [--reset]
+                    start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
+                    it and keeps its storyboard unless --reset
+  snippet <file>:<start>-<end> ...
+                    add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
+  validate          check the run's storyboard.json
+  outline           print a short plan of the storyboard to show before rendering
+  play [--port N] [--no-open]
+                    voice the narration and serve the live player (default port 4747)
+  render [--out file.mp4]
+                    voice the narration and render an MP4 with chapter markers, named after the storyboard title
+
+  extract and init make their run the current one, and the commands after them work on the current run.
+  extract and init take the run's settings, which the run keeps; the same flag on a later command changes them:
+      --audience familiar|new|overview   who the video is for; new is the simple style (also --simple)
+      --pace slower|normal|faster        the voice's speed and the pauses around it
+      --voice name                       the Kokoro voice (default af_heart)
+      --no-voice                         silent, with subtitles timed for reading`;
+
+const USAGE_ALL = `${USAGE}
+
+More commands and options:
+  voice             voice the narration into the run's audio/ without playing it
+  still [sceneIndex...] [--out dir]
+                    render PNG stills of scenes (0-based; default all, into the run's stills/)
+  --speed x         the voice's speed alone, from 0.5 to 2; overrides the speed --pace sets (a run setting)
+  --name slug       extract and init: name the run yourself; later commands: use that run instead of the current one
+  --dir path        any command after extract or init: use any data directory, such as .mr-cast or
+                    .mr-cast/explain/<name> from mr-cast 0.11 and earlier
+  extract --context N     context lines per hunk (default 4)
+  extract --max-lines N   changed lines shown per hunk in the index (default 14)
+  extract --all-files     include lockfiles, minified and build output
+  validate and outline estimate the length at the run's pace until the narration is voiced.`;
 
 /** A path for messages: relative to the current directory when inside it, else absolute. */
 const rel = (p) => {
@@ -123,49 +111,57 @@ function readJson(file, missingHint) {
 
 const DIR_OPTION = { dir: { type: 'string' }, name: { type: 'string' } };
 
+const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+
 /**
- * What meta.json says about the run: mode "explain" when `mr-cast explain init` made the directory
- * (anything else holds a diff), and style "simple" when extract or init ran with --simple.
+ * What meta.json says about the run: mode "explain" when `mr-cast init` made it (anything else holds a diff),
+ * its settings, and style "simple" for the audience new to the code (or a 0.11 run made with --simple).
  */
 function readMeta(dir) {
-  let raw = {};
-  try { raw = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch { /* a diff run without meta, or none yet */ }
-  return { mode: raw?.mode === 'explain' ? 'explain' : 'diff', style: raw?.style === 'simple' ? 'simple' : undefined };
-}
-
-const STYLE_OPTION = { simple: { type: 'boolean', default: false } };
-
-/** The style a run is written in: "simple" with --simple. A rerun without it drops the style and says so. */
-function styleFor(values, previous, command) {
-  if (values.simple) return 'simple';
-  if (previous?.style === 'simple') console.error(`note: dropped the simple style; pass --simple to \`${command}\` to keep it`);
-  return undefined;
+  const raw = readRunMeta(dir) ?? {};
+  const settings = parseSettings(raw.settings);
+  if (!settings.audience && raw.style === 'simple') settings.audience = 'new';
+  return { mode: raw.mode === 'explain' ? 'explain' : 'diff', style: settings.audience === 'new' ? 'simple' : undefined, settings };
 }
 
 /**
- * The voiceover that times a run: voiceover.json at the pace --pace and --speed ask for. Clips voiced at
- * another speed then match nothing, so their texts are estimated at the new speed until they are voiced again.
+ * The run's settings with the flags in `values` laid over them. The flags are saved with the run, so later
+ * commands keep them, and the audience and pace they choose are remembered for the user's next video.
  */
-function timingVoiceover(dir, pace = {}) {
-  const saved = readVoiceover(dir);
-  if (!saved && Object.keys(pace).length === 0) return null;
-  return { voice: saved?.voice ?? DEFAULT_VOICE, clips: saved?.clips ?? {}, ...resolvePace(pace, saved) };
+function applySettings(dir, values) {
+  const requested = requestedSettings(values);
+  const raw = readRunMeta(dir);
+  const settings = mergeSettings(parseSettings(raw?.settings), requested);
+  if (raw && Object.keys(requested).length) writeJson(path.join(dir, 'meta.json'), { ...raw, settings });
+  rememberChoices(values);
+  return settings;
 }
 
-async function loadProject(dir, pace) {
-  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first, with the same --name');
+/**
+ * The voiceover that times a run: voiceover.json at the run's pace. Clips voiced at another speed then match
+ * nothing, so their texts are estimated at the new speed until they are voiced again. A silent run has no clips.
+ */
+function timingVoiceover(dir, settings) {
+  const saved = readVoiceover(dir);
+  const pace = settings.pace ?? {};
+  if (!saved && Object.keys(pace).length === 0) return null;
+  return { voice: saved?.voice ?? DEFAULT_VOICE, clips: settings.silent ? {} : saved?.clips ?? {}, ...resolvePace(pace, saved) };
+}
+
+async function loadProject(dir, settings) {
+  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
   const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const meta = readMeta(dir);
   const result = await validateStoryboard(raw, hunks, meta);
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
-  const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, pace));
+  const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   return { dir, hunks, storyboard, result, style: meta.style, lines: formatValidation(result, { storyboard, hunks, seconds, style: meta.style }) };
 }
 
 /** Validate, print problems to stderr, and stop on errors. */
-async function loadValidProject(dir, pace) {
-  const project = await loadProject(dir, pace);
+async function loadValidProject(dir, settings) {
+  const project = await loadProject(dir, settings);
   if (project.result.errors.length || project.result.warnings.length) {
     for (const line of project.lines) console.error(line);
   }
@@ -181,17 +177,17 @@ function extract(argv) {
       context: { type: 'string', default: '4' },
       'max-lines': { type: 'string', default: '14' },
       'all-files': { type: 'boolean', default: false },
-      ...STYLE_OPTION,
+      ...AUDIENCE_OPTIONS,
+      ...VOICE_OPTIONS,
       name: DIR_OPTION.name,
     },
   });
   if (positionals.length > 1) throw new UserError(`extract takes at most one base, got: ${positionals.join(' ')}`);
   const context = intOption(values.context, 'context', 0);
   const maxLines = intOption(values['max-lines'], 'max-lines', 1);
+  const requested = requestedSettings(values);
 
   const root = repoRoot();
-  const { dir, name } = diffRun(values);
-  const nameArg = name ? ` --name ${name}` : '';
   ensureExcluded(root);
   const base = resolveBase(root, positionals[0]);
   const diff = readDiff(root, { base, working: values.working, context, allFiles: values['all-files'] });
@@ -204,6 +200,9 @@ function extract(argv) {
     throw new UserError(`${where} no changes ahead of ${base}; use \`mr-cast extract --working\` for uncommitted changes or pass another base: \`mr-cast extract <base>\``);
   }
 
+  const runs = dataDir(root);
+  const { dir, name } = branchRun(runs, values, diff.branch);
+  const nameArg = values.name ? ` --name ${name}` : '';
   const hunks = buildHunkIndex(parsed);
   const files = summarizeFiles(parsed, hunks);
   const hunksPath = path.join(dir, 'hunks.json');
@@ -215,17 +214,21 @@ function extract(argv) {
   const snippets = Object.values(previous ?? {}).filter((h) => h?.status === 'source' && typeof h.id === 'string');
 
   const written = { ...hunks, ...Object.fromEntries(snippets.map((h) => [h.id, h])) };
-  const style = styleFor(values, readMeta(dir), `extract${nameArg}`);
+  const settings = mergeSettings(readMeta(dir).settings, requested);
 
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(hunksPath, `${JSON.stringify(written, null, 2)}\n`);
-  fs.writeFileSync(path.join(dir, 'meta.json'), `${JSON.stringify({
-    base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
+  writeJson(hunksPath, written);
+  writeJson(path.join(dir, 'meta.json'), {
+    mode: 'diff', base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
     head: 'HEAD', headSha: diff.headSha, branch: diff.branch,
-    working: values.working, style, generatedAt: new Date().toISOString(),
+    working: values.working, settings, generatedAt: new Date().toISOString(),
     files, skipped: diff.skipped,
-  }, null, 2)}\n`);
+  });
+  writeCurrent(runs, name);
+  rememberChoices(values);
+  const style = settings.audience === 'new' ? 'simple' : undefined;
 
+  console.error(`mr-cast: run "${name}" in ${rel(dir)}; later commands use it until the next extract or init`);
   if (snippets.length) console.error(`note: kept ${snippets.length} snippet${snippets.length === 1 ? '' : 's'} (${snippets.map((h) => h.id).join(', ')}) from the last extract; rerun \`mr-cast snippet${nameArg}\` on one to reread its lines`);
   if (fs.existsSync(storyboardPath)) {
     const changed = previous ? changedHunkIds(previous, written) : null;
@@ -240,15 +243,19 @@ function extract(argv) {
   }));
 }
 
-async function validate(argv, resolveRun) {
+/** The run a command after extract or init works on, and its settings with the command's flags applied. */
+function runFor(values) {
+  const run = currentRun(values);
+  return { ...run, settings: applySettings(run.dir, values) };
+}
+
+async function validate(argv) {
   const { values } = parseArgs({ args: argv, options: { ...PACE_OPTIONS, ...DIR_OPTION } });
-  const { result, lines } = await loadProject(resolveRun(values).dir, parsePace(values));
+  const { dir, settings } = runFor(values);
+  const { result, lines } = await loadProject(dir, settings);
   for (const line of lines) console.log(line);
   if (result.errors.length) process.exit(1);
 }
-
-const PACE_OPTIONS = { pace: { type: 'string' }, speed: { type: 'string' } };
-const VOICE_OPTIONS = { voice: { type: 'string' }, 'no-voice': { type: 'boolean', default: false }, ...PACE_OPTIONS };
 
 /** "slower", "normal", "faster", or "0.9x, pauses x1.2". */
 function paceName(voiceover) {
@@ -264,11 +271,11 @@ function formatPace(voiceover) {
   return Object.hasOwn(PACES, name) ? ` · ${name} pace` : ` · ${name}`;
 }
 
-/** Say which pace play and render use when it is not the normal one, so a pace saved by an earlier --pace is not a surprise. */
+/** Say which pace play and render use when it is not the normal one, so the run's saved pace is not a surprise. */
 function reportPace(voiceover, requested) {
   const name = paceName(voiceover);
   if (name === 'normal') return;
-  const saved = Object.keys(requested).length === 0 ? ' (saved; pass --pace normal to change)' : '';
+  const saved = Object.keys(requested).length === 0 ? ' (the run\'s setting; pass --pace normal to change)' : '';
   console.error(`mr-cast: pace: ${name}${saved}`);
 }
 
@@ -281,31 +288,31 @@ function reportVoiceProgress(event) {
 }
 
 /**
- * Voice-over for play and render, at the pace --pace and --speed ask for, else the saved one. Without
- * voice, or when voicing fails, scenes are silent and timed from word count at that pace.
+ * Voice-over for play and render, in the run's voice and at its pace. A silent run, or one whose voicing
+ * fails, has silent scenes timed from word count at that pace.
  */
-async function voiceoverFor(dir, storyboard, values) {
-  const pace = parsePace(values);
+async function voiceoverFor(dir, storyboard, settings) {
+  const pace = settings.pace ?? {};
   const silent = () => {
     const { speed, pauses } = resolvePace(pace, readVoiceover(dir));
     return speed === 1 && pauses === 1 ? null : { voice: DEFAULT_VOICE, speed, pauses, clips: {} };
   };
-  if (values['no-voice']) return silent();
+  if (settings.silent) return silent();
   try {
-    return await ensureVoiceover({ dataDir: dir, storyboard, voice: values.voice, pace, onProgress: reportVoiceProgress });
+    return await ensureVoiceover({ dataDir: dir, storyboard, voice: settings.voice, pace, onProgress: reportVoiceProgress });
   } catch (err) {
     console.error(`mr-cast: warning: continuing without voice-over: ${err.message}`);
     return silent();
   }
 }
 
-async function voice(argv, resolveRun) {
+async function voice(argv) {
   const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice, ...PACE_OPTIONS, ...DIR_OPTION } });
-  const pace = parsePace(values);
-  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir, pace);
+  const run = runFor(values);
+  const { dir, storyboard } = await loadValidProject(run.dir, run.settings);
   let generated = 0;
   const voiceover = await ensureVoiceover({
-    dataDir: dir, storyboard, voice: values.voice, pace,
+    dataDir: dir, storyboard, voice: run.settings.voice, pace: run.settings.pace ?? {},
     onProgress: (event) => {
       if (event.type === 'clip') generated++;
       reportVoiceProgress(event);
@@ -342,27 +349,27 @@ function openBrowser(url) {
   } catch { /* no browser; the URL is printed */ }
 }
 
-async function play(argv, resolveRun) {
+async function play(argv) {
   const { values } = parseArgs({
     args: argv,
     options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS, ...DIR_OPTION },
   });
   const port = intOption(values.port, 'port', 1);
-  const pace = parsePace(values);
-  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir, pace);
+  const { settings, ...run } = runFor(values);
+  const { dir, storyboard } = await loadValidProject(run.dir, settings);
   const distDir = ensureDist();
-  let voiceover = await voiceoverFor(dir, storyboard, values);
-  reportPace(voiceover, pace);
+  let voiceover = await voiceoverFor(dir, storyboard, settings);
+  reportPace(voiceover, requestedSettings(values).pace ?? {});
 
   const onDataChange = async (file) => {
     if (file === 'meta.json') return;
     let project;
     try {
-      project = await loadProject(dir, pace);
+      project = await loadProject(dir, settings);
       console.error(`mr-cast: ${file} changed`);
       if (file === 'storyboard.json' && !project.result.errors.length) {
-        voiceover = await voiceoverFor(dir, project.storyboard, values);
-        project = await loadProject(dir, pace);
+        voiceover = await voiceoverFor(dir, project.storyboard, settings);
+        project = await loadProject(dir, settings);
       }
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
@@ -408,13 +415,12 @@ function progressReporter(label) {
   };
 }
 
-async function render(argv, resolveRun) {
+async function render(argv) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS, ...DIR_OPTION } });
-  const run = resolveRun(values);
-  const pace = parsePace(values);
-  const { dir, hunks, storyboard } = await loadValidProject(run.dir, pace);
-  const voiceover = await voiceoverFor(dir, storyboard, values);
-  reportPace(voiceover, pace);
+  const run = runFor(values);
+  const { dir, hunks, storyboard } = await loadValidProject(run.dir, run.settings);
+  const voiceover = await voiceoverFor(dir, storyboard, run.settings);
+  reportPace(voiceover, requestedSettings(values).pace ?? {});
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
@@ -424,9 +430,10 @@ async function render(argv, resolveRun) {
   console.log(written ?? outFile);
 }
 
-async function still(argv, resolveRun) {
+async function still(argv) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, ...DIR_OPTION } });
-  const { dir, hunks, storyboard } = await loadValidProject(resolveRun(values).dir);
+  const run = runFor(values);
+  const { dir, hunks, storyboard } = await loadValidProject(run.dir, run.settings);
   const count = storyboard.scenes.length;
   const scenes = positionals.map((p) => {
     const n = Number(p);
@@ -441,11 +448,11 @@ async function still(argv, resolveRun) {
   for (const f of files) console.log(path.resolve(f));
 }
 
-async function outline(argv, resolveRun) {
+async function outline(argv) {
   const { values } = parseArgs({ args: argv, options: { ...PACE_OPTIONS, ...DIR_OPTION } });
-  const pace = parsePace(values);
-  const { dir, hunks, storyboard, result, style } = await loadValidProject(resolveRun(values).dir, pace);
-  const voiceover = timingVoiceover(dir, pace);
+  const run = runFor(values);
+  const { dir, hunks, storyboard, result, style } = await loadValidProject(run.dir, run.settings);
+  const voiceover = timingVoiceover(dir, run.settings);
   const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
   console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style, pace: formatPace(voiceover) }));
@@ -472,48 +479,46 @@ async function upgradeCommand(argv) {
   await upgrade({ root: ROOT, version: VERSION, check: values.check });
 }
 
-const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
-
-function explainInit(argv) {
-  const { values } = parseArgs({ args: argv, options: { ...DIR_OPTION, ...STYLE_OPTION, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
-  const { dir, name } = initExplainRun(values);
-  const root = findRepoRoot();
-  if (root && !values.dir) ensureExcluded(root);
+/** Starts or reopens the run of an explanation, which has no diff: its code comes from `snippet`. */
+function init(argv) {
+  const { values } = parseArgs({ args: argv, options: { name: DIR_OPTION.name, ...AUDIENCE_OPTIONS, ...VOICE_OPTIONS, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
+  const requested = requestedSettings(values);
+  const repo = findRepoRoot();
+  if (repo) ensureExcluded(repo);
+  const runs = runsRoot();
+  const { dir, name } = explanationRun(runs, values);
   const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
-  if (fs.existsSync(files.meta) && readMeta(dir).mode !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --name or --dir`);
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
-  let previous = {};
-  try { previous = JSON.parse(fs.readFileSync(files.meta, 'utf8')); } catch { /* new directory */ }
+  const previous = readRunMeta(dir) ?? {};
   fs.mkdirSync(dir, { recursive: true });
   if (!fs.existsSync(files.hunks)) writeJson(files.hunks, {});
   writeJson(files.meta, {
     mode: 'explain',
     title: values.title ?? previous.title ?? null,
-    style: styleFor(values, values.reset ? null : previous, 'explain init'),
+    settings: mergeSettings(readMeta(dir).settings, requested),
     createdAt: previous.createdAt ?? new Date().toISOString(),
   });
-
-  if (name) writeCurrent(path.dirname(dir), name);
+  writeCurrent(runs, name);
+  rememberChoices(values);
 
   console.log(dir);
-  if (name) console.error(`mr-cast: explanation "${name}"; later explain commands use it until another init, or pass --name ${name}`);
+  console.error(`mr-cast: run "${name}" in ${rel(dir)}; later commands use it until the next extract or init`);
   const snippets = Object.keys(readJson(files.hunks, '')).length;
   let kept = null;
   try { kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)'; } catch { /* none yet */ }
   if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`);
   else if (snippets) console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
-  console.error(`next: \`mr-cast explain snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast explain validate\``);
+  console.error(`next: \`mr-cast snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast validate\``);
 }
 
 /** Adds snippets of unchanged source to a run's hunks.json: the code of an explanation, or context beside a diff. */
-function snippet(argv, resolveRun) {
+function snippet(argv) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
-  const { dir, name } = resolveRun(values);
-  const explain = readMeta(dir).mode === 'explain';
-  const nameArg = name ? ` --name ${name}` : values.dir ? ` --dir ${values.dir}` : '';
+  const { dir } = currentRun(values);
+  const runArg = values.name ? ` --name ${values.name}` : values.dir ? ` --dir ${values.dir}` : '';
   const hunksPath = path.join(dir, 'hunks.json');
-  const hunks = readJson(hunksPath, explain ? 'run `mr-cast explain init` first' : `run \`mr-cast extract${nameArg}\` first, then add snippets beside its hunks`);
+  const hunks = readJson(hunksPath, 'run `mr-cast extract` or `mr-cast init` first');
   // Paths are shown relative to the repository (or the current directory outside one), as a diff shows them.
   const base = findRepoRoot() ?? process.cwd();
   const added = parseSnippetArgs(positionals).map((spec) => {
@@ -536,16 +541,35 @@ function snippet(argv, resolveRun) {
   writeJson(hunksPath, hunks);
   console.log(formatSnippets({
     added, hunks, hunksPath: rel(hunksPath), storyboardPath: rel(path.join(dir, 'storyboard.json')),
-    validateCommand: `mr-cast ${explain ? 'explain ' : ''}validate${nameArg}`,
+    validateCommand: `mr-cast validate${runArg}`,
   }));
 }
 
-const EXPLAIN_COMMANDS = { init: explainInit, snippet, validate, outline, voice, play, render, still };
+/** 0.11's `explain <command>`, kept for skills an open session loaded before an upgrade: init, or any command on the current run. */
+const EXPLAIN_COMMANDS = { init, snippet, validate, outline, voice, play, render, still };
 
 async function explain([sub, ...rest]) {
   const run = EXPLAIN_COMMANDS[sub];
-  if (!run) throw new UserError(`explain needs one of ${Object.keys(EXPLAIN_COMMANDS).join(', ')}${sub ? ` (got "${sub}")` : ''}; see \`mr-cast help\``);
-  await run(rest, explainRun);
+  if (!run) throw new UserError(`unknown command "explain${sub ? ` ${sub}` : ''}"; \`mr-cast init\` starts an explanation and the other commands work on it, see \`mr-cast help\``);
+  await run(rest);
+}
+
+function status(argv) {
+  parseArgs({ args: argv, options: {} });
+  const root = findRepoRoot();
+  if (!root) console.log('branch: none (not in a git repository), so only an explanation can be animated');
+  else {
+    const s = branchStatus(root);
+    const ahead = !s.base ? 'no base branch found; pass one to `mr-cast extract <base>`'
+      : s.ahead ? `${plural(s.ahead, 'commit')} and ${plural(s.files, 'file')} ahead of ${s.base}`
+      : `nothing ahead of ${s.base}`;
+    console.log(`branch: ${s.branch} · ${ahead}`);
+    const working = [s.changed && plural(s.changed, 'changed file'), s.untracked && plural(s.untracked, 'untracked file')].filter(Boolean);
+    console.log(`working tree: ${working.length ? `${working.join(', ')} (extract --working includes changed files)` : 'clean'}`);
+  }
+  const last = lastChoices();
+  const parts = [last.audience && `audience ${last.audience}`, last.pace && `pace ${last.pace}`].filter(Boolean);
+  console.log(`last choices: ${parts.length ? parts.join(' · ') : 'none yet'}`);
 }
 
 async function prune(argv) {
@@ -571,7 +595,7 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { extract, snippet, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
+const COMMANDS = { status, extract, init, snippet, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);
@@ -587,7 +611,7 @@ function refreshSkillsQuietly() {
 async function main([command, ...rest]) {
   if (command !== 'install-skill' && command !== 'uninstall-skill') refreshSkillsQuietly();
   if (!command || command === 'help' || command === '--help' || command === '-h') {
-    console.log(USAGE);
+    console.log(rest.includes('--all') ? USAGE_ALL : USAGE);
     return;
   }
   if (command === 'version' || command === '--version' || command === '-v') {
@@ -600,10 +624,10 @@ async function main([command, ...rest]) {
     process.exit(1);
   }
   if (rest.includes('--help') || rest.includes('-h')) {
-    console.log(USAGE);
+    console.log(USAGE_ALL);
     return;
   }
-  await run(rest, diffRun);
+  await run(rest);
 }
 
 const argv = process.argv.slice(2);

@@ -1,7 +1,8 @@
 // What `mr-cast prune` can delete, and deleting it. An artifact is one deletable thing:
 //
-//   run:.  run:<name>  explain:<name>    a whole walkthrough (the default run is .mr-cast/'s own files)
-//   video:<run>/<file>.mp4                a rendered video          (<run> is ., <name> or explain/<name>)
+//   run:<name>                            a whole walkthrough in .mr-cast/<name>, of a branch or an explanation
+//   run:.  explain:<name>                 a walkthrough mr-cast 0.11 left in .mr-cast/ or .mr-cast/explain/<name>
+//   video:<run>/<file>.mp4                a rendered video          (<run> is <name>, . or explain/<name>)
 //   stills:<run>  audio:<run>             PNG stills, voice-over clips; render and voice regenerate them
 //   cache:bundle  cache:remotion  cache:models   the shared cache in ~/.cache/mr-cast
 //
@@ -13,7 +14,7 @@ import path from 'node:path';
 import { cacheDir, cacheRoot } from './cache.mjs';
 import { UserError } from './errors.mjs';
 import { liveHolder, usersOf, withLock } from './lock.mjs';
-import { clearCurrent, isExplanationName, isRunName, readCurrent } from './runs.mjs';
+import { CURRENT_FILE, clearCurrent, isExplanationName, isRunName, readCurrent, readRunMeta } from './runs.mjs';
 import { plural } from './summary.mjs';
 
 /**
@@ -104,14 +105,15 @@ function walkthrough({ id, kind, dir, key, remove, noun }) {
 function listRuns(dataRoot) {
   const all = entries(dataRoot);
   const named = all.filter((e) => e.isDirectory() && isRunName(e.name));
-  const own = all.filter((e) => !(e.isDirectory() && (isRunName(e.name) || e.name === 'explain')));
+  const own = all.filter((e) => !(e.isDirectory() && (isRunName(e.name) || e.name === 'explain')) && !e.name.startsWith(CURRENT_FILE));
   const runs = [];
   if (own.length) {
     runs.push(...walkthrough({ id: 'run:.', kind: 'run', dir: dataRoot, key: '.', remove: own.map((e) => path.join(dataRoot, e.name)), noun: 'diff walkthrough' }));
   }
   for (const { name } of named) {
     const dir = path.join(dataRoot, name);
-    runs.push(...walkthrough({ id: `run:${name}`, kind: 'run', dir, key: name, remove: [dir], noun: 'diff walkthrough' }));
+    const explanation = readRunMeta(dir)?.mode === 'explain';
+    runs.push(...walkthrough({ id: `run:${name}`, kind: explanation ? 'explain' : 'run', dir, key: name, remove: [dir], noun: explanation ? 'explanation' : 'diff walkthrough' }));
   }
   const explainRoot = path.join(dataRoot, 'explain');
   for (const { name } of entries(explainRoot).filter((e) => e.isDirectory() && isExplanationName(e.name))) {
@@ -177,7 +179,7 @@ export function resolveIds(listing, ids, listCommand = 'mr-cast prune') {
 
 /**
  * Deletes `chosen` (from resolveIds). A part inside another chosen artifact goes with it. Removing the
- * current explanation clears .current, so a later `explain` command asks which one instead of guessing.
+ * current run clears .current, so a later command asks which run instead of guessing.
  * Returns { removed: [{ artifact, bytes, with }], skipped: [{ artifact, reason }] }: `with` names the
  * artifact that took a part along, and `skipped` holds cache directories a render started using since listing.
  */
@@ -201,9 +203,8 @@ export async function pruneArtifacts(chosen, dataRoot) {
     if (a.lock) await withLock(a.lock, remove);
     else remove();
   }
-  const explainRoot = path.join(dataRoot, 'explain');
-  const current = readCurrent(explainRoot);
-  if (current && removed.some(({ artifact }) => artifact.id === `explain:${current}`)) clearCurrent(explainRoot);
+  const current = readCurrent(dataRoot);
+  if (current && removed.some(({ artifact }) => artifact.id === `run:${current}`)) clearCurrent(dataRoot);
   return { removed, skipped };
 }
 
