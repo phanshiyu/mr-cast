@@ -67,6 +67,8 @@ export interface Fit {
   fits: boolean;
   min: number;
   markupErrors: MarkupError[];
+  /** Share of its characters (0 to 1) drawn bold, as code, marked or in a tone. */
+  styled: number;
   severity?: 'warning';
 }
 

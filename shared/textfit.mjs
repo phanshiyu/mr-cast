@@ -282,6 +282,7 @@ export function wrapRuns(runs, font, width, { balanced = false, force = false } 
  *   fits: boolean,
  *   min: number,
  *   markupErrors: import('./markup.mjs').MarkupError[],
+ *   styled: number,
  * }} Fit
  */
 
@@ -291,6 +292,12 @@ const slotWidth = (slot, lines, size) => (typeof slot.width === 'function' ? slo
 export function slotRuns(text, slot) {
   if (slot.markup === false) return { runs: [{ text: String(text ?? '') }], errors: [] };
   return parseMarkup(text);
+}
+
+/** Share of the characters (0 to 1) drawn bold, as code, marked or in a tone. */
+function styledOf(runs) {
+  const total = runs.reduce((n, r) => n + r.text.length, 0);
+  return total ? runs.reduce((n, r) => n + (r.bold || r.code || r.mark || r.tone ? r.text.length : 0), 0) / total : 0;
 }
 
 const fontOf = (slot, size) => ({ family: slot.family, weight: slot.weight, size, letterSpacing: slot.letterSpacing, upper: slot.upper });
@@ -332,6 +339,7 @@ export function fitText(text, slot, path) {
     fits: r.fits,
     min: slot.min,
     markupErrors: errors,
+    styled: styledOf(runs),
     severity: slot.severity,
   });
   if (slot.oneLineMin !== undefined) {
@@ -355,7 +363,7 @@ export function fitTextAt(text, slot, path, size) {
 
 /** A whole block that must fit a space, such as a table's rows in the frame, as a report entry. */
 export function fitBlock(path, slot, fits, fix) {
-  return { fit: true, path, text: '', slot, fix, size: 0, font: { family: 'sans', weight: 400, size: 0 }, lines: [], widths: [], width: 0, height: 0, lineHeight: 0, fits, min: 0, markupErrors: [] };
+  return { fit: true, path, text: '', slot, fix, size: 0, font: { family: 'sans', weight: 400, size: 0 }, lines: [], widths: [], width: 0, height: 0, lineHeight: 0, fits, min: 0, markupErrors: [], styled: 0 };
 }
 
 /**
@@ -391,6 +399,7 @@ export function fitLines(lines, slot, height, path) {
     fits,
     min: slot.min,
     markupErrors: [],
+    styled: 0,
     severity: slot.severity,
   };
 }

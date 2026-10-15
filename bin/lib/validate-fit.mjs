@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { hasMarkup, styledShare } from '../../shared/markup.mjs';
+import { hasMarkup } from '../../shared/markup.mjs';
 import { wordCount } from '../../shared/timing.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 
@@ -63,7 +63,7 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
         const message = fit.text ? `${at}: ${quote(fit.text)} does not fit its ${fit.slot}, even at ${fit.min}px; ${fit.fix}` : `${at}: the ${fit.slot} does not fit the screen at the smallest readable size; ${fit.fix}`;
         (fit.severity === 'warning' ? warnings : errors).push(message);
       }
-      if (fit.text && styledShare(fit.text) > STYLED_SHARE_MAX && wordCount(fit.text) >= STYLED_MIN_WORDS && !seen.has(`${fit.path}\nstyled`)) {
+      if (fit.text && fit.styled > STYLED_SHARE_MAX && wordCount(fit.text) >= STYLED_MIN_WORDS && !seen.has(`${fit.path}\nstyled`)) {
         seen.add(`${fit.path}\nstyled`);
         warnings.push(`${at}: most of ${quote(fit.text)} is styled; mark only the word or value the sentence is about, so it stands out`);
       }
