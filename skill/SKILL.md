@@ -35,7 +35,7 @@ Then check it.
 {{MR_CAST}}/bin/mr-cast validate
 ```
 
-Fix every error and rerun until it prints `✓ storyboard ok`. Treat warnings as advice.
+Fix every error and rerun until it prints `✓ storyboard ok`. Resolve every coverage warning, the ones saying a hunk is not shown or tests are not walked through, by adding a code scene for the hunk or a `skipped` entry with a reason. Treat other warnings as advice.
 
 ### Writing a good storyboard
 
@@ -47,7 +47,8 @@ The viewer is a reviewer who has not read the diff. A good walkthrough lets them
 - Show one idea per scene. A `code` scene covers one change, and the narration explains exactly the lines highlighted. When a hunk mixes several changes, split them into separate scenes or leave out the minor ones. The `calloutText` must be about the code on screen, never a concern from elsewhere.
 - Say behavior outright in the narration, with real values: "after twenty requests in a minute the limiter answers too many requests", "a failed delivery retries with doubling delays and is marked dead after eight attempts". The reviewer should never have to read the code to learn what happens. When a scene explains a behavior without showing its code, name the file and function it lives in.
 - Explain each rule once, completely, in one place. If a behavior spans several files, such as when something retries and when it gives up, explain it fully in one `flow`, `state` or `sequence` scene instead of in pieces across code scenes.
-- Pick the hunks that carry the change for `code` scenes. Skip formatting, renames, and boilerplate. Reference hunks by `hunkId` and never paste code into the storyboard.
+- Show every substantive hunk in a `code` scene. Skip only formatting, renames, generated files, and boilerplate, and record each skipped hunk in `skipped` with a short reason. Reference hunks by `hunkId` and never paste code into the storyboard.
+- When the diff adds or changes tests, walk through them in one or more `code` scenes after the code they test. Narrate which scenarios and edge cases each test proves, naming the test in plain words. Then say which important cases have no test. Focus on test names and key assertions, not setup boilerplate.
 - Set `focusLinesAfter` from the line numbers in the index, as numbers or `"start-end"` strings, on the lines the narration talks about. Use `focusLinesBefore` for removed code. Always set a focus on hunks with more than 12 changed lines.
 - Highlight at most 8 lines per range and 3 ranges per scene. The ranges play top to bottom, one at a time, so narrate them in that order.
 - Add a `flow` scene when the change alters how a request or data moves. Each step names a real actor (function, service, component) and shows the payload as it looks after that step. Use 3 to 7 steps.
@@ -58,7 +59,7 @@ The viewer is a reviewer who has not read the diff. A good walkthrough lets them
 - Write narration to be spoken aloud, 15 to 50 words per scene. A text-to-speech voice reads it, so use short sentences and plain words.
 - Spell out symbols and code the way a person would say them: "the create order function", not `createOrder()`, and "four twenty-nine" or "too many requests", not `429`. Avoid markdown, slashes, arrows, and abbreviations the voice could misread.
 - Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds.
-- Use as few scenes as the plan needs: often 4 to 6 for a small change and up to 10 for a large one. Shorter is better when nothing is lost. Give each scene a short `chapter` title.
+- Let the change set the length. Cover every hunk a reviewer needs to judge the change, and cut only what is genuinely trivial. A small change may need 4 to 6 scenes. A large one can run several minutes. List each deliberate omission in `skipped` with its reason. Give each scene a short `chapter` title.
 
 ## 3. Show it
 
