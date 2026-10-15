@@ -69,10 +69,11 @@ function cardWidth(entities: readonly ErEntity[]): number {
   return Math.round(Math.min(480, Math.max(340, widest)));
 }
 
-function gridShape(n: number): { rows: number; cols: number } {
-  if (n <= 3) return { rows: 1, cols: Math.max(1, n) };
+/** Grid shapes to search, preferred first. Three cards also try 2×2, so a triangle of relations need not detour around the middle card. */
+function gridShapes(n: number): { rows: number; cols: number }[] {
+  if (n <= 3) return [{ rows: 1, cols: Math.max(1, n) }, ...(n === 3 ? [{ rows: 2, cols: 2 }] : [])];
   const cols = Math.ceil(n / 2);
-  return { rows: Math.ceil(n / cols), cols };
+  return [{ rows: Math.ceil(n / cols), cols }];
 }
 
 type Cell = { r: number; c: number };
@@ -112,41 +113,48 @@ function placementCost(cells: readonly Cell[], pairs: readonly [number, number][
   return cost;
 }
 
-/** Exhaustive search over slot assignments; the first minimum in lexicographic order wins, so ties keep input order. */
+/**
+ * Exhaustive search over slot assignments in each grid shape; the first minimum wins, so ties keep
+ * the preferred shape and input order.
+ */
 function placeInGrid(entities: readonly ErEntity[], relations: readonly ErRelation[]): Cell[] {
   const n = entities.length;
-  const { rows, cols } = gridShape(n);
-  const slots = Array.from({ length: rows * cols }, (_, i) => ({ r: Math.floor(i / cols), c: i % cols }));
   const index = new Map(entities.map((e, i) => [e.id, i]));
   const pairs = relations
     .map((r) => [index.get(r.from), index.get(r.to)] as const)
     .filter((p): p is [number, number] => p[0] !== undefined && p[1] !== undefined && p[0] !== p[1]);
   const isolated = entities.map((_, i) => !pairs.some(([a, b]) => a === i || b === i));
-  if (n > MAX_SEARCH) return slots.slice(0, n);
+  const shapes = gridShapes(n).map(({ rows, cols }) => ({
+    cols,
+    slots: Array.from({ length: rows * cols }, (_, i) => ({ r: Math.floor(i / cols), c: i % cols })),
+  }));
+  if (n > MAX_SEARCH) return shapes[0]!.slots.slice(0, n);
 
-  let best: Cell[] = slots.slice(0, n);
-  let bestCost = placementCost(best, pairs, isolated, cols);
-  const current: Cell[] = [];
-  const used = new Array<boolean>(slots.length).fill(false);
-  const search = () => {
-    if (current.length === n) {
-      const cost = placementCost(current, pairs, isolated, cols);
-      if (cost < bestCost - 1e-9) {
-        bestCost = cost;
-        best = [...current];
+  let best: Cell[] = shapes[0]!.slots.slice(0, n);
+  let bestCost = placementCost(best, pairs, isolated, shapes[0]!.cols);
+  for (const { cols, slots } of shapes) {
+    const current: Cell[] = [];
+    const used = new Array<boolean>(slots.length).fill(false);
+    const search = () => {
+      if (current.length === n) {
+        const cost = placementCost(current, pairs, isolated, cols);
+        if (cost < bestCost - 1e-9) {
+          bestCost = cost;
+          best = [...current];
+        }
+        return;
       }
-      return;
-    }
-    slots.forEach((slot, s) => {
-      if (used[s]) return;
-      used[s] = true;
-      current.push(slot);
-      search();
-      current.pop();
-      used[s] = false;
-    });
-  };
-  search();
+      slots.forEach((slot, s) => {
+        if (used[s]) return;
+        used[s] = true;
+        current.push(slot);
+        search();
+        current.pop();
+        used[s] = false;
+      });
+    };
+    search();
+  }
   return best;
 }
 
