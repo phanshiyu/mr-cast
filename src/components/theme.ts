@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import type { Risk, Scene } from '../types';
 
 export const colors = {
@@ -50,33 +49,12 @@ export const defaultChapter: Record<Scene['type'], string> = {
   files: 'Files',
 };
 
-export const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };
-
-export function clampLines(lines: number): CSSProperties {
-  return { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical', overflow: 'hidden' };
-}
-
-/** Steps a font size down as text grows so long content stays inside its box. */
-export function fitFontSize(text: string, base: number, comfortableChars: number, min = base * 0.55): number {
-  if (text.length <= comfortableChars) return base;
-  return Math.max(min, Math.round(base * Math.sqrt(comfortableChars / text.length)));
-}
-
 export const CODE_TAB_SIZE = 2;
-/** Advance width of `fonts.mono` per em; Menlo measures 0.602 in the render browser, rounded up for safety. */
-const MONO_ADVANCE = 0.61;
-
 /** Display width of a code line in character cells, with tabs expanded to CODE_TAB_SIZE stops. */
 export function codeColumns(text: string): number {
   let col = 0;
   for (const ch of text) col = ch === '\t' ? col + CODE_TAB_SIZE - (col % CODE_TAB_SIZE) : col + 1;
   return col;
-}
-
-/** Largest whole-pixel font in [min, max] that fits `chars` monospace cells into `widthPx`. */
-export function fitCodeFontSize(chars: number, widthPx: number, min: number, max: number): number {
-  if (chars === 0) return max;
-  return Math.max(min, Math.min(max, Math.floor(widthPx / (chars * MONO_ADVANCE))));
 }
 
 export const clamp ={ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
