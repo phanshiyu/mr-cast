@@ -199,7 +199,31 @@ export interface MermaidScene extends SceneBase {
   code: string;
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene;
+export type TestStatus = 'added' | 'modified' | 'removed' | 'existing';
+
+export interface TestCase {
+  /** The test's name as written in code. */
+  name: string;
+  /** The behavior it proves, in plain words. */
+  proves: string;
+  /** Defaults to "added". Use "existing" for an unchanged test that already covers the changed code. */
+  status?: TestStatus;
+  /** Hunk with this test's code, if the diff has it. Linking a test hunk here counts it as shown. */
+  hunkId?: string;
+}
+
+export interface TestsScene extends SceneBase {
+  type: 'tests';
+  title?: string;
+  /** The code under test, e.g. "listEvents in src/lib/pagination.ts". */
+  subject?: string;
+  /** Every relevant test, in the order the narration names them. Empty when the change has no tests. */
+  cases: TestCase[];
+  /** Important behaviors this change introduces that no test covers. Empty means you checked and found none. */
+  gaps: string[];
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene;
 
 export interface Storyboard {
   title: string;

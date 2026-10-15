@@ -68,8 +68,9 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 | `er` | An entity-relationship diagram with crow's-foot relations. Added, removed and modified tables, fields and relations are marked. |
 | `state` | A state machine with an entry dot, final states, and labelled transitions. Added, removed and modified states and transitions are marked. |
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph, pie, ...) drawn as a static themed SVG. A fallback for diagrams the other scenes don't cover. |
+| `tests` | A test matrix: each test case with its status (added, changed, removed, existing) and the behavior it proves, then a "Not tested" panel listing important behaviors no test covers. With no cases it states that the change has no tests. |
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/gallery/` shows the `state` and `mermaid` scenes.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/gallery/` shows the `state`, `mermaid` and `tests` scenes.
 
 ## Layout
 

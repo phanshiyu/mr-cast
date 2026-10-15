@@ -10,8 +10,9 @@ import { MermaidDiagram } from './components/MermaidDiagram';
 import type { SceneProps } from './components/sceneProps';
 import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
+import { TestMatrix } from './components/TestMatrix';
 import { colors, fonts } from './components/theme';
-import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, WalkthroughProps } from './types';
+import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TestsScene, WalkthroughProps } from './types';
 import { VOICE_LEAD_FRAMES, timeline } from './utils/timing';
 
 interface SceneByType {
@@ -23,6 +24,7 @@ interface SceneByType {
   er: ErScene;
   state: StateScene;
   mermaid: MermaidScene;
+  tests: TestsScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -34,6 +36,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   er: ErDiagram,
   state: StateDiagram,
   mermaid: MermaidDiagram,
+  tests: TestMatrix,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

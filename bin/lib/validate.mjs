@@ -7,10 +7,13 @@ import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid'];
+const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CHANGES = ['added', 'removed', 'modified'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
+const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
+const TEST_CASES_MAX = 10;
+const TEST_GAPS_MAX = 4;
 
 const MAX_LINE_RANGE = 10000;
 // A code scene walks its focus ranges top to bottom; long or many ranges turn it back into a wall of code.
@@ -84,14 +87,20 @@ const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h
  * Returns the counts behind validate's summary line.
  */
 function checkCoverage(sb, hunks, errors, warnings) {
-  const shown = new Set(sb.scenes.filter((s) => s?.type === 'code' && Object.hasOwn(hunks, s.hunkId)).map((s) => s.hunkId));
+  // A tests scene that links a case to its hunk walks through that hunk as much as a code scene does.
+  const shownIds = sb.scenes.flatMap((s) => {
+    if (s?.type === 'code') return [s.hunkId];
+    if (s?.type === 'tests' && Array.isArray(s.cases)) return s.cases.map((c) => c?.hunkId);
+    return [];
+  });
+  const shown = new Set(shownIds.filter((id) => typeof id === 'string' && Object.hasOwn(hunks, id)));
   const skipped = new Set();
   if (sb.skipped !== undefined && !Array.isArray(sb.skipped)) errors.push('skipped: must be an array of { hunkId, reason }');
   else (sb.skipped ?? []).forEach((entry, i) => {
     const p = `skipped[${i}]`;
     if (!isStr(entry?.hunkId)) errors.push(`${p}.hunkId: required string`);
     else if (!Object.hasOwn(hunks, entry.hunkId)) errors.push(`${p}.hunkId: "${entry.hunkId}" not found in hunks.json`);
-    else if (shown.has(entry.hunkId)) warnings.push(`${p}: ${entry.hunkId} is also shown in a code scene; remove it from skipped or drop the scene`);
+    else if (shown.has(entry.hunkId)) warnings.push(`${p}: ${entry.hunkId} is also shown in a scene; remove it from skipped or drop the scene`);
     else skipped.add(entry.hunkId);
     if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);
   });
@@ -104,7 +113,7 @@ function checkCoverage(sb, hunks, errors, warnings) {
       if (shown.has(h.id)) tests.shown++;
     }
     if (shown.has(h.id) || skipped.has(h.id)) continue;
-    if (isTest) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}): changed tests are not walked through; show the test cases in a code scene or list ${h.id} in skipped with a reason`);
+    if (isTest) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}): changed tests are not walked through; link it from a tests scene case (hunkId), show it in a code scene, or list ${h.id} in skipped with a reason`);
     else if (h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}) is not shown; add a code scene or list it in skipped with a reason`);
   }
   return { shown: shown.size, skipped: skipped.size, total: Object.keys(hunks).length, tests };
@@ -290,6 +299,29 @@ export async function validateStoryboard(sb, hunks) {
           if (t?.label !== undefined && typeof t.label !== 'string') errors.push(`${q}.label: must be a string`);
           if (t?.change !== undefined && !CHANGES.includes(t.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
+        break;
+      }
+
+      case 'tests': {
+        for (const k of ['title', 'subject']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
+        const casesOk = Array.isArray(s.cases);
+        const gapsOk = Array.isArray(s.gaps) && s.gaps.every(isStr);
+        if (!casesOk) errors.push(`${p}.cases: required array of { name, proves } (use [] when the change has no tests)`);
+        else {
+          s.cases.forEach((c, j) => {
+            const q = `${p}.cases[${j}]`;
+            if (!isStr(c?.name)) errors.push(`${q}.name: required string, the test's name as written in code`);
+            if (!isStr(c?.proves)) errors.push(`${q}.proves: required string, the behavior the test proves in plain words`);
+            if (c?.status !== undefined && !TEST_STATUSES.includes(c.status)) errors.push(`${q}.status: must be one of ${TEST_STATUSES.join(', ')}`);
+            if (c?.hunkId !== undefined && !(isStr(c.hunkId) && hunks && Object.hasOwn(hunks, c.hunkId))) errors.push(`${q}.hunkId: "${c.hunkId}" not found in hunks.json`);
+          });
+          if (s.cases.length > TEST_CASES_MAX) warnings.push(`${p}.cases: ${s.cases.length} cases; more than ${TEST_CASES_MAX} get cramped, so split them into two tests scenes by subject`);
+        }
+        if (!gapsOk) errors.push(`${p}.gaps: required array of strings, the important behaviors no test covers ([] if you checked and found none)`);
+        else if (s.gaps.length > TEST_GAPS_MAX) warnings.push(`${p}.gaps: ${s.gaps.length} gaps; keep the ${TEST_GAPS_MAX} that matter most to a reviewer`);
+        if (casesOk && gapsOk && s.cases.length === 0 && s.gaps.length === 0) {
+          errors.push(`${p}: no cases and no gaps; list the tests that cover this change, or if it has none, list in gaps the behaviors it introduces that nothing tests`);
+        }
         break;
       }
 
