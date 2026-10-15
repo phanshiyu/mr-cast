@@ -11,7 +11,7 @@ In any git repository, ask Claude to "create a video from this merge request", o
 Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. The `mr-cast` launcher finds a suitable Node through PATH, nvm, or Homebrew.
 
 ```bash
-npm install -g mr-cast
+npm install -g @shiyuphan/mr-cast
 mr-cast install-skill   # writes ~/.claude/skills/mr-video/SKILL.md and ~/.claude/commands/mr-cast.md
 ```
 
