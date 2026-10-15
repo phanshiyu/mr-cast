@@ -1,14 +1,28 @@
 // Installs the mr-cast-review and mr-cast-explain skills and their render commands into the Claude
-// config dir, pointing at this install, and removes what mr-cast 0.5 and earlier installed under older
-// names. The storyboard schema is copied from src/types.ts so the skills cannot drift from the player.
+// config dir, pointing at this install, and records them in a manifest so the next install or
+// uninstall-skill removes whatever this version wrote that the next one no longer does. The storyboard
+// schema is copied from src/types.ts so the skills cannot drift from the player.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-/** What earlier versions installed, relative to the Claude config dir. */
-const LEGACY = ['skills/mr-video', 'skills/explain-in-animation', 'commands/mr-cast.md', 'commands/mr-render.md', 'commands/explain-in-animation.md'];
-/** Text every legacy file contained: the CLI path (skills) or the legacy skill path (commands). */
-const LEGACY_MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md'];
+const MANIFEST = '.mr-cast-install.json';
+/** What versions before the manifest installed, relative to the Claude config dir. */
+const LEGACY = [
+  'skills/mr-video/SKILL.md',
+  'skills/explain-in-animation/SKILL.md',
+  'commands/mr-cast.md',
+  'commands/mr-render.md',
+  'commands/explain-in-animation.md',
+  'skills/mr-cast-review/SKILL.md',
+  'skills/mr-cast-explain/SKILL.md',
+  'commands/mr-cast-render.md',
+  'commands/mr-cast-explain-render.md',
+];
+/** Text every file mr-cast writes contains: the CLI path (skills) or the path of its skill (commands). */
+const MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md', '/skills/mr-cast-'];
+
+const defaultClaudeDir = () => process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
 
 function storyboardTypes(root) {
   const types = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
@@ -29,36 +43,56 @@ Follow the skill at ${skillPath}. Read it in full first. ${body}
 const fromMrCast = (file) => {
   try {
     const text = fs.readFileSync(file, 'utf8');
-    return LEGACY_MARKERS.some((m) => text.includes(m));
+    return MARKERS.some((m) => text.includes(m));
   } catch {
     return false;
   }
 };
 
+/** What earlier installs wrote: the manifest's files plus the pre-manifest names. */
+function previousFiles(claudeDir) {
+  const manifest = path.join(claudeDir, MANIFEST);
+  let files = [];
+  try {
+    files = JSON.parse(fs.readFileSync(manifest, 'utf8')).files ?? [];
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw new Error(`${manifest}: ${err.message}`);
+  }
+  return [...new Set([...files, ...LEGACY])];
+}
+
 /**
- * Deletes each legacy file or skill directory whose content shows mr-cast wrote it. A skill directory
- * holding anything besides SKILL.md keeps the extra files. Returns { removed, kept } paths.
+ * Deletes each file an earlier install wrote that is not in `keep` and whose content shows mr-cast wrote
+ * it, then its skill directory once empty. Returns { removed, kept } absolute paths.
  */
-function removeLegacy(claudeDir) {
+function removeStale(claudeDir, keep) {
   const removed = [];
   const kept = [];
-  for (const rel of LEGACY) {
-    const target = path.join(claudeDir, rel);
-    if (!fs.existsSync(target)) continue;
-    const isDir = fs.statSync(target).isDirectory();
-    const file = isDir ? path.join(target, 'SKILL.md') : target;
+  const skills = path.join(claudeDir, 'skills');
+  for (const rel of previousFiles(claudeDir)) {
+    const file = path.resolve(claudeDir, rel);
+    if (keep.has(rel) || !file.startsWith(path.resolve(claudeDir) + path.sep) || !fs.existsSync(file)) continue;
     if (!fromMrCast(file)) {
-      kept.push(target);
+      kept.push(file);
       continue;
     }
     fs.rmSync(file);
     removed.push(file);
-    if (isDir && fs.readdirSync(target).length === 0) fs.rmdirSync(target);
+    const dir = path.dirname(file);
+    if (path.dirname(dir) === skills && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
   }
   return { removed, kept };
 }
 
-export function installSkill(root, claudeDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude')) {
+function writeManifest(claudeDir, root, files) {
+  const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const target = path.join(claudeDir, MANIFEST);
+  const tmp = `${target}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, `${JSON.stringify({ version, files }, null, 2)}\n`);
+  fs.renameSync(tmp, target);
+}
+
+export function installSkill(root, claudeDir = defaultClaudeDir()) {
   const schema = storyboardTypes(root);
   const fill = (template) => fs
     .readFileSync(template, 'utf8')
@@ -92,10 +126,23 @@ export function installSkill(root, claudeDir = process.env.CLAUDE_CONFIG_DIR ?? 
       }),
     ],
   ];
-  const legacy = removeLegacy(claudeDir);
+  const files = targets.map(([file]) => path.relative(claudeDir, file).split(path.sep).join('/'));
+  const stale = removeStale(claudeDir, new Set(files));
   for (const [file, content] of targets) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, content);
   }
-  return { written: targets.map(([file]) => file), ...legacy };
+  writeManifest(claudeDir, root, files);
+  return { written: targets.map(([file]) => file), ...stale };
+}
+
+/** Removes every file mr-cast installed, then the manifest. Returns { removed, kept } absolute paths. */
+export function uninstallSkill(claudeDir = defaultClaudeDir()) {
+  const result = removeStale(claudeDir, new Set());
+  const manifest = path.join(claudeDir, MANIFEST);
+  if (fs.existsSync(manifest)) {
+    fs.rmSync(manifest);
+    result.removed.push(manifest);
+  }
+  return result;
 }

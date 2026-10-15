@@ -28,7 +28,7 @@ mr-cast install-skill   # installs the mr-cast-review and mr-cast-explain skills
 mr-cast --version       # prints the mr-cast and Node versions
 ```
 
-The skills point at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it.
+The skills point at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it. Each install records what it wrote in `~/.claude/.mr-cast-install.json` and deletes anything an earlier install wrote that this version no longer does. `mr-cast uninstall-skill` removes every skill and command mr-cast installed, and the record. Both print each file they remove and keep any file whose content mr-cast did not write.
 
 From a clone instead:
 

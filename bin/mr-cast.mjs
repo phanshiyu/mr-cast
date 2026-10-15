@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 import { buildHunkIndex, parseUnifiedDiff } from './lib/diff.mjs';
 import { UserError } from './lib/errors.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
-import { installSkill } from './lib/install-skill.mjs';
+import { installSkill, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
@@ -55,7 +55,8 @@ const USAGE = `usage: mr-cast <command> [options]
 
   install-skill   install the mr-cast-review and mr-cast-explain Claude Code skills and the
                   /mr-cast-render and /mr-cast-explain-render commands into ~/.claude, and remove
-                  the mr-video and explain-in-animation skills and commands earlier versions installed
+                  the skills and commands earlier versions installed that this one no longer does
+  uninstall-skill remove every skill and command mr-cast installed into ~/.claude
   version         print the mr-cast and Node versions (also --version, -v)
   help            show this message`;
 
@@ -356,8 +357,16 @@ function installSkillCommand(argv) {
   parseArgs({ args: argv, options: {} });
   const { written, removed, kept } = installSkill(ROOT);
   for (const file of written) console.log(`wrote ${file}`);
-  for (const file of removed) console.log(`removed ${file} (installed by an earlier mr-cast under an old name)`);
-  for (const file of kept) console.error(`note: kept ${file}; it has an old mr-cast name but mr-cast did not write it`);
+  for (const file of removed) console.log(`removed ${file} (installed by an earlier mr-cast, no longer used)`);
+  for (const file of kept) console.error(`note: kept ${file}; an earlier mr-cast installed this path but its content is not mr-cast's`);
+}
+
+function uninstallSkillCommand(argv) {
+  parseArgs({ args: argv, options: {} });
+  const { removed, kept } = uninstallSkill();
+  for (const file of removed) console.log(`removed ${file}`);
+  for (const file of kept) console.error(`note: kept ${file}; mr-cast installed this path but its content is not mr-cast's`);
+  if (removed.length === 0) console.log('nothing to remove; no mr-cast skills are installed');
 }
 
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
@@ -430,7 +439,7 @@ async function explain([sub, ...rest]) {
   await run(rest, explainRun);
 }
 
-const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand };
+const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand };
 
 function version() {
   const { version: own } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
