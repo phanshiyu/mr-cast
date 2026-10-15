@@ -36,8 +36,7 @@
           "id": "redis",
           "label": "Redis",
           "icon": "database",
-          "caption": "datastore",
-          "change": "modified"
+          "caption": "datastore"
         },
         {
           "id": "orders",
@@ -63,7 +62,7 @@
           "label": "Event queue",
           "icon": "layers",
           "caption": "queue",
-          "change": "modified"
+          "change": "added"
         }
       ],
       "edges": [
@@ -75,7 +74,8 @@
         {
           "from": "api",
           "to": "redis",
-          "label": "INCR rl:ip"
+          "label": "INCR rl:ip",
+          "change": "added"
         },
         {
           "from": "api",
@@ -84,7 +84,8 @@
         {
           "from": "orders",
           "to": "pricing",
-          "label": "priceFor"
+          "label": "priceFor",
+          "change": "added"
         },
         {
           "from": "orders",
@@ -94,7 +95,8 @@
         {
           "from": "api",
           "to": "events",
-          "label": "order.created"
+          "label": "order.created",
+          "change": "added"
         }
       ]
     },
@@ -121,8 +123,7 @@
           "id": "redis",
           "label": "Redis",
           "icon": "database",
-          "caption": "datastore",
-          "change": "modified"
+          "caption": "datastore"
         },
         {
           "id": "orders",
@@ -136,7 +137,7 @@
           "label": "Event queue",
           "icon": "layers",
           "caption": "queue",
-          "change": "modified"
+          "change": "added"
         }
       ],
       "messages": [
@@ -149,14 +150,14 @@
           "from": "api",
           "to": "redis",
           "label": "INCR rl:ip:window",
-          "modified": true
+          "change": "added"
         },
         {
           "from": "redis",
           "to": "api",
           "label": "count",
           "kind": "return",
-          "modified": true
+          "change": "added"
         },
         {
           "from": "api",
@@ -167,8 +168,8 @@
           "from": "orders",
           "to": "orders",
           "label": "price items",
-          "modified": true,
-          "note": "priceFor per SKU, in parallel"
+          "note": "priceFor per SKU, in parallel",
+          "change": "added"
         },
         {
           "from": "orders",
@@ -181,7 +182,7 @@
           "to": "queue",
           "label": "order.created",
           "kind": "async",
-          "modified": true
+          "change": "added"
         },
         {
           "from": "api",

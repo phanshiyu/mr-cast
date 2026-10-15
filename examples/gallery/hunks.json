@@ -11,8 +11,8 @@
     "endLine": 11,
     "additions": 9,
     "deletions": 4,
-    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4",
-    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9",
+    "beforeCode": "  // context 1\n  // context 2\n  paid: { ship: 'shipped', cancel: 'cancelled' },\n  delivered: { refund: 'refunded' },\n  refunded: {},\nexport const INITIAL_STATUS = 'paid';",
+    "afterCode": "  // context 1\n  // context 2\n  pending: {\n    pay: 'paid',\n    timeout: 'cancelled',\n    retryPayment: 'pending',\n  },\n  paid: { ship: 'shipped', cancel: 'cancelled' },\n  delivered: {},\nexport const INITIAL_STATUS = 'pending';\nexport const PAYMENT_TIMEOUT = config.PAYMENT_TIMEOUT;",
     "lines": [
       {
         "type": "context",
@@ -30,79 +30,79 @@
         "type": "del",
         "oldLine": 3,
         "newLine": null,
-        "text": "  removed line 1"
+        "text": "  paid: { ship: 'shipped', cancel: 'cancelled' },"
       },
       {
         "type": "del",
         "oldLine": 4,
         "newLine": null,
-        "text": "  removed line 2"
+        "text": "  delivered: { refund: 'refunded' },"
       },
       {
         "type": "del",
         "oldLine": 5,
         "newLine": null,
-        "text": "  removed line 3"
+        "text": "  refunded: {},"
       },
       {
         "type": "del",
         "oldLine": 6,
         "newLine": null,
-        "text": "  removed line 4"
+        "text": "export const INITIAL_STATUS = 'paid';"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 3,
-        "text": "  added line 1"
+        "text": "  pending: {"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 4,
-        "text": "  added line 2"
+        "text": "    pay: 'paid',"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 5,
-        "text": "  added line 3"
+        "text": "    timeout: 'cancelled',"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 6,
-        "text": "  added line 4"
+        "text": "    retryPayment: 'pending',"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 7,
-        "text": "  added line 5"
+        "text": "  },"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 8,
-        "text": "  added line 6"
+        "text": "  paid: { ship: 'shipped', cancel: 'cancelled' },"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 9,
-        "text": "  added line 7"
+        "text": "  delivered: {},"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 10,
-        "text": "  added line 8"
+        "text": "export const INITIAL_STATUS = 'pending';"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 11,
-        "text": "  added line 9"
+        "text": "export const PAYMENT_TIMEOUT = config.PAYMENT_TIMEOUT;"
       }
     ]
   },
@@ -391,44 +391,44 @@
     "endLine": 0,
     "additions": 0,
     "deletions": 12,
-    "beforeCode": "  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4\n  removed line 5\n  removed line 6\n  removed line 7\n  removed line 8\n  removed line 9\n  removed line 10\n  removed line 11\n  removed line 12",
+    "beforeCode": "import { config } from '../config';\n\nconst REFUND_WINDOW_DAYS = config.REFUND_WINDOW_DAYS;\n\nexport function canRefund(order: Order, now: Date) {\n  return order.status === 'delivered' && daysSince(order.deliveredAt, now) <= REFUND_WINDOW_DAYS;\n  removed line 7\n  removed line 8\n  removed line 9\n  removed line 10\n  removed line 11\n  removed line 12",
     "afterCode": "",
     "lines": [
       {
         "type": "del",
         "oldLine": 1,
         "newLine": null,
-        "text": "  removed line 1"
+        "text": "import { config } from '../config';"
       },
       {
         "type": "del",
         "oldLine": 2,
         "newLine": null,
-        "text": "  removed line 2"
+        "text": ""
       },
       {
         "type": "del",
         "oldLine": 3,
         "newLine": null,
-        "text": "  removed line 3"
+        "text": "const REFUND_WINDOW_DAYS = config.REFUND_WINDOW_DAYS;"
       },
       {
         "type": "del",
         "oldLine": 4,
         "newLine": null,
-        "text": "  removed line 4"
+        "text": ""
       },
       {
         "type": "del",
         "oldLine": 5,
         "newLine": null,
-        "text": "  removed line 5"
+        "text": "export function canRefund(order: Order, now: Date) {"
       },
       {
         "type": "del",
         "oldLine": 6,
         "newLine": null,
-        "text": "  removed line 6"
+        "text": "  return order.status === 'delivered' && daysSince(order.deliveredAt, now) <= REFUND_WINDOW_DAYS;"
       },
       {
         "type": "del",
@@ -1228,8 +1228,8 @@
     "endLine": 6,
     "additions": 4,
     "deletions": 2,
-    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2",
-    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4",
+    "beforeCode": "  // context 1\n  // context 2\ninitial_status: paid\nmax_payment_retries: 0",
+    "afterCode": "  // context 1\n  // context 2\ninitial_status: pending\nmax_payment_retries: 3\npayment_timeout: 24h\ntimeout_sweep_interval: 5m",
     "lines": [
       {
         "type": "context",
@@ -1247,37 +1247,37 @@
         "type": "del",
         "oldLine": 3,
         "newLine": null,
-        "text": "  removed line 1"
+        "text": "initial_status: paid"
       },
       {
         "type": "del",
         "oldLine": 4,
         "newLine": null,
-        "text": "  removed line 2"
+        "text": "max_payment_retries: 0"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 3,
-        "text": "  added line 1"
+        "text": "initial_status: pending"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 4,
-        "text": "  added line 2"
+        "text": "max_payment_retries: 3"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 5,
-        "text": "  added line 3"
+        "text": "payment_timeout: 24h"
       },
       {
         "type": "add",
         "oldLine": null,
         "newLine": 6,
-        "text": "  added line 4"
+        "text": "timeout_sweep_interval: 5m"
       }
     ]
   },

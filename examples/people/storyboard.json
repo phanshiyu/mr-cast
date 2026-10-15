@@ -183,7 +183,7 @@
           "to": "customer",
           "label": "new invoice and apology",
           "kind": "async",
-          "modified": true
+          "highlight": true
         }
       ],
       "narration": "Follow one ticket through the people who touch it.",
