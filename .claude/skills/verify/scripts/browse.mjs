@@ -7,6 +7,11 @@
 //   sleep:<ms>     wait
 //   run:<command>  run a shell command (sh -c) and wait for it, e.g. to edit storyboard.json
 //   shot:<name>    save <outdir>/<name>.png (1920x1080) and <outdir>/<name>.txt (the page's visible text)
+//   textscan:<s>   for <s> seconds, sample the page every 200 ms and save <outdir>/textscan.json: every line of
+//                  page text seen, and for each fitted line (a [data-fit-w] span) its drawn width against the
+//                  width the text fit measured, and every text the video clips: an element in the Remotion player
+//                  with its own text that ends in a CSS ellipsis, clamps its lines, or hides what overflows it.
+//                  Let the walkthrough play while it runs.
 // Console errors and uncaught exceptions go to <outdir>/console.txt. When a step fails, the page as it
 // was goes to <outdir>/failed.png and failed.txt, and the exit code is 1.
 import { execSync, spawn } from 'node:child_process';
@@ -110,6 +115,33 @@ const STEPS = {
   sleep: (ms) => sleep(Number(ms)),
   run(command) {
     execSync(command, { stdio: 'inherit', shell: '/bin/sh' });
+  },
+  async textscan(seconds) {
+    const lines = new Set();
+    const fits = new Map();
+    const clipped = new Set();
+    const end = Date.now() + Number(seconds) * 1000;
+    while (Date.now() < end) {
+      const sample = await evaluate(`(() => ({
+        text: document.body ? document.body.innerText : '',
+        fits: [...document.querySelectorAll('[data-fit-w]')].map((el) => [el.textContent, Number(el.dataset.fitW), el.offsetWidth]),
+        clipped: [...document.querySelectorAll('.__remotion-player *')].filter((el) => {
+          if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
+          const cs = getComputedStyle(el);
+          const hides = ['hidden', 'clip'].includes(cs.overflowX) || ['hidden', 'clip'].includes(cs.overflowY);
+          return cs.textOverflow === 'ellipsis' || (cs.webkitLineClamp && cs.webkitLineClamp !== 'none') || (hides && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1));
+        }).map((el) => el.textContent.trim()),
+      }))()`);
+      for (const line of sample.text.split('\n')) if (line.trim()) lines.add(line.trim());
+      for (const text of sample.clipped) clipped.add(text);
+      for (const [text, measured, drawn] of sample.fits) {
+        const key = `${text}\u0000${measured}`;
+        if (!fits.has(key) || fits.get(key).drawn < drawn) fits.set(key, { text, measured, drawn });
+      }
+      await sleep(200);
+    }
+    fs.writeFileSync(path.join(outDir, 'textscan.json'), JSON.stringify({ lines: [...lines], fits: [...fits.values()], clipped: [...clipped] }, null, 1));
+    console.log(path.join(outDir, 'textscan.json'));
   },
   async shot(name) {
     const { data } = await cdp('Page.captureScreenshot', { format: 'png' });

@@ -1,0 +1,459 @@
+{
+  "title": "Stress: long text in every scene type, rendered without cutting a word",
+  "subtitle": "every label here is longer than 0.13 could draw whole",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "A deliberately long chapter label for the overview",
+      "narration": "Every text on these screens is long on purpose.",
+      "summary": "Rate limiting for the orders API, real prices from the pricing service, and an order created event published after every save, all explained with long labels.",
+      "risk": "medium",
+      "bullets": [
+        "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end",
+        "The event is published after the insert, so a queue outage fails a request whose order was already saved",
+        "No tests cover the limiter, the price lookups or the published event, so all three ship unverified",
+        "**unclosed bold, and [a tone]{purple} that does not exist"
+      ]
+    },
+    {
+      "type": "arch",
+      "chapter": "A chapter label so long that even at the smallest size it runs past the header of the scene and keeps going",
+      "narration": "Long card titles, captions, edge labels and group names.",
+      "nodes": [
+        {
+          "id": "client",
+          "label": "Mobile and web storefront clients",
+          "icon": "monitor",
+          "caption": "every storefront app",
+          "group": "Customers and their devices"
+        },
+        {
+          "id": "api",
+          "label": "Express orders API gateway that also does pricing, limiting and publishing",
+          "icon": "server",
+          "caption": "limited per client IP",
+          "change": "modified"
+        },
+        {
+          "id": "redis",
+          "label": "Redis rate limit counters",
+          "icon": "database",
+          "caption": "a key per IP, per minute"
+        },
+        {
+          "id": "pricing",
+          "label": "Pricing service for every SKU",
+          "icon": "tag",
+          "caption": "looked up in parallel",
+          "group": "Downstream services we call"
+        },
+        {
+          "id": "queue",
+          "label": "Order events queue",
+          "icon": "layers",
+          "caption": "order.created topic",
+          "change": "added",
+          "group": "Downstream services we call"
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "api",
+          "label": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
+        },
+        {
+          "from": "api",
+          "to": "redis",
+          "label": "INCR rl:{ip}:{window} then PEXPIRE on the first hit"
+        },
+        {
+          "from": "api",
+          "to": "pricing",
+          "label": "GET /prices/{sku} for each line item in parallel"
+        },
+        {
+          "from": "api",
+          "to": "queue",
+          "label": "publish order.created after the insert"
+        }
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "Who calls whom, with long labels",
+      "title": "A long sequence title that still reads on one line",
+      "narration": "Long message labels and notes wrap.",
+      "participants": [
+        {
+          "id": "c",
+          "label": "Storefront client application",
+          "icon": "monitor",
+          "caption": "every web and mobile storefront client"
+        },
+        {
+          "id": "a",
+          "label": "Orders API gateway",
+          "icon": "server",
+          "caption": "Express"
+        },
+        {
+          "id": "r",
+          "label": "Redis limiter store",
+          "icon": "database"
+        },
+        {
+          "id": "q",
+          "label": "Event queue",
+          "icon": "layers"
+        }
+      ],
+      "messages": [
+        {
+          "from": "c",
+          "to": "a",
+          "label": "POST /orders/{orderId}/line-items/{lineItemId}/adjustments?expand=prices,taxes,discounts"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "INCR rl:{ip}:{minute-window}",
+          "note": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
+        },
+        {
+          "from": "r",
+          "to": "a",
+          "label": "count of requests in this window so far",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "validateOrderLineItemsAgainstCatalog()"
+        },
+        {
+          "from": "a",
+          "to": "q",
+          "label": "publish order.created with the full order payload",
+          "kind": "async"
+        },
+        {
+          "from": "a",
+          "to": "c",
+          "label": "201 Created with the saved order and its prices",
+          "kind": "return"
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "The request, step by step, with long actions",
+      "narration": "Long actors and actions.",
+      "steps": [
+        {
+          "actor": "StorefrontCheckoutClient",
+          "action": "Sends the cart with every line item and the chosen shipping address",
+          "payload": "{\"items\":[{\"sku\":\"BOOK-0001-HARDCOVER-FIRST-EDITION\",\"qty\":2},{\"sku\":\"MUG-0042\",\"qty\":1}],\"shippingAddress\":{\"line1\":\"1 Long Street Name Avenue\",\"city\":\"Springfield\"}}"
+        },
+        {
+          "actor": "rateLimitMiddleware",
+          "action": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
+        },
+        {
+          "actor": "createOrderService",
+          "action": "Prices every line item from the pricing service in parallel, then saves the order",
+          "payload": "{\"id\":\"ord_123\",\"total\":4250,\"status\":\"pending\"}"
+        }
+      ]
+    },
+    {
+      "type": "er",
+      "chapter": "The data model with long names",
+      "narration": "Long table, field and type names.",
+      "entities": [
+        {
+          "id": "orders",
+          "name": "customer_order_headers",
+          "fields": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "pk": true
+            },
+            {
+              "name": "customer_account_identifier_from_the_identity_provider",
+              "type": "uuid",
+              "fk": true
+            },
+            {
+              "name": "order_total_in_minor_units",
+              "type": "numeric(12,2)"
+            },
+            {
+              "name": "status",
+              "type": "order_status_enum",
+              "change": "modified"
+            }
+          ]
+        },
+        {
+          "id": "items",
+          "name": "order_line_items",
+          "fields": [
+            {
+              "name": "id",
+              "type": "uuid",
+              "pk": true
+            },
+            {
+              "name": "order_id",
+              "type": "uuid",
+              "fk": true
+            },
+            {
+              "name": "stock_keeping_unit",
+              "type": "text"
+            }
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "from": "orders",
+          "to": "items",
+          "cardinality": "one-to-many",
+          "label": "contains every line item of"
+        }
+      ]
+    },
+    {
+      "type": "state",
+      "chapter": "Order states with long names",
+      "narration": "Long state names and transition labels.",
+      "initial": "pending",
+      "states": [
+        {
+          "id": "pending",
+          "label": "Pending payment confirmation from the payment provider, the issuing bank and the fraud checks"
+        },
+        {
+          "id": "paid",
+          "label": "Paid and ready to ship"
+        },
+        {
+          "id": "cancelled",
+          "label": "Cancelled by the timeout job",
+          "final": true
+        },
+        {
+          "id": "shipped",
+          "label": "Shipped",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "from": "pending",
+          "to": "paid",
+          "label": "payment provider confirms the charge"
+        },
+        {
+          "from": "pending",
+          "to": "cancelled",
+          "label": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
+        },
+        {
+          "from": "paid",
+          "to": "shipped",
+          "label": "warehouse scans the parcel"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Settings with long cells",
+      "title": "Order settings",
+      "narration": "Long cells wrap.",
+      "columns": [
+        "Setting name",
+        "Value",
+        "What it controls, in plain words"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "ORDER_INITIAL_STATUS_FOR_NEW_ORDERS",
+            {
+              "before": "paid",
+              "after": "pending"
+            },
+            "The status createOrder gives a brand new order before the payment provider confirms the charge"
+          ],
+          "change": "modified"
+        },
+        {
+          "cells": [
+            "PAYMENT_TIMEOUT",
+            "24h",
+            "How long an order may stay unpaid before the timeout job cancels it and releases the reserved stock"
+          ]
+        },
+        {
+          "cells": [
+            "ORDER_EVENTS_TOPIC",
+            "orders.v2.created",
+            "Topic that every **order lifecycle event** is published to after the database transaction commits"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Latency with long labels",
+      "title": "Checkout latency",
+      "narration": "Long labels and a long annotation.",
+      "kind": "bar",
+      "unit": "ms",
+      "labels": [
+        "median request p50",
+        "slow requests p90",
+        "slowest one percent p99"
+      ],
+      "series": [
+        {
+          "name": "before the charge moved into a background job worker",
+          "values": [
+            320,
+            910,
+            2400
+          ]
+        },
+        {
+          "name": "after the background job",
+          "values": [
+            180,
+            420,
+            960
+          ]
+        }
+      ],
+      "better": "lower",
+      "annotation": {
+        "at": "slowest one percent p99",
+        "text": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
+      }
+    },
+    {
+      "type": "timeline",
+      "chapter": "Retries over time with long labels",
+      "title": "A declined card",
+      "narration": "Long event labels, details and span labels.",
+      "unit": "s",
+      "events": [
+        {
+          "at": 0,
+          "label": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end",
+          "detail": "the customer sees a pending order",
+          "tone": "bad"
+        },
+        {
+          "at": 2,
+          "label": "Retry one",
+          "detail": "declined again",
+          "tone": "bad"
+        },
+        {
+          "at": 6,
+          "label": "Retry two after a longer backoff",
+          "detail": "declined again",
+          "tone": "bad"
+        },
+        {
+          "at": 14,
+          "label": "Order stays pending for the customer",
+          "detail": "they can pay again from the order page",
+          "tone": "warn"
+        }
+      ],
+      "spans": [
+        {
+          "from": 0,
+          "to": 2,
+          "label": "exponential backoff wait"
+        },
+        {
+          "from": 6,
+          "to": 14,
+          "label": "a longer exponential backoff wait before the last retry"
+        }
+      ]
+    },
+    {
+      "type": "files",
+      "chapter": "Changed files with long notes",
+      "narration": "Long notes beside files.",
+      "notes": {
+        "src/api/rate-limit.ts": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end",
+        "src/services/orders.ts": "prices every item from the pricing service in parallel before saving"
+      }
+    },
+    {
+      "type": "mermaid",
+      "chapter": "A Mermaid diagram",
+      "title": "Fallback diagram",
+      "narration": "Mermaid draws its own text.",
+      "code": "graph LR\n  A[Client] --> B[API]"
+    },
+    {
+      "type": "code",
+      "chapter": "The limiter, with a long callout",
+      "narration": "The limiter counts requests.",
+      "hunkId": "h2",
+      "focusLinesAfter": [
+        "11-12",
+        13,
+        "14-17",
+        18
+      ],
+      "calloutText": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end",
+      "flow": [
+        {
+          "label": "Count this request in the client IP address's one minute window"
+        },
+        {
+          "label": "On the very first hit, expire the key together with the window"
+        },
+        {
+          "label": "Over the limit? Refuse the request with a 429",
+          "outcome": "past twenty requests: Too Many Requests with a Retry-After header"
+        },
+        {
+          "label": "Under the limit, pass the request on to the route"
+        }
+      ]
+    },
+    {
+      "type": "tests",
+      "chapter": "What the tests prove, at length",
+      "title": "Rate limiter tests",
+      "subject": "rateLimit middleware in src/api/rate-limit.ts and createOrder",
+      "narration": "Long test names and gaps.",
+      "cases": [
+        {
+          "name": "refuses_the_twenty_first_request_from_the_same_ip_within_one_minute",
+          "proves": "The twenty first request in one window gets a 429 Too Many Requests with a Retry-After header",
+          "status": "added"
+        },
+        {
+          "name": "resets the counter when the window ends",
+          "proves": "A new minute starts a new count, because the key expires with its window",
+          "status": "added"
+        }
+      ],
+      "gaps": [
+        "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end",
+        "Whether order.created is published exactly once when the insert succeeds but the publish times out"
+      ]
+    }
+  ]
+}
