@@ -79,9 +79,12 @@ function checkFocusSize(scene, hunk, p, errors, warnings) {
     const list = used.map((s) => `${s.key} ${s.ranges.map(formatRange).join(', ')}`).join('; ');
     warnings.push(`${p}: ${count} focus ranges (${list}); keep at most ${maxRanges} per scene and split the rest into another code scene`);
   }
-  const changed = hunk ? hunk.additions + hunk.deletions : 0;
-  if (count === 0 && changed > UNFOCUSED_CHANGE_MAX) {
-    errors.push(`${p}: hunk ${hunk.id} changes ${changed} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
+  if (count > 0 || !hunk) return;
+  // Without focus a diff hunk highlights its changed lines and a source snippet highlights all of them.
+  if (hunk.status === 'source') {
+    if (hunk.lines.length > UNFOCUSED_CHANGE_MAX) errors.push(`${p}: snippet ${hunk.id} is ${hunk.lines.length} lines and the scene sets no focus; set focusLinesAfter to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
+  } else if (hunk.additions + hunk.deletions > UNFOCUSED_CHANGE_MAX) {
+    errors.push(`${p}: hunk ${hunk.id} changes ${hunk.additions + hunk.deletions} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
   }
 }
 
@@ -155,9 +158,11 @@ const NON_LOGIC_LANGUAGES = ['markdown', 'json', 'yaml', 'toml', 'text'];
 
 /**
  * Top-down order (overview, diagrams, code, tests) and a tests scene that says what is and is not
- * tested. Runs on scenes whose type is valid; per-scene errors are reported elsewhere.
+ * tested. An explanation has no diff, so only the overview-then-diagrams-then-code order applies.
+ * Runs on scenes whose type is valid; per-scene errors are reported elsewhere.
  */
-function checkStoryShape(scenes, hunks, warnings) {
+function checkStoryShape(scenes, hunks, mode, warnings) {
+  const explain = mode === 'explain';
   const all = Object.values(hunks);
   const isTestHunk = (id) => Object.hasOwn(hunks, id) && isTestFile(hunks[id].file);
   const logicFiles = [...new Set(all.filter((h) => !isTestFile(h.file) && !NON_LOGIC_LANGUAGES.includes(h.language)).map((h) => h.file))];
@@ -167,17 +172,21 @@ function checkStoryShape(scenes, hunks, warnings) {
 
   const first = indexed[0];
   if (first && first.s.type !== 'intent') {
-    warnings.push(`scenes[${first.i}] is a ${first.s.type} scene; open with an intent scene that states the problem and the review concerns`);
+    const opening = explain ? 'the idea and its key points' : 'the problem and the review concerns';
+    warnings.push(`scenes[${first.i}] is a ${first.s.type} scene; open with an intent scene that states ${opening}`);
   }
 
   const firstDiagram = firstOf((s) => DIAGRAM_TYPES.includes(s.type));
   const firstCode = firstOf((s) => s.type === 'code');
   if (firstDiagram > firstCode && firstCode >= 0) {
-    warnings.push(`scenes[${firstCode}] shows code before the first diagram (scenes[${firstDiagram}]); move a diagram ahead of the code so the viewer sees the shape of the change first`);
-  } else if (firstDiagram < 0 && logicFiles.length >= 2) {
+    warnings.push(`scenes[${firstCode}] shows code before the first diagram (scenes[${firstDiagram}]); move a diagram ahead of the code so the viewer sees the shape of the ${explain ? 'idea' : 'change'} first`);
+  } else if (explain && firstDiagram < 0 && firstCode >= 0) {
+    warnings.push('no scene draws the idea before the code; add an arch, sequence, flow, er or state scene ahead of the first code scene');
+  } else if (!explain && firstDiagram < 0 && logicFiles.length >= 2) {
     const names = logicFiles.slice(0, 4).join(', ') + (logicFiles.length > 4 ? ', ...' : '');
     warnings.push(`the diff changes logic in ${logicFiles.length} files (${names}) and no scene draws how they fit together; add an arch, sequence, flow, er or state scene before the code`);
   }
+  if (explain) return;
 
   const firstLogicCode = firstOf((s) => s.type === 'code' && Object.hasOwn(hunks, s.hunkId) && !isTestHunk(s.hunkId));
   if (firstLogicCode >= 0) {
@@ -248,7 +257,11 @@ async function checkMermaid(diagrams, errors, warnings) {
   }
 }
 
-export async function validateStoryboard(sb, hunks) {
+/**
+ * @param {'diff' | 'explain'} mode  "explain" (meta.json of `mr-cast explain init`) narrates source
+ *   snippets instead of a diff, so diff coverage, test and risk rules do not apply.
+ */
+export async function validateStoryboard(sb, hunks, mode = 'diff') {
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -269,7 +282,7 @@ export async function validateStoryboard(sb, hunks) {
     switch (s.type) {
       case 'intent':
         if (!isStr(s.summary)) errors.push(`${p}.summary: required string`);
-        if (!RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
+        if ((mode === 'diff' || s.risk !== undefined) && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
         if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
         else if (s.bullets.length > 6) warnings.push(`${p}.bullets: ${s.bullets.length} bullets; more than 6 will be cramped`);
         break;
@@ -414,9 +427,12 @@ export async function validateStoryboard(sb, hunks) {
   });
 
   await checkMermaid(diagrams, errors, warnings);
-  checkStoryShape(sb.scenes, hunks ?? {}, warnings);
+  checkStoryShape(sb.scenes, hunks ?? {}, mode, warnings);
+  if (mode === 'explain') {
+    if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
+    return { errors, warnings, coverage: null };
+  }
   const coverage = checkCoverage(sb, hunks ?? {}, errors, warnings);
-
   return { errors, warnings, coverage };
 }
 

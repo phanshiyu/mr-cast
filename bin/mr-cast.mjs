@@ -5,11 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { buildHunkIndex, parseUnifiedDiff } from './lib/diff.mjs';
 import { UserError } from './lib/errors.mjs';
+import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
-import { dataDir, ensureExcluded, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
+import { dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { startServer } from './lib/server.mjs';
-import { changedHunkIds, formatDuration, formatIndex, formatValidation, summarizeFiles } from './lib/summary.mjs';
+import { changedHunkIds, formatDuration, formatIndex, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
@@ -36,10 +37,24 @@ const USAGE = `usage: mr-cast <command> [options]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
   validate, voice, play, render and still take --dir <path> to use a data directory other than .mr-cast
 
-  install-skill   install the mr-video Claude Code skill and /mr-cast command into ~/.claude
+  explain init [--title text] [--reset]
+                  start an explanation walkthrough in .mr-cast/explain (in the git repo, else the
+                  current directory); keeps an existing storyboard unless --reset
+  explain snippet <file> <start>-<end> | <file>:<start>-<end> ...
+                  add real source lines (at most 80 per snippet) as code for scenes, ids s1, s2, ...
+  explain validate | voice | play | render | still
+                  the commands above, on the explanation's directory
+      every explain command takes --dir <path> to use another directory
+
+  install-skill   install the mr-video and explain-in-animation Claude Code skills and the
+                  /mr-cast, /mr-render and /explain-in-animation commands into ~/.claude
   help            show this message`;
 
-const rel = (p) => path.relative(process.cwd(), p) || '.';
+/** A path for messages: relative to the current directory when inside it, else absolute. */
+const rel = (p) => {
+  const r = path.relative(process.cwd(), p);
+  return r.startsWith('..') ? path.resolve(p) : r || '.';
+};
 
 function intOption(value, name, min) {
   const n = Number(value);
@@ -69,11 +84,21 @@ function readJson(file, missingHint) {
 const DIR_OPTION = { dir: { type: 'string' } };
 const resolveDir = (values, defaultDir) => (values.dir ? path.resolve(values.dir) : defaultDir());
 const diffDataDir = () => dataDir(repoRoot());
+const explainDataDir = () => path.join(dataDir(findRepoRoot() ?? process.cwd()), 'explain');
+
+/** "explain" when `mr-cast explain init` made the directory; anything else holds a diff. */
+function readMode(dir) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')).mode === 'explain' ? 'explain' : 'diff';
+  } catch {
+    return 'diff';
+  }
+}
 
 async function loadProject(dir) {
-  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` first');
+  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
-  const result = await validateStoryboard(storyboard, hunks);
+  const result = await validateStoryboard(storyboard, hunks, readMode(dir));
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, readVoiceover(dir));
   return { dir, hunks, storyboard, result, lines: formatValidation(result, { storyboard, hunks, seconds }) };
 }
@@ -315,7 +340,74 @@ function installSkillCommand(argv) {
   for (const file of installSkill(ROOT)) console.log(`wrote ${file}`);
 }
 
-const COMMANDS = { extract, validate, voice, play, render, still, 'install-skill': installSkillCommand };
+const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+
+function explainInit(argv, defaultDir) {
+  const { values } = parseArgs({ args: argv, options: { ...DIR_OPTION, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
+  const dir = resolveDir(values, defaultDir);
+  const root = findRepoRoot();
+  if (root && !values.dir) ensureExcluded(root);
+  const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
+  if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
+
+  let previous = {};
+  try { previous = JSON.parse(fs.readFileSync(files.meta, 'utf8')); } catch { /* new directory */ }
+  if (previous.mode !== undefined && previous.mode !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --dir`);
+  fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(files.hunks)) writeJson(files.hunks, {});
+  writeJson(files.meta, {
+    mode: 'explain',
+    title: values.title ?? previous.title ?? null,
+    createdAt: previous.createdAt ?? new Date().toISOString(),
+  });
+
+  console.log(dir);
+  const snippets = Object.keys(readJson(files.hunks, '')).length;
+  let kept = null;
+  try { kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)'; } catch { /* none yet */ }
+  if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start a new explanation`);
+  else if (snippets) console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
+  console.error(`next: \`mr-cast explain snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast explain validate\``);
+}
+
+function explainSnippet(argv, defaultDir) {
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
+  const dir = resolveDir(values, defaultDir);
+  if (readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} is not an explanation directory; run \`mr-cast explain init${values.dir ? ' --dir <path>' : ''}\` first`);
+  const hunksPath = path.join(dir, 'hunks.json');
+  const hunks = readJson(hunksPath, 'run `mr-cast explain init` first');
+  // Paths are shown relative to the repository (or the current directory outside one), as a diff shows them.
+  const base = findRepoRoot() ?? process.cwd();
+  const added = parseSnippetArgs(positionals).map((spec) => {
+    const abs = path.resolve(spec.file);
+    let text;
+    try {
+      text = fs.readFileSync(abs, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT' || err.code === 'EISDIR') throw new UserError(`${spec.file}: no such file`);
+      throw err;
+    }
+    const fileLines = text.replace(/\r?\n$/, '').split(/\r?\n/);
+    const shown = path.relative(base, abs);
+    const file = shown.startsWith('..') ? abs : shown;
+    const range = { ...spec, file };
+    const hunk = sourceHunk(snippetId(hunks, range), range, fileLines);
+    hunks[hunk.id] = hunk;
+    return hunk;
+  });
+  writeJson(hunksPath, hunks);
+  console.log(formatSnippets({ added, hunks, hunksPath: rel(hunksPath), storyboardPath: rel(path.join(dir, 'storyboard.json')) }));
+}
+
+const EXPLAIN_COMMANDS = { init: explainInit, snippet: explainSnippet, validate, voice, play, render, still };
+
+async function explain([sub, ...rest]) {
+  const run = EXPLAIN_COMMANDS[sub];
+  if (!run) throw new UserError(`explain needs one of ${Object.keys(EXPLAIN_COMMANDS).join(', ')}${sub ? ` (got "${sub}")` : ''}; see \`mr-cast help\``);
+  await run(rest, explainDataDir);
+}
+
+const COMMANDS = { extract, validate, voice, play, render, still, explain, 'install-skill': installSkillCommand };
 
 async function main([command, ...rest]) {
   if (!command || command === 'help' || command === '--help' || command === '-h') {

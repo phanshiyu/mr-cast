@@ -100,8 +100,13 @@ export function formatDuration(seconds) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** "shows 9/13 hunks, skipped 2, tests 2/2 shown · tests scene: 5 cases, 1 gap"; each part only when it applies. */
-function formatCoverage({ shown, skipped, total, tests, testsScene }) {
+/**
+ * "shows 9/13 hunks, skipped 2, tests 2/2 shown · tests scene: 5 cases, 1 gap"; each part only when it applies.
+ * An explanation (null coverage) has no diff to cover.
+ */
+function formatCoverage(coverage) {
+  if (!coverage) return ' · explain';
+  const { shown, skipped, total, tests, testsScene } = coverage;
   const out = [];
   if (total) {
     const parts = [`shows ${shown}/${total} hunks`];
@@ -125,4 +130,18 @@ export function formatValidation({ errors, warnings, coverage }, { storyboard, h
   if (errors.length) out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
   else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${formatCoverage(coverage)}`);
   return out;
+}
+
+/** The snippets `explain snippet` just added or refreshed, every line numbered as in its file. */
+export function formatSnippets({ added, hunks, hunksPath, storyboardPath }) {
+  const out = [];
+  for (const h of added) {
+    const width = String(h.endLine).length;
+    out.push(`  ${h.id} ${h.file} L${h.startLine}-${h.endLine} · ${plural(h.lines.length, 'line')}`);
+    for (const l of h.lines) out.push(`    ${String(l.newLine).padStart(width)} ${clip(l.text.replace(/\t/g, '  ').trimEnd(), LINE_WIDTH)}`);
+  }
+  const all = Object.values(hunks).map((h) => `${h.id} ${h.file} L${h.startLine}-${h.endLine}`);
+  out.push(`snippets in ${hunksPath}: ${all.join(', ')}`);
+  out.push(`line numbers are the file's own; use them in focusLinesAfter · next: write ${storyboardPath}, then \`mr-cast explain validate\``);
+  return out.join('\n');
 }
