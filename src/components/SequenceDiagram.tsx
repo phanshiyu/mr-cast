@@ -13,7 +13,7 @@ import {
 } from '../utils/sequenceLayout';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
+import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
 
 const kindIcon: Record<NodeKind, LucideIcon> = { service: Server, db: Database, queue: Layers, client: Monitor };
 const kindLabel: Record<NodeKind, string> = { service: 'service', db: 'datastore', queue: 'queue', client: 'client' };
@@ -30,10 +30,51 @@ const neutralStroke = '#c4cad8';
 const returnStroke = 'rgba(170, 178, 200, 0.62)';
 const noteAmber = 'rgba(251, 191, 36, 0.45)';
 
+/** Sans advance per em, rounded up from SF Pro semibold so estimates err towards smaller text. */
+const SANS_ADVANCE = 0.58;
+
+/** Break opportunities at spaces and camelCase or punctuation boundaries: "PaymentProvider|Client". */
+function labelTokens(label: string): string[] {
+  return label.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=[\s:._/-])/).filter(Boolean);
+}
+
+/** Lines a greedy browser-style wrap of `tokens` takes at `fontSize` in `width`. */
+function wrappedLines(tokens: readonly string[], fontSize: number, width: number): number {
+  let lines = 1;
+  let used = 0;
+  for (const token of tokens) {
+    const w = token.length * SANS_ADVANCE * fontSize;
+    const fit = used + token.trimEnd().length * SANS_ADVANCE * fontSize <= width;
+    if (used > 0 && !fit) {
+      lines += 1;
+      used = w;
+    } else used += w;
+  }
+  return lines;
+}
+
+/** Title font for a participant card: one line down to 20px, then two lines, never splitting a token. */
+function titleFit(label: string, width: number): { fontSize: number; twoLines: boolean } {
+  const tokens = labelTokens(label);
+  for (let fontSize = 25; fontSize >= 20; fontSize--) {
+    if (wrappedLines(tokens, fontSize, width) === 1) return { fontSize, twoLines: false };
+  }
+  for (let fontSize = 25; fontSize > 15; fontSize--) {
+    const lines = wrappedLines(tokens, fontSize, width);
+    if (lines <= 2) return { fontSize, twoLines: lines === 2 };
+  }
+  return { fontSize: 15, twoLines: true };
+}
+
 const ParticipantCard: React.FC<{ placed: PlacedParticipant; width: number; top: number; appear: number }> = ({ placed, width, top, appear }) => {
   const { participant } = placed;
   const Icon = participant.kind ? kindIcon[participant.kind] : Box;
   const modified = participant.modified;
+  const compact = width < 290;
+  const icon = compact ? 40 : 48;
+  const pad = compact ? 14 : 16;
+  const gap = compact ? 12 : 14;
+  const title = titleFit(participant.label, width - 2 * pad - icon - gap - 4);
   return (
     <div
       style={{
@@ -45,8 +86,8 @@ const ParticipantCard: React.FC<{ placed: PlacedParticipant; width: number; top:
         boxSizing: 'border-box',
         display: 'flex',
         alignItems: 'center',
-        gap: 14,
-        padding: '0 16px',
+        gap,
+        padding: `0 ${pad}px`,
         borderRadius: 18,
         background: modified ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised,
         border: `2px solid ${modified ? colors.accent : colors.borderStrong}`,
@@ -57,8 +98,8 @@ const ParticipantCard: React.FC<{ placed: PlacedParticipant; width: number; top:
     >
       <div
         style={{
-          width: 48,
-          height: 48,
+          width: icon,
+          height: icon,
           borderRadius: 12,
           display: 'flex',
           alignItems: 'center',
@@ -68,15 +109,22 @@ const ParticipantCard: React.FC<{ placed: PlacedParticipant; width: number; top:
           flexShrink: 0,
         }}
       >
-        <Icon size={26} strokeWidth={2} />
+        <Icon size={icon * 0.55} strokeWidth={2} />
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: fitFontSize(participant.label, 25, 11, 18), fontWeight: 650, color: colors.text, ...ellipsis }}>
-          {participant.label}
+        <div style={{ fontSize: title.fontSize, fontWeight: 650, lineHeight: 1.15, color: colors.text, overflowWrap: 'anywhere', ...clampLines(2) }}>
+          {labelTokens(participant.label).map((token, i) => (
+            <span key={i}>
+              {i > 0 ? <wbr /> : null}
+              {token}
+            </span>
+          ))}
         </div>
-        <div style={{ fontSize: 17, color: colors.faint, marginTop: 3, ...ellipsis }}>
-          {participant.kind ? kindLabel[participant.kind] : 'participant'}
-        </div>
+        {title.twoLines ? null : (
+          <div style={{ fontSize: 17, color: colors.faint, marginTop: 3, ...ellipsis }}>
+            {participant.kind ? kindLabel[participant.kind] : 'participant'}
+          </div>
+        )}
       </div>
       {modified ? (
         <div
@@ -207,11 +255,11 @@ const NoteCard: React.FC<{ placed: PlacedMessage; appear: number }> = ({ placed,
         background: '#1e1a10',
         border: `1px solid ${noteAmber}`,
         color: '#f1dca0',
-        fontSize: 17,
+        fontSize: 18,
         lineHeight: 1.3,
       }}
     >
-      <StickyNote size={16} strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 3, color: '#fbbf24' }} />
+      <StickyNote size={17} strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 3, color: '#fbbf24' }} />
       <span style={{ minWidth: 0, ...(note.lines === 1 ? ellipsis : clampLines(2)) }}>{placed.message.note}</span>
     </div>
   );
@@ -258,7 +306,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, du
                 width={layout.width + 24}
                 height={layout.messages[current]!.bottom - layout.messages[current]!.top}
                 rx={12}
-                fill={layout.messages[current]!.message.modified ? colors.accentSoft : 'rgba(255,255,255,0.035)'}
+                fill={layout.messages[current]!.message.modified ? 'rgba(124,140,255,0.07)' : 'rgba(255,255,255,0.035)'}
                 opacity={interpolate(frame, [starts[current]!, starts[current]! + drawFrames], [0, 1], clamp)}
               />
             ) : null}

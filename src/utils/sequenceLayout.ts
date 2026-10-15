@@ -15,7 +15,7 @@ const BAR_STEP = 8;
 const LOOP_W = 40;
 const LABEL_GAP = 6;
 const NOTE_GAP = 18;
-const NOTE_MAX_W = 380;
+const NOTE_MAX_W = 460;
 /** Monospace advance per em, as in theme.ts, plus chip padding. */
 const MONO_ADVANCE = 0.61;
 const CHIP_PAD_X = 12;
@@ -139,7 +139,7 @@ export function layoutSequence(
   const n = Math.max(1, participants.length);
   const colW = Math.min(MAX_COL_W, box.width / n);
   const width = colW * n;
-  const cardW = Math.min(CARD_MAX_W, colW - 24);
+  const cardW = Math.min(CARD_MAX_W, colW - 16);
   const xs = participants.map((_, i) => colW * (i + 0.5));
   const lifelineTop = CARD_TOP + CARD_H;
   const rowsTop = lifelineTop + ROWS_GAP;
@@ -149,7 +149,6 @@ export function layoutSequence(
   const totalWeight = Math.max(1, weights.reduce((a, b) => a + b, 0));
   const unit = Math.min(MAX_UNIT, (box.height - rowsTop - BOTTOM_PAD) / totalWeight);
   const baseFont = Math.round(Math.max(17, Math.min(24, unit * 0.36)));
-  const noteLines: 1 | 2 = unit >= 70 ? 2 : 1;
 
   const rowTops: number[] = [];
   weights.reduce((top, w) => (rowTops.push(top), top + w * unit), rowsTop);
@@ -232,7 +231,7 @@ export function layoutSequence(
         y: from === to ? label.y : (top + bottom) / 2,
         side,
         maxWidth: Math.min(NOTE_MAX_W, Math.max(left, right)),
-        lines: noteLines,
+        lines: bottom - top >= 62 ? 2 : 1,
       };
     }
     return { message: m, kind, self: from === to, top, bottom, points, label, note };
