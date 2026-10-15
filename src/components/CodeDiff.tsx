@@ -8,9 +8,14 @@ import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highligh
 import { isFocused, sceneFocus, type Focus } from '../utils/lines';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
+import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, defaultChapter, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
 
-const ROW_H = 38;
+const SIGN_W = 26;
+const SPLIT_NUMBER_W = 66;
+const MORPH_NUMBER_W = 58;
+const SPLIT_GUTTER_W = SPLIT_NUMBER_W + SIGN_W;
+const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
+const FONT_RANGE: Record<View, { min: number; max: number }> = { split: { min: 14, max: 20 }, morph: { min: 15, max: 23 } };
 const PANEL_PAD = 18;
 const HEADER_H = 92;
 const HEADER_GAP = 22;
@@ -19,6 +24,21 @@ const CALLOUT_GAP = 56;
 const CALLOUT_BELOW_H = 112;
 
 type View = 'split' | 'morph';
+
+/** Code font and row height, sized so the hunk's longest line fits the code column. */
+interface CodeMetrics {
+  fontSize: number;
+  rowH: number;
+}
+
+function codeMetrics(hunk: Hunk, view: View, panelW: number): CodeMetrics {
+  const inner = panelW - 2;
+  const column = view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - MORPH_GUTTER_W;
+  const longest = Math.max(0, ...hunk.lines.map((l) => codeColumns(l.text)));
+  const { min, max } = FONT_RANGE[view];
+  const fontSize = fitCodeFontSize(longest, column, min, max);
+  return { fontSize, rowH: Math.round(fontSize * 1.65) };
+}
 
 function defaultView(hunk: Hunk): View {
   return hunk.additions === 0 || hunk.deletions === 0 ? 'morph' : 'split';
@@ -40,7 +60,7 @@ const statusStyle: Record<Hunk['status'], { label: string; color: string }> = {
 };
 
 const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (
-  <div style={{ ...ellipsis, whiteSpace: 'pre', fontFamily: fonts.mono, fontSize, flex: 1, opacity: dim ? 0.55 : 1, color: plainCodeColor }}>
+  <div style={{ ...ellipsis, whiteSpace: 'pre', tabSize: CODE_TAB_SIZE, fontFamily: fonts.mono, fontSize, flex: 1, opacity: dim ? 0.55 : 1, color: plainCodeColor }}>
     {tokens.map((t, i) => (
       <span key={i} style={{ color: tokenColor(t.types) }}>
         {t.content}
@@ -50,7 +70,7 @@ const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ 
 );
 
 const LineNumber: React.FC<{ value: number | null; fontSize: number; width: number }> = ({ value, fontSize, width }) => (
-  <div style={{ width, flexShrink: 0, textAlign: 'right', paddingRight: 14, boxSizing: 'border-box', fontFamily: fonts.mono, fontSize: fontSize - 3, color: colors.faint }}>
+  <div style={{ width, flexShrink: 0, textAlign: 'right', paddingRight: 14, boxSizing: 'border-box', fontFamily: fonts.mono, fontSize: Math.round(fontSize * 0.85), color: colors.faint }}>
     {value ?? ''}
   </div>
 );
@@ -62,16 +82,16 @@ const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; font
   return (
     <>
       {numbers.map((n, i) => (
-        <LineNumber key={i} value={n} fontSize={fontSize} width={numbers.length > 1 ? 58 : 66} />
+        <LineNumber key={i} value={n} fontSize={fontSize} width={numbers.length > 1 ? MORPH_NUMBER_W : SPLIT_NUMBER_W} />
       ))}
-      <div style={{ width: 26, flexShrink: 0, fontFamily: fonts.mono, fontSize, color: signColor, fontWeight: 700 }}>{sign}</div>
+      <div style={{ width: SIGN_W, flexShrink: 0, fontFamily: fonts.mono, fontSize, color: signColor, fontWeight: 700 }}>{sign}</div>
     </>
   );
 };
 
 const lineBg = (line: DiffLine | null) => (line?.type === 'add' ? colors.addBg : line?.type === 'del' ? colors.delBg : 'transparent');
 
-function splitModels(hunk: Hunk, tokens: Token[][], focus: Focus): RowModel[] {
+function splitModels(hunk: Hunk, tokens: Token[][], focus: Focus, { fontSize, rowH }: CodeMetrics): RowModel[] {
   const cell = (index: number | null, side: 'left' | 'right') => {
     const line = index === null ? null : hunk.lines[index]!;
     return (
@@ -88,8 +108,8 @@ function splitModels(hunk: Hunk, tokens: Token[][], focus: Focus): RowModel[] {
       >
         {line ? (
           <>
-            <Gutter line={line} numbers={[side === 'left' ? line.oldLine : line.newLine]} fontSize={20} />
-            <Code tokens={tokens[index!]!} fontSize={20} />
+            <Gutter line={line} numbers={[side === 'left' ? line.oldLine : line.newLine]} fontSize={fontSize} />
+            <Code tokens={tokens[index!]!} fontSize={fontSize} />
           </>
         ) : null}
       </div>
@@ -101,7 +121,7 @@ function splitModels(hunk: Hunk, tokens: Token[][], focus: Focus): RowModel[] {
     const focused = (left !== null && isFocused(left, focus)) || (right !== null && isFocused(right, focus));
     return {
       key: `s${i}`,
-      height: ROW_H,
+      height: rowH,
       focused,
       content: (
         <div style={{ display: 'flex', height: '100%' }}>
@@ -127,18 +147,18 @@ function morphTimeline(hunk: Hunk, duration: number) {
   return { flashStart, collapseStart, collapseEnd, growStart, stagger, growEnd };
 }
 
-function morphModels(hunk: Hunk, tokens: Token[][], focus: Focus, frame: number, duration: number): RowModel[] {
+function morphModels(hunk: Hunk, tokens: Token[][], focus: Focus, frame: number, duration: number, { fontSize, rowH }: CodeMetrics): RowModel[] {
   const t = morphTimeline(hunk, duration);
   let addIndex = 0;
   return hunk.lines.map((line, i) => {
-    let height = ROW_H;
+    let height = rowH;
     let bg = 'transparent';
     let opacity = 1;
     let strike = 0;
     if (line.type === 'del') {
       const collapse = interpolate(frame, [t.collapseStart, t.collapseEnd], [0, 1], clamp);
       const flash = interpolate(frame, [t.flashStart, t.flashStart + 6, t.collapseStart], [0.1, 0.32, 0.2], clamp);
-      height = ROW_H * (1 - collapse);
+      height = rowH * (1 - collapse);
       opacity = 1 - collapse;
       bg = `rgba(255, 107, 122, ${flash})`;
       strike = interpolate(frame, [t.flashStart, t.collapseStart], [0, 1], clamp);
@@ -146,7 +166,7 @@ function morphModels(hunk: Hunk, tokens: Token[][], focus: Focus, frame: number,
       const start = t.growStart + addIndex++ * t.stagger;
       const grow = interpolate(frame, [start, start + 10], [0, 1], clamp);
       const glow = interpolate(frame, [start, start + 10, start + 30], [0.35, 0.3, 0.12], clamp);
-      height = ROW_H * grow;
+      height = rowH * grow;
       opacity = grow;
       bg = `rgba(61, 220, 151, ${glow})`;
     }
@@ -155,20 +175,20 @@ function morphModels(hunk: Hunk, tokens: Token[][], focus: Focus, frame: number,
       height,
       focused: isFocused(line, focus),
       content: (
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: ROW_H, background: bg, opacity }}>
-          <Gutter line={line} numbers={[line.oldLine, line.newLine]} fontSize={23} />
-          <Code tokens={tokens[i]!} fontSize={23} />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: rowH, background: bg, opacity }}>
+          <Gutter line={line} numbers={[line.oldLine, line.newLine]} fontSize={fontSize} />
+          <Code tokens={tokens[i]!} fontSize={fontSize} />
           {strike > 0 ? (
             <div
               style={{
                 position: 'absolute',
-                left: 142,
-                top: ROW_H / 2 - 1,
+                left: MORPH_GUTTER_W,
+                top: rowH / 2 - 1,
                 height: 2,
                 fontFamily: fonts.mono,
-                fontSize: 23,
-                width: `${(line.text.length + 2) * strike}ch`,
-                maxWidth: 'calc(100% - 160px)',
+                fontSize,
+                width: `${(codeColumns(line.text) + 2) * strike}ch`,
+                maxWidth: `calc(100% - ${MORPH_GUTTER_W + 18}px)`,
                 background: colors.del,
               }}
             />
@@ -282,7 +302,8 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const panelH = box.height - HEADER_H - HEADER_GAP - (calloutBelow ? CALLOUT_BELOW_H + 28 : 0);
   const viewportH = panelH - PANEL_PAD * 2;
 
-  const rows = view === 'split' ? splitModels(hunk, tokens, focus) : morphModels(hunk, tokens, focus, frame, durationInFrames);
+  const metrics = codeMetrics(hunk, view, panelW);
+  const rows = view === 'split' ? splitModels(hunk, tokens, focus, metrics) : morphModels(hunk, tokens, focus, frame, durationInFrames, metrics);
   const morphEnd = view === 'morph' ? morphTimeline(hunk, durationInFrames).growEnd : 0;
   const dimStart = Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
   const dim = interpolate(frame, [dimStart, dimStart + 14], [0, 1], clamp);
@@ -326,7 +347,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
             overflow: 'hidden',
           }}
         >
-          {hunk.additions === 0 && contentH < ROW_H ? (
+          {hunk.additions === 0 && contentH < metrics.rowH ? (
             <div
               style={{
                 position: 'absolute',
@@ -338,7 +359,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
                 color: colors.muted,
                 fontSize: 30,
                 fontWeight: 600,
-                opacity: interpolate(contentH, [0, ROW_H], [1, 0], clamp),
+                opacity: interpolate(contentH, [0, metrics.rowH], [1, 0], clamp),
               }}
             >
               <Trash2 size={34} color={colors.del} />
