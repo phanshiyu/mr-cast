@@ -42,6 +42,7 @@
     "typecheck": "tsc --noEmit && node scripts/check-text.mjs",
     "demo": "bash scripts/demo.sh",
     "install-skill": "node bin/mr-cast.mjs install-skill",
+    "test": "node --test \"test/*.test.mjs\"",
     "prepack": "npm run typecheck && npm run build"
   },
   "engines": {
