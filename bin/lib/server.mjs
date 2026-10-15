@@ -159,7 +159,7 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
             console.error(`mr-cast: ${f} changed · ${err.message}`);
           }
         }
-        broadcast('data: change\n\n');
+        broadcast('event: change\ndata: change\n\n');
       });
     }, DEBOUNCE_MS);
   });
