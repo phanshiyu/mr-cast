@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+import { SCENE_EXIT_FRAMES as EXIT_FRAMES } from '../../shared/timing.mjs';
 import { SAFE, clamp, colors, ellipsis, fonts } from './theme';
 
 const ENTER_FRAMES = 12;
-const EXIT_FRAMES = 8;
 
 interface SceneShellProps {
   durationInFrames: number;

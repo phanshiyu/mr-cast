@@ -9,6 +9,8 @@ const MIN_SECONDS = 3;
 /** A voiced scene starts its clip after the scene fades in, and holds briefly after it ends. */
 export const VOICE_LEAD_FRAMES = Math.round(0.4 * FPS);
 const VOICE_TAIL_SECONDS = 0.8;
+/** Every scene fades out over its last SCENE_EXIT_FRAMES. */
+export const SCENE_EXIT_FRAMES = 8;
 
 export function wordCount(text) {
   return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
@@ -22,6 +24,11 @@ export function sceneDurationInFrames(narration, voiceover) {
   const clip = clipFor(voiceover, narration);
   if (clip) return VOICE_LEAD_FRAMES + Math.ceil((clip.seconds + VOICE_TAIL_SECONDS) * FPS);
   return Math.ceil(sceneSeconds(narration) * FPS);
+}
+
+/** A frame just before the fade-out, where every scene's animation has settled. `mr-cast still` renders it. */
+export function settledFrame(durationInFrames) {
+  return Math.max(0, durationInFrames - SCENE_EXIT_FRAMES - 2);
 }
 
 /**

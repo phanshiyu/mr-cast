@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
-import { sceneDurationInFrames } from '../../shared/timing.mjs';
+import { sceneDurationInFrames, settledFrame } from '../../shared/timing.mjs';
 import { cacheDir } from './cache.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
@@ -147,7 +147,7 @@ export async function renderVideo({ hunks, storyboard, voiceover, dataDir, outFi
   return out;
 }
 
-/** Stills take scene timing from `voiceover` but play no audio. */
+/** Each still shows its scene's settled end state. Stills take scene timing from `voiceover` but play no audio. */
 export async function renderStills({ hunks, storyboard, voiceover, outDir, scenes }) {
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
@@ -171,7 +171,7 @@ export async function renderStills({ hunks, storyboard, voiceover, outDir, scene
         serveUrl,
         inputProps,
         output,
-        frame: timing.from + Math.floor(timing.duration * 0.6),
+        frame: timing.from + settledFrame(timing.duration),
         puppeteerInstance: browser,
       });
       written.push(output);
