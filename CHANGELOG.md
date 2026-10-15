@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0
+
+- **Diagrams draw before the voice.** Every scene type has a build time in one table in `shared/timing.mjs`, at most 1.8 seconds, and its narration starts 0.3 seconds after the build. Sequence messages, timeline events, chart bars, state and ER changes, tests and table rows no longer arrive spread over the scene, so the voice never names something that is not on screen yet. Long builds stagger faster instead of waiting longer.
+- **Steps on diagrams.** `sequence` (`messages`), `timeline` (`events`), `flow` (a `say` on each step), `state` (`state` or `transition`), `er` (`entity`) and `chart` (`label`) take `steps` with their own spoken words, like code, table and files steps. Sequences and timelines reveal each step's items 0.5 seconds before its words; state, ER and chart scenes draw everything first and light each step's item while the rest dims. `validate` checks every reference, and `outline` counts the spoken steps.
+- The skills teach when to walk a diagram in steps, and simple mode walks every sequence, flow and timeline that way. The gallery and both demos use diagram steps.
+
 ## 0.9.0
 
 - **Choices before the video.** The skills ask who the video is for (a reviewer, someone new to the code, or a quick overview for the team), which areas to go deeper on, and the pace. All three are multiple choice with the recommended answer first, and any your request already answers are skipped. A quick overview is a new mode with diagrams and little code. Before a render, approving the outline takes one click. The player skips that step.

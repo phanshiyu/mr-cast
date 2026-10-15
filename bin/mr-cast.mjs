@@ -39,11 +39,12 @@ const USAGE = `usage: mr-cast <command> [options]
                   ids s1, s2, ...: callers, definitions, types or config the change depends on;
                   a later extract keeps them
   validate [--pace p] [--speed x]
-                  check .mr-cast/storyboard.json against hunks.json
+                  check .mr-cast/storyboard.json against hunks.json, including each step's lines,
+                  rows, files, messages, events, states, tables or labels
   outline [--pace p] [--speed x]
-                  print a short plan of the storyboard (scenes, length, coverage) to show before rendering
+                  print a short plan of the storyboard (scenes, steps, length, coverage) to show before rendering
   voice [--voice name] [--pace p] [--speed x]
-                  speak each scene's narration with Kokoro into .mr-cast/audio (default voice af_heart)
+                  speak each scene's narration and steps with Kokoro into .mr-cast/audio (default voice af_heart)
   play [--port N] [--no-open] [--voice name] [--pace p] [--speed x] [--no-voice]
                   serve the live player (default port 4747)
   render [--out file.mp4] [--voice name] [--pace p] [--speed x] [--no-voice]
