@@ -1,6 +1,6 @@
 ---
 name: mr-cast-prune
-description: Free disk space taken by mr-cast, letting the user pick what goes, such as old walkthroughs, rendered videos, stills, voice clips, and the downloaded Chrome, voice model and player bundle. Use when the user asks to prune, clean up, or delete mr-cast artifacts, videos or caches, or asks what mr-cast is using disk space on.
+description: Free disk space used by mr-cast, letting the user pick what goes, such as old walkthroughs, rendered videos, stills, voice clips, and the downloaded Chrome, voice model and player bundle. Use when the user asks to prune, clean up, or delete mr-cast files, videos or caches, or asks what mr-cast is using disk space on.
 ---
 
 # mr-cast prune
@@ -20,7 +20,7 @@ If the user asked only for old things, add `--older-than <days>`, such as `--old
 The output has `reclaimableBytes` and an `artifacts` array. Each artifact has these fields:
 
 - `id`: what to pass to `prune` to delete it.
-- `kind`: `run` (a diff walkthrough), `explain` (an explanation), `video` (a rendered MP4), `stills` (PNG stills), `audio` (voice-over clips), or `cache` (a shared download).
+- `kind`: `run` (a walkthrough of a branch), `explain` (a walkthrough of an explanation), `video` (a rendered MP4), `stills` (PNG stills), `audio` (voice-over clips), or `cache` (a shared download).
 - `parent`: for a `video`, `stills` or `audio` artifact, the id of the walkthrough that contains it. Deleting the walkthrough deletes its parts too.
 - `bytes`, `modified` (ISO time of the newest file inside), `path`, `detail` (what it is, with the storyboard title for walkthroughs).
 - `busy`: why it cannot be deleted right now, such as a render using the cache, or `null`.
@@ -59,4 +59,4 @@ Before you run the command, tell the user in one line which ids you will delete 
 
 The command deletes only ids from a fresh listing. It rejects an unknown id or an artifact in use, and then deletes nothing. If it rejects one, list again with step 1, tell the user what changed, and ask again.
 
-It prints one `removed <id>` line per artifact and `freed <size>` at the end. A part inside a chosen walkthrough prints as `removed <id> (with <walkthrough id>)`. A `kept <id>` line means a render started using that cache after the listing; tell the user to prune it after the render finishes. Report what was removed and the space freed. If you deleted the current explanation, tell the user that later `explain` commands need `--name` or a new `explain init`.
+It prints one `removed <id>` line per artifact and `freed <size>` at the end. A part inside a chosen walkthrough prints as `removed <id> (with <walkthrough id>)`. A `kept <id>` line means a render started using that cache after the listing; tell the user to prune it after the render finishes. Report what was removed and the space freed.

@@ -1,6 +1,6 @@
 ---
 name: mr-cast-upgrade
-description: Check for and install a newer version of mr-cast and refresh its Claude Code skills. Use when the user asks to upgrade or update mr-cast, asks which version is installed or whether a new one is out, or after an mr-cast command printed "mr-cast <version> is available" and the user wants it.
+description: Update mr-cast to the latest version and refresh its Claude Code skills. Use when the user asks to upgrade or update mr-cast, asks which version is installed or whether a new one is out, or after an mr-cast command printed "mr-cast <version> is available" and the user wants it.
 ---
 
 # mr-cast upgrade
