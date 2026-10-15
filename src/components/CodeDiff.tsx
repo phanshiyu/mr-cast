@@ -7,6 +7,7 @@ import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
 import { lineFocusRanges } from '../../shared/focus.mjs';
 import { SceneShell } from './SceneShell';
+import { layoutSteps, StepDiagram } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, defaultChapter, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
 
@@ -22,6 +23,10 @@ const HEADER_GAP = 22;
 const CALLOUT_W = 420;
 const CALLOUT_GAP = 56;
 const CALLOUT_BELOW_H = 112;
+/** With a flow the code keeps this share of the width; the step diagram takes the rest. */
+const FLOW_CODE_SHARE = 0.6;
+const FLOW_GAP = 72;
+const FLOW_CALLOUT_GAP = 36;
 /** Unfocused rows kept above the first step and below the last; the rest of the hunk is cropped away. */
 const CONTEXT_ROWS = 3;
 const STEP_FADE = 14;
@@ -331,15 +336,16 @@ function estimateCalloutHeight(text: string, width: number): number {
 const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number }> = ({ scene, hunk, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const view = scene.view ?? defaultView(hunk, scene);
+  const flow = scene.flow?.length ? scene.flow : null;
+  const view = scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
   const { slots, stepCount } = useMemo(() => cropSlots(hunk, view, scene), [hunk, view, scene]);
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
   const box = contentBox(false);
   const callout = scene.calloutText?.trim() || null;
-  const calloutBeside = callout !== null && view === 'morph';
-  const calloutBelow = callout !== null && view === 'split';
+  const calloutBeside = callout !== null && !flow && view === 'morph';
+  const calloutBelow = callout !== null && !flow && view === 'split';
 
-  const panelW = calloutBeside ? box.width - CALLOUT_W - CALLOUT_GAP : box.width;
+  const panelW = flow ? Math.round(box.width * FLOW_CODE_SHARE) : calloutBeside ? box.width - CALLOUT_W - CALLOUT_GAP : box.width;
   const panelH = box.height - HEADER_H - HEADER_GAP - (calloutBelow ? CALLOUT_BELOW_H + 28 : 0);
   const viewportH = panelH - PANEL_PAD * 2;
 
@@ -385,13 +391,24 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
     0,
   );
 
+  /** Panel y of a step's code range as the camera shows it, kept inside the viewport. */
+  const anchorY = (span: { top: number; bottom: number }) => PANEL_PAD + Math.min(viewportH, Math.max(0, (span.top + span.bottom) / 2 - scroll));
+
   // The callout belongs to the last step: the conclusion the narration builds to.
   const last = spans[stepCount - 1] ?? { top: 0, bottom: contentH };
   const lastCenter = (last.top + last.bottom) / 2;
   const calloutAppear = spring({ frame: frame - (stepStarts[stepCount - 1] ?? introEnd) - 6, fps, config: { damping: 16, stiffness: 120 } });
-  const focusY = PANEL_PAD + Math.min(viewportH, Math.max(0, lastCenter - scroll));
+  const focusY = anchorY(last);
   const calloutH = callout ? estimateCalloutHeight(callout, CALLOUT_W) : 0;
   const calloutTop = Math.min(panelH - calloutH, Math.max(0, focusY - calloutH / 2));
+
+  // With a flow, the callout hangs under the step diagram, attached to its last node.
+  const diagramLeft = panelW + FLOW_GAP;
+  const diagramW = box.width - diagramLeft;
+  const flowCalloutH = flow && callout ? estimateCalloutHeight(callout, diagramW) : 0;
+  const flowCalloutBlock = flowCalloutH ? flowCalloutH + FLOW_CALLOUT_GAP : 0;
+  const stepLayout = flow ? layoutSteps(flow, diagramW, panelH - flowCalloutBlock) : null;
+  const diagramTop = stepLayout ? Math.max(0, (panelH - stepLayout.height - flowCalloutBlock) / 2) : 0;
 
   /** Current step at full strength, visited steps softer, unreached steps and context dimmed. */
   const emphasis = (step: number | null) => {
@@ -465,6 +482,37 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
             </div>
           </div>
         </div>
+        {stepLayout ? (
+          <StepDiagram
+            layout={stepLayout}
+            codeRight={panelW}
+            left={diagramLeft}
+            top={diagramTop}
+            width={diagramW}
+            codeY={spans.map(anchorY)}
+            reached={reached}
+            frame={frame}
+            fps={fps}
+          />
+        ) : null}
+        {stepLayout && callout ? (
+          <>
+            <div
+              style={{
+                position: 'absolute',
+                left: diagramLeft + diagramW / 2 - 1.5,
+                top: diagramTop + stepLayout.height,
+                width: 3,
+                height: FLOW_CALLOUT_GAP,
+                background: colors.accent,
+                opacity: calloutAppear,
+              }}
+            />
+            <div style={{ position: 'absolute', left: diagramLeft, top: diagramTop + stepLayout.height + FLOW_CALLOUT_GAP }}>
+              <Callout text={callout} appear={calloutAppear} width={diagramW} lines={4} />
+            </div>
+          </>
+        ) : null}
         {calloutBeside ? (
           <>
             <svg width={box.width} height={panelH} style={{ position: 'absolute', inset: 0, overflow: 'visible', opacity: calloutAppear }}>
