@@ -100,13 +100,17 @@ export function formatDuration(seconds) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** "shows 9/13 hunks, skipped 2, tests 2/2 shown", or nothing for a storyboard without hunks. */
-function formatCoverage({ shown, skipped, total, tests }) {
-  if (!total) return '';
-  const parts = [`shows ${shown}/${total} hunks`];
-  if (skipped) parts.push(`skipped ${skipped}`);
-  if (tests.total) parts.push(`tests ${tests.shown}/${tests.total} shown`);
-  return ` · ${parts.join(', ')}`;
+/** "shows 9/13 hunks, skipped 2, tests 2/2 shown · tests scene: 5 cases, 1 gap"; each part only when it applies. */
+function formatCoverage({ shown, skipped, total, tests, testsScene }) {
+  const out = [];
+  if (total) {
+    const parts = [`shows ${shown}/${total} hunks`];
+    if (skipped) parts.push(`skipped ${skipped}`);
+    if (tests.total) parts.push(`tests ${tests.shown}/${tests.total} shown`);
+    out.push(parts.join(', '));
+  }
+  if (testsScene) out.push(`tests scene: ${plural(testsScene.cases, 'case')}, ${plural(testsScene.gaps, 'gap')}`);
+  return out.map((part) => ` · ${part}`).join('');
 }
 
 /** Lines for `validate`; the last line is the verdict. */

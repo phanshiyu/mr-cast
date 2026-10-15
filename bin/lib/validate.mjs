@@ -116,7 +116,60 @@ function checkCoverage(sb, hunks, errors, warnings) {
     if (isTest) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}): changed tests are not walked through; link it from a tests scene case (hunkId), show it in a code scene, or list ${h.id} in skipped with a reason`);
     else if (h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}) is not shown; add a code scene or list it in skipped with a reason`);
   }
-  return { shown: shown.size, skipped: skipped.size, total: Object.keys(hunks).length, tests };
+  const testsScenes = sb.scenes.filter((s) => s?.type === 'tests' && Array.isArray(s.cases) && Array.isArray(s.gaps));
+  const testsScene = testsScenes.length
+    ? { cases: testsScenes.reduce((n, s) => n + s.cases.length, 0), gaps: testsScenes.reduce((n, s) => n + s.gaps.length, 0) }
+    : null;
+  return { shown: shown.size, skipped: skipped.size, total: Object.keys(hunks).length, tests, testsScene };
+}
+
+const DIAGRAM_TYPES = ['arch', 'sequence', 'flow', 'er', 'state', 'mermaid'];
+// Prose and config: changing them alone gives a reviewer no component interaction to draw.
+const NON_LOGIC_LANGUAGES = ['markdown', 'json', 'yaml', 'toml', 'text'];
+
+/**
+ * Top-down order (overview, diagrams, code, tests) and a tests scene that says what is and is not
+ * tested. Runs on scenes whose type is valid; per-scene errors are reported elsewhere.
+ */
+function checkStoryShape(scenes, hunks, warnings) {
+  const all = Object.values(hunks);
+  const isTestHunk = (id) => Object.hasOwn(hunks, id) && isTestFile(hunks[id].file);
+  const logicFiles = [...new Set(all.filter((h) => !isTestFile(h.file) && !NON_LOGIC_LANGUAGES.includes(h.language)).map((h) => h.file))];
+  const testHunks = all.filter((h) => isTestFile(h.file)).map((h) => h.id);
+  const indexed = scenes.map((s, i) => ({ s, i })).filter(({ s }) => TYPES.includes(s?.type));
+  const firstOf = (pred) => indexed.find(({ s }) => pred(s))?.i ?? -1;
+
+  const first = indexed[0];
+  if (first && first.s.type !== 'intent') {
+    warnings.push(`scenes[${first.i}] is a ${first.s.type} scene; open with an intent scene that states the problem and the review concerns`);
+  }
+
+  const firstDiagram = firstOf((s) => DIAGRAM_TYPES.includes(s.type));
+  const firstCode = firstOf((s) => s.type === 'code');
+  if (firstDiagram > firstCode && firstCode >= 0) {
+    warnings.push(`scenes[${firstCode}] shows code before the first diagram (scenes[${firstDiagram}]); move a diagram ahead of the code so the viewer sees the shape of the change first`);
+  } else if (firstDiagram < 0 && logicFiles.length >= 2) {
+    const names = logicFiles.slice(0, 4).join(', ') + (logicFiles.length > 4 ? ', ...' : '');
+    warnings.push(`the diff changes logic in ${logicFiles.length} files (${names}) and no scene draws how they fit together; add an arch, sequence, flow, er or state scene before the code`);
+  }
+
+  const firstLogicCode = firstOf((s) => s.type === 'code' && Object.hasOwn(hunks, s.hunkId) && !isTestHunk(s.hunkId));
+  if (firstLogicCode >= 0) {
+    for (const { s, i } of indexed) {
+      if (i >= firstLogicCode) break;
+      if (s.type === 'tests' || (s.type === 'code' && isTestHunk(s.hunkId))) {
+        warnings.push(`scenes[${i}] shows tests before the code they test (first code scene is scenes[${firstLogicCode}]); move it after the code`);
+      }
+    }
+  }
+
+  const hasTestsScene = indexed.some(({ s }) => s.type === 'tests');
+  if (hasTestsScene) return;
+  if (testHunks.length) {
+    warnings.push(`the diff changes tests (${testHunks.join(', ')}) and no tests scene lists them; add a tests scene after the code with each case, what it proves, and the important behaviors left untested`);
+  } else if (logicFiles.length) {
+    warnings.push('the diff changes no tests; add a tests scene with "cases": [] and "gaps" listing the important behaviors this change leaves untested');
+  }
 }
 
 /** Checks a non-empty array of items with unique string ids; returns the id set, or null if the array is unusable. */
@@ -333,6 +386,7 @@ export async function validateStoryboard(sb, hunks) {
   });
 
   await checkMermaid(diagrams, errors, warnings);
+  checkStoryShape(sb.scenes, hunks ?? {}, warnings);
   const coverage = checkCoverage(sb, hunks ?? {}, errors, warnings);
 
   return { errors, warnings, coverage };
