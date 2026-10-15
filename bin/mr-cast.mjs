@@ -34,6 +34,8 @@ const USAGE = `usage: mr-cast <command> [options]
                   play and render voice the narration first unless --no-voice
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
+  validate, voice, play, render and still take --dir <path> to use a data directory other than .mr-cast
+
   install-skill   install the mr-video Claude Code skill and /mr-cast command into ~/.claude
   help            show this message`;
 
@@ -63,8 +65,12 @@ function readJson(file, missingHint) {
   }
 }
 
-async function loadProject() {
-  const dir = dataDir(repoRoot());
+/** The data directory: --dir when given, else the command's default. */
+const DIR_OPTION = { dir: { type: 'string' } };
+const resolveDir = (values, defaultDir) => (values.dir ? path.resolve(values.dir) : defaultDir());
+const diffDataDir = () => dataDir(repoRoot());
+
+async function loadProject(dir) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` first');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const result = await validateStoryboard(storyboard, hunks);
@@ -73,8 +79,8 @@ async function loadProject() {
 }
 
 /** Validate, print problems to stderr, and stop on errors. */
-async function loadValidProject() {
-  const project = await loadProject();
+async function loadValidProject(dir) {
+  const project = await loadProject(dir);
   if (project.result.errors.length || project.result.warnings.length) {
     for (const line of project.lines) console.error(line);
   }
@@ -140,9 +146,9 @@ function extract(argv) {
   }));
 }
 
-async function validate(argv) {
-  parseArgs({ args: argv, options: {} });
-  const { result, lines } = await loadProject();
+async function validate(argv, defaultDir) {
+  const { values } = parseArgs({ args: argv, options: DIR_OPTION });
+  const { result, lines } = await loadProject(resolveDir(values, defaultDir));
   for (const line of lines) console.log(line);
   if (result.errors.length) process.exit(1);
 }
@@ -168,9 +174,9 @@ async function voiceoverFor(dir, storyboard, values) {
   }
 }
 
-async function voice(argv) {
-  const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice } });
-  const { dir, storyboard } = await loadValidProject();
+async function voice(argv, defaultDir) {
+  const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice, ...DIR_OPTION } });
+  const { dir, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
   let generated = 0;
   const voiceover = await ensureVoiceover({
     dataDir: dir, storyboard, voice: values.voice,
@@ -210,13 +216,13 @@ function openBrowser(url) {
   } catch { /* no browser; the URL is printed */ }
 }
 
-async function play(argv) {
+async function play(argv, defaultDir) {
   const { values } = parseArgs({
     args: argv,
-    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS },
+    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS, ...DIR_OPTION },
   });
   const port = intOption(values.port, 'port', 1);
-  const { dir, storyboard } = await loadValidProject();
+  const { dir, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
   const distDir = ensureDist();
   let voiceover = await voiceoverFor(dir, storyboard, values);
 
@@ -224,11 +230,11 @@ async function play(argv) {
     if (file === 'meta.json') return;
     let project;
     try {
-      project = await loadProject();
+      project = await loadProject(dir);
       console.error(`mr-cast: ${file} changed`);
       if (file === 'storyboard.json' && !project.result.errors.length) {
         voiceover = await voiceoverFor(dir, project.storyboard, values);
-        project = await loadProject();
+        project = await loadProject(dir);
       }
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
@@ -274,9 +280,9 @@ function progressReporter(label) {
   };
 }
 
-async function render(argv) {
-  const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS } });
-  const { dir, hunks, storyboard } = await loadValidProject();
+async function render(argv, defaultDir) {
+  const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS, ...DIR_OPTION } });
+  const { dir, hunks, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
   const voiceover = await voiceoverFor(dir, storyboard, values);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, 'walkthrough.mp4'));
@@ -287,9 +293,9 @@ async function render(argv) {
   console.log(written ?? outFile);
 }
 
-async function still(argv) {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' } } });
-  const { dir, hunks, storyboard } = await loadValidProject();
+async function still(argv, defaultDir) {
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, ...DIR_OPTION } });
+  const { dir, hunks, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
   const count = storyboard.scenes.length;
   const scenes = positionals.map((p) => {
     const n = Number(p);
@@ -325,7 +331,7 @@ async function main([command, ...rest]) {
     console.log(USAGE);
     return;
   }
-  await run(rest);
+  await run(rest, diffDataDir);
 }
 
 main(process.argv.slice(2)).catch((err) => {

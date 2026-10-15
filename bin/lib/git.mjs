@@ -31,8 +31,13 @@ function tryGit(cwd, args) {
   try { return git(cwd, args).trim(); } catch { return null; }
 }
 
+/** The git work tree containing `cwd`, or null outside one. */
+export function findRepoRoot(cwd = process.cwd()) {
+  return tryGit(cwd, ['rev-parse', '--show-toplevel']);
+}
+
 export function repoRoot(cwd = process.cwd()) {
-  const root = tryGit(cwd, ['rev-parse', '--show-toplevel']);
+  const root = findRepoRoot(cwd);
   if (!root) throw new UserError('not inside a git work tree; run mr-cast from your repository');
   return root;
 }
