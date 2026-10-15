@@ -326,7 +326,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
             overflow: 'hidden',
           }}
         >
-          {contentH < ROW_H ? (
+          {hunk.additions === 0 && contentH < ROW_H ? (
             <div
               style={{
                 position: 'absolute',
