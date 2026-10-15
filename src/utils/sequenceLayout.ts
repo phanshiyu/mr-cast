@@ -129,24 +129,41 @@ function pairActivations(messages: readonly SequenceMessage[], indexOf: Map<stri
 }
 
 /**
- * Fits `text` in a chip `width` wide and at most `height` tall. It shrinks to keep one line; a label that
- * does not fit on one line at `min` wraps onto two at the largest font that fits both ways.
+ * Fits a message label in a chip `width` wide. It shrinks to keep one line, then wraps onto two at the
+ * largest font that fits `room`, the height its row leaves it; failing that, onto up to three lines at
+ * the row's font, and the row grows to hold them.
  */
-function fitLabel(text: string, width: number, height: number, min: number, max: number, path: string): Fit {
+function fitLabel(text: string, width: number, room: number, max: number, path: string): Fit {
   const textW = width - CHIP_PAD_X * 2;
-  const one = fitText(text, { ...SLOTS.messageLabel, size: max, min, oneLineMin: undefined, lines: 1, width: textW }, path);
+  const min = SLOTS.messageLabel.min;
+  const slot = { ...SLOTS.messageLabel, size: max, min, oneLineMin: undefined, width: textW };
+  const one = fitText(text, { ...slot, lines: 1 }, path);
   if (one.fits) return one;
-  const tallest = Math.floor((height - 2 * CHIP_PAD_Y) / (2 * LABEL_LINE_HEIGHT));
-  if (tallest < min) return one;
-  return fitText(text, { ...SLOTS.messageLabel, size: Math.min(max, tallest), min, oneLineMin: undefined, lines: 2, width: textW }, path);
+  const tallest = Math.floor((room - 2 * CHIP_PAD_Y) / (2 * LABEL_LINE_HEIGHT));
+  const two = tallest >= min ? fitText(text, { ...slot, size: Math.min(max, tallest), lines: 2 }, path) : null;
+  return two?.fits ? two : fitText(text, slot, path);
 }
 
-/** A label chip's width: its widest line and padding. */
+/** A label chip's width and height: its text and padding. */
 const chipWidth = (fit: Fit) => fit.width + CHIP_PAD_X * 2;
+const chipHeight = (fit: Fit) => fit.lines.length * fit.size * LABEL_LINE_HEIGHT + 2 * CHIP_PAD_Y + 2;
 
-/** Width of a note's text: its card less padding, border and icon. */
+/** Width of a note's text: its card less padding, border and icon; and its height. */
 const NOTE_CHROME = 24 + 2 + 17 + 8;
+const noteHeight = (fit: Fit) => fit.height + 10 + 2;
+/** Room kept between a row's note and the rows around it. */
+const NOTE_CLEAR = 12;
+/** How far a label may rise into the row above, as a share of a row. */
+const LABEL_RISE = 0.2;
 
+/** Rows a short sequence takes are at least this tall; past what fits the frame, the scene scrolls. */
+export const MIN_UNIT = 46;
+
+/**
+ * Lays a sequence out at a readable size. Rows share the frame's height down to MIN_UNIT and grow to
+ * hold a label or note that wraps; a sequence taller than the frame keeps that spacing, and the scene
+ * scrolls it under its pinned participants.
+ */
 export function layoutSequence(
   participants: readonly SequenceParticipant[],
   allMessages: readonly SequenceMessage[],
@@ -165,14 +182,10 @@ export function layoutSequence(
   const isSelf = (m: SequenceMessage) => m.from === m.to;
   const weights = messages.map((m) => (isSelf(m) ? SELF_WEIGHT : 1));
   const totalWeight = Math.max(1, weights.reduce((a, b) => a + b, 0));
-  const unit = Math.min(MAX_UNIT, (box.height - rowsTop - BOTTOM_PAD) / totalWeight);
+  const unit = Math.max(MIN_UNIT, Math.min(MAX_UNIT, (box.height - rowsTop - BOTTOM_PAD) / totalWeight));
   const baseFont = Math.round(Math.max(17, Math.min(24, unit * 0.36)));
   /** A label may rise from its arrow to just short of the arrow in the row above. */
-  const labelRoom = 0.92 * unit - LABEL_GAP;
-
-  const rowTops: number[] = [];
-  weights.reduce((top, w) => (rowTops.push(top), top + w * unit), rowsTop);
-  const arrowY = messages.map((m, i) => rowTops[i]! + (isSelf(m) ? 0.3 : 0.72) * unit);
+  const labelRoom = (1 - 0.28 + LABEL_RISE) * unit - LABEL_GAP;
 
   const spans = pairActivations(messages, indexOf);
   const covering = (p: number, row: number) => spans.filter((s) => s.participant === p && s.start <= row && s.end >= row).length;
@@ -182,6 +195,74 @@ export function layoutSequence(
     if (depth === 0) return xs[p]!;
     return dir > 0 ? xs[p]! + (depth - 1) * BAR_STEP + BAR_W / 2 : xs[p]! - BAR_W / 2;
   };
+
+  // Across first: where each arrow runs and its label and note sit, and the height each needs.
+  const across = messages.map((m, i) => {
+    const kind = m.kind ?? 'call';
+    const at = allMessages.indexOf(m);
+    const path = `messages[${at}].label`;
+    const from = indexOf.get(m.from)!;
+    const to = indexOf.get(m.to)!;
+    let label: Omit<PlacedLabel, 'y'>;
+    let occupied: [number, number];
+    let geometry: { self: true; x: number; depth: number; start: number; tip: number; loopX: number } | { self: false; x1: number; x2: number };
+    if (from === to) {
+      const x = xs[from]!;
+      const depth = covering(from, i);
+      const start = edgeX(from, i, 1);
+      const tip = x + depth * BAR_STEP + BAR_W / 2;
+      const loopX = Math.max(start, tip) + LOOP_W;
+      const rightRoom = width - (loopX + 12);
+      const leftRoom = x - BAR_W - 8;
+      const want = chipWidth(fitText(m.label, { ...SLOTS.messageLabel, size: baseFont, min: baseFont, oneLineMin: undefined, lines: 1, width: Infinity }, path));
+      const onRight = rightRoom >= Math.min(want, colW * 0.9) || rightRoom >= leftRoom;
+      const maxWidth = Math.min(onRight ? rightRoom : leftRoom, Math.max(colW * 0.9, want));
+      const text = fitLabel(m.label, maxWidth, labelRoom, baseFont, path);
+      const used = Math.min(maxWidth, chipWidth(text));
+      label = onRight ? { x: loopX + 12, align: 'left', maxWidth, text } : { x: leftRoom, align: 'right', maxWidth, text };
+      occupied = onRight ? [x - BAR_W, loopX + 12 + used] : [leftRoom - used, loopX];
+      geometry = { self: true, x, depth, start, tip, loopX };
+    } else {
+      const dir = to > from ? 1 : -1;
+      const x1 = edgeX(from, i, dir);
+      const x2 = edgeX(to, i, dir === 1 ? -1 : 1);
+      const span = Math.abs(x2 - x1) - 12;
+      label = { x: (x1 + x2) / 2, align: 'center', maxWidth: span, text: fitLabel(m.label, span, labelRoom, baseFont, path) };
+      occupied = [Math.min(x1, x2), Math.max(x1, x2)];
+      geometry = { self: false, x1, x2 };
+    }
+    let note: Omit<PlacedNote, 'y'> | null = null;
+    if (m.note) {
+      const left = occupied[0] - NOTE_GAP;
+      const right = width - (occupied[1] + NOTE_GAP);
+      const side = right >= left ? 'right' : 'left';
+      const maxWidth = Math.min(NOTE_MAX_W, Math.max(left, right));
+      const slot = { ...SLOTS.messageNote, width: maxWidth - NOTE_CHROME };
+      const usual = fitText(m.note, { ...slot, lines: weights[i]! * unit >= 62 ? 2 : 1 }, `messages[${at}].note`);
+      note = { x: side === 'right' ? occupied[1] + NOTE_GAP : occupied[0] - NOTE_GAP, side, maxWidth, text: usual.fits ? usual : fitText(m.note, { ...slot, lines: 3 }, `messages[${at}].note`) };
+    }
+    // Down a row: a plain arrow sits 0.72 of a row down with its label above it; a self-call starts 0.3
+    // down and loops 0.6 further, its label beside the loop. A tall label or note pushes the arrow down
+    // and the row's end with it.
+    const labelH = chipHeight(label.text);
+    const noteH = note ? noteHeight(note.text) + NOTE_CLEAR : 0;
+    const base = weights[i]! * unit;
+    let arrow: number;
+    let height: number;
+    if (geometry.self) {
+      const mid = Math.max(0.6 * unit, labelH / 2 - LABEL_RISE * unit, noteH / 2);
+      arrow = mid - 0.3 * unit;
+      height = Math.max(base, mid + Math.max(labelH, noteH) / 2 + 0.1 * unit);
+    } else {
+      arrow = Math.max(0.72 * unit, labelH + LABEL_GAP - LABEL_RISE * unit);
+      height = Math.max(base, arrow + 0.28 * unit, noteH);
+    }
+    return { message: m, kind, from, to, label, note, geometry, arrow, height };
+  });
+
+  const rowTops: number[] = [];
+  across.reduce((top, row) => (rowTops.push(top), top + row.height), rowsTop);
+  const arrowY = across.map((row, i) => rowTops[i]! + row.arrow);
 
   const activations: PlacedActivation[] = spans.map((s) => {
     const depth = spans.filter((o) => o.participant === s.participant && o.start < s.start && o.end >= s.start).length;
@@ -193,70 +274,27 @@ export function layoutSequence(
     };
   });
 
-  const placed: PlacedMessage[] = messages.map((m, i) => {
-    const kind = m.kind ?? 'call';
-    const path = `messages[${allMessages.indexOf(m)}].label`;
-    const from = indexOf.get(m.from)!;
-    const to = indexOf.get(m.to)!;
+  const placed: PlacedMessage[] = across.map((row, i) => {
     const top = rowTops[i]!;
-    const bottom = top + weights[i]! * unit;
+    const bottom = top + row.height;
     const y = arrowY[i]!;
+    const g = row.geometry;
     let points: Pt[];
     let label: PlacedLabel;
-    let occupied: [number, number];
-
-    if (from === to) {
-      const x = xs[from]!;
-      const depth = covering(from, i);
-      const start = edgeX(from, i, 1);
-      const tip = x + depth * BAR_STEP + BAR_W / 2;
-      const loopX = Math.max(start, tip) + LOOP_W;
+    if (g.self) {
       const yEnd = y + 0.6 * unit;
-      points = [{ x: start, y }, { x: loopX, y }, { x: loopX, y: yEnd }, { x: tip, y: yEnd }];
-      activations.push({ x: x + depth * BAR_STEP, y0: yEnd - 8, y1: yEnd + 14, opener: i });
-      const rightRoom = width - (loopX + 12);
-      const leftRoom = x - BAR_W - 8;
-      const want = chipWidth(fitText(m.label, { ...SLOTS.messageLabel, size: baseFont, min: baseFont, oneLineMin: undefined, lines: 1, width: Infinity }, path));
-      const onRight = rightRoom >= Math.min(want, colW * 0.9) || rightRoom >= leftRoom;
-      const maxWidth = Math.min(onRight ? rightRoom : leftRoom, Math.max(colW * 0.9, want));
-      const text = fitLabel(m.label, maxWidth, labelRoom, SLOTS.messageLabel.min, baseFont, path);
-      const used = Math.min(maxWidth, chipWidth(text));
-      label = onRight ? { x: loopX + 12, y: (y + yEnd) / 2, align: 'left', maxWidth, text } : { x: leftRoom, y: (y + yEnd) / 2, align: 'right', maxWidth, text };
-      occupied = onRight ? [x - BAR_W, loopX + 12 + used] : [leftRoom - used, loopX];
+      points = [{ x: g.start, y }, { x: g.loopX, y }, { x: g.loopX, y: yEnd }, { x: g.tip, y: yEnd }];
+      activations.push({ x: g.x + g.depth * BAR_STEP, y0: yEnd - 8, y1: yEnd + 14, opener: i });
+      label = { ...row.label, y: (y + yEnd) / 2 };
     } else {
-      const dir = to > from ? 1 : -1;
-      const x1 = edgeX(from, i, dir);
-      const x2 = edgeX(to, i, dir === 1 ? -1 : 1);
-      points = [{ x: x1, y }, { x: x2, y }];
-      const span = Math.abs(x2 - x1) - 12;
-      label = {
-        x: (x1 + x2) / 2,
-        y: y - LABEL_GAP,
-        align: 'center',
-        maxWidth: span,
-        text: fitLabel(m.label, span, labelRoom, SLOTS.messageLabel.min, baseFont, path),
-      };
-      occupied = [Math.min(x1, x2), Math.max(x1, x2)];
+      points = [{ x: g.x1, y }, { x: g.x2, y }];
+      label = { ...row.label, y: y - LABEL_GAP };
     }
-
-    let note: PlacedNote | null = null;
-    if (m.note) {
-      const left = occupied[0] - NOTE_GAP;
-      const right = width - (occupied[1] + NOTE_GAP);
-      const side = right >= left ? 'right' : 'left';
-      const maxWidth = Math.min(NOTE_MAX_W, Math.max(left, right));
-      note = {
-        x: side === 'right' ? occupied[1] + NOTE_GAP : occupied[0] - NOTE_GAP,
-        y: from === to ? label.y : (top + bottom) / 2,
-        side,
-        maxWidth,
-        text: fitText(m.note, { ...SLOTS.messageNote, lines: bottom - top >= 62 ? 2 : 1, width: maxWidth - NOTE_CHROME }, `messages[${allMessages.indexOf(m)}].note`),
-      };
-    }
-    return { message: m, kind, self: from === to, top, bottom, points, label, note };
+    const note = row.note ? { ...row.note, y: g.self ? label.y : (top + bottom) / 2 } : null;
+    return { message: row.message, kind: row.kind, self: g.self, top, bottom, points, label, note };
   });
 
-  const rowsEnd = rowTops.length ? rowTops[rowTops.length - 1]! + weights[weights.length - 1]! * unit : rowsTop + unit;
+  const rowsEnd = rowTops.length ? rowTops[rowTops.length - 1]! + across[across.length - 1]!.height : rowsTop + unit;
   return {
     width,
     height: rowsEnd + BOTTOM_PAD,

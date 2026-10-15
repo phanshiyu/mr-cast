@@ -11,7 +11,10 @@ import {
   type PlacedMessage,
   type Pt,
   type SequenceLayout, sequenceBoxes } from '../utils/sequenceLayout';
-import { centredStage, staged } from '../utils/penGeometry';
+import { centredStage, staged, type MarkTargets, type Stage } from '../utils/penGeometry';
+import { sequenceCamera } from '../utils/sequenceCamera';
+import { markedKeys } from '../../shared/pen-marks.mjs';
+import type { FocusStep } from '../types';
 import { PenMarks } from './PenMarks';
 import { currentStep, focusSpotlight, revealStarts } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
@@ -163,6 +166,22 @@ const NoteCard: React.FC<{ placed: PlacedMessage; appear: number }> = ({ placed,
   );
 };
 
+/** A layer that adds nothing: the scene draws as it did before it could scroll. */
+const CONTENTS: React.CSSProperties = { display: 'contents' };
+
+/** Room under the participants where scrolled messages fade out rather than meet the cards. */
+const FADE = 28;
+
+/**
+ * The scrolling messages' window: everything below the participants, fading at the top edge, and at the
+ * bottom edge while more of the sequence lies below.
+ */
+function scrollClip(top: number, viewH: number, scroll: number, height: number): React.CSSProperties {
+  const more = scroll < height - viewH - 1;
+  const mask = `linear-gradient(to bottom, transparent ${top}px, #000 ${top + FADE}px, #000 ${more ? viewH - FADE : viewH}px, ${more ? 'transparent' : '#000'} ${viewH}px)`;
+  return { position: 'absolute', inset: 0, overflow: 'hidden', maskImage: mask, WebkitMaskImage: mask };
+}
+
 /** The y down to which activation bars are revealed: the arrow of the latest message that has landed. */
 function revealFront(layout: SequenceLayout, starts: number[], drawFrames: number, frame: number): number {
   const ys = layout.messages.map((m) => m.points[m.points.length - 1]!.y);
@@ -205,13 +224,37 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const front = revealFront(layout, starts, DRAW_FRAMES, frame);
   const lifeline = interpolate(frame, [LIFELINE_START, LIFELINE_START + LIFELINE_FRAMES], [0, 1], clamp);
   const headerStagger = Math.min(5, (HEADERS_END - HEADER_START) / Math.max(1, layout.participants.length - 1));
-  const scale = Math.min(1, box.width / layout.width, box.height / layout.height);
-  const marks = useMemo(() => staged(sequenceBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
+  // A sequence keeps its rows readable: it scales only to fit across, and scrolls when it is taller than the frame.
+  const fitsDown = layout.height <= box.height / Math.min(1, box.width / layout.width);
+  const scale = fitsDown ? Math.min(1, box.width / layout.width, box.height / layout.height) : Math.min(1, box.width / layout.width);
+  const camera = useMemo(() => sequenceCamera(layout, steps.lit, segments, box.height / scale, fps), [layout, steps.lit, segments, box.height, scale, fps]);
+  const scroll = camera.scrollAt(frame);
+  const stage: Stage = camera.scrolls ? { left: (box.width - layout.width * scale) / 2, top: 0, scale } : centredStage(box, layout, scale);
+  const boxes = useMemo(() => sequenceBoxes(layout), [layout]);
+  // Marks on messages scroll with them: placed where step k's camera settles, then carried along while it moves.
+  const markTargets = (k: number): MarkTargets => {
+    const stop = camera.stops[k] ?? 0;
+    const onMessages = scene.steps?.[k] ? markedKeys(scene, scene.steps[k] as FocusStep, hunks).some((key) => key.startsWith('m:')) : false;
+    const moved = { ...boxes, boxes: new Map([...boxes.boxes].map(([key, b]) => [key, key.startsWith('m:') ? { ...b, y: b.y - stop } : b])), obstacles: boxes.obstacles?.map((b) => (b.y >= layout.lifelineTop ? { ...b, y: b.y - stop } : b)) };
+    const targets = staged(moved, stage, box);
+    return onMessages ? { ...targets, shift: { x: 0, y: (stop - scroll) * scale } } : targets;
+  };
 
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: camera.scrolls ? 'flex-start' : 'center', justifyContent: 'center' }}>
+        <div
+          style={{
+            position: 'relative',
+            width: layout.width,
+            height: camera.scrolls ? camera.viewH : layout.height,
+            transform: `scale(${scale})`,
+            transformOrigin: camera.scrolls ? 'top center' : undefined,
+            flexShrink: 0,
+          }}
+        >
+          <div style={camera.scrolls ? scrollClip(layout.lifelineTop, camera.viewH, scroll, layout.height) : CONTENTS}>
+          <div style={camera.scrolls ? { position: 'absolute', left: 0, top: 0, width: layout.width, height: layout.height, transform: `translateY(${-scroll}px)` } : CONTENTS}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
             {lit ? (
               <rect
@@ -261,6 +304,17 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
               />
             ))}
           </svg>
+          {layout.messages.map((m, i) => {
+            const appear = interpolate(frame, [starts[i]! + DRAW_FRAMES * 0.5, starts[i]! + MESSAGE_FRAMES], [0, 1], clamp);
+            return (
+              <div key={i}>
+                <MessageLabel placed={m} appear={appear} current={isLit(i)} />
+                {m.note ? <NoteCard placed={m} appear={appear} /> : null}
+              </div>
+            );
+          })}
+          </div>
+          </div>
           {layout.participants.map((p, i) => (
             <NodeCard
               key={p.participant.id}
@@ -275,18 +329,9 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
               appear={spring({ frame: frame - HEADER_START - i * headerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />
           ))}
-          {layout.messages.map((m, i) => {
-            const appear = interpolate(frame, [starts[i]! + DRAW_FRAMES * 0.5, starts[i]! + MESSAGE_FRAMES], [0, 1], clamp);
-            return (
-              <div key={i}>
-                <MessageLabel placed={m} appear={appear} current={isLit(i)} />
-                {m.note ? <NoteCard placed={m} appear={appear} /> : null}
-              </div>
-            );
-          })}
         </div>
       </div>
-      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={markTargets} />
     </SceneShell>
   );
 };

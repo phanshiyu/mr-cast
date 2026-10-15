@@ -20,6 +20,8 @@ const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
 const TEST_CASES_MAX = 10;
 const TEST_GAPS_MAX = 4;
 const INTENT_BULLETS_MAX = 6;
+// A longer sequence scrolls under its participants; past this many messages it is better told as two.
+const SEQUENCE_MESSAGES_MAX = 24;
 
 const MAX_LINE_RANGE = 10000;
 // A code scene walks its focus ranges top to bottom; long or many ranges turn it back into a wall of code.
@@ -498,7 +500,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (m?.kind !== undefined && !MESSAGE_KINDS.includes(m.kind)) errors.push(`${q}.kind: must be one of ${MESSAGE_KINDS.join(', ')}`);
           if (m?.note !== undefined && typeof m.note !== 'string') errors.push(`${q}.note: must be a string`);
         });
-        if (s.messages.length > 12) warnings.push(`${p}.messages: ${s.messages.length} messages; consider splitting into two sequence scenes`);
+        if (s.messages.length > SEQUENCE_MESSAGES_MAX) warnings.push(`${p}.messages: ${s.messages.length} messages; past ${SEQUENCE_MESSAGES_MAX} the scene scrolls for a long time, so consider splitting it into two sequence scenes`);
         break;
       }
 

@@ -1,0 +1,337 @@
+{
+  "title": "Twenty messages in one sequence",
+  "scenes": [
+    {
+      "type": "intent",
+      "narration": "A long sequence scrolls under its participants.",
+      "summary": "One order, then a refused one, in twenty messages.",
+      "risk": "low",
+      "bullets": [
+        "The camera keeps the current messages in view",
+        "The participants stay pinned at the top"
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "Twenty messages, stepped",
+      "narration": "One order, then a refused one.",
+      "participants": [
+        {
+          "id": "c",
+          "label": "Client",
+          "icon": "monitor"
+        },
+        {
+          "id": "a",
+          "label": "Orders API",
+          "icon": "server",
+          "change": "modified"
+        },
+        {
+          "id": "r",
+          "label": "Redis",
+          "icon": "database"
+        },
+        {
+          "id": "p",
+          "label": "Pricing",
+          "icon": "tag"
+        },
+        {
+          "id": "q",
+          "label": "Event queue",
+          "icon": "layers",
+          "change": "added"
+        }
+      ],
+      "messages": [
+        {
+          "from": "c",
+          "to": "a",
+          "label": "POST /orders"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "INCR rl:{ip}:{window}",
+          "note": "counts this request in the current minute"
+        },
+        {
+          "from": "r",
+          "to": "a",
+          "label": "count",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "PEXPIRE rl:{ip}:{window} 60000 on the first hit only"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "count > 20? refuse with 429 and a Retry-After header"
+        },
+        {
+          "from": "a",
+          "to": "p",
+          "label": "GET /prices/BOOK-1"
+        },
+        {
+          "from": "a",
+          "to": "p",
+          "label": "GET /prices/MUG-42",
+          "note": "both lookups run in parallel with Promise.all"
+        },
+        {
+          "from": "p",
+          "to": "a",
+          "label": "1200",
+          "kind": "return"
+        },
+        {
+          "from": "p",
+          "to": "a",
+          "label": "850",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "sum the line items into the order total"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "INSERT INTO orders"
+        },
+        {
+          "from": "a",
+          "to": "q",
+          "label": "publish order.created",
+          "kind": "async"
+        },
+        {
+          "from": "q",
+          "to": "a",
+          "label": "ack",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "c",
+          "label": "201 Created",
+          "kind": "return"
+        },
+        {
+          "from": "c",
+          "to": "a",
+          "label": "POST /orders (21st request this minute)"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "INCR rl:{ip}:{window}"
+        },
+        {
+          "from": "r",
+          "to": "a",
+          "label": "21",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "count > 20",
+          "note": "the limiter refuses before any pricing or database work"
+        },
+        {
+          "from": "a",
+          "to": "c",
+          "label": "429 Too Many Requests, Retry-After: 37",
+          "kind": "return"
+        },
+        {
+          "from": "c",
+          "to": "c",
+          "label": "wait 37 seconds before trying again"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0-2",
+          "say": "The client posts an order, and the API counts it in Redis."
+        },
+        {
+          "focus": "3-4",
+          "say": "On the first hit the key gets its expiry, and past twenty the request is refused."
+        },
+        {
+          "focus": "5-8",
+          "say": "Prices come from the pricing service, two lookups at once."
+        },
+        {
+          "focus": "9-13",
+          "mark": "circle",
+          "note": "after the insert",
+          "say": "The order is saved, then the event is published, and the client gets a 201."
+        },
+        {
+          "focus": "14-18",
+          "say": "The twenty first request in the same minute is refused before any other work."
+        },
+        {
+          "focus": 19,
+          "say": "The client waits for the Retry-After seconds."
+        }
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "Twenty messages, no steps",
+      "narration": "Without steps the camera pans from the first message to the last while the narration speaks, slowly enough to read each one as it passes.",
+      "participants": [
+        {
+          "id": "c",
+          "label": "Client",
+          "icon": "monitor"
+        },
+        {
+          "id": "a",
+          "label": "Orders API",
+          "icon": "server",
+          "change": "modified"
+        },
+        {
+          "id": "r",
+          "label": "Redis",
+          "icon": "database"
+        },
+        {
+          "id": "p",
+          "label": "Pricing",
+          "icon": "tag"
+        },
+        {
+          "id": "q",
+          "label": "Event queue",
+          "icon": "layers",
+          "change": "added"
+        }
+      ],
+      "messages": [
+        {
+          "from": "c",
+          "to": "a",
+          "label": "POST /orders"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "INCR rl:{ip}:{window}",
+          "note": "counts this request in the current minute"
+        },
+        {
+          "from": "r",
+          "to": "a",
+          "label": "count",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "PEXPIRE rl:{ip}:{window} 60000 on the first hit only"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "count > 20? refuse with 429 and a Retry-After header"
+        },
+        {
+          "from": "a",
+          "to": "p",
+          "label": "GET /prices/BOOK-1"
+        },
+        {
+          "from": "a",
+          "to": "p",
+          "label": "GET /prices/MUG-42",
+          "note": "both lookups run in parallel with Promise.all"
+        },
+        {
+          "from": "p",
+          "to": "a",
+          "label": "1200",
+          "kind": "return"
+        },
+        {
+          "from": "p",
+          "to": "a",
+          "label": "850",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "sum the line items into the order total"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "INSERT INTO orders"
+        },
+        {
+          "from": "a",
+          "to": "q",
+          "label": "publish order.created",
+          "kind": "async"
+        },
+        {
+          "from": "q",
+          "to": "a",
+          "label": "ack",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "c",
+          "label": "201 Created",
+          "kind": "return"
+        },
+        {
+          "from": "c",
+          "to": "a",
+          "label": "POST /orders (21st request this minute)"
+        },
+        {
+          "from": "a",
+          "to": "r",
+          "label": "INCR rl:{ip}:{window}"
+        },
+        {
+          "from": "r",
+          "to": "a",
+          "label": "21",
+          "kind": "return"
+        },
+        {
+          "from": "a",
+          "to": "a",
+          "label": "count > 20",
+          "note": "the limiter refuses before any pricing or database work"
+        },
+        {
+          "from": "a",
+          "to": "c",
+          "label": "429 Too Many Requests, Retry-After: 37",
+          "kind": "return"
+        },
+        {
+          "from": "c",
+          "to": "c",
+          "label": "wait 37 seconds before trying again"
+        }
+      ]
+    }
+  ]
+}
