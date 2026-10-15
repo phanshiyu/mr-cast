@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Drive mr-cast (the CLI that turns a git diff or an explanation into an animated Remotion walkthrough) the way a user does, and capture proof. Covers the CLI in a demo git repo (status, extract, init, snippet, validate, outline, voice, still, render, run settings, prune, upgrade, install-skill), the browser player that `play` serves, and the Claude Code skills it installs. Use to prove a change to mr-cast works before calling it done, to reproduce a bug, or when asked to run, render or screenshot mr-cast.
+description: Drive mr-cast (the CLI that turns a git diff or an explanation into an animated Remotion walkthrough) the way a user does, and capture proof. Covers the CLI in a demo git repo (status, extract, init, snippet, validate, outline, voice, still, render, settings flags, prune, upgrade, install-skill), the browser player that `play` serves, and the Claude Code skills it installs. Use to prove a change to mr-cast works before calling it done, to reproduce a bug, or when asked to run, render or screenshot mr-cast.
 ---
 
 # Verify mr-cast

@@ -5,15 +5,15 @@ The video walks a reviewer through the current branch's diff.
 ## Start the run
 
 ```bash
-{{MR_CAST}}/bin/mr-cast extract [base] --audience <a> --pace <p>
+{{MR_CAST}}/bin/mr-cast extract [base] <flags>
 ```
 
 - Pass a base branch when the user names one. Otherwise mr-cast picks origin's default branch, then `main` or `master`.
 - Add `--working` when the changes are uncommitted, or when `status` showed changed files and nothing ahead of the base.
 - For a PR or MR number that isn't checked out, check it out first with `gh pr checkout <n>` or `glab mr checkout <n>`.
-- Pass the settings from step 2: `--audience`, and `--pace` or `--no-voice`.
+- `<flags>` are the flags from step 2: `--audience`, and `--pace` or `--no-voice`.
 
-It prints the run's directory, `.mr-cast/<branch-slug>/`, then a hunk index: each file, its hunk ids (`h1`, `h2`, ...), and the changed lines with their line numbers. Full hunks go to `hunks.json` in that directory. Don't read that file. Read the source files instead when a change needs more context to explain. Running `extract` again on the same branch refreshes the diff and keeps the storyboard, the snippets and the settings.
+It prints the run's directory, `.mr-cast/<branch-slug>/`, then a hunk index: each file, its hunk ids (`h1`, `h2`, ...), and the changed lines with their line numbers. Full hunks go to `hunks.json` in that directory. Don't read that file. Read the source files instead when a change needs more context to explain. Running `extract` again on the same branch refreshes the diff and keeps the storyboard and the snippets.
 
 When unchanged code is needed to understand the change, such as the function that calls the changed one, a type it uses, or the config a value comes from, add those lines as a snippet.
 
