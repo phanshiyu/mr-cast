@@ -59,6 +59,8 @@ async function withRetry(label, fn) {
 }
 
 async function prepare({ hunks, storyboard }) {
+  // Remotion locates its Chrome download from process.cwd(); without this it re-downloads Chrome into the user's repo.
+  process.chdir(ROOT);
   await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
   const serveUrl = await getServeUrl();
   const inputProps = { storyboard, hunks, showCaptions: true };
