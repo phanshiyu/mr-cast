@@ -5,7 +5,7 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { CodeScene, DiffLine, Hunk } from '../types';
 import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
-import { lineFocusRanges } from '../utils/lines';
+import { lineFocusRanges } from '../../shared/focus.mjs';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, defaultChapter, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';

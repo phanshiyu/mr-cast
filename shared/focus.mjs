@@ -26,3 +26,33 @@ export function focusRanges(lines) {
   }
   return ranges;
 }
+
+/** The scene's focus ranges: focusLinesAfter (new-file numbers) first, then focusLinesBefore (old-file). */
+export function sceneFocusRanges(scene) {
+  return [
+    ...focusRanges(expandLineRefs(scene.focusLinesAfter)).map((range) => ({ side: 'newLine', range })),
+    ...focusRanges(expandLineRefs(scene.focusLinesBefore)).map((range) => ({ side: 'oldLine', range })),
+  ];
+}
+
+/**
+ * For each hunk line, the index into sceneFocusRanges(scene) of the range it falls in, or null.
+ * With no focus on any line of the hunk, the changed lines form one range, id 0.
+ */
+export function lineFocusRanges(scene, hunk) {
+  const ranges = sceneFocusRanges(scene);
+  const ids = hunk.lines.map((line) => {
+    const id = ranges.findIndex(({ side, range: [a, b] }) => {
+      const n = line[side];
+      return n !== null && n >= a && n <= b;
+    });
+    return id < 0 ? null : id;
+  });
+  if (ids.some((id) => id !== null)) return ids;
+  return hunk.lines.map((line) => (line.type === 'context' ? null : 0));
+}
+
+/** Range ids in the order the single-column code view plays them: top to bottom by first line. */
+export function focusStepOrder(scene, hunk) {
+  return [...new Set(lineFocusRanges(scene, hunk).filter((id) => id !== null))];
+}
