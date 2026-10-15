@@ -2,7 +2,7 @@ import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
-import { fitGraph } from '../utils/graphLayout';
+import { fitGraph, graphDirection } from '../utils/graphLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutCode } from '../utils/codeLayout';
 import { layoutEr } from '../utils/erLayout';
@@ -21,7 +21,7 @@ type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, st
 
 const SCENE_FITS: SceneFits = {
   intent: (scene, storyboard) => layoutIntent(scene, storyboard),
-  graph: (scene) => fitGraph(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false)),
+  graph: (scene) => fitGraph(scene.nodes, scene.edges, graphDirection(scene), contentBox(false)),
   code: (scene, _storyboard, hunks) => (hunks[scene.hunkId] ? layoutCode(scene, hunks[scene.hunkId]!) : null),
   flow: (scene) => layoutFlow(scene),
   sequence: (scene) => layoutSequence(scene.participants, scene.messages, contentBox(Boolean(scene.title))),

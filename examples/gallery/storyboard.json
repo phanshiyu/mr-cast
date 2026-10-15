@@ -63,6 +63,37 @@
       ]
     },
     {
+      "type": "graph",
+      "chapter": "The timeout job",
+      "narration": "Every few minutes the timeout job looks at each pending order and decides what to do with it.",
+      "nodes": [
+        { "id": "start", "label": "Timeout job runs", "shape": "terminal" },
+        { "id": "load", "label": "Load the pending order", "shape": "step" },
+        { "id": "paid", "label": "Paid since?", "shape": "decision" },
+        { "id": "keep", "label": "Leave it", "shape": "terminal" },
+        { "id": "old", "label": "Older than 24 hours?", "shape": "decision" },
+        { "id": "later", "label": "Check again next run", "shape": "terminal" },
+        { "id": "cancel", "label": "Cancel the order", "shape": "step", "caption": "releases the reserved stock", "change": "added" },
+        { "id": "done", "label": "Order cancelled", "shape": "terminal" }
+      ],
+      "edges": [
+        { "from": "start", "to": "load" },
+        { "from": "load", "to": "paid" },
+        { "from": "paid", "to": "keep", "label": "yes" },
+        { "from": "paid", "to": "old", "label": "no" },
+        { "from": "old", "to": "later", "label": "no" },
+        { "from": "old", "to": "cancel", "label": "yes" },
+        { "from": "cancel", "to": "done" }
+      ],
+      "steps": [
+        { "focus": ["start", "load"], "say": "The job loads each order that is still pending." },
+        { "focus": "paid", "say": "If the payment landed since, it leaves the order alone." },
+        { "focus": ["paid->old", "old"], "say": "If not, it checks whether the order is older than a day." },
+        { "focus": ["cancel", "old->cancel"], "mark": "circle", "note": "new in this change", "say": "An unpaid order older than a day is cancelled, and its stock goes back on the shelf." },
+        { "focus": "done", "say": "That order ends cancelled." }
+      ]
+    },
+    {
       "type": "table",
       "chapter": "Settings",
       "title": "Order settings",

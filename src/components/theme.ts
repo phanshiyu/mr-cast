@@ -49,6 +49,13 @@ export const defaultChapter: Record<Scene['type'], string> = {
   files: 'Files',
 };
 
+/** The label a scene's header and the player's chapter list show: its own chapter, or one for its type. A graph that branches at a decision is a flowchart. */
+export function sceneChapter(scene: Scene): string {
+  if (scene.chapter) return scene.chapter;
+  if (scene.type === 'graph' && scene.nodes.some((n) => n.shape === 'decision')) return 'Flowchart';
+  return defaultChapter[scene.type];
+}
+
 export const CODE_TAB_SIZE = 2;
 /** Display width of a code line in character cells, with tabs expanded to CODE_TAB_SIZE stops. */
 export function codeColumns(text: string): number {

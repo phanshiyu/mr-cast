@@ -1,7 +1,7 @@
 import { Player, type PlayerRef } from '@remotion/player';
 import { ArrowRightLeft, ChartColumn, ChartGantt, CircleDot, FolderTree, Code2, FlaskConical, Shapes, GitBranch, Network, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { defaultChapter } from './components/theme';
+import { sceneChapter } from './components/theme';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import type { HunkMap, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
@@ -199,7 +199,7 @@ export const App: React.FC = () => {
                       <span className="w-5 font-mono text-xs text-slate-500">{c.index + 1}</span>
                       <Icon size={16} className={isActive ? 'text-indigo-300' : 'text-slate-500'} />
                       <span className={`flex-1 truncate text-sm ${isActive ? 'text-white' : 'text-slate-300'}`}>
-                        {c.scene.chapter ?? defaultChapter[c.scene.type]}
+                        {sceneChapter(c.scene)}
                       </span>
                       <span className="font-mono text-xs text-slate-500">{formatTime(c.from)}</span>
                     </div>

@@ -1,6 +1,6 @@
 import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { GraphEdge, GraphNode, GraphScene } from '../types';
+import type { GraphEdge, GraphNode, GraphScene, NodeShape } from '../types';
 import { badgeWords } from './marks';
 import { cardTexts, sharedTitleSize, type CardText } from './nodeText';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
@@ -9,6 +9,14 @@ export const NODE_W = 320;
 /** Widest a card grows when the frame has room across, so long titles keep the full font. */
 const NODE_W_MAX = 440;
 export const NODE_H = 104;
+/** A start or end pill is lower than a card; a decision's diamond is taller, as tall as its question needs. */
+export const TERMINAL_H = 80;
+const DECISION_HEIGHTS = [140, 160, 180, 200];
+/** A decision's question keeps at least this size before its diamond grows. */
+const DECISION_COMFORT = 20;
+/** Room around a decision's question inside its diamond, and around a terminal's words inside its pill. */
+const DECISION_PAD = 10;
+export const TERMINAL_PAD_X = 40;
 /** How far a card's badges rise above its top edge. */
 const BADGE_LIFT = 16;
 /** Largest scale a small graph is drawn at. */
@@ -37,6 +45,44 @@ const BORDER_CLEAR = 6;
 
 export type GraphDirection = NonNullable<GraphScene['layout']>;
 
+export const shapeOf = (node: GraphNode): NodeShape => node.shape ?? 'card';
+
+/** A graph's direction: its own, or top to bottom when it branches at a decision, as a flowchart reads. */
+export const graphDirection = (scene: Pick<GraphScene, 'layout' | 'nodes'>): GraphDirection => scene.layout ?? (scene.nodes.some((n) => shapeOf(n) === 'decision') ? 'TB' : 'LR');
+
+/**
+ * The width a decision's question has on `lines` lines at `size`: the widest box of that height that
+ * fits inside a diamond `w` wide and `h` tall, less its padding.
+ */
+const diamondWidth = (w: number, h: number) => (lines: number, size: number) => w * (1 - (lines * size * SLOTS.decision.lineHeight + 2 * DECISION_PAD) / h) - 2 * DECISION_PAD;
+
+function decisionFit(node: GraphNode, w: number, h: number, path: string, min = SLOTS.decision.min): Fit {
+  return fitText(node.label, { ...SLOTS.decision, min, width: diamondWidth(w, h) }, path);
+}
+
+/** The height of a graph's diamonds: the least at which every question keeps a comfortable size. */
+function decisionHeight(nodes: readonly GraphNode[], w: number): number {
+  const decisions = nodes.filter((n) => shapeOf(n) === 'decision');
+  return DECISION_HEIGHTS.find((h) => decisions.every((n) => decisionFit(n, w, h, '', DECISION_COMFORT).fits)) ?? DECISION_HEIGHTS[DECISION_HEIGHTS.length - 1]!;
+}
+
+/** How tall each shape is drawn, given the graph's diamond height. */
+const shapeHeight = (shape: NodeShape, diamond: number) => (shape === 'decision' ? diamond : shape === 'terminal' ? TERMINAL_H : NODE_H);
+
+/**
+ * Each node's text, by id. A card fits its title and caption; a step its title and caption with no icon;
+ * a terminal its words in its pill; a decision its question in its diamond. Cards and steps share one title size.
+ */
+function nodeTexts(nodes: readonly GraphNode[], w: number, diamond: number): Map<string, CardText> {
+  const boxed = nodes.flatMap((node, index) => (shapeOf(node) === 'card' || shapeOf(node) === 'step' ? [{ node: shapeOf(node) === 'step' ? { ...node, icon: undefined } : node, index }] : []));
+  const texts = cardTexts(boxed.map((b) => b.node), w, NODE_H, 'large', (i) => `nodes[${boxed[i]!.index}]`);
+  nodes.forEach((node, i) => {
+    if (shapeOf(node) === 'terminal') texts.set(node.id, { title: fitText(node.label, sized(SLOTS.terminal, w - 2 * TERMINAL_PAD_X), `nodes[${i}].label`), caption: null });
+    if (shapeOf(node) === 'decision') texts.set(node.id, { title: decisionFit(node, w, diamond, `nodes[${i}].label`), caption: null });
+  });
+  return texts;
+}
+
 /**
  * The layout runs in layer coordinates: `u` along the layers (the direction edges point) and `v` across
  * them. Left to right, u is x; top to bottom, u is y. Each direction has its own node extents and gaps.
@@ -58,10 +104,10 @@ interface Axes {
 }
 
 /** Top to bottom the frame is short for its layers, so the layers keep less margin there. */
-function axesFor(direction: GraphDirection, nodeW: number): Axes {
+function axesFor(direction: GraphDirection, nodeW: number, cellH: number): Axes {
   return direction === 'LR'
-    ? { U: nodeW, V: NODE_H, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
-    : { U: NODE_H, V: nodeW, uGap: 64, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
+    ? { U: nodeW, V: cellH, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
+    : { U: cellH, V: nodeW, uGap: 64, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
 }
 
 export interface Pt {
@@ -72,9 +118,11 @@ export interface Pt {
 export interface PositionedNode {
   node: GraphNode;
   layer: number;
-  /** Top-left corner in layout units. */
+  /** Top-left corner of its cell in layout units. */
   x: number;
   y: number;
+  /** The shape as drawn, centred in its cell. */
+  box: { x: number; y: number; width: number; height: number };
 }
 
 export interface EdgeLabelBox {
@@ -118,18 +166,27 @@ export interface GraphLayout {
   groups: PlacedGroup[];
   layerCount: number;
   nodeWidth: number;
-  /** Each card's title and caption, by node id. */
+  /** Height of every node's cell: a card's, or a diamond's when the graph has decisions. */
+  cellHeight: number;
+  /** Height of the graph's diamonds. */
+  diamondHeight: number;
+  /** Each node's text, by node id: a title and, on a card or step, a caption. */
   texts: Map<string, CardText>;
   width: number;
   height: number;
 }
 
-/** A node in layer coordinates: `u` and `v` are its corner nearest the origin. */
+/**
+ * A node in layer coordinates: `u` and `v` are its cell's corner nearest the origin, and `iu` and `iv` how
+ * far its shape sits inside its cell, so edges meet the shape and not the cell.
+ */
 interface Placed {
   node: GraphNode;
   layer: number;
   u: number;
   v: number;
+  iu: number;
+  iv: number;
 }
 
 /** Edges that close a cycle, found by DFS in input order so the result is deterministic. */
@@ -290,8 +347,8 @@ function skipLane(axes: Axes, a: Placed, b: Placed, all: readonly Placed[]): num
 function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: readonly Placed[], labelU: number): Curve {
   const { U, V, xy } = axes;
   if (b.layer > a.layer) {
-    const p0 = { x: a.u + U, y: a.v + V / 2 };
-    const p3 = { x: b.u, y: b.v + V / 2 };
+    const p0 = { x: a.u + U - a.iu, y: a.v + V / 2 };
+    const p3 = { x: b.u + b.iu, y: b.v + V / 2 };
     const lane = skipLane(axes, a, b, all);
     if (lane !== null) {
       const g0 = gaps[a.layer]! / 2;
@@ -311,15 +368,15 @@ function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: r
   }
   if (b.layer === a.layer) {
     const down = b.v > a.v;
-    const p0 = { x: a.u + U / 2 + 40, y: down ? a.v + V : a.v };
-    const p3 = { x: b.u + U / 2 + 40, y: down ? b.v : b.v + V };
+    const p0 = { x: a.u + U / 2 + 40, y: down ? a.v + V - a.iv : a.v + a.iv };
+    const p3 = { x: b.u + U / 2 + 40, y: down ? b.v + b.iv : b.v + V - b.iv };
     const bulge = U / 2 + 10;
     return cubic(axes, p0, { x: p0.x + bulge, y: p0.y }, { x: p3.x + bulge, y: p3.y }, p3);
   }
   const spanned = all.filter((n) => n.layer >= b.layer && n.layer <= a.layer);
   const top = Math.min(...spanned.map((n) => n.v)) - LOOP_LIFT;
-  const p0 = { x: a.u + U / 2, y: a.v };
-  const p3 = { x: b.u + U / 2, y: b.v };
+  const p0 = { x: a.u + U / 2, y: a.v + a.iv };
+  const p3 = { x: b.u + U / 2, y: b.v + b.iv };
   return cubic(axes, p0, { x: p0.x, y: top }, { x: p3.x, y: top }, p3);
 }
 
@@ -418,8 +475,13 @@ function layoutPass(
   nodeW: number,
   extra: readonly number[],
 ): { layout: GraphLayout; crowded: Map<number, number> } {
-  const axes = axesFor(direction, nodeW);
+  const diamond = decisionHeight(nodes, nodeW);
+  const heightOf = (n: GraphNode) => shapeHeight(shapeOf(n), diamond);
+  const cellH = Math.max(...nodes.map(heightOf));
+  const axes = axesFor(direction, nodeW, cellH);
   const { U, V, vGap, xy } = axes;
+  /** A node's shape along u and across v, and how far it sits inside its cell. */
+  const insets = (n: GraphNode) => (direction === 'LR' ? { iu: 0, iv: (V - heightOf(n)) / 2 } : { iu: (U - heightOf(n)) / 2, iv: 0 });
   const ids = new Set(nodes.map((n) => n.id));
   const valid = edges.filter((e) => ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
   const back = backEdges(nodes, valid);
@@ -473,7 +535,7 @@ function layoutPass(
     bands.forEach((band) => {
       const members = col.filter((n) => bandOf(n) === band);
       members.forEach((node, i) => {
-        placed.set(node.id, { node, layer: l, u: uOf(l), v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap) });
+        placed.set(node.id, { node, layer: l, u: uOf(l), v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap), ...insets(node) });
       });
     });
   });
@@ -491,9 +553,13 @@ function layoutPass(
   });
 
   const all = [...placed.values()];
-  const card = xy(U, V);
+  /** A node's shape in layout units. */
+  const shapeBox = (p: Placed) => {
+    const size = xy(U - 2 * p.iu, V - 2 * p.iv);
+    return { ...xy(p.u + p.iu, p.v + p.iv), width: size.x, height: size.y };
+  };
   const obstacles: Rect[] = [
-    ...all.map((p) => grow({ ...xy(p.u, p.v), width: card.x, height: card.y }, 6)),
+    ...all.map((p) => grow(shapeBox(p), 6)),
     ...groups.flatMap(groupObstacles),
   ];
   const crowded = new Map<number, number>();
@@ -528,13 +594,15 @@ function layoutPass(
   const layout = {
     nodes: nodes.map((n) => {
       const p = placed.get(n.id)!;
-      return { node: n, layer: p.layer, ...xy(p.u, p.v) };
+      return { node: n, layer: p.layer, ...xy(p.u, p.v), box: shapeBox(p) };
     }),
     edges: routed,
     groups,
     layerCount,
     nodeWidth: nodeW,
-    texts: cardTexts(nodes, nodeW, NODE_H, 'large', (i) => `nodes[${i}]`),
+    cellHeight: cellH,
+    diamondHeight: diamond,
+    texts: nodeTexts(nodes, nodeW, diamond),
     width: size.x,
     height: size.y,
   };
@@ -552,9 +620,10 @@ const fitScale = (layout: GraphLayout, box: { width: number; height: number }) =
 export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[], direction: GraphDirection, box: { width: number; height: number }): { layout: GraphLayout; scale: number } {
   const base = layoutGraph(nodes, edges, direction, NODE_W);
   const floor = fitScale(base, box);
-  let best = { layout: base, scale: floor, titleFont: sharedTitleSize(nodes, NODE_W, NODE_H, 'large') };
+  const boxed = nodes.flatMap((n) => (shapeOf(n) === 'card' ? [n] : shapeOf(n) === 'step' ? [{ ...n, icon: undefined }] : []));
+  let best = { layout: base, scale: floor, titleFont: sharedTitleSize(boxed, NODE_W, NODE_H, 'large') };
   for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
-    const font = sharedTitleSize(nodes, w, NODE_H, 'large');
+    const font = sharedTitleSize(boxed, w, NODE_H, 'large');
     if (font <= best.titleFont) continue;
     const layout = layoutGraph(nodes, edges, direction, w);
     const scale = fitScale(layout, box);
@@ -573,7 +642,7 @@ export function graphBoxes(layout: GraphLayout): LayoutBoxes {
   // Badges sit on a card's top edge, so a mark around the card takes them in.
   const card = (p: PositionedNode): Box => {
     const lift = badgeWords(p.node).length ? BADGE_LIFT : 0;
-    return { x: p.x, y: p.y - lift, width: layout.nodeWidth, height: NODE_H + lift };
+    return { x: p.box.x, y: p.box.y - lift, width: p.box.width, height: p.box.height + lift };
   };
   const edge = (r: RoutedEdge): Box => (r.label ? around(r.label, r.label.width, r.label.height) : around(r.mid, 40, 40));
   const boxes = new Map<string, Box>([

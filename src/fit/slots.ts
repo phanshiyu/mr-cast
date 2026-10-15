@@ -58,4 +58,6 @@ export const SLOTS = {
   spanLabel: { ...SANS, name: 'span label', weight: 700, size: 19, min: 14, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the span label, e.g. "backoff 4 s"' },
   fileName: { ...MONO, name: 'file name', weight: 600, size: 26, min: 14, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'the name is drawn smaller; nothing to change' },
   fileNote: { ...SANS, name: 'file note', weight: 400, size: 24, min: 16, lines: 1, lineHeight: 1.15, width: 0, fix: 'shorten the note to a few words' },
+  decision: { ...LABEL, name: 'decision', weight: 650, size: 24, min: 15, lines: 3, lineHeight: 1.15, width: 0, fix: 'ask a shorter question, e.g. "Cache hit?", and put the detail in the narration' },
+  terminal: { ...LABEL, name: 'start or end', weight: 650, size: 26, min: 16, lines: 2, lineHeight: 1.15, width: 0, fix: 'shorten it to a few words, e.g. "Order placed"' },
 } satisfies Record<string, Slot>;

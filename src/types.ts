@@ -139,9 +139,18 @@ export interface DiagramNode extends Marks {
   tone?: Tone;
 }
 
+/**
+ * How a graph node is drawn: "card" (default) with an icon and caption; "decision" a diamond holding a
+ * short question, whose outgoing edges' labels name the branches ("yes", "no"); "terminal" a pill for
+ * where a flow starts or ends; "step" a plain box for an action, with no icon.
+ */
+export type NodeShape = 'card' | 'decision' | 'terminal' | 'step';
+
 export interface GraphNode extends DiagramNode {
   /** Name of a group, e.g. "Support team". Nodes with the same group are drawn inside one labelled box. */
   group?: string;
+  /** Defaults to "card". A decision, terminal or step draws no icon, and only a step draws a caption. */
+  shape?: NodeShape;
 }
 
 export interface GraphEdge {
@@ -166,7 +175,10 @@ export interface GraphScene extends SceneBase {
   type: 'graph';
   nodes: GraphNode[];
   edges: GraphEdge[];
-  /** "LR" (default) lays the graph out left to right; "TB" top to bottom, which suits hierarchies such as people and teams. */
+  /**
+   * "LR" lays the graph out left to right; "TB" top to bottom, which suits hierarchies such as people and
+   * teams, and flowcharts. Defaults to "TB" when a node is a decision, else "LR".
+   */
   layout?: 'LR' | 'TB';
   /**
    * Move the viewer's attention as the voice explains: the whole graph draws first, then each step lights

@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { GraphEdge, GraphNode, GraphScene, Change } from '../types';
-import { GROUP_NAME, LABEL_PAD, NODE_H, graphBoxes, fitGraph, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
+import { GROUP_NAME, LABEL_PAD, graphBoxes, fitGraph, graphDirection, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
+import { ShapeNode } from './ShapeNode';
 import { centredStage, staged } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { ChangeLegend } from './ChangeLegend';
@@ -36,12 +37,13 @@ function edgeTone(edge: GraphEdge, nodes: ReadonlyMap<string, GraphNode>): { str
   return { stroke: MUTED, marker: 'muted' };
 }
 
-const edgeStyle = (edge: GraphEdge) => edge.style ?? ((edge.direction ?? 'forward') === 'forward' ? 'flow' : 'solid');
+/** An edge's style: its own, else moving dashes for a forward edge, except in a flowchart, whose arrows are still. */
+const edgeStyle = (edge: GraphEdge, flowchart: boolean) => edge.style ?? ((edge.direction ?? 'forward') === 'forward' && !flowchart ? 'flow' : 'solid');
 
-const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone: ReturnType<typeof edgeTone>; emphasis: Emphasis }> = ({ routed, draw, frame, tone, emphasis }) => {
+const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone: ReturnType<typeof edgeTone>; emphasis: Emphasis; flowchart: boolean }> = ({ routed, draw, frame, tone, emphasis, flowchart }) => {
   const { edge } = routed;
   const direction = edge.direction ?? 'forward';
-  const style = edgeStyle(edge);
+  const style = edgeStyle(edge, flowchart);
   const removed = edge.change === 'removed';
   const marker = `url(#arrow-${tone.marker})`;
   const heads = {
@@ -159,8 +161,9 @@ function legendChanges(scene: GraphScene): Set<Change> {
 export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { layout, scale } = useMemo(() => fitGraph(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false)), [scene.nodes, scene.edges, scene.layout]);
+  const { layout, scale } = useMemo(() => fitGraph(scene.nodes, scene.edges, graphDirection(scene), contentBox(false)), [scene]);
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
+  const flowchart = scene.nodes.some((n) => shapeOf(n) === 'decision');
   const marks = useMemo(() => staged(graphBoxes(layout), centredStage(contentBox(false), layout, scale), contentBox(false)), [layout, scale]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.
@@ -199,25 +202,26 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
                 routed={routed}
                 frame={frame}
                 tone={edgeTone(routed.edge, nodes)}
+                flowchart={flowchart}
                 emphasis={emphasisOf(`e:${routed.index}`)}
                 draw={interpolate(frame, [edgeAt(i), edgeAt(i) + EDGE_DRAW], [0, 1], clamp)}
               />
             ))}
           </svg>
-          {layout.nodes.map((placed) => (
-            <NodeCard
-              key={placed.node.id}
-              node={placed.node}
-              x={placed.x}
-              y={placed.y}
-              width={layout.nodeWidth}
-              height={NODE_H}
-              size="large"
-              text={layout.texts.get(placed.node.id)!}
-              emphasis={nodeEmphasis(placed.node)}
-              appear={spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } })}
-            />
-          ))}
+          {layout.nodes.map((placed) => {
+            const shape = shapeOf(placed.node);
+            const common = {
+              node: placed.node,
+              x: placed.box.x,
+              y: placed.box.y,
+              width: placed.box.width,
+              height: placed.box.height,
+              text: layout.texts.get(placed.node.id)!,
+              emphasis: nodeEmphasis(placed.node),
+              appear: spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } }),
+            };
+            return shape === 'card' ? <NodeCard key={placed.node.id} {...common} size="large" /> : <ShapeNode key={placed.node.id} {...common} shape={shape} />;
+          })}
           {layout.edges.map((routed, i) =>
             routed.label ? (
               <EdgeLabel

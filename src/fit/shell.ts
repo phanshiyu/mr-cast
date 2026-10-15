@@ -1,5 +1,5 @@
 import { fitText, type Fit } from '../../shared/textfit.mjs';
-import { SAFE, defaultChapter } from '../components/theme';
+import { SAFE, sceneChapter } from '../components/theme';
 import type { Scene } from '../types';
 import { SLOTS, sized } from './slots';
 
@@ -18,7 +18,7 @@ export function shellFits(scene: Scene): ShellFits {
   const width = 1920 - SAFE.left - SAFE.right - (WITH_ASIDE.has(scene.type) ? ASIDE_RESERVE + ASIDE_GAP : 0);
   const title = 'title' in scene && scene.title ? scene.title : null;
   return {
-    eyebrow: fitText(scene.chapter ?? defaultChapter[scene.type], sized(SLOTS.eyebrow, width), scene.chapter ? 'chapter' : ''),
+    eyebrow: fitText(sceneChapter(scene), sized(SLOTS.eyebrow, width), scene.chapter ? 'chapter' : ''),
     title: title ? fitText(title, sized(SLOTS.title, width), 'title') : null,
   };
 }
