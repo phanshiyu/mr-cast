@@ -56,7 +56,7 @@ export interface ArchNode {
   id: string;
   label: string;
   kind: NodeKind;
-  /** Highlight as touched by this change. */
+  /** Highlight as touched by this change, or in an explanation as a key part of the idea. */
   modified?: boolean;
 }
 
@@ -111,7 +111,7 @@ export interface SequenceParticipant {
   id: string;
   label: string;
   kind?: NodeKind;
-  /** Highlight as touched by this change. */
+  /** Highlight as touched by this change, or in an explanation as a key participant. */
   modified?: boolean;
 }
 
@@ -122,7 +122,7 @@ export interface SequenceMessage {
   label: string;
   /** "call" (default) is a solid arrow, "return" a dashed one, "async" an open arrowhead. */
   kind?: MessageKind;
-  /** Highlight a message this change adds or alters. */
+  /** Highlight a message this change adds or alters, or in an explanation the key step. */
   modified?: boolean;
   /** Short annotation shown beside the message. */
   note?: string;

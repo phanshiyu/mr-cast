@@ -5,7 +5,7 @@ import type { ArchScene, NodeKind } from '../types';
 import { NODE_H, NODE_W, layoutArch, type PositionedNode, type RoutedEdge } from '../utils/archLayout';
 import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
-import type { SceneProps } from './sceneProps';
+import { isExplanation, type SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
 
 const kindIcon: Record<NodeKind, LucideIcon> = { service: Server, db: Database, queue: Layers, client: Monitor };
@@ -13,7 +13,7 @@ const kindLabel: Record<NodeKind, string> = { service: 'service', db: 'datastore
 
 const NODE_START = 8;
 
-const NodeCard: React.FC<{ placed: PositionedNode; appear: number }> = ({ placed, appear }) => {
+const NodeCard: React.FC<{ placed: PositionedNode; appear: number; badge: string }> = ({ placed, appear, badge }) => {
   const { node } = placed;
   const Icon = kindIcon[node.kind];
   const accent = node.modified ? colors.accent : colors.muted;
@@ -73,7 +73,7 @@ const NodeCard: React.FC<{ placed: PositionedNode; appear: number }> = ({ placed
             textTransform: 'uppercase',
           }}
         >
-          changed
+          {badge}
         </div>
       ) : null}
     </div>
@@ -129,7 +129,7 @@ const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, a
   </div>
 );
 
-export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, durationInFrames }) => {
+export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useMemo(() => layoutArch(scene.nodes, scene.edges), [scene.nodes, scene.edges]);
@@ -167,6 +167,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, durationInFr
             <NodeCard
               key={placed.node.id}
               placed={placed}
+              badge={isExplanation(hunks) ? 'key' : 'changed'}
               appear={spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />
           ))}
