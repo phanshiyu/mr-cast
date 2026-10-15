@@ -10,7 +10,7 @@ import { bundle } from '@remotion/bundler';
 import { ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { sceneDurationInFrames, settledFrame } from '../../shared/timing.mjs';
 import { cacheDir } from './cache.mjs';
-import { withLock } from './lock.mjs';
+import { whileUsing, withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
 
@@ -164,7 +164,12 @@ async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl }) {
   }
 }
 
-export async function renderVideo({ hunks, storyboard, voiceover, dataDir, outFile, onProgress }) {
+/** Marks the bundle and Chrome caches in use for the whole render, so `mr-cast prune` refuses to delete them. */
+const usingCaches = (fn) => whileUsing([BUNDLE_CACHE, BROWSER_CACHE], fn);
+
+export const renderVideo = (options) => usingCaches(() => renderVideoUsingCaches(options));
+
+async function renderVideoUsingCaches({ hunks, storyboard, voiceover, dataDir, outFile, onProgress }) {
   const out = path.resolve(outFile);
   await mkdir(path.dirname(out), { recursive: true });
   const audio = voiceover ? await serveAudio(dataDir) : null;
@@ -190,7 +195,9 @@ export async function renderVideo({ hunks, storyboard, voiceover, dataDir, outFi
 }
 
 /** Each still shows its scene's settled end state. Stills take scene timing from `voiceover` but play no audio. */
-export async function renderStills({ hunks, storyboard, voiceover, outDir, scenes }) {
+export const renderStills = (options) => usingCaches(() => renderStillsUsingCaches(options));
+
+async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, scenes }) {
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
   const starts = [];

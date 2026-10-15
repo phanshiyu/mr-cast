@@ -1,6 +1,8 @@
-// A cross-process lock file for one-time downloads into the shared cache.
+// A cross-process lock file for one-time downloads into the shared cache, and per-process markers
+// that tell `mr-cast prune` which cache directories a running render is reading.
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
 const POLL_MS = 500;
@@ -20,7 +22,7 @@ function alive(pid) {
 }
 
 /** The lock's holder, or null when the lock is gone or abandoned (dead pid, or no heartbeat for STALE_MS). */
-function liveHolder(file) {
+export function liveHolder(file) {
   try {
     const pid = Number(fs.readFileSync(file, 'utf8').trim());
     const age = Date.now() - fs.statSync(file).mtimeMs;
@@ -70,4 +72,27 @@ export async function withLock(file, fn, onWait) {
       if (Number(fs.readFileSync(file, 'utf8').trim()) === process.pid) fs.rmSync(file, { force: true });
     } catch { /* already gone */ }
   }
+}
+
+const usersDir = (dir) => `${dir}.users`;
+
+/** Runs `fn` with a `<dir>.users/<pid>` marker on each of `dirs`, so `prune` leaves them alone meanwhile. */
+export async function whileUsing(dirs, fn) {
+  const markers = dirs.map((dir) => path.join(usersDir(dir), String(process.pid)));
+  for (const marker of markers) {
+    fs.mkdirSync(path.dirname(marker), { recursive: true });
+    fs.writeFileSync(marker, '');
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const marker of markers) fs.rmSync(marker, { force: true });
+  }
+}
+
+/** Pids of live processes with a `whileUsing` marker on `dir`. A crashed process's marker counts for nothing. */
+export function usersOf(dir) {
+  let names = [];
+  try { names = fs.readdirSync(usersDir(dir)); } catch { /* nobody has used it */ }
+  return names.map(Number).filter((pid) => Number.isInteger(pid) && pid > 0 && alive(pid));
 }
