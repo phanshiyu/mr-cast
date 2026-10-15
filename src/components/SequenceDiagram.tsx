@@ -31,7 +31,7 @@ const DRAW_FRAMES = 10;
 /** Frames from a message's start until its label has faded in. */
 const MESSAGE_FRAMES = DRAW_FRAMES * 1.2;
 /** Frames between the messages one step reveals. */
-const STEP_STAGGER = 4;
+const STEP_STAGGER = 2;
 const HEAD = 14;
 
 const neutralStroke = '#c4cad8';
