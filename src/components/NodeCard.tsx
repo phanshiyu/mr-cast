@@ -59,6 +59,14 @@ function titleFit(label: string, width: number, [max, minOneLine]: [number, numb
   return { fontSize: 15, twoLines: true };
 }
 
+const titleWidth = (node: DiagramNode, width: number, m: (typeof METRICS)[CardSize]) => width - 2 * m.pad - (lucideIcon(node.icon) ? m.icon + m.gap : 0) - 4;
+
+/** One title font for every card of a diagram: the largest at which each title fits its card. */
+export function sharedTitleFont(nodes: readonly DiagramNode[], width: number, size: CardSize): number {
+  const m = METRICS[size];
+  return Math.min(m.title[0], ...nodes.map((n) => titleFit(n.label, titleWidth(n, width, m), m.title).fontSize));
+}
+
 const NO_EMPHASIS: Emphasis = { opacity: 1, bar: 0, glow: 0 };
 
 /** A node of an arch or sequence scene: icon, label and caption, marked by its change or as a key part. */
@@ -71,7 +79,9 @@ export const NodeCard: React.FC<{
   size: CardSize;
   appear: number;
   emphasis?: Emphasis;
-}> = ({ node, x, y, width, height, size, appear, emphasis = NO_EMPHASIS }) => {
+  /** A font shared with the other cards of the diagram, from sharedTitleFont; else the card fits its own. */
+  titleFont?: number;
+}> = ({ node, x, y, width, height, size, appear, emphasis = NO_EMPHASIS, titleFont }) => {
   const m = METRICS[size];
   const Icon = lucideIcon(node.icon);
   const mark = nodeMark(node);
@@ -79,8 +89,8 @@ export const NodeCard: React.FC<{
   const tone = node.tone ? tones[node.tone] : null;
   const iconColor = mark?.color ?? tone?.color ?? colors.muted;
   const iconBg = mark?.bg ?? tone?.bg ?? 'rgba(255,255,255,0.05)';
-  const textWidth = width - 2 * m.pad - (Icon ? m.icon + m.gap : 0) - 4;
-  const title = titleFit(node.label, textWidth, m.title);
+  const textWidth = titleWidth(node, width, m);
+  const title = titleFont ? { fontSize: titleFont, twoLines: wrappedLines(labelTokens(node.label), titleFont, textWidth) > 1 } : titleFit(node.label, textWidth, m.title);
   const background = node.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : mark && !removed ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised;
   const glow =
     mark && !removed
