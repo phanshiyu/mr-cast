@@ -8,7 +8,8 @@ import { UserError } from './lib/errors.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
-import { dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
+import { ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
+import { diffRun, explainRun, initExplainRun, writeCurrent } from './lib/runs.mjs';
 import { startServer } from './lib/server.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
@@ -18,7 +19,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 const USAGE = `usage: mr-cast <command> [options]
 
-  extract [base] [--working] [--context N] [--max-lines N] [--all-files]
+  extract [base] [--working] [--context N] [--max-lines N] [--all-files] [--name slug]
       Diff the current branch against base (default: origin/HEAD, main, master, ...),
       write .mr-cast/hunks.json and print a hunk index.
       --working    diff merge-base against the working tree (staged + unstaged)
@@ -35,16 +36,19 @@ const USAGE = `usage: mr-cast <command> [options]
                   play and render voice the narration first unless --no-voice
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
-  validate, voice, play, render and still take --dir <path> to use a data directory other than .mr-cast
+  every command above takes --name <slug> to keep a separate walkthrough in .mr-cast/<slug>, so
+  several can coexist and render at once; validate, voice, play, render and still also take
+  --dir <path> to use any data directory
 
-  explain init [--title text] [--reset]
-                  start an explanation walkthrough in .mr-cast/explain (in the git repo, else the
-                  current directory); keeps an existing storyboard unless --reset
+  explain init [--title text] [--name slug] [--reset]
+                  start an explanation in .mr-cast/explain/<slug> (in the git repo, else the current
+                  directory); the slug comes from the title unless --name; prints the directory;
+                  reopening one keeps its storyboard unless --reset
   explain snippet <file> <start>-<end> | <file>:<start>-<end> ...
                   add real source lines (at most 80 per snippet) as code for scenes, ids s1, s2, ...
   explain validate | voice | play | render | still
                   the commands above, on the explanation's directory
-      every explain command takes --dir <path> to use another directory
+      every explain command takes --name <slug> (default: the most recent init) or --dir <path>
 
   install-skill   install the mr-video and explain-in-animation Claude Code skills and the
                   /mr-cast, /mr-render and /explain-in-animation commands into ~/.claude
@@ -80,11 +84,7 @@ function readJson(file, missingHint) {
   }
 }
 
-const DIR_OPTION = { dir: { type: 'string' } };
-/** The data directory: --dir when given, else the command's default. */
-const resolveDir = (values, defaultDir) => (values.dir ? path.resolve(values.dir) : defaultDir());
-const diffDataDir = () => dataDir(repoRoot());
-const explainDataDir = () => path.join(dataDir(findRepoRoot() ?? process.cwd()), 'explain');
+const DIR_OPTION = { dir: { type: 'string' }, name: { type: 'string' } };
 
 /** "explain" when `mr-cast explain init` made the directory; anything else holds a diff. */
 function readMode(dir) {
@@ -96,7 +96,7 @@ function readMode(dir) {
 }
 
 async function loadProject(dir) {
-  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first');
+  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first, with the same --name');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const result = await validateStoryboard(storyboard, hunks, readMode(dir));
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, readVoiceover(dir));
@@ -121,6 +121,7 @@ function extract(argv) {
       context: { type: 'string', default: '4' },
       'max-lines': { type: 'string', default: '14' },
       'all-files': { type: 'boolean', default: false },
+      name: DIR_OPTION.name,
     },
   });
   if (positionals.length > 1) throw new UserError(`extract takes at most one base, got: ${positionals.join(' ')}`);
@@ -128,7 +129,8 @@ function extract(argv) {
   const maxLines = intOption(values['max-lines'], 'max-lines', 1);
 
   const root = repoRoot();
-  const dir = dataDir(root);
+  const { dir, name } = diffRun(values);
+  const nameArg = name ? ` --name ${name}` : '';
   ensureExcluded(root);
   const base = resolveBase(root, positionals[0]);
   const diff = readDiff(root, { base, working: values.working, context, allFiles: values['all-files'] });
@@ -160,20 +162,20 @@ function extract(argv) {
 
   if (fs.existsSync(storyboardPath)) {
     const changed = previous ? changedHunkIds(previous, hunks) : null;
-    if (!changed) console.error(`note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate\``);
-    else if (changed.length) console.error(`note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate\``);
+    if (!changed) console.error(`note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate${nameArg}\``);
+    else if (changed.length) console.error(`note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate${nameArg}\``);
   }
 
   console.log(formatIndex({
     ctx: { branch: diff.branch, base, ahead: diff.ahead, working: values.working, mergeBase: diff.mergeBase, untracked: diff.untracked },
     files, hunks, skipped: diff.skipped, maxLines,
-    hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath),
+    hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath), nameArg,
   }));
 }
 
-async function validate(argv, defaultDir) {
+async function validate(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: DIR_OPTION });
-  const { result, lines } = await loadProject(resolveDir(values, defaultDir));
+  const { result, lines } = await loadProject(resolveRun(values).dir);
   for (const line of lines) console.log(line);
   if (result.errors.length) process.exit(1);
 }
@@ -199,9 +201,9 @@ async function voiceoverFor(dir, storyboard, values) {
   }
 }
 
-async function voice(argv, defaultDir) {
+async function voice(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice, ...DIR_OPTION } });
-  const { dir, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
+  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir);
   let generated = 0;
   const voiceover = await ensureVoiceover({
     dataDir: dir, storyboard, voice: values.voice,
@@ -241,13 +243,13 @@ function openBrowser(url) {
   } catch { /* no browser; the URL is printed */ }
 }
 
-async function play(argv, defaultDir) {
+async function play(argv, resolveRun) {
   const { values } = parseArgs({
     args: argv,
     options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS, ...DIR_OPTION },
   });
   const port = intOption(values.port, 'port', 1);
-  const { dir, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
+  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir);
   const distDir = ensureDist();
   let voiceover = await voiceoverFor(dir, storyboard, values);
 
@@ -305,9 +307,9 @@ function progressReporter(label) {
   };
 }
 
-async function render(argv, defaultDir) {
+async function render(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS, ...DIR_OPTION } });
-  const { dir, hunks, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
+  const { dir, hunks, storyboard } = await loadValidProject(resolveRun(values).dir);
   const voiceover = await voiceoverFor(dir, storyboard, values);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, 'walkthrough.mp4'));
@@ -318,9 +320,9 @@ async function render(argv, defaultDir) {
   console.log(written ?? outFile);
 }
 
-async function still(argv, defaultDir) {
+async function still(argv, resolveRun) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, ...DIR_OPTION } });
-  const { dir, hunks, storyboard } = await loadValidProject(resolveDir(values, defaultDir));
+  const { dir, hunks, storyboard } = await loadValidProject(resolveRun(values).dir);
   const count = storyboard.scenes.length;
   const scenes = positionals.map((p) => {
     const n = Number(p);
@@ -342,13 +344,13 @@ function installSkillCommand(argv) {
 
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
-function explainInit(argv, defaultDir) {
+function explainInit(argv) {
   const { values } = parseArgs({ args: argv, options: { ...DIR_OPTION, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
-  const dir = resolveDir(values, defaultDir);
+  const { dir, name } = initExplainRun(values);
   const root = findRepoRoot();
   if (root && !values.dir) ensureExcluded(root);
   const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
-  if (fs.existsSync(files.meta) && readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --dir`);
+  if (fs.existsSync(files.meta) && readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --name or --dir`);
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
   let previous = {};
@@ -361,18 +363,21 @@ function explainInit(argv, defaultDir) {
     createdAt: previous.createdAt ?? new Date().toISOString(),
   });
 
+  if (name) writeCurrent(path.dirname(dir), name);
+
   console.log(dir);
+  if (name) console.error(`mr-cast: explanation "${name}"; later explain commands use it until another init, or pass --name ${name}`);
   const snippets = Object.keys(readJson(files.hunks, '')).length;
   let kept = null;
   try { kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)'; } catch { /* none yet */ }
-  if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start a new explanation`);
+  if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`);
   else if (snippets) console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
   console.error(`next: \`mr-cast explain snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast explain validate\``);
 }
 
-function explainSnippet(argv, defaultDir) {
+function explainSnippet(argv, resolveRun) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
-  const dir = resolveDir(values, defaultDir);
+  const { dir } = resolveRun(values);
   if (readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} is not an explanation directory; run \`mr-cast explain init${values.dir ? ' --dir <path>' : ''}\` first`);
   const hunksPath = path.join(dir, 'hunks.json');
   const hunks = readJson(hunksPath, 'run `mr-cast explain init` first');
@@ -404,7 +409,7 @@ const EXPLAIN_COMMANDS = { init: explainInit, snippet: explainSnippet, validate,
 async function explain([sub, ...rest]) {
   const run = EXPLAIN_COMMANDS[sub];
   if (!run) throw new UserError(`explain needs one of ${Object.keys(EXPLAIN_COMMANDS).join(', ')}${sub ? ` (got "${sub}")` : ''}; see \`mr-cast help\``);
-  await run(rest, explainDataDir);
+  await run(rest, explainRun);
 }
 
 const COMMANDS = { extract, validate, voice, play, render, still, explain, 'install-skill': installSkillCommand };
@@ -423,7 +428,7 @@ async function main([command, ...rest]) {
     console.log(USAGE);
     return;
   }
-  await run(rest, diffDataDir);
+  await run(rest, diffRun);
 }
 
 main(process.argv.slice(2)).catch((err) => {

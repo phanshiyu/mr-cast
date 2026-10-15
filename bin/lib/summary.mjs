@@ -57,7 +57,7 @@ function formatFileLine(f) {
  * The compact hunk index printed by `extract`.
  * @param {{ branch, base, ahead, working, mergeBase, untracked: string[] }} ctx
  */
-export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, storyboardPath }) {
+export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, storyboardPath, nameArg = '' }) {
   const all = Object.values(hunks);
   const adds = all.reduce((n, h) => n + h.additions, 0);
   const dels = all.reduce((n, h) => n + h.deletions, 0);
@@ -85,7 +85,7 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, s
     out.push(`not included: ${plural(ctx.untracked.length, 'untracked file')} (git add -N <file> to include)`);
   }
   out.push(`line numbers: + is the new-file line (use in focusLinesAfter), - is the old-file line (focusLinesBefore)`);
-  out.push(`wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate\` and \`mr-cast play\``);
+  out.push(`wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${nameArg}\` and \`mr-cast play${nameArg}\``);
   return out.join('\n');
 }
 
