@@ -37,13 +37,26 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | --- | --- |
 | `mr-cast extract [base] [--working]` | Diffs `base...HEAD` and writes `hunks.json` and `meta.json`. Prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Lockfiles and build output are skipped unless you pass `--all-files`. |
 | `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`. Exits 1 on errors. |
-| `mr-cast play [--port N] [--no-open]` | Serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes. |
-| `mr-cast render [--out file.mp4]` | Renders `walkthrough.mp4` at 1920x1080, 30 fps, with subtitles burned in. The first run downloads Chrome Headless Shell into `node_modules/.remotion`. |
+| `mr-cast voice [--voice name]` | Speaks each scene's narration into `.mr-cast/audio/` and writes `voiceover.json`. Only changed narration is spoken again. |
+| `mr-cast play [--port N] [--no-open] [--voice name] [--no-voice]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. |
+| `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders `walkthrough.mp4` at 1920x1080, 30 fps, with the voice-over and burned-in subtitles. The first run downloads Chrome Headless Shell into `node_modules/.remotion`. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene, 60% of the way through, to check layout. |
+
+## Voice
+
+`play` and `render` read each scene's narration aloud with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a small text-to-speech model that runs offline on the CPU. The first run downloads the model (about 90 MB) into `~/.cache/mr-cast/models`, or `$XDG_CACHE_HOME/mr-cast/models` when that is set. Speaking a scene takes a few seconds.
+
+Clips are cached in `.mr-cast/audio/` under a hash of the voice and the narration text. A rerun speaks only the scenes whose narration changed and deletes clips that no scene uses.
+
+- `--voice <name>` picks the voice. The default is `af_heart`. Others include `af_bella`, `af_nicole`, `am_michael`, `am_fenrir`, `bf_emma`, and `bm_george`. The choice is saved in `voiceover.json`, so later runs keep it.
+- `--no-voice` skips the voice-over. Scenes are silent and timed from word count.
+- If the model cannot load, for example offline on the first run, `play` and `render` print a warning and continue without voice. `mr-cast voice` exits 1 instead.
+
+The player does not autoplay a voiced walkthrough, because browsers block autoplay with sound. Click the play button to start it.
 
 ## Storyboard
 
-`src/types.ts` defines the schema. A storyboard has a title and a list of scenes, and each scene has `narration`. Scene length is the narration word count at 160 words per minute plus 1.5 seconds, with a 3-second minimum.
+`src/types.ts` defines the schema. A storyboard has a title and a list of scenes, and each scene has `narration`. A voiced scene lasts as long as its clip, plus 0.4 seconds before it and 0.8 seconds after. Without a voice-over, scene length is the narration word count at 160 words per minute plus 1.5 seconds, with a 3-second minimum.
 
 | Scene | Shows |
 | --- | --- |
@@ -56,9 +69,9 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 
 ## Layout
 
-- `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, and `lib/render.mjs` wraps the Remotion renderer.
+- `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
-- `shared/timing.mjs` holds the duration formula that the CLI and the player share.
+- `shared/timing.mjs` holds the duration formula that the CLI and the player share. `shared/voice.mjs` names each clip by its narration.
 - `skill/SKILL.md` is the skill template that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
 For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.
