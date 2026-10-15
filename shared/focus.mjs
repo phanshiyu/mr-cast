@@ -55,7 +55,8 @@ export function sceneFocusRanges(scene) {
 
 /**
  * For each hunk line, the index into sceneFocusRanges(scene) of the range it falls in, or null.
- * With no focus on any line of the hunk, the changed lines form one range, id 0.
+ * With no focus on any line of the hunk, the changed lines form one range, id 0, or every line
+ * when nothing changed (a source snippet).
  */
 export function lineFocusRanges(scene, hunk) {
   const ranges = sceneFocusRanges(scene);
@@ -67,7 +68,8 @@ export function lineFocusRanges(scene, hunk) {
     return id < 0 ? null : id;
   });
   if (ids.some((id) => id !== null)) return ids;
-  return hunk.lines.map((line) => (line.type === 'context' ? null : 0));
+  const changed = hunk.lines.some((line) => line.type !== 'context');
+  return hunk.lines.map((line) => (changed && line.type === 'context' ? null : 0));
 }
 
 /** Range ids in the order the single-column code view plays them: top to bottom by first line. */

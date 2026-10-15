@@ -1,4 +1,4 @@
-// ─── hunks.json (written by `mr-cast extract`) ───────────────────────────────
+// ─── hunks.json (written by `mr-cast extract` or `mr-cast explain snippet`) ──
 
 export type DiffLineType = 'context' | 'add' | 'del';
 
@@ -13,7 +13,8 @@ export interface Hunk {
   id: string;
   file: string;
   oldFile: string | null;
-  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  /** "source" is an unchanged snippet of a file (`explain snippet`): every line is context, numbered as in the file. */
+  status: 'added' | 'modified' | 'deleted' | 'renamed' | 'source';
   language: string;
   /** Function / class context git found for the hunk (may be empty). */
   header: string;
@@ -46,7 +47,8 @@ interface SceneBase {
 export interface IntentScene extends SceneBase {
   type: 'intent';
   summary: string;
-  risk: Risk;
+  /** Required in a diff walkthrough. An explanation (explain mode) leaves it out. */
+  risk?: Risk;
   bullets: string[];
 }
 
@@ -76,7 +78,7 @@ export type LineRef = number | string;
 export interface CodeScene extends SceneBase {
   type: 'code';
   hunkId: string;
-  /** New-file line numbers to emphasise; everything else is dimmed. Each "a-b" string is one step and consecutive plain numbers join into one; steps play top to bottom. Defaults to the changed lines. */
+  /** New-file line numbers to emphasise; everything else is dimmed. Each "a-b" string is one step and consecutive plain numbers join into one; steps play top to bottom. Defaults to the changed lines, or the whole snippet for a source hunk. */
   focusLinesAfter?: LineRef[];
   /** Old-file line numbers to emphasise (useful for deletions). */
   focusLinesBefore?: LineRef[];

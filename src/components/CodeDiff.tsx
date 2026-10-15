@@ -41,9 +41,13 @@ interface CodeMetrics {
   rowH: number;
 }
 
-function codeMetrics(lines: readonly DiffLine[], view: View, panelW: number): CodeMetrics {
+/** Morph numbers each row with its old and new line like a unified diff; a source snippet has only its own numbers. */
+const morphNumbers = (hunk: Hunk, line: DiffLine) => (hunk.status === 'source' ? [line.newLine] : [line.oldLine, line.newLine]);
+const morphGutterW = (hunk: Hunk) => (hunk.status === 'source' ? SPLIT_GUTTER_W : MORPH_GUTTER_W);
+
+function codeMetrics(hunk: Hunk, lines: readonly DiffLine[], view: View, panelW: number): CodeMetrics {
   const inner = panelW - 2;
-  const column = view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - MORPH_GUTTER_W;
+  const column = view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - morphGutterW(hunk);
   const longest = Math.max(0, ...lines.map((l) => codeColumns(l.text)));
   const { min, max } = FONT_RANGE[view];
   const fontSize = fitCodeFontSize(longest, column, min, max);
@@ -104,6 +108,7 @@ const statusStyle: Record<Hunk['status'], { label: string; color: string }> = {
   modified: { label: 'Modified', color: colors.accent },
   deleted: { label: 'Deleted', color: colors.del },
   renamed: { label: 'Renamed', color: '#fbbf24' },
+  source: { label: 'Source', color: colors.muted },
 };
 
 const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (
@@ -222,7 +227,7 @@ function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number
       step,
       content: (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: rowH, background: bg, opacity }}>
-          <Gutter line={line} numbers={[line.oldLine, line.newLine]} fontSize={fontSize} />
+          <Gutter line={line} numbers={morphNumbers(hunk, line)} fontSize={fontSize} />
           <Code tokens={tokens[i]!} fontSize={fontSize} />
           {strike > 0 ? (
             <div
@@ -296,8 +301,12 @@ const FileHeader: React.FC<{ hunk: Hunk }> = ({ hunk }) => {
         ) : null}
       </div>
       <div style={{ display: 'flex', gap: 14, fontFamily: fonts.mono, fontSize: 24, fontWeight: 600, flexShrink: 0 }}>
-        <span style={{ color: colors.add }}>+{hunk.additions}</span>
-        <span style={{ color: colors.del }}>−{hunk.deletions}</span>
+        {hunk.status === 'source' ? null : (
+          <>
+            <span style={{ color: colors.add }}>+{hunk.additions}</span>
+            <span style={{ color: colors.del }}>−{hunk.deletions}</span>
+          </>
+        )}
         <span style={{ color: colors.faint, marginLeft: 8 }}>{range}</span>
       </div>
     </div>
@@ -337,7 +346,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const flow = scene.flow?.length ? scene.flow : null;
-  const view = scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
+  const view = hunk.status === 'source' ? 'morph' : scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
   const { slots, stepCount } = useMemo(() => cropSlots(hunk, view, scene), [hunk, view, scene]);
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
   const box = contentBox(false);
@@ -350,7 +359,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const viewportH = panelH - PANEL_PAD * 2;
 
   const shownLines = slots.flatMap((slot) => [slot.left, slot.right]).flatMap((i) => (i === null ? [] : [hunk.lines[i]!]));
-  const metrics = codeMetrics(shownLines, view, panelW);
+  const metrics = codeMetrics(hunk, shownLines, view, panelW);
   const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, durationInFrames, metrics);
 
   // The morph (or a short settle) is the intro; then each focus step takes an equal share of the time left.
