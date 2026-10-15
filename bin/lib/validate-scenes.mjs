@@ -1,6 +1,8 @@
 // Checks for the table, chart, timeline and files scenes, mirroring src/types.ts. Each pushes
 // human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
+import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+
 const CHANGES = ['added', 'removed', 'modified'];
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
@@ -20,6 +22,9 @@ const TIMELINE_SPANS_MAX = 4;
 // An event label wraps to two lines in a card about 300 pixels wide.
 const EVENT_LABEL_LONG = 48;
 const EVENT_DETAIL_LONG = 60;
+const FILES_MAX = 18;
+// A note sits on its file's row beside the line counts.
+const FILE_NOTE_LONG = 60;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isText = (v) => typeof v === 'string';
@@ -126,4 +131,45 @@ export function checkTimeline(s, p, errors, warnings) {
     if (span?.tone !== undefined && !TONES.includes(span.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
   });
   if (s.spans.length > TIMELINE_SPANS_MAX) warnings.push(`${p}.spans: ${s.spans.length} spans; keep the ${TIMELINE_SPANS_MAX} the narration names`);
+}
+
+const isCount = (v) => Number.isInteger(v) && v >= 0;
+
+export function checkFiles(s, p, errors, warnings, hunks, mode) {
+  if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
+  if (s.files === undefined) {
+    if (mode === 'explain') return errors.push(`${p}.files: required in an explanation, which has no diff to list; give each file as { path }`);
+    if (diffFiles(hunks).length === 0) return errors.push(`${p}.files: hunks.json has no changed files to list; give each file as { path }`);
+  } else if (!Array.isArray(s.files) || s.files.length === 0) {
+    return errors.push(`${p}.files: must be a non-empty array of { path, change?, additions?, deletions? }`);
+  } else {
+    const known = new Set(diffFiles(hunks).map((f) => f.path));
+    const seen = new Set();
+    const unknown = [];
+    s.files.forEach((f, j) => {
+      const q = `${p}.files[${j}]`;
+      if (!isStr(f?.path)) return errors.push(`${q}.path: required string`);
+      if (seen.has(f.path)) errors.push(`${q}.path: "${f.path}" is listed twice`);
+      seen.add(f.path);
+      if (f.change !== undefined && !CHANGES.includes(f.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
+      for (const k of ['additions', 'deletions']) if (f[k] !== undefined && !isCount(f[k])) errors.push(`${q}.${k}: must be a whole number of lines, 0 or more`);
+      if (mode !== 'explain' && !known.has(f.path)) unknown.push(f.path);
+    });
+    if (unknown.length) {
+      const list = unknown.slice(0, 4).join(', ') + (unknown.length > 4 ? `, ... ${unknown.length - 4} more` : '');
+      warnings.push(`${p}.files: ${unknown.length === 1 ? 'path is' : `${unknown.length} paths are`} not changed in hunks.json (${list}); check them against the hunk index`);
+    }
+  }
+  const paths = new Set(sceneFiles(s, hunks).map((f) => f.path));
+  if (paths.size > FILES_MAX) warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped, so list the ones that matter in files`);
+  if (s.notes !== undefined) {
+    if (!s.notes || typeof s.notes !== 'object' || Array.isArray(s.notes)) errors.push(`${p}.notes: must be an object of { "path": "note" }`);
+    else for (const [path, note] of Object.entries(s.notes)) {
+      const q = `${p}.notes[${JSON.stringify(path)}]`;
+      if (!paths.has(path)) errors.push(`${q}: not one of the files this scene lists`);
+      if (!isStr(note)) errors.push(`${q}: must be a non-empty string`);
+      else if (note.trim().length > FILE_NOTE_LONG) warnings.push(`${q}: ${note.trim().length} characters; keep a note under ${FILE_NOTE_LONG} so it fits on its row`);
+    }
+  }
+  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, { plural: 'file paths', one: 'a path this scene lists' }, (path) => paths.has(path));
 }

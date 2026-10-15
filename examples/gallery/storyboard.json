@@ -1,6 +1,6 @@
 {
   "title": "Order lifecycle overhaul",
-  "subtitle": "Scene gallery: state, table, chart, timeline, Mermaid and tests scenes",
+  "subtitle": "Scene gallery: files, state, table, chart, timeline, Mermaid and tests scenes",
   "scenes": [
     {
       "type": "intent",
@@ -12,6 +12,24 @@
         "A payment that lands while the timeout job cancels the order",
         "Orders already refunded when the migration runs",
         "Clients that still read the refunded status"
+      ]
+    },
+    {
+      "type": "files",
+      "chapter": "What changed",
+      "title": "Files in this change",
+      "narration": "The change touches nine files. The lifecycle module gains the pending state, a new job cancels unpaid orders, the refund flow is deleted, and a migration moves existing orders over. Two test files cover it.",
+      "notes": {
+        "src/orders/lifecycle.ts": "pending state and its transitions",
+        "src/jobs/payment-timeout.ts": "cancels orders unpaid after 24 hours",
+        "src/orders/refund.ts": "refund flow removed with its state",
+        "db/migrations/20261001_order_pending.sql": "adds pending, keeps paid orders paid"
+      },
+      "highlight": [
+        "src/orders/lifecycle.ts",
+        "src/jobs/payment-timeout.ts",
+        "src/orders/refund.ts",
+        "db/migrations/20261001_order_pending.sql"
       ]
     },
     {
@@ -112,9 +130,9 @@
       "narration": "Five tests cover the new lifecycle. New orders start pending, paying moves them to paid, a failed charge keeps them pending, and the timeout cancels only unpaid orders. Nothing tests a payment racing the timeout.",
       "cases": [
         {"name": "creates new orders as pending", "proves": "A new order starts as pending instead of paid"},
-        {"name": "pay moves a pending order to paid", "proves": "A successful charge sets the status to paid and records the payment id"},
+        {"name": "pay moves a pending order to paid", "proves": "A successful charge sets the status to paid and records the payment id", "hunkId": "h15"},
         {"name": "a failed charge keeps the order pending", "proves": "A declined card leaves the order pending so the customer can retry"},
-        {"name": "cancels orders unpaid after 24 hours", "proves": "The timeout job cancels pending orders older than a day and leaves paid ones alone", "status": "modified"},
+        {"name": "cancels orders unpaid after 24 hours", "proves": "The timeout job cancels pending orders older than a day and leaves paid ones alone", "status": "modified", "hunkId": "h16"},
         {"name": "ship moves a paid order to shipped", "proves": "The shipping transition is unchanged", "status": "existing"},
         {"name": "refunds a delivered order", "proves": "Delivered orders could move to refunded, a state that no longer exists", "status": "removed"}
       ],

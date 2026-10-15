@@ -1,1 +1,1858 @@
-{}
+{
+  "h1": {
+    "id": "h1",
+    "file": "src/orders/lifecycle.ts",
+    "oldFile": "src/orders/lifecycle.ts",
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 11,
+    "additions": 9,
+    "deletions": 4,
+    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4",
+    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "  // context 1"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "  // context 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "del",
+        "oldLine": 6,
+        "newLine": null,
+        "text": "  removed line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  added line 9"
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "src/orders/lifecycle.ts",
+    "oldFile": "src/orders/lifecycle.ts",
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 26,
+    "oldStartLine": 26,
+    "endLine": 37,
+    "additions": 10,
+    "deletions": 4,
+    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4",
+    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 26,
+        "newLine": 26,
+        "text": "  // context 1"
+      },
+      {
+        "type": "context",
+        "oldLine": 27,
+        "newLine": 27,
+        "text": "  // context 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 28,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 29,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 30,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "del",
+        "oldLine": 31,
+        "newLine": null,
+        "text": "  removed line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 28,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 29,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 30,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 31,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 32,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 33,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 34,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 35,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 36,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 37,
+        "text": "  added line 10"
+      }
+    ]
+  },
+  "h3": {
+    "id": "h3",
+    "file": "src/orders/lifecycle.ts",
+    "oldFile": "src/orders/lifecycle.ts",
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 52,
+    "oldStartLine": 52,
+    "endLine": 64,
+    "additions": 11,
+    "deletions": 3,
+    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2\n  removed line 3",
+    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 52,
+        "newLine": 52,
+        "text": "  // context 1"
+      },
+      {
+        "type": "context",
+        "oldLine": 53,
+        "newLine": 53,
+        "text": "  // context 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 54,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 55,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 56,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 54,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 55,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 56,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 57,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 58,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 59,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 60,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 61,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 62,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 63,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 64,
+        "text": "  added line 11"
+      }
+    ]
+  },
+  "h4": {
+    "id": "h4",
+    "file": "src/orders/create.ts",
+    "oldFile": "src/orders/create.ts",
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 4,
+    "additions": 2,
+    "deletions": 1,
+    "beforeCode": "  // context 1\n  // context 2\n  removed line 1",
+    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "  // context 1"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "  // context 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 2"
+      }
+    ]
+  },
+  "h5": {
+    "id": "h5",
+    "file": "src/orders/refund.ts",
+    "oldFile": "src/orders/refund.ts",
+    "status": "deleted",
+    "language": "typescript",
+    "header": "",
+    "startLine": 0,
+    "oldStartLine": 1,
+    "endLine": 0,
+    "additions": 0,
+    "deletions": 12,
+    "beforeCode": "  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4\n  removed line 5\n  removed line 6\n  removed line 7\n  removed line 8\n  removed line 9\n  removed line 10\n  removed line 11\n  removed line 12",
+    "afterCode": "",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  removed line 4"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "  removed line 5"
+      },
+      {
+        "type": "del",
+        "oldLine": 6,
+        "newLine": null,
+        "text": "  removed line 6"
+      },
+      {
+        "type": "del",
+        "oldLine": 7,
+        "newLine": null,
+        "text": "  removed line 7"
+      },
+      {
+        "type": "del",
+        "oldLine": 8,
+        "newLine": null,
+        "text": "  removed line 8"
+      },
+      {
+        "type": "del",
+        "oldLine": 9,
+        "newLine": null,
+        "text": "  removed line 9"
+      },
+      {
+        "type": "del",
+        "oldLine": 10,
+        "newLine": null,
+        "text": "  removed line 10"
+      },
+      {
+        "type": "del",
+        "oldLine": 11,
+        "newLine": null,
+        "text": "  removed line 11"
+      },
+      {
+        "type": "del",
+        "oldLine": 12,
+        "newLine": null,
+        "text": "  removed line 12"
+      }
+    ]
+  },
+  "h6": {
+    "id": "h6",
+    "file": "src/orders/refund.ts",
+    "oldFile": "src/orders/refund.ts",
+    "status": "deleted",
+    "language": "typescript",
+    "header": "",
+    "startLine": 0,
+    "oldStartLine": 23,
+    "endLine": 0,
+    "additions": 0,
+    "deletions": 12,
+    "beforeCode": "  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4\n  removed line 5\n  removed line 6\n  removed line 7\n  removed line 8\n  removed line 9\n  removed line 10\n  removed line 11\n  removed line 12",
+    "afterCode": "",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 23,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 24,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 25,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "del",
+        "oldLine": 26,
+        "newLine": null,
+        "text": "  removed line 4"
+      },
+      {
+        "type": "del",
+        "oldLine": 27,
+        "newLine": null,
+        "text": "  removed line 5"
+      },
+      {
+        "type": "del",
+        "oldLine": 28,
+        "newLine": null,
+        "text": "  removed line 6"
+      },
+      {
+        "type": "del",
+        "oldLine": 29,
+        "newLine": null,
+        "text": "  removed line 7"
+      },
+      {
+        "type": "del",
+        "oldLine": 30,
+        "newLine": null,
+        "text": "  removed line 8"
+      },
+      {
+        "type": "del",
+        "oldLine": 31,
+        "newLine": null,
+        "text": "  removed line 9"
+      },
+      {
+        "type": "del",
+        "oldLine": 32,
+        "newLine": null,
+        "text": "  removed line 10"
+      },
+      {
+        "type": "del",
+        "oldLine": 33,
+        "newLine": null,
+        "text": "  removed line 11"
+      },
+      {
+        "type": "del",
+        "oldLine": 34,
+        "newLine": null,
+        "text": "  removed line 12"
+      }
+    ]
+  },
+  "h7": {
+    "id": "h7",
+    "file": "src/orders/refund.ts",
+    "oldFile": "src/orders/refund.ts",
+    "status": "deleted",
+    "language": "typescript",
+    "header": "",
+    "startLine": 0,
+    "oldStartLine": 45,
+    "endLine": 0,
+    "additions": 0,
+    "deletions": 12,
+    "beforeCode": "  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4\n  removed line 5\n  removed line 6\n  removed line 7\n  removed line 8\n  removed line 9\n  removed line 10\n  removed line 11\n  removed line 12",
+    "afterCode": "",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 45,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 46,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 47,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "del",
+        "oldLine": 48,
+        "newLine": null,
+        "text": "  removed line 4"
+      },
+      {
+        "type": "del",
+        "oldLine": 49,
+        "newLine": null,
+        "text": "  removed line 5"
+      },
+      {
+        "type": "del",
+        "oldLine": 50,
+        "newLine": null,
+        "text": "  removed line 6"
+      },
+      {
+        "type": "del",
+        "oldLine": 51,
+        "newLine": null,
+        "text": "  removed line 7"
+      },
+      {
+        "type": "del",
+        "oldLine": 52,
+        "newLine": null,
+        "text": "  removed line 8"
+      },
+      {
+        "type": "del",
+        "oldLine": 53,
+        "newLine": null,
+        "text": "  removed line 9"
+      },
+      {
+        "type": "del",
+        "oldLine": 54,
+        "newLine": null,
+        "text": "  removed line 10"
+      },
+      {
+        "type": "del",
+        "oldLine": 55,
+        "newLine": null,
+        "text": "  removed line 11"
+      },
+      {
+        "type": "del",
+        "oldLine": 56,
+        "newLine": null,
+        "text": "  removed line 12"
+      }
+    ]
+  },
+  "h8": {
+    "id": "h8",
+    "file": "src/jobs/payment-timeout.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 14,
+    "additions": 14,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13\n  added line 14",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  added line 13"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  added line 14"
+      }
+    ]
+  },
+  "h9": {
+    "id": "h9",
+    "file": "src/jobs/payment-timeout.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 25,
+    "oldStartLine": 0,
+    "endLine": 38,
+    "additions": 14,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13\n  added line 14",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 25,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 26,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 27,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 28,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 29,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 30,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 31,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 32,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 33,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 34,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 35,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 36,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 37,
+        "text": "  added line 13"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 38,
+        "text": "  added line 14"
+      }
+    ]
+  },
+  "h10": {
+    "id": "h10",
+    "file": "src/jobs/payment-timeout.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 49,
+    "oldStartLine": 0,
+    "endLine": 61,
+    "additions": 13,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 49,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 50,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 51,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 52,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 53,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 54,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 55,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 56,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 57,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 58,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 59,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 60,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 61,
+        "text": "  added line 13"
+      }
+    ]
+  },
+  "h11": {
+    "id": "h11",
+    "file": "src/payments/retry.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 14,
+    "additions": 14,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13\n  added line 14",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  added line 13"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  added line 14"
+      }
+    ]
+  },
+  "h12": {
+    "id": "h12",
+    "file": "src/payments/retry.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 25,
+    "oldStartLine": 0,
+    "endLine": 38,
+    "additions": 14,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13\n  added line 14",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 25,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 26,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 27,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 28,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 29,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 30,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 31,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 32,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 33,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 34,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 35,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 36,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 37,
+        "text": "  added line 13"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 38,
+        "text": "  added line 14"
+      }
+    ]
+  },
+  "h13": {
+    "id": "h13",
+    "file": "db/migrations/20261001_order_pending.sql",
+    "oldFile": null,
+    "status": "added",
+    "language": "sql",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 9,
+    "additions": 9,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  added line 9"
+      }
+    ]
+  },
+  "h14": {
+    "id": "h14",
+    "file": "config/orders.yaml",
+    "oldFile": "config/orders.yaml",
+    "status": "modified",
+    "language": "yaml",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 6,
+    "additions": 4,
+    "deletions": 2,
+    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2",
+    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "  // context 1"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "  // context 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 4"
+      }
+    ]
+  },
+  "h15": {
+    "id": "h15",
+    "file": "test/orders/lifecycle.test.ts",
+    "oldFile": "test/orders/lifecycle.test.ts",
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 50,
+    "additions": 48,
+    "deletions": 10,
+    "beforeCode": "  // context 1\n  // context 2\n  removed line 1\n  removed line 2\n  removed line 3\n  removed line 4\n  removed line 5\n  removed line 6\n  removed line 7\n  removed line 8\n  removed line 9\n  removed line 10",
+    "afterCode": "  // context 1\n  // context 2\n  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13\n  added line 14\n  added line 15\n  added line 16\n  added line 17\n  added line 18\n  added line 19\n  added line 20\n  added line 21\n  added line 22\n  added line 23\n  added line 24\n  added line 25\n  added line 26\n  added line 27\n  added line 28\n  added line 29\n  added line 30\n  added line 31\n  added line 32\n  added line 33\n  added line 34\n  added line 35\n  added line 36\n  added line 37\n  added line 38\n  added line 39\n  added line 40\n  added line 41\n  added line 42\n  added line 43\n  added line 44\n  added line 45\n  added line 46\n  added line 47\n  added line 48",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "  // context 1"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "  // context 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "  removed line 1"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  removed line 2"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "  removed line 3"
+      },
+      {
+        "type": "del",
+        "oldLine": 6,
+        "newLine": null,
+        "text": "  removed line 4"
+      },
+      {
+        "type": "del",
+        "oldLine": 7,
+        "newLine": null,
+        "text": "  removed line 5"
+      },
+      {
+        "type": "del",
+        "oldLine": 8,
+        "newLine": null,
+        "text": "  removed line 6"
+      },
+      {
+        "type": "del",
+        "oldLine": 9,
+        "newLine": null,
+        "text": "  removed line 7"
+      },
+      {
+        "type": "del",
+        "oldLine": 10,
+        "newLine": null,
+        "text": "  removed line 8"
+      },
+      {
+        "type": "del",
+        "oldLine": 11,
+        "newLine": null,
+        "text": "  removed line 9"
+      },
+      {
+        "type": "del",
+        "oldLine": 12,
+        "newLine": null,
+        "text": "  removed line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "  added line 13"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "  added line 14"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "  added line 15"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "  added line 16"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "  added line 17"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "  added line 18"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 21,
+        "text": "  added line 19"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 22,
+        "text": "  added line 20"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 23,
+        "text": "  added line 21"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 24,
+        "text": "  added line 22"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 25,
+        "text": "  added line 23"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 26,
+        "text": "  added line 24"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 27,
+        "text": "  added line 25"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 28,
+        "text": "  added line 26"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 29,
+        "text": "  added line 27"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 30,
+        "text": "  added line 28"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 31,
+        "text": "  added line 29"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 32,
+        "text": "  added line 30"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 33,
+        "text": "  added line 31"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 34,
+        "text": "  added line 32"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 35,
+        "text": "  added line 33"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 36,
+        "text": "  added line 34"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 37,
+        "text": "  added line 35"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 38,
+        "text": "  added line 36"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 39,
+        "text": "  added line 37"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 40,
+        "text": "  added line 38"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 41,
+        "text": "  added line 39"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 42,
+        "text": "  added line 40"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 43,
+        "text": "  added line 41"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 44,
+        "text": "  added line 42"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 45,
+        "text": "  added line 43"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 46,
+        "text": "  added line 44"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 47,
+        "text": "  added line 45"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 48,
+        "text": "  added line 46"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 49,
+        "text": "  added line 47"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 50,
+        "text": "  added line 48"
+      }
+    ]
+  },
+  "h16": {
+    "id": "h16",
+    "file": "test/jobs/payment-timeout.test.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 30,
+    "additions": 30,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "  added line 1\n  added line 2\n  added line 3\n  added line 4\n  added line 5\n  added line 6\n  added line 7\n  added line 8\n  added line 9\n  added line 10\n  added line 11\n  added line 12\n  added line 13\n  added line 14\n  added line 15\n  added line 16\n  added line 17\n  added line 18\n  added line 19\n  added line 20\n  added line 21\n  added line 22\n  added line 23\n  added line 24\n  added line 25\n  added line 26\n  added line 27\n  added line 28\n  added line 29\n  added line 30",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "  added line 1"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "  added line 2"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  added line 3"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  added line 4"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  added line 5"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  added line 6"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  added line 7"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  added line 8"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  added line 9"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  added line 10"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  added line 11"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  added line 12"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  added line 13"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  added line 14"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "  added line 15"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "  added line 16"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "  added line 17"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "  added line 18"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "  added line 19"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "  added line 20"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 21,
+        "text": "  added line 21"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 22,
+        "text": "  added line 22"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 23,
+        "text": "  added line 23"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 24,
+        "text": "  added line 24"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 25,
+        "text": "  added line 25"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 26,
+        "text": "  added line 26"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 27,
+        "text": "  added line 27"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 28,
+        "text": "  added line 28"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 29,
+        "text": "  added line 29"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 30,
+        "text": "  added line 30"
+      }
+    ]
+  }
+}

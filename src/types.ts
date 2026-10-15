@@ -322,7 +322,31 @@ export interface TimelineScene extends SceneBase {
   spans?: TimelineSpan[];
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene;
+export interface FileEntry {
+  /** Repository-relative path. */
+  path: string;
+  /** Marks the file as added, removed or modified. In a diff walkthrough defaults to what hunks.json says. */
+  change?: Change;
+  /** Lines added and removed. In a diff walkthrough default to the counts in hunks.json. */
+  additions?: number;
+  deletions?: number;
+}
+
+export interface FilesScene extends SceneBase {
+  type: 'files';
+  title?: string;
+  /**
+   * The files to list as a tree. Omit in a diff walkthrough to list every changed file in hunks.json
+   * with its line counts, tests marked. Required in an explanation.
+   */
+  files?: FileEntry[];
+  /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. */
+  notes?: Record<string, string>;
+  /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
+  highlight?: string[];
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene;
 
 export interface Storyboard {
   title: string;

@@ -3,12 +3,12 @@
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
-import { checkChart, checkTable, checkTimeline } from './validate-scenes.mjs';
+import { checkChart, checkFiles, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline'];
+const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CHANGES = ['added', 'removed', 'modified'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
@@ -231,8 +231,9 @@ function checkCoverage(sb, hunks, errors, warnings) {
 }
 
 const DIAGRAM_TYPES = ['arch', 'sequence', 'flow', 'er', 'state', 'mermaid'];
-// Overview scenes that draw facts rather than structure: they belong before the code, but do not show how the pieces fit.
-const OVERVIEW_TYPES = ['table', 'chart', 'timeline'];
+// Overview scenes that draw facts or the list of files rather than structure: they belong before the code,
+// but do not show how the pieces fit.
+const OVERVIEW_TYPES = ['table', 'chart', 'timeline', 'files'];
 // Prose and config: changing them alone gives a reviewer no component interaction to draw.
 const NON_LOGIC_LANGUAGES = ['markdown', 'json', 'yaml', 'toml', 'text'];
 
@@ -583,6 +584,10 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
 
       case 'timeline':
         checkTimeline(s, p, errors, warnings);
+        break;
+
+      case 'files':
+        checkFiles(s, p, errors, warnings, hunks ?? {}, mode);
         break;
 
       case 'mermaid':

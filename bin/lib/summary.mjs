@@ -1,5 +1,7 @@
 // Pure formatting for CLI output. No IO: callers pass data in, get strings back.
 
+import { sceneFiles } from '../../shared/files.mjs';
+
 const LINE_WIDTH = 110;
 const HEADER_WIDTH = 60;
 const MAX_SKIPPED_NAMES = 10;
@@ -194,12 +196,19 @@ function sceneGist(scene, hunks) {
     }
     case 'chart': {
       const series = scene.series.map((x) => x.name).join(', ');
-      return titled(`${scene.kind} chart of ${series} over ${count(scene.labels, 'label')}${scene.unit ? ` in ${scene.unit}` : ''}${scene.annotation ? ', 1 annotation' : ''}`);
+      return titled(`${scene.kind}, ${series} over ${count(scene.labels, 'label')}${scene.unit ? ` in ${scene.unit}` : ''}${scene.annotation ? ', annotated' : ''}`);
     }
     case 'timeline': {
       const ats = [...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((x) => [x.from, x.to])];
       const spans = scene.spans?.length ? `, ${count(scene.spans, 'span')}` : '';
       return titled(`${count(scene.events, 'event')}${spans} over ${Math.min(...ats)}-${Math.max(...ats)} ${scene.unit}`);
+    }
+    case 'files': {
+      const files = sceneFiles(scene, hunks);
+      const lines = files.some((f) => f.additions !== undefined) ? `, +${files.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${files.reduce((n, f) => n + (f.deletions ?? 0), 0)}` : '';
+      const tests = files.filter((f) => f.test).length;
+      const notes = Object.keys(scene.notes ?? {}).length;
+      return titled(`${count(files, 'file')}${lines}${tests ? `, ${plural(tests, 'test')}` : ''}${notes ? `, ${plural(notes, 'note')}` : ''}`);
     }
     default:
       return '';
