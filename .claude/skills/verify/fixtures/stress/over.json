@@ -16,7 +16,7 @@
       ]
     },
     {
-      "type": "arch",
+      "type": "graph",
       "chapter": "A chapter label so long that even at the smallest size it runs past the header of the scene and keeps going",
       "narration": "Long card titles, captions, edge labels and group names.",
       "nodes": [

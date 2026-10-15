@@ -15,7 +15,7 @@
       "narration": "When a customer reports a problem, three groups of people pass it along until it is fixed. Here is who they are and how the ticket moves between them."
     },
     {
-      "type": "arch",
+      "type": "graph",
       "chapter": "Who is involved",
       "layout": "TB",
       "nodes": [

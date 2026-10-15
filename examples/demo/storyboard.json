@@ -15,7 +15,7 @@
       ]
     },
     {
-      "type": "arch",
+      "type": "graph",
       "chapter": "Where it fits",
       "narration": "Requests now pass through a rate limiter backed by Redis before they reach the orders service.",
       "nodes": [

@@ -16,7 +16,7 @@
       ]
     },
     {
-      "type": "arch",
+      "type": "graph",
       "chapter": "Where the very long names fit together",
       "narration": "Long card titles, captions, edge labels and group names.",
       "nodes": [
