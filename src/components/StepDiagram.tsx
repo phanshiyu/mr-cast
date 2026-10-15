@@ -1,74 +1,10 @@
 import { Check, CornerDownRight } from 'lucide-react';
 import { spring } from 'remotion';
-import type { CodeScene } from '../types';
-import { splitInTwo, wrapLabel } from '../utils/wrapLabel';
-import { colors, fonts } from './theme';
+import { BADGE, BADGE_GAP, NODE_PAD_X, NODE_PAD_Y, OUTCOME_GAP, outcomeFont, type StepLayout } from '../utils/stepsLayout';
+import { FitText } from './FitText';
+import { colors } from './theme';
 
-export type FlowSteps = NonNullable<CodeScene['flow']>;
-
-const NODE_PAD_X = 20;
-const NODE_PAD_Y = 16;
-const BADGE = 40;
-const BADGE_GAP = 16;
-/** Gap between nodes, where the arrow runs; it tightens before the font shrinks. */
-const ARROW_GAPS = [42, 26];
-const OUTCOME_GAP = 8;
-const LABEL_LINE = 1.25;
-const OUTCOME_LINE = 1.3;
-/** Average glyph width of the sans font, as a share of the font size. */
-const GLYPH_W = 0.48;
-const FONT_MAX = 26;
-const FONT_MIN = 17;
-
-interface NodeLayout {
-  top: number;
-  height: number;
-  label: string[];
-  outcome: string[];
-}
-
-export interface StepLayout {
-  fontSize: number;
-  nodes: NodeLayout[];
-  height: number;
-}
-
-const outcomeFont = (fontSize: number) => Math.round(fontSize * 0.8);
-
-/** One or two lines of at most `maxChars`, or null when the text needs more. */
-function twoLines(text: string, maxChars: number): string[] | null {
-  const clean = text.trim().replace(/\s+/g, ' ');
-  if (clean.length <= maxChars) return [clean];
-  return splitInTwo(clean, maxChars);
-}
-
-function layoutAt(steps: FlowSteps, width: number, fontSize: number, gap: number, wrap: typeof twoLines): StepLayout | null {
-  const textW = width - NODE_PAD_X * 2 - BADGE - BADGE_GAP;
-  const small = outcomeFont(fontSize);
-  const nodes: NodeLayout[] = [];
-  let top = 0;
-  for (const step of steps) {
-    const label = wrap(step.label, Math.floor(textW / (fontSize * GLYPH_W)));
-    const outcome = step.outcome?.trim() ? wrap(step.outcome, Math.floor((textW - small - 8) / (small * GLYPH_W))) : [];
-    if (!label || !outcome) return null;
-    const text = label.length * fontSize * LABEL_LINE + (outcome.length ? OUTCOME_GAP + outcome.length * small * OUTCOME_LINE : 0);
-    const height = Math.round(Math.max(BADGE, text) + NODE_PAD_Y * 2);
-    nodes.push({ top, height, label, outcome });
-    top += height + gap;
-  }
-  return { fontSize, nodes, height: top - gap };
-}
-
-/** The largest font at which every label and outcome fits in two lines and the stack fits `maxHeight`. */
-export function layoutSteps(steps: FlowSteps, width: number, maxHeight: number): StepLayout {
-  for (let size = FONT_MAX; size >= FONT_MIN; size--) {
-    for (const gap of ARROW_GAPS) {
-      const layout = layoutAt(steps, width, size, gap, twoLines);
-      if (layout && layout.height <= maxHeight) return layout;
-    }
-  }
-  return layoutAt(steps, width, FONT_MIN, ARROW_GAPS[ARROW_GAPS.length - 1]!, wrapLabel)!;
-}
+export type { FlowSteps } from '../utils/stepsLayout';
 
 interface StepDiagramProps {
   layout: StepLayout;
@@ -173,23 +109,11 @@ export const StepDiagram: React.FC<StepDiagramProps> = ({ layout, codeRight, lef
               {state === 'visited' ? <Check size={22} strokeWidth={3} /> : k + 1}
             </div>
             <div style={{ minWidth: 0, flex: 1, alignSelf: 'center' }}>
-              <div style={{ fontFamily: fonts.sans, fontSize, lineHeight: LABEL_LINE, fontWeight: state === 'active' ? 650 : 550, color: colors.text }}>
-                {node.label.map((line, i) => (
-                  <div key={i} style={{ whiteSpace: 'nowrap' }}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-              {node.outcome.length ? (
-                <div style={{ display: 'flex', gap: 8, marginTop: OUTCOME_GAP, fontSize: small, lineHeight: OUTCOME_LINE, color: state === 'active' ? '#c3c9ff' : colors.muted }}>
+              <FitText fit={node.label} weight={state === 'active' ? 650 : 550} style={{ color: colors.text }} />
+              {node.outcome ? (
+                <div style={{ display: 'flex', gap: 8, marginTop: OUTCOME_GAP, color: state === 'active' ? '#c3c9ff' : colors.muted }}>
                   <CornerDownRight size={small} style={{ flexShrink: 0, marginTop: small * 0.15 }} />
-                  <div>
-                    {node.outcome.map((line, i) => (
-                      <div key={i} style={{ whiteSpace: 'nowrap' }}>
-                        {line}
-                      </div>
-                    ))}
-                  </div>
+                  <FitText fit={node.outcome} />
                 </div>
               ) : null}
             </div>

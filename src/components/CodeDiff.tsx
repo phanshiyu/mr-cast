@@ -1,108 +1,47 @@
-import { CHANGE_WORD } from '../utils/marks';
 import { FileWarning, Trash2 } from 'lucide-react';
 import type { Token } from 'prism-react-renderer';
 import { useMemo, type ReactNode } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { CodeScene, CodeStep, DiffLine, Hunk } from '../types';
-import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
-import { lineFocusRanges } from '../../shared/focus.mjs';
 import { tokenHits } from '../../shared/pen-marks.mjs';
+import {
+  CALLOUT_BELOW_H,
+  CALLOUT_GAP,
+  CALLOUT_W,
+  FLOW_CALLOUT_GAP,
+  HEADER_GAP,
+  HEADER_H,
+  MORPH_GUTTER_W,
+  MORPH_NUMBER_W,
+  PANEL_PAD,
+  SIGN_W,
+  SPLIT_GUTTER_W,
+  SPLIT_NUMBER_W,
+  STATUS_LABEL,
+  layoutCode,
+  morphGutterW,
+  type CodeLayout,
+  type CodeMetrics,
+  type Slot,
+  type View,
+} from '../utils/codeLayout';
+import type { Fit } from '../../shared/textfit.mjs';
 import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
-import { layoutSteps, StepDiagram, type FlowSteps } from './StepDiagram';
+import { FitText } from './FitText';
+import { StepDiagram } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
 import type { SpokenSegment } from '../utils/timing';
-import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
+import { clamp, CODE_TAB_SIZE, codeColumns, colors, contentBox, fonts } from './theme';
 
-const SIGN_W = 26;
-const SPLIT_NUMBER_W = 66;
-const MORPH_NUMBER_W = 58;
-const SPLIT_GUTTER_W = SPLIT_NUMBER_W + SIGN_W;
-const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
-const FONT_RANGE: Record<View, { min: number; max: number }> = { split: { min: 14, max: 20 }, morph: { min: 15, max: 23 } };
-const PANEL_PAD = 18;
-const HEADER_H = 92;
-const HEADER_GAP = 22;
-const CALLOUT_W = 420;
-const CALLOUT_GAP = 56;
-const CALLOUT_BELOW_H = 112;
-/** With a flow the code keeps this share of the width; the step diagram takes the rest. */
-const FLOW_CODE_SHARE = 0.6;
-const FLOW_GAP = 72;
-const FLOW_CALLOUT_GAP = 36;
-/** Unfocused rows kept above the first step and below the last; the rest of the hunk is cropped away. */
-const CONTEXT_ROWS = 3;
 const STEP_FADE = 14;
 const VISITED_OPACITY = 0.6;
 const DIM_OPACITY = 0.3;
 
-type View = 'split' | 'morph';
-
-/** Code font and row height, sized so the longest shown line fits the code column. */
-interface CodeMetrics {
-  fontSize: number;
-  rowH: number;
-}
-
 /** Morph numbers each row with its old and new line like a unified diff; a source snippet has only its own numbers. */
 const morphNumbers = (hunk: Hunk, line: DiffLine) => (hunk.status === 'source' ? [line.newLine] : [line.oldLine, line.newLine]);
-const morphGutterW = (hunk: Hunk) => (hunk.status === 'source' ? SPLIT_GUTTER_W : MORPH_GUTTER_W);
-
-function codeMetrics(hunk: Hunk, lines: readonly DiffLine[], view: View, panelW: number): CodeMetrics {
-  const inner = panelW - 2;
-  const column = view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - morphGutterW(hunk);
-  const longest = Math.max(0, ...lines.map((l) => codeColumns(l.text)));
-  const { min, max } = FONT_RANGE[view];
-  const fontSize = fitCodeFontSize(longest, column, min, max);
-  return { fontSize, rowH: Math.round(fontSize * 1.65) };
-}
-
-/**
- * Split view halves the code width, so it is the default only when the focus is mostly a before/after
- * comparison: removed lines beside the added lines that replace them. A focus on new code gets morph.
- */
-function defaultView(hunk: Hunk, scene: CodeScene): View {
-  const focus = lineFocusRanges(scene, hunk);
-  const changed = (i: number | null) => i !== null && hunk.lines[i]!.type !== 'context';
-  const focused = splitRows(hunk.lines).filter((row) => [row.left, row.right].some((i) => changed(i) && focus[i!] !== null));
-  const paired = focused.filter((row) => changed(row.left) && changed(row.right)).length;
-  return paired > 0 && 2 * paired >= focused.length ? 'split' : 'morph';
-}
-
-/**
- * One displayed row: a side-by-side pair of hunk.lines indices, or the same index twice in morph view.
- * `step` is the focus step the row belongs to, numbered top to bottom.
- */
-interface Slot extends SplitRow {
-  step: number | null;
-}
-
-/**
- * The rows to show: the hunk cropped to CONTEXT_ROWS around its focus, plus how many steps they hold.
- * A scene with `steps` numbers rows by step, so step k always plays with its own spoken segment;
- * a focus-range scene numbers its ranges in the order they appear top to bottom.
- */
-function cropSlots(hunk: Hunk, view: View, scene: CodeScene): { slots: Slot[]; stepCount: number } {
-  const rangeOf = lineFocusRanges(scene, hunk);
-  const rows = view === 'split' ? splitRows(hunk.lines) : hunk.lines.map((_, i) => ({ left: i, right: i }));
-  const stepped = scene.steps?.length ?? 0;
-  const order: number[] = [];
-  const slots = rows.map((row) => {
-    const ids = [row.left, row.right].flatMap((i) => (i === null ? [] : [rangeOf[i] ?? null])).filter((id) => id !== null);
-    if (!ids.length) return { ...row, step: null };
-    const id = Math.min(...ids);
-    if (stepped) return { ...row, step: id };
-    if (!order.includes(id)) order.push(id);
-    return { ...row, step: order.indexOf(id) };
-  });
-  const focused = slots.flatMap((slot, i) => (slot.step === null ? [] : [i]));
-  if (!focused.length) return { slots, stepCount: stepped };
-  const from = Math.max(0, Math.min(...focused) - CONTEXT_ROWS);
-  const to = Math.min(slots.length, Math.max(...focused) + 1 + CONTEXT_ROWS);
-  return { slots: slots.slice(from, to), stepCount: stepped || order.length };
-}
 
 /** A row the scrolling viewport stacks; views decide height and content per frame. */
 interface RowModel {
@@ -114,16 +53,10 @@ interface RowModel {
   content: ReactNode;
 }
 
-const statusStyle: Record<Hunk['status'], { label: string; color: string }> = {
-  added: { label: CHANGE_WORD.added, color: colors.add },
-  modified: { label: CHANGE_WORD.modified, color: colors.accent },
-  deleted: { label: CHANGE_WORD.removed, color: colors.del },
-  renamed: { label: 'renamed', color: '#fbbf24' },
-  source: { label: 'source', color: colors.muted },
-};
+const statusColor: Record<Hunk['status'], string> = { added: colors.add, modified: colors.accent, deleted: colors.del, renamed: '#fbbf24', source: colors.muted };
 
 const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (
-  <div style={{ ...ellipsis, whiteSpace: 'pre', tabSize: CODE_TAB_SIZE, fontFamily: fonts.mono, fontSize, flex: 1, opacity: dim ? 0.55 : 1, color: plainCodeColor }}>
+  <div style={{ whiteSpace: 'pre', tabSize: CODE_TAB_SIZE, fontFamily: fonts.mono, fontSize, flex: 1, minWidth: 0, opacity: dim ? 0.55 : 1, color: plainCodeColor }}>
     {tokens.map((t, i) => (
       <span key={i} style={{ color: tokenColor(t.types) }}>
         {t.content}
@@ -365,9 +298,8 @@ const MissingHunk: React.FC<{ hunkId: string }> = ({ hunkId }) => (
   </div>
 );
 
-const FileHeader: React.FC<{ hunk: Hunk }> = ({ hunk }) => {
-  const status = statusStyle[hunk.status];
-  const path = hunk.status === 'renamed' && hunk.oldFile ? `${hunk.oldFile} → ${hunk.file}` : hunk.file;
+const FileHeader: React.FC<{ hunk: Hunk; layout: CodeLayout }> = ({ hunk, layout }) => {
+  const color = statusColor[hunk.status];
   const range = hunk.status === 'deleted' ? `L${hunk.oldStartLine}` : `L${hunk.startLine}–${hunk.endLine}`;
   return (
     <div style={{ height: HEADER_H, display: 'flex', alignItems: 'center', gap: 22 }}>
@@ -375,9 +307,9 @@ const FileHeader: React.FC<{ hunk: Hunk }> = ({ hunk }) => {
         style={{
           padding: '8px 16px',
           borderRadius: 10,
-          background: `${status.color}1f`,
-          border: `1px solid ${status.color}55`,
-          color: status.color,
+          background: `${color}1f`,
+          border: `1px solid ${color}55`,
+          color,
           fontSize: 20,
           fontWeight: 700,
           letterSpacing: 1.5,
@@ -385,13 +317,11 @@ const FileHeader: React.FC<{ hunk: Hunk }> = ({ hunk }) => {
           flexShrink: 0,
         }}
       >
-        {status.label}
+        {STATUS_LABEL[hunk.status]}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: fonts.mono, fontSize: fitFontSize(path, 36, 60, 26), fontWeight: 600, ...ellipsis }}>{path}</div>
-        {hunk.header ? (
-          <div style={{ fontFamily: fonts.mono, fontSize: 20, color: colors.faint, marginTop: 6, ...ellipsis }}>{hunk.header}</div>
-        ) : null}
+        <FitText fit={layout.path} style={{ lineHeight: 'normal' }} />
+        {layout.header ? <FitText fit={layout.header} style={{ color: colors.faint, marginTop: 6, lineHeight: 'normal' }} /> : null}
       </div>
       <div style={{ display: 'flex', gap: 14, fontFamily: fonts.mono, fontSize: 24, fontWeight: 600, flexShrink: 0 }}>
         {hunk.status === 'source' ? null : (
@@ -406,7 +336,7 @@ const FileHeader: React.FC<{ hunk: Hunk }> = ({ hunk }) => {
   );
 };
 
-const Callout: React.FC<{ text: string; appear: number; width: number; lines: number }> = ({ text, appear, width, lines }) => (
+const Callout: React.FC<{ text: Fit; appear: number; width: number }> = ({ text, appear, width }) => (
   <div
     style={{
       width,
@@ -416,46 +346,25 @@ const Callout: React.FC<{ text: string; appear: number; width: number; lines: nu
       background: 'linear-gradient(180deg, #1d2136, #161a2a)',
       border: `1px solid ${colors.accent}88`,
       boxShadow: `0 18px 48px rgba(0,0,0,0.5), 0 0 32px ${colors.accentSoft}`,
-      fontSize: fitFontSize(text, 28, 110, 22),
-      lineHeight: 1.35,
-      fontWeight: 500,
       opacity: appear,
       transform: `translateX(${(1 - appear) * 30}px) scale(${0.94 + 0.06 * appear})`,
-      ...clampLines(lines),
     }}
   >
-    {text}
+    <FitText fit={text} />
   </div>
 );
-
-function estimateCalloutHeight(text: string, width: number): number {
-  const fontSize = fitFontSize(text, 28, 110, 22);
-  const charsPerLine = Math.max(1, Math.floor((width - 52) / (fontSize * 0.52)));
-  const lines = Math.min(5, Math.ceil(text.length / charsPerLine));
-  return lines * fontSize * 1.35 + 44;
-}
 
 const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number; segments: readonly SpokenSegment[] }> = ({ scene, hunk, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const steps = scene.steps?.length ? scene.steps : null;
-  const flow: FlowSteps | null = steps
-    ? steps.every((step) => step.label) ? steps.map((step) => ({ label: step.label!, outcome: step.outcome })) : null
-    : scene.flow?.length ? scene.flow : null;
-  const view = hunk.status === 'source' ? 'morph' : scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
-  const { slots, stepCount } = useMemo(() => cropSlots(hunk, view, scene), [hunk, view, scene]);
+  const layout = useMemo(() => layoutCode(scene, hunk), [scene, hunk]);
+  const { view, slots, stepCount, metrics, panelW, panelH, viewportH, steps: stepLayout, diagramLeft, diagramW, diagramTop } = layout;
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
   const box = contentBox(false);
-  const callout = scene.calloutText?.trim() || null;
-  const calloutBeside = callout !== null && !flow && view === 'morph';
-  const calloutBelow = callout !== null && !flow && view === 'split';
-
-  const panelW = flow ? Math.round(box.width * FLOW_CODE_SHARE) : calloutBeside ? box.width - CALLOUT_W - CALLOUT_GAP : box.width;
-  const panelH = box.height - HEADER_H - HEADER_GAP - (calloutBelow ? CALLOUT_BELOW_H + 28 : 0);
-  const viewportH = panelH - PANEL_PAD * 2;
-
-  const shownLines = slots.flatMap((slot) => [slot.left, slot.right]).flatMap((i) => (i === null ? [] : [hunk.lines[i]!]));
-  const metrics = codeMetrics(hunk, shownLines, view, panelW);
+  const callout = layout.callout;
+  const calloutBeside = callout?.at === 'beside';
+  const calloutBelow = callout?.at === 'below';
   // A stepped scene highlights step k while its spoken segment plays: the narration is the intro and the
   // morph is paced over it. Otherwise the morph (or a short settle) is the intro and each focus step takes
   // an equal share of the time left.
@@ -537,16 +446,11 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const lastCenter = (last.top + last.bottom) / 2;
   const calloutAppear = spring({ frame: frame - (stepStarts[stepCount - 1] ?? introEnd) - 6, fps, config: { damping: 16, stiffness: 120 } });
   const focusY = anchorY(last);
-  const calloutH = callout ? estimateCalloutHeight(callout, CALLOUT_W) : 0;
+  const calloutH = callout?.at === 'beside' ? callout.height : 0;
   const calloutTop = Math.min(panelH - calloutH, Math.max(0, focusY - calloutH / 2));
 
   // With a flow, the callout hangs under the step diagram, attached to its last node.
-  const diagramLeft = panelW + FLOW_GAP;
-  const diagramW = box.width - diagramLeft;
-  const flowCalloutH = flow && callout ? estimateCalloutHeight(callout, diagramW) : 0;
-  const flowCalloutBlock = flowCalloutH ? flowCalloutH + FLOW_CALLOUT_GAP : 0;
-  const stepLayout = flow ? layoutSteps(flow, diagramW, panelH - flowCalloutBlock) : null;
-  const diagramTop = stepLayout ? Math.max(0, (panelH - stepLayout.height - flowCalloutBlock) / 2) : 0;
+  const flowCalloutBlock = callout?.at === 'flow' ? callout.height + FLOW_CALLOUT_GAP : 0;
 
   /** Current step at full strength, visited steps softer, unreached steps and context dimmed. */
   const emphasis = (step: number | null) => {
@@ -561,7 +465,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <FileHeader hunk={hunk} />
+      <FileHeader hunk={hunk} layout={layout} />
       <div style={{ position: 'absolute', top: HEADER_H + HEADER_GAP, left: 0, width: box.width, height: panelH }}>
         <div
           style={{
@@ -633,7 +537,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
             fps={fps}
           />
         ) : null}
-        {stepLayout && callout ? (
+        {stepLayout && callout?.at === 'flow' ? (
           <>
             <div
               style={{
@@ -647,7 +551,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
               }}
             />
             <div style={{ position: 'absolute', left: diagramLeft, top: diagramTop + stepLayout.height + FLOW_CALLOUT_GAP }}>
-              <Callout text={callout} appear={calloutAppear} width={diagramW} lines={4} />
+              <Callout text={callout.text} appear={calloutAppear} width={diagramW} />
             </div>
           </>
         ) : null}
@@ -663,7 +567,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
               <circle cx={panelW - 4} cy={focusY} r={7} fill={colors.accent} />
             </svg>
             <div style={{ position: 'absolute', left: panelW + CALLOUT_GAP, top: calloutTop }}>
-              <Callout text={callout!} appear={calloutAppear} width={CALLOUT_W} lines={5} />
+              <Callout text={callout!.text} appear={calloutAppear} width={CALLOUT_W} />
             </div>
           </>
         ) : null}
@@ -682,7 +586,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
         ) : null}
         {calloutBelow ? (
           <div style={{ position: 'absolute', left: 0, right: 0, top: panelH + 28, height: CALLOUT_BELOW_H, display: 'flex', alignItems: 'flex-start' }}>
-            <Callout text={callout!} appear={calloutAppear} width={box.width} lines={2} />
+            <Callout text={callout!.text} appear={calloutAppear} width={box.width} />
           </div>
         ) : null}
       </div>

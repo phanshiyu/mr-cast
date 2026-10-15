@@ -38,4 +38,10 @@ export const SLOTS = {
   flowStrip: { ...MONO, name: 'current step strip', weight: 700, size: 24, min: 16, lines: 1, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the actor\'s name' },
   flowHeadline: { ...SANS, name: 'step card', weight: 700, size: 64, oneLineMin: 64, min: 36, lines: 3, lineHeight: 1.15, letterSpacing: -1, width: 0, fix: 'shorten the action' },
   payload: { ...MONO, name: 'payload', weight: 400, size: 40, min: 12, lines: 1, lineHeight: 1.5, markup: false, width: 0, fix: 'shorten the payload to the fields the step changes' },
+  stepLabel: { ...LABEL, name: 'step label', weight: 650, size: 26, min: 17, lines: 2, lineHeight: 1.25, width: 0, fix: 'shorten the step label to a few plain words' },
+  stepOutcome: { ...LABEL, name: 'step outcome', weight: 400, size: 21, min: 14, lines: 2, lineHeight: 1.3, width: 0, fix: 'shorten the outcome' },
+  codePath: { ...MONO, name: 'file path', weight: 600, size: 36, min: 22, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'it is drawn smaller; nothing to change unless it runs into the line counts' },
+  hunkHeader: { ...MONO, name: 'hunk header', weight: 400, size: 20, min: 14, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'it is drawn smaller; nothing to change' },
+  callout: { ...SANS, name: 'callout', weight: 500, size: 28, min: 22, lines: 5, lineHeight: 1.35, width: 0, fix: 'shorten the callout to the one point the code makes' },
+  code: { ...MONO, name: 'code line', weight: 400, size: 23, min: 15, lines: 1, lineHeight: 1.65, markup: false, width: 0, fix: 'set "view": "morph", which gives the code twice the width' },
 } satisfies Record<string, Slot>;
