@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { buildHunkIndex, parseUnifiedDiff } from './lib/diff.mjs';
 import { UserError } from './lib/errors.mjs';
+import { installSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { dataDir, ensureExcluded, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { startServer } from './lib/server.mjs';
@@ -29,6 +30,7 @@ const USAGE = `usage: mr-cast <command> [options]
                   render the walkthrough to MP4 (default .mr-cast/walkthrough.mp4)
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
+  install-skill   install the mr-video Claude Code skill and /mr-cast command into ~/.claude
   help            show this message`;
 
 const rel = (p) => path.relative(process.cwd(), p) || '.';
@@ -251,7 +253,12 @@ async function still(argv) {
   for (const f of files) console.log(path.resolve(f));
 }
 
-const COMMANDS = { extract, validate, play, render, still };
+function installSkillCommand(argv) {
+  parseArgs({ args: argv, options: {} });
+  for (const file of installSkill(ROOT)) console.log(`wrote ${file}`);
+}
+
+const COMMANDS = { extract, validate, play, render, still, 'install-skill': installSkillCommand };
 
 async function main([command, ...rest]) {
   if (!command || command === 'help' || command === '--help' || command === '-h') {

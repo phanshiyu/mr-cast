@@ -8,15 +8,26 @@ In any git repository, ask Claude to "create a video from this merge request", o
 
 ## Install
 
-Requires Node 20 to 24. Remotion rendering hangs on Node 26. The `bin/mr-cast` launcher finds a suitable Node through PATH, nvm, or Homebrew.
+Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. The `mr-cast` launcher finds a suitable Node through PATH, nvm, or Homebrew.
+
+```bash
+npm install -g mr-cast
+mr-cast install-skill   # writes ~/.claude/skills/mr-video/SKILL.md and ~/.claude/commands/mr-cast.md
+```
+
+The skill points at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it.
+
+From a clone instead:
 
 ```bash
 npm install
 npm run build           # prebuilds the player into dist/
-npm run install-skill   # writes ~/.claude/skills/mr-video/SKILL.md and ~/.claude/commands/mr-cast.md
+npm run install-skill
 ```
 
-Rerun `npm run install-skill` after you move this directory or change `src/types.ts`. The installer copies the storyboard schema from `src/types.ts` into the skill.
+## License
+
+MIT. mr-cast renders with [Remotion](https://www.remotion.dev/license), which is free for individuals and companies with up to 3 employees. Larger companies need a Remotion company license to render videos with mr-cast.
 
 ## Commands
 
@@ -48,6 +59,6 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 - `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, and `lib/render.mjs` wraps the Remotion renderer.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share.
-- `skill/SKILL.md` is the skill template that `scripts/install-skill.mjs` fills in.
+- `skill/SKILL.md` is the skill template that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
 For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.

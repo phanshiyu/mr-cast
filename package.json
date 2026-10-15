@@ -2,17 +2,44 @@
   "name": "mr-cast",
   "version": "0.1.0",
   "description": "Turn a git branch / merge request diff into an animated Remotion walkthrough.",
+  "keywords": [
+    "git",
+    "diff",
+    "code-review",
+    "video",
+    "remotion",
+    "claude-code",
+    "merge-request"
+  ],
+  "license": "MIT",
+  "author": "phanshiyu",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phanshiyu/mr-cast.git"
+  },
+  "homepage": "https://github.com/phanshiyu/mr-cast#readme",
   "type": "module",
-  "private": true,
   "bin": {
     "mr-cast": "bin/mr-cast"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "shared/",
+    "dist/",
+    "skill/",
+    "examples/demo/*.json",
+    "tsconfig.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "demo": "bash scripts/demo.sh",
-    "install-skill": "node scripts/install-skill.mjs"
+    "install-skill": "node bin/mr-cast.mjs install-skill",
+    "prepack": "npm run typecheck && npm run build"
   },
   "engines": {
     "node": ">=20 <25"
