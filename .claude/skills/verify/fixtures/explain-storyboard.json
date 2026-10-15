@@ -1,0 +1,44 @@
+{
+  "title": "How the rate limiter works",
+  "subtitle": "src/api/rate-limit.ts in the demo repo",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "The idea",
+      "narration": "The orders route counts each caller's requests in one minute windows. Past twenty in a window, the limiter answers too many requests instead of creating the order.",
+      "summary": "A Redis counter per IP and minute caps POST /orders at twenty requests.",
+      "bullets": [
+        "Each IP gets one counter per one-minute window",
+        "The counter expires with its window",
+        "Past twenty, the route answers 429 with Retry-After"
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "Who calls whom",
+      "title": "POST /orders",
+      "narration": "A request reaches the Express API, which asks Redis to count it. Under the limit the orders service runs. Over the limit the API answers right away.",
+      "participants": [
+        { "id": "client", "label": "Client", "kind": "client" },
+        { "id": "api", "label": "Express API", "kind": "service", "modified": true },
+        { "id": "redis", "label": "Redis", "kind": "db" },
+        { "id": "orders", "label": "createOrder", "kind": "service" }
+      ],
+      "messages": [
+        { "from": "client", "to": "api", "label": "POST /orders" },
+        { "from": "api", "to": "redis", "label": "INCR rl:ip:window", "modified": true },
+        { "from": "redis", "to": "api", "label": "count", "kind": "return" },
+        { "from": "api", "to": "orders", "label": "createOrder(body)" },
+        { "from": "api", "to": "client", "label": "201 or 429", "kind": "return" }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The limiter",
+      "narration": "The rate limit function builds a key from the caller's address and the current window, then counts the request. Past twenty it sets the retry after header and answers four twenty-nine.",
+      "hunkId": "s1",
+      "focusLinesAfter": ["11-12", 13, "14-17"],
+      "calloutText": "The key changes every window, so old counters simply expire."
+    }
+  ]
+}
