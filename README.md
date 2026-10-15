@@ -12,6 +12,8 @@ After Claude explains something in a conversation, such as a system, a flow, a b
 
 The MP4 is named after the walkthrough's title, such as `.mr-cast/rate-limiting-for-the-orders-api.mp4`, and Claude gives you its path.
 
+To free disk space, ask Claude to "prune mr-cast" or "clean up old mr-cast videos". The `mr-cast-prune` skill lists the walkthroughs, rendered videos, stills, voice clips and cached downloads with their sizes, asks you which to delete, and deletes only what you pick. See [Pruning](#pruning).
+
 ### Upgrading from 0.5
 
 0.6 renames the skills and commands. `mr-video` is now `mr-cast-review`, and `explain-in-animation` is now `mr-cast-explain`. The `/mr-cast`, `/mr-render` and `/explain-in-animation` commands are replaced by `/mr-cast-review`, `/mr-cast-render`, `/mr-cast-explain` and `/mr-cast-explain-render`. Rerun `mr-cast install-skill` after you upgrade. It installs the new names and deletes the old skill and command files, but only those whose content shows mr-cast wrote them. It prints each file it removes and leaves any other file with an old name in place.
@@ -24,7 +26,7 @@ Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. T
 
 ```bash
 npm install -g @shiyuphan/mr-cast
-mr-cast install-skill   # installs the mr-cast-review and mr-cast-explain skills and their commands
+mr-cast install-skill   # installs the mr-cast-review, mr-cast-explain and mr-cast-prune skills and the commands
 mr-cast --version       # prints the mr-cast and Node versions
 ```
 
@@ -55,6 +57,7 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast play [--port N] [--no-open] [--voice name] [--no-voice]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. |
 | `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders an MP4 at 1920x1080, 30 fps, with the voice-over and burned-in subtitles, and prints its path. The file goes in the data directory and is named after the storyboard title, such as `rate-limiting-for-the-orders-api.mp4`. Without a usable title it takes the run's name, then `walkthrough.mp4`. The first run downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`, or `$XDG_CACHE_HOME/mr-cast/remotion` when that is set. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's settled end state, just before it fades out, to check layout. |
+| `mr-cast prune [id...] [--older-than days] [--json]` | Without ids, lists what can be deleted, with an id, size, age and description for each, and the total. With ids from that list, deletes exactly those. See [Pruning](#pruning). |
 | `mr-cast version` | Prints `mr-cast <version> (node <version>)`. Also `--version` and `-v`. |
 
 `validate`, `outline`, `voice`, `play`, `render` and `still` take `--dir <path>` to read the storyboard from another directory instead of `.mr-cast/`.
@@ -63,7 +66,21 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 
 Every command above takes `--name <slug>` to keep a walkthrough in `.mr-cast/<slug>/` instead of `.mr-cast/`. The slug is lowercase letters, digits and dashes. Run `mr-cast extract --name rate-limit`, write `.mr-cast/rate-limit/storyboard.json`, then pass the same `--name` to `validate`, `outline`, `play` and `render`. Without `--name` the commands use `.mr-cast/` as before. The names `explain`, `audio` and `stills` are reserved, since the default run and explain mode use those folders.
 
-Several runs can render at the same time, in one repository or several. They share the cache in `~/.cache/mr-cast`. Each render bundles the player into its own temporary folder and moves it into the cache when it is complete, so a render never reads a half-written bundle. A bundle stays while its source is current, and bundles of other versions are deleted after an hour without use. The Chrome download and the voice model download take a lock file, so a second render waits for the first download instead of starting its own.
+Several runs can render at the same time, in one repository or several. They share the cache in `~/.cache/mr-cast`. Each render bundles the player into its own temporary folder and moves it into the cache when it is complete, so a render never reads a half-written bundle. A bundle stays while its source is current, and bundles of other versions are deleted after an hour without use. The Chrome download and the voice model download take a lock file, so a second render waits for the first download instead of starting its own. A render also marks the bundle and Chrome caches in use while it runs, so `mr-cast prune` refuses to delete them meanwhile.
+
+### Pruning
+
+`mr-cast prune` lists everything mr-cast stored that you can delete. It looks in `.mr-cast/` of the git repository, or of the current directory outside one, and in the shared cache. Each line has an id to pass back to delete it.
+
+| Id | What it deletes |
+| --- | --- |
+| `run:.`, `run:<name>` | A diff walkthrough: the default run's own files in `.mr-cast/` (named runs and explanations stay), or `.mr-cast/<name>/`. |
+| `explain:<name>` | An explanation in `.mr-cast/explain/<name>/`. If it is the current explanation, `.current` is cleared, so later `explain` commands need `--name` or a new `explain init`. |
+| `video:<run>/<file>.mp4` | A rendered video. `<run>` is `.`, a run name, or `explain/<name>`. |
+| `stills:<run>`, `audio:<run>` | A run's PNG stills, or its voice-over clips and `voiceover.json`. `still` and `voice` make them again. |
+| `cache:bundle`, `cache:remotion`, `cache:models` | The player bundle, Chrome Headless Shell (about 580 MB), or the Kokoro voice model (about 90 MB). The next render or voice-over downloads or rebuilds them. |
+
+`--older-than <days>` lists only what has not changed in that many days. `--json` prints the list as JSON for scripts and the skill. `mr-cast prune <id>...` deletes only ids from a fresh listing, with the same `--older-than` filter. An unknown id, or a cache entry that a render is using or a download holds the lock on, makes it delete nothing. Deleting a run also deletes its videos, stills and clips.
 
 ## Explain mode
 
@@ -113,10 +130,10 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 
 ## Layout
 
-- `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` resolves `--name` and `--dir` to a data directory, and `lib/lock.mjs` guards downloads into the shared cache.
+- `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` resolves `--name` and `--dir` to a data directory, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share. `shared/voice.mjs` names each clip by its narration.
 - `bin/lib/explain.mjs` turns source line ranges into snippets for explain mode.
-- `skill/mr-cast-review/SKILL.md` and `skill/mr-cast-explain/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
+- `skill/mr-cast-review/SKILL.md`, `skill/mr-cast-explain/SKILL.md` and `skill/mr-cast-prune/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
 For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.
