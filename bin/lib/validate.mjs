@@ -7,16 +7,35 @@ const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
 const TYPES = ['intent', 'arch', 'code', 'flow'];
 
+const MAX_LINE_RANGE = 10000;
+
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
+/** @returns {boolean} whether `refs` is present and every entry is a valid line ref */
 function checkLineRefs(refs, path, errors) {
-  if (refs === undefined) return;
-  if (!Array.isArray(refs)) return errors.push(`${path}: must be an array of line numbers or "a-b" ranges`);
+  if (refs === undefined) return false;
+  if (!Array.isArray(refs)) {
+    errors.push(`${path}: must be an array of line numbers or "a-b" ranges`);
+    return false;
+  }
+  const before = errors.length;
   refs.forEach((r, i) => {
     if (typeof r === 'number' && Number.isInteger(r) && r > 0) return;
-    if (typeof r === 'string' && /^\s*\d+\s*(-\s*\d+\s*)?$/.test(r)) return;
-    errors.push(`${path}[${i}]: ${JSON.stringify(r)} is not a line number or "a-b" range`);
+    const m = typeof r === 'string' && r.match(/^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/);
+    if (!m) return errors.push(`${path}[${i}]: ${JSON.stringify(r)} is not a line number or "a-b" range`);
+    if (m[2] !== undefined && Math.abs(m[2] - m[1]) > MAX_LINE_RANGE) {
+      errors.push(`${path}[${i}]: range ${JSON.stringify(r)} spans more than ${MAX_LINE_RANGE} lines`);
+    }
   });
+  return errors.length === before;
+}
+
+function checkFocusInHunk(refs, hunk, side, path, warnings) {
+  const valid = hunk.lines.map((l) => (side === 'new' ? l.newLine : l.oldLine)).filter((n) => n !== null);
+  const missing = [...expandLineRefs(refs)].filter((n) => !valid.includes(n));
+  if (!missing.length) return;
+  const span = valid.length ? `${side}-file lines ${Math.min(...valid)}-${Math.max(...valid)}` : `no ${side}-file lines`;
+  warnings.push(`${path}: lines ${missing.join(', ')} are outside ${hunk.id} (${span})`);
 }
 
 export function expandLineRefs(refs = []) {
@@ -78,16 +97,13 @@ export function validateStoryboard(sb, hunks) {
       }
 
       case 'code': {
-        const hunk = hunks?.[s.hunkId];
+        const hunk = isStr(s.hunkId) && hunks && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;
         if (!isStr(s.hunkId)) errors.push(`${p}.hunkId: required string`);
         else if (!hunk) errors.push(`${p}.hunkId: "${s.hunkId}" not found in hunks.json`);
-        checkLineRefs(s.focusLinesAfter, `${p}.focusLinesAfter`, errors);
-        checkLineRefs(s.focusLinesBefore, `${p}.focusLinesBefore`, errors);
-        if (hunk && Array.isArray(s.focusLinesAfter)) {
-          const valid = new Set(hunk.lines.map((l) => l.newLine).filter((n) => n !== null));
-          const missing = [...expandLineRefs(s.focusLinesAfter.filter((r) => typeof r === 'number' || typeof r === 'string'))].filter((n) => !valid.has(n));
-          if (missing.length) warnings.push(`${p}.focusLinesAfter: lines ${missing.join(', ')} are outside ${s.hunkId} (new-file lines ${hunk.startLine}-${hunk.endLine})`);
-        }
+        const afterOk = checkLineRefs(s.focusLinesAfter, `${p}.focusLinesAfter`, errors);
+        const beforeOk = checkLineRefs(s.focusLinesBefore, `${p}.focusLinesBefore`, errors);
+        if (hunk && afterOk) checkFocusInHunk(s.focusLinesAfter, hunk, 'new', `${p}.focusLinesAfter`, warnings);
+        if (hunk && beforeOk) checkFocusInHunk(s.focusLinesBefore, hunk, 'old', `${p}.focusLinesBefore`, warnings);
         if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
         if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
         break;
