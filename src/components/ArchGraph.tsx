@@ -2,16 +2,17 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ArchEdge, ArchNode, ArchScene, Change } from '../types';
-import { GROUP_NAME, LABEL_FONT, LABEL_LINE_HEIGHT, LABEL_PAD, NODE_H, archBoxes, fitArch, groupNameMax, type ArchDirection, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
+import { GROUP_NAME, LABEL_PAD, NODE_H, archBoxes, fitArch, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
 import { centredStage, staged } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { ChangeLegend } from './ChangeLegend';
 import { changeTone, EMPHASIS } from './marks';
-import { NodeCard, sharedTitleFont } from './NodeCard';
+import { FitText } from './FitText';
+import { NodeCard } from './NodeCard';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
+import { clamp, colors, contentBox } from './theme';
 
 const NODE_START = 8;
 const NODES_END = 20;
@@ -117,23 +118,16 @@ const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: ArchE
         border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || highlight ? `${color}99` : colors.borderStrong}`,
         boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : highlight ? `0 0 18px ${EMPHASIS.glow}` : undefined,
         color: emphasis.glow > 0 && !change ? colors.text : color,
-        fontFamily: fonts.mono,
-        fontSize: LABEL_FONT,
-        lineHeight: LABEL_LINE_HEIGHT,
-        textAlign: 'center',
-        whiteSpace: 'pre',
         textDecoration: change === 'removed' ? 'line-through' : 'none',
       }}
     >
-      {label.lines.map((line, i) => (
-        <div key={i}>{line}</div>
-      ))}
+      <FitText fit={label.text} align="center" />
     </div>
   );
 };
 
 /** A labelled box behind a group's nodes. */
-const GroupBox: React.FC<{ group: PlacedGroup; direction: ArchDirection; appear: number; emphasis: Emphasis }> = ({ group, direction, appear, emphasis }) => (
+const GroupBox: React.FC<{ group: PlacedGroup; appear: number; emphasis: Emphasis }> = ({ group, appear, emphasis }) => (
   <div
     style={{
       position: 'absolute',
@@ -149,22 +143,10 @@ const GroupBox: React.FC<{ group: PlacedGroup; direction: ArchDirection; appear:
       opacity: appear * Math.max(emphasis.opacity, 0.7),
     }}
   >
-    <div
-      style={{
-        position: 'absolute',
-        [group.nameAt]: GROUP_NAME.x,
-        top: GROUP_NAME.y,
-        maxWidth: groupNameMax(group, direction),
-        fontSize: GROUP_NAME.font,
-        fontWeight: 700,
-        letterSpacing: GROUP_NAME.letterSpacing,
-        textTransform: 'uppercase',
-        color: emphasis.glow > 0 ? colors.accent : colors.muted,
-        ...ellipsis,
-      }}
-    >
-      {group.name}
-    </div>
+    <FitText
+      fit={group.label}
+      style={{ position: 'absolute', [group.nameAt]: GROUP_NAME.x, top: GROUP_NAME.y, color: emphasis.glow > 0 ? colors.accent : colors.muted, lineHeight: 'normal' }}
+    />
   </div>
 );
 
@@ -177,10 +159,7 @@ function legendChanges(scene: ArchScene): Set<Change> {
 export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { layout, scale, titleFont } = useMemo(
-    () => fitArch(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false), (width) => sharedTitleFont(scene.nodes, width, 'large')),
-    [scene.nodes, scene.edges, scene.layout],
-  );
+  const { layout, scale } = useMemo(() => fitArch(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false)), [scene.nodes, scene.edges, scene.layout]);
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
   const marks = useMemo(() => staged(archBoxes(layout), centredStage(contentBox(false), layout, scale), contentBox(false)), [layout, scale]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
@@ -202,7 +181,6 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
             <GroupBox
               key={group.name}
               group={group}
-              direction={scene.layout ?? 'LR'}
               emphasis={emphasisOf(`g:${group.name}`)}
               appear={interpolate(frame, [NODE_START - 4 + group.layer * layerStagger, NODE_START + 6 + group.layer * layerStagger], [0, 1], clamp)}
             />
@@ -235,7 +213,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
               width={layout.nodeWidth}
               height={NODE_H}
               size="large"
-              titleFont={titleFont}
+              text={layout.texts.get(placed.node.id)!}
               emphasis={nodeEmphasis(placed.node)}
               appear={spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />

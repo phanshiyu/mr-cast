@@ -7,7 +7,6 @@ import type { MessageKind, SequenceMessage, SequenceScene } from '../types';
 import {
   BAR_W,
   CARD_H,
-  LABEL_LINE_HEIGHT,
   layoutSequence,
   type PlacedMessage,
   type Pt,
@@ -19,7 +18,8 @@ import { SceneShell } from './SceneShell';
 import { badgesOf, CornerBadges, EMPHASIS } from './marks';
 import { NodeCard, nodeMark } from './NodeCard';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, contentBox, ellipsis, fonts } from './theme';
+import { FitText } from './FitText';
+import { clamp, colors, contentBox } from './theme';
 
 const HEADER_START = 6;
 const HEADERS_END = 14;
@@ -122,18 +122,10 @@ const MessageLabel: React.FC<{ placed: PlacedMessage; appear: number; current: b
     color: mark?.labelText ?? (kind === 'return' ? colors.muted : colors.text),
     textDecoration: removed ? 'line-through' : undefined,
     textDecorationColor: colors.del,
-    fontFamily: fonts.mono,
-    fontSize: label.fontSize,
-    fontWeight: current ? 650 : 500,
-    lineHeight: LABEL_LINE_HEIGHT,
-    textAlign: label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center',
-    whiteSpace: 'pre',
-    overflow: 'hidden',
   };
-  const lines = label.lines.map((line, i) => <div key={i}>{line}</div>);
+  const lines = <FitText fit={label.text} weight={current ? 650 : 500} align={label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center'} />;
   const badges = badgesOf(placed.message);
   if (!badges.length) return <div style={{ ...placement, ...box }}>{lines}</div>;
-  // The label clips its text, so the badges sit on a wrapper of the same size.
   return (
     <div style={placement}>
       <div style={box}>{lines}</div>
@@ -163,12 +155,10 @@ const NoteCard: React.FC<{ placed: PlacedMessage; appear: number }> = ({ placed,
         background: '#1e1a10',
         border: `1px solid ${noteAmber}`,
         color: '#f1dca0',
-        fontSize: 18,
-        lineHeight: 1.3,
       }}
     >
       <StickyNote size={17} strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 3, color: '#fbbf24' }} />
-      <span style={{ minWidth: 0, ...(note.lines === 1 ? ellipsis : clampLines(2)) }}>{placed.message.note}</span>
+      <FitText fit={note.text} />
     </div>
   );
 };
@@ -280,6 +270,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
               width={layout.cardW}
               height={CARD_H}
               size={layout.cardW < 290 ? 'compact' : 'small'}
+              text={layout.texts.get(p.participant.id)!}
               emphasis={{ ...emphasisOf(`p:${p.participant.id}`), opacity: 1 }}
               appear={spring({ frame: frame - HEADER_START - i * headerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />

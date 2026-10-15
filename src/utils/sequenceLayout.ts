@@ -1,7 +1,9 @@
+import { fitText, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS } from '../fit/slots';
 import type { MessageKind, SequenceMessage, SequenceParticipant } from '../types';
 import { badgeWords } from './marks';
+import { cardTexts, type CardText } from './nodeText';
 import type { Box, LayoutBoxes } from './penGeometry';
-import { splitInTwo, wrapLabel } from './wrapLabel';
 
 export const CARD_H = 84;
 /** Room above the cards for the "changed" pill. */
@@ -19,8 +21,6 @@ const LOOP_W = 40;
 const LABEL_GAP = 6;
 const NOTE_GAP = 18;
 const NOTE_MAX_W = 460;
-/** Monospace advance per em, as in theme.ts, plus chip padding. */
-const MONO_ADVANCE = 0.61;
 const CHIP_PAD_X = 12;
 export const LABEL_LINE_HEIGHT = 1.35;
 /** Chip padding and border above and below the text. */
@@ -43,9 +43,8 @@ export interface PlacedLabel {
   y: number;
   align: 'center' | 'left' | 'right';
   maxWidth: number;
-  fontSize: number;
-  /** One line, or two when one would not fit even at the smallest font. */
-  lines: string[];
+  /** One line, shrunk to fit; two when one would not fit even at the smallest font. */
+  text: Fit;
 }
 
 export interface PlacedNote {
@@ -54,7 +53,7 @@ export interface PlacedNote {
   y: number;
   side: 'left' | 'right';
   maxWidth: number;
-  lines: 1 | 2;
+  text: Fit;
 }
 
 export interface PlacedMessage {
@@ -86,6 +85,8 @@ export interface SequenceLayout {
   cardTop: number;
   lifelineTop: number;
   participants: PlacedParticipant[];
+  /** Each participant card's title and caption, by id. */
+  texts: Map<string, CardText>;
   messages: PlacedMessage[];
   activations: PlacedActivation[];
 }
@@ -127,26 +128,24 @@ function pairActivations(messages: readonly SequenceMessage[], indexOf: Map<stri
   return spans.sort((a, b) => a.start - b.start || a.participant - b.participant);
 }
 
-function monoWidth(text: string, fontSize: number): number {
-  return text.length * fontSize * MONO_ADVANCE + CHIP_PAD_X * 2;
+/**
+ * Fits `text` in a chip `width` wide and at most `height` tall. It shrinks to keep one line; a label that
+ * does not fit on one line at `min` wraps onto two at the largest font that fits both ways.
+ */
+function fitLabel(text: string, width: number, height: number, min: number, max: number, path: string): Fit {
+  const textW = width - CHIP_PAD_X * 2;
+  const one = fitText(text, { ...SLOTS.messageLabel, size: max, min, oneLineMin: undefined, lines: 1, width: textW }, path);
+  if (one.fits) return one;
+  const tallest = Math.floor((height - 2 * CHIP_PAD_Y) / (2 * LABEL_LINE_HEIGHT));
+  if (tallest < min) return one;
+  return fitText(text, { ...SLOTS.messageLabel, size: Math.min(max, tallest), min, oneLineMin: undefined, lines: 2, width: textW }, path);
 }
 
-/**
- * Fits `text` in a chip `width` wide and at most `height` tall. Short spans shrink the font to keep one
- * line; a label that does not fit on one line at `min` wraps onto two at the largest font that fits
- * both ways, and is cut only when two lines cannot hold it.
- */
-function fitLabel(text: string, width: number, height: number, min: number, max: number): { fontSize: number; lines: string[] } {
-  const chars = (font: number) => Math.floor((width - CHIP_PAD_X * 2) / (font * MONO_ADVANCE));
-  const oneLine = Math.max(min, Math.min(max, Math.floor((width - CHIP_PAD_X * 2) / Math.max(1, text.length * MONO_ADVANCE))));
-  if (text.length <= chars(oneLine)) return { fontSize: oneLine, lines: [text] };
-  const tallest = Math.floor((height - 2 * CHIP_PAD_Y) / (2 * LABEL_LINE_HEIGHT));
-  for (let font = Math.min(max, tallest); font >= min; font--) {
-    const lines = splitInTwo(text, chars(font));
-    if (lines) return { fontSize: font, lines };
-  }
-  return tallest >= min ? { fontSize: min, lines: wrapLabel(text, chars(min)) } : { fontSize: min, lines: [text] };
-}
+/** A label chip's width: its widest line and padding. */
+const chipWidth = (fit: Fit) => fit.width + CHIP_PAD_X * 2;
+
+/** Width of a note's text: its card less padding, border and icon. */
+const NOTE_CHROME = 24 + 2 + 17 + 8;
 
 export function layoutSequence(
   participants: readonly SequenceParticipant[],
@@ -196,6 +195,7 @@ export function layoutSequence(
 
   const placed: PlacedMessage[] = messages.map((m, i) => {
     const kind = m.kind ?? 'call';
+    const path = `messages[${allMessages.indexOf(m)}].label`;
     const from = indexOf.get(m.from)!;
     const to = indexOf.get(m.to)!;
     const top = rowTops[i]!;
@@ -216,15 +216,12 @@ export function layoutSequence(
       activations.push({ x: x + depth * BAR_STEP, y0: yEnd - 8, y1: yEnd + 14, opener: i });
       const rightRoom = width - (loopX + 12);
       const leftRoom = x - BAR_W - 8;
-      const font = baseFont;
-      const want = monoWidth(m.label, font);
+      const want = chipWidth(fitText(m.label, { ...SLOTS.messageLabel, size: baseFont, min: baseFont, oneLineMin: undefined, lines: 1, width: Infinity }, path));
       const onRight = rightRoom >= Math.min(want, colW * 0.9) || rightRoom >= leftRoom;
       const maxWidth = Math.min(onRight ? rightRoom : leftRoom, Math.max(colW * 0.9, want));
-      const fit = fitLabel(m.label, maxWidth, labelRoom, 15, font);
-      const used = Math.min(maxWidth, Math.max(...fit.lines.map((l) => monoWidth(l, fit.fontSize))));
-      label = onRight
-        ? { x: loopX + 12, y: (y + yEnd) / 2, align: 'left', maxWidth, ...fit }
-        : { x: leftRoom, y: (y + yEnd) / 2, align: 'right', maxWidth, ...fit };
+      const text = fitLabel(m.label, maxWidth, labelRoom, SLOTS.messageLabel.min, baseFont, path);
+      const used = Math.min(maxWidth, chipWidth(text));
+      label = onRight ? { x: loopX + 12, y: (y + yEnd) / 2, align: 'left', maxWidth, text } : { x: leftRoom, y: (y + yEnd) / 2, align: 'right', maxWidth, text };
       occupied = onRight ? [x - BAR_W, loopX + 12 + used] : [leftRoom - used, loopX];
     } else {
       const dir = to > from ? 1 : -1;
@@ -237,7 +234,7 @@ export function layoutSequence(
         y: y - LABEL_GAP,
         align: 'center',
         maxWidth: span,
-        ...fitLabel(m.label, span, labelRoom, 15, baseFont),
+        text: fitLabel(m.label, span, labelRoom, SLOTS.messageLabel.min, baseFont, path),
       };
       occupied = [Math.min(x1, x2), Math.max(x1, x2)];
     }
@@ -247,12 +244,13 @@ export function layoutSequence(
       const left = occupied[0] - NOTE_GAP;
       const right = width - (occupied[1] + NOTE_GAP);
       const side = right >= left ? 'right' : 'left';
+      const maxWidth = Math.min(NOTE_MAX_W, Math.max(left, right));
       note = {
         x: side === 'right' ? occupied[1] + NOTE_GAP : occupied[0] - NOTE_GAP,
         y: from === to ? label.y : (top + bottom) / 2,
         side,
-        maxWidth: Math.min(NOTE_MAX_W, Math.max(left, right)),
-        lines: bottom - top >= 62 ? 2 : 1,
+        maxWidth,
+        text: fitText(m.note, { ...SLOTS.messageNote, lines: bottom - top >= 62 ? 2 : 1, width: maxWidth - NOTE_CHROME }, `messages[${allMessages.indexOf(m)}].note`),
       };
     }
     return { message: m, kind, self: from === to, top, bottom, points, label, note };
@@ -267,6 +265,7 @@ export function layoutSequence(
     cardTop: CARD_TOP,
     lifelineTop,
     participants: participants.map((participant, i) => ({ participant, x: xs[i]! })),
+    texts: cardTexts(participants, cardW, cardW < 290 ? 'compact' : 'small', (i) => `participants[${i}]`, { shared: false }),
     messages: placed,
     activations,
   };

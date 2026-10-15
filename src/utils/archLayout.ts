@@ -1,7 +1,9 @@
+import { fitText, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 import type { ArchEdge, ArchNode, ArchScene } from '../types';
 import { badgeWords } from './marks';
+import { cardTexts, sharedTitleSize, type CardText } from './nodeText';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
-import { wrapLabel } from './wrapLabel';
 
 export const NODE_W = 320;
 /** Widest a card grows when the frame has room across, so long titles keep the full font. */
@@ -76,7 +78,7 @@ export interface PositionedNode {
 }
 
 export interface EdgeLabelBox {
-  lines: string[];
+  text: Fit;
   /** Centre in layout units. */
   x: number;
   y: number;
@@ -106,6 +108,8 @@ export interface PlacedGroup {
   layer: number;
   /** Which end of its top edge the name sits at: top to bottom, the end that edges coming in from outside avoid. */
   nameAt: 'left' | 'right';
+  /** Its name, fitted to the room its box gives it. */
+  label: Fit;
 }
 
 export interface ArchLayout {
@@ -114,6 +118,8 @@ export interface ArchLayout {
   groups: PlacedGroup[];
   layerCount: number;
   nodeWidth: number;
+  /** Each card's title and caption, by node id. */
+  texts: Map<string, CardText>;
   width: number;
   height: number;
 }
@@ -335,13 +341,13 @@ function overlap(a: Rect, b: Rect): number {
 /** Where a group's name sits inside its box, and the font it is set in. */
 export const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
 
-/** What a label must stay clear of in a group: its four borders and its name. */
-/** Widest a group's name may run before it is cut short: top to bottom it keeps to half the box, clear of edges entering at the middle. */
-export const groupNameMax = (g: PlacedGroup, direction: ArchDirection) => (direction === 'TB' ? g.width / 2 - 34 : g.width - 44);
+/** Widest a group's name may run: top to bottom it keeps to half the box, clear of edges entering at the middle. */
+export const groupNameMax = (g: { width: number }, direction: ArchDirection) => (direction === 'TB' ? g.width / 2 - 34 : g.width - 44);
 
-function groupObstacles(g: PlacedGroup, direction: ArchDirection): Rect[] {
+/** What a label must stay clear of in a group: its four borders and its name. */
+function groupObstacles(g: PlacedGroup): Rect[] {
   const b = BORDER_CLEAR;
-  const nameW = Math.min(g.name.length * (0.66 * GROUP_NAME.font + GROUP_NAME.letterSpacing), groupNameMax(g, direction));
+  const nameW = g.label.width;
   return [
     { x: g.x - b, y: g.y - b, width: g.width + 2 * b, height: 2 * b },
     { x: g.x - b, y: g.y + g.height - b, width: g.width + 2 * b, height: 2 * b },
@@ -351,12 +357,14 @@ function groupObstacles(g: PlacedGroup, direction: ArchDirection): Rect[] {
   ];
 }
 
-function labelSize(text: string, chars: number): { lines: string[]; width: number; height: number } {
-  const lines = wrapLabel(text, chars);
+/** An edge's label fitted to `chars` monospace cells, and the pill around it. */
+function labelSize(text: string, chars: number, path: string): { text: Fit; width: number; height: number } {
+  const fit = fitText(text, sized(SLOTS.edgeLabel, chars * MONO_ADVANCE * LABEL_FONT), path);
+  const cells = Math.max(...fit.lines.map((line) => line.reduce((n, run) => n + run.text.length, 0)));
   return {
-    lines,
-    width: Math.max(...lines.map((l) => l.length)) * MONO_ADVANCE * LABEL_FONT + 2 * LABEL_PAD.x + 2,
-    height: lines.length * LABEL_FONT * LABEL_LINE_HEIGHT + 2 * LABEL_PAD.y + 2,
+    text: fit,
+    width: Math.max(cells * MONO_ADVANCE * fit.size, fit.width) + 2 * LABEL_PAD.x + 2,
+    height: fit.lines.length * fit.size * LABEL_LINE_HEIGHT + 2 * LABEL_PAD.y + 2,
   };
 }
 
@@ -448,7 +456,7 @@ function layoutPass(
   /** Along u, what group boxes take after layer `l` ends and before it starts. */
   const closing = (l: number) => (named.some((b) => b.last === l) ? GROUP_PAD : 0);
   const opening = (l: number) => (named.some((b) => b.first === l) ? GROUP_PAD + headU : 0);
-  const sizes = new Map(valid.flatMap((e) => (e.label ? [[e, labelSize(e.label, axes.labelChars)] as const] : [])));
+  const sizes = new Map(valid.flatMap((e) => (e.label ? [[e, labelSize(e.label, axes.labelChars, `edges[${edges.indexOf(e)}].label`)] as const] : [])));
   const gaps = Array.from({ length: layerCount - 1 }, (_, l) => {
     const between = valid.filter((e) => sizes.has(e) && Math.min(layer(e.from), layer(e.to)) === l && Math.abs(layer(e.to) - layer(e.from)) === 1);
     const label = Math.max(0, ...between.map((e) => axes.labelU(sizes.get(e)!)));
@@ -477,14 +485,16 @@ function layoutPass(
     const incoming = valid.filter((e) => placed.get(e.to)!.node.group === band.name && layer(e.to) === first && placed.get(e.from)!.node.group !== band.name);
     const from = incoming.map((e) => placed.get(e.from)!.v + V / 2);
     const enterBefore = from.length > 0 && from.reduce((sum, v) => sum + v, 0) / from.length < band.v0 + extent(band.size) / 2;
-    return { name: band.name!, x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y, layer: first, nameAt: direction === 'TB' && enterBefore ? 'right' : 'left' };
+    const box = { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
+    const label = fitText(band.name!, sized(SLOTS.groupName, groupNameMax(box, direction)), `nodes[${nodes.findIndex((n) => n.group === band.name)}].group`);
+    return { name: band.name!, ...box, layer: first, nameAt: direction === 'TB' && enterBefore ? 'right' : 'left', label };
   });
 
   const all = [...placed.values()];
   const card = xy(U, V);
   const obstacles: Rect[] = [
     ...all.map((p) => grow({ ...xy(p.u, p.v), width: card.x, height: card.y }, 6)),
-    ...groups.flatMap((g) => groupObstacles(g, direction)),
+    ...groups.flatMap(groupObstacles),
   ];
   const crowded = new Map<number, number>();
   const curves = valid.map((e) => {
@@ -524,6 +534,7 @@ function layoutPass(
     groups,
     layerCount,
     nodeWidth: nodeW,
+    texts: cardTexts(nodes, nodeW, 'large', (i) => `nodes[${i}]`),
     width: size.x,
     height: size.y,
   };
@@ -535,28 +546,22 @@ const fitScale = (layout: ArchLayout, box: { width: number; height: number }) =>
 
 /**
  * The layout that draws largest in `box`. Cards widen from NODE_W towards NODE_W_MAX while that lets
- * every title take a larger font (`titleFont(width)`, shared by all cards) and does not shrink the
- * graph: top to bottom a wider card only spends room across a frame that is wide for its height.
+ * every title take a larger font (one size shared by all cards) and does not shrink the graph: top to
+ * bottom a wider card only spends room across a frame that is wide for its height.
  */
-export function fitArch(
-  nodes: readonly ArchNode[],
-  edges: readonly ArchEdge[],
-  direction: ArchDirection,
-  box: { width: number; height: number },
-  titleFont: (width: number) => number,
-): { layout: ArchLayout; scale: number; titleFont: number } {
+export function fitArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], direction: ArchDirection, box: { width: number; height: number }): { layout: ArchLayout; scale: number } {
   const base = layoutArch(nodes, edges, direction, NODE_W);
   const floor = fitScale(base, box);
-  let best = { layout: base, scale: floor, titleFont: titleFont(NODE_W) };
+  let best = { layout: base, scale: floor, titleFont: sharedTitleSize(nodes, NODE_W, 'large') };
   for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
-    const font = titleFont(w);
+    const font = sharedTitleSize(nodes, w, 'large');
     if (font <= best.titleFont) continue;
     const layout = layoutArch(nodes, edges, direction, w);
     const scale = fitScale(layout, box);
     if (scale < floor * 0.995) break;
     best = { layout, scale, titleFont: font };
   }
-  return best;
+  return { layout: best.layout, scale: best.scale };
 }
 
 /**
