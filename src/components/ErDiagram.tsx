@@ -2,7 +2,7 @@ import { KeyRound, Link2, Table2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { Change, ErField, ErScene } from '../types';
-import { HEADER_H, ROW_H, layoutEr, type PlacedEntity, type RelationEnd, type RoutedRelation, type Side } from '../utils/erLayout';
+import { HEADER_H, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
@@ -237,8 +237,6 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
     </div>
   );
 };
-
-const normal: Record<Side, { x: number; y: number }> = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
 
 /** Crow's-foot notation drawn just outside the card border: a bar for "one", three prongs for "many". */
 function endMark(end: RelationEnd, many: boolean): string {

@@ -8,7 +8,8 @@ const ROW_GAP = 120;
 const PAD = 36;
 const STUB = 40;
 const CLEARANCE = 10;
-const LABEL_HALF = { w: 70, h: 18 };
+const LABEL_HALF_H = 18;
+const FAN = 12;
 /** Cards shift vertically at most this far to line up a PK row with its FK row. */
 const MAX_ALIGN_SHIFT = 3 * ROW_H;
 /** Above this many entities the slot search gets slow, so cards keep input order. */
@@ -204,14 +205,32 @@ function alignOffsets(entities: readonly ErEntity[], relations: readonly ErRelat
   return offsets;
 }
 
-const normal: Record<Side, Pt> = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
+/** PK row to the first FK that points at no other table, e.g. employees.manager_id. */
+function selfKeyRows(entity: ErEntity, all: readonly ErEntity[]): { from: number; to: number } {
+  const pk = Math.max(0, entity.fields.findIndex((f) => f.pk));
+  const named = foreignKeyRow(entity, entity);
+  if (named >= 0) return { from: pk, to: named };
+  const others = all.filter((e) => e !== entity);
+  const fk = entity.fields.findIndex(
+    (f, i) => f.fk && others.every((o) => foreignKeyRow({ ...entity, fields: [f] }, o) < 0) && i !== pk,
+  );
+  return { from: pk, to: fk >= 0 ? fk : Math.min(entity.fields.length - 1, pk + 1) };
+}
+
+/** Outward unit vector of each card side. */
+export const normal: Record<Side, Pt> = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
 
 interface EndSpec {
   card: PlacedEntity;
   side: Side;
   /** Field row the end attaches to, or null for the middle of the side. */
   row: number | null;
+  /** Runs straight across to a neighbour's aligned row, so it keeps the row centre when ends share a row. */
+  straight: boolean;
 }
+
+/** Matches the label pill in ErDiagram: 17px mono plus padding, capped at its max width. */
+export const labelHalfWidth = (text: string) => Math.min(170, 26 + text.length * 10.4) / 2;
 
 function sidesFor(a: PlacedEntity, b: PlacedEntity): [Side, Side] {
   if (a.col < b.col) return ['right', 'left'];
@@ -229,15 +248,19 @@ function anchorEnds(ends: readonly EndSpec[]): RelationEnd[] {
     groups.set(key, [...(groups.get(key) ?? []), i]);
   });
   const out: RelationEnd[] = [];
-  for (const members of groups.values()) {
+  for (const group of groups.values()) {
+    const members = [...group].sort((a, b) => Number(ends[b]!.straight) - Number(ends[a]!.straight));
+    const pinned = ends[members[0]!]!.straight;
     members.forEach((i, k) => {
       const { card, side, row } = ends[i]!;
       const vertical = side === 'left' || side === 'right';
       if (vertical) {
         const x = side === 'left' ? card.x : card.x + card.w;
+        // Pinned: 0, +FAN, -FAN, +2·FAN... so the straight link stays put; otherwise spread symmetrically.
+        const fan = pinned ? Math.ceil(k / 2) * (k % 2 ? 1 : -1) * FAN : (k - (members.length - 1) / 2) * FAN;
         const y =
           row !== null
-            ? rowY(card, row) + (k - (members.length - 1) / 2) * 10
+            ? rowY(card, row) + fan
             : card.y + HEADER_H + ((card.h - HEADER_H) * (k + 1)) / (members.length + 1);
         out[i] = { point: { x, y }, side };
       } else {
@@ -385,15 +408,33 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
   });
   const placedById = new Map(placed.map((p) => [p.entity.id, p]));
 
-  const specs = valid.map((rel) => {
+  const specs: [EndSpec, EndSpec][] = valid.map((rel) => {
     const a = placedById.get(rel.from)!;
     const b = placedById.get(rel.to)!;
-    const [sa, sb] = a === b ? (['right', 'right'] as const) : sidesFor(a, b);
+    if (a === b) return [{ card: a, side: 'right', row: null, straight: false }, { card: a, side: 'right', row: null, straight: false }];
+    const [sa, sb] = sidesFor(a, b);
     const keys = sa === 'left' || sa === 'right' ? keyRows(a.entity, b.entity) : null;
+    const straight =
+      keys !== null && a.row === b.row && Math.abs(a.col - b.col) === 1 && rowY(a, keys.from) === rowY(b, keys.to);
     return [
-      { card: a, side: sa, row: keys?.from ?? null },
-      { card: b, side: sb, row: keys?.to ?? null },
-    ] as const;
+      { card: a, side: sa, row: keys?.from ?? null, straight },
+      { card: b, side: sb, row: keys?.to ?? null, straight },
+    ];
+  });
+  // Self-relations go last: they loop out of whichever side the other ends leave free.
+  valid.forEach((rel, i) => {
+    if (rel.from !== rel.to) return;
+    const card = placedById.get(rel.from)!;
+    const rows = selfKeyRows(card.entity, entities);
+    const lo = Math.min(rows.from, rows.to);
+    const hi = Math.max(rows.from, rows.to);
+    const crowding = (side: Side) =>
+      specs.flat().filter((e) => e.card === card && e.side === side && (e.row === null || (e.row >= lo - 1 && e.row <= hi + 1))).length;
+    const side: Side = crowding('right') <= crowding('left') ? 'right' : 'left';
+    specs[i] = [
+      { card, side, row: rows.from, straight: false },
+      { card, side, row: rows.to, straight: false },
+    ];
   });
   const anchored = anchorEnds(specs.flat());
 
@@ -401,7 +442,11 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
     const from = anchored[2 * i]!;
     const to = anchored[2 * i + 1]!;
     const points = route(from, to, specs[i]![0].card, specs[i]![1].card, placed, grid);
-    return { relation, points, d: roundedPath(points), from, to, mid: labelPoint(points) };
+    const mid =
+      relation.from === relation.to && relation.label
+        ? { x: points[1]!.x + normal[from.side].x * (labelHalfWidth(relation.label) + 8), y: (from.point.y + to.point.y) / 2 }
+        : labelPoint(points);
+    return { relation, points, d: roundedPath(points), from, to, mid };
   });
 
   // Fit the frame to everything drawn, then shift so the content starts at PAD.
@@ -409,8 +454,9 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
   const ys = [...placed.flatMap((p) => [p.y - 20, p.y + p.h]), ...routed.flatMap((r) => r.points.map((p) => p.y))];
   for (const r of routed) {
     if (!r.relation.label) continue;
-    xs.push(r.mid.x - LABEL_HALF.w, r.mid.x + LABEL_HALF.w);
-    ys.push(r.mid.y - LABEL_HALF.h, r.mid.y + LABEL_HALF.h);
+    const half = labelHalfWidth(r.relation.label);
+    xs.push(r.mid.x - half, r.mid.x + half);
+    ys.push(r.mid.y - LABEL_HALF_H, r.mid.y + LABEL_HALF_H);
   }
   const dx = PAD - Math.min(...xs);
   const dy = PAD - Math.min(...ys);
