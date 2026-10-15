@@ -1,11 +1,12 @@
 // The one duration formula, shared by the composition (TS) and the CLI (plain Node).
 //
 // A scene speaks one or more texts in order: its narration, then each step's `say`. Each spoken text
-// is a segment: a lead, the voice, then a tail. The narration's lead lets the scene build before the
-// voice starts. A step's lead lights its lines or row before the voice names them, and its longer tail
-// leaves time to reread them. The voice lasts as long as its clip, or as long as its words take to
+// is a segment: a lead, the voice, then a tail. The narration's lead lasts until the scene has built,
+// so the voice never names something that is not on screen yet. A step's lead shows or lights its
+// items before the voice names them, and its longer tail leaves time to reread them. The voice lasts as long as its clip, or as long as its words take to
 // read at WORDS_PER_MINUTE without one. The pace scales the reading speed and every pause.
 
+import { sceneSteps } from './steps.mjs';
 import { clipFor, paceOf } from './voice.mjs';
 
 export const FPS = 30;
@@ -22,15 +23,41 @@ const SILENT_TAIL = 1.5;
 const MIN_SILENT_SECONDS = 3;
 /** Every scene fades out over its last SCENE_EXIT_FRAMES. */
 export const SCENE_EXIT_FRAMES = 8;
+/**
+ * Seconds each scene type takes to draw in, from the scene's first frame. With steps, the scene draws
+ * its base (lifelines, axes, every node) in this time, and each step shows or lights its own items.
+ * Code and intent scenes pace their entrance against the voice themselves, so they have none here.
+ */
+export const BUILD_SECONDS = {
+  intent: 0,
+  code: 0,
+  arch: 1.5,
+  sequence: 1.5,
+  flow: 1.2,
+  er: 1.5,
+  state: 1.5,
+  mermaid: 0.8,
+  tests: 1.8,
+  table: 1.5,
+  chart: 1.8,
+  timeline: 1.5,
+  files: 1.5,
+};
+/** Pause between the end of the build and the narration's voice, at every pace. */
+const BUILD_SETTLE = 0.3;
+
+/** Frames a scene type takes to draw in; its narration's voice starts after them. */
+export function buildFrames(type) {
+  return Math.round((BUILD_SECONDS[type] ?? 0) * FPS);
+}
 
 export function wordCount(text) {
   return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** The texts a scene speaks, in order: its narration, then each step's `say` (code, table and files scenes). */
+/** The texts a scene speaks, in order: its narration, then each step's `say`. */
 export function spokenTexts(scene) {
-  const steps = Array.isArray(scene?.steps) && ['code', 'table', 'files'].includes(scene.type) ? scene.steps : [];
-  return [scene?.narration, ...steps.map((step) => step?.say)];
+  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)];
 }
 
 /**
@@ -40,10 +67,11 @@ export function spokenTexts(scene) {
 export function sceneSegments(scene, voiceover) {
   const { speed, pauses } = paceOf(voiceover);
   const pause = (seconds) => Math.round(seconds * pauses * FPS);
+  const narrationLead = Math.max(pause(NARRATION_LEAD), buildFrames(scene?.type) + Math.round(BUILD_SETTLE * FPS));
   let from = 0;
   return spokenTexts(scene).map((text, i) => {
     const clip = clipFor(voiceover, text);
-    const voiceFrom = from + pause(i === 0 ? NARRATION_LEAD : STEP_LEAD);
+    const voiceFrom = from + (i === 0 ? narrationLead : pause(STEP_LEAD));
     const speakingFrames = clip ? clip.seconds * FPS : (wordCount(text) / (WORDS_PER_MINUTE * speed)) * 60 * FPS;
     const after = clip
       ? Math.ceil(speakingFrames) + pause(i === 0 ? NARRATION_TAIL : STEP_TAIL)

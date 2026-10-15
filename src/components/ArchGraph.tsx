@@ -1,6 +1,7 @@
 import { Database, Layers, Monitor, Server, type LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { ArchScene, NodeKind } from '../types';
 import { NODE_H, NODE_W, layoutArch, type PositionedNode, type RoutedEdge } from '../utils/archLayout';
 import { wrapLabel } from '../utils/wrapLabel';
@@ -12,6 +13,9 @@ const kindIcon: Record<NodeKind, LucideIcon> = { service: Server, db: Database, 
 const kindLabel: Record<NodeKind, string> = { service: 'service', db: 'datastore', queue: 'queue', client: 'client' };
 
 const NODE_START = 8;
+const NODES_END = 20;
+const EDGE_DRAW = 12;
+const EDGE_LABEL_END = 16;
 
 const NodeCard: React.FC<{ placed: PositionedNode; appear: number; badge: string }> = ({ placed, appear, badge }) => {
   const { node } = placed;
@@ -129,18 +133,17 @@ const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, a
   </div>
 );
 
-export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames, segments }) => {
+export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useMemo(() => layoutArch(scene.nodes, scene.edges), [scene.nodes, scene.edges]);
   const box = contentBox(false);
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.3);
   const modified = new Set(scene.nodes.filter((n) => n.modified).map((n) => n.id));
-  // Nodes land by the time the voice starts naming them, and edges by ~55% of the scene.
-  const voiceFrom = segments[0]?.voiceFrom ?? durationInFrames * 0.3;
-  const layerStagger = Math.max(2, Math.min(10, (durationInFrames * 0.3) / layout.layerCount, (voiceFrom - NODE_START) / layout.layerCount));
-  const edgesStart = NODE_START + layout.layerCount * layerStagger + 4;
-  const edgeStagger = Math.min(4, (durationInFrames * 0.15) / Math.max(1, layout.edges.length));
+  // Nodes land layer by layer, then the edges draw, all before the voice starts.
+  const layerStagger = Math.min(6, (NODES_END - NODE_START) / Math.max(1, layout.layerCount - 1));
+  const edgeStagger = Math.min(4, (buildFrames('arch') - NODES_END - EDGE_LABEL_END) / Math.max(1, layout.edges.length - 1));
+  const edgeAt = (i: number) => NODES_END + i * edgeStagger;
 
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.arch}>
@@ -160,7 +163,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
                 routed={routed}
                 frame={frame}
                 highlighted={modified.has(routed.edge.from) && modified.has(routed.edge.to)}
-                draw={interpolate(frame, [edgesStart + i * edgeStagger, edgesStart + i * edgeStagger + 16], [0, 1], clamp)}
+                draw={interpolate(frame, [edgeAt(i), edgeAt(i) + EDGE_DRAW], [0, 1], clamp)}
               />
             ))}
           </svg>
@@ -174,7 +177,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
           ))}
           {layout.edges.map((routed, i) =>
             routed.edge.label ? (
-              <EdgeLabel key={i} routed={routed} appear={interpolate(frame, [edgesStart + i * edgeStagger + 12, edgesStart + i * edgeStagger + 22], [0, 1], clamp)} />
+              <EdgeLabel key={i} routed={routed} appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp)} />
             ) : null,
           )}
         </div>

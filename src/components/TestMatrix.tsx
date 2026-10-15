@@ -1,6 +1,7 @@
 import { FlaskConical, FlaskConicalOff, TriangleAlert } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { TestStatus, TestsScene } from '../types';
 import {
   CHECK_W,
@@ -24,6 +25,8 @@ import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
 const AMBER = '#fbbf24';
 const AMBER_BG = 'rgba(251, 191, 36, 0.08)';
 const START = 10;
+/** Frames a gap card takes to land. */
+const GAP_FRAMES = 14;
 
 const statusTone: Record<TestStatus, { label: string; color: string; bg: string }> = {
   added: { label: 'added', color: colors.add, bg: colors.addBg },
@@ -33,12 +36,12 @@ const statusTone: Record<TestStatus, { label: string; color: string; bg: string 
 };
 const STATUS_ORDER: TestStatus[] = ['added', 'modified', 'removed', 'existing'];
 
-/** Frames at which each part arrives, scaled so short scenes still finish their beats. */
-function buildTimeline(layout: TestsLayout, durationInFrames: number) {
+/** Frames at which each part arrives; all of it inside the build. */
+function buildTimeline(layout: TestsLayout) {
   const rowsStart = START + (layout.matrix ? 8 : 18);
-  const rowStagger = Math.min(16, (durationInFrames * 0.45) / Math.max(1, layout.rows.length));
-  const panelAt = rowsStart + layout.rows.length * rowStagger + 10;
-  const gapStagger = Math.min(18, (durationInFrames * 0.25) / Math.max(1, layout.gaps.length));
+  const rowStagger = Math.min(6, 12 / Math.max(1, layout.rows.length - 1));
+  const panelAt = rowsStart + Math.max(0, layout.rows.length - 1) * rowStagger + 6;
+  const gapStagger = Math.min(6, (buildFrames('tests') - GAP_FRAMES - panelAt - 12) / Math.max(1, layout.gaps.length - 1));
   return {
     rowAt: (i: number) => rowsStart + i * rowStagger,
     panelAt,
@@ -335,7 +338,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, durationIn
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutTests(scene.cases, scene.gaps, box.width, box.height), [scene.cases, scene.gaps, box.width, box.height]);
-  const timeline = useMemo(() => buildTimeline(layout, durationInFrames), [layout, durationInFrames]);
+  const timeline = useMemo(() => buildTimeline(layout), [layout]);
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
 
   return (

@@ -2,6 +2,7 @@ import { FileCode2, FlaskConical, Folder } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneFiles } from '../../shared/files.mjs';
+import { buildFrames } from '../../shared/timing.mjs';
 import type { FilesScene } from '../types';
 import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow } from '../utils/filesLayout';
 import { spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
@@ -11,6 +12,8 @@ import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
 
 const START = 10;
+/** Every row has started landing by this frame, so the rows, bars and notes are in by the end of the build. */
+const ROWS_END = 22;
 const MINUS = '−';
 
 /** Grows a file's diffstat bar and counts its lines up as the row lands. */
@@ -196,10 +199,9 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
   const stepPaths = scene.steps?.length
     ? scene.steps.map((step) => step.path)
     : scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
-  const rowStagger = Math.min(6, (durationInFrames * 0.25) / Math.max(1, rows.length));
+  const rowStagger = Math.min(4, (ROWS_END - START - 4) / Math.max(1, rows.length - 1));
   const rowAt = (i: number) => START + 4 + i * rowStagger;
-  const introEnd = Math.max(Math.round(durationInFrames * 0.15), rowAt(rows.length) + 24);
-  const { emphasis } = spotlight(frame, spotlightStarts(segments, stepPaths.length, introEnd));
+  const { emphasis } = spotlight(frame, spotlightStarts(segments, stepPaths.length, buildFrames('files')));
 
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.files} title={scene.title} aside={<Totals files={files} />}>
