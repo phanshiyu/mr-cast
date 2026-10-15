@@ -53,6 +53,7 @@ const USAGE = `usage: mr-cast <command> [options]
 
   install-skill   install the mr-video and explain-in-animation Claude Code skills and the
                   /mr-cast, /mr-render and /explain-in-animation commands into ~/.claude
+  version         print the mr-cast and Node versions (also --version, -v)
   help            show this message`;
 
 /** A path for messages: relative to the current directory when inside it, else absolute. */
@@ -416,9 +417,18 @@ async function explain([sub, ...rest]) {
 
 const COMMANDS = { extract, validate, voice, play, render, still, explain, 'install-skill': installSkillCommand };
 
+function version() {
+  const { version: own } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  console.log(`mr-cast ${own} (node ${process.versions.node})`);
+}
+
 async function main([command, ...rest]) {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     console.log(USAGE);
+    return;
+  }
+  if (command === 'version' || command === '--version' || command === '-v') {
+    version();
     return;
   }
   const run = COMMANDS[command];
