@@ -265,7 +265,7 @@ export function layoutSequence(
     cardTop: CARD_TOP,
     lifelineTop,
     participants: participants.map((participant, i) => ({ participant, x: xs[i]! })),
-    texts: cardTexts(participants, cardW, cardW < 290 ? 'compact' : 'small', (i) => `participants[${i}]`, { shared: false }),
+    texts: cardTexts(participants, cardW, CARD_H, cardW < 290 ? 'compact' : 'small', (i) => `participants[${i}]`, { shared: false }),
     messages: placed,
     activations,
   };

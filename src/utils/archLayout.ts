@@ -534,7 +534,7 @@ function layoutPass(
     groups,
     layerCount,
     nodeWidth: nodeW,
-    texts: cardTexts(nodes, nodeW, 'large', (i) => `nodes[${i}]`),
+    texts: cardTexts(nodes, nodeW, NODE_H, 'large', (i) => `nodes[${i}]`),
     width: size.x,
     height: size.y,
   };
@@ -552,9 +552,9 @@ const fitScale = (layout: ArchLayout, box: { width: number; height: number }) =>
 export function fitArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], direction: ArchDirection, box: { width: number; height: number }): { layout: ArchLayout; scale: number } {
   const base = layoutArch(nodes, edges, direction, NODE_W);
   const floor = fitScale(base, box);
-  let best = { layout: base, scale: floor, titleFont: sharedTitleSize(nodes, NODE_W, 'large') };
+  let best = { layout: base, scale: floor, titleFont: sharedTitleSize(nodes, NODE_W, NODE_H, 'large') };
   for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
-    const font = sharedTitleSize(nodes, w, 'large');
+    const font = sharedTitleSize(nodes, w, NODE_H, 'large');
     if (font <= best.titleFont) continue;
     const layout = layoutArch(nodes, edges, direction, w);
     const scale = fitScale(layout, box);

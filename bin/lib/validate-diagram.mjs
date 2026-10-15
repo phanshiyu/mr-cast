@@ -18,7 +18,6 @@ const ICONS = [...ICON_FILES].flatMap(([name, file]) => (name === file ? [name] 
 const ICON_SET = new Set(ICONS);
 // Past this many nodes each card shrinks below a comfortable reading size on the 1080p frame.
 const ARCH_NODES_MAX = 12;
-const CAPTION_LONG = 28;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
@@ -38,7 +37,6 @@ export function checkNodeFields(n, q, errors, warnings) {
   if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
   checkIcon(n?.icon, `${q}.icon`, errors);
   if (n?.caption !== undefined && typeof n.caption !== 'string') errors.push(`${q}.caption: must be a string`);
-  else if (n?.caption && n.caption.trim().length > CAPTION_LONG) warnings.push(`${q}.caption: ${n.caption.trim().length} characters; keep it under ${CAPTION_LONG} so it fits on one line under the label`);
   if (n?.tone !== undefined && !TONES.includes(n.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
   if (n?.kind !== undefined && !NODE_KINDS.includes(n.kind)) errors.push(`${q}.kind: must be one of ${NODE_KINDS.join(', ')}, or use icon and caption instead`);
   if (n?.modified !== undefined && typeof n.modified !== 'boolean') errors.push(`${q}.modified: must be a boolean; prefer change or highlight`);

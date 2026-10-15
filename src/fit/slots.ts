@@ -32,7 +32,7 @@ export const SLOTS = {
   relationLabel: { ...MONO, name: 'relation label', weight: 400, size: 17, min: 13, lines: 2, lineHeight: 1.25, width: 0, fix: 'shorten the label' },
   tableCell: { ...SANS, name: 'table cell', weight: 650, size: 30, min: 17, lines: 2, lineHeight: 1.3, balanced: true, width: 0, fix: 'shorten the cell, or split the table' },
   tableCode: { ...MONO, name: 'table cell', weight: 650, size: 28, min: 16, lines: 2, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the cell, or split the table' },
-  tableHeader: { ...SANS, name: 'column header', weight: 700, size: 17, min: 12, lines: 1, lineHeight: 1.3, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the header' },
+  tableHeader: { ...SANS, name: 'column header', weight: 700, size: 17, min: 13, lines: 1, lineHeight: 1.3, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the header' },
   flowActor: { ...MONO, name: 'actor chip', weight: 600, size: 19, min: 14, lines: 1, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the actor\'s name' },
   flowAction: { ...SANS, name: 'step', weight: 650, size: 30, min: 20, lines: 2, lineHeight: 1.25, width: 0, fix: 'shorten the action, or use fewer steps so each has two lines' },
   flowStrip: { ...MONO, name: 'current step strip', weight: 700, size: 24, min: 16, lines: 1, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the actor\'s name' },
@@ -56,6 +56,6 @@ export const SLOTS = {
   eventLabel: { ...LABEL, name: 'event label', weight: 650, size: 23, min: 17, lines: 2, lineHeight: 30 / 23, width: 0, fix: 'shorten the label, and move the rest to detail' },
   eventDetail: { ...LABEL, name: 'event detail', weight: 400, size: 19, min: 14, lines: 2, lineHeight: 25 / 19, width: 0, fix: 'shorten the detail' },
   spanLabel: { ...SANS, name: 'span label', weight: 700, size: 19, min: 14, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the span label, e.g. "backoff 4 s"' },
-  fileName: { ...MONO, name: 'file name', weight: 600, size: 26, min: 12, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'the name is drawn smaller; nothing to change' },
-  fileNote: { ...SANS, name: 'file note', weight: 400, size: 24, min: 12, lines: 1, lineHeight: 1.15, width: 0, fix: 'shorten the note to a few words' },
+  fileName: { ...MONO, name: 'file name', weight: 600, size: 26, min: 14, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'the name is drawn smaller; nothing to change' },
+  fileNote: { ...SANS, name: 'file note', weight: 400, size: 24, min: 16, lines: 1, lineHeight: 1.15, width: 0, fix: 'shorten the note to a few words' },
 } satisfies Record<string, Slot>;
