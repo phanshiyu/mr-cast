@@ -11,7 +11,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "demo": "bash scripts/demo.sh"
+    "demo": "bash scripts/demo.sh",
+    "install-skill": "node scripts/install-skill.mjs"
   },
   "engines": {
     "node": ">=20"

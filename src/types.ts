@@ -31,7 +31,7 @@ export interface Hunk {
 export type HunkMap = Record<string, Hunk>;
 
 // ─── storyboard.json (written by the LLM) ────────────────────────────────────
-// Keep this block in sync with skill/SKILL.md.
+// scripts/install-skill.mjs copies this block into the skill, from `export type Risk` to Composition props.
 
 export type Risk = 'low' | 'medium' | 'high';
 export type NodeKind = 'service' | 'db' | 'queue' | 'client';
