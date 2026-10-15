@@ -69,6 +69,7 @@ export const App: React.FC = () => {
   const playerRef = useRef<PlayerRef>(null);
   const resumeFrame = useRef<number | null>(null);
   const [frame, setFrame] = useState(0);
+  const [rate, setRate] = useState(1);
 
   const reload = useCallback(async () => {
     resumeFrame.current = playerRef.current?.getCurrentFrame() ?? null;
@@ -223,19 +224,41 @@ export const App: React.FC = () => {
               showPosterWhenUnplayed
               posterFillMode="player-size"
               spaceKeyToPlayOrPause={false}
+              playbackRate={rate}
               acknowledgeRemotionLicense
               style={{ width: '100%', aspectRatio: '16 / 9' }}
             />
           </div>
           <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
-          <footer className="text-xs text-slate-500">
-            <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter
+          <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+            <span>
+              <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter
+            </span>
+            <PlaybackRate rate={rate} onChange={setRate} />
           </footer>
         </main>
       </div>
     </div>
   );
 };
+
+const RATES = [0.75, 1, 1.25, 1.5];
+
+const PlaybackRate: React.FC<{ rate: number; onChange: (rate: number) => void }> = ({ rate, onChange }) => (
+  <div role="group" aria-label="Playback speed" className="flex items-center gap-1">
+    <span className="mr-1">Speed</span>
+    {RATES.map((r) => (
+      <button
+        key={r}
+        onClick={() => onChange(r)}
+        aria-pressed={r === rate}
+        className={`rounded-md px-2 py-0.5 font-mono ${r === rate ? 'bg-indigo-400/20 text-indigo-200' : 'text-slate-400 hover:bg-white/5'}`}
+      >
+        {r}x
+      </button>
+    ))}
+  </div>
+);
 
 const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300">{children}</kbd>
