@@ -27,6 +27,8 @@ const FOCUS_RANGES_PER_SCENE = 3;
 const FOCUS_RANGES_WITH_FLOW = 4;
 // Each step has its own words and time, so a stepped scene can walk more ranges before it drags.
 const STEPS_PER_SCENE = 8;
+// The step diagram beside the code fits this many labelled nodes above the callout at its smallest font.
+const LABELLED_STEPS_MAX = 6;
 const UNFOCUSED_CHANGE_MAX = 12;
 // A step label beside the code wraps to two lines; longer than this and it stops reading as a step.
 const FLOW_LABEL_MAX = 60;
@@ -158,6 +160,7 @@ function checkCodeSteps(scene, hunk, limits, p, errors, warnings) {
     if (step.outcome !== undefined && typeof step.outcome !== 'string') errors.push(`${q}.outcome: must be a string`);
   });
   if (labelled && labelled < steps.length) errors.push(`${p}.steps: ${labelled} of ${steps.length} steps have a label; label every step to draw the flow diagram beside the code, or none`);
+  else if (labelled > LABELLED_STEPS_MAX) warnings.push(`${p}.steps: ${labelled} labelled steps; the step diagram beside the code fits ${LABELLED_STEPS_MAX}, so split the scene or drop the labels`);
   if (steps.length > STEPS_PER_SCENE) warnings.push(`${p}.steps: ${steps.length} steps; keep at most ${STEPS_PER_SCENE} per scene and walk the rest of ${scene.hunkId} in another code scene`);
   if (!refsOk) return;
 
@@ -383,7 +386,7 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
     const ranges = shown.map(({ scene }) => sceneFocusRanges(scene));
     if (ranges.some((r) => r.length === 0)) continue;
     const covered = (line) => ranges.flat().some(({ side, range: [a, b] }) => line[side] !== null && line[side] >= a && line[side] <= b);
-    const missed = hunk.lines.filter((line) => line.type !== 'context' && !covered(line));
+    const missed = hunk.lines.filter((line) => line.type !== 'context' && line.text.trim() !== '' && !covered(line));
     if (!missed.length) continue;
     const parts = [];
     const adds = missed.filter((l) => l.type === 'add').map((l) => l.newLine);

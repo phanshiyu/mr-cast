@@ -2,7 +2,7 @@ import { FileWarning, Trash2 } from 'lucide-react';
 import type { Token } from 'prism-react-renderer';
 import { useMemo, type ReactNode } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { CodeScene, DiffLine, Hunk } from '../types';
+import type { CodeScene, CodeStep, DiffLine, Hunk } from '../types';
 import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
 import { lineFocusRanges } from '../../shared/focus.mjs';
@@ -205,8 +205,30 @@ function morphTimeline(hunk: Hunk, span: number) {
   return { flashStart, collapseStart, collapseEnd, growStart, stagger, growEnd };
 }
 
-function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, span: number, { fontSize, rowH }: CodeMetrics): RowModel[] {
-  const t = morphTimeline(hunk, span);
+type MorphTimeline = ReturnType<typeof morphTimeline>;
+
+/**
+ * A stepped morph keeps removed lines on screen while steps speak about them: deletions flash and collapse
+ * when the narration moves to the step after the last step on old lines, or near the end when none follows,
+ * and additions grow in during the intro so every step's lines exist when it starts.
+ */
+function steppedMorphTimeline(hunk: Hunk, steps: readonly CodeStep[], segments: readonly SpokenSegment[], introEnd: number, legacy: MorphTimeline): MorphTimeline {
+  let lastOld = -1;
+  steps.forEach((step, k) => {
+    if (step.lines === undefined && step.oldLines !== undefined) lastOld = k;
+  });
+  if (lastOld < 0) return legacy;
+  // Segment 0 is the narration, so step k speaks segment k + 1.
+  const lastOldSegment = segments[lastOld + 1];
+  const nextSegment = segments[lastOld + 2];
+  const collapseStart = nextSegment ? nextSegment.from : Math.max(introEnd, (lastOldSegment ? lastOldSegment.from + lastOldSegment.durationInFrames : introEnd) - 20);
+  const stagger = Math.min(3, Math.max(1, (introEnd * 0.3) / Math.max(1, hunk.additions)));
+  const growLength = stagger * hunk.additions + 10;
+  const growStart = Math.max(10, introEnd - growLength);
+  return { flashStart: Math.max(0, collapseStart - 18), collapseStart, collapseEnd: collapseStart + 10, growStart, stagger, growEnd: growStart + growLength };
+}
+
+function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, t: MorphTimeline, { fontSize, rowH }: CodeMetrics): RowModel[] {
   let addIndex = 0;
   return slots.map(({ left, step }) => {
     const i = left!;
@@ -377,8 +399,10 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   // morph is paced over it. Otherwise the morph (or a short settle) is the intro and each focus step takes
   // an equal share of the time left.
   const introFrames = steps ? segments[1]?.from ?? durationInFrames : durationInFrames;
-  const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, introFrames, metrics);
-  const morphEnd = view === 'morph' ? morphTimeline(hunk, introFrames).growEnd : 0;
+  const pacedMorph = morphTimeline(hunk, introFrames);
+  const morph = steps ? steppedMorphTimeline(hunk, steps, segments, introFrames, pacedMorph) : pacedMorph;
+  const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, morph, metrics);
+  const morphEnd = view === 'morph' ? pacedMorph.growEnd : 0;
   const introEnd = steps ? introFrames : Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
   const stepsEnd = Math.max(introEnd, Math.round(durationInFrames * 0.9));
   const stepStarts = Array.from({ length: stepCount }, (_, k) => (steps ? segments[k + 1]?.from ?? introEnd : introEnd + (k * (stepsEnd - introEnd)) / stepCount));
