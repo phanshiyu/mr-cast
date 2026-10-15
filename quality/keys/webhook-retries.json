@@ -1,0 +1,49 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What does this MR add and why?",
+      "answer": "It adds reliable webhook delivery: shipment events are enqueued into a new webhook_deliveries table for each active endpoint, and a polling worker POSTs signed payloads with retries and exponential backoff, moving a delivery to a dead state after max attempts.",
+      "must_mention": [
+        "webhook_deliveries table and polling worker",
+        "retries with backoff then dead"
+      ]
+    },
+    {
+      "id": "q2",
+      "question": "What is the riskiest or most questionable part a reviewer should scrutinize?",
+      "answer": "claimDue marks rows in_flight when it claims them, but there is no lease, timeout or reaper: if a worker crashes or a status write fails after claiming, the delivery stays in_flight forever and is never retried, since the worker and the index only look at pending rows.",
+      "must_mention": [
+        "in_flight rows are never reclaimed",
+        "no lease or timeout"
+      ]
+    },
+    {
+      "id": "q3",
+      "question": "What happens when an endpoint returns a 500, and when does a delivery go dead?",
+      "answer": "On a failure the delivery returns to pending with attempts incremented and next_attempt_at set by exponential backoff (5s base, doubling, capped at 6 hours). Once attempts reach maxAttempts (8 by default) it is marked dead instead; every non-2xx or network error is retried, including 4xx.",
+      "must_mention": [
+        "back to pending with backoff",
+        "dead after maxAttempts (8)"
+      ]
+    },
+    {
+      "id": "q4",
+      "question": "Where do the retry delay computation and the claim query live?",
+      "answer": "retryDelayMs and nextAttemptAt are in src/webhooks/backoff.ts; claimDue (UPDATE ... FOR UPDATE SKIP LOCKED) and the mark functions are in src/webhooks/repository.ts; the loop is in src/webhooks/worker.ts.",
+      "must_mention": [
+        "src/webhooks/backoff.ts",
+        "src/webhooks/repository.ts claimDue"
+      ]
+    },
+    {
+      "id": "q5",
+      "question": "What design question should a reviewer raise about the retry design?",
+      "answer": "Backoff has no jitter and all failures, including permanent 4xx like 410, are retried for the full schedule; the dead letter is only a status on the same table with manual replay, and enqueue happens outside any transaction with the event insert (event can be saved without deliveries). The stuck in_flight problem is the main one.",
+      "must_mention": [
+        "no jitter or retries 4xx",
+        "enqueue not transactional with event insert"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "Why does this MR exist? What does it change for API users?",
+      "answer": "It adds Redis-backed rate limiting to POST /orders (20 requests per minute per IP, returning 429 with Retry-After), and also publishes an order.created event, computes order totals from a pricing service instead of a constant, and removes the unused legacy in-memory throttle.",
+      "must_mention": [
+        "rate limiting on POST /orders",
+        "429 when over the limit"
+      ]
+    },
+    {
+      "id": "q2",
+      "question": "What is the main risk or thing a reviewer should scrutinize?",
+      "answer": "The limiter depends on Redis on the request path and uses a fixed window keyed by req.ip, so it allows bursts at window boundaries, may mis-key clients behind a proxy, and a Redis outage would break or block order creation (no failure handling).",
+      "must_mention": [
+        "Redis on the request path",
+        "fixed window or req.ip keying"
+      ]
+    },
+    {
+      "id": "q3",
+      "question": "What happens when a client sends more than 20 requests in a minute, and what happens to the key?",
+      "answer": "The 21st request in the window gets HTTP 429 with body {error: rate_limited} and a Retry-After header of the window in seconds. The key is rl:<ip>:<window number>; it gets an expiry set (pexpire) only when the count is 1.",
+      "must_mention": [
+        "429 with Retry-After",
+        "expiry set on first increment"
+      ]
+    },
+    {
+      "id": "q4",
+      "question": "Where does the limiter live and where is it wired in?",
+      "answer": "The middleware is the rateLimit function in src/api/rate-limit.ts, mounted in src/api/server.ts on the /orders path with windowMs 60000 and max 20.",
+      "must_mention": [
+        "src/api/rate-limit.ts",
+        "mounted on /orders in server.ts"
+      ]
+    },
+    {
+      "id": "q5",
+      "question": "What design question should a reviewer raise about the limiter or the new order flow?",
+      "answer": "Increment and expire are two separate Redis calls (INCR then PEXPIRE), so a crash between them leaves a key with no TTL; also the event is published after the DB insert with no outbox, so a publish failure after insert loses the event, and the limit is hardcoded rather than configurable.",
+      "must_mention": [
+        "INCR and PEXPIRE are separate non-atomic calls",
+        "event publish is not atomic with the DB insert"
+      ]
+    }
+  ]
+}

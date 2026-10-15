@@ -1,0 +1,49 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What is the purpose of this MR?",
+      "answer": "It introduces a new invoice status model: a nullable invoices.status column (backfilled from the legacy state column) with two new values, partially_paid and uncollectible, and moves the transition logic and API output to status while still dual-writing the legacy state.",
+      "must_mention": [
+        "new nullable status column",
+        "partially_paid and uncollectible"
+      ]
+    },
+    {
+      "id": "q2",
+      "question": "What is the main risk in this MR that a reviewer should scrutinize?",
+      "answer": "The migration backfills every row of the invoices table with a single UPDATE (with a correlated EXISTS on payments) in the same migration transaction as the schema change, which can hold locks and run very long on a large table; it should be batched or run out of band.",
+      "must_mention": [
+        "single UPDATE over the whole invoices table",
+        "locks on a large table"
+      ]
+    },
+    {
+      "id": "q3",
+      "question": "What happens when a payment smaller than the invoice total is applied to an open invoice?",
+      "answer": "apply_payment records the payment, and since paid_cents is below total_cents and the effective status is open, it transitions the invoice to partially_paid (legacy state stays open). A later payment that reaches the total moves it to paid.",
+      "must_mention": [
+        "becomes partially_paid",
+        "later payment reaching total makes it paid"
+      ]
+    },
+    {
+      "id": "q4",
+      "question": "Where does the transition logic live, and what is the effective_status property for?",
+      "answer": "In app/services/invoices.py: the TRANSITIONS table and the transition function. Invoice.effective_status in app/models/invoice.py falls back to the legacy state value when status is still null (rows not yet backfilled or new rows).",
+      "must_mention": [
+        "app/services/invoices.py transition and TRANSITIONS",
+        "effective_status falls back to state when status is null"
+      ]
+    },
+    {
+      "id": "q5",
+      "question": "What gap or design question should a reviewer raise in the new state machine?",
+      "answer": "partially_paid has no transition to void, so a partially paid invoice can no longer be voided (the old open to void path is lost for it); also uncollectible and partially_paid invoices both map to legacy state open, and the dual-written state column has no removal plan.",
+      "must_mention": [
+        "partially_paid cannot go to void",
+        "dual write of state and status"
+      ]
+    }
+  ]
+}

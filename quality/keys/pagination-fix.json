@@ -1,0 +1,49 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "What bug does this MR fix?",
+      "answer": "Cursor pagination over events could drop events and mishandle the last page. The cursor only held created_at with a strict greater-than filter, so events sharing a timestamp across a page boundary were skipped, and the next cursor was returned whenever a page was full, even if it was the last page.",
+      "must_mention": [
+        "events with the same timestamp are skipped",
+        "full last page produced a cursor"
+      ]
+    },
+    {
+      "id": "q2",
+      "question": "What is the main thing to scrutinize in this fix?",
+      "answer": "That the ordering and the cursor comparison use the same keys: the query now orders by created_at, id and filters with a row comparison (created_at, id) > (cursor time, cursor id), so every event is returned exactly once.",
+      "must_mention": [
+        "order by created_at, id",
+        "tuple comparison with the cursor"
+      ]
+    },
+    {
+      "id": "q3",
+      "question": "What happens when the final page contains exactly `limit` events?",
+      "answer": "The query asks for limit + 1 rows; only limit are returned and nextCursor is null when no extra row exists, so a last page that is exactly full no longer yields a cursor pointing to an empty page.",
+      "must_mention": [
+        "fetches limit + 1",
+        "nextCursor is null"
+      ]
+    },
+    {
+      "id": "q4",
+      "question": "Where is the fix located?",
+      "answer": "In listEvents in src/lib/pagination.ts (SQL and nextCursor logic) and the Cursor type, encodeCursor and decodeCursor in src/lib/cursor.ts, with specs in src/lib/pagination.spec.ts.",
+      "must_mention": [
+        "src/lib/pagination.ts listEvents",
+        "src/lib/cursor.ts"
+      ]
+    },
+    {
+      "id": "q5",
+      "question": "What compatibility question should a reviewer raise?",
+      "answer": "Cursors issued before the change contain only createdAt; decodeCursor gives them an empty id, so the resumed page restarts at the beginning of that timestamp and can repeat an event already seen (duplicate rather than skip). A reviewer should ask whether that is acceptable for in-flight cursors.",
+      "must_mention": [
+        "old cursors lack id",
+        "decoded with empty id"
+      ]
+    }
+  ]
+}
