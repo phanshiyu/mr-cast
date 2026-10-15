@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const claudeDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
 
 const types = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
-const start = types.indexOf('export type Risk');
+const start = types.search(/^export type Risk =/m);
 const end = types.indexOf('// ─── Composition props');
 if (start < 0 || end < 0) throw new Error('src/types.ts: storyboard section markers not found');
 const storyboardTypes = types
@@ -20,8 +20,8 @@ const storyboardTypes = types
 
 const skill = fs
   .readFileSync(path.join(root, 'skill/SKILL.md'), 'utf8')
-  .replaceAll('{{MR_CAST}}', root)
-  .replace('{{STORYBOARD_TYPES}}', storyboardTypes);
+  .replaceAll('{{MR_CAST}}', () => root)
+  .replace('{{STORYBOARD_TYPES}}', () => storyboardTypes);
 
 const command = `---
 description: Make an animated video walkthrough of the current branch's diff (mr-cast)
