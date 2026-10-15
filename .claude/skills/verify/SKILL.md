@@ -62,9 +62,11 @@ Put render and still output straight into evidence with `--out`, for example `$V
 
 Fixtures:
 
-- **`examples/demo/storyboard.json`.** Copy it into `$DEMO/.mr-cast/feature-rate-limit/` after `extract`. It has 9 scenes (intent, arch, sequence, flow, er, 3 code, tests).
+- **`examples/demo/storyboard.json`.** Copy it into `$DEMO/.mr-cast/feature-rate-limit/` after `extract`. It has 9 scenes (intent, graph, sequence, flow, er, 3 code, tests).
 - **`examples/demo-simple/storyboard.json`.** Use it after `extract --simple` plus `snippet src/db/client.ts:1-5`. It has 13 scenes.
-- **`examples/gallery/{hunks,storyboard}.json`.** Copy both into a dir under `$RUN` and use `--dir`. It covers the files, state, table, chart, timeline and mermaid scenes.
+- **`examples/gallery/{hunks,storyboard}.json`.** Copy both into a dir under `$RUN` and use `--dir`. It covers the files, state, flowchart graph, table, chart, timeline and mermaid scenes.
+- **`.claude/skills/verify/fixtures/stress/{fits,over}.json`.** Long text in every scene type, and the same with 18 items past their fit, listed in `over.expected.txt`; use them with `examples/demo/hunks.json` (see `features/text-fit.md`).
+- **`.claude/skills/verify/fixtures/sequence-20.json`.** Two 20-message sequences, one walked in steps with a pen mark and one without steps; use it with `examples/demo/hunks.json`.
 - **`.claude/skills/verify/fixtures/explain-storyboard.json`.** An explanation of `src/api/rate-limit.ts` (snippet `s1` = lines 1-20).
 
 Never point a command at `examples/` itself. `voice`, `still` and `render` write `audio/`, `stills/` and MP4s into the data dir.

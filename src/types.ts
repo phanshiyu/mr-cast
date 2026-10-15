@@ -36,6 +36,16 @@ export type HunkMap = Record<string, Hunk>;
 
 export type Risk = 'low' | 'medium' | 'high';
 
+/**
+ * Text drawn on screen (labels, captions, bullets, notes, cells, actions, gaps, callouts, titles) never gets
+ * cut: it wraps, then shrinks, and `validate` names any text that still does not fit. It may use inline
+ * markup for the one word or value a sentence is about: `**bold**`, `` `code` `` (a monospace chip),
+ * `==marked==` (a highlighter) and `[words]{tone}` with a Tone (good, bad, warn, accent, neutral). Bold and
+ * code may sit inside a mark or a tone; nothing else nests. A backslash keeps * ` = [ ] { } literal. Code
+ * names, file paths and test names are shown as written. Narration, `say` and pen notes stay plain.
+ */
+export type DisplayText = string;
+
 /** What a diff does to an item. Drawn green with a NEW badge, red struck through with REMOVED, or blue with CHANGED. */
 export type Change = 'added' | 'removed' | 'modified';
 

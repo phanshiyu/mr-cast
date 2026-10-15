@@ -18,6 +18,10 @@ To free disk space, ask Claude to "prune mr-cast" or "clean up old mr-cast video
 
 To update mr-cast, ask Claude to "upgrade mr-cast". See [Upgrade](#upgrade).
 
+### Upgrading from 0.13
+
+0.14 never cuts text on screen. A storyboard whose labels ended in an ellipsis before now wraps and shrinks them, and `validate` fails on any that still does not fit, saying what to shorten (see [Text on screen](#text-on-screen)). The `arch` scene is now called `graph`; a storyboard that says `arch` still works.
+
 ### Upgrading from 0.11
 
 0.12 replaces four entries with one. The `mr-cast-review` and `mr-cast-explain` skills and the `/mr-cast-render` and `/mr-cast-explain-render` commands are gone, and `/mr-cast` does all four jobs:
@@ -175,7 +179,7 @@ Diagrams take `steps` too, one segment each after the narration, so the video ca
 
 | Scene | A `focus` ref is |
 | --- | --- |
-| `arch` | A node id, an edge `"from->to"` (or `"a-b"` for either direction), a group `"group:Support team"`, or an edge index. |
+| `graph` | A node id, an edge `"from->to"` (or `"a-b"` for either direction), a group `"group:Support team"`, or an edge index. |
 | `sequence` | A message index, an `"a-b"` range of them, or a participant id. A step draws every message up to the last one it focuses. |
 | `er` | An entity id, a field `"orders.status"`, a relation `"users->orders"`, or a relation index. |
 | `state` | A state id, a transition `"pending->paid"`, a transition's exact label such as `"pay"`, or a transition index. |
@@ -215,16 +219,48 @@ Each scene works out where its items are from the layout it already draws, so st
 
 These are not the `change`, `highlight` and `badge` marks below, which belong to an item for the whole scene. A pen mark belongs to one step.
 
+### Text on screen
+
+A scene never cuts its text. Every label, caption, bullet, note, cell and title wraps to the lines its place allows, then shrinks to the smallest size it still reads at. Text that does not fit even then is drawn at that size, running a little past its box, and `validate` fails, naming the scene, the item, the exact text and a fix:
+
+```
+scenes[2] ("Who calls whom").messages[4].label: "POST /orders/{orderId}/line-items/{lineItemId}/adjustments" does not fit its message label, even at 15px; shorten the label, or split the message in two
+```
+
+`validate` runs the player's own layout code to decide this, so it and the video always agree. A file's name or path, a hunk header and a line of code are the source's own, so they shrink further with a warning instead. Widths come from `shared/font-metrics.mjs`, measured per character, weight and size in the browser that renders stills and videos.
+
+On-screen text takes inline markup, for the one word or value a sentence is about:
+
+| Markup | Draws |
+| --- | --- |
+| `**bold**` | Heavier weight. |
+| `` `code` `` | A monospace chip. Everything inside is literal. |
+| `==marked==` | A highlighter behind the words. |
+| `[words]{tone}` | The words in a tone: `good`, `bad`, `warn`, `accent` or `neutral`. |
+
+Bold and code may sit inside a mark or a tone, and nothing else nests. `**` and `==` open only before a word and close only after one, so `a ** b` stays literal, and `[` is markup only when `]{tone}` follows. A backslash keeps `*`, `` ` ``, `=`, `[`, `]`, `{` or `}` literal. Code names, file paths and test names are shown as written. `validate` fails on unclosed markup or an unknown tone, with its column, and warns when more than a third of a text of three or more words is styled. Narration, `say` and pen notes stay plain: their markup is dropped before the voice and the subtitles, with a warning.
+
 ### Diagram nodes
 
-Arch nodes and sequence participants are the same kind of card, so they can show people, teams, places and documents as well as services. Each has an `id` and a `label`, plus:
+Graph nodes and sequence participants are the same kind of card, so they can show people, teams, places and documents as well as services. Each has an `id` and a `label`, plus:
 
 - `icon`: any [Lucide icon](https://lucide.dev/icons) name in kebab-case, such as `user`, `users`, `headset`, `building-2`, `server` or `database`. `validate` rejects a name Lucide lacks and suggests close ones. Without it the card has no icon.
 - `caption`: a short line under the label, such as `customer` or `datastore`. Without it there is none.
 - `change`, `highlight` and `badge`: see [Marks](#marks).
 - `tone`: the colour of the icon and the badge (`neutral`, `accent`, `good`, `bad` or `warn`), to tell kinds of things apart.
 
-An arch node also takes a `group`. Nodes with the same group are drawn inside one labelled box, in the order each group's first node appears. An arch edge takes a `label`, a `direction` (`forward` by default, `both` for a two-way relationship, `none` for a plain line), a `style` (`flow` moves dashes along a forward edge, `solid` is a still line and the default otherwise, `dashed` is for a weak or indirect link), and a `change` or `highlight`. An arch scene lays out left to right, or top to bottom with `"layout": "TB"`, which suits hierarchies and teams. `validate` warns past 12 nodes. A flow step takes an `icon` and a `tone` for its actor.
+A graph node also takes a `group`. Nodes with the same group are drawn inside one labelled box, in the order each group's first node appears. A graph edge takes a `label`, a `direction` (`forward` by default, `both` for a two-way relationship, `none` for a plain line), a `style` (`flow` moves dashes along a forward edge, `solid` is a still line and the default otherwise, `dashed` is for a weak or indirect link), and a `change` or `highlight`. A graph scene lays out left to right, or top to bottom with `"layout": "TB"`, which suits hierarchies and teams. `validate` warns past 12 nodes. Storyboards from 0.13 and earlier call this scene `arch`, which still works.
+
+A graph node's `shape` draws a flowchart:
+
+| `shape` | Draws |
+| --- | --- |
+| `card` | The default: the card above, with its icon and caption. |
+| `decision` | A diamond holding a short question, such as `"Cache hit?"`. Label each edge leaving it with its answer, such as `"yes"` and `"no"`. |
+| `terminal` | A pill, for where the flow starts or ends. |
+| `step` | A plain box for an action, with a caption and no icon. |
+
+Each node gets a cell as tall as the graph's diamonds, which take the least height at which every question keeps 20px, and edges meet a diamond at its points and a pill at its ends. A graph with a decision lays out top to bottom unless it sets `layout`, draws still arrows unless an edge sets `style`, and its header says Flowchart. Focus, pen marks, badges, `change` and `highlight` work on every shape. `validate` warns about an icon or caption a shape does not draw, a decision with fewer than two outgoing edges, and a decision's edge without a label. A flow step takes an `icon` and a `tone` for its actor.
 
 Older storyboards that give a node `kind` (`service`, `db`, `queue` or `client`) and `modified: true` still work: `kind` stands for an icon and caption, and `modified` for a `modified` change, or a highlight in an explanation.
 
@@ -238,8 +274,8 @@ Three marks say three different things, and one never stands in for another:
 
 | Item | `change` | `highlight` | `badge`, `tone` |
 | --- | --- | --- | --- |
-| arch node, sequence participant | yes, with a badge | yes | yes |
-| arch edge | yes | yes | no |
+| graph node, sequence participant | yes, with a badge | yes | yes |
+| graph edge | yes | yes | no |
 | sequence message | yes, with a badge | yes | yes |
 | er table | yes, with a badge | yes | yes |
 | er field, er relation, state transition | yes, by colour and a `+`/`−`/`~` marker | yes | yes |
@@ -253,7 +289,7 @@ Badges, legends, code headers and the tests scene use one set of words for a cha
 
 `validate` keeps the marks honest:
 
-- In a diff walkthrough it warns when more than 60% of the items of an arch, sequence, er or state scene carry change marks (from 4 items up), since the marks then stop telling the viewer what changed.
+- In a diff walkthrough it warns when more than 60% of the items of a graph, sequence, er or state scene carry change marks (from 4 items up), since the marks then stop telling the viewer what changed.
 - It warns when an er table or field, a state, or a table row is marked `added` or `removed` but its name appears on no changed line of the diff, and when a files entry's `change` disagrees with `hunks.json`.
 - In an explanation it warns about any change mark unless `"explainsChange": true` is set on the storyboard or the scene.
 - It warns when a `badge` is a change word (`new`, `added`, `changed`, `modified`, `removed` or `deleted`): use `change` for the diff instead.
@@ -263,10 +299,10 @@ A tests scene that is not about a diff's tests can rename its panels with `title
 | Scene | Shows |
 | --- | --- |
 | `intent` | Summary, risk badge, bullets, and diff stats. |
-| `arch` | Nodes and edges, laid out automatically left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons). Changed, highlighted and badged nodes and edges are marked. With `steps`, the voice walks the graph node by node and edge by edge. |
+| `graph` | Nodes and edges, laid out automatically left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons), or flowchart shapes: decisions, terminals and steps. Changed, highlighted and badged nodes and edges are marked. With `steps`, the voice walks the graph node by node and edge by edge. |
 | `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. |
 | `flow` | A step-by-step trace with the payload at each step. With a `say` on each step, the current step follows the voice. |
-| `sequence` | A sequence diagram: participants (the same cards as arch nodes) with lifelines, and call, return and async messages drawn in order. Changed, highlighted and badged messages are marked. With `steps`, messages draw in as the voice reaches them. |
+| `sequence` | A sequence diagram: participants (the same cards as graph nodes) with lifelines, and call, return and async messages drawn in order. Changed, highlighted and badged messages are marked. With `steps`, messages draw in as the voice reaches them. A sequence taller than the frame keeps its rows readable and scrolls under its pinned participants: each step eases the camera to its messages, and without steps the camera pans from the first to the last while the narration speaks. A still shows where the last step leaves it. `validate` warns past 24 messages. |
 | `er` | An entity-relationship diagram with crow's-foot relations. Added, removed and modified tables, fields and relations are marked. With `steps`, each table, field or relation lights as the voice names it. |
 | `state` | A state machine with an entry dot, final states, and labelled transitions. Added, removed and modified states and transitions are marked. With `steps`, each state or transition lights as the voice names it. |
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph, pie, ...) drawn as a static themed SVG. A fallback for diagrams the other scenes don't cover. |
@@ -276,13 +312,14 @@ A tests scene that is not about a diff's tests can rename its panels with `title
 | `timeline` | Events on a time axis in ms, s, min, h or d, each with a label and detail, and `spans` for waits and windows drawn under the axis with their length. A playhead reveals them left to right before the voice starts, or with `steps` moves to each step's events as the voice reaches them. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a short note beside the files the narration names. Without `files` it lists every file in `hunks.json`; an explanation lists its own. Files with notes, or `highlight`, are spotlit in turn, and with `steps` each file lights just before its own spoken words. A long tree flows into two columns. |
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes, with steps on the state, table, chart and timeline. `examples/people/` explains how a support ticket gets resolved, with no code at all: people and teams in groups, a path walked step by step, a sequence between people, and a timeline. The demo arrows a note at Redis and circles `max: 20` in the code, and the gallery and the people example each circle one item.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes and a flowchart `graph`, with steps on the state, the flowchart, the table, chart and timeline. `examples/people/` explains how a support ticket gets resolved, with no code at all: people and teams in groups, a path walked step by step, a sequence between people, and a timeline. The demo arrows a note at Redis and circles `max: 20` in the code, the gallery circles the flowchart's new step and a table cell, and the people example circles one item. The demo and the gallery each style a few words with markup.
 
 ## Layout
 
 - `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` finds a command's run (the current one, `--name` or `--dir`), `lib/settings.mjs` keeps a run's settings and the last choices, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share: a scene is a sequence of spoken segments, its narration and then each step, each with a lead and a tail scaled by the pace, and each scene type's build time, which the narration waits for. `shared/steps.mjs` lists the steps each scene type speaks, and `shared/targets.mjs` what a step's `focus` can name in each scene type. `shared/normalize.mjs` rewrites older field names once, where a storyboard enters. `shared/voice.mjs` names each clip by its voice, speed and text, and defines the paces. `shared/files.mjs` builds the file list of a `files` scene for both. `shared/pen-marks.mjs` says what a step's pen mark draws on, and `src/components/PenMarks.tsx` draws every scene's marks from the boxes the scene gives it.
+- `shared/textfit.mjs` fits a text to its place: it wraps, shrinks and reports what does not fit, from the widths in `shared/font-metrics.mjs` (made by `node scripts/measure-fonts.mjs`). `shared/markup.mjs` parses inline markup. Each scene fits its text in layout code under `src/utils/`, against the places listed in `src/fit/slots.ts`, and draws it with `src/components/FitText.tsx`; `src/fit/report.ts` runs the same layouts for `validate` (`bin/lib/validate-fit.mjs` bundles it with esbuild). `scripts/check-text.mjs`, part of `npm run typecheck`, fails on text clipping or an ellipsis under `src/`.
 - `bin/lib/explain.mjs` turns source line ranges into snippets for `snippet`.
 - `skill/mr-cast/` (`SKILL.md` and `references/branch.md` and `references/explanation.md`), `skill/mr-cast-prune/SKILL.md` and `skill/mr-cast-upgrade/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 

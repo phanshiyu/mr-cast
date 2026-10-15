@@ -34,7 +34,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Simple style and snippets](./simple-mode.md) covers `extract --simple`, line-by-line `steps`, snippets beside a diff, and the simple-style checks.
 - [Explanations](./explain-mode.md) covers `init`, `snippet` and the other commands on an explanation's run, the `explain` alias, 0.11 data through `--dir`, and explanations outside a git repo.
 - [Run settings, status and help](./run-settings.md) covers settings kept with the run and changed by later flags, the remembered last choices, `status`, and `help` and `help --all`.
-- [Diagram nodes and focus](./diagrams.md) covers icons, captions, change and key marks on nodes, arch edges, layouts and groups, focus steps on every diagram, their validation hints, and 0.10 storyboards.
+- [Diagram nodes and focus](./diagrams.md) covers icons, captions, change and key marks on nodes, graph edges, layouts, groups and flowchart shapes, scrolling long sequences, focus steps on every diagram, their validation hints, and 0.10 storyboards.
 - [Text fit and inline markup](./text-fit.md) covers wrapping and shrinking every display text instead of cutting it, the fit errors in `validate`, inline markup, the measured font metrics, and the checks that keep text from being clipped.
 - [Browser player](./player.md) covers `play`: serving, chapter navigation, live reload, voiced poster, port fallback, the Host check and load errors.
 - [Skills and upkeep](./skills-and-upkeep.md) covers `install-skill`, the move from a 0.11 install, the version-change refresh, `uninstall-skill`, `prune`, `upgrade` and the update notice.
