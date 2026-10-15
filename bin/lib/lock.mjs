@@ -7,6 +7,8 @@ const POLL_MS = 500;
 const HEARTBEAT_MS = 5_000;
 /** A holder refreshes the lock's mtime every HEARTBEAT_MS, so one this old belongs to a hung or reused pid. */
 const STALE_MS = 60_000;
+/** Waits shorter than this (another process checking an existing download) go unannounced. */
+const ANNOUNCE_AFTER_MS = 2_000;
 
 function alive(pid) {
   try {
@@ -30,10 +32,11 @@ function liveHolder(file) {
 
 /**
  * Runs `fn` while holding `file`, created with O_EXCL and holding this pid. Waits while another live
- * process holds it, and breaks a stale one. `onWait(pid)` is called once if this process has to wait.
+ * process holds it, and breaks a stale one. `onWait(pid)` is called once if the wait grows long.
  */
 export async function withLock(file, fn, onWait) {
-  let waited = false;
+  const start = Date.now();
+  let announced = false;
   for (;;) {
     try {
       fs.writeFileSync(file, `${process.pid}\n`, { flag: 'wx' });
@@ -48,8 +51,10 @@ export async function withLock(file, fn, onWait) {
       if (liveHolder(file) === null) fs.rmSync(file, { force: true });
       continue;
     }
-    if (!waited) onWait?.(holder);
-    waited = true;
+    if (!announced && Date.now() - start > ANNOUNCE_AFTER_MS) {
+      onWait?.(holder);
+      announced = true;
+    }
     await sleep(POLL_MS);
   }
   const heartbeat = setInterval(() => {

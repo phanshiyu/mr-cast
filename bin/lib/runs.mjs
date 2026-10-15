@@ -25,7 +25,7 @@ export function parseRunName(value) {
 }
 
 /** A short kebab-case slug of `text`: its first few words, or '' when nothing usable is left. */
-export function slugify(text, maxWords = 5) {
+export function slugify(text, maxWords = 6) {
   const words = String(text ?? '')
     .normalize('NFKD')
     .toLowerCase()
@@ -41,6 +41,9 @@ export function slugify(text, maxWords = 5) {
   }
   return slug || words[0]?.slice(0, NAME_MAX) || '';
 }
+
+/** The default MP4 name: the storyboard title's slug, else the run's name, else "walkthrough". */
+export const videoName = (storyboard, run) => `${slugify(storyboard.title) || run.name || 'walkthrough'}.mp4`;
 
 /** `--dir` wins; else `.mr-cast/<name>` for --name; else `.mr-cast`. */
 export function diffRun(values) {

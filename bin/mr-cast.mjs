@@ -9,7 +9,7 @@ import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
-import { diffRun, explainRun, initExplainRun, writeCurrent } from './lib/runs.mjs';
+import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
 import { startServer } from './lib/server.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
@@ -32,7 +32,8 @@ const USAGE = `usage: mr-cast <command> [options]
   play [--port N] [--no-open] [--voice name] [--no-voice]
                   serve the live player (default port 4747)
   render [--out file.mp4] [--voice name] [--no-voice]
-                  render the walkthrough to MP4 (default .mr-cast/walkthrough.mp4)
+                  render the walkthrough to MP4, named after the storyboard title
+                  (default .mr-cast/<title-slug>.mp4)
                   play and render voice the narration first unless --no-voice
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
@@ -309,10 +310,11 @@ function progressReporter(label) {
 
 async function render(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS, ...DIR_OPTION } });
-  const { dir, hunks, storyboard } = await loadValidProject(resolveRun(values).dir);
+  const run = resolveRun(values);
+  const { dir, hunks, storyboard } = await loadValidProject(run.dir);
   const voiceover = await voiceoverFor(dir, storyboard, values);
   const { renderVideo } = await importRender();
-  const outFile = path.resolve(values.out ?? path.join(dir, 'walkthrough.mp4'));
+  const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   const progress = progressReporter('rendering');
   const written = await renderVideo({ hunks, storyboard, voiceover, dataDir: dir, outFile, onProgress: progress.update });
