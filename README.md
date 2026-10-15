@@ -64,6 +64,8 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 | `arch` | Components and edges, laid out automatically. Changed nodes are highlighted. |
 | `code` | One hunk, in split or morph view. Focused lines stay bright, and a callout explains them. |
 | `flow` | A step-by-step trace with the payload at each step. |
+| `sequence` | A sequence diagram: participants with lifelines, and call, return and async messages drawn in order. Changed messages are highlighted. |
+| `er` | An entity-relationship diagram with crow's-foot relations. Added, removed and modified tables, fields and relations are marked. |
 
 `examples/demo/` has a complete storyboard. `scripts/demo.sh <dir>` creates the git repository it describes.
 
