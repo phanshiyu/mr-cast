@@ -1,0 +1,78 @@
+{
+  "title": "Rate limiting for the Orders API",
+  "subtitle": "feature/rate-limit → main",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Why this change",
+      "narration": "This merge request protects the orders endpoint from bursts of traffic and starts emitting an event every time an order is created.",
+      "summary": "Add Redis-backed rate limiting to POST /orders and publish order.created events.",
+      "risk": "medium",
+      "bullets": [
+        "Fixed-window limiter: 20 requests per minute per IP",
+        "Prices now come from the pricing service instead of a constant",
+        "New order.created event on the queue",
+        "Removes the unused in-memory throttle"
+      ]
+    },
+    {
+      "type": "arch",
+      "chapter": "Where it fits",
+      "narration": "Requests now pass through a rate limiter backed by Redis before reaching the orders service, which writes to the database and then publishes to the event queue.",
+      "nodes": [
+        { "id": "client", "label": "Client", "kind": "client" },
+        { "id": "api", "label": "Express API", "kind": "service", "modified": true },
+        { "id": "redis", "label": "Redis", "kind": "db", "modified": true },
+        { "id": "orders", "label": "Orders service", "kind": "service", "modified": true },
+        { "id": "pricing", "label": "Pricing", "kind": "service" },
+        { "id": "pg", "label": "Orders DB", "kind": "db" },
+        { "id": "events", "label": "Event queue", "kind": "queue", "modified": true }
+      ],
+      "edges": [
+        { "from": "client", "to": "api", "label": "POST /orders" },
+        { "from": "api", "to": "redis", "label": "INCR rl:ip" },
+        { "from": "api", "to": "orders" },
+        { "from": "orders", "to": "pricing", "label": "priceFor" },
+        { "from": "orders", "to": "pg", "label": "insert" },
+        { "from": "api", "to": "events", "label": "order.created" }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The limiter",
+      "narration": "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit. Past twenty requests it answers 429 with a Retry-After header.",
+      "hunkId": "h2",
+      "focusLinesAfter": ["11-18"],
+      "calloutText": "Expiry is set once per window, so the key cleans itself up."
+    },
+    {
+      "type": "code",
+      "chapter": "Wiring it in",
+      "narration": "The server mounts the limiter on the orders route and publishes an event after the order is saved.",
+      "hunkId": "h3",
+      "focusLinesAfter": [8, 12],
+      "calloutText": "publish runs after the insert, so a queue outage fails the request.",
+      "view": "morph"
+    },
+    {
+      "type": "code",
+      "chapter": "Real prices",
+      "narration": "Order totals used a hard-coded price of ten. They now look up each SKU in parallel, and empty orders are rejected up front.",
+      "hunkId": "h6",
+      "calloutText": "Pricing lookups run in parallel with Promise.all."
+    },
+    {
+      "type": "flow",
+      "chapter": "A request, step by step",
+      "title": "POST /orders",
+      "narration": "Follow one request. The limiter counts it, the service prices the items and saves the order, and the API publishes a compact event before responding.",
+      "steps": [
+        { "actor": "Client", "action": "Sends the order", "payload": "{ \"userId\": \"u_42\", \"items\": [{ \"sku\": \"tea\", \"qty\": 2 }] }" },
+        { "actor": "rateLimit", "action": "Counts the request in Redis", "payload": "rl:10.0.0.7:29384112 → 3" },
+        { "actor": "createOrder", "action": "Prices items and inserts", "payload": "{ \"id\": \"o_9f\", \"total\": 8.4, \"status\": \"pending\" }" },
+        { "actor": "publish", "action": "Emits order.created", "payload": "{ \"orderId\": \"o_9f\", \"total\": 8.4 }" },
+        { "actor": "API", "action": "Responds 201 Created" }
+      ]
+    }
+  ]
+}
