@@ -554,22 +554,33 @@ async function explain([sub, ...rest]) {
   await run(rest);
 }
 
+const STATUS_FILES = 25;
+
+/** "  src/limiter.ts +20 −3" per file, at most STATUS_FILES of them. */
+const fileLines = (files) => [
+  ...files.slice(0, STATUS_FILES).map((f) => `  ${f.file} +${f.additions} −${f.deletions}`),
+  ...(files.length > STATUS_FILES ? [`  … ${files.length - STATUS_FILES} more`] : []),
+];
+
+/** What the skill decides the video's source from: the branch's changes, and the user's last choices. */
 function status(argv) {
   parseArgs({ args: argv, options: {} });
   const root = findRepoRoot();
-  if (!root) console.log('branch: none (not in a git repository), so only an explanation can be animated');
+  const out = [];
+  if (!root) out.push('branch: none (not in a git repository), so only an explanation can be animated');
   else {
     const s = branchStatus(root);
     const ahead = !s.base ? 'no base branch found; pass one to `mr-cast extract <base>`'
-      : s.ahead ? `${plural(s.ahead, 'commit')} and ${plural(s.files, 'file')} ahead of ${s.base}`
+      : s.ahead ? `${plural(s.ahead, 'commit')} and ${plural(s.files.length, 'file')} ahead of ${s.base}`
       : `nothing ahead of ${s.base}`;
-    console.log(`branch: ${s.branch} · ${ahead}`);
-    const working = [s.changed && plural(s.changed, 'changed file'), s.untracked && plural(s.untracked, 'untracked file')].filter(Boolean);
-    console.log(`working tree: ${working.length ? `${working.join(', ')} (extract --working includes changed files)` : 'clean'}`);
+    out.push(`branch: ${s.branch} · ${ahead}`, ...fileLines(s.files));
+    const parts = [s.working.length && `${plural(s.working.length, 'changed file')} (\`extract --working\` includes them)`, s.untracked && plural(s.untracked, 'untracked file')].filter(Boolean);
+    out.push(`working tree: ${parts.length ? parts.join(', ') : 'clean'}`, ...fileLines(s.working));
   }
   const last = lastChoices();
-  const parts = [last.audience && `audience ${last.audience}`, last.pace && `pace ${last.pace}`].filter(Boolean);
-  console.log(`last choices: ${parts.length ? parts.join(' · ') : 'none yet'}`);
+  const chosen = [last.audience && `audience ${last.audience}`, last.pace && `pace ${last.pace}`].filter(Boolean);
+  out.push(`last choices: ${chosen.length ? chosen.join(' · ') : 'none yet'}`);
+  console.log(out.join('\n'));
 }
 
 async function prune(argv) {

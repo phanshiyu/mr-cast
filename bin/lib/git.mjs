@@ -104,21 +104,28 @@ export function ensureExcluded(root) {
   fs.appendFileSync(file, `${sep}.mr-cast/\n`);
 }
 
+/** `git diff --numstat` lines as { file, additions, deletions }; binary files count 0. */
+const numstat = (text) => text.split('\n').filter(Boolean).map((line) => {
+  const [add, del, ...rest] = line.split('\t');
+  return { file: rest.join('\t'), additions: Number(add) || 0, deletions: Number(del) || 0 };
+});
+
 /**
  * What the current branch offers a walkthrough, without reading the diff itself: the base `extract` would
- * use (null when none is found), the commits and files ahead of it, and the uncommitted files.
+ * use (null when none is found), the commits ahead of it and the files they change, and the uncommitted
+ * changes to tracked files (what `extract --working` adds) and untracked files.
  */
 export function branchStatus(root) {
   const branch = tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD']) ?? 'HEAD';
+  const hasCommits = Boolean(commitOf(root, 'HEAD'));
   let base = null;
   try { base = resolveBase(root); } catch { /* no base branch */ }
-  const mergeBase = base && commitOf(root, 'HEAD') ? tryGit(root, ['merge-base', base, 'HEAD']) : null;
+  const mergeBase = base && hasCommits ? tryGit(root, ['merge-base', base, 'HEAD']) : null;
   const ahead = mergeBase ? Number(git(root, ['rev-list', '--count', `${mergeBase}..HEAD`]).trim()) : 0;
-  const files = mergeBase && ahead
-    ? git(root, ['diff', '-M', '--no-ext-diff', '--name-only', `${base}...HEAD`, '--', ...NOISE_PATHSPEC]).split('\n').filter(Boolean).length
-    : 0;
-  const entries = git(root, ['status', '--porcelain', '--untracked-files=all']).split('\n').filter(Boolean)
-    .filter((line) => !line.slice(3).startsWith('.mr-cast/'));
-  const untracked = entries.filter((line) => line.startsWith('??')).length;
-  return { branch, base, ahead, files, changed: entries.length - untracked, untracked };
+  const stat = (range) => numstat(git(root, ['diff', '-M', '--no-ext-diff', '--numstat', ...range, '--', ...NOISE_PATHSPEC]));
+  const files = ahead ? stat([`${base}...HEAD`]) : [];
+  const working = hasCommits ? stat(['HEAD']) : [];
+  const untracked = git(root, ['ls-files', '--others', '--exclude-standard']).split('\n')
+    .filter((f) => f && !f.startsWith('.mr-cast/')).length;
+  return { branch, base, ahead, files, working, untracked };
 }
