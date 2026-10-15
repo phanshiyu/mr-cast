@@ -17,6 +17,7 @@ import {
 } from '../utils/stateLayout';
 import { spotlight, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
+import { ChangeLegend, changeTone } from './ChangeLegend';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -25,12 +26,6 @@ const EDGE = 'rgba(170, 178, 200, 0.7)';
 const START = 8;
 const STATES_END = 20;
 const TRANSITION_FRAMES = 12;
-
-const changeTone: Record<Change, { color: string; bg: string; marker: string; label: string }> = {
-  added: { color: colors.add, bg: colors.addBg, marker: '+', label: 'added' },
-  removed: { color: colors.del, bg: colors.delBg, marker: '−', label: 'removed' },
-  modified: { color: colors.accent, bg: colors.accentSoft, marker: '~', label: 'modified' },
-};
 
 const toneColor = (change: Change | undefined) => (change ? changeTone[change].color : EDGE);
 
@@ -226,42 +221,12 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
   );
 };
 
-/** Lists only the change kinds the scene uses, so the viewer can decode the colours. */
-const Legend: React.FC<{ scene: StateScene }> = ({ scene }) => {
+function usedChanges(scene: StateScene): Set<Change> {
   const used = new Set<Change>();
   for (const s of scene.states) if (s.change) used.add(s.change);
   for (const t of scene.transitions) if (t.change) used.add(t.change);
-  const order: Change[] = ['added', 'removed', 'modified'];
-  return (
-    <div style={{ display: 'flex', gap: 22, fontSize: 19, color: colors.muted, flexShrink: 0, paddingBottom: 6 }}>
-      {order
-        .filter((c) => used.has(c))
-        .map((c) => (
-          <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 7,
-                background: changeTone[c].bg,
-                border: `1px solid ${changeTone[c].color}88`,
-                color: changeTone[c].color,
-                fontFamily: fonts.mono,
-                fontWeight: 800,
-                fontSize: 19,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {changeTone[c].marker}
-            </span>
-            {changeTone[c].label}
-          </div>
-        ))}
-    </div>
-  );
-};
+  return used;
+}
 
 export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
@@ -279,7 +244,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, duration
   const entryDraw = interpolate(frame, [timeline.entryAt + 4, timeline.entryAt + 14], [0, 1], clamp);
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.state} title={scene.title} aside={<Legend scene={scene} />}>
+    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.state} title={scene.title} aside={<ChangeLegend used={usedChanges(scene)} />}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
