@@ -66,8 +66,10 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 | `flow` | A step-by-step trace with the payload at each step. |
 | `sequence` | A sequence diagram: participants with lifelines, and call, return and async messages drawn in order. Changed messages are highlighted. |
 | `er` | An entity-relationship diagram with crow's-foot relations. Added, removed and modified tables, fields and relations are marked. |
+| `state` | A state machine with an entry dot, final states, and labelled transitions. Added, removed and modified states and transitions are marked. |
+| `mermaid` | Any Mermaid diagram (class, gantt, git graph, pie, ...) drawn as a static themed SVG. A fallback for diagrams the other scenes don't cover. |
 
-`examples/demo/` has a complete storyboard. `scripts/demo.sh <dir>` creates the git repository it describes.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/gallery/` shows the `state` and `mermaid` scenes.
 
 ## Layout
 
