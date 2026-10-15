@@ -50,16 +50,16 @@ Then check it.
 {{MR_CAST}}/bin/mr-cast explain validate
 ```
 
-Fix every error and rerun until it prints `✓ storyboard ok`. Resolve the warnings about scene order and focus too. Treat other warnings as advice.
+Fix every error and rerun until it prints `✓ storyboard ok`. Resolve the warnings about scene order, diagram count, and focus too. Treat other warnings as advice.
 
 ### Telling the story
 
 The viewer is someone who did not read your explanation. A good walkthrough lets them understand the idea from the video alone. Complete coverage of the important details matters more than a short video. When you are unsure whether a detail belongs, include it.
 
 - Plan before you write scenes. Take the key points of your explanation, the behaviors behind them ("when X happens, Y happens"), and the code that carries each one. Every scene must serve one of these.
-- Order the video top-down. Start with the overview, then high-level diagrams, then the code. The viewer should know where each piece fits before they see its code.
+- Order the video top-down. Start with the overview, then high-level diagrams, then the code, then any tests. Put all the high-level diagrams (`arch`, `sequence`, `flow`, `er`, `state`, `mermaid`) before the first code scene, and never go back to a diagram scene once the code starts. A code scene may still carry a `flow` step diagram beside its code. The viewer should know where each piece fits before they see its code.
 - Open with one `intent` scene. The summary states the idea in one sentence. The bullets are the key points of the explanation, at most four, one short line each. For a bug, they are the symptom, the cause, and the fix or the way to avoid it.
-- Show anything that can be a diagram as an animated diagram, then show the code that implements it. Pick the scene that fits the shape of the idea.
+- Show anything that can be a diagram as an animated diagram. Draw it in the diagram section, then show the code that implements it later. Pick the scene that fits the shape of the idea. An explanation with four or more code scenes usually needs at least two diagrams, such as a `sequence` for a call chain across functions and a `state` for a lifecycle.
 - Use an `arch` scene for structure, meaning the components and how they connect. Set `modified` on the nodes the explanation centers on, and the scene badges them as key.
 - Use a `sequence` scene when the order of calls matters, such as a request path, async work, or retries. List messages in time order, use `return` for responses and `async` for fire-and-forget, and use a self-message (`from` equal to `to`) for significant internal work. Mark the steps the explanation turns on as `modified`. Keep it to 6 participants and 12 messages.
 - Use a `state` scene for a lifecycle or status machine. Set `initial`, mark terminal states `final`, and label each transition with its event or guard. Keep it to 10 states.

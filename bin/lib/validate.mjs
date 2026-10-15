@@ -186,6 +186,19 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
     const names = logicFiles.slice(0, 4).join(', ') + (logicFiles.length > 4 ? ', ...' : '');
     warnings.push(`the diff changes logic in ${logicFiles.length} files (${names}) and no scene draws how they fit together; add an arch, sequence, flow, er or state scene before the code`);
   }
+  if (firstCode >= 0) {
+    for (const { s, i } of indexed) {
+      if (i > firstCode && DIAGRAM_TYPES.includes(s.type)) {
+        const title = s.chapter ? `, "${s.chapter}"` : '';
+        warnings.push(`scenes[${i}] (${s.type}${title}) comes after code scenes[${firstCode}]..; move the high-level diagrams ahead of the code so the walkthrough goes overview, diagrams, code, tests`);
+      }
+    }
+  }
+  const codeCount = indexed.filter(({ s }) => s.type === 'code').length;
+  const diagramCount = indexed.filter(({ s }) => DIAGRAM_TYPES.includes(s.type)).length;
+  if (codeCount >= 4 && diagramCount < 2) {
+    warnings.push(`${codeCount} code scenes but only ${diagramCount} diagram scene${diagramCount === 1 ? '' : 's'}; draw more of the ${explain ? 'idea' : 'change'} before the code, such as a sequence for a call chain across functions or services, a state for a status or lifecycle, a flow for data moving through steps, or an er for a data model`);
+  }
   if (explain) return;
 
   const firstLogicCode = firstOf((s) => s.type === 'code' && Object.hasOwn(hunks, s.hunkId) && !isTestHunk(s.hunkId));
