@@ -1,10 +1,311 @@
-import type { StateScene } from '../types';
+import { useMemo } from 'react';
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import type { Change, StateScene } from '../types';
+import {
+  ARROW_LEN,
+  BADGE_FONT,
+  LABEL_FONT,
+  LABEL_H,
+  STATE_FONT,
+  badgeLabel,
+  layoutState,
+  type PlacedState,
+  type Pt,
+  type RoutedTransition,
+  type StateLayout,
+} from '../utils/stateLayout';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { defaultChapter } from './theme';
+import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
 
-export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, durationInFrames }) => (
-  <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.state}>
-    {null}
-  </SceneShell>
-);
+const EDGE = 'rgba(170, 178, 200, 0.7)';
+const START = 8;
+
+const changeTone: Record<Change, { color: string; bg: string; marker: string; label: string }> = {
+  added: { color: colors.add, bg: colors.addBg, marker: '+', label: 'added' },
+  removed: { color: colors.del, bg: colors.delBg, marker: '−', label: 'removed' },
+  modified: { color: colors.accent, bg: colors.accentSoft, marker: '~', label: 'modified' },
+};
+
+const toneColor = (change: Change | undefined) => (change ? changeTone[change].color : EDGE);
+
+/** Frames at which each part of the scene arrives, scaled so short scenes still finish their beats. */
+interface Timeline {
+  entryAt: number;
+  stateAt: Map<string, number>;
+  transitionAt: (index: number) => number;
+  transitionFrames: number;
+  /** Pulse moment per changed item, keyed `s:${id}` or `t:${index}`. */
+  pulseAt: Map<string, number>;
+}
+
+function buildTimeline(layout: StateLayout, durationInFrames: number): Timeline {
+  const { states, transitions, layerOf } = layout;
+  const stateOrder = [...states].sort((a, b) => a.layer - b.layer || a.row - b.row);
+  const stateStagger = Math.min(7, (durationInFrames * 0.15) / Math.max(1, states.length));
+  const stateStart = START + (layout.entry ? 6 : 0);
+  const stateAt = new Map(stateOrder.map((p, i) => [p.state.id, stateStart + i * stateStagger]));
+
+  const span = (t: RoutedTransition) => [layerOf.get(t.transition.from)!, layerOf.get(t.transition.to)!];
+  const transitionOrder = transitions
+    .map((_, i) => i)
+    .sort((a, b) => Math.min(...span(transitions[a]!)) - Math.min(...span(transitions[b]!)) || Math.max(...span(transitions[a]!)) - Math.max(...span(transitions[b]!)));
+  const transitionRank = new Map(transitionOrder.map((t, i) => [t, i]));
+  const transitionsStart = stateStart + states.length * stateStagger + 10;
+  const transitionFrames = Math.min(18, durationInFrames * 0.08);
+  const transitionStagger = Math.min(7, (durationInFrames * 0.14) / Math.max(1, transitions.length));
+  const pulseStart = transitionsStart + transitions.length * transitionStagger + transitionFrames + 6;
+
+  // Walk the machine left to right: each changed state, then the changed transitions leaving its layer.
+  const changed = [
+    ...states.flatMap((p) => (p.state.change ? [{ key: `s:${p.state.id}`, layer: p.layer, kind: 0, order: p.row }] : [])),
+    ...transitions.flatMap((t, i) => (t.transition.change ? [{ key: `t:${i}`, layer: layerOf.get(t.transition.from)!, kind: 1, order: i }] : [])),
+  ].sort((a, b) => a.layer - b.layer || a.kind - b.kind || a.order - b.order);
+  const step = Math.min(30, Math.max(5, (durationInFrames * 0.8 - pulseStart) / Math.max(1, changed.length)));
+
+  return {
+    entryAt: START,
+    stateAt,
+    transitionAt: (index) => transitionsStart + transitionRank.get(index)! * transitionStagger,
+    transitionFrames,
+    pulseAt: new Map(changed.map((c, i) => [c.key, pulseStart + i * step])),
+  };
+}
+
+const pulseOf = (frame: number, at: number | undefined) => (at === undefined ? 0 : interpolate(frame, [at, at + 7, at + 32], [0, 1, 0], clamp));
+
+function arrowHead(tip: Pt, dir: Pt): string {
+  const base = { x: tip.x - dir.x * (ARROW_LEN + 1), y: tip.y - dir.y * (ARROW_LEN + 1) };
+  const half = 7;
+  return `M ${tip.x} ${tip.y} L ${base.x - dir.y * half} ${base.y + dir.x * half} L ${base.x + dir.y * half} ${base.y - dir.x * half} Z`;
+}
+
+const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number | undefined; frame: number }> = ({ placed, start, pulseAt, frame }) => {
+  const { state } = placed;
+  const { fps } = useVideoConfig();
+  const appear = spring({ frame: frame - start, fps, config: { damping: 16, stiffness: 110 } });
+  const badgeScale = spring({ frame: frame - start - 10, fps, config: { damping: 12, stiffness: 160 } });
+  const pulse = pulseOf(frame, pulseAt);
+  const removed = state.change === 'removed';
+  const tone = state.change ? changeTone[state.change] : null;
+  const border = removed ? `${colors.del}cc` : tone?.color ?? colors.borderStrong;
+  const badge = badgeLabel(state);
+  const glow = tone && !removed ? `0 0 0 6px ${tone.bg}, 0 0 ${40 + 30 * pulse}px ${tone.color}${removed ? '33' : '55'}` : '0 14px 36px rgba(0,0,0,0.45)';
+  const ring = tone ? `, 0 0 0 ${4 + 10 * pulse}px ${tone.color}${Math.round(pulse * 140).toString(16).padStart(2, '0')}` : '';
+  const inner = state.final ? `inset 0 0 0 5px ${colors.raised}, inset 0 0 0 7px ${border}` : '';
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: placed.x,
+        top: placed.y,
+        width: placed.w,
+        height: placed.h,
+        boxSizing: 'border-box',
+        borderRadius: placed.h / 2,
+        background: state.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : state.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : colors.raised,
+        border: `2px ${removed ? 'dashed' : 'solid'} ${border}`,
+        boxShadow: [glow + ring, inner].filter(Boolean).join(', '),
+        opacity: appear * (removed ? 0.62 : 1),
+        transform: `translateY(${(1 - appear) * 20}px) scale(${(0.9 + 0.1 * appear) * (1 + 0.05 * pulse)})`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 14,
+        padding: '0 26px',
+      }}
+    >
+      <div
+        style={{
+          fontSize: STATE_FONT,
+          fontWeight: 650,
+          color: removed ? colors.muted : colors.text,
+          textDecoration: removed ? 'line-through' : 'none',
+          textDecorationColor: colors.del,
+          textDecorationThickness: 3,
+          ...ellipsis,
+        }}
+      >
+        {state.label}
+      </div>
+      {badge && tone ? (
+        <div
+          style={{
+            flexShrink: 0,
+            padding: '3px 10px',
+            borderRadius: 999,
+            background: tone.color,
+            color: '#0b0d18',
+            fontSize: BADGE_FONT,
+            fontWeight: 800,
+            letterSpacing: 1,
+            textTransform: 'uppercase',
+            transform: `scale(${badgeScale})`,
+          }}
+        >
+          {badge}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const TransitionPath: React.FC<{ routed: RoutedTransition; index: number; draw: number; pulse: number }> = ({ routed, index, draw, pulse }) => {
+  const change = routed.transition.change;
+  const color = toneColor(change);
+  const removed = change === 'removed';
+  const id = `state-reveal-${index}`;
+  return (
+    <g opacity={draw > 0 ? (removed ? 0.78 : 1) : 0}>
+      <mask id={id} maskUnits="userSpaceOnUse">
+        <path d={routed.d} fill="none" stroke="#fff" strokeWidth={14} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
+      </mask>
+      {change ? (
+        <path
+          d={routed.d}
+          fill="none"
+          stroke={color}
+          strokeOpacity={(removed ? 0.1 : 0.22) + 0.45 * pulse}
+          strokeWidth={10 + 8 * pulse}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          mask={`url(#${id})`}
+        />
+      ) : null}
+      <path
+        d={routed.d}
+        fill="none"
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray={removed ? '10 9' : undefined}
+        mask={`url(#${id})`}
+      />
+      <path d={arrowHead(routed.tip, routed.dir)} fill={color} stroke={color} strokeWidth={1.5} strokeLinejoin="round" opacity={interpolate(draw, [0.85, 1], [0, 1], clamp)} />
+    </g>
+  );
+};
+
+const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; pulse: number }> = ({ routed, appear, pulse }) => {
+  const { label, transition } = routed;
+  if (!label) return null;
+  const change = transition.change;
+  const color = change ? toneColor(change) : colors.muted;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: label.x,
+        top: label.y,
+        width: label.w,
+        height: LABEL_H,
+        boxSizing: 'border-box',
+        transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.12 * pulse)})`,
+        opacity: appear * (change === 'removed' ? 0.85 : 1),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '0 12px',
+        borderRadius: 10,
+        background: '#0d0f16',
+        border: `1px solid ${change ? `${color}99` : colors.borderStrong}`,
+        boxShadow: pulse > 0 ? `0 0 ${24 * pulse}px ${color}88` : 'none',
+        color,
+        fontFamily: fonts.mono,
+        fontSize: LABEL_FONT,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ textDecoration: change === 'removed' ? 'line-through' : 'none', ...ellipsis }}>
+        {change === 'added' ? '+ ' : ''}
+        {transition.label}
+      </span>
+    </div>
+  );
+};
+
+/** Lists only the change kinds the scene uses, so the viewer can decode the colours. */
+const Legend: React.FC<{ scene: StateScene }> = ({ scene }) => {
+  const used = new Set<Change>();
+  for (const s of scene.states) if (s.change) used.add(s.change);
+  for (const t of scene.transitions) if (t.change) used.add(t.change);
+  const order: Change[] = ['added', 'removed', 'modified'];
+  return (
+    <div style={{ display: 'flex', gap: 22, fontSize: 19, color: colors.muted, flexShrink: 0, paddingBottom: 6 }}>
+      {order
+        .filter((c) => used.has(c))
+        .map((c) => (
+          <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                background: changeTone[c].bg,
+                border: `1px solid ${changeTone[c].color}88`,
+                color: changeTone[c].color,
+                fontFamily: fonts.mono,
+                fontWeight: 800,
+                fontSize: 19,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {changeTone[c].marker}
+            </span>
+            {changeTone[c].label}
+          </div>
+        ))}
+    </div>
+  );
+};
+
+export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, durationInFrames }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const layout = useMemo(() => layoutState(scene.states, scene.transitions, scene.initial), [scene.states, scene.transitions, scene.initial]);
+  const timeline = useMemo(() => buildTimeline(layout, durationInFrames), [layout, durationInFrames]);
+  const box = contentBox(Boolean(scene.title));
+  const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.25);
+  const draws = layout.transitions.map((_, i) =>
+    interpolate(frame, [timeline.transitionAt(i), timeline.transitionAt(i) + timeline.transitionFrames], [0, 1], clamp),
+  );
+  const entryAppear = spring({ frame: frame - timeline.entryAt, fps, config: { damping: 14, stiffness: 140 } });
+  const entryDraw = interpolate(frame, [timeline.entryAt + 4, timeline.entryAt + 14], [0, 1], clamp);
+
+  return (
+    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.state} title={scene.title} aside={<Legend scene={scene} />}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
+          <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+            {layout.entry ? (
+              <g>
+                <circle cx={layout.entry.dot.x} cy={layout.entry.dot.y} r={12 * entryAppear} fill={colors.text} />
+                <path d={layout.entry.d} fill="none" stroke={colors.text} strokeWidth={3} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - entryDraw} />
+                <path d={arrowHead(layout.entry.tip, layout.entry.dir)} fill={colors.text} opacity={interpolate(entryDraw, [0.8, 1], [0, 1], clamp)} />
+              </g>
+            ) : null}
+            {layout.transitions.map((routed, i) => (
+              <TransitionPath key={i} routed={routed} index={i} draw={draws[i]!} pulse={pulseOf(frame, timeline.pulseAt.get(`t:${i}`))} />
+            ))}
+          </svg>
+          {layout.states.map((placed) => (
+            <StateCard
+              key={placed.state.id}
+              placed={placed}
+              frame={frame}
+              start={timeline.stateAt.get(placed.state.id)!}
+              pulseAt={timeline.pulseAt.get(`s:${placed.state.id}`)}
+            />
+          ))}
+          {layout.transitions.map((routed, i) => (
+            <TransitionLabel key={i} routed={routed} appear={interpolate(draws[i]!, [0.55, 1], [0, 1], clamp)} pulse={pulseOf(frame, timeline.pulseAt.get(`t:${i}`))} />
+          ))}
+        </div>
+      </div>
+    </SceneShell>
+  );
+};
