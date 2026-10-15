@@ -3,10 +3,11 @@
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
-import { checkChart, checkFiles, checkFlowSays, checkRevealSteps, checkSpotlightSteps, checkStateSteps, checkTable, checkTimeline } from './validate-scenes.mjs';
+import { checkArch, checkIcon, checkNodeFields } from './validate-diagram.mjs';
+import { checkFocusSteps } from './validate-focus.mjs';
+import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
-const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
 const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
@@ -433,7 +434,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
     if (s.chapter !== undefined && typeof s.chapter !== 'string') errors.push(`${p}.chapter: must be a string`);
     if (simple) checkReadability(s, p, warnings);
     const words = wordCount(s.narration);
-    if (DIAGRAM_WORDS_LIMITED.includes(s.type) && words > DIAGRAM_WORDS_MAX) warnings.push(`${p}.narration: ${words} words over the ${s.type} diagram; keep it to ${DIAGRAM_WORDS_MAX} so the viewer can take the diagram in, and move the rest to a later scene${s.type === 'sequence' ? ' or into steps' : ''}`);
+    if (DIAGRAM_WORDS_LIMITED.includes(s.type) && words > DIAGRAM_WORDS_MAX) warnings.push(`${p}.narration: ${words} words over the ${s.type} diagram; keep it to ${DIAGRAM_WORDS_MAX} so the viewer can take the diagram in, and move the rest into steps or a later scene`);
 
     switch (s.type) {
       case 'intent':
@@ -443,26 +444,9 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         else if (s.bullets.length > 6) warnings.push(`${p}.bullets: ${s.bullets.length} bullets; more than 6 will be cramped`);
         break;
 
-      case 'arch': {
-        if (!Array.isArray(s.nodes) || s.nodes.length === 0) { errors.push(`${p}.nodes: required non-empty array`); break; }
-        const ids = new Set();
-        s.nodes.forEach((n, j) => {
-          if (!isStr(n?.id)) errors.push(`${p}.nodes[${j}].id: required string`);
-          else if (ids.has(n.id)) errors.push(`${p}.nodes[${j}].id: duplicate id "${n.id}"`);
-          else ids.add(n.id);
-          if (!isStr(n?.label)) errors.push(`${p}.nodes[${j}].label: required string`);
-          if (!KINDS.includes(n?.kind)) errors.push(`${p}.nodes[${j}].kind: must be one of ${KINDS.join(', ')}`);
-          for (const k of ['x', 'y']) if (n && k in n) warnings.push(`${p}.nodes[${j}].${k}: ignored, layout is automatic`);
-        });
-        if (s.nodes.length > 12) warnings.push(`${p}.nodes: ${s.nodes.length} nodes; keep it under ~10 for legibility`);
-        if (!Array.isArray(s.edges)) { errors.push(`${p}.edges: required array (may be empty)`); break; }
-        s.edges.forEach((e, j) => {
-          for (const k of ['from', 'to']) {
-            if (!ids.has(e?.[k])) errors.push(`${p}.edges[${j}].${k}: unknown node id ${JSON.stringify(e?.[k])}`);
-          }
-        });
+      case 'arch':
+        checkArch(s, p, errors, warnings);
         break;
-      }
 
       case 'code': {
         const hunk = isStr(s.hunkId) && hunks && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;
@@ -491,16 +475,15 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (!isStr(st?.actor)) errors.push(`${p}.steps[${j}].actor: required string`);
           if (!isStr(st?.action)) errors.push(`${p}.steps[${j}].action: required string`);
           if (st?.payload !== undefined && typeof st.payload !== 'string') errors.push(`${p}.steps[${j}].payload: must be a string (stringify JSON yourself)`);
+          checkIcon(st?.icon, `${p}.steps[${j}].icon`, errors);
+          if (st?.tone !== undefined && !TONES.includes(st.tone)) errors.push(`${p}.steps[${j}].tone: must be one of ${TONES.join(', ')}`);
         });
         if (s.steps.length > 8) warnings.push(`${p}.steps: ${s.steps.length} steps; consider splitting into two flow scenes`);
         checkFlowSays(s, p, errors);
         break;
 
       case 'sequence': {
-        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) => {
-          if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
-          if (n?.kind !== undefined && !KINDS.includes(n.kind)) errors.push(`${q}.kind: must be one of ${KINDS.join(', ')}`);
-        });
+        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) => checkNodeFields(n, q, errors, warnings));
         if (!ids) break;
         if (ids.size > 6) warnings.push(`${p}.participants: ${ids.size} participants; more than 6 get cramped`);
         if (!Array.isArray(s.messages) || s.messages.length === 0) { errors.push(`${p}.messages: required non-empty array`); break; }
@@ -512,7 +495,6 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (m?.note !== undefined && typeof m.note !== 'string') errors.push(`${q}.note: must be a string`);
         });
         if (s.messages.length > 12) warnings.push(`${p}.messages: ${s.messages.length} messages; consider splitting into two sequence scenes`);
-        checkRevealSteps(s, p, 'messages', s.messages.length, 'message', errors, warnings);
         break;
       }
 
@@ -537,7 +519,6 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (!CARDINALITIES.includes(r?.cardinality)) errors.push(`${q}.cardinality: must be one of ${CARDINALITIES.join(', ')}`);
           if (r?.change !== undefined && !CHANGES.includes(r.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
-        checkSpotlightSteps(s, p, 'entity', errors, warnings, { plural: 'entity ids', one: 'an entity id' }, (id) => ids.has(id));
         break;
       }
 
@@ -557,7 +538,6 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           if (t?.label !== undefined && typeof t.label !== 'string') errors.push(`${q}.label: must be a string`);
           if (t?.change !== undefined && !CHANGES.includes(t.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
-        checkStateSteps(s, p, ids, errors, warnings);
         break;
       }
 
@@ -605,6 +585,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         else diagrams.push({ p, code: s.code });
         break;
     }
+    checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
   });
 
   await checkMermaid(diagrams, errors, warnings);
