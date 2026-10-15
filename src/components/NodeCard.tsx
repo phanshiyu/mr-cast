@@ -30,12 +30,13 @@ function labelTokens(label: string): string[] {
   return label.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=[\s:._/-])/).filter(Boolean);
 }
 
-/** Lines a greedy browser-style wrap of `tokens` takes at `fontSize` in `width`. */
+/** Lines a greedy browser-style wrap of `tokens` takes at `fontSize` in `width`; Infinity when one token alone overflows. */
 function wrappedLines(tokens: readonly string[], fontSize: number, width: number): number {
   let lines = 1;
   let used = 0;
   for (const token of tokens) {
     const w = token.length * SANS_ADVANCE * fontSize;
+    if (token.trimEnd().length * SANS_ADVANCE * fontSize > width) return Infinity;
     const fit = used + token.trimEnd().length * SANS_ADVANCE * fontSize <= width;
     if (used > 0 && !fit) {
       lines += 1;
