@@ -132,17 +132,17 @@ export function formatValidation({ errors, warnings, coverage }, { storyboard, h
   return out;
 }
 
-/** The snippets `explain snippet` just added or refreshed, every line numbered as in its file. */
-export function formatSnippets({ added, hunks, hunksPath, storyboardPath }) {
+/** The snippets `snippet` just added or refreshed, every line numbered as in its file. */
+export function formatSnippets({ added, hunks, hunksPath, storyboardPath, validateCommand }) {
   const out = [];
   for (const h of added) {
     const width = String(h.endLine).length;
     out.push(`  ${h.id} ${h.file} L${h.startLine}-${h.endLine} · ${plural(h.lines.length, 'line')}`);
     for (const l of h.lines) out.push(`    ${String(l.newLine).padStart(width)} ${clip(l.text.replace(/\t/g, '  ').trimEnd(), LINE_WIDTH)}`);
   }
-  const all = Object.values(hunks).map((h) => `${h.id} ${h.file} L${h.startLine}-${h.endLine}`);
+  const all = Object.values(hunks).filter((h) => h.status === 'source').map((h) => `${h.id} ${h.file} L${h.startLine}-${h.endLine}`);
   out.push(`snippets in ${hunksPath}: ${all.join(', ')}`);
-  out.push(`line numbers are the file's own; use them in focusLinesAfter · next: write ${storyboardPath}, then \`mr-cast explain validate\``);
+  out.push(`line numbers are the file's own; use them in steps or focusLinesAfter · next: write ${storyboardPath}, then \`${validateCommand}\``);
   return out.join('\n');
 }
 

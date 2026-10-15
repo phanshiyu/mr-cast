@@ -202,8 +202,10 @@ function checkCoverage(sb, hunks, errors, warnings) {
     if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);
   });
 
+  // A snippet (`mr-cast snippet`) is context the author chose to add, not a change a reviewer must see.
+  const changes = Object.values(hunks).filter((h) => h.status !== 'source');
   const tests = { shown: 0, total: 0 };
-  for (const h of Object.values(hunks)) {
+  for (const h of changes) {
     const isTest = isTestFile(h.file);
     if (isTest) {
       tests.total++;
@@ -217,7 +219,7 @@ function checkCoverage(sb, hunks, errors, warnings) {
   const testsScene = testsScenes.length
     ? { cases: testsScenes.reduce((n, s) => n + s.cases.length, 0), gaps: testsScenes.reduce((n, s) => n + s.gaps.length, 0) }
     : null;
-  return { shown: shown.size, skipped: skipped.size, total: Object.keys(hunks).length, tests, testsScene };
+  return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene };
 }
 
 const DIAGRAM_TYPES = ['arch', 'sequence', 'flow', 'er', 'state', 'mermaid'];
@@ -231,7 +233,8 @@ const NON_LOGIC_LANGUAGES = ['markdown', 'json', 'yaml', 'toml', 'text'];
  */
 function checkStoryShape(scenes, hunks, mode, warnings) {
   const explain = mode === 'explain';
-  const all = Object.values(hunks);
+  // Snippets are unchanged source, so they neither change logic nor count as changed tests.
+  const all = Object.values(hunks).filter((h) => h.status !== 'source');
   const isTestHunk = (id) => Object.hasOwn(hunks, id) && isTestFile(hunks[id].file);
   const logicFiles = [...new Set(all.filter((h) => !isTestFile(h.file) && !NON_LOGIC_LANGUAGES.includes(h.language)).map((h) => h.file))];
   const testHunks = all.filter((h) => isTestFile(h.file)).map((h) => h.id);

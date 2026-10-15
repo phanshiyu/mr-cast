@@ -32,6 +32,10 @@ const USAGE = `usage: mr-cast <command> [options]
       --context    context lines per hunk (default 4)
       --max-lines  changed lines shown per hunk in the index (default 14)
       --all-files  include lockfiles, minified and build output
+  snippet <file> <start>-<end> | <file>:<start>-<end> ...
+                  add real source lines (at most 80 per snippet) beside the diff as code for scenes,
+                  ids s1, s2, ...: callers, definitions, types or config the change depends on;
+                  a later extract keeps them
   validate        check .mr-cast/storyboard.json against hunks.json
   outline         print a short plan of the storyboard (scenes, length, coverage) to show before rendering
   voice [--voice name]
@@ -53,7 +57,7 @@ const USAGE = `usage: mr-cast <command> [options]
                   directory); the slug comes from the title unless --name; prints the directory;
                   reopening one keeps its storyboard unless --reset
   explain snippet <file> <start>-<end> | <file>:<start>-<end> ...
-                  add real source lines (at most 80 per snippet) as code for scenes, ids s1, s2, ...
+                  add real source lines as code for scenes, like snippet above
   explain validate | outline | voice | play | render | still
                   the commands above, on the explanation's directory
       every explain command takes --name <slug> (default: the most recent init) or --dir <path>
@@ -172,9 +176,13 @@ function extract(argv) {
 
   let previous = null;
   try { previous = JSON.parse(fs.readFileSync(hunksPath, 'utf8')); } catch { /* first run or unreadable */ }
+  // Snippets (`mr-cast snippet`) are context the author added beside the diff, so a new diff keeps them.
+  const snippets = Object.values(previous ?? {}).filter((h) => h?.status === 'source' && typeof h.id === 'string');
+
+  const written = { ...hunks, ...Object.fromEntries(snippets.map((h) => [h.id, h])) };
 
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(hunksPath, `${JSON.stringify(hunks, null, 2)}\n`);
+  fs.writeFileSync(hunksPath, `${JSON.stringify(written, null, 2)}\n`);
   fs.writeFileSync(path.join(dir, 'meta.json'), `${JSON.stringify({
     base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
     head: 'HEAD', headSha: diff.headSha, branch: diff.branch,
@@ -182,8 +190,9 @@ function extract(argv) {
     files, skipped: diff.skipped,
   }, null, 2)}\n`);
 
+  if (snippets.length) console.error(`note: kept ${snippets.length} snippet${snippets.length === 1 ? '' : 's'} (${snippets.map((h) => h.id).join(', ')}) from the last extract; rerun \`mr-cast snippet${nameArg}\` on one to reread its lines`);
   if (fs.existsSync(storyboardPath)) {
-    const changed = previous ? changedHunkIds(previous, hunks) : null;
+    const changed = previous ? changedHunkIds(previous, written) : null;
     if (!changed) console.error(`note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate${nameArg}\``);
     else if (changed.length) console.error(`note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate${nameArg}\``);
   }
@@ -423,12 +432,14 @@ function explainInit(argv) {
   console.error(`next: \`mr-cast explain snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast explain validate\``);
 }
 
-function explainSnippet(argv, resolveRun) {
+/** Adds snippets of unchanged source to a run's hunks.json: the code of an explanation, or context beside a diff. */
+function snippet(argv, resolveRun) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
-  const { dir } = resolveRun(values);
-  if (readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} is not an explanation directory; run \`mr-cast explain init${values.dir ? ' --dir <path>' : ''}\` first`);
+  const { dir, name } = resolveRun(values);
+  const explain = readMode(dir) === 'explain';
+  const nameArg = name ? ` --name ${name}` : values.dir ? ` --dir ${values.dir}` : '';
   const hunksPath = path.join(dir, 'hunks.json');
-  const hunks = readJson(hunksPath, 'run `mr-cast explain init` first');
+  const hunks = readJson(hunksPath, explain ? 'run `mr-cast explain init` first' : `run \`mr-cast extract${nameArg}\` first, then add snippets beside its hunks`);
   // Paths are shown relative to the repository (or the current directory outside one), as a diff shows them.
   const base = findRepoRoot() ?? process.cwd();
   const added = parseSnippetArgs(positionals).map((spec) => {
@@ -449,10 +460,13 @@ function explainSnippet(argv, resolveRun) {
     return hunk;
   });
   writeJson(hunksPath, hunks);
-  console.log(formatSnippets({ added, hunks, hunksPath: rel(hunksPath), storyboardPath: rel(path.join(dir, 'storyboard.json')) }));
+  console.log(formatSnippets({
+    added, hunks, hunksPath: rel(hunksPath), storyboardPath: rel(path.join(dir, 'storyboard.json')),
+    validateCommand: `mr-cast ${explain ? 'explain ' : ''}validate${nameArg}`,
+  }));
 }
 
-const EXPLAIN_COMMANDS = { init: explainInit, snippet: explainSnippet, validate, outline, voice, play, render, still };
+const EXPLAIN_COMMANDS = { init: explainInit, snippet, validate, outline, voice, play, render, still };
 
 async function explain([sub, ...rest]) {
   const run = EXPLAIN_COMMANDS[sub];
@@ -483,7 +497,7 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
+const COMMANDS = { extract, snippet, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);

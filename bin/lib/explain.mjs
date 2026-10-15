@@ -1,5 +1,5 @@
-// Explain mode: snippets of unchanged source files stand in for diff hunks, so the same scenes can
-// walk through an explanation instead of a change.
+// Snippets: ranges of unchanged source files as hunks, so code scenes can show the code of an
+// explanation, or the callers, definitions and config a diff depends on.
 import { detectLanguage } from './diff.mjs';
 import { UserError } from './errors.mjs';
 
@@ -20,7 +20,7 @@ function toRange(file, a, b = a) {
 
 /** `file:12-30`, `file:12`, or `file 12-30` arguments, in order, as { file, start, end }. */
 export function parseSnippetArgs(args) {
-  if (args.length === 0) throw new UserError('explain snippet needs at least one <file> <start>-<end> or <file>:<start>-<end>');
+  if (args.length === 0) throw new UserError('snippet needs at least one <file> <start>-<end> or <file>:<start>-<end>');
   const out = [];
   for (let i = 0; i < args.length; i++) {
     const range = args[i + 1]?.match(RANGE);
