@@ -53,8 +53,9 @@ const USAGE = `usage: mr-cast <command> [options]
                   the commands above, on the explanation's directory
       every explain command takes --name <slug> (default: the most recent init) or --dir <path>
 
-  install-skill   install the mr-video and explain-in-animation Claude Code skills and the
-                  /mr-cast, /mr-render and /explain-in-animation commands into ~/.claude
+  install-skill   install the mr-cast-review and mr-cast-explain Claude Code skills and the
+                  /mr-cast-render and /mr-cast-explain-render commands into ~/.claude, and remove
+                  the mr-video and explain-in-animation skills and commands earlier versions installed
   version         print the mr-cast and Node versions (also --version, -v)
   help            show this message`;
 
@@ -353,7 +354,10 @@ async function outline(argv, resolveRun) {
 
 function installSkillCommand(argv) {
   parseArgs({ args: argv, options: {} });
-  for (const file of installSkill(ROOT)) console.log(`wrote ${file}`);
+  const { written, removed, kept } = installSkill(ROOT);
+  for (const file of written) console.log(`wrote ${file}`);
+  for (const file of removed) console.log(`removed ${file} (installed by an earlier mr-cast under an old name)`);
+  for (const file of kept) console.error(`note: kept ${file}; it has an old mr-cast name but mr-cast did not write it`);
 }
 
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);

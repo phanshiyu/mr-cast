@@ -1,9 +1,9 @@
 ---
-name: mr-video
-description: Turn the current git branch or merge request diff into an animated video walkthrough explaining architecture, flows, and code changes.
+name: mr-cast-review
+description: Turn the current git branch or merge request diff into an animated video walkthrough explaining architecture, flows, and code changes, for review. Use when the user asks for a video, walkthrough, or animation of a branch, pull request, or merge request.
 ---
 
-# MR video
+# mr-cast review
 
 Make an animated walkthrough of the current branch's diff with mr-cast. You write a storyboard JSON. mr-cast renders it in a browser player or as an MP4.
 
@@ -19,9 +19,13 @@ The CLI is `{{MR_CAST}}/bin/mr-cast`. Run every command from inside the user's r
 - Add `--working` when the changes are uncommitted or the user is still on the base branch.
 - For a PR or MR number that isn't checked out, check it out first with `gh pr checkout <n>` or `glab mr checkout <n>`.
 
+- Several walkthroughs can coexist in one repository, such as one per branch, or one rendering while you write the next. Pass `--name <slug>` (lowercase letters, digits and dashes) to `extract` and to every later command. Its files then live in `.mr-cast/<slug>/` instead of `.mr-cast/`.
+
 The output is a hunk index: each file, its hunk ids (`h1`, `h2`, ...), and the changed lines with their line numbers. Full hunks go to `.mr-cast/hunks.json`. Don't read that file. Read the source files instead when a change needs more context to explain.
 
 ## 2. Write `.mr-cast/storyboard.json`
+
+With `--name <slug>`, write `.mr-cast/<slug>/storyboard.json` instead.
 
 The JSON must match this TypeScript schema exactly.
 
@@ -72,7 +76,19 @@ The viewer is a reviewer who has not read the diff. A good walkthrough lets them
 - Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds.
 - Let the change set the length. Cover every hunk and behavior a reviewer needs to judge the change, and cut only what is genuinely trivial. Even a small change needs an overview, a diagram, its code, and its tests. A large one can run several minutes. List each deliberate omission in `skipped` with its reason. Give each scene a short `chapter` title.
 
-## 3. Show it
+## 3. Check the plan with the user
+
+Print the plan of the walkthrough.
+
+```bash
+{{MR_CAST}}/bin/mr-cast outline
+```
+
+Show the user the outline as it prints, with at most one sentence of your own. Ask whether to go ahead or what to change, then wait for the answer. Apply the changes they ask for and rerun `validate`. If the changes were substantial, show the new outline and ask again. Continue once they approve.
+
+If the user's request already said to just render, or not to ask, skip the question and go straight to the next step.
+
+## 4. Show it
 
 Start the player as a background command so it keeps running.
 
@@ -89,6 +105,6 @@ If the voice model cannot load, the command prints a warning and continues witho
 
 It prints `mr-cast player: http://127.0.0.1:<port>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player reloads when `storyboard.json` changes, after it voices any changed narration, so edit and revalidate to iterate while it runs.
 
-If the user asked for a video file, run `{{MR_CAST}}/bin/mr-cast render` (add `--out <path>` to choose the location). It writes `.mr-cast/walkthrough.mp4`. The first render downloads a headless Chrome and takes a few minutes.
+If the user asked for a video file, run `{{MR_CAST}}/bin/mr-cast render` (add `--out <path>` to choose the location). It writes the MP4 into the data directory, named after the storyboard title, such as `.mr-cast/rate-limiting-for-the-orders-api.mp4`, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different `--name` runs can run at the same time.
 
 To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast still [sceneIndex...]` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a large hunk.

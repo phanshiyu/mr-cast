@@ -1,9 +1,9 @@
 ---
-name: explain-in-animation
-description: Turn what you just explained (a system, a flow, a bug, a design) into an animated video walkthrough with diagrams and real code. Use when the user asks to animate, visualize, or make a video of an explanation, such as "animate that", "show me", or "make a video of this".
+name: mr-cast-explain
+description: Turn what you just explained (a system, a flow, a bug, a design) into an animated walkthrough with diagrams and real code. Use when the user asks to animate, visualize, or make a video of an explanation, such as "animate that", "show me", or "make a video of this".
 ---
 
-# Explain in animation
+# mr-cast explain
 
 You have just explained something in this conversation, such as how a subsystem works, why a bug happens, or how a design fits together. Now turn that explanation into an animated walkthrough with mr-cast. You write a storyboard JSON with diagrams and real code snippets. mr-cast plays it in a browser player or renders it as an MP4.
 
@@ -14,12 +14,14 @@ The CLI is `{{MR_CAST}}/bin/mr-cast`. Run every command from the directory your 
 ## 1. Start the explanation
 
 ```bash
-{{MR_CAST}}/bin/mr-cast explain init
+{{MR_CAST}}/bin/mr-cast explain init --title "How the rate limiter works"
 ```
 
-It prints the data directory, `.mr-cast/explain` in the git repository (or in the current directory outside one). Every `explain` command uses that directory. Pass `--dir <path>` to each of them to use another one.
+Give a short title for what you explained. Each explanation gets its own data directory, `.mr-cast/explain/<slug>` in the git repository (or in the current directory outside one), where the slug comes from the title. `init` prints the directory and the slug.
 
-`init` keeps an existing storyboard and its snippets, and says so. When they belong to an earlier, different explanation, run `explain init --reset` to start clean.
+Later `explain` commands use the most recently started explanation and name it on stderr. Several explanations can coexist. Pass `--name <slug>` to any `explain` command to work on another one, or to `init` to choose the slug yourself. `--dir <path>` uses any directory instead.
+
+Running `init` again with the same title reopens that explanation and keeps its storyboard and snippets, and says so. Add `--reset` to start it over. A different title starts a new explanation.
 
 ## 2. Add the code worth showing
 
@@ -82,7 +84,19 @@ The viewer is someone who did not read your explanation. A good walkthrough lets
 - Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds.
 - Let the explanation set the length. Cover every point a viewer needs, and cut only what is genuinely trivial. Give each scene a short `chapter` title.
 
-## 4. Show it
+## 4. Check the plan with the user
+
+Print the plan of the walkthrough.
+
+```bash
+{{MR_CAST}}/bin/mr-cast explain outline
+```
+
+Show the user the outline as it prints, with at most one sentence of your own. Ask whether to go ahead or what to change, then wait for the answer. Apply the changes they ask for and rerun `explain validate`. If the changes were substantial, show the new outline and ask again. Continue once they approve.
+
+If the user's request already said to just render, or not to ask, skip the question and go straight to the next step.
+
+## 5. Show it
 
 Start the player as a background command so it keeps running.
 
@@ -99,6 +113,6 @@ If the voice model cannot load, the command prints a warning and continues witho
 
 It prints `mr-cast player: http://127.0.0.1:<port>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player reloads when `storyboard.json` changes, after it voices any changed narration, so edit and revalidate to iterate while it runs.
 
-If the user asked for a video file, run `{{MR_CAST}}/bin/mr-cast explain render` instead (add `--out <path>` to choose the location). It writes `walkthrough.mp4` in the data directory. The first render downloads a headless Chrome and takes a few minutes.
+If the user asked for a video file, run `{{MR_CAST}}/bin/mr-cast explain render` instead (add `--out <path>` to choose the location). It writes the MP4 into the explanation's directory, named after the storyboard title, such as `how-the-rate-limiter-works.mp4`, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes.
 
 To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast explain still [sceneIndex...]` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a long snippet.

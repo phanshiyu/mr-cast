@@ -1,9 +1,14 @@
-// Installs the mr-video and explain-in-animation skills and their slash commands into the Claude
-// config dir, pointing at this install. The storyboard schema is copied from src/types.ts so the
-// skills cannot drift from the player.
+// Installs the mr-cast-review and mr-cast-explain skills and their render commands into the Claude
+// config dir, pointing at this install, and removes what mr-cast 0.5 and earlier installed under older
+// names. The storyboard schema is copied from src/types.ts so the skills cannot drift from the player.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+/** What earlier versions installed, relative to the Claude config dir. */
+const LEGACY = ['skills/mr-video', 'skills/explain-in-animation', 'commands/mr-cast.md', 'commands/mr-render.md', 'commands/explain-in-animation.md'];
+/** Text every legacy file contained: the CLI path (skills) or the legacy skill path (commands). */
+const LEGACY_MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md'];
 
 function storyboardTypes(root) {
   const types = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
@@ -21,6 +26,38 @@ argument-hint: ${argumentHint}
 Follow the skill at ${skillPath}. Read it in full first. ${body}
 `;
 
+const fromMrCast = (file) => {
+  try {
+    const text = fs.readFileSync(file, 'utf8');
+    return LEGACY_MARKERS.some((m) => text.includes(m));
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Deletes each legacy file or skill directory whose content shows mr-cast wrote it. A skill directory
+ * holding anything besides SKILL.md keeps the extra files. Returns { removed, kept } paths.
+ */
+function removeLegacy(claudeDir) {
+  const removed = [];
+  const kept = [];
+  for (const rel of LEGACY) {
+    const target = path.join(claudeDir, rel);
+    if (!fs.existsSync(target)) continue;
+    const isDir = fs.statSync(target).isDirectory();
+    const file = isDir ? path.join(target, 'SKILL.md') : target;
+    if (!fromMrCast(file)) {
+      kept.push(target);
+      continue;
+    }
+    fs.rmSync(file);
+    removed.push(file);
+    if (isDir && fs.readdirSync(target).length === 0) fs.rmdirSync(target);
+  }
+  return { removed, kept };
+}
+
 export function installSkill(root, claudeDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude')) {
   const schema = storyboardTypes(root);
   const fill = (template) => fs
@@ -28,40 +65,37 @@ export function installSkill(root, claudeDir = process.env.CLAUDE_CONFIG_DIR ?? 
     .replaceAll('{{MR_CAST}}', () => root)
     .replace('{{STORYBOARD_TYPES}}', () => schema);
 
-  const mrVideo = path.join(claudeDir, 'skills/mr-video/SKILL.md');
-  const explain = path.join(claudeDir, 'skills/explain-in-animation/SKILL.md');
-  const diffCommand = (description, outcome) => command({
-    description,
-    argumentHint: '[base-branch | --working]',
-    skillPath: mrVideo,
-    body: `${outcome}\n\nArguments for \`mr-cast extract\`: $ARGUMENTS`,
-  });
+  const review = path.join(claudeDir, 'skills/mr-cast-review/SKILL.md');
+  const explain = path.join(claudeDir, 'skills/mr-cast-explain/SKILL.md');
+  const rendered = 'The MP4 is named after the walkthrough\'s title. Give the user the path `render` prints.';
 
   const targets = [
-    // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-video skill (quality/variant.sh).
-    [mrVideo, fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-video/SKILL.md'))],
-    [explain, fill(path.join(root, 'skill/explain-in-animation/SKILL.md'))],
+    // MR_CAST_SKILL_TEMPLATE swaps in a variant of the review skill (quality/variant.sh).
+    [review, fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-cast-review/SKILL.md'))],
+    [explain, fill(path.join(root, 'skill/mr-cast-explain/SKILL.md'))],
     [
-      path.join(claudeDir, 'commands/mr-cast.md'),
-      diffCommand("Open an animated walkthrough of the current branch's diff in the browser (mr-cast)", 'In step 3, start the player.'),
-    ],
-    [
-      path.join(claudeDir, 'commands/mr-render.md'),
-      diffCommand("Render an MP4 walkthrough video of the current branch's diff (mr-cast)", 'In step 3, run `render` instead of `play`, then give the user the path of the MP4 it prints.'),
-    ],
-    [
-      path.join(claudeDir, 'commands/explain-in-animation.md'),
+      path.join(claudeDir, 'commands/mr-cast-render.md'),
       command({
-        description: 'Turn what you just explained into an animated walkthrough with diagrams and real code (mr-cast)',
-        argumentHint: '[mp4 | render]',
+        description: "Render an MP4 walkthrough video of the current branch's diff (mr-cast)",
+        argumentHint: '[base-branch | --working]',
+        skillPath: review,
+        body: `In step 4, run \`render\` instead of \`play\`. ${rendered}\n\nArguments for \`mr-cast extract\`: $ARGUMENTS`,
+      }),
+    ],
+    [
+      path.join(claudeDir, 'commands/mr-cast-explain-render.md'),
+      command({
+        description: 'Render what you just explained as an MP4 walkthrough with diagrams and real code (mr-cast)',
+        argumentHint: '[what to focus on]',
         skillPath: explain,
-        body: 'Animate the explanation you gave most recently in this conversation. In step 4, start the player, or when the arguments below say "mp4" or "render", run `explain render` instead and give the user the path of the MP4 it prints.\n\nArguments: $ARGUMENTS',
+        body: `Animate the explanation you gave most recently in this conversation. In step 5, run \`explain render\` instead of \`explain play\`. ${rendered}\n\nArguments: $ARGUMENTS`,
       }),
     ],
   ];
+  const legacy = removeLegacy(claudeDir);
   for (const [file, content] of targets) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, content);
   }
-  return targets.map(([file]) => file);
+  return { written: targets.map(([file]) => file), ...legacy };
 }
