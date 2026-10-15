@@ -100,7 +100,7 @@
       "narration": "Five settings change with the new lifecycle.",
       "columns": ["Setting", "Value", "What it controls"],
       "rows": [
-        { "cells": ["ORDER_INITIAL_STATUS", { "before": "paid", "after": "pending" }, "Status createOrder gives a new order"] },
+        { "cells": ["ORDER_INITIAL_STATUS", { "before": "paid", "after": "pending" }, "Status `createOrder` gives a new order"] },
         { "cells": ["PAYMENT_TIMEOUT", "24h", "How long an order may stay unpaid before the timeout job cancels it"], "change": "added" },
         { "cells": ["TIMEOUT_SWEEP_INTERVAL", "5 min", "How often the timeout job looks for expired orders"], "change": "added" },
         { "cells": ["MAX_PAYMENT_RETRIES", { "before": "0", "after": "3" }, "Declined charges retried before the order stays pending"] },
@@ -186,7 +186,7 @@
       "cases": [
         {"name": "creates new orders as pending", "proves": "A new order starts as pending instead of paid"},
         {"name": "pay moves a pending order to paid", "proves": "A successful charge sets the status to paid and records the payment id", "hunkId": "h15"},
-        {"name": "a failed charge keeps the order pending", "proves": "A declined card leaves the order pending so the customer can retry"},
+        {"name": "a failed charge keeps the order pending", "proves": "A declined card leaves the order ==pending== so the customer can retry"},
         {"name": "cancels orders unpaid after 24 hours", "proves": "The timeout job cancels pending orders older than a day and leaves paid ones alone", "status": "modified", "hunkId": "h16"},
         {"name": "ship moves a paid order to shipped", "proves": "The shipping transition is unchanged", "status": "existing"},
         {"name": "refunds a delivered order", "proves": "Delivered orders could move to refunded, a state that no longer exists", "status": "removed"}

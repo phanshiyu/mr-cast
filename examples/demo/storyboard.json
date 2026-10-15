@@ -9,8 +9,8 @@
       "summary": "Add Redis-backed rate limiting to POST /orders and publish order.created events.",
       "risk": "medium",
       "bullets": [
-        "A Redis outage now fails every order request, because the limiter has no fallback",
-        "publish runs after the insert, so a queue outage returns an error for an order that was saved",
+        "A Redis outage now **fails every order request**, because the limiter has no fallback",
+        "`publish` runs after the insert, so a queue outage returns an error for an order that was saved",
         "No tests cover the limiter, the pricing lookup, or the new event"
       ]
     },
@@ -433,7 +433,7 @@
       "cases": [],
       "gaps": [
         "The twenty first request in a minute from one IP gets 429 with a Retry-After header",
-        "When Redis is down the limiter throws, so every order request fails",
+        "When Redis is down the limiter throws, so every order request [fails]{bad}",
         "When the queue is down after the insert, the client gets an error for an order that was saved",
         "Empty orders are rejected and totals use prices from the pricing service"
       ]
