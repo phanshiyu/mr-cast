@@ -16,7 +16,7 @@ const START = 10;
 /** Frames an event takes to rise in after the playhead reaches it. */
 const RISE_FRAMES = 14;
 /** Frames the playhead takes to move to a step's events. */
-const TRAVEL_FRAMES = 12;
+const TRAVEL_FRAMES = 8;
 
 /**
  * The playhead's keyframes, as frames and x positions. Without steps it sweeps every event and span
@@ -60,13 +60,18 @@ function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, segments: r
     }
     return times[times.length - 1]!;
   };
-  // An event at the playhead's start still waits for its step.
+  // A step's events rise while the playhead travels to them, so they are up before the voice names
+  // them; an event at the playhead's start still waits for its step.
   const lasts = (scene.steps ?? []).map((step) => indexRange(step.events)?.[1] ?? 0);
+  const stepped = lasts.length > 0 && segments.length > 1;
   const stepFrom = revealStarts(segments, scene.events.length, lasts, 0, 0, 0);
   return {
     playX: (frame: number) => interpolate(frame, times, xs, clamp),
     reachedAt,
-    eventAt: (index: number) => Math.max(reachedAt(scene.events[index]!.at), stepFrom[index]!),
+    eventAt: (index: number) => {
+      const reached = reachedAt(scene.events[index]!.at);
+      return stepped ? Math.max(stepFrom[index]!, reached - TRAVEL_FRAMES / 2) : reached;
+    },
     last: times[times.length - 1]!,
   };
 }
