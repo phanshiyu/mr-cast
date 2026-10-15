@@ -102,6 +102,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
   const review = path.join(claudeDir, 'skills/mr-cast-review/SKILL.md');
   const explain = path.join(claudeDir, 'skills/mr-cast-explain/SKILL.md');
   const rendered = 'The MP4 is named after the walkthrough\'s title. Give the user the path `render` prints.';
+  const asks = (step) => `Ask the questions in step ${step} that the arguments and the request leave open, and check the plan before rendering, as the skill says.`;
 
   const targets = [
     // MR_CAST_SKILL_TEMPLATE swaps in a variant of the review skill (quality/variant.sh).
@@ -113,18 +114,18 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
       path.join(claudeDir, 'commands/mr-cast-render.md'),
       command({
         description: "Render an MP4 walkthrough video of the current branch's diff (mr-cast)",
-        argumentHint: '[base-branch | --working | --simple]',
+        argumentHint: '[base-branch | --working | --simple | --pace slower|faster | --no-voice]',
         skillPath: review,
-        body: `In step 4, run \`render\` instead of \`play\`. ${rendered}\n\nArguments for \`mr-cast extract\`: $ARGUMENTS`,
+        body: `${asks(2)} In step 5, run \`render\` instead of \`play\`. ${rendered}\n\nArguments: $ARGUMENTS\n\nPass a base branch, \`--working\` and \`--simple\` to \`mr-cast extract\`, and \`--pace\` and \`--no-voice\` to the later commands as step 2 says.`,
       }),
     ],
     [
       path.join(claudeDir, 'commands/mr-cast-explain-render.md'),
       command({
         description: 'Render what you just explained as an MP4 walkthrough with diagrams and real code (mr-cast)',
-        argumentHint: '[what to focus on | --simple]',
+        argumentHint: '[what to focus on | --simple | --pace slower|faster | --no-voice]',
         skillPath: explain,
-        body: `Animate the explanation you gave most recently in this conversation. In step 5, run \`explain render\` instead of \`explain play\`. ${rendered}\n\nArguments: $ARGUMENTS`,
+        body: `Animate the explanation you gave most recently in this conversation. ${asks(1)} In step 6, run \`explain render\` instead of \`explain play\`. ${rendered}\n\nArguments: $ARGUMENTS\n\nPass \`--simple\` to \`mr-cast explain init\`, and \`--pace\` and \`--no-voice\` to the later commands as step 1 says. Other words say what to focus on.`,
       }),
     ],
   ];

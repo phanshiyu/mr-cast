@@ -33,7 +33,38 @@ When unchanged code is needed to understand the change, such as the function tha
 
 A snippet gets an id (`s1`, `s2`, ...) and its lines keep the file's own numbers. Show it in a `code` scene like a hunk. Snippets do not count toward coverage, and a later `extract` keeps them. Add only code you will show.
 
-## 2. Write `.mr-cast/storyboard.json`
+## 2. Ask what the video is for
+
+Read the hunk index so you can name the areas of the change. Then ask the user with one `AskUserQuestion` call, before you write any scenes.
+
+Ask only what the request leaves open. Skip a question when the user already answered it, such as "a simple video" (audience), "slowly" (pace), "focus on the migration" (focus), or `--simple`, `--pace` or `--no-voice` among the arguments. A request for a quick or short video answers the audience with the quick overview. Skip the call entirely when the user said to just render it, or when nothing is left open. Say in one line which choice you used for each question you skipped.
+
+Every question is multiple choice. Put the recommended option first and end its label with "(Recommended)", so the user can accept every default by pressing enter.
+
+1. Header "Audience", question "Who is this video for?"
+   - "A reviewer of this change (Recommended)". Description: "Diagrams, then each change and its tests. Assumes they know the codebase."
+   - "Someone new to this code". Description: "Walks the changed lines one at a time in plain words, after the code around them. Good for a second-language reader. Longer."
+   - "A quick overview for the team". Description: "Diagrams and behavior, with very little code. Usually under 3 minutes."
+2. Header "Focus", `multiSelect: true`, question "Anything to go deeper on? Everything is still covered."
+   - First "All areas equally (Recommended)". Description: "Weigh each area by what a reviewer needs."
+   - Then up to 3 options, each an area of this change in a few concrete words, such as "Rate limiter (Redis counter, 429)". Group small areas so the options cover the change. When the change has tests, one of the 3 can be "Walk through the test code", with the description "Step through each test's setup and assertions."
+3. Header "Pace", question "How should it sound?"
+   - "Normal pace (Recommended)". Description: "About 130 words a minute, with pauses between steps."
+   - "Slower". Description: "A slower voice and longer pauses. Good for new readers or a second language."
+   - "Faster". Description: "A quicker voice and shorter pauses."
+   - "No voice, subtitles only". Description: "A silent video, timed for reading."
+
+   When you already know the audience is someone new to this code, list "Slower (Recommended)" first and "Normal pace" second.
+
+Also decide here whether the user wants the browser player or an MP4. They want an MP4 when they ask for a video file, an MP4 or a render, or ran a render command. Otherwise start the player.
+
+Apply the answers:
+
+- Audience. A reviewer gets the walkthrough described below. Someone new gets simple mode. Rerun `extract` with `--simple` and the same base and options, then follow [Simple mode](#simple-mode). A quick overview gets [Overview mode](#overview-mode).
+- Focus. Give each picked area more depth, such as code steps on its key lines, its own diagram, and its edge cases. Still cover every other area, briefly. With nothing picked, or only "All areas equally", weigh each area by what a reviewer needs.
+- Pace. Pass `--pace normal`, `--pace slower` or `--pace faster` to every later `validate`, `outline`, `play` and `render`. Later runs keep the last pace, so pass normal too. For "No voice, subtitles only", pass `--no-voice` to `play` and `render` as well.
+
+## 3. Write `.mr-cast/storyboard.json`
 
 With `--name <slug>`, write `.mr-cast/<slug>/storyboard.json` instead.
 
@@ -64,14 +95,14 @@ The viewer is a reviewer who has not read the diff. A good walkthrough lets them
 - Plan before you write scenes. Decide the problem this change solves, the one to three things a reviewer must check (risks, questionable choices, missing cases), the key behaviors ("when X happens, Y happens"), and which tests prove each behavior. Every scene must serve one of these.
 - Order the video top-down. Start with the overview, then high-level diagrams of the system and of the change, then the code, then the tests. Put all the high-level diagrams (`arch`, `sequence`, `flow`, `er`, `state`, `mermaid`) before the first code scene, and never go back to a diagram scene once the code starts. A code scene may still carry a `flow` step diagram beside its code. The reviewer should know where each piece fits before they see its code.
 - Open with one `intent` scene. The narration says what problem the change solves and what it does about it. The bullets are the review concerns from your plan: at most three, one short line each, concrete enough to act on ("a crash after claiming leaves the delivery stuck forever"), not a list of features. State the risk honestly. `high` means data migrations, auth, money, or public API breaks.
-- When the change touches more than two files, add a `files` scene right after the intent. Leave out `files` and it lists every changed file from the diff as a tree, with line counts and tests marked. Give the files the narration names a short `notes` entry each, under 60 characters, and the scene spotlights them in order.
+- When the change touches more than two files, add a `files` scene right after the intent. Leave out `files` and it lists every changed file from the diff as a tree, with line counts and tests marked. Give the files the narration names a short `notes` entry each, under 60 characters, and the scene spotlights them in order. To name the files one at a time, give the scene `steps` instead, each a `path` and the words to `say`, and the file lights just before its words.
 - Follow the intent with diagrams. Begin with an `arch` scene of the components the change touches and how they connect. Then diagram the change itself. Whenever a behavior can be shown as a diagram, draw it in the diagram section, then show the code that implements it later. A change with four or more code scenes usually needs at least two diagrams, such as a `sequence` for a call chain and a `state` for a lifecycle. Component interactions, call order, a lifecycle, a schema, and data moving through steps all belong in diagrams.
 - Use a `flow` scene when the change alters how a request or data moves. Each step names a real actor (function, service, component) and shows the payload as it looks after that step. Use 3 to 7 steps.
 - Use a `sequence` scene when the order of calls between components matters, such as a new hop, a call moved before or after another, async work, or retries. List messages in time order, use `return` for responses and `async` for fire-and-forget, and mark only the participants and messages this change adds or alters as `modified`. Use a self-message (`from` equal to `to`) for significant internal work. Keep it to 6 participants and 12 messages. Prefer `flow` when the data's shape is the story, and `sequence` when who calls whom is.
 - Use an `er` scene when the diff changes a schema, such as migrations, ORM models, or table definitions. Read the migration or model files, and show each changed table plus its directly related tables. List keys and the fields the change touches, and mark each with `change` (`added`, `removed` or `modified`). Show the migration hunk in a `code` scene later, in the code section.
 - Use a `state` scene when the change touches a lifecycle or status machine, such as a new status, a removed or new transition, or a changed guard. Find the states in enums, status columns, or reducers. Set `initial` to the starting state, mark terminal states `final`, label each transition with its event or guard, and mark what the change added, removed or modified. Keep it to 10 states.
 - Use a `mermaid` scene only for a diagram no other scene covers, such as a class diagram, gantt chart, git graph, or pie chart. Prefer `arch`, `sequence`, `er`, `state`, and `flow`, because they highlight what the change touched and Mermaid cannot. Keep Mermaid diagrams small, about 12 nodes or fewer, so the text stays readable. `validate` checks Mermaid syntax, but run `mr-cast still <sceneIndex>` on each mermaid scene to confirm it renders and fits.
-- Use a `table` scene for facts that line up in rows, such as config or env changes, API parameters, error codes, or a decision matrix. Mark added and removed rows with `change`. Write a changed value as `{ "before": "0", "after": "3" }`, and the scene strikes the old value beside the new one. List row indexes in `highlight` in the order the narration names them. Keep it to 10 rows and 6 columns, and put it before the code with the diagrams.
+- Use a `table` scene for facts that line up in rows, such as config or env changes, API parameters, error codes, or a decision matrix. Mark added and removed rows with `change`. Write a changed value as `{ "before": "0", "after": "3" }`, and the scene strikes the old value beside the new one. List row indexes in `highlight` in the order the narration names them, or give the scene `steps`, each a `row` and the words to `say`, so each row lights just before its words. Keep it to 10 rows and 6 columns, and put it before the code with the diagrams.
 - Use a `chart` scene when the change moves a number, such as latency, bundle size, memory, a count, or a limit. Use `bar` for categories like p50, p95 and p99, and `line` for a trend over time or load. Give two series named `before` and `after` to get a change badge on each label, and set `better` to `lower` or `higher` so the badges read green or red. Use real measured or documented values, never invented ones. Set `annotation` on the one point the narration explains.
 - Use a `timeline` scene when timing is the story, such as retries and backoff, timeouts, expiry windows, a cron schedule, or a rollout plan. Place each event at its real time in one `unit`, and draw waits and windows as `spans`. Keep it to 8 events and 4 spans.
 - Show one idea per code scene. A `code` scene covers one change, and the narration explains exactly the lines highlighted. When a hunk mixes several changes, split them into separate scenes. The `calloutText` must be about the code on screen, never a concern from elsewhere.
@@ -86,20 +117,20 @@ The viewer is a reviewer who has not read the diff. A good walkthrough lets them
 - In the same `tests` scene, list in `gaps` the important behaviors this change introduces that no test covers, such as error paths, limits, concurrency, and a failing dependency. Check each key behavior from your plan against the tests. Leave `gaps` empty only when every one has a test.
 - After the `tests` scene, add `code` scenes on the key test hunks. Focus on the inputs that set up each case and the assertions that check it, not on setup boilerplate. Narrate which scenario each test proves.
 - When the change has no tests, still add a `tests` scene, with `cases: []` and the untested behaviors in `gaps`. The video then says plainly that the change ships without tests and what that leaves unverified.
-- Write narration to be spoken aloud, 15 to 50 words per scene. A text-to-speech voice reads it, so use short sentences and plain words.
+- Write narration to be spoken aloud, 15 to 50 words per scene, and at most 35 over an `arch` or `sequence` diagram, where the viewer learns the names the rest of the video uses. A text-to-speech voice reads it, so use short sentences and plain words.
 - Spell out symbols and code the way a person would say them: "the create order function", not `createOrder()`, and "four twenty-nine" or "too many requests", not `429`. Avoid markdown, slashes, arrows, and abbreviations the voice could misread.
 - Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds.
-- Let the change set the length. Cover every hunk and behavior a reviewer needs to judge the change, and cut only what is genuinely trivial. Even a small change needs an overview, a diagram, its code, and its tests. A large one can run several minutes. List each deliberate omission in `skipped` with its reason. Give each scene a short `chapter` title.
+- Let the change set the length. If the user asks for a shorter or longer video, cut or add detail, not coverage. Cover every hunk and behavior a reviewer needs to judge the change, and cut only what is genuinely trivial. Even a small change needs an overview, a diagram, its code, and its tests. A large one can run several minutes. List each deliberate omission in `skipped` with its reason. Give each scene a short `chapter` title.
 
 ### Simple mode
 
-Use simple mode when the user asks for it. The triggers are phrases like "explain like I'm stupid", "ELI5", "simple", "line by line", "for a non-native speaker", "I'm new to this", or `--simple` among the arguments. Pass `--simple` to `extract`. It records the style in `meta.json`, and `validate` and `outline` then say `simple style` and check the rules below.
+Use simple mode when the user picks "Someone new to this code", or asks for it with phrases like "explain like I'm stupid", "ELI5", "simple", "line by line", "for a non-native speaker", "I'm new to this", or `--simple` among the arguments. Pass `--simple` to `extract`. It records the style in `meta.json`, and `validate` and `outline` then say `simple style` and check the rules below.
 
 The viewer is new to the codebase, reads English as a second language, or both. They want to understand every line. A long video is fine.
 
 Build context first. Before you write scenes, read what the diff touches but does not show: the callers of each changed function, the definitions and types it uses, the tests, and the config a value comes from. Add the key pieces with `mr-cast snippet` and show them in `code` scenes before the change, as what this code does today. Diagrams still come first. Draw the system and the change before any code, and use them to anchor the names the steps will use.
 
-Write every `code` scene with `steps`. Walk the changed lines in order, one line or a small group of up to 3 lines per step, until every changed line of the hunk is in a step. `validate` warns about the lines you miss. Give the scene a short `narration` that says what the thing is before the steps say what it does, such as "This is the rate limit function. It runs before each request to the orders route."
+Write every `code` scene with `steps`. Walk the changed lines in order, one line or a small group of up to 3 lines per step, until every changed line of the hunk is in a step. `validate` warns about the lines you miss. Spend the time where the code is hard. Put imports in one short step, and fold a closing brace into the step before it. Split a dense line, such as one that builds a key from several values, into two steps that each explain one part. Give the scene a short `narration` that says what the thing is before the steps say what it does, such as "This is the rate limit function. It runs before each request to the orders route."
 
 Write for someone reading subtitles in a second language:
 
@@ -110,19 +141,36 @@ Write for someone reading subtitles in a second language:
 - Say the value and its effect. "Max is twenty, so the twenty first request in a minute is refused."
 - In each step, say what the line does to the data, not how the syntax reads, unless the syntax is the point.
 
-## 3. Check the plan with the user
+### Overview mode
 
-Print the plan of the walkthrough.
+Use overview mode when the user wants a quick overview for the team. The viewer wants to know what changed and why, not how each line works.
+
+- Keep the intent scene, the diagrams, and the tests scene.
+- Show at most 3 `code` scenes, on the lines that carry the main behavior. List the other substantive hunks in `skipped` with the reason "covered by the diagrams in this overview". Show no test code, and list test hunks in `skipped` with the reason "the tests scene covers them".
+- Say behavior in the diagram narration, with real values, instead of in code scenes.
+- Aim for under 3 minutes.
+
+## 4. Check the plan with the user
+
+Print the plan of the walkthrough, with the same `--pace` as before.
 
 ```bash
 {{MR_CAST}}/bin/mr-cast outline
 ```
 
-Show the user the outline as it prints, with at most one sentence of your own. Ask whether to go ahead or what to change, then wait for the answer. Apply the changes they ask for and rerun `validate`. If the changes were substantial, show the new outline and ask again. Continue once they approve.
+When you are about to start the player, show the outline and go straight to the next step. The player reloads as you edit, so the user can ask for changes while it plays.
 
-If the user's request already said to just render, or not to ask, skip the question and go straight to the next step.
+Before a render, show the outline as it prints, with at most one sentence of your own. Then ask with one `AskUserQuestion` call, header "Plan", question "Render this plan?":
 
-## 4. Show it
+- "Render it (Recommended)". Description: "Make the MP4 now."
+- "Make it shorter". Description: "Cut minor scenes and trim the narration."
+- "Make it longer". Description: "Add more steps, diagrams and edge cases."
+
+The user can pick Other to describe any other change. Apply the change and rerun `validate`. If the change was substantial, show the new outline and ask again. Render once they pick "Render it".
+
+If the user's request already said to just render, or not to ask, skip the question.
+
+## 5. Show it
 
 Start the player as a background command so it keeps running.
 
@@ -132,13 +180,14 @@ Start the player as a background command so it keeps running.
 
 `play` and `render` voice the narration first. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. After that, each new or changed scene takes a few seconds to speak. Options for both commands:
 
+- `--pace slower|normal|faster` sets how fast the voice speaks and how long it pauses. Later runs keep the last choice.
 - `--voice <name>` picks the voice: `af_heart` (default), `af_bella`, `am_michael`, `bf_emma`, or `bm_george`. Later runs keep the last choice.
-- `--no-voice` makes a silent walkthrough, timed from word count.
+- `--no-voice` makes a silent walkthrough with subtitles, timed for reading.
 
 If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
 
-It prints `mr-cast player: http://127.0.0.1:<port>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player reloads when `storyboard.json` changes, after it voices any changed narration, so edit and revalidate to iterate while it runs.
+It prints `mr-cast player: http://127.0.0.1:<port>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player also has a speed control from 0.75x to 1.5x. The player reloads when `storyboard.json` changes, after it voices any changed narration, so edit and revalidate to iterate while it runs.
 
-If the user asked for a video file, run `{{MR_CAST}}/bin/mr-cast render` (add `--out <path>` to choose the location). It writes the MP4 into the data directory, named after the storyboard title, such as `.mr-cast/rate-limiting-for-the-orders-api.mp4`, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different `--name` runs can run at the same time.
+If the user wants an MP4, run `{{MR_CAST}}/bin/mr-cast render` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the data directory, named after the storyboard title, such as `.mr-cast/rate-limiting-for-the-orders-api.mp4`, and prints its path. The MP4 has a chapter marker for each chapter title. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different `--name` runs can run at the same time.
 
 To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast still [sceneIndex...]` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a large hunk.
