@@ -36,7 +36,7 @@
       "type": "state",
       "chapter": "Order states",
       "title": "Order",
-      "narration": "Orders now start as pending instead of paid. Payment moves them to paid, a twenty four hour timeout cancels them, and the old refunded state is gone.",
+      "narration": "Here is the order lifecycle after this change.",
       "initial": "pending",
       "states": [
         { "id": "pending", "label": "Pending", "change": "added" },
@@ -54,13 +54,19 @@
         { "from": "shipped", "to": "delivered", "label": "deliver" },
         { "from": "paid", "to": "cancelled", "label": "cancel" },
         { "from": "delivered", "to": "refunded", "label": "refund", "change": "removed" }
+      ],
+      "steps": [
+        { "state": "pending", "say": "Orders now start as pending instead of paid." },
+        { "transition": 0, "say": "Paying moves a pending order to paid." },
+        { "transition": 1, "say": "If nobody pays within twenty four hours, the timeout cancels it." },
+        { "state": "refunded", "say": "The refunded state is gone, along with the refund that led to it." }
       ]
     },
     {
       "type": "table",
       "chapter": "Settings",
       "title": "Order settings",
-      "narration": "New orders now start as pending instead of paid. A twenty four hour payment timeout and a five minute sweep job are new. A declined card is retried three times instead of never, and the refund window goes away with the refunded state.",
+      "narration": "Five settings change with the new lifecycle.",
       "columns": ["Setting", "Value", "What it controls"],
       "rows": [
         { "cells": ["ORDER_INITIAL_STATUS", { "before": "paid", "after": "pending" }, "Status createOrder gives a new order"] },
@@ -70,7 +76,13 @@
         { "cells": ["REFUND_WINDOW_DAYS", "30", "Days after delivery a refund was allowed"], "change": "removed" },
         { "cells": ["ORDER_EVENTS_TOPIC", "orders.v2", "Topic that lifecycle events are published to"] }
       ],
-      "highlight": [0, 1, 2, 3, 4]
+      "steps": [
+        { "row": 0, "say": "New orders now start as pending instead of paid." },
+        { "row": 1, "say": "A pending order gets twenty four hours to be paid." },
+        { "row": 2, "say": "A job looks for expired orders every five minutes." },
+        { "row": 3, "say": "A declined card is retried three times instead of never." },
+        { "row": 4, "say": "The refund window goes away with the refunded state." }
+      ]
     },
     {
       "type": "chart",
@@ -79,7 +91,7 @@
       "kind": "bar",
       "unit": "ms",
       "better": "lower",
-      "narration": "Checkout no longer waits for the charge to settle, so it gets faster across the board. The median drops from three hundred twenty to one hundred eighty milliseconds, and the slowest one percent falls from two point four seconds to under a second.",
+      "narration": "Checkout no longer waits for the charge to settle, so it gets faster across the board.",
       "labels": ["p50", "p90", "p99"],
       "series": [
         { "name": "before", "values": [320, 910, 2400] },
@@ -88,14 +100,18 @@
       "annotation": {
         "at": "p99",
         "text": "Charge settles in the background job"
-      }
+      },
+      "steps": [
+        { "label": "p50", "say": "The median drops from three hundred twenty to one hundred eighty milliseconds." },
+        { "label": "p99", "say": "The slowest one percent falls from two point four seconds to under a second, because the charge now settles in a background job." }
+      ]
     },
     {
       "type": "timeline",
       "chapter": "Payment retries",
       "title": "A declined card",
       "unit": "s",
-      "narration": "When a card is declined, the pay job retries with doubling waits of two, four and eight seconds. After the third retry it stops, and the order stays pending until the customer pays or the timeout cancels it.",
+      "narration": "When a card is declined, the pay job retries with doubling waits.",
       "events": [
         { "at": 0, "label": "First charge", "detail": "card declined", "tone": "bad" },
         { "at": 2, "label": "Retry 1", "detail": "declined again", "tone": "bad" },
@@ -107,6 +123,13 @@
         { "from": 0, "to": 2, "label": "wait" },
         { "from": 2, "to": 6, "label": "wait" },
         { "from": 6, "to": 14, "label": "wait" }
+      ],
+      "steps": [
+        { "events": 0, "say": "The first charge is declined." },
+        { "events": 1, "say": "Two seconds later, the job tries again." },
+        { "events": 2, "say": "Then it waits four seconds before the second retry." },
+        { "events": 3, "say": "After eight more seconds comes the third and last retry." },
+        { "events": 4, "say": "Then it stops, and the order stays pending until the customer pays or the timeout cancels it." }
       ]
     },
     {

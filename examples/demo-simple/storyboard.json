@@ -95,7 +95,7 @@
       "type": "sequence",
       "chapter": "Who calls whom",
       "title": "POST /orders",
-      "narration": "Follow one request in order. The A P I counts it in Redis first. Then create order prices and saves the order. Last, the A P I publishes the event and does not wait.",
+      "narration": "Follow one request in order.",
       "participants": [
         {
           "id": "client",
@@ -177,37 +177,56 @@
           "label": "201 Created",
           "kind": "return"
         }
+      ],
+      "steps": [
+        {
+          "messages": "0-2",
+          "say": "First the A P I counts it in Redis."
+        },
+        {
+          "messages": "3-5",
+          "say": "Then create order prices and saves the order."
+        },
+        {
+          "messages": "6-7",
+          "say": "Last, the A P I publishes the event and does not wait. Then it answers the client."
+        }
       ]
     },
     {
       "type": "flow",
       "chapter": "A request, step by step",
       "title": "POST /orders",
-      "narration": "Here is the data at each step. The limiter counts the request. The service prices the items and saves the order. The A P I publishes a small event. Then it answers the client.",
+      "narration": "Here is the data at each step.",
       "steps": [
         {
           "actor": "rateLimit",
           "action": "count the request in Redis",
-          "payload": "rl:203.0.113.9:28391 → 3"
+          "payload": "rl:203.0.113.9:28391 → 3",
+          "say": "The limiter counts the request."
         },
         {
           "actor": "createOrder",
           "action": "price every item",
-          "payload": "prices: [1299, 499]"
+          "payload": "prices: [1299, 499]",
+          "say": "The service prices every item."
         },
         {
           "actor": "db.insert",
           "action": "save the order",
-          "payload": "{ id: \"k3x9\", total: 3097, status: \"pending\" }"
+          "payload": "{ id: \"k3x9\", total: 3097, status: \"pending\" }",
+          "say": "Then it saves the order."
         },
         {
           "actor": "publish",
           "action": "send order.created",
-          "payload": "{ orderId: \"k3x9\", total: 3097 }"
+          "payload": "{ orderId: \"k3x9\", total: 3097 }",
+          "say": "The A P I publishes a small event."
         },
         {
           "actor": "Express API",
-          "action": "answer 201 Created"
+          "action": "answer 201 Created",
+          "say": "Then it answers the client."
         }
       ]
     },

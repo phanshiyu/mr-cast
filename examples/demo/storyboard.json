@@ -95,7 +95,7 @@
       "type": "sequence",
       "chapter": "Who calls whom",
       "title": "POST /orders",
-      "narration": "Here is the new call order. The API asks Redis to count the request before the orders service runs. After the insert, the API publishes the event without waiting for anyone to consume it.",
+      "narration": "Here is the new call order.",
       "participants": [
         {
           "id": "client",
@@ -176,6 +176,20 @@
           "to": "client",
           "label": "201 Created",
           "kind": "return"
+        }
+      ],
+      "steps": [
+        {
+          "messages": "0-2",
+          "say": "A request first goes to the limiter, which asks Redis to count it."
+        },
+        {
+          "messages": "3-5",
+          "say": "Only then does the orders service price the items and save the order."
+        },
+        {
+          "messages": "6-7",
+          "say": "After the insert, the API publishes the event without waiting for anyone to consume it, and answers the client."
         }
       ]
     },
