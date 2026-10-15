@@ -61,8 +61,12 @@ function listen(server, port) {
 export async function startServer({ distDir, dataDir, port, onDataChange }) {
   const root = path.resolve(distDir);
   const clients = new Set();
+  let allowedHosts = new Set();
 
   const server = http.createServer((req, res) => {
+    // Binding to 127.0.0.1 does not stop DNS rebinding: a page on evil.example can resolve
+    // its own name to 127.0.0.1 and read responses, but its requests carry the wrong Host.
+    if (!allowedHosts.has(req.headers.host?.toLowerCase())) return send(res, 403, 'forbidden host');
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
     const { pathname } = new URL(req.url, `http://${HOST}`);
 
@@ -99,6 +103,7 @@ export async function startServer({ distDir, dataDir, port, onDataChange }) {
     }
   }
   if (!bound) throw new Error(`ports ${port}-${port + PORT_ATTEMPTS - 1} are all in use; pass --port`);
+  allowedHosts = new Set([`${HOST}:${bound}`, `localhost:${bound}`]);
 
   const broadcast = (msg) => { for (const c of clients) c.write(msg); };
   const keepalive = setInterval(() => broadcast(': keepalive\n\n'), KEEPALIVE_MS);
