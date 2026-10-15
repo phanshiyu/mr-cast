@@ -1,6 +1,6 @@
 {
   "name": "@shiyuphan/mr-cast",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Turn a git branch / merge request diff into an animated Remotion walkthrough.",
   "keywords": [
     "git",
