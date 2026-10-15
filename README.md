@@ -90,7 +90,7 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast init --title text [--reset]` | Starts a walkthrough of an explanation, which has no diff, in `.mr-cast/<title-slug>/` (in the git repository, or the current directory outside one), and prints its path. If another walkthrough already has that slug, the new one gets a numbered suffix such as `-2`. Rerunning it with the same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2`, ...: the code of an explanation, or the callers, definitions, types or config a change depends on. Prints each snippet with the file's own line numbers. Snippets do not count toward hunk coverage, and a later `extract` keeps them. Also accepts `<file> <start>-<end>`, keeps the id when the same range is added again, and holds at most 80 lines each. |
 | `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. Prints the length, estimated at the run's pace until the narration is voiced. Exits 1 on errors. |
-| `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It lists the title, one line per scene with its type, chapter and what it shows, the length, the style, and the hunk coverage. A code scene shows its file and its steps, or its focus lines and `flow` step count. A diagram shows its node, state or participant counts, and a tests scene its cases and gaps. A table shows its columns and rows, a chart its series and labels, a timeline its events and range, and a files scene its files and line counts. |
+| `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It lists the title, one line per scene with its type, chapter and what it shows, the length, the style, and the hunk coverage. A code scene shows its file and its steps, or its focus lines and `flow` step count. A diagram shows its node, state or participant counts, and a tests scene its cases and gaps. A table shows its columns and rows, a chart its series and labels, a timeline its events and range, and a files scene its files and line counts. Each scene also counts the steps that draw a pen mark. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
 | `mr-cast play [--port N] [--no-open]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. The player has a playback speed control from 0.75x to 1.5x. |
 | `mr-cast render [--out file.mp4]` | Voices the narration, then renders an MP4 at 1920x1080, 30 fps, with the voice-over, burned-in subtitles and chapter markers, and prints its path. The file goes in the run's directory and is named after the storyboard title, such as `rate-limiting-for-the-orders-api.mp4`. Without a usable title it takes the run's name, then `walkthrough.mp4`. The first run downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`, or `$XDG_CACHE_HOME/mr-cast/remotion` when that is set. |
@@ -188,6 +188,33 @@ Diagrams take `steps` too, one segment each after the narration, so the video ca
 
 A `flow` gives every step a `say` instead, and each step becomes current just before its words. Without steps, every diagram is fully drawn before the narration starts. `validate` checks every ref and suggests the closest names when one names nothing, and `outline` counts the spoken steps. Storyboards from 0.10 and earlier, whose steps named `messages`, `events`, `entity`, `state`, `transition`, `label`, `row` or `path`, still work.
 
+### Pen marks
+
+A step can also draw on what it points at, the way a reviewer circles something on a printout. Give the step a `mark` and, if you like, a `note`:
+
+```json
+{ "focus": "redis", "mark": "arrow", "note": "no fallback", "say": "If Redis goes down, every order fails." }
+```
+
+| `mark` | Draws |
+| --- | --- |
+| `circle` | A loop around it. |
+| `underline` | A line under it. |
+| `box` | A rectangle around it. |
+| `arrow` | An arrow at it from a free spot nearby, with the note at its tail. |
+| `strike` | One line through it. |
+| `cross` | An X over it. |
+
+The mark goes on the step's first `focus` ref, all of it for a range such as `"3-5"`. A code step marks its `lines`, or, with a `token`, only that text on them: `{ "lines": 8, "mark": "circle", "token": "max: 20", "say": "..." }`. The `note` is a few handwritten words, up to 40 characters, placed beside the mark where it covers the least, never on the target.
+
+The pen starts just after the step lights, and the mark is complete one frame before the step's words begin, which is half a second later at the normal pace. The mark fades out when the next step starts, and a mark on the last step stays until the scene ends. A mark never carries over to later steps, since a screen with several old marks on it points nowhere.
+
+Each scene works out where its items are from the layout it already draws, so stills and renders always put a mark in the same place. The intent scene, which the browser lays out, measures where its bullets landed. The notes use the Caveat typeface ([SIL Open Font License](src/assets/caveat-OFL.txt)), bundled with mr-cast.
+
+`validate` rejects an unknown `mark`, a `note` over 40 characters or without a `mark`, a `token` on a step that is not a code step, and a `token` that does not occur exactly once on its step's lines. It warns when a scene marks more than 2 steps, because a mark on most steps stops telling the viewer where to look. `outline` counts each scene's marks.
+
+These are not the `change`, `highlight` and `badge` marks below, which belong to an item for the whole scene. A pen mark belongs to one step.
+
 ### Diagram nodes
 
 Arch nodes and sequence participants are the same kind of card, so they can show people, teams, places and documents as well as services. Each has an `id` and a `label`, plus:
@@ -249,13 +276,13 @@ A tests scene that is not about a diff's tests can rename its panels with `title
 | `timeline` | Events on a time axis in ms, s, min, h or d, each with a label and detail, and `spans` for waits and windows drawn under the axis with their length. A playhead reveals them left to right before the voice starts, or with `steps` moves to each step's events as the voice reaches them. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a short note beside the files the narration names. Without `files` it lists every file in `hunks.json`; an explanation lists its own. Files with notes, or `highlight`, are spotlit in turn, and with `steps` each file lights just before its own spoken words. A long tree flows into two columns. |
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes, with steps on the state, table, chart and timeline. `examples/people/` explains how a support ticket gets resolved, with no code at all: people and teams in groups, a path walked step by step, a sequence between people, and a timeline.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes, with steps on the state, table, chart and timeline. `examples/people/` explains how a support ticket gets resolved, with no code at all: people and teams in groups, a path walked step by step, a sequence between people, and a timeline. The demo arrows a note at Redis and circles `max: 20` in the code, and the gallery and the people example each circle one item.
 
 ## Layout
 
 - `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` finds a command's run (the current one, `--name` or `--dir`), `lib/settings.mjs` keeps a run's settings and the last choices, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
-- `shared/timing.mjs` holds the duration formula that the CLI and the player share: a scene is a sequence of spoken segments, its narration and then each step, each with a lead and a tail scaled by the pace, and each scene type's build time, which the narration waits for. `shared/steps.mjs` lists the steps each scene type speaks, and `shared/targets.mjs` what a step's `focus` can name in each scene type. `shared/normalize.mjs` rewrites older field names once, where a storyboard enters. `shared/voice.mjs` names each clip by its voice, speed and text, and defines the paces. `shared/files.mjs` builds the file list of a `files` scene for both.
+- `shared/timing.mjs` holds the duration formula that the CLI and the player share: a scene is a sequence of spoken segments, its narration and then each step, each with a lead and a tail scaled by the pace, and each scene type's build time, which the narration waits for. `shared/steps.mjs` lists the steps each scene type speaks, and `shared/targets.mjs` what a step's `focus` can name in each scene type. `shared/normalize.mjs` rewrites older field names once, where a storyboard enters. `shared/voice.mjs` names each clip by its voice, speed and text, and defines the paces. `shared/files.mjs` builds the file list of a `files` scene for both. `shared/pen-marks.mjs` says what a step's pen mark draws on, and `src/components/PenMarks.tsx` draws every scene's marks from the boxes the scene gives it.
 - `bin/lib/explain.mjs` turns source line ranges into snippets for `snippet`.
 - `skill/mr-cast/` (`SKILL.md` and `references/branch.md` and `references/explanation.md`), `skill/mr-cast-prune/SKILL.md` and `skill/mr-cast-upgrade/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
