@@ -15,11 +15,8 @@ export interface PositionedNode {
   y: number;
 }
 
-export type EdgeKind = 'forward' | 'same-layer' | 'backward';
-
 export interface RoutedEdge {
   edge: ArchEdge;
-  kind: EdgeKind;
   /** SVG path data for a single cubic bezier. */
   d: string;
   mid: { x: number; y: number };
@@ -89,7 +86,7 @@ function orderLayers(columns: ArchNode[][], dagEdges: readonly ArchEdge[]): void
   sweep(columns.length - 2, -1, -1, 'out');
 }
 
-function cubic(p0: Pt, p1: Pt, p2: Pt, p3: Pt): Pick<RoutedEdge, 'd' | 'mid'> {
+function cubic(p0: Pt, p1: Pt, p2: Pt, p3: Pt): Omit<RoutedEdge, 'edge'> {
   return {
     d: `M ${p0.x} ${p0.y} C ${p1.x} ${p1.y}, ${p2.x} ${p2.y}, ${p3.x} ${p3.y}`,
     mid: { x: (p0.x + 3 * p1.x + 3 * p2.x + p3.x) / 8, y: (p0.y + 3 * p1.y + 3 * p2.y + p3.y) / 8 },
@@ -136,23 +133,23 @@ function route(edge: ArchEdge, a: PositionedNode, b: PositionedNode, all: readon
       const d =
         `M ${p0.x} ${p0.y} C ${p0.x + gap / 2} ${p0.y}, ${l0.x - gap / 2} ${lane}, ${l0.x} ${lane} ` +
         `L ${l1.x} ${lane} C ${l1.x + gap / 2} ${lane}, ${p3.x - gap / 2} ${p3.y}, ${p3.x} ${p3.y}`;
-      return { edge, kind: 'forward', d, mid: { x: (l0.x + l1.x) / 2, y: lane } };
+      return { edge, d, mid: { x: (l0.x + l1.x) / 2, y: lane } };
     }
     const dx = (p3.x - p0.x) / 2;
-    return { edge, kind: 'forward', ...cubic(p0, { x: p0.x + dx, y: p0.y }, { x: p3.x - dx, y: p3.y }, p3) };
+    return { edge, ...cubic(p0, { x: p0.x + dx, y: p0.y }, { x: p3.x - dx, y: p3.y }, p3) };
   }
   if (b.layer === a.layer) {
     const down = b.y > a.y;
     const p0 = { x: a.x + NODE_W / 2 + 40, y: down ? a.y + NODE_H : a.y };
     const p3 = { x: b.x + NODE_W / 2 + 40, y: down ? b.y : b.y + NODE_H };
     const bulge = NODE_W / 2 + 10;
-    return { edge, kind: 'same-layer', ...cubic(p0, { x: p0.x + bulge, y: p0.y }, { x: p3.x + bulge, y: p3.y }, p3) };
+    return { edge, ...cubic(p0, { x: p0.x + bulge, y: p0.y }, { x: p3.x + bulge, y: p3.y }, p3) };
   }
   const spanned = all.filter((n) => n.layer >= b.layer && n.layer <= a.layer);
   const top = Math.min(...spanned.map((n) => n.y)) - LOOP_LIFT;
   const p0 = { x: a.x + NODE_W / 2, y: a.y };
   const p3 = { x: b.x + NODE_W / 2, y: b.y };
-  return { edge, kind: 'backward', ...cubic(p0, { x: p0.x, y: top }, { x: p3.x, y: top }, p3) };
+  return { edge, ...cubic(p0, { x: p0.x, y: top }, { x: p3.x, y: top }, p3) };
 }
 
 export function layoutArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[]): ArchLayout {

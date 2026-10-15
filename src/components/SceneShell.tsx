@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
 import { SAFE, clamp, colors, ellipsis, fonts } from './theme';
 
-export const ENTER_FRAMES = 12;
+const ENTER_FRAMES = 12;
 const EXIT_FRAMES = 8;
 
 interface SceneShellProps {

@@ -4,7 +4,6 @@ import type { Risk, Scene } from '../types';
 export const colors = {
   bg: '#07080c',
   surface: 'rgba(22, 25, 34, 0.86)',
-  surfaceSolid: '#12141c',
   raised: '#1a1d28',
   border: 'rgba(255, 255, 255, 0.08)',
   borderStrong: 'rgba(255, 255, 255, 0.16)',
