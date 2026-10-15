@@ -45,8 +45,22 @@ export function focusRanges(refs = []) {
   return ranges;
 }
 
-/** The scene's focus ranges: focusLinesAfter (new-file numbers) first, then focusLinesBefore (old-file). */
+/**
+ * A step's one range on its side. A malformed ref, which the validator reports, yields a range no
+ * line falls in, so step k always stays range k and keeps its spoken segment.
+ */
+function stepRange(step) {
+  const side = step?.lines === undefined && step?.oldLines !== undefined ? 'oldLine' : 'newLine';
+  const range = focusRanges([side === 'oldLine' ? step.oldLines : step?.lines])[0] ?? [0, 0];
+  return { side, range };
+}
+
+/**
+ * The scene's focus ranges. With `steps`, one per step in step order. Otherwise focusLinesAfter
+ * (new-file numbers) first, then focusLinesBefore (old-file).
+ */
 export function sceneFocusRanges(scene) {
+  if (Array.isArray(scene.steps) && scene.steps.length) return scene.steps.map(stepRange);
   return [
     ...focusRanges(scene.focusLinesAfter).map((range) => ({ side: 'newLine', range })),
     ...focusRanges(scene.focusLinesBefore).map((range) => ({ side: 'oldLine', range })),

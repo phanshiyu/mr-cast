@@ -7,8 +7,9 @@ import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
 import { lineFocusRanges } from '../../shared/focus.mjs';
 import { SceneShell } from './SceneShell';
-import { layoutSteps, StepDiagram } from './StepDiagram';
+import { layoutSteps, StepDiagram, type FlowSteps } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
+import type { SpokenSegment } from '../utils/timing';
 import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, defaultChapter, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
 
 const SIGN_W = 26;
@@ -74,23 +75,29 @@ interface Slot extends SplitRow {
   step: number | null;
 }
 
-/** The rows to show: the hunk cropped to CONTEXT_ROWS around its focus, plus how many steps they hold. */
+/**
+ * The rows to show: the hunk cropped to CONTEXT_ROWS around its focus, plus how many steps they hold.
+ * A scene with `steps` numbers rows by step, so step k always plays with its own spoken segment;
+ * a focus-range scene numbers its ranges in the order they appear top to bottom.
+ */
 function cropSlots(hunk: Hunk, view: View, scene: CodeScene): { slots: Slot[]; stepCount: number } {
   const rangeOf = lineFocusRanges(scene, hunk);
   const rows = view === 'split' ? splitRows(hunk.lines) : hunk.lines.map((_, i) => ({ left: i, right: i }));
+  const stepped = scene.steps?.length ?? 0;
   const order: number[] = [];
   const slots = rows.map((row) => {
     const ids = [row.left, row.right].flatMap((i) => (i === null ? [] : [rangeOf[i] ?? null])).filter((id) => id !== null);
     if (!ids.length) return { ...row, step: null };
     const id = Math.min(...ids);
+    if (stepped) return { ...row, step: id };
     if (!order.includes(id)) order.push(id);
     return { ...row, step: order.indexOf(id) };
   });
   const focused = slots.flatMap((slot, i) => (slot.step === null ? [] : [i]));
-  if (!focused.length) return { slots, stepCount: 0 };
+  if (!focused.length) return { slots, stepCount: stepped };
   const from = Math.max(0, Math.min(...focused) - CONTEXT_ROWS);
   const to = Math.min(slots.length, Math.max(...focused) + 1 + CONTEXT_ROWS);
-  return { slots: slots.slice(from, to), stepCount: order.length };
+  return { slots: slots.slice(from, to), stepCount: stepped || order.length };
 }
 
 /** A row the scrolling viewport stacks; views decide height and content per frame. */
@@ -181,22 +188,25 @@ function splitModels(hunk: Hunk, tokens: Token[][], slots: Slot[], { fontSize, r
   }));
 }
 
-/** Frame windows for the morph: show the old code, flash and collapse deletions, then grow additions. */
-function morphTimeline(hunk: Hunk, duration: number) {
+/**
+ * Frame windows for the morph: show the old code, flash and collapse deletions, then grow additions.
+ * `span` is the stretch of the scene the morph is paced over: the whole scene, or the intro of a stepped scene.
+ */
+function morphTimeline(hunk: Hunk, span: number) {
   const pureAdd = hunk.deletions === 0;
   // With nothing growing in afterwards, linger on the doomed lines before they go.
   const pureDel = hunk.additions === 0;
-  const flashStart = Math.round(duration * (pureDel ? 0.35 : 0.2));
-  const collapseStart = Math.round(duration * (pureDel ? 0.5 : 0.28));
-  const collapseEnd = Math.round(duration * (pureDel ? 0.62 : 0.38));
-  const growStart = pureAdd ? 10 : hunk.additions === 0 ? collapseEnd : Math.round(duration * 0.36);
-  const stagger = Math.min(3, (duration * 0.2) / Math.max(1, hunk.additions));
+  const flashStart = Math.round(span * (pureDel ? 0.35 : 0.2));
+  const collapseStart = Math.round(span * (pureDel ? 0.5 : 0.28));
+  const collapseEnd = Math.round(span * (pureDel ? 0.62 : 0.38));
+  const growStart = pureAdd ? 10 : hunk.additions === 0 ? collapseEnd : Math.round(span * 0.36);
+  const stagger = Math.min(3, (span * 0.2) / Math.max(1, hunk.additions));
   const growEnd = growStart + stagger * hunk.additions + 10;
   return { flashStart, collapseStart, collapseEnd, growStart, stagger, growEnd };
 }
 
-function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, duration: number, { fontSize, rowH }: CodeMetrics): RowModel[] {
-  const t = morphTimeline(hunk, duration);
+function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, span: number, { fontSize, rowH }: CodeMetrics): RowModel[] {
+  const t = morphTimeline(hunk, span);
   let addIndex = 0;
   return slots.map(({ left, step }) => {
     const i = left!;
@@ -342,10 +352,13 @@ function estimateCalloutHeight(text: string, width: number): number {
   return lines * fontSize * 1.35 + 44;
 }
 
-const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number }> = ({ scene, hunk, durationInFrames }) => {
+const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number; segments: readonly SpokenSegment[] }> = ({ scene, hunk, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const flow = scene.flow?.length ? scene.flow : null;
+  const steps = scene.steps?.length ? scene.steps : null;
+  const flow: FlowSteps | null = steps
+    ? steps.every((step) => step.label) ? steps.map((step) => ({ label: step.label!, outcome: step.outcome })) : null
+    : scene.flow?.length ? scene.flow : null;
   const view = hunk.status === 'source' ? 'morph' : scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
   const { slots, stepCount } = useMemo(() => cropSlots(hunk, view, scene), [hunk, view, scene]);
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
@@ -360,13 +373,15 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
 
   const shownLines = slots.flatMap((slot) => [slot.left, slot.right]).flatMap((i) => (i === null ? [] : [hunk.lines[i]!]));
   const metrics = codeMetrics(hunk, shownLines, view, panelW);
-  const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, durationInFrames, metrics);
-
-  // The morph (or a short settle) is the intro; then each focus step takes an equal share of the time left.
-  const morphEnd = view === 'morph' ? morphTimeline(hunk, durationInFrames).growEnd : 0;
-  const introEnd = Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
+  // A stepped scene highlights step k while its spoken segment plays: the narration is the intro and the
+  // morph is paced over it. Otherwise the morph (or a short settle) is the intro and each focus step takes
+  // an equal share of the time left.
+  const introFrames = steps ? segments[1]?.from ?? durationInFrames : durationInFrames;
+  const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, introFrames, metrics);
+  const morphEnd = view === 'morph' ? morphTimeline(hunk, introFrames).growEnd : 0;
+  const introEnd = steps ? introFrames : Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
   const stepsEnd = Math.max(introEnd, Math.round(durationInFrames * 0.9));
-  const stepStarts = Array.from({ length: stepCount }, (_, k) => introEnd + (k * (stepsEnd - introEnd)) / stepCount);
+  const stepStarts = Array.from({ length: stepCount }, (_, k) => (steps ? segments[k + 1]?.from ?? introEnd : introEnd + (k * (stepsEnd - introEnd)) / stepCount));
   const reached = (k: number) => (k < stepCount ? interpolate(frame, [stepStarts[k]!, stepStarts[k]! + STEP_FADE], [0, 1], clamp) : 0);
   const dim = reached(0);
 
@@ -392,8 +407,10 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const maxScroll = Math.max(0, finalY - viewportH);
   const stops: number[] = [];
   for (const span of spans) {
-    const target = Math.min(maxScroll, Math.max(0, (span.finalTop + span.finalBottom) / 2 - viewportH / 2));
-    stops.push(Math.max(stops[stops.length - 1] ?? 0, target));
+    const previous = stops[stops.length - 1] ?? 0;
+    // A step none of the shown rows belong to (an invalid storyboard) keeps the camera where it was.
+    const target = Number.isFinite(span.finalTop) ? Math.min(maxScroll, Math.max(0, (span.finalTop + span.finalBottom) / 2 - viewportH / 2)) : previous;
+    stops.push(Math.max(previous, target));
   }
   const scroll = stops.reduce(
     (acc, stop, k) => (k === 0 ? stop : acc + (stop - stops[k - 1]!) * spring({ frame: frame - stepStarts[k]!, fps, config: { damping: 200 } })),
@@ -401,10 +418,11 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   );
 
   /** Panel y of a step's code range as the camera shows it, kept inside the viewport. */
-  const anchorY = (span: { top: number; bottom: number }) => PANEL_PAD + Math.min(viewportH, Math.max(0, (span.top + span.bottom) / 2 - scroll));
+  const anchorY = (span: { top: number; bottom: number }) => PANEL_PAD + Math.min(viewportH, Math.max(0, (Number.isFinite(span.top) ? (span.top + span.bottom) / 2 : 0) - scroll));
 
   // The callout belongs to the last step: the conclusion the narration builds to.
-  const last = spans[stepCount - 1] ?? { top: 0, bottom: contentH };
+  const lastSpan = spans[stepCount - 1];
+  const last = lastSpan && Number.isFinite(lastSpan.top) ? lastSpan : { top: 0, bottom: contentH };
   const lastCenter = (last.top + last.bottom) / 2;
   const calloutAppear = spring({ frame: frame - (stepStarts[stepCount - 1] ?? introEnd) - 6, fps, config: { damping: 16, stiffness: 120 } });
   const focusY = anchorY(last);
@@ -561,11 +579,11 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   );
 };
 
-export const CodeDiff: React.FC<SceneProps<CodeScene>> = ({ scene, hunks, durationInFrames }) => {
+export const CodeDiff: React.FC<SceneProps<CodeScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const hunk = hunks[scene.hunkId];
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.code}>
-      {hunk ? <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} /> : <MissingHunk hunkId={scene.hunkId} />}
+      {hunk ? <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} segments={segments} /> : <MissingHunk hunkId={scene.hunkId} />}
     </SceneShell>
   );
 };

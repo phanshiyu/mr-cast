@@ -162,6 +162,12 @@ function sceneGist(scene, hunks) {
     case 'code': {
       const hunk = hunks[scene.hunkId];
       const parts = [`${scene.hunkId} ${hunk?.file ?? '?'}`];
+      if (scene.steps?.length) {
+        const lines = scene.steps.map((st) => (st.lines === undefined ? `old ${st.oldLines}` : String(st.lines)));
+        parts.push(`${count(scene.steps, 'step')} (${lines.join(', ')})`);
+        if (scene.steps.every((st) => st.label)) parts.push('flow');
+        return parts.join(' · ');
+      }
       if (scene.focusLinesAfter?.length) parts.push(`lines ${refs(scene.focusLinesAfter)}`);
       if (scene.focusLinesBefore?.length) parts.push(`old lines ${refs(scene.focusLinesBefore)}`);
       if (!scene.focusLinesAfter?.length && !scene.focusLinesBefore?.length) parts.push(hunk?.status === 'source' ? 'whole snippet' : 'changed lines');

@@ -40,7 +40,7 @@ export type NodeKind = 'service' | 'db' | 'queue' | 'client';
 interface SceneBase {
   /** Short title shown in the chapter sidebar. Defaults to a per-type label. */
   chapter?: string;
-  /** Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice. */
+  /** Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice. A code scene with `steps` says it before the first step. */
   narration: string;
 }
 
@@ -75,9 +75,26 @@ export interface ArchScene extends SceneBase {
 /** A line number or an inclusive range written as "12-18". */
 export type LineRef = number | string;
 
+/** One step of a code scene: the lines it highlights and the words spoken while they are highlighted. */
+export interface CodeStep {
+  /** New-file line number or "a-b" range to highlight (the + numbers in the index). Set this or `oldLines`. */
+  lines?: LineRef;
+  /** Old-file line number or range, for removed code. */
+  oldLines?: LineRef;
+  /** Spoken while the lines are highlighted. The step lasts as long as it takes to say, so the voice tracks the line. */
+  say: string;
+  /** With a label on every step, a flow diagram beside the code lights up one node per step. Plain words about what the lines do, e.g. "count the request in Redis". */
+  label?: string;
+  /** Where a labelled step branches or ends, e.g. "past twenty it answers too many requests". */
+  outcome?: string;
+}
+
 export interface CodeScene extends SceneBase {
   type: 'code';
   hunkId: string;
+  /** Walk the hunk step by step, top to bottom, each step saying its own words while its lines are highlighted.
+   *  `narration` is then the intro spoken before the first step. Replaces focusLinesAfter, focusLinesBefore and flow. */
+  steps?: CodeStep[];
   /** New-file line numbers to emphasise; everything else is dimmed. Each "a-b" string is one step and consecutive plain numbers join into one; steps play top to bottom. Defaults to the changed lines, or the whole snippet for a source hunk. */
   focusLinesAfter?: LineRef[];
   /** Old-file line numbers to emphasise (useful for deletions). */

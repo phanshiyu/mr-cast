@@ -22,6 +22,8 @@ const FOCUS_RANGE_MAX = 15;
 const FOCUS_RANGES_PER_SCENE = 3;
 // With a flow diagram each range gets a labelled step beside the code, so one more stays readable.
 const FOCUS_RANGES_WITH_FLOW = 4;
+// Each step has its own words and time, so a stepped scene can walk more ranges before it drags.
+const STEPS_PER_SCENE = 8;
 const UNFOCUSED_CHANGE_MAX = 12;
 // A step label beside the code wraps to two lines; longer than this and it stops reading as a step.
 const FLOW_LABEL_MAX = 60;
@@ -30,6 +32,21 @@ const SUBSTANTIAL_HUNK_LINES = 15;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
+/** @returns {boolean} whether `ref` is a line number or an "a-b" range of reasonable size */
+function checkLineRef(ref, path, errors) {
+  if (typeof ref === 'number' && Number.isInteger(ref) && ref > 0) return true;
+  const m = typeof ref === 'string' && ref.match(/^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/);
+  if (!m) {
+    errors.push(`${path}: ${JSON.stringify(ref)} is not a line number or "a-b" range`);
+    return false;
+  }
+  if (m[2] !== undefined && Math.abs(m[2] - m[1]) > MAX_LINE_RANGE) {
+    errors.push(`${path}: range ${JSON.stringify(ref)} spans more than ${MAX_LINE_RANGE} lines`);
+    return false;
+  }
+  return true;
+}
+
 /** @returns {boolean} whether `refs` is present and every entry is a valid line ref */
 function checkLineRefs(refs, path, errors) {
   if (refs === undefined) return false;
@@ -37,24 +54,20 @@ function checkLineRefs(refs, path, errors) {
     errors.push(`${path}: must be an array of line numbers or "a-b" ranges`);
     return false;
   }
-  const before = errors.length;
-  refs.forEach((r, i) => {
-    if (typeof r === 'number' && Number.isInteger(r) && r > 0) return;
-    const m = typeof r === 'string' && r.match(/^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/);
-    if (!m) return errors.push(`${path}[${i}]: ${JSON.stringify(r)} is not a line number or "a-b" range`);
-    if (m[2] !== undefined && Math.abs(m[2] - m[1]) > MAX_LINE_RANGE) {
-      errors.push(`${path}[${i}]: range ${JSON.stringify(r)} spans more than ${MAX_LINE_RANGE} lines`);
-    }
-  });
-  return errors.length === before;
+  return refs.map((r, i) => checkLineRef(r, `${path}[${i}]`, errors)).every(Boolean);
+}
+
+/** The line numbers of `refs` that `hunk` has no line for on that side, with a description of what it has. */
+function linesOutsideHunk(refs, hunk, side) {
+  const valid = hunk.lines.map((l) => (side === 'new' ? l.newLine : l.oldLine)).filter((n) => n !== null);
+  const missing = [...expandLineRefs(refs)].filter((n) => !valid.includes(n));
+  const span = valid.length ? `${side}-file lines ${Math.min(...valid)}-${Math.max(...valid)}` : `no ${side}-file lines`;
+  return { missing, span };
 }
 
 function checkFocusInHunk(refs, hunk, side, path, warnings) {
-  const valid = hunk.lines.map((l) => (side === 'new' ? l.newLine : l.oldLine)).filter((n) => n !== null);
-  const missing = [...expandLineRefs(refs)].filter((n) => !valid.includes(n));
-  if (!missing.length) return;
-  const span = valid.length ? `${side}-file lines ${Math.min(...valid)}-${Math.max(...valid)}` : `no ${side}-file lines`;
-  warnings.push(`${path}: lines ${missing.join(', ')} are outside ${hunk.id} (${span})`);
+  const { missing, span } = linesOutsideHunk(refs, hunk, side);
+  if (missing.length) warnings.push(`${path}: lines ${missing.join(', ')} are outside ${hunk.id} (${span})`);
 }
 
 const formatRange = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
@@ -107,6 +120,61 @@ function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
   const list = order.map((id) => (ranges[id] ? formatRange(ranges[id].range) : 'the changed lines')).join(', ');
   const plural = order.length === 1 ? 'range' : 'ranges';
   errors.push(`${p}.flow: ${flow.length} steps, but the focus has ${order.length} ${plural} (${list}); give each range exactly one step, in that top-to-bottom order`);
+}
+
+/**
+ * A stepped code scene: each step names its lines on one side and what to say while they are
+ * highlighted. The steps are the scene's only focus, play in the order written, and that order
+ * must be the hunk's top-to-bottom order, so step k's words always play over step k's lines.
+ */
+function checkCodeSteps(scene, hunk, p, errors, warnings) {
+  const { steps } = scene;
+  if (!Array.isArray(steps) || steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { lines, say }`);
+  for (const key of ['focusLinesAfter', 'focusLinesBefore', 'flow']) {
+    if (scene[key] !== undefined) errors.push(`${p}.${key}: not used with steps; give each step its lines (or oldLines) and its flow label`);
+  }
+  let refsOk = true;
+  let labelled = 0;
+  steps.forEach((step, j) => {
+    const q = `${p}.steps[${j}]`;
+    if (!step || typeof step !== 'object') { refsOk = false; return errors.push(`${q}: must be an object { lines, say }`); }
+    const sides = ['lines', 'oldLines'].filter((k) => step[k] !== undefined);
+    if (sides.length !== 1) {
+      refsOk = false;
+      errors.push(`${q}: set lines (a new-file line number or "a-b" range) or oldLines (old-file, for removed code), not ${sides.length ? 'both' : 'neither'}`);
+    } else if (!checkLineRef(step[sides[0]], `${q}.${sides[0]}`, errors)) refsOk = false;
+    if (!isStr(step.say)) errors.push(`${q}.say: required string, the words spoken while these lines are highlighted`);
+    if (step.label !== undefined) {
+      if (!isStr(step.label)) errors.push(`${q}.label: must be a non-empty string`);
+      else {
+        labelled++;
+        if (step.label.trim().length > FLOW_LABEL_MAX) warnings.push(`${q}.label: ${step.label.trim().length} characters; keep a step under ${FLOW_LABEL_MAX} so it reads at a glance`);
+      }
+    }
+    if (step.outcome !== undefined && typeof step.outcome !== 'string') errors.push(`${q}.outcome: must be a string`);
+  });
+  if (labelled && labelled < steps.length) errors.push(`${p}.steps: ${labelled} of ${steps.length} steps have a label; label every step to draw the flow diagram beside the code, or none`);
+  if (steps.length > STEPS_PER_SCENE) warnings.push(`${p}.steps: ${steps.length} steps; keep at most ${STEPS_PER_SCENE} per scene and walk the rest of ${scene.hunkId} in another code scene`);
+  if (!refsOk) return;
+
+  const ranges = sceneFocusRanges(scene);
+  ranges.forEach(({ side, range: [a, b] }, j) => {
+    const q = `${p}.steps[${j}].${side === 'oldLine' ? 'oldLines' : 'lines'}`;
+    const size = b - a + 1;
+    if (size > FOCUS_RANGE_COMFORTABLE) {
+      (size > FOCUS_RANGE_MAX ? errors : warnings).push(`${q}: ${a}-${b} is ${size} lines; a step highlights at most ${FOCUS_RANGE_COMFORTABLE} (${FOCUS_RANGE_MAX} max), so split it into more steps`);
+    }
+    const earlier = ranges.findIndex((r, i) => i < j && r.side === side && r.range[0] <= b && a <= r.range[1]);
+    if (earlier >= 0) errors.push(`${q}: ${formatRange([a, b])} overlaps steps[${earlier}] (${formatRange(ranges[earlier].range)}); each line belongs to one step`);
+    if (!hunk) return;
+    const { missing, span } = linesOutsideHunk([`${a}-${b}`], hunk, side === 'oldLine' ? 'old' : 'new');
+    if (missing.length) errors.push(`${q}: lines ${missing.join(', ')} are outside ${hunk.id} (${span}), so the step would highlight nothing while its words play`);
+  });
+  if (!hunk) return;
+  const order = focusStepOrder(scene, hunk);
+  if (order.length === steps.length && order.some((id, k) => id !== k)) {
+    errors.push(`${p}.steps: steps play in the order written, but their lines read top to bottom as steps ${order.map((id) => id + 1).join(', ')}; reorder the steps to match the code`);
+  }
 }
 
 const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h.additions}`);
@@ -325,13 +393,17 @@ export async function validateStoryboard(sb, hunks, mode = 'diff') {
         const hunk = isStr(s.hunkId) && hunks && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;
         if (!isStr(s.hunkId)) errors.push(`${p}.hunkId: required string`);
         else if (!hunk) errors.push(`${p}.hunkId: "${s.hunkId}" not found in hunks.json`);
+        if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
+        if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
+        if (s.steps !== undefined) {
+          checkCodeSteps(s, hunk, p, errors, warnings);
+          break;
+        }
         const afterOk = checkLineRefs(s.focusLinesAfter, `${p}.focusLinesAfter`, errors);
         const beforeOk = checkLineRefs(s.focusLinesBefore, `${p}.focusLinesBefore`, errors);
         if (hunk && afterOk) checkFocusInHunk(s.focusLinesAfter, hunk, 'new', `${p}.focusLinesAfter`, warnings);
         if (hunk && beforeOk) checkFocusInHunk(s.focusLinesBefore, hunk, 'old', `${p}.focusLinesBefore`, warnings);
         if ((afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined)) checkFocusSize(s, hunk, p, errors, warnings);
-        if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
-        if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
         const refsOk = (afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined);
         if (s.flow !== undefined) checkCodeFlow(s, refsOk ? hunk : undefined, refsOk, p, errors, warnings);
         break;
