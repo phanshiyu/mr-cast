@@ -1,39 +1,23 @@
-import type { CodeScene, DiffLine, Hunk, LineRef } from '../types';
+import { expandLineRefs, focusRanges } from '../../shared/focus.mjs';
+import type { CodeScene, Hunk } from '../types';
 
-export function expandLineRefs(refs: readonly LineRef[] = []): Set<number> {
-  const out = new Set<number>();
-  for (const ref of refs) {
-    if (typeof ref === 'number') {
-      out.add(ref);
-      continue;
-    }
-    const [first, last = first] = ref.split('-').map((s) => parseInt(s, 10));
-    if (first === undefined || last === undefined || Number.isNaN(first) || Number.isNaN(last)) continue;
-    const [a, b] = [first, last];
-    for (let n = Math.min(a, b); n <= Math.max(a, b); n++) out.add(n);
-  }
-  return out;
-}
-
-/** New-file and old-file line numbers the scene wants emphasised. */
-export interface Focus {
-  after: Set<number>;
-  before: Set<number>;
-}
-
-export function sceneFocus(scene: CodeScene, hunk: Hunk): Focus {
-  if (scene.focusLinesAfter === undefined && scene.focusLinesBefore === undefined) {
-    const after = new Set<number>();
-    const before = new Set<number>();
-    for (const line of hunk.lines) {
-      if (line.type === 'add' && line.newLine !== null) after.add(line.newLine);
-      if (line.type === 'del' && line.oldLine !== null) before.add(line.oldLine);
-    }
-    return { after, before };
-  }
-  return { after: expandLineRefs(scene.focusLinesAfter), before: expandLineRefs(scene.focusLinesBefore) };
-}
-
-export function isFocused(line: DiffLine, focus: Focus): boolean {
-  return (line.newLine !== null && focus.after.has(line.newLine)) || (line.oldLine !== null && focus.before.has(line.oldLine));
+/**
+ * For each hunk line, the id of the focus range it falls in, or null. A range is a run of consecutive
+ * focusLinesAfter (new-file) or focusLinesBefore (old-file) numbers. Ids are opaque; callers order
+ * ranges by where they appear. With no focus on any line of the hunk, the changed lines form one range.
+ */
+export function lineFocusRanges(scene: CodeScene, hunk: Hunk): (number | null)[] {
+  const ranges = [
+    ...focusRanges(expandLineRefs(scene.focusLinesAfter)).map((r) => ({ side: 'newLine' as const, r })),
+    ...focusRanges(expandLineRefs(scene.focusLinesBefore)).map((r) => ({ side: 'oldLine' as const, r })),
+  ];
+  const ids = hunk.lines.map((line) => {
+    const id = ranges.findIndex(({ side, r: [a, b] }) => {
+      const n = line[side];
+      return n !== null && n >= a && n <= b;
+    });
+    return id < 0 ? null : id;
+  });
+  if (ids.some((id) => id !== null)) return ids;
+  return hunk.lines.map((line) => (line.type === 'context' ? null : 0));
 }

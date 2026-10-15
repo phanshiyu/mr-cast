@@ -3,9 +3,9 @@ import type { Token } from 'prism-react-renderer';
 import { useMemo, type ReactNode } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { CodeScene, DiffLine, Hunk } from '../types';
-import { splitRows } from '../utils/diffRows';
+import { splitRows, type SplitRow } from '../utils/diffRows';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
-import { isFocused, sceneFocus, type Focus } from '../utils/lines';
+import { lineFocusRanges } from '../utils/lines';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, defaultChapter, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
@@ -22,19 +22,24 @@ const HEADER_GAP = 22;
 const CALLOUT_W = 420;
 const CALLOUT_GAP = 56;
 const CALLOUT_BELOW_H = 112;
+/** Unfocused rows kept above the first step and below the last; the rest of the hunk is cropped away. */
+const CONTEXT_ROWS = 3;
+const STEP_FADE = 14;
+const VISITED_OPACITY = 0.6;
+const DIM_OPACITY = 0.3;
 
 type View = 'split' | 'morph';
 
-/** Code font and row height, sized so the hunk's longest line fits the code column. */
+/** Code font and row height, sized so the longest shown line fits the code column. */
 interface CodeMetrics {
   fontSize: number;
   rowH: number;
 }
 
-function codeMetrics(hunk: Hunk, view: View, panelW: number): CodeMetrics {
+function codeMetrics(lines: readonly DiffLine[], view: View, panelW: number): CodeMetrics {
   const inner = panelW - 2;
   const column = view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - MORPH_GUTTER_W;
-  const longest = Math.max(0, ...hunk.lines.map((l) => codeColumns(l.text)));
+  const longest = Math.max(0, ...lines.map((l) => codeColumns(l.text)));
   const { min, max } = FONT_RANGE[view];
   const fontSize = fitCodeFontSize(longest, column, min, max);
   return { fontSize, rowH: Math.round(fontSize * 1.65) };
@@ -44,11 +49,40 @@ function defaultView(hunk: Hunk): View {
   return hunk.additions === 0 || hunk.deletions === 0 ? 'morph' : 'split';
 }
 
+/**
+ * One displayed row: a side-by-side pair of hunk.lines indices, or the same index twice in morph view.
+ * `step` is the focus step the row belongs to, numbered top to bottom.
+ */
+interface Slot extends SplitRow {
+  step: number | null;
+}
+
+/** The rows to show: the hunk cropped to CONTEXT_ROWS around its focus, plus how many steps they hold. */
+function cropSlots(hunk: Hunk, view: View, scene: CodeScene): { slots: Slot[]; stepCount: number } {
+  const rangeOf = lineFocusRanges(scene, hunk);
+  const rows = view === 'split' ? splitRows(hunk.lines) : hunk.lines.map((_, i) => ({ left: i, right: i }));
+  const order: number[] = [];
+  const slots = rows.map((row) => {
+    const ids = [row.left, row.right].flatMap((i) => (i === null ? [] : [rangeOf[i] ?? null])).filter((id) => id !== null);
+    if (!ids.length) return { ...row, step: null };
+    const id = Math.min(...ids);
+    if (!order.includes(id)) order.push(id);
+    return { ...row, step: order.indexOf(id) };
+  });
+  const focused = slots.flatMap((slot, i) => (slot.step === null ? [] : [i]));
+  if (!focused.length) return { slots, stepCount: 0 };
+  const from = Math.max(0, Math.min(...focused) - CONTEXT_ROWS);
+  const to = Math.min(slots.length, Math.max(...focused) + 1 + CONTEXT_ROWS);
+  return { slots: slots.slice(from, to), stepCount: order.length };
+}
+
 /** A row the scrolling viewport stacks; views decide height and content per frame. */
 interface RowModel {
   key: string;
   height: number;
-  focused: boolean;
+  /** Height once the morph has played; the camera plans against it so it never chases the animation. */
+  finalHeight: number;
+  step: number | null;
   content: ReactNode;
 }
 
@@ -91,7 +125,7 @@ const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; font
 
 const lineBg = (line: DiffLine | null) => (line?.type === 'add' ? colors.addBg : line?.type === 'del' ? colors.delBg : 'transparent');
 
-function splitModels(hunk: Hunk, tokens: Token[][], focus: Focus, { fontSize, rowH }: CodeMetrics): RowModel[] {
+function splitModels(hunk: Hunk, tokens: Token[][], slots: Slot[], { fontSize, rowH }: CodeMetrics): RowModel[] {
   const cell = (index: number | null, side: 'left' | 'right') => {
     const line = index === null ? null : hunk.lines[index]!;
     return (
@@ -115,22 +149,18 @@ function splitModels(hunk: Hunk, tokens: Token[][], focus: Focus, { fontSize, ro
       </div>
     );
   };
-  return splitRows(hunk.lines).map((row, i) => {
-    const left = row.left === null ? null : hunk.lines[row.left]!;
-    const right = row.right === null ? null : hunk.lines[row.right]!;
-    const focused = (left !== null && isFocused(left, focus)) || (right !== null && isFocused(right, focus));
-    return {
-      key: `s${i}`,
-      height: rowH,
-      focused,
-      content: (
-        <div style={{ display: 'flex', height: '100%' }}>
-          {cell(row.left, 'left')}
-          {cell(row.right, 'right')}
-        </div>
-      ),
-    };
-  });
+  return slots.map((row) => ({
+    key: `s${row.left}-${row.right}`,
+    height: rowH,
+    finalHeight: rowH,
+    step: row.step,
+    content: (
+      <div style={{ display: 'flex', height: '100%' }}>
+        {cell(row.left, 'left')}
+        {cell(row.right, 'right')}
+      </div>
+    ),
+  }));
 }
 
 /** Frame windows for the morph: show the old code, flash and collapse deletions, then grow additions. */
@@ -147,10 +177,12 @@ function morphTimeline(hunk: Hunk, duration: number) {
   return { flashStart, collapseStart, collapseEnd, growStart, stagger, growEnd };
 }
 
-function morphModels(hunk: Hunk, tokens: Token[][], focus: Focus, frame: number, duration: number, { fontSize, rowH }: CodeMetrics): RowModel[] {
+function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, duration: number, { fontSize, rowH }: CodeMetrics): RowModel[] {
   const t = morphTimeline(hunk, duration);
   let addIndex = 0;
-  return hunk.lines.map((line, i) => {
+  return slots.map(({ left, step }) => {
+    const i = left!;
+    const line = hunk.lines[i]!;
     let height = rowH;
     let bg = 'transparent';
     let opacity = 1;
@@ -173,7 +205,8 @@ function morphModels(hunk: Hunk, tokens: Token[][], focus: Focus, frame: number,
     return {
       key: `m${i}`,
       height,
-      focused: isFocused(line, focus),
+      finalHeight: line.type === 'del' ? 0 : rowH,
+      step,
       content: (
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: rowH, background: bg, opacity }}>
           <Gutter line={line} numbers={[line.oldLine, line.newLine]} fontSize={fontSize} />
@@ -291,7 +324,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const view = scene.view ?? defaultView(hunk);
-  const focus = useMemo(() => sceneFocus(scene, hunk), [scene, hunk]);
+  const { slots, stepCount } = useMemo(() => cropSlots(hunk, view, scene), [hunk, view, scene]);
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
   const box = contentBox(false);
   const callout = scene.calloutText?.trim() || null;
@@ -302,34 +335,66 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const panelH = box.height - HEADER_H - HEADER_GAP - (calloutBelow ? CALLOUT_BELOW_H + 28 : 0);
   const viewportH = panelH - PANEL_PAD * 2;
 
-  const metrics = codeMetrics(hunk, view, panelW);
-  const rows = view === 'split' ? splitModels(hunk, tokens, focus, metrics) : morphModels(hunk, tokens, focus, frame, durationInFrames, metrics);
+  const shownLines = slots.flatMap((slot) => [slot.left, slot.right]).flatMap((i) => (i === null ? [] : [hunk.lines[i]!]));
+  const metrics = codeMetrics(shownLines, view, panelW);
+  const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, durationInFrames, metrics);
+
+  // The morph (or a short settle) is the intro; then each focus step takes an equal share of the time left.
   const morphEnd = view === 'morph' ? morphTimeline(hunk, durationInFrames).growEnd : 0;
-  const dimStart = Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
-  const dim = interpolate(frame, [dimStart, dimStart + 14], [0, 1], clamp);
+  const introEnd = Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
+  const stepsEnd = Math.max(introEnd, Math.round(durationInFrames * 0.9));
+  const stepStarts = Array.from({ length: stepCount }, (_, k) => introEnd + (k * (stepsEnd - introEnd)) / stepCount);
+  const reached = (k: number) => (k < stepCount ? interpolate(frame, [stepStarts[k]!, stepStarts[k]! + STEP_FADE], [0, 1], clamp) : 0);
+  const dim = reached(0);
 
   let y = 0;
-  let focusTop = Infinity;
-  let focusBottom = -Infinity;
+  let finalY = 0;
+  const spans = Array.from({ length: stepCount }, () => ({ top: Infinity, bottom: -Infinity, finalTop: Infinity, finalBottom: -Infinity }));
   const placed = rows.map((row) => {
     const top = y;
-    y += row.height;
-    if (row.focused && row.height > 0.5) {
-      focusTop = Math.min(focusTop, top);
-      focusBottom = Math.max(focusBottom, top + row.height);
+    const span = row.step === null ? undefined : spans[row.step];
+    if (span) {
+      span.top = Math.min(span.top, top);
+      span.bottom = Math.max(span.bottom, top + row.height);
+      span.finalTop = Math.min(span.finalTop, finalY);
+      span.finalBottom = Math.max(span.finalBottom, finalY + row.finalHeight);
     }
+    y += row.height;
+    finalY += row.finalHeight;
     return { row, top };
   });
   const contentH = y;
-  const hasFocus = focusTop !== Infinity;
-  const focusCenter = hasFocus ? (focusTop + focusBottom) / 2 : contentH / 2;
-  const maxScroll = Math.max(0, contentH - viewportH);
-  const scroll = Math.min(maxScroll, Math.max(0, focusCenter - viewportH / 2)) * interpolate(frame, [dimStart - 6, dimStart + 24], [0, 1], clamp);
 
-  const calloutAppear = spring({ frame: frame - dimStart - 10, fps, config: { damping: 16, stiffness: 120 } });
-  const focusY = PANEL_PAD + Math.min(viewportH, Math.max(0, focusCenter - scroll));
+  // The camera centres each step in turn, planned on the settled layout, and only ever moves down.
+  const maxScroll = Math.max(0, finalY - viewportH);
+  const stops: number[] = [];
+  for (const span of spans) {
+    const target = Math.min(maxScroll, Math.max(0, (span.finalTop + span.finalBottom) / 2 - viewportH / 2));
+    stops.push(Math.max(stops[stops.length - 1] ?? 0, target));
+  }
+  const scroll = stops.reduce(
+    (acc, stop, k) => (k === 0 ? stop : acc + (stop - stops[k - 1]!) * spring({ frame: frame - stepStarts[k]!, fps, config: { damping: 200 } })),
+    0,
+  );
+
+  // The callout belongs to the last step: the conclusion the narration builds to.
+  const last = spans[stepCount - 1] ?? { top: 0, bottom: contentH };
+  const lastCenter = (last.top + last.bottom) / 2;
+  const calloutAppear = spring({ frame: frame - (stepStarts[stepCount - 1] ?? introEnd) - 6, fps, config: { damping: 16, stiffness: 120 } });
+  const focusY = PANEL_PAD + Math.min(viewportH, Math.max(0, lastCenter - scroll));
   const calloutH = callout ? estimateCalloutHeight(callout, CALLOUT_W) : 0;
   const calloutTop = Math.min(panelH - calloutH, Math.max(0, focusY - calloutH / 2));
+
+  /** Current step at full strength, visited steps softer, unreached steps and context dimmed. */
+  const emphasis = (step: number | null) => {
+    const now = step === null ? 0 : reached(step);
+    const passed = step === null ? 0 : reached(step + 1);
+    return {
+      opacity: 1 - (1 - DIM_OPACITY) * (dim - now) - (1 - VISITED_OPACITY) * passed,
+      bar: now - 0.7 * passed,
+      glow: now - passed,
+    };
+  };
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
@@ -368,26 +433,27 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
           ) : null}
           <div style={{ position: 'absolute', left: 0, right: 0, top: PANEL_PAD, height: viewportH, overflow: 'hidden' }}>
             <div style={{ position: 'relative', transform: `translateY(${-scroll}px)` }}>
-              {placed.map(({ row, top }) => (
-                <div
-                  key={row.key}
-                  style={{
-                    position: 'absolute',
-                    top,
-                    left: 0,
-                    right: 0,
-                    height: row.height,
-                    overflow: 'hidden',
-                    opacity: row.focused || !hasFocus ? 1 : 1 - 0.7 * dim,
-                    background: row.focused ? `rgba(124, 140, 255, ${0.08 * dim})` : undefined,
-                  }}
-                >
-                  {row.focused ? (
-                    <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: colors.accent, opacity: dim }} />
-                  ) : null}
-                  {row.content}
-                </div>
-              ))}
+              {placed.map(({ row, top }) => {
+                const { opacity, bar, glow } = emphasis(row.step);
+                return (
+                  <div
+                    key={row.key}
+                    style={{
+                      position: 'absolute',
+                      top,
+                      left: 0,
+                      right: 0,
+                      height: row.height,
+                      overflow: 'hidden',
+                      opacity,
+                      background: glow > 0 ? `rgba(124, 140, 255, ${0.08 * glow})` : undefined,
+                    }}
+                  >
+                    {bar > 0 ? <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: colors.accent, opacity: bar }} /> : null}
+                    {row.content}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -407,14 +473,14 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
             </div>
           </>
         ) : null}
-        {calloutBelow && hasFocus ? (
+        {calloutBelow && stepCount > 0 ? (
           <div
             style={{
               position: 'absolute',
               left: 10,
-              top: focusY + (focusBottom - focusCenter),
+              top: focusY + (last.bottom - lastCenter),
               width: 3,
-              height: Math.max(0, panelH + 28 - focusY - (focusBottom - focusCenter)),
+              height: Math.max(0, panelH + 28 - focusY - (last.bottom - lastCenter)),
               background: colors.accent,
               opacity: calloutAppear,
             }}
