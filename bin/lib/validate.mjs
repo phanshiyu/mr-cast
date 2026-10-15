@@ -352,6 +352,10 @@ async function checkMermaid(diagrams, errors, warnings) {
   }
 }
 
+/** Diagrams where the viewer learns the names every later scene uses, so their narration stays short. */
+const DIAGRAM_WORDS_LIMITED = ['arch', 'sequence'];
+const DIAGRAM_WORDS_MAX = 35;
+
 /** Sentences of a spoken text, split at a full stop, question mark or exclamation mark followed by a space. */
 const sentences = (text) => String(text ?? '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
 
@@ -428,6 +432,8 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
     if (!isStr(s.narration)) errors.push(`${p}.narration: required string`);
     if (s.chapter !== undefined && typeof s.chapter !== 'string') errors.push(`${p}.chapter: must be a string`);
     if (simple) checkReadability(s, p, warnings);
+    const words = wordCount(s.narration);
+    if (DIAGRAM_WORDS_LIMITED.includes(s.type) && words > DIAGRAM_WORDS_MAX) warnings.push(`${p}.narration: ${words} words over the ${s.type} diagram; keep it to ${DIAGRAM_WORDS_MAX} so the viewer can follow the diagram while it builds, and move the rest to a later scene`);
 
     switch (s.type) {
       case 'intent':

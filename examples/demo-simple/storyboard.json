@@ -17,7 +17,7 @@
     {
       "type": "arch",
       "chapter": "Where it fits",
-      "narration": "Here is the system. A client sends a request to the Express A P I. The A P I asks Redis to count the request. Then the orders service prices the items and saves the order. At the end, the A P I publishes an event to the queue.",
+      "narration": "Here is the system. A client calls the Express A P I. It asks Redis to count the request. The orders service prices and saves the order. Then the A P I tells the queue.",
       "nodes": [
         {
           "id": "client",
@@ -95,7 +95,7 @@
       "type": "sequence",
       "chapter": "Who calls whom",
       "title": "POST /orders",
-      "narration": "Follow one request in order. The A P I counts it in Redis first. Then it calls create order. Create order prices the items and saves the order. Then the A P I publishes the event. It does not wait for anyone to read it.",
+      "narration": "Follow one request in order. The A P I counts it in Redis first. Then create order prices and saves the order. Last, the A P I publishes the event and does not wait.",
       "participants": [
         {
           "id": "client",
