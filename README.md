@@ -12,6 +12,8 @@ After Claude explains something in a conversation, such as a system, a flow, a b
 
 The MP4 is named after the walkthrough's title, such as `.mr-cast/rate-limiting-for-the-orders-api.mp4`, and Claude gives you its path.
 
+To update mr-cast, ask Claude to "upgrade mr-cast". See [Upgrade](#upgrade).
+
 To free disk space, ask Claude to "prune mr-cast" or "clean up old mr-cast videos". The `mr-cast-prune` skill lists the walkthroughs, rendered videos, stills, voice clips and cached downloads with their sizes, asks you which to delete, and deletes only what you pick. See [Pruning](#pruning).
 
 ### Upgrading from 0.5
@@ -26,11 +28,11 @@ Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. T
 
 ```bash
 npm install -g @shiyuphan/mr-cast
-mr-cast install-skill   # installs the mr-cast-review, mr-cast-explain and mr-cast-prune skills and the commands
+mr-cast install-skill   # installs the mr-cast-review, mr-cast-explain, mr-cast-prune and mr-cast-upgrade skills and the commands
 mr-cast --version       # prints the mr-cast and Node versions
 ```
 
-The skills point at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it. Each install records what it wrote in `~/.claude/.mr-cast-install.json` and deletes anything an earlier install wrote that this version no longer does. `mr-cast uninstall-skill` removes every skill and command mr-cast installed, and the record. Both print each file they remove and keep any file whose content mr-cast did not write.
+The skills point at the installed package, so rerun `mr-cast install-skill` after you move it. After an upgrade, the next `mr-cast` command reinstalls them (see [Upgrade](#upgrade)). Each install records what it wrote in `~/.claude/.mr-cast-install.json` and deletes anything an earlier install wrote that this version no longer does. `mr-cast uninstall-skill` removes every skill and command mr-cast installed, and the record. Both print each file they remove and keep any file whose content mr-cast did not write.
 
 From a clone instead:
 
@@ -39,6 +41,21 @@ npm install
 npm run build           # prebuilds the player into dist/
 npm run install-skill
 ```
+
+## Upgrade
+
+```bash
+mr-cast upgrade --check   # prints the installed and the latest version
+mr-cast upgrade           # npm install -g @shiyuphan/mr-cast@latest, then reinstalls the skills
+```
+
+From Claude Code, ask Claude to "upgrade mr-cast". The `mr-cast-upgrade` skill checks the versions, asks before it upgrades, and runs `mr-cast upgrade`. Start a new Claude Code session afterwards so the new skills load.
+
+`mr-cast upgrade` runs npm only when `npm install -g` installed mr-cast. For a clone it prints the steps to update it (`git pull`, `npm install`, `npm run build`, `npm run install-skill`), and for any other install it prints the npm command. If npm cannot write to its global directory, follow [npm's guide to a user-owned prefix](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
+
+You can also run `npm install -g @shiyuphan/mr-cast@latest` yourself. The skills record which package installed them and its version. When that package runs as a new version, the next `mr-cast` command reinstalls them and prints `mr-cast: updated Claude Code skills to <version>`. Skills installed from another copy, such as a clone, stay as they are.
+
+Once a day, a command starts a check of the latest version on npm in the background, and never waits for it. When a newer version is out, later commands print ``mr-cast <version> is available (you have <version>). Run `mr-cast upgrade`.`` on stderr. The check caches its result in `~/.cache/mr-cast/update-check.json`, or `$XDG_CACHE_HOME/mr-cast/update-check.json` when that is set. It is off in a clone and when `CI`, `NO_UPDATE_NOTIFIER` or `MR_CAST_NO_UPDATE_CHECK` is set.
 
 ## License
 
@@ -58,6 +75,7 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders an MP4 at 1920x1080, 30 fps, with the voice-over and burned-in subtitles, and prints its path. The file goes in the data directory and is named after the storyboard title, such as `rate-limiting-for-the-orders-api.mp4`. Without a usable title it takes the run's name, then `walkthrough.mp4`. The first run downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`, or `$XDG_CACHE_HOME/mr-cast/remotion` when that is set. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's settled end state, just before it fades out, to check layout. |
 | `mr-cast prune [id...] [--older-than days] [--json]` | Without ids, lists what can be deleted, with an id, size, age and description for each, and the total. With ids from that list, deletes exactly those. See [Pruning](#pruning). |
+| `mr-cast upgrade [--check]` | Updates mr-cast to the latest version on npm and reinstalls the skills. `--check` only reports the versions. See [Upgrade](#upgrade). |
 | `mr-cast version` | Prints `mr-cast <version> (node <version>)`. Also `--version` and `-v`. |
 
 `validate`, `outline`, `voice`, `play`, `render` and `still` take `--dir <path>` to read the storyboard from another directory instead of `.mr-cast/`.
@@ -134,6 +152,6 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share. `shared/voice.mjs` names each clip by its narration.
 - `bin/lib/explain.mjs` turns source line ranges into snippets for explain mode.
-- `skill/mr-cast-review/SKILL.md`, `skill/mr-cast-explain/SKILL.md` and `skill/mr-cast-prune/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
+- `skill/mr-cast-review/SKILL.md`, `skill/mr-cast-explain/SKILL.md`, `skill/mr-cast-prune/SKILL.md` and `skill/mr-cast-upgrade/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
 For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.
