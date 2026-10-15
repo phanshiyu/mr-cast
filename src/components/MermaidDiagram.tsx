@@ -54,7 +54,6 @@ function loadMermaid(): Promise<Mermaid> {
         noteBkgColor: '#2a2414',
         noteTextColor: colors.text,
         noteBorderColor: surfaces.amber,
-        // gantt
         sectionBkgColor: surfaces.alt,
         altSectionBkgColor: colors.bg,
         sectionBkgColor2: surfaces.alt,
@@ -72,7 +71,6 @@ function loadMermaid(): Promise<Mermaid> {
         critBkgColor: '#4a1f27',
         critBorderColor: colors.del,
         todayLineColor: colors.del,
-        // pie
         pieOpacity: '0.92',
         pieStrokeColor: colors.bg,
         pieOuterStrokeColor: surfaces.edge,
@@ -83,12 +81,10 @@ function loadMermaid(): Promise<Mermaid> {
         // mindmap, timeline and other section-coloured diagrams
         ...Object.fromEntries(palette.map((c, i) => [`cScale${i}`, c])),
         ...Object.fromEntries(palette.map((_, i) => [`cScaleLabel${i}`, colors.bg])),
-        // gitGraph
         ...Object.fromEntries(palette.map((c, i) => [`git${i}`, c])),
         ...Object.fromEntries(palette.map((_, i) => [`gitBranchLabel${i}`, colors.bg])),
         commitLabelColor: colors.text,
         commitLabelBackground: surfaces.node,
-        // class / state / er
         classText: colors.text,
         labelColor: colors.text,
         attributeBackgroundColorOdd: surfaces.alt,
