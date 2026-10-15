@@ -1,7 +1,7 @@
-// Installs the mr-cast-review, mr-cast-explain, mr-cast-prune and mr-cast-upgrade skills and the render
-// commands into the Claude config dir, pointing at this install, and records them in a manifest so the
-// next install or uninstall-skill removes whatever this version wrote that the next one no longer does.
-// The storyboard schema is copied from src/types.ts so the skills cannot drift from the player.
+// Installs the mr-cast, mr-cast-prune and mr-cast-upgrade skills into the Claude config dir, pointing at
+// this install, and records them in a manifest so the next install or uninstall-skill removes whatever this
+// version wrote that the next one no longer does. The storyboard schema is copied from src/types.ts so the
+// skill cannot drift from the player.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,7 +19,7 @@ const LEGACY = [
   'commands/mr-cast-render.md',
   'commands/mr-cast-explain-render.md',
 ];
-/** Text every file mr-cast writes contains: the CLI path (skills) or the path of its skill (commands). */
+/** Text every file mr-cast writes contains: the CLI path (skills) or the path of its skill (older commands). */
 const MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md', '/skills/mr-cast-'];
 
 const defaultClaudeDir = () => process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
@@ -31,14 +31,6 @@ function storyboardTypes(root) {
   if (start < 0 || end < 0) throw new Error('src/types.ts: storyboard section markers not found');
   return types.slice(start, end).replace(/^export /gm, '').trim();
 }
-
-const command = ({ description, argumentHint, skillPath, body }) => `---
-description: ${description}
-argument-hint: ${argumentHint}
----
-
-Follow the skill at ${skillPath}. Read it in full first. ${body}
-`;
 
 const fromMrCast = (file) => {
   try {
@@ -63,12 +55,12 @@ function previousFiles(claudeDir) {
 
 /**
  * Deletes each file an earlier install wrote that is not in `keep` and whose content shows mr-cast wrote
- * it, then its skill directory once empty. Returns { removed, kept } absolute paths.
+ * it, then the directories it leaves empty inside its skill. Returns { removed, kept } absolute paths.
  */
 function removeStale(claudeDir, keep) {
   const removed = [];
   const kept = [];
-  const skills = path.join(claudeDir, 'skills');
+  const skills = path.resolve(claudeDir, 'skills');
   for (const rel of previousFiles(claudeDir)) {
     const file = path.resolve(claudeDir, rel);
     if (keep.has(rel) || !file.startsWith(path.resolve(claudeDir) + path.sep) || !fs.existsSync(file)) continue;
@@ -78,8 +70,7 @@ function removeStale(claudeDir, keep) {
     }
     fs.rmSync(file);
     removed.push(file);
-    const dir = path.dirname(file);
-    if (path.dirname(dir) === skills && fs.readdirSync(dir).length === 0) fs.rmdirSync(dir);
+    for (let dir = path.dirname(file); dir.startsWith(skills + path.sep) && fs.readdirSync(dir).length === 0; dir = path.dirname(dir)) fs.rmdirSync(dir);
   }
   return { removed, kept };
 }
@@ -99,35 +90,14 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
     .replaceAll('{{MR_CAST}}', () => root)
     .replace('{{STORYBOARD_TYPES}}', () => schema);
 
-  const review = path.join(claudeDir, 'skills/mr-cast-review/SKILL.md');
-  const explain = path.join(claudeDir, 'skills/mr-cast-explain/SKILL.md');
-  const rendered = 'The MP4 is named after the walkthrough\'s title. Give the user the path `render` prints.';
-  const asks = (step) => `Ask the questions in step ${step} that the arguments and the request leave open, and check the plan before rendering, as the skill says.`;
-
+  const skill = (name, file = 'SKILL.md') => [path.join(claudeDir, 'skills', name, file), fill(path.join(root, 'skill', name, file))];
   const targets = [
-    // MR_CAST_SKILL_TEMPLATE swaps in a variant of the review skill (quality/variant.sh).
-    [review, fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-cast-review/SKILL.md'))],
-    [explain, fill(path.join(root, 'skill/mr-cast-explain/SKILL.md'))],
-    [path.join(claudeDir, 'skills/mr-cast-prune/SKILL.md'), fill(path.join(root, 'skill/mr-cast-prune/SKILL.md'))],
-    [path.join(claudeDir, 'skills/mr-cast-upgrade/SKILL.md'), fill(path.join(root, 'skill/mr-cast-upgrade/SKILL.md'))],
-    [
-      path.join(claudeDir, 'commands/mr-cast-render.md'),
-      command({
-        description: "Render an MP4 walkthrough video of the current branch's diff (mr-cast)",
-        argumentHint: '[base-branch | --working | --simple | --pace slower|faster | --no-voice]',
-        skillPath: review,
-        body: `${asks(2)} In step 5, run \`render\` instead of \`play\`. ${rendered}\n\nArguments: $ARGUMENTS\n\nPass a base branch, \`--working\` and \`--simple\` to \`mr-cast extract\`, and \`--pace\` and \`--no-voice\` to the later commands as step 2 says.`,
-      }),
-    ],
-    [
-      path.join(claudeDir, 'commands/mr-cast-explain-render.md'),
-      command({
-        description: 'Render what you just explained as an MP4 walkthrough with diagrams and real code (mr-cast)',
-        argumentHint: '[what to focus on | --simple | --pace slower|faster | --no-voice]',
-        skillPath: explain,
-        body: `Animate the explanation you gave most recently in this conversation. ${asks(1)} In step 6, run \`explain render\` instead of \`explain play\`. ${rendered}\n\nArguments: $ARGUMENTS\n\nPass \`--simple\` to \`mr-cast explain init\`, and \`--pace\` and \`--no-voice\` to the later commands as step 1 says. Other words say what to focus on.`,
-      }),
-    ],
+    // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
+    [path.join(claudeDir, 'skills/mr-cast/SKILL.md'), fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-cast/SKILL.md'))],
+    skill('mr-cast', 'references/branch.md'),
+    skill('mr-cast', 'references/explanation.md'),
+    skill('mr-cast-prune'),
+    skill('mr-cast-upgrade'),
   ];
   const files = targets.map(([file]) => path.relative(claudeDir, file).split(path.sep).join('/'));
   const stale = removeStale(claudeDir, new Set(files));
@@ -141,7 +111,8 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
 
 /**
  * The install manifest when its skills point at the package in `root`, else null. A manifest from before
- * the root was recorded matches when the review skill it installed calls this package's CLI.
+ * the root was recorded matches when the main skill it installed (mr-cast, or mr-cast-review before 0.12)
+ * calls this package's CLI.
  */
 function manifestFrom(root, claudeDir) {
   let manifest;
@@ -152,7 +123,8 @@ function manifestFrom(root, claudeDir) {
   }
   const own = fs.realpathSync(root);
   if (manifest.root !== undefined) return manifest.root === own ? manifest : null;
-  return fromThisPackage(path.join(claudeDir, 'skills/mr-cast-review/SKILL.md'), own) ? manifest : null;
+  const main = ['skills/mr-cast/SKILL.md', 'skills/mr-cast-review/SKILL.md'];
+  return main.some((file) => fromThisPackage(path.join(claudeDir, file), own)) ? manifest : null;
 }
 
 const fromThisPackage = (file, root) => {
