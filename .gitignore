@@ -4,3 +4,4 @@ dist/
 .mr-cast/
 todo.md
 decisions.tsv
+.DS_Store
