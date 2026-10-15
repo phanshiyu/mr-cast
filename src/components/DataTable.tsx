@@ -3,8 +3,9 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, TableScene } from '../types';
 import { brighter, focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
-import { COL_GAP, HEADER_FONT, HEADER_H, MARKER_W, PAD_X, cellFont, layoutTable, type PlacedCell, type PlacedRow, type TableLayout } from '../utils/tableLayout';
-import { ChangeLegend, changeTone } from './ChangeLegend';
+import { COL_GAP, HEADER_FONT, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, cellFont, layoutTable, type PlacedCell, type PlacedRow, type TableLayout } from '../utils/tableLayout';
+import { ChangeLegend } from './ChangeLegend';
+import { badgesOf, changeTone, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -137,6 +138,7 @@ const Row: React.FC<{ placed: PlacedRow; layout: TableLayout; at: number; emphas
           <Cell cell={cell} first={i === 0} removed={removed} layout={layout} />
         </div>
       ))}
+      <RowBadges badges={badgesOf(placed.row, { change: false })} size={ROW_BADGE} right={18} />
     </div>
   );
 };

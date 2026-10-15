@@ -36,9 +36,40 @@ export type HunkMap = Record<string, Hunk>;
 
 export type Risk = 'low' | 'medium' | 'high';
 
+/** What a diff does to an item. Drawn green with a NEW badge, red struck through with REMOVED, or blue with CHANGED. */
+export type Change = 'added' | 'removed' | 'modified';
+
+/**
+ * Three separate ways to mark an item, never to be swapped for one another:
+ * `change` says what the diff does to it, `badge` is a label of your own, and `highlight` (or a focus
+ * step) points the viewer at it.
+ */
+export interface Marks {
+  /**
+   * What this diff does to the item. Mark exactly what the diff changes and nothing else: the viewer
+   * reads every mark as a fact about the diff. An explanation has no diff, so it leaves `change` off
+   * unless it explains a change and sets `explainsChange`.
+   */
+  change?: Change;
+  /**
+   * "Look here", for a part the whole scene is about: a soft white glow with no word, which never reads as a
+   * change. To point at parts one at a time as the voice names them, use focus `steps` instead.
+   */
+  highlight?: boolean;
+  /**
+   * A short label of your own, up to 14 characters, e.g. "hot path", "v2", "owner" or "key", drawn as a pill in
+   * `tone` (neutral by default). Never a change word: use `change` for what the diff does.
+   */
+  badge?: string;
+  /** Colour of the badge (and of a node's icon or a timeline mark). */
+  tone?: Tone;
+}
+
 interface SceneBase {
   /** Short title shown in the chapter sidebar. Defaults to a per-type label. */
   chapter?: string;
+  /** In an explanation, this scene explains a change, so its `change` marks are meant (see Storyboard.explainsChange). */
+  explainsChange?: boolean;
   /**
    * Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice.
    * The voice starts once the scene has drawn in. A scene with `steps` says it before the first step.
@@ -73,9 +104,9 @@ export interface IntentScene extends SceneBase {
 /**
  * A card in an arch or sequence scene: a service, a database, a person, a team, a document, a device.
  * Older storyboards wrote `kind` ("service", "db", "queue" or "client") for the icon and caption, and
- * `modified: true` for a change or a key part; both still work.
+ * `modified: true`, which reads as `change: "modified"` in a diff walkthrough and `highlight` in an explanation.
  */
-export interface DiagramNode {
+export interface DiagramNode extends Marks {
   id: string;
   label: string;
   /**
@@ -85,11 +116,7 @@ export interface DiagramNode {
   icon?: string;
   /** A short line under the label saying what it is, e.g. "datastore", "customer", "on call". None when absent. */
   caption?: string;
-  /** What this change does to it: added (green, "new"), removed (dashed and struck through) or modified ("changed"). */
-  change?: Change;
-  /** A key part of the idea, drawn in the accent colour with a "key" badge. Use it in an explanation. */
-  highlight?: boolean;
-  /** Colour of its icon, for telling kinds of things apart, e.g. people "good" and systems "neutral". */
+  /** Colour of its icon and badge, for telling kinds of things apart, e.g. people "good" and systems "neutral". */
   tone?: Tone;
 }
 
@@ -110,8 +137,10 @@ export interface ArchEdge {
    * indirect link. Defaults to "flow" for a forward edge and "solid" otherwise.
    */
   style?: 'flow' | 'solid' | 'dashed';
-  /** An edge this change adds (green), removes (dashed red) or alters (accent). */
+  /** An edge this diff adds (green), removes (dashed red) or alters (blue). */
   change?: Change;
+  /** "Look here": the edge glows white. */
+  highlight?: boolean;
 }
 
 export interface ArchScene extends SceneBase {
@@ -193,15 +222,14 @@ export type MessageKind = 'call' | 'return' | 'async';
 
 export type SequenceParticipant = DiagramNode;
 
-export interface SequenceMessage {
+/** Older storyboards wrote `modified: true`, which reads as `change: "modified"` in a diff walkthrough and `highlight` in an explanation. */
+export interface SequenceMessage extends Marks {
   from: string;
   /** Same as `from` for a self-call. */
   to: string;
   label: string;
   /** "call" (default) is a solid arrow, "return" a dashed one, "async" an open arrowhead. */
   kind?: MessageKind;
-  /** Highlight a message this change adds or alters, or in an explanation the key step. */
-  modified?: boolean;
   /** Short annotation shown beside the message. */
   note?: string;
 }
@@ -221,32 +249,28 @@ export interface SequenceScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Change = 'added' | 'removed' | 'modified';
 export type Cardinality = 'one-to-one' | 'one-to-many' | 'many-to-many';
 
-export interface ErField {
+export interface ErField extends Marks {
   name: string;
   type?: string;
   pk?: boolean;
   fk?: boolean;
-  change?: Change;
 }
 
-export interface ErEntity {
+export interface ErEntity extends Marks {
   id: string;
   /** Table or model name as it appears in code. */
   name: string;
   fields: ErField[];
-  change?: Change;
 }
 
-export interface ErRelation {
+export interface ErRelation extends Marks {
   /** For one-to-many, `from` is the "one" side and `to` the "many" side. */
   from: string;
   to: string;
   cardinality: Cardinality;
   label?: string;
-  change?: Change;
 }
 
 export interface ErScene extends SceneBase {
@@ -262,21 +286,19 @@ export interface ErScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export interface StateNode {
+export interface StateNode extends Marks {
   id: string;
   label: string;
   /** A terminal state, drawn with a double border. */
   final?: boolean;
-  change?: Change;
 }
 
-export interface StateTransition {
+export interface StateTransition extends Marks {
   from: string;
   /** Same as `from` for a self-transition. */
   to: string;
   /** The event or guard, e.g. "pay" or "timeout [24h]". */
   label?: string;
-  change?: Change;
 }
 
 export interface StateScene extends SceneBase {
@@ -304,12 +326,12 @@ export interface MermaidScene extends SceneBase {
 
 export type TestStatus = 'added' | 'modified' | 'removed' | 'existing';
 
-export interface TestCase {
+export interface TestCase extends Pick<Marks, 'badge' | 'tone'> {
   /** The test's name as written in code. */
   name: string;
   /** The behavior it proves, in plain words. */
   proves: string;
-  /** Defaults to "added". Use "existing" for an unchanged test that already covers the changed code. */
+  /** What the diff does to the test, drawn NEW, CHANGED or REMOVED. Defaults to "added". Use "existing" for an unchanged test that already covers the changed code. */
   status?: TestStatus;
   /** Hunk with this test's code, if the diff has it. Linking a test hunk here counts it as shown. */
   hunkId?: string;
@@ -325,6 +347,11 @@ export interface TestsScene extends SceneBase {
   /** Important behaviors this change introduces that no test covers. Empty means you checked and found none. */
   gaps: string[];
   /**
+   * Your own panel titles, for a scene that is not about a diff's tests, e.g. { "cases": "Checks", "gaps": "Open questions" }.
+   * Defaults: subject "Under test", proves "Proves", gaps "Not tested", none "No tests in this change" (shown when `cases` is empty).
+   */
+  titles?: { subject?: string; proves?: string; gaps?: string; none?: string };
+  /**
    * Move the viewer's attention as the voice explains: the matrix draws first, then each step lights what
    * it focuses just before its `say` is spoken. `narration` is then the intro.
    * A ref is a case index (0-based), a case's name, or a gap "gap:0".
@@ -337,9 +364,9 @@ export type TableCell = string | { before: string; after: string };
 
 /**
  * One cell per column. An added or removed row holds plain text; a row with a `{ before, after }`
- * cell is modified, with or without `change: "modified"`.
+ * cell is modified, with or without `change: "modified"`. `badge` and `tone` label the row (see Marks).
  */
-export type TableRow = { cells: TableCell[]; change?: 'modified' } | { cells: string[]; change: 'added' | 'removed' };
+export type TableRow = Pick<Marks, 'badge' | 'tone'> & ({ cells: TableCell[]; change?: 'modified' } | { cells: string[]; change: 'added' | 'removed' });
 
 export interface TableScene extends SceneBase {
   type: 'table';
@@ -394,7 +421,7 @@ export interface ChartScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export interface TimelineEvent {
+export interface TimelineEvent extends Pick<Marks, 'highlight' | 'badge'> {
   /** Position on the axis, in the scene's unit. */
   at: number;
   label: string;
@@ -403,7 +430,7 @@ export interface TimelineEvent {
   tone?: Tone;
 }
 
-export interface TimelineSpan {
+export interface TimelineSpan extends Pick<Marks, 'highlight' | 'badge'> {
   from: number;
   to: number;
   /** What fills the interval, e.g. "rate-limit window" or "backoff 4 s". */
@@ -429,10 +456,10 @@ export interface TimelineScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export interface FileEntry {
+export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Repository-relative path. */
   path: string;
-  /** Marks the file as added, removed or modified. In a diff walkthrough defaults to what hunks.json says. */
+  /** What the diff does to the file. In a diff walkthrough defaults to what hunks.json says. */
   change?: Change;
   /** Lines added and removed. In a diff walkthrough default to the counts in hunks.json. */
   additions?: number;
@@ -471,6 +498,12 @@ export interface Storyboard {
    * test hunk and every hunk of 15+ changed lines that is neither shown nor listed here.
    */
   skipped?: SkippedHunk[];
+  /**
+   * An explanation whose subject is itself a change, such as how a migration reshaped a table, so its
+   * `change` marks are meant. Without it `validate` warns about every change mark in an explanation.
+   * Set it on one scene instead when only that scene shows a change.
+   */
+  explainsChange?: boolean;
 }
 
 export interface SkippedHunk {

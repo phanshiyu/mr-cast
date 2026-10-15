@@ -28,18 +28,20 @@ export const isExplanation = (hunks) => Object.values(hunks ?? {}).every((h) => 
 
 const defined = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 
-/** `modified: true` marked a node the change touched, or in an explanation a key part. */
+/**
+ * `modified: true` once marked both a part the diff changed and a part worth looking at. With a diff it
+ * stays a change; an explanation has no diff, so there it can only have meant emphasis.
+ */
+function normalizeMarks(raw, explain) {
+  const { modified, ...item } = raw;
+  const marked = modified === true && item.change === undefined && item.highlight === undefined;
+  return defined({ ...item, change: marked && !explain ? 'modified' : item.change, highlight: marked && explain ? true : item.highlight });
+}
+
 function normalizeNode(raw, explain) {
-  const { kind, modified, ...node } = raw;
+  const { kind, ...node } = normalizeMarks(raw, explain);
   const legacy = KINDS[kind];
-  const marked = modified === true && node.change === undefined && node.highlight === undefined;
-  return defined({
-    ...node,
-    icon: node.icon ?? legacy?.icon,
-    caption: node.caption ?? legacy?.caption,
-    change: marked && !explain ? 'modified' : node.change,
-    highlight: marked && explain ? true : node.highlight,
-  });
+  return defined({ ...node, icon: node.icon ?? legacy?.icon, caption: node.caption ?? legacy?.caption });
 }
 
 /** A scene's steps with each older focus key renamed to `focus`. */
@@ -59,7 +61,10 @@ function normalizeScene(scene, explain) {
   const steps = focusSteps(scene);
   const out = steps === scene.steps ? { ...scene } : { ...scene, steps };
   if (scene.type === 'arch') out.nodes = scene.nodes.map((n) => normalizeNode(n, explain));
-  if (scene.type === 'sequence') out.participants = scene.participants.map((n) => normalizeNode(n, explain));
+  if (scene.type === 'sequence') {
+    out.participants = scene.participants.map((n) => normalizeNode(n, explain));
+    out.messages = scene.messages.map((m) => normalizeMarks(m, explain));
+  }
   return out;
 }
 

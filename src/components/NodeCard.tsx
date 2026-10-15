@@ -1,6 +1,6 @@
-import type { Change, DiagramNode } from '../types';
+import type { DiagramNode } from '../types';
 import type { Emphasis } from '../utils/spotlight';
-import { changeTone } from './ChangeLegend';
+import { badgesOf, changeTone, CornerBadges, EMPHASIS, emphasisRing } from './marks';
 import { lucideIcon } from './icons';
 import { clampLines, colors, ellipsis } from './theme';
 import { tones } from './tones';
@@ -14,12 +14,10 @@ const METRICS: Record<CardSize, { icon: number; iconRadius: number; pad: number;
   compact: { icon: 40, iconRadius: 12, pad: 14, gap: 12, radius: 18, title: [25, 20], caption: 17, badge: 14, badgeAt: [-14, 14], ring: [5, 40] },
 };
 
-const badgeText: Record<Change, string> = { added: 'new', removed: 'removed', modified: 'changed' };
-
-/** How a node is marked: by what the change does to it, else as a key part, else not at all. */
-export function nodeMark(node: DiagramNode): { color: string; bg: string; badge: string } | null {
-  if (node.change) return { ...changeTone[node.change], badge: badgeText[node.change] };
-  return node.highlight ? { color: colors.accent, bg: colors.accentSoft, badge: 'key' } : null;
+/** How a node is coloured: by what the diff does to it, else as highlighted, else not at all. */
+export function nodeMark(node: DiagramNode): { color: string; bg: string } | null {
+  if (node.change) return changeTone[node.change];
+  return node.highlight ? { color: EMPHASIS.color, bg: EMPHASIS.soft } : null;
 }
 
 /** Sans advance per em, rounded up from SF Pro semibold so estimates err towards smaller text. */
@@ -87,17 +85,21 @@ export const NodeCard: React.FC<{
   const mark = nodeMark(node);
   const removed = node.change === 'removed';
   const tone = node.tone ? tones[node.tone] : null;
-  const iconColor = mark?.color ?? tone?.color ?? colors.muted;
-  const iconBg = mark?.bg ?? tone?.bg ?? 'rgba(255,255,255,0.05)';
+  const changed = node.change ? changeTone[node.change] : null;
+  const iconColor = changed?.color ?? tone?.color ?? (node.highlight ? EMPHASIS.color : colors.muted);
+  const iconBg = changed?.bg ?? tone?.bg ?? (node.highlight ? EMPHASIS.soft : 'rgba(255,255,255,0.05)');
   const textWidth = titleWidth(node, width, m);
   const title = titleFont ? { fontSize: titleFont, twoLines: wrappedLines(labelTokens(node.label), titleFont, textWidth) > 1 } : titleFit(node.label, textWidth, m.title);
-  const background = node.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : mark && !removed ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised;
+  const background =
+    node.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : node.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : !node.change && node.highlight ? EMPHASIS.card : colors.raised;
   const glow =
-    mark && !removed
-      ? node.change === 'added'
-        ? `0 0 0 ${m.ring[0]}px ${colors.addBg}, 0 0 ${m.ring[1]}px rgba(61,220,151,0.3)`
-        : `0 0 0 ${m.ring[0]}px ${colors.accentSoft}, 0 0 ${m.ring[1]}px ${colors.accentGlow}`
-      : '0 12px 32px rgba(0,0,0,0.4)';
+    node.change === 'added'
+      ? `0 0 0 ${m.ring[0]}px ${colors.addBg}, 0 0 ${m.ring[1]}px rgba(61,220,151,0.3)`
+      : node.change === 'modified'
+        ? `0 0 0 ${m.ring[0]}px ${colors.accentSoft}, 0 0 ${m.ring[1]}px ${colors.accentGlow}`
+        : !node.change && node.highlight
+          ? emphasisRing(m.ring[0], m.ring[1])
+          : '0 12px 32px rgba(0,0,0,0.4)';
   const lit = emphasis.glow > 0 ? `, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}` : '';
   return (
     <div
@@ -160,25 +162,7 @@ export const NodeCard: React.FC<{
         </div>
         {node.caption && !title.twoLines ? <div style={{ fontSize: m.caption, color: colors.faint, marginTop: size === 'large' ? 4 : 3, ...ellipsis }}>{node.caption}</div> : null}
       </div>
-      {mark ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: m.badgeAt[0],
-            right: m.badgeAt[1],
-            padding: size === 'large' ? '4px 12px' : '3px 10px',
-            borderRadius: 999,
-            background: mark.color,
-            color: '#0b0d18',
-            fontSize: m.badge,
-            fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: 'uppercase',
-          }}
-        >
-          {mark.badge}
-        </div>
-      ) : null}
+      <CornerBadges badges={badgesOf(node)} size={m.badge} top={m.badgeAt[0]} right={m.badgeAt[1]} />
     </div>
   );
 };

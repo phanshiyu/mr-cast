@@ -10,6 +10,7 @@ import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
+import { Badge, badgesOf, CornerBadges, EMPHASIS, emphasisRing } from './marks';
 import { tones } from './tones';
 
 const START = 10;
@@ -133,9 +134,9 @@ const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number; emph
         boxSizing: 'border-box',
         padding: '12px 18px',
         borderRadius: 14,
-        background: colors.raised,
-        border: `1.5px solid ${tone.color}${flash > 0 ? 'cc' : '66'}`,
-        boxShadow: `0 14px 36px rgba(0,0,0,0.45), 0 0 ${30 * flash}px ${tone.color}55${emphasis.glow > 0 ? `, 0 0 0 ${3 * emphasis.glow}px ${tone.color}, 0 0 ${40 * emphasis.glow}px ${tone.color}66` : ''}`,
+        background: placed.event.highlight ? EMPHASIS.card : colors.raised,
+        border: `1.5px solid ${placed.event.highlight ? EMPHASIS.color : `${tone.color}${flash > 0 ? 'cc' : '66'}`}`,
+        boxShadow: `${placed.event.highlight ? emphasisRing(5, 40) : '0 14px 36px rgba(0,0,0,0.45)'}, 0 0 ${30 * flash}px ${tone.color}55${emphasis.glow > 0 ? `, 0 0 0 ${3 * emphasis.glow}px ${tone.color}, 0 0 ${40 * emphasis.glow}px ${tone.color}66` : ''}`,
         opacity: rise * emphasis.opacity,
         transform: `translateY(${(1 - rise) * 18}px) scale(${1 + 0.03 * emphasis.glow})`,
       }}
@@ -151,6 +152,7 @@ const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number; emph
           {l}
         </div>
       ))}
+      <CornerBadges badges={badgesOf(placed.event)} size={12} top={-12} right={12} />
     </div>
   );
 };
@@ -174,8 +176,8 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
           boxSizing: 'border-box',
           borderRadius: 10,
           background: `repeating-linear-gradient(135deg, ${tone.bg}, ${tone.bg} 10px, transparent 10px, transparent 18px), ${tone.bg}`,
-          border: w > 0 ? `1.5px solid ${tone.color}${emphasis.glow > 0 ? '' : '99'}` : 'none',
-          boxShadow: emphasis.glow > 0 ? `0 0 ${36 * emphasis.glow}px ${tone.color}77` : undefined,
+          border: w > 0 ? `1.5px solid ${placed.span.highlight ? EMPHASIS.color : `${tone.color}${emphasis.glow > 0 ? '' : '99'}`}` : 'none',
+          boxShadow: emphasis.glow > 0 ? `0 0 ${36 * emphasis.glow}px ${tone.color}77` : placed.span.highlight ? `0 0 26px ${EMPHASIS.glow}` : undefined,
           overflow: 'hidden',
         }}
       />
@@ -197,7 +199,12 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
           opacity: label,
         }}
       >
-        <span>{placed.label}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {placed.label}
+          {badgesOf(placed.span).map((b, i) => (
+            <Badge key={i} badge={b} size={12} />
+          ))}
+        </span>
         {placed.inside && room > 0 ? <span style={{ fontFamily: fonts.mono, fontSize: 17, fontWeight: 600, opacity: 0.8 }}>{duration}</span> : null}
       </div>
     </div>

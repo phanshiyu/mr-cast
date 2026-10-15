@@ -1,3 +1,4 @@
+import { badgeWords } from './marks';
 import type { StateNode, StateTransition } from '../types';
 import { wrapLabel } from './wrapLabel';
 
@@ -29,11 +30,6 @@ const CHANNEL = 34;
 const SPREAD = 44;
 const ENTRY_GAP = 74;
 
-const badgeText = { added: 'new', removed: 'removed', modified: 'changed' } as const;
-
-export function badgeLabel(state: StateNode): string | null {
-  return state.change ? badgeText[state.change] : null;
-}
 
 function badgeWidth(text: string): number {
   return Math.ceil(text.length * (BADGE_FONT * 0.76 + 1) + 22);
@@ -55,8 +51,8 @@ function labelBox(t: StateTransition): LabelBox {
 }
 
 function stateWidth(state: StateNode): number {
-  const badge = badgeLabel(state);
-  const w = state.label.length * STATE_FONT * 0.6 + 2 * PAD_X + 8 + (badge ? badgeWidth(badge) + 14 : 0);
+  const badges = badgeWords(state).reduce((sum, word) => sum + badgeWidth(word) + 14, 0);
+  const w = state.label.length * STATE_FONT * 0.6 + 2 * PAD_X + 8 + badges;
   return Math.round(Math.min(MAX_W, Math.max(MIN_W, w)));
 }
 

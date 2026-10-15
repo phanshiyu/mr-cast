@@ -1,3 +1,4 @@
+import { rowBadgeRoom } from './marks';
 import type { TableCell, TableRow } from '../types';
 import { wrapLabel } from './wrapLabel';
 
@@ -116,10 +117,13 @@ function columnWidths(columns: readonly string[], rows: readonly TableRow[], tex
   return widths.map((w) => w + (spare * w) / total);
 }
 
+/** Font size of a row's own badges, drawn at its right end. */
+export const ROW_BADGE = 13;
+
 function attempt(columns: readonly string[], rows: readonly TableRow[], width: number, font: number) {
   const lineHeight = Math.round(font * LINE_HEIGHT);
   const pad = Math.round(font * 0.5);
-  const textW = width - 2 * PAD_X - MARKER_W - (columns.length - 1) * COL_GAP;
+  const textW = width - 2 * PAD_X - MARKER_W - (columns.length - 1) * COL_GAP - rowBadgeRoom(rows, ROW_BADGE);
   const widths = columnWidths(columns, rows, textW, font);
   const cols: TableLayout['cols'] = [];
   let x = PAD_X + MARKER_W;

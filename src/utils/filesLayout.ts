@@ -1,3 +1,4 @@
+import { badgesWidth } from './marks';
 import type { ShownFile } from '../../shared/files.mjs';
 
 const MONO_ADVANCE = 0.61;
@@ -118,7 +119,7 @@ function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number
   const iconW = Math.round(font * 1.35);
   const nameX = PAD_X + MARKER_W;
   const nameNeed = Math.max(
-    ...all.map((r) => r.depth * indent + iconW + r.name.length * font * MONO_ADVANCE + (r.kind === 'file' && r.file.test ? font * 3.4 : 0)),
+    ...all.map((r) => r.depth * indent + iconW + r.name.length * font * MONO_ADVANCE + (r.kind === 'file' ? (r.file.test ? font * 3.4 : 0) + (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0) : 0)),
   );
   const hasNotes = all.some((r) => r.kind === 'file' && r.note);
   const nameW = Math.min(nameNeed + 8, width * (hasNotes ? 0.46 : 0.7));

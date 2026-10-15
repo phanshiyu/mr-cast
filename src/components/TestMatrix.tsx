@@ -16,9 +16,12 @@ import {
   type PlacedCase,
   type PlacedGap,
   type TestsLayout,
+  ROW_BADGE,
 } from '../utils/testsLayout';
 import { focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { wrapLabel } from '../utils/wrapLabel';
+import { CHANGE_WORD } from '../utils/marks';
+import { badgesOf, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
@@ -30,11 +33,14 @@ const START = 10;
 const GAP_FRAMES = 14;
 
 const statusTone: Record<TestStatus, { label: string; color: string; bg: string }> = {
-  added: { label: 'added', color: colors.add, bg: colors.addBg },
-  modified: { label: 'changed', color: colors.accent, bg: colors.accentSoft },
-  removed: { label: 'removed', color: colors.del, bg: colors.delBg },
+  added: { label: CHANGE_WORD.added, color: colors.add, bg: colors.addBg },
+  modified: { label: CHANGE_WORD.modified, color: colors.accent, bg: colors.accentSoft },
+  removed: { label: CHANGE_WORD.removed, color: colors.del, bg: colors.delBg },
   existing: { label: 'existing', color: colors.muted, bg: 'rgba(144, 151, 168, 0.12)' },
 };
+
+type Titles = Required<NonNullable<TestsScene['titles']>>;
+const DEFAULT_TITLES: Titles = { subject: 'Under test', proves: 'Proves', gaps: 'Not tested', none: 'No tests in this change' };
 const STATUS_ORDER: TestStatus[] = ['added', 'modified', 'removed', 'existing'];
 
 /** Frames at which each part arrives; all of it inside the build. */
@@ -146,6 +152,7 @@ const CaseRow: React.FC<{ row: PlacedCase; layout: TestsLayout; at: number; fram
           textDecorationThickness: 2.5,
         }}
       />
+      <RowBadges badges={badgesOf(row.test)} size={ROW_BADGE} right={18} />
       <Lines
         lines={row.proves}
         style={{
@@ -162,7 +169,7 @@ const CaseRow: React.FC<{ row: PlacedCase; layout: TestsLayout; at: number; fram
   );
 };
 
-const MatrixHeader: React.FC<{ scene: TestsScene; layout: TestsLayout; appear: number }> = ({ scene, layout, appear }) => {
+const MatrixHeader: React.FC<{ scene: TestsScene; layout: TestsLayout; titles: Titles; appear: number }> = ({ scene, layout, titles, appear }) => {
   const matrix = layout.matrix!;
   const counts = STATUS_ORDER.map((s) => [s, scene.cases.filter((c) => (c.status ?? 'added') === s).length] as const).filter(([, n]) => n > 0);
   const label: React.CSSProperties = { position: 'absolute', top: 8, fontSize: 17, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', color: colors.faint };
@@ -173,7 +180,7 @@ const MatrixHeader: React.FC<{ scene: TestsScene; layout: TestsLayout; appear: n
         {scene.cases.length} {scene.cases.length === 1 ? 'test' : 'tests'}
       </div>
       <div style={{ ...label, left: matrix.nameX }}>Test</div>
-      <div style={{ ...label, left: matrix.provesX }}>Proves</div>
+      <div style={{ ...label, left: matrix.provesX }}>{titles.proves}</div>
       <div style={{ ...label, right: ROW_PAD_X, display: 'flex', gap: 18, letterSpacing: 1.5 }}>
         {counts.map(([s, n]) => (
           <span key={s} style={{ color: statusTone[s].color }}>
@@ -185,7 +192,7 @@ const MatrixHeader: React.FC<{ scene: TestsScene; layout: TestsLayout; appear: n
   );
 };
 
-const EmptyCard: React.FC<{ layout: TestsLayout; frame: number }> = ({ layout, frame }) => {
+const EmptyCard: React.FC<{ layout: TestsLayout; titles: Titles; frame: number }> = ({ layout, titles, frame }) => {
   const { fps } = useVideoConfig();
   const card = layout.emptyCard!;
   const appear = spring({ frame: frame - START, fps, config: { damping: 14, stiffness: 120 } });
@@ -226,8 +233,10 @@ const EmptyCard: React.FC<{ layout: TestsLayout; frame: number }> = ({ layout, f
         <FlaskConicalOff size={64} strokeWidth={1.8} color={colors.del} />
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 54, fontWeight: 800, letterSpacing: -1, color: colors.text }}>No tests in this change</div>
-        <div style={{ fontSize: 26, color: '#d7a0a7', marginTop: 10 }}>Nothing in this diff exercises the new code. The behaviors below ship unverified.</div>
+        <div style={{ fontSize: 54, fontWeight: 800, letterSpacing: -1, color: colors.text }}>{titles.none}</div>
+        {titles.none === DEFAULT_TITLES.none ? (
+          <div style={{ fontSize: 26, color: '#d7a0a7', marginTop: 10 }}>Nothing in this diff exercises the new code. The behaviors below ship unverified.</div>
+        ) : null}
       </div>
     </div>
   );
@@ -273,7 +282,8 @@ const GapItem: React.FC<{ gap: PlacedGap; layout: TestsLayout; at: number; frame
   );
 };
 
-const GapsPanel: React.FC<{ layout: TestsLayout; at: number; gapAt: (i: number) => number; frame: number; gapEmphasis: (i: number) => Emphasis }> = ({
+const GapsPanel: React.FC<{ layout: TestsLayout; titles: Titles; at: number; gapAt: (i: number) => number; frame: number; gapEmphasis: (i: number) => Emphasis }> = ({
+  titles,
   layout,
   at,
   gapAt,
@@ -317,12 +327,12 @@ const GapsPanel: React.FC<{ layout: TestsLayout; at: number; gapAt: (i: number) 
         }}
       >
         <TriangleAlert size={24} strokeWidth={2.4} />
-        Not tested
+        {titles.gaps}
         {none ? null : <span style={{ color: '#b9965a', fontWeight: 600, letterSpacing: 1.5 }}>· {layout.gaps.length}</span>}
       </div>
       {none ? (
         <div style={{ position: 'absolute', left: GAPS_PAD, top: GAPS_HEADER_H - 6, fontSize: layout.font, color: colors.muted }}>
-          No gaps found. Every important behavior in this change has a test.
+          {titles.gaps === DEFAULT_TITLES.gaps ? 'No gaps found. Every important behavior in this change has a test.' : 'None.'}
         </div>
       ) : (
         layout.gaps.map((gap, i) => <GapItem key={i} gap={{ ...gap, y: gap.y - panel.y }} layout={layout} at={gapAt(i)} frame={frame} emphasis={gapEmphasis(i)} />)
@@ -331,9 +341,9 @@ const GapsPanel: React.FC<{ layout: TestsLayout; at: number; gapAt: (i: number) 
   );
 };
 
-const Subject: React.FC<{ subject: string }> = ({ subject }) => (
+const Subject: React.FC<{ subject: string; title: string }> = ({ subject, title }) => (
   <div style={{ maxWidth: 760, flexShrink: 0, textAlign: 'right', paddingBottom: 4 }}>
-    <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', color: colors.faint }}>Under test</div>
+    <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', color: colors.faint }}>{title}</div>
     {wrapLabel(subject, 52).map((line, i) => (
       <div key={i} style={{ fontFamily: fonts.mono, fontSize: 22, color: colors.text, marginTop: i ? 2 : 6, whiteSpace: 'nowrap' }}>
         {line}
@@ -343,6 +353,7 @@ const Subject: React.FC<{ subject: string }> = ({ subject }) => (
 );
 
 export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, durationInFrames, segments }) => {
+  const titles: Titles = { ...DEFAULT_TITLES, ...scene.titles };
   const frame = useCurrentFrame();
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = contentBox(Boolean(scene.title));
@@ -355,7 +366,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
       durationInFrames={durationInFrames}
       eyebrow={scene.chapter ?? defaultChapter.tests}
       title={scene.title}
-      aside={scene.subject ? <Subject subject={scene.subject} /> : undefined}
+      aside={scene.subject ? <Subject subject={scene.subject} title={titles.subject} /> : undefined}
     >
       {/* A short matrix sits a little above centre rather than leaving the lower screen empty. */}
       <div
@@ -369,11 +380,11 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
           transformOrigin: 'top left',
         }}
       >
-        {layout.matrix ? <MatrixHeader scene={scene} layout={layout} appear={headerIn} /> : <EmptyCard layout={layout} frame={frame} />}
+        {layout.matrix ? <MatrixHeader scene={scene} layout={layout} titles={titles} appear={headerIn} /> : <EmptyCard layout={layout} titles={titles} frame={frame} />}
         {layout.rows.map((row, i) => (
           <CaseRow key={i} row={row} layout={layout} at={timeline.rowAt(i)} frame={frame} emphasis={emphasisOf(`c:${i}`)} />
         ))}
-        <GapsPanel layout={layout} at={timeline.panelAt} gapAt={timeline.gapAt} frame={frame} gapEmphasis={(i) => emphasisOf(`g:${i}`)} />
+        <GapsPanel layout={layout} titles={titles} at={timeline.panelAt} gapAt={timeline.gapAt} frame={frame} gapEmphasis={(i) => emphasisOf(`g:${i}`)} />
       </div>
     </SceneShell>
   );

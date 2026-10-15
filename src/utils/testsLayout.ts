@@ -1,3 +1,4 @@
+import { rowBadgeRoom } from './marks';
 import type { TestCase } from '../types';
 import { wrapLabel } from './wrapLabel';
 
@@ -74,7 +75,7 @@ function attempt(cases: readonly TestCase[], gaps: readonly string[], width: num
   let emptyCard: Box | null = null;
   const rows: PlacedCase[] = [];
   if (cases.length) {
-    const textW = width - CHECK_W - STATUS_W - 2 * ROW_PAD_X - 3 * COL_GAP;
+    const textW = width - CHECK_W - STATUS_W - 2 * ROW_PAD_X - 3 * COL_GAP - rowBadgeRoom(cases, ROW_BADGE);
     const nameW = Math.round(textW * 0.42);
     const provesW = textW - nameW;
     const nameX = ROW_PAD_X + CHECK_W + COL_GAP + STATUS_W + COL_GAP;
@@ -128,6 +129,9 @@ function attempt(cases: readonly TestCase[], gaps: readonly string[], width: num
  * fits the height; failing that, the largest that fits the height; failing that, the smallest font
  * laid out wider and scaled down, so text never runs into the caption band.
  */
+/** Font size of a case's own badges, drawn at its right end. */
+export const ROW_BADGE = 13;
+
 export function layoutTests(cases: readonly TestCase[], gaps: readonly string[], width: number, height: number): TestsLayout {
   let fallback: TestsLayout | null = null;
   for (let font = cases.length ? MAX_FONT : MAX_FONT_NO_CASES; font >= MIN_FONT; font--) {

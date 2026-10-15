@@ -1,3 +1,4 @@
+import { CHANGE_WORD } from '../utils/marks';
 import { FileWarning, Trash2 } from 'lucide-react';
 import type { Token } from 'prism-react-renderer';
 import { useMemo, type ReactNode } from 'react';
@@ -111,11 +112,11 @@ interface RowModel {
 }
 
 const statusStyle: Record<Hunk['status'], { label: string; color: string }> = {
-  added: { label: 'Added', color: colors.add },
-  modified: { label: 'Modified', color: colors.accent },
-  deleted: { label: 'Deleted', color: colors.del },
-  renamed: { label: 'Renamed', color: '#fbbf24' },
-  source: { label: 'Source', color: colors.muted },
+  added: { label: CHANGE_WORD.added, color: colors.add },
+  modified: { label: CHANGE_WORD.modified, color: colors.accent },
+  deleted: { label: CHANGE_WORD.removed, color: colors.del },
+  renamed: { label: 'renamed', color: '#fbbf24' },
+  source: { label: 'source', color: colors.muted },
 };
 
 const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (

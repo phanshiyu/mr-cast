@@ -1,11 +1,7 @@
 import type { Change } from '../types';
+import { CHANGE_WORD } from '../utils/marks';
+import { changeTone } from './marks';
 import { colors, fonts } from './theme';
-
-export const changeTone: Record<Change, { color: string; bg: string; marker: string; label: string }> = {
-  added: { color: colors.add, bg: colors.addBg, marker: '+', label: 'added' },
-  removed: { color: colors.del, bg: colors.delBg, marker: '−', label: 'removed' },
-  modified: { color: colors.accent, bg: colors.accentSoft, marker: '~', label: 'modified' },
-};
 
 const ORDER: Change[] = ['added', 'removed', 'modified'];
 
@@ -32,7 +28,7 @@ export const ChangeLegend: React.FC<{ used: ReadonlySet<Change> }> = ({ used }) 
         >
           {changeTone[c].marker}
         </span>
-        {changeTone[c].label}
+        {CHANGE_WORD[c]}
       </div>
     ))}
   </div>

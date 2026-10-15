@@ -6,7 +6,7 @@ import { buildFrames } from '../../shared/timing.mjs';
 import type { FilesScene } from '../types';
 import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow } from '../utils/filesLayout';
 import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
-import { changeTone } from './ChangeLegend';
+import { Badge, badgesOf, changeTone } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -137,6 +137,9 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
             test
           </span>
         ) : null}
+        {badgesOf(file, { change: false }).map((b, i) => (
+          <Badge key={i} badge={b} size={Math.round(layout.font * 0.58)} />
+        ))}
       </div>
       {layout.countsX !== null && (file.additions !== undefined || file.deletions !== undefined) ? (
         <Counts layout={layout} additions={file.additions ?? 0} deletions={file.deletions ?? 0} grow={grow} />

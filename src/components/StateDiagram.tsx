@@ -2,14 +2,13 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
-import type { Change, StateScene } from '../types';
+import type { Change, StateScene, StateTransition } from '../types';
 import {
   ARROW_LEN,
   BADGE_FONT,
   LABEL_FONT,
   LABEL_LINE_H,
   STATE_FONT,
-  badgeLabel,
   layoutState,
   type PlacedState,
   type Pt,
@@ -18,7 +17,8 @@ import {
 } from '../utils/stateLayout';
 import { focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
-import { ChangeLegend, changeTone } from './ChangeLegend';
+import { ChangeLegend } from './ChangeLegend';
+import { Badge, badgesOf, changeTone, CornerBadges, EMPHASIS, emphasisRing } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -28,7 +28,7 @@ const START = 8;
 const STATES_END = 20;
 const TRANSITION_FRAMES = 12;
 
-const toneColor = (change: Change | undefined) => (change ? changeTone[change].color : EDGE);
+const toneColor = ({ change, highlight }: StateTransition) => (change ? changeTone[change].color : highlight ? EMPHASIS.color : EDGE);
 
 /** Frames at which each part of the scene arrives; all of it inside the build. */
 interface Timeline {
@@ -78,9 +78,11 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: readonl
   const pulse = pulseOf(frame, pulseAt);
   const removed = state.change === 'removed';
   const tone = state.change ? changeTone[state.change] : null;
-  const border = removed ? `${colors.del}cc` : tone?.color ?? colors.borderStrong;
-  const badge = badgeLabel(state);
-  const glow = tone && !removed ? `0 0 0 6px ${tone.bg}, 0 0 ${40 + 30 * pulse}px ${tone.color}${removed ? '33' : '55'}` : '0 14px 36px rgba(0,0,0,0.45)';
+  const highlight = state.highlight && !state.change;
+  const border = removed ? `${colors.del}cc` : tone?.color ?? (highlight ? EMPHASIS.color : colors.borderStrong);
+  const badges = badgesOf(state);
+  const glow =
+    tone && !removed ? `0 0 0 6px ${tone.bg}, 0 0 ${40 + 30 * pulse}px ${tone.color}${removed ? '33' : '55'}` : highlight ? emphasisRing(6, 44) : '0 14px 36px rgba(0,0,0,0.45)';
   const ring = tone ? `, 0 0 0 ${4 + 10 * pulse}px ${tone.color}${Math.round(pulse * 140).toString(16).padStart(2, '0')}` : '';
   const inner = state.final ? `inset 0 0 0 5px ${colors.raised}, inset 0 0 0 7px ${border}` : '';
   const lit = emphasis.glow > 0 ? `0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${40 * emphasis.glow}px ${colors.accentGlow}` : '';
@@ -95,7 +97,8 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: readonl
         height: placed.h,
         boxSizing: 'border-box',
         borderRadius: placed.h / 2,
-        background: state.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : state.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : colors.raised,
+        background:
+          state.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : state.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : highlight ? EMPHASIS.card : colors.raised,
         border: `2px ${removed ? 'dashed' : 'solid'} ${border}`,
         boxShadow: [glow + ring, lit, inner].filter(Boolean).join(', '),
         opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity,
@@ -120,44 +123,31 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: readonl
       >
         {state.label}
       </div>
-      {badge && tone ? (
-        <div
-          style={{
-            flexShrink: 0,
-            padding: '3px 10px',
-            borderRadius: 999,
-            background: tone.color,
-            color: '#0b0d18',
-            fontSize: BADGE_FONT,
-            fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: 'uppercase',
-            transform: `scale(${badgeScale})`,
-          }}
-        >
-          {badge}
-        </div>
-      ) : null}
+      {badges.map((b, i) => (
+        <Badge key={i} badge={b} size={BADGE_FONT} style={{ transform: `scale(${badgeScale})` }} />
+      ))}
     </div>
   );
 };
 
 const TransitionPath: React.FC<{ routed: RoutedTransition; index: number; draw: number; pulse: number; emphasis: Emphasis }> = ({ routed, index, draw, pulse, emphasis }) => {
-  const change = routed.transition.change;
-  const color = toneColor(change);
+  const { transition } = routed;
+  const change = transition.change;
+  const color = toneColor(transition);
   const removed = change === 'removed';
+  const steady = change ? (removed ? 0.1 : 0.22) : transition.highlight ? 0.22 : 0;
   const id = `state-reveal-${index}`;
   return (
     <g opacity={draw > 0 ? (removed ? 0.78 : 1) * emphasis.opacity : 0}>
       <mask id={id} maskUnits="userSpaceOnUse">
         <path d={routed.d} fill="none" stroke="#fff" strokeWidth={14} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
       </mask>
-      {change || emphasis.glow > 0 ? (
+      {steady > 0 || emphasis.glow > 0 ? (
         <path
           d={routed.d}
           fill="none"
-          stroke={change ? color : colors.accent}
-          strokeOpacity={(change ? (removed ? 0.1 : 0.22) : 0) + 0.45 * Math.max(pulse, emphasis.glow * 0.6)}
+          stroke={change || transition.highlight ? color : colors.accent}
+          strokeOpacity={steady + 0.45 * Math.max(pulse, emphasis.glow * 0.6)}
           strokeWidth={10 + 8 * pulse}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -183,7 +173,8 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
   const { label, transition } = routed;
   if (!label) return null;
   const change = transition.change;
-  const color = change ? toneColor(change) : colors.muted;
+  const highlight = transition.highlight && !change;
+  const color = change || highlight ? toneColor(transition) : colors.muted;
   return (
     <div
       style={{
@@ -202,8 +193,8 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
         padding: '0 12px',
         borderRadius: 10,
         background: '#0d0f16',
-        border: `1px solid ${change ? `${color}99` : colors.borderStrong}`,
-        boxShadow: pulse > 0 ? `0 0 ${24 * pulse}px ${color}88` : 'none',
+        border: `1px solid ${change || highlight ? `${color}99` : colors.borderStrong}`,
+        boxShadow: pulse > 0 ? `0 0 ${24 * pulse}px ${color}88` : highlight ? `0 0 18px ${EMPHASIS.glow}` : 'none',
         color,
         fontFamily: fonts.mono,
         fontSize: LABEL_FONT,
@@ -215,6 +206,7 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
       {label.lines.map((line, i) => (
         <span key={i}>{line}</span>
       ))}
+      <CornerBadges badges={badgesOf(transition, { change: false })} size={12} top={-19} right={-4} />
     </div>
   );
 };

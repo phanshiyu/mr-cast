@@ -4,7 +4,8 @@ import { buildFrames } from '../../shared/timing.mjs';
 import type { ArchEdge, ArchNode, ArchScene, Change } from '../types';
 import { GROUP_NAME, LABEL_FONT, LABEL_LINE_HEIGHT, LABEL_PAD, NODE_H, fitArch, groupNameMax, type ArchDirection, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
-import { ChangeLegend, changeTone } from './ChangeLegend';
+import { ChangeLegend } from './ChangeLegend';
+import { changeTone, EMPHASIS } from './marks';
 import { NodeCard, sharedTitleFont } from './NodeCard';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -16,16 +17,19 @@ const EDGE_DRAW = 12;
 const EDGE_LABEL_END = 16;
 const MUTED = 'rgba(170,178,200,0.55)';
 
-/** Arrowhead colours, one marker each: plain, key, and one per change. */
-const MARKERS = { muted: 'rgba(170,178,200,0.8)', accent: colors.accent, added: colors.add, removed: colors.del } as const;
+/** Arrowhead colours, one marker each: plain, highlighted, and one per change. */
+const MARKERS = { muted: 'rgba(170,178,200,0.8)', emphasis: EMPHASIS.color, accent: colors.accent, added: colors.add, removed: colors.del } as const;
 type MarkerTone = keyof typeof MARKERS;
 
-const isKey = (n: ArchNode | undefined) => Boolean(n && (n.highlight || n.change === 'modified'));
+const isHighlighted = (n: ArchNode | undefined) => Boolean(n?.highlight && !n.change);
 
-/** An edge's colour: its own change, else accent between two key nodes, else plain. */
+/**
+ * An edge's colour: its own change, else highlighted, either itself or by joining two highlighted nodes,
+ * else plain. An edge between two changed nodes stays plain: only its own `change` says the diff touched it.
+ */
 function edgeTone(edge: ArchEdge, nodes: ReadonlyMap<string, ArchNode>): { stroke: string; marker: MarkerTone } {
   if (edge.change) return { stroke: changeTone[edge.change].color, marker: edge.change === 'modified' ? 'accent' : edge.change };
-  if (isKey(nodes.get(edge.from)) && isKey(nodes.get(edge.to))) return { stroke: colors.accent, marker: 'accent' };
+  if (edge.highlight || (isHighlighted(nodes.get(edge.from)) && isHighlighted(nodes.get(edge.to)))) return { stroke: EMPHASIS.color, marker: 'emphasis' };
   return { stroke: MUTED, marker: 'muted' };
 }
 
@@ -45,12 +49,12 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
   const id = `arch-reveal-${routed.index}`;
   return (
     <g opacity={draw > 0 ? emphasis.opacity * (removed ? 0.78 : 1) : 0}>
-      {emphasis.glow > 0 || (edge.change && !removed) ? (
+      {emphasis.glow > 0 || (edge.change && !removed) || edge.highlight ? (
         <path
           d={routed.d}
           fill="none"
-          stroke={emphasis.glow > 0 && !edge.change ? colors.accent : tone.stroke}
-          strokeOpacity={(edge.change && !removed ? 0.22 : 0) + 0.45 * emphasis.glow}
+          stroke={emphasis.glow > 0 && !edge.change && !edge.highlight ? colors.accent : tone.stroke}
+          strokeOpacity={((edge.change && !removed) || edge.highlight ? 0.22 : 0) + 0.45 * emphasis.glow}
           strokeWidth={10}
           strokeLinecap="round"
           pathLength={1}
@@ -93,8 +97,10 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
   );
 };
 
-const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; change: Change | undefined; appear: number; emphasis: Emphasis }> = ({ label, change, appear, emphasis }) => {
-  const color = change ? changeTone[change].color : colors.muted;
+const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: ArchEdge; appear: number; emphasis: Emphasis }> = ({ label, edge, appear, emphasis }) => {
+  const { change } = edge;
+  const highlight = edge.highlight && !change;
+  const color = change ? changeTone[change].color : highlight ? EMPHASIS.color : colors.muted;
   return (
     <div
       style={{
@@ -106,8 +112,8 @@ const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; change: Cha
         padding: `${LABEL_PAD.y}px ${LABEL_PAD.x}px`,
         borderRadius: 10,
         background: '#0d0f16',
-        border: `1px solid ${emphasis.glow > 0 ? colors.accent : change ? `${color}99` : colors.borderStrong}`,
-        boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : undefined,
+        border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || highlight ? `${color}99` : colors.borderStrong}`,
+        boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : highlight ? `0 0 18px ${EMPHASIS.glow}` : undefined,
         color: emphasis.glow > 0 && !change ? colors.text : color,
         fontFamily: fonts.mono,
         fontSize: LABEL_FONT,
@@ -236,7 +242,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
               <EdgeLabel
                 key={i}
                 label={routed.label}
-                change={routed.edge.change}
+                edge={routed.edge}
                 emphasis={emphasisOf(`e:${routed.index}`)}
                 appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp)}
               />

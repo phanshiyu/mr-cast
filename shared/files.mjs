@@ -27,7 +27,7 @@ export function sceneFiles(scene, hunks) {
   const entries = Array.isArray(scene.files)
     ? scene.files.map((f) => {
         const known = diff.find((d) => d.path === f.path);
-        return { path: f.path, change: f.change ?? known?.change, additions: f.additions ?? known?.additions, deletions: f.deletions ?? known?.deletions };
+        return { path: f.path, change: f.change ?? known?.change, additions: f.additions ?? known?.additions, deletions: f.deletions ?? known?.deletions, badge: f.badge, tone: f.tone };
       })
     : diff;
   return entries.map((f) => ({ ...f, test: isTestFile(f.path) }));

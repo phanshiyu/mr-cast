@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import { stepTargets } from '../../shared/targets.mjs';
-import type { MessageKind, SequenceScene } from '../types';
+import type { MessageKind, SequenceMessage, SequenceScene } from '../types';
 import {
   BAR_W,
   CARD_H,
@@ -15,6 +15,7 @@ import {
 } from '../utils/sequenceLayout';
 import { currentStep, focusSpotlight, revealStarts } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
+import { badgesOf, CornerBadges, EMPHASIS } from './marks';
 import { NodeCard, nodeMark } from './NodeCard';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -53,6 +54,14 @@ function partialPolyline(points: readonly Pt[], t: number): { points: Pt[]; angl
   return { points: out, angle: (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI };
 }
 
+/** How a message is marked: by what the diff does to it, else as highlighted, else not at all. */
+function messageMark(message: SequenceMessage): { stroke: string; glow: string; labelBg: string; labelText: string } | null {
+  if (message.change === 'modified') return { stroke: colors.accent, glow: colors.accentGlow, labelBg: '#141834', labelText: '#cdd3ff' };
+  if (message.change === 'added') return { stroke: colors.add, glow: 'rgba(61,220,151,0.4)', labelBg: '#10201b', labelText: '#c4f3dd' };
+  if (message.change === 'removed') return { stroke: colors.del, glow: 'transparent', labelBg: '#1e1216', labelText: colors.muted };
+  return message.highlight ? { stroke: EMPHASIS.color, glow: EMPHASIS.glow, labelBg: '#1f2026', labelText: colors.text } : null;
+}
+
 const headPath: Record<MessageKind, string> = {
   call: `M 0 0 L ${-HEAD} ${-HEAD * 0.5} L ${-HEAD} ${HEAD * 0.5} Z`,
   return: `M ${-HEAD} ${-HEAD * 0.55} L 0 0 L ${-HEAD} ${HEAD * 0.55}`,
@@ -62,18 +71,19 @@ const headPath: Record<MessageKind, string> = {
 const MessageArrow: React.FC<{ placed: PlacedMessage; draw: number; current: boolean }> = ({ placed, draw, current }) => {
   if (draw <= 0) return null;
   const { kind } = placed;
-  const modified = placed.message.modified;
-  const stroke = modified ? colors.accent : kind === 'return' ? returnStroke : neutralStroke;
+  const mark = messageMark(placed.message);
+  const removed = placed.message.change === 'removed';
+  const stroke = mark?.stroke ?? (kind === 'return' ? returnStroke : neutralStroke);
   const { points, angle } = partialPolyline(placed.points, draw);
   const d = points.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ');
   const tip = points[points.length - 1]!;
   const width = (kind === 'return' ? 2.5 : 3) + (current ? 0.75 : 0);
   return (
-    <g opacity={modified && kind === 'return' ? 0.85 : 1}>
-      {modified ? (
-        <path d={d} fill="none" stroke={colors.accentGlow} strokeWidth={current ? 14 : 10} strokeOpacity={current ? 0.55 : 0.35} strokeLinecap="round" strokeLinejoin="round" />
+    <g opacity={removed ? 0.7 : mark && kind === 'return' ? 0.85 : 1}>
+      {mark && !removed ? (
+        <path d={d} fill="none" stroke={mark.glow} strokeWidth={current ? 14 : 10} strokeOpacity={placed.message.highlight && !placed.message.change ? 0.7 : current ? 0.55 : 0.35} strokeLinecap="round" strokeLinejoin="round" />
       ) : null}
-      <path d={d} fill="none" stroke={stroke} strokeWidth={width} strokeDasharray={kind === 'return' ? '10 8' : undefined} strokeLinejoin="round" />
+      <path d={d} fill="none" stroke={stroke} strokeWidth={width} strokeDasharray={kind === 'return' || removed ? '10 8' : undefined} strokeLinejoin="round" />
       <path
         d={headPath[kind]}
         transform={`translate(${tip.x} ${tip.y}) rotate(${angle})`}
@@ -89,37 +99,44 @@ const MessageArrow: React.FC<{ placed: PlacedMessage; draw: number; current: boo
 
 const MessageLabel: React.FC<{ placed: PlacedMessage; appear: number; current: boolean }> = ({ placed, appear, current }) => {
   const { label, kind } = placed;
-  const modified = placed.message.modified;
+  const mark = messageMark(placed.message);
+  const removed = placed.message.change === 'removed';
   const shift = label.align === 'center' ? 'translate(-50%, -100%)' : label.align === 'right' ? 'translate(-100%, -50%)' : 'translate(0, -50%)';
+  const placement: React.CSSProperties = {
+    position: 'absolute',
+    left: label.x,
+    top: label.y,
+    transform: `${shift} scale(${0.94 + 0.06 * appear})`,
+    transformOrigin: label.align === 'center' ? '50% 100%' : label.align === 'right' ? '100% 50%' : '0 50%',
+    opacity: appear,
+    maxWidth: label.maxWidth,
+  };
+  const box: React.CSSProperties = {
+    boxSizing: 'border-box',
+    padding: '2px 11px',
+    borderRadius: 8,
+    background: mark?.labelBg ?? '#0d0f16',
+    border: `1px solid ${mark?.stroke ?? (current ? 'rgba(255,255,255,0.32)' : colors.border)}`,
+    boxShadow: current || (placed.message.highlight && !placed.message.change) ? `0 0 22px ${mark && !removed ? mark.glow : 'rgba(255,255,255,0.12)'}` : undefined,
+    color: mark?.labelText ?? (kind === 'return' ? colors.muted : colors.text),
+    textDecoration: removed ? 'line-through' : undefined,
+    textDecorationColor: colors.del,
+    fontFamily: fonts.mono,
+    fontSize: label.fontSize,
+    fontWeight: current ? 650 : 500,
+    lineHeight: LABEL_LINE_HEIGHT,
+    textAlign: label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center',
+    whiteSpace: 'pre',
+    overflow: 'hidden',
+  };
+  const lines = label.lines.map((line, i) => <div key={i}>{line}</div>);
+  const badges = badgesOf(placed.message);
+  if (!badges.length) return <div style={{ ...placement, ...box }}>{lines}</div>;
+  // The label clips its text, so the badges sit on a wrapper of the same size.
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: label.x,
-        top: label.y,
-        transform: `${shift} scale(${0.94 + 0.06 * appear})`,
-        transformOrigin: label.align === 'center' ? '50% 100%' : label.align === 'right' ? '100% 50%' : '0 50%',
-        opacity: appear,
-        maxWidth: label.maxWidth,
-        boxSizing: 'border-box',
-        padding: '2px 11px',
-        borderRadius: 8,
-        background: modified ? '#141834' : '#0d0f16',
-        border: `1px solid ${modified ? colors.accent : current ? 'rgba(255,255,255,0.32)' : colors.border}`,
-        boxShadow: current ? `0 0 22px ${modified ? colors.accentGlow : 'rgba(255,255,255,0.12)'}` : undefined,
-        color: modified ? '#cdd3ff' : kind === 'return' ? colors.muted : colors.text,
-        fontFamily: fonts.mono,
-        fontSize: label.fontSize,
-        fontWeight: current ? 650 : 500,
-        lineHeight: LABEL_LINE_HEIGHT,
-        textAlign: label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center',
-        whiteSpace: 'pre',
-        overflow: 'hidden',
-      }}
-    >
-      {label.lines.map((line, i) => (
-        <div key={i}>{line}</div>
-      ))}
+    <div style={placement}>
+      <div style={box}>{lines}</div>
+      <CornerBadges badges={badges} size={13} top={-15} right={10} />
     </div>
   );
 };
@@ -211,7 +228,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
                 width={layout.width + 24}
                 height={layout.messages[lit[1]]!.bottom - layout.messages[lit[0]]!.top}
                 rx={12}
-                fill={layout.messages.slice(lit[0], lit[1] + 1).some((m) => m.message.modified) ? 'rgba(124,140,255,0.07)' : 'rgba(255,255,255,0.035)'}
+                fill={layout.messages.slice(lit[0], lit[1] + 1).some((m) => m.message.change === 'modified') ? 'rgba(124,140,255,0.07)' : 'rgba(255,255,255,0.035)'}
                 opacity={interpolate(frame, [starts[lit[0]]!, starts[lit[0]]! + DRAW_FRAMES], [0, 1], clamp)}
               />
             ) : null}

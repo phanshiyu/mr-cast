@@ -2,9 +2,11 @@ import { KeyRound, Link2, Table2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
-import type { Change, ErField, ErScene } from '../types';
+import type { Change, ErField, ErRelation, ErScene } from '../types';
 import { HEADER_H, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
+import { CHANGE_WORD } from '../utils/marks';
+import { Badge, badgesOf, EMPHASIS, emphasisRing, type BadgeSpec } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
@@ -18,16 +20,11 @@ const RELATION_FRAMES = 12;
 /** Frames after a card starts landing that its changed fields light up. */
 const FIELDS_AFTER = 10;
 
-const changeTone: Record<Change, { color: string; bg: string; marker: string; label: string }> = {
-  added: { color: colors.add, bg: colors.addBg, marker: '+', label: 'added' },
-  removed: { color: colors.del, bg: colors.delBg, marker: '−', label: 'removed' },
-  modified: { color: AMBER, bg: AMBER_BG, marker: '~', label: 'modified' },
-};
-
-const entityPill: Record<Change, { text: string; color: string }> = {
-  added: { text: 'new', color: colors.add },
-  removed: { text: 'removed', color: colors.del },
-  modified: { text: 'changed', color: colors.accent },
+/** Field rows mark a change in amber, so a changed field stands apart from its changed (blue) table. */
+const changeTone: Record<Change, { color: string; bg: string; marker: string }> = {
+  added: { color: colors.add, bg: colors.addBg, marker: '+' },
+  removed: { color: colors.del, bg: colors.delBg, marker: '−' },
+  modified: { color: AMBER, bg: AMBER_BG, marker: '~' },
 };
 
 /** Frames at which each part of the scene arrives; all of it inside the build. */
@@ -55,24 +52,11 @@ function buildTimeline(layout: ReturnType<typeof layoutEr>): Timeline {
   };
 }
 
-const Pill: React.FC<{ text: string; color: string; scale: number }> = ({ text, color, scale }) => (
-  <div
-    style={{
-      position: 'absolute',
-      top: -15,
-      right: 18,
-      padding: '3px 12px',
-      borderRadius: 999,
-      background: color,
-      color: '#0b0d18',
-      fontSize: 15,
-      fontWeight: 800,
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-      transform: `scale(${scale})`,
-    }}
-  >
-    {text}
+const Pills: React.FC<{ badges: readonly BadgeSpec[]; scale: number }> = ({ badges, scale }) => (
+  <div style={{ position: 'absolute', top: -15, right: 18, display: 'flex', gap: 6, transform: `scale(${scale})` }}>
+    {badges.map((b, i) => (
+      <Badge key={i} badge={b} size={15} style={{ padding: '3px 12px' }} />
+    ))}
   </div>
 );
 
@@ -104,6 +88,9 @@ const FieldRow: React.FC<{ field: ErField; index: number; at: number | undefined
         opacity: dimmed ? 0.7 : 1,
       }}
     >
+      {field.highlight && !field.change ? (
+        <div style={{ position: 'absolute', inset: '2px 6px', borderRadius: 8, background: EMPHASIS.soft, boxShadow: `inset 0 0 0 2px ${EMPHASIS.color}aa, 0 0 18px ${EMPHASIS.glow}` }} />
+      ) : null}
       {lit > 0 ? (
         <div
           style={{
@@ -148,6 +135,9 @@ const FieldRow: React.FC<{ field: ErField; index: number; at: number | undefined
         </div>
         <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex' }}>
           <div style={{ fontSize: 21, fontWeight: field.pk ? 650 : 500, color: nameColor, ...ellipsis }}>{field.name}</div>
+          {badgesOf(field, { change: false }).map((b, i) => (
+            <Badge key={i} badge={b} size={12} style={{ marginLeft: 10, alignSelf: 'center' }} />
+          ))}
           {struck > 0 ? (
             <div
               style={{
@@ -186,15 +176,19 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
   const { fps } = useVideoConfig();
   const appear = spring({ frame: frame - start, fps, config: { damping: 16, stiffness: 110 } });
   const removed = entity.change === 'removed';
+  const highlight = entity.highlight && !entity.change;
   const borderColor =
-    entity.change === 'added' ? colors.add : removed ? `${colors.del}aa` : entity.change === 'modified' ? colors.accent : colors.borderStrong;
+    entity.change === 'added' ? colors.add : removed ? `${colors.del}aa` : entity.change === 'modified' ? colors.accent : highlight ? EMPHASIS.color : colors.borderStrong;
   const glow =
     entity.change === 'added'
       ? `0 0 0 6px ${colors.addBg}, 0 0 44px rgba(61,220,151,0.3)`
       : entity.change === 'modified'
         ? `0 0 0 6px ${colors.accentSoft}, 0 0 48px ${colors.accentGlow}`
-        : '0 14px 36px rgba(0,0,0,0.45)';
-  const pill = entity.change ? entityPill[entity.change] : null;
+        : highlight
+          ? emphasisRing(6, 48)
+          : '0 14px 36px rgba(0,0,0,0.45)';
+  const badges = badgesOf(entity);
+  const iconColor = entity.change ? (entity.change === 'modified' ? colors.accent : changeTone[entity.change].color) : highlight ? EMPHASIS.color : colors.muted;
   const pillScale = spring({ frame: frame - start - 12, fps, config: { damping: 12, stiffness: 160 } });
 
   return (
@@ -207,7 +201,7 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
         height: placed.h,
         boxSizing: 'border-box',
         borderRadius: 18,
-        background: entity.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised,
+        background: entity.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : highlight ? EMPHASIS.card : colors.raised,
         border: `2px solid ${borderColor}`,
         borderStyle: removed ? 'dashed' : 'solid',
         boxShadow: emphasis.glow > 0 ? `${glow}, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}` : glow,
@@ -228,7 +222,7 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
           borderRadius: '16px 16px 0 0',
         }}
       >
-        <Table2 size={24} strokeWidth={2} color={pill?.color ?? colors.muted} style={{ flexShrink: 0 }} />
+        <Table2 size={24} strokeWidth={2} color={iconColor} style={{ flexShrink: 0 }} />
         <div
           style={{
             fontFamily: fonts.mono,
@@ -247,7 +241,7 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
       {entity.fields.map((field, i) => (
         <FieldRow key={i} field={field} index={i} at={fieldAt.get(`${entity.id}/${i}`)} frame={frame} dimmed={removed} lit={fieldLit(i)} />
       ))}
-      {pill ? <Pill text={pill.text} color={pill.color} scale={pillScale} /> : null}
+      {badges.length ? <Pills badges={badges} scale={pillScale} /> : null}
     </div>
   );
 };
@@ -261,11 +255,14 @@ function endMark(end: RelationEnd, many: boolean): string {
   return `M ${at(16, -11)} L ${at(16, 11)}`;
 }
 
-const relationColor = (change: Change | undefined) => (change === 'added' ? colors.add : change === 'removed' ? colors.del : change === 'modified' ? colors.accent : EDGE);
+const relationColor = ({ change, highlight }: ErRelation) =>
+  change === 'added' ? colors.add : change === 'removed' ? colors.del : change === 'modified' ? colors.accent : highlight ? EMPHASIS.color : EDGE;
+/** A relation the diff adds or alters, or a highlighted one, glows under its line. */
+const glowsSteady = (relation: ErRelation) => (relation.change ? relation.change !== 'removed' : Boolean(relation.highlight));
 
 const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: number; opacity: number; glow: number }> = ({ routed, index, draw, opacity, glow }) => {
   const { relation } = routed;
-  const color = relationColor(relation.change);
+  const color = relationColor(relation);
   const fromMany = relation.cardinality === 'many-to-many';
   const toMany = relation.cardinality !== 'one-to-one';
   const removed = relation.change === 'removed';
@@ -275,12 +272,12 @@ const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: numb
       <mask id={id} maskUnits="userSpaceOnUse">
         <path d={routed.d} fill="none" stroke="#fff" strokeWidth={12} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
       </mask>
-      {(relation.change && !removed) || glow > 0 ? (
+      {glowsSteady(relation) || glow > 0 ? (
         <path
           d={routed.d}
           fill="none"
-          stroke={relation.change ? color : colors.accent}
-          strokeOpacity={(relation.change && !removed ? 0.22 : 0) + 0.45 * glow}
+          stroke={relation.change || relation.highlight ? color : colors.accent}
+          strokeOpacity={(glowsSteady(relation) ? 0.22 : 0) + 0.45 * glow}
           strokeWidth={10}
           strokeLinecap="round"
           mask={`url(#${id})`}
@@ -303,31 +300,41 @@ const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: numb
 };
 
 const RelationLabel: React.FC<{ routed: RoutedRelation; appear: number; emphasis: Emphasis }> = ({ routed, appear, emphasis }) => {
-  const change = routed.relation.change;
-  const color = change ? relationColor(change) : colors.muted;
+  const { relation } = routed;
+  const change = relation.change;
+  const color = change || relation.highlight ? relationColor(relation) : colors.muted;
+  const placement: React.CSSProperties = {
+    position: 'absolute',
+    left: routed.mid.x,
+    top: routed.mid.y,
+    transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.06 * emphasis.glow)})`,
+    opacity: appear * emphasis.opacity,
+    maxWidth: 170,
+  };
+  const box: React.CSSProperties = {
+    padding: '4px 12px',
+    borderRadius: 10,
+    background: '#0d0f16',
+    border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || relation.highlight ? `${color}88` : colors.borderStrong}`,
+    boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : relation.highlight && !change ? `0 0 18px ${EMPHASIS.glow}` : undefined,
+    color,
+    fontFamily: fonts.mono,
+    fontSize: 17,
+    textDecoration: change === 'removed' ? 'line-through' : 'none',
+    ...ellipsis,
+  };
+  const text = `${change === 'added' ? '+ ' : ''}${relation.label}`;
+  const badges = badgesOf(relation, { change: false });
+  if (!badges.length) return <div style={{ ...placement, ...box }}>{text}</div>;
+  // The label clips its text, so the badges sit on a wrapper of the same size.
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: routed.mid.x,
-        top: routed.mid.y,
-        transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.06 * emphasis.glow)})`,
-        opacity: appear * emphasis.opacity,
-        maxWidth: 170,
-        padding: '4px 12px',
-        borderRadius: 10,
-        background: '#0d0f16',
-        border: `1px solid ${emphasis.glow > 0 ? colors.accent : change ? `${color}88` : colors.borderStrong}`,
-        boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : undefined,
-        color,
-        fontFamily: fonts.mono,
-        fontSize: 17,
-        textDecoration: change === 'removed' ? 'line-through' : 'none',
-        ...ellipsis,
-      }}
-    >
-      {change === 'added' ? '+ ' : ''}
-      {routed.relation.label}
+    <div style={placement}>
+      <div style={box}>{text}</div>
+      <div style={{ position: 'absolute', top: -19, right: -4, display: 'flex', gap: 6 }}>
+        {badges.map((b, i) => (
+          <Badge key={i} badge={b} size={12} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -365,7 +372,7 @@ const Legend: React.FC<{ scene: ErScene }> = ({ scene }) => {
             >
               {changeTone[c].marker}
             </span>
-            {changeTone[c].label}
+            {CHANGE_WORD[c]}
           </div>
         ))}
     </div>
