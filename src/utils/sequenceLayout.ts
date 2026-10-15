@@ -1,4 +1,5 @@
 import type { MessageKind, SequenceMessage, SequenceParticipant } from '../types';
+import { splitInTwo, wrapLabel } from './wrapLabel';
 
 export const CARD_H = 84;
 /** Room above the cards for the "changed" pill. */
@@ -19,6 +20,9 @@ const NOTE_MAX_W = 460;
 /** Monospace advance per em, as in theme.ts, plus chip padding. */
 const MONO_ADVANCE = 0.61;
 const CHIP_PAD_X = 12;
+export const LABEL_LINE_HEIGHT = 1.35;
+/** Chip padding and border above and below the text. */
+const CHIP_PAD_Y = 3;
 
 export interface Pt {
   x: number;
@@ -38,6 +42,8 @@ export interface PlacedLabel {
   align: 'center' | 'left' | 'right';
   maxWidth: number;
   fontSize: number;
+  /** One line, or two when one would not fit even at the smallest font. */
+  lines: string[];
 }
 
 export interface PlacedNote {
@@ -123,10 +129,21 @@ function monoWidth(text: string, fontSize: number): number {
   return text.length * fontSize * MONO_ADVANCE + CHIP_PAD_X * 2;
 }
 
-/** Largest font in [min, max] that fits `text` in `width`, so short spans shrink before they truncate. */
-function fitLabelFont(text: string, width: number, min: number, max: number): number {
-  const fit = Math.floor((width - CHIP_PAD_X * 2) / Math.max(1, text.length * MONO_ADVANCE));
-  return Math.max(min, Math.min(max, fit));
+/**
+ * Fits `text` in a chip `width` wide and at most `height` tall. Short spans shrink the font to keep one
+ * line; a label that does not fit on one line at `min` wraps onto two at the largest font that fits
+ * both ways, and is cut only when two lines cannot hold it.
+ */
+function fitLabel(text: string, width: number, height: number, min: number, max: number): { fontSize: number; lines: string[] } {
+  const chars = (font: number) => Math.floor((width - CHIP_PAD_X * 2) / (font * MONO_ADVANCE));
+  const oneLine = Math.max(min, Math.min(max, Math.floor((width - CHIP_PAD_X * 2) / Math.max(1, text.length * MONO_ADVANCE))));
+  if (text.length <= chars(oneLine)) return { fontSize: oneLine, lines: [text] };
+  const tallest = Math.floor((height - 2 * CHIP_PAD_Y) / (2 * LABEL_LINE_HEIGHT));
+  for (let font = Math.min(max, tallest); font >= min; font--) {
+    const lines = splitInTwo(text, chars(font));
+    if (lines) return { fontSize: font, lines };
+  }
+  return tallest >= min ? { fontSize: min, lines: wrapLabel(text, chars(min)) } : { fontSize: min, lines: [text] };
 }
 
 export function layoutSequence(
@@ -149,6 +166,8 @@ export function layoutSequence(
   const totalWeight = Math.max(1, weights.reduce((a, b) => a + b, 0));
   const unit = Math.min(MAX_UNIT, (box.height - rowsTop - BOTTOM_PAD) / totalWeight);
   const baseFont = Math.round(Math.max(17, Math.min(24, unit * 0.36)));
+  /** A label may rise from its arrow to just short of the arrow in the row above. */
+  const labelRoom = 0.92 * unit - LABEL_GAP;
 
   const rowTops: number[] = [];
   weights.reduce((top, w) => (rowTops.push(top), top + w * unit), rowsTop);
@@ -199,11 +218,11 @@ export function layoutSequence(
       const want = monoWidth(m.label, font);
       const onRight = rightRoom >= Math.min(want, colW * 0.9) || rightRoom >= leftRoom;
       const maxWidth = Math.min(onRight ? rightRoom : leftRoom, Math.max(colW * 0.9, want));
-      const labelFont = fitLabelFont(m.label, maxWidth, 15, font);
-      const used = Math.min(maxWidth, monoWidth(m.label, labelFont));
+      const fit = fitLabel(m.label, maxWidth, labelRoom, 15, font);
+      const used = Math.min(maxWidth, Math.max(...fit.lines.map((l) => monoWidth(l, fit.fontSize))));
       label = onRight
-        ? { x: loopX + 12, y: (y + yEnd) / 2, align: 'left', maxWidth, fontSize: labelFont }
-        : { x: leftRoom, y: (y + yEnd) / 2, align: 'right', maxWidth, fontSize: labelFont };
+        ? { x: loopX + 12, y: (y + yEnd) / 2, align: 'left', maxWidth, ...fit }
+        : { x: leftRoom, y: (y + yEnd) / 2, align: 'right', maxWidth, ...fit };
       occupied = onRight ? [x - BAR_W, loopX + 12 + used] : [leftRoom - used, loopX];
     } else {
       const dir = to > from ? 1 : -1;
@@ -216,7 +235,7 @@ export function layoutSequence(
         y: y - LABEL_GAP,
         align: 'center',
         maxWidth: span,
-        fontSize: fitLabelFont(m.label, span, 15, baseFont),
+        ...fitLabel(m.label, span, labelRoom, 15, baseFont),
       };
       occupied = [Math.min(x1, x2), Math.max(x1, x2)];
     }

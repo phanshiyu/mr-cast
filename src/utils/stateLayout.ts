@@ -1,4 +1,5 @@
 import type { StateNode, StateTransition } from '../types';
+import { wrapLabel } from './wrapLabel';
 
 export interface Pt {
   x: number;
@@ -9,8 +10,9 @@ const STATE_H = 72;
 export const STATE_FONT = 26;
 export const BADGE_FONT = 14;
 export const LABEL_FONT = 18;
-export const LABEL_H = 34;
-const LABEL_MAX_W = 240;
+export const LABEL_LINE_H = 22;
+const LABEL_PAD_Y = 6;
+const LABEL_MAX_CHARS = 22;
 export const ARROW_LEN = 14;
 const MIN_W = 170;
 const MAX_W = 360;
@@ -37,10 +39,19 @@ function badgeWidth(text: string): number {
   return Math.ceil(text.length * (BADGE_FONT * 0.76 + 1) + 22);
 }
 
-/** Width of a transition label pill, from the mono advance of the render browser's font. */
-function labelWidth(t: StateTransition): number {
-  const text = (t.change === 'added' ? '+ ' : '') + (t.label ?? '');
-  return Math.min(LABEL_MAX_W, Math.ceil(text.length * LABEL_FONT * 0.61 + 26));
+/** A transition label pill: its text wrapped to at most two lines, sized from the mono advance of the render browser's font. */
+export interface LabelBox {
+  lines: string[];
+  w: number;
+  h: number;
+}
+
+const labelHeight = (lines: number) => lines * LABEL_LINE_H + 2 * LABEL_PAD_Y;
+
+function labelBox(t: StateTransition): LabelBox {
+  const lines = wrapLabel((t.change === 'added' ? '+ ' : '') + (t.label ?? ''), LABEL_MAX_CHARS);
+  const longest = Math.max(...lines.map((l) => l.length));
+  return { lines, w: Math.ceil(longest * LABEL_FONT * 0.61 + 26), h: labelHeight(lines.length) };
 }
 
 function stateWidth(state: StateNode): number {
@@ -69,7 +80,7 @@ export interface RoutedTransition {
   /** Unit vector the arrow points along. */
   dir: Pt;
   /** Centre of the label pill, or null when the transition has no label. */
-  label: (Pt & { w: number }) | null;
+  label: (Pt & LabelBox) | null;
 }
 
 export interface StateLayout {
@@ -88,7 +99,7 @@ interface Route {
   segs: Seg[];
   tip: Pt;
   dir: Pt;
-  label: (Pt & { w: number }) | null;
+  label: (Pt & LabelBox) | null;
 }
 
 const add = (a: Pt, b: Pt): Pt => ({ x: a.x + b.x, y: a.y + b.y });
@@ -199,11 +210,11 @@ function orth(points: Pt[], label: Route['label']): Route {
   return { segs, tip, dir, label };
 }
 
-function cubicRoute(p0: Pt, c1: Pt, c2: Pt, tip: Pt, labelW: number | null): Route {
+function cubicRoute(p0: Pt, c1: Pt, c2: Pt, tip: Pt, box: LabelBox | null): Route {
   const dir = unit(sub(tip, c2));
   const p3 = sub(tip, mul(dir, ARROW_LEN));
   const mid = { x: (p0.x + 3 * c1.x + 3 * c2.x + p3.x) / 8, y: (p0.y + 3 * c1.y + 3 * c2.y + p3.y) / 8 };
-  return { segs: [['M', p0], ['C', c1, c2, p3]], tip, dir, label: labelW === null ? null : { ...mid, w: labelW } };
+  return { segs: [['M', p0], ['C', c1, c2, p3]], tip, dir, label: box === null ? null : { ...mid, ...box } };
 }
 
 type Side = 'left' | 'right';
@@ -232,8 +243,9 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   const loopCount = (id: string) => edges.filter((e) => e.from === id && e.to === id).length;
   /** Space a state's self-loops (with labels) take above it. */
   const loopReserve = (id: string) => {
-    const n = loopCount(id);
-    return n ? 0.75 * (LOOP_H + (n - 1) * LOOP_STEP) + LABEL_H + 10 : 0;
+    const loops = edges.filter((e) => e.from === id && e.to === id);
+    const labelH = Math.max(labelHeight(1), ...loops.map((e) => (e.label ? labelBox(e).h : 0)));
+    return loops.length ? 0.75 * (LOOP_H + (loops.length - 1) * LOOP_STEP) + labelH + 10 : 0;
   };
 
   // Rows first; x waits until the column gaps are sized from the labels that sit in them.
@@ -330,7 +342,7 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
     if (gap >= 0 && gap < gapW.length) gapW[gap] = Math.max(gapW[gap]!, w);
   };
   for (const p of plans) {
-    const lw = p.t.label ? labelWidth(p.t) : 0;
+    const lw = p.t.label ? labelBox(p.t).w : 0;
     if (p.kind === 'gap') widen(Math.min(p.a.layer, p.b.layer), lw + 64);
     if (p.kind === 'channel') widen(p.side === 'right' ? p.a.layer : p.a.layer - 1, CHANNEL + Math.abs(p.offset) / 2 + lw + 40);
   }
@@ -342,8 +354,9 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   const colBottom = (l: number) => Math.max(...columns[l]!.map((s) => at(s.id).y + STATE_H));
 
   const route = (p: Plan, i: number): Route => {
-    const lw = p.t.label ? labelWidth(p.t) : null;
-    const labelAt = (pt: Pt) => (lw === null ? null : { ...pt, w: lw });
+    const box = p.t.label ? labelBox(p.t) : null;
+    const lw = box?.w ?? null;
+    const labelAt = (pt: Pt) => (box === null ? null : { ...pt, ...box });
     const dy = (end: 'from' | 'to') => portDy.get(`${i}:${end}`) ?? 0;
 
     switch (p.kind) {
@@ -354,14 +367,14 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
         const p0 = { x: cx(a) - spanX, y: a.y };
         const tip = { x: cx(a) + spanX, y: a.y };
         const r = cubicRoute(p0, { x: p0.x - 44, y: a.y - h }, { x: tip.x + 44, y: a.y - h }, tip, null);
-        return { ...r, label: labelAt({ x: cx(a), y: a.y - 0.75 * h - LABEL_H / 2 - 4 }) };
+        return { ...r, label: labelAt({ x: cx(a), y: a.y - 0.75 * h - (box?.h ?? 0) / 2 - 4 }) };
       }
       case 'gap': {
         const forward = p.b.layer > p.a.layer;
         const p0 = sideTip(p.a, forward ? 'right' : 'left', dy('from'));
         const tip = sideTip(p.b, forward ? 'left' : 'right', dy('to'));
         const dx = (tip.x - p0.x) / 2;
-        return cubicRoute(p0, { x: p0.x + dx, y: p0.y + p.offset }, { x: tip.x - dx, y: tip.y + p.offset }, tip, lw);
+        return cubicRoute(p0, { x: p0.x + dx, y: p0.y + p.offset }, { x: tip.x - dx, y: tip.y + p.offset }, tip, box);
       }
       case 'vertical': {
         const down = p.b.row > p.a.row;
@@ -437,7 +450,7 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   for (const r of routes) {
     for (const seg of r.segs) for (const p of seg.slice(1) as Pt[]) grow(p);
     grow(r.tip, ARROW_LEN, ARROW_LEN);
-    if (r.label) grow(r.label, r.label.w / 2, LABEL_H / 2);
+    if (r.label) grow(r.label, r.label.w / 2, r.label.h / 2);
   }
   if (entryRoute) grow(entryRoute.dot, 14, 14);
   const minX = Math.min(...xs) - PAD;
@@ -455,7 +468,7 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
       d: path(r.segs),
       tip: shift(r.tip),
       dir: r.dir,
-      label: r.label ? { ...shift(r.label), w: r.label.w } : null,
+      label: r.label ? { ...r.label, ...shift(r.label) } : null,
     })),
     entry: entryRoute ? { dot: shift(entryRoute.dot), d: path(entryRoute.segs), tip: shift(entryRoute.tip), dir: entryRoute.dir } : null,
     layerOf,
@@ -468,9 +481,9 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
 function separateLabels(routes: Route[], states: PlacedState[]): void {
   const labels = routes.flatMap((r) => (r.label ? [r.label] : []));
   const M = 6;
-  const overlapY = (a: Pt & { w: number }, bx: number, by: number, bw: number, bh: number) => {
+  const overlapY = (a: Pt & LabelBox, bx: number, by: number, bw: number, bh: number) => {
     const ox = Math.min(a.x + a.w / 2, bx + bw / 2) - Math.max(a.x - a.w / 2, bx - bw / 2);
-    const oy = Math.min(a.y + LABEL_H / 2, by + bh / 2) - Math.max(a.y - LABEL_H / 2, by - bh / 2);
+    const oy = Math.min(a.y + a.h / 2, by + bh / 2) - Math.max(a.y - a.h / 2, by - bh / 2);
     return ox > -M && oy > -M ? oy + M : 0;
   };
   for (let pass = 0; pass < 40; pass++) {
@@ -479,7 +492,7 @@ function separateLabels(routes: Route[], states: PlacedState[]): void {
       for (let j = i + 1; j < labels.length; j++) {
         const a = labels[i]!;
         const b = labels[j]!;
-        const o = overlapY(a, b.x, b.y, b.w, LABEL_H);
+        const o = overlapY(a, b.x, b.y, b.w, b.h);
         if (o > 0) {
           const dir = b.y >= a.y ? 1 : -1;
           a.y -= (dir * o) / 2;

@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { ArchScene, NodeKind } from '../types';
 import { NODE_H, NODE_W, layoutArch, type PositionedNode, type RoutedEdge } from '../utils/archLayout';
+import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
@@ -99,6 +100,9 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; high
   );
 };
 
+/** Characters per line of an edge label; about 250px at the label font, inside the column gap. */
+const EDGE_LABEL_CHARS = 22;
+
 const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, appear }) => (
   <div
     style={{
@@ -107,7 +111,6 @@ const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, a
       top: routed.mid.y,
       transform: `translate(-50%, -50%) scale(${0.9 + 0.1 * appear})`,
       opacity: appear,
-      maxWidth: 200,
       padding: '5px 12px',
       borderRadius: 10,
       background: '#0d0f16',
@@ -115,10 +118,14 @@ const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, a
       color: colors.muted,
       fontFamily: fonts.mono,
       fontSize: 17,
-      ...ellipsis,
+      lineHeight: 1.3,
+      textAlign: 'center',
+      whiteSpace: 'pre',
     }}
   >
-    {routed.edge.label}
+    {wrapLabel(routed.edge.label ?? '', EDGE_LABEL_CHARS).map((line, i) => (
+      <div key={i}>{line}</div>
+    ))}
   </div>
 );
 

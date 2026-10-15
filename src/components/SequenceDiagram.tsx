@@ -5,6 +5,7 @@ import type { MessageKind, NodeKind, SequenceScene } from '../types';
 import {
   BAR_W,
   CARD_H,
+  LABEL_LINE_HEIGHT,
   layoutSequence,
   type PlacedMessage,
   type PlacedParticipant,
@@ -225,11 +226,15 @@ const MessageLabel: React.FC<{ placed: PlacedMessage; appear: number; current: b
         fontFamily: fonts.mono,
         fontSize: label.fontSize,
         fontWeight: current ? 650 : 500,
-        lineHeight: 1.35,
-        ...ellipsis,
+        lineHeight: LABEL_LINE_HEIGHT,
+        textAlign: label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center',
+        whiteSpace: 'pre',
+        overflow: 'hidden',
       }}
     >
-      {placed.message.label}
+      {label.lines.map((line, i) => (
+        <div key={i}>{line}</div>
+      ))}
     </div>
   );
 };

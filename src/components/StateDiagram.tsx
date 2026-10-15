@@ -5,7 +5,7 @@ import {
   ARROW_LEN,
   BADGE_FONT,
   LABEL_FONT,
-  LABEL_H,
+  LABEL_LINE_H,
   STATE_FONT,
   badgeLabel,
   layoutState,
@@ -200,11 +200,12 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
         left: label.x,
         top: label.y,
         width: label.w,
-        height: LABEL_H,
+        height: label.h,
         boxSizing: 'border-box',
         transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.12 * pulse)})`,
         opacity: appear * (change === 'removed' ? 0.85 : 1),
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '0 12px',
@@ -215,13 +216,14 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
         color,
         fontFamily: fonts.mono,
         fontSize: LABEL_FONT,
-        whiteSpace: 'nowrap',
+        lineHeight: `${LABEL_LINE_H}px`,
+        whiteSpace: 'pre',
+        textDecoration: change === 'removed' ? 'line-through' : 'none',
       }}
     >
-      <span style={{ textDecoration: change === 'removed' ? 'line-through' : 'none', ...ellipsis }}>
-        {change === 'added' ? '+ ' : ''}
-        {transition.label}
-      </span>
+      {label.lines.map((line, i) => (
+        <span key={i}>{line}</span>
+      ))}
     </div>
   );
 };

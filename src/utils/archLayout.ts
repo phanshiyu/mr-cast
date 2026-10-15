@@ -2,7 +2,7 @@ import type { ArchEdge, ArchNode } from '../types';
 
 export const NODE_W = 320;
 export const NODE_H = 104;
-const COL_GAP = 230;
+const COL_GAP = 280;
 const ROW_GAP = 64;
 const PAD = 40;
 const LOOP_LIFT = 90;
