@@ -45,8 +45,16 @@ function codeMetrics(lines: readonly DiffLine[], view: View, panelW: number): Co
   return { fontSize, rowH: Math.round(fontSize * 1.65) };
 }
 
-function defaultView(hunk: Hunk): View {
-  return hunk.additions === 0 || hunk.deletions === 0 ? 'morph' : 'split';
+/**
+ * Split view halves the code width, so it is the default only when the focus is mostly a before/after
+ * comparison: removed lines beside the added lines that replace them. A focus on new code gets morph.
+ */
+function defaultView(hunk: Hunk, scene: CodeScene): View {
+  const focus = lineFocusRanges(scene, hunk);
+  const changed = (i: number | null) => i !== null && hunk.lines[i]!.type !== 'context';
+  const focused = splitRows(hunk.lines).filter((row) => [row.left, row.right].some((i) => changed(i) && focus[i!] !== null));
+  const paired = focused.filter((row) => changed(row.left) && changed(row.right)).length;
+  return paired > 0 && 2 * paired >= focused.length ? 'split' : 'morph';
 }
 
 /**
@@ -323,7 +331,7 @@ function estimateCalloutHeight(text: string, width: number): number {
 const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number }> = ({ scene, hunk, durationInFrames }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const view = scene.view ?? defaultView(hunk);
+  const view = scene.view ?? defaultView(hunk, scene);
   const { slots, stepCount } = useMemo(() => cropSlots(hunk, view, scene), [hunk, view, scene]);
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
   const box = contentBox(false);
