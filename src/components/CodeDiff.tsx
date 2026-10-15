@@ -191,8 +191,9 @@ function splitModels(hunk: Hunk, tokens: Token[][], slots: Slot[], { fontSize, r
 /**
  * Frame windows for the morph: show the old code, flash and collapse deletions, then grow additions.
  * `span` is the stretch of the scene the morph is paced over: the whole scene, or the intro of a stepped scene.
+ * New code with nothing removed is the whole picture, so it finishes growing in by `drawnBy`, when the voice starts.
  */
-function morphTimeline(hunk: Hunk, span: number) {
+function morphTimeline(hunk: Hunk, span: number, drawnBy: number) {
   const pureAdd = hunk.deletions === 0;
   // With nothing growing in afterwards, linger on the doomed lines before they go.
   const pureDel = hunk.additions === 0;
@@ -200,7 +201,9 @@ function morphTimeline(hunk: Hunk, span: number) {
   const collapseStart = Math.round(span * (pureDel ? 0.5 : 0.28));
   const collapseEnd = Math.round(span * (pureDel ? 0.62 : 0.38));
   const growStart = pureAdd ? 10 : hunk.additions === 0 ? collapseEnd : Math.round(span * 0.36);
-  const stagger = Math.min(3, (span * 0.2) / Math.max(1, hunk.additions));
+  const stagger = pureAdd
+    ? Math.min(3, Math.max(0.5, (drawnBy - growStart - 10) / Math.max(1, hunk.additions)))
+    : Math.min(3, (span * 0.2) / Math.max(1, hunk.additions));
   const growEnd = growStart + stagger * hunk.additions + 10;
   return { flashStart, collapseStart, collapseEnd, growStart, stagger, growEnd };
 }
@@ -399,7 +402,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   // morph is paced over it. Otherwise the morph (or a short settle) is the intro and each focus step takes
   // an equal share of the time left.
   const introFrames = steps ? segments[1]?.from ?? durationInFrames : durationInFrames;
-  const pacedMorph = morphTimeline(hunk, introFrames);
+  const pacedMorph = morphTimeline(hunk, introFrames, segments[0]?.voiceFrom ?? 0);
   const morph = steps ? steppedMorphTimeline(hunk, steps, segments, introFrames, pacedMorph) : pacedMorph;
   const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, morph, metrics);
   const morphEnd = view === 'morph' ? pacedMorph.growEnd : 0;

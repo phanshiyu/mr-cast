@@ -76,7 +76,7 @@ export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, sho
           ? null
           : segments.map((segment, k) =>
               segment.clip ? (
-                <Sequence key={k} from={segment.from} layout="none" name={`voice-over ${k + 1}`}>
+                <Sequence key={k} from={segment.voiceFrom} layout="none" name={`voice-over ${k + 1}`}>
                   <Html5Audio src={audioBaseUrl + segment.clip.src} />
                 </Sequence>
               ) : null,

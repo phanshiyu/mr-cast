@@ -371,11 +371,24 @@ export interface VoiceClip {
   /** WAV path relative to the .mr-cast directory, e.g. "audio/1a2b3c4d.wav". */
   src: string;
   seconds: number;
+  /** When each sentence is spoken, so captions follow the voice through the pauses between sentences. */
+  sentences?: VoiceSentence[];
+}
+
+export interface VoiceSentence {
+  words: number;
+  /** Seconds from the clip's start to the sentence's first and last sound. */
+  start: number;
+  end: number;
 }
 
 export interface Voiceover {
   voice: string;
-  /** Keyed by narrationKey(narration, voice) from shared/voice.mjs. */
+  /** Kokoro's speaking speed, 0.5 to 2 (1 when absent). Scales the reading pace of text without a clip too. */
+  speed?: number;
+  /** Factor on every pause around the voice (1 when absent): 1.5 at the slower pace. */
+  pauses?: number;
+  /** Keyed by narrationKey(narration, voice, speed) from shared/voice.mjs. */
   clips: Record<string, VoiceClip>;
 }
 

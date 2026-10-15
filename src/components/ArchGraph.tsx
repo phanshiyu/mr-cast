@@ -129,15 +129,16 @@ const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, a
   </div>
 );
 
-export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames }) => {
+export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useMemo(() => layoutArch(scene.nodes, scene.edges), [scene.nodes, scene.edges]);
   const box = contentBox(false);
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.3);
   const modified = new Set(scene.nodes.filter((n) => n.modified).map((n) => n.id));
-  // Nodes land within the first ~35% of the scene and edges by ~55%, however short the narration.
-  const layerStagger = Math.min(10, (durationInFrames * 0.3) / layout.layerCount);
+  // Nodes land by the time the voice starts naming them, and edges by ~55% of the scene.
+  const voiceFrom = segments[0]?.voiceFrom ?? durationInFrames * 0.3;
+  const layerStagger = Math.max(2, Math.min(10, (durationInFrames * 0.3) / layout.layerCount, (voiceFrom - NODE_START) / layout.layerCount));
   const edgesStart = NODE_START + layout.layerCount * layerStagger + 4;
   const edgeStagger = Math.min(4, (durationInFrames * 0.15) / Math.max(1, layout.edges.length));
 

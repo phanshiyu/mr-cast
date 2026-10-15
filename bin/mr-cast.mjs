@@ -15,10 +15,10 @@ import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
-import { clipFor } from '../shared/voice.mjs';
+import { DEFAULT_VOICE, PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
-import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
+import { ensureVoiceover, parsePace, readVoiceover, resolvePace } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const { version: VERSION } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -38,16 +38,23 @@ const USAGE = `usage: mr-cast <command> [options]
                   add real source lines (at most 80 per snippet) beside the diff as code for scenes,
                   ids s1, s2, ...: callers, definitions, types or config the change depends on;
                   a later extract keeps them
-  validate        check .mr-cast/storyboard.json against hunks.json
-  outline         print a short plan of the storyboard (scenes, length, coverage) to show before rendering
-  voice [--voice name]
+  validate [--pace p] [--speed x]
+                  check .mr-cast/storyboard.json against hunks.json
+  outline [--pace p] [--speed x]
+                  print a short plan of the storyboard (scenes, length, coverage) to show before rendering
+  voice [--voice name] [--pace p] [--speed x]
                   speak each scene's narration with Kokoro into .mr-cast/audio (default voice af_heart)
-  play [--port N] [--no-open] [--voice name] [--no-voice]
+  play [--port N] [--no-open] [--voice name] [--pace p] [--speed x] [--no-voice]
                   serve the live player (default port 4747)
-  render [--out file.mp4] [--voice name] [--no-voice]
-                  render the walkthrough to MP4, named after the storyboard title
+  render [--out file.mp4] [--voice name] [--pace p] [--speed x] [--no-voice]
+                  render the walkthrough to MP4 with chapter markers, named after the storyboard title
                   (default .mr-cast/<title-slug>.mp4)
                   play and render voice the narration first unless --no-voice
+      --voice      Kokoro voice; saved in voiceover.json, so later runs keep it
+      --pace       slower, normal (default) or faster: the voice's speed (0.85, 1, 1.15) and the
+                   pauses around it (x1.5, x1, x0.85); saved like --voice
+      --speed      the voice's speed alone, from 0.5 to 2; overrides the speed --pace sets
+                   validate and outline only estimate the length at --pace and --speed
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
   every command above takes --name <slug> to keep a separate walkthrough in .mr-cast/<slug>, so
@@ -133,18 +140,28 @@ function styleFor(values, previous, command) {
   return undefined;
 }
 
-async function loadProject(dir) {
+/**
+ * The voiceover that times a run: voiceover.json at the pace --pace and --speed ask for. Clips voiced at
+ * another speed then match nothing, so their texts are estimated at the new speed until they are voiced again.
+ */
+function timingVoiceover(dir, pace = {}) {
+  const saved = readVoiceover(dir);
+  if (!saved && Object.keys(pace).length === 0) return null;
+  return { voice: saved?.voice ?? DEFAULT_VOICE, clips: saved?.clips ?? {}, ...resolvePace(pace, saved) };
+}
+
+async function loadProject(dir, pace) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first, with the same --name');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const meta = readMeta(dir);
   const result = await validateStoryboard(storyboard, hunks, meta);
-  const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, readVoiceover(dir));
+  const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, pace));
   return { dir, hunks, storyboard, result, style: meta.style, lines: formatValidation(result, { storyboard, hunks, seconds, style: meta.style }) };
 }
 
 /** Validate, print problems to stderr, and stop on errors. */
-async function loadValidProject(dir) {
-  const project = await loadProject(dir);
+async function loadValidProject(dir, pace) {
+  const project = await loadProject(dir, pace);
   if (project.result.errors.length || project.result.warnings.length) {
     for (const line of project.lines) console.error(line);
   }
@@ -220,13 +237,22 @@ function extract(argv) {
 }
 
 async function validate(argv, resolveRun) {
-  const { values } = parseArgs({ args: argv, options: DIR_OPTION });
-  const { result, lines } = await loadProject(resolveRun(values).dir);
+  const { values } = parseArgs({ args: argv, options: { ...PACE_OPTIONS, ...DIR_OPTION } });
+  const { result, lines } = await loadProject(resolveRun(values).dir, parsePace(values));
   for (const line of lines) console.log(line);
   if (result.errors.length) process.exit(1);
 }
 
-const VOICE_OPTIONS = { voice: { type: 'string' }, 'no-voice': { type: 'boolean', default: false } };
+const PACE_OPTIONS = { pace: { type: 'string' }, speed: { type: 'string' } };
+const VOICE_OPTIONS = { voice: { type: 'string' }, 'no-voice': { type: 'boolean', default: false }, ...PACE_OPTIONS };
+
+/** " · slower pace", " · 0.9x, pauses x1.2", or "" at the normal pace. */
+function formatPace(voiceover) {
+  const { speed, pauses } = paceOf(voiceover);
+  const named = Object.entries(PACES).find(([, p]) => p.speed === speed && p.pauses === pauses)?.[0];
+  if (named) return named === 'normal' ? '' : ` · ${named} pace`;
+  return ` · ${speed}x${pauses === 1 ? '' : `, pauses x${pauses}`}`;
+}
 
 function reportVoiceProgress(event) {
   if (event.type === 'download') console.error(`mr-cast: downloading the Kokoro voice model (about 90 MB, first run only) into ${event.cacheDir}`);
@@ -236,30 +262,39 @@ function reportVoiceProgress(event) {
   }
 }
 
-/** Voice-over for play and render. Any failure falls back to silent scenes with estimated timing. */
+/**
+ * Voice-over for play and render, at the pace --pace and --speed ask for, else the saved one. Without
+ * voice, or when voicing fails, scenes are silent and timed from word count at that pace.
+ */
 async function voiceoverFor(dir, storyboard, values) {
-  if (values['no-voice']) return null;
+  const pace = parsePace(values);
+  const silent = () => {
+    const { speed, pauses } = resolvePace(pace, readVoiceover(dir));
+    return speed === 1 && pauses === 1 ? null : { voice: DEFAULT_VOICE, speed, pauses, clips: {} };
+  };
+  if (values['no-voice']) return silent();
   try {
-    return await ensureVoiceover({ dataDir: dir, storyboard, voice: values.voice, onProgress: reportVoiceProgress });
+    return await ensureVoiceover({ dataDir: dir, storyboard, voice: values.voice, pace, onProgress: reportVoiceProgress });
   } catch (err) {
     console.error(`mr-cast: warning: continuing without voice-over: ${err.message}`);
-    return null;
+    return silent();
   }
 }
 
 async function voice(argv, resolveRun) {
-  const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice, ...DIR_OPTION } });
-  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir);
+  const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice, ...PACE_OPTIONS, ...DIR_OPTION } });
+  const pace = parsePace(values);
+  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir, pace);
   let generated = 0;
   const voiceover = await ensureVoiceover({
-    dataDir: dir, storyboard, voice: values.voice,
+    dataDir: dir, storyboard, voice: values.voice, pace,
     onProgress: (event) => {
       if (event.type === 'clip') generated++;
       reportVoiceProgress(event);
     },
   });
   const clips = Object.keys(voiceover.clips).length;
-  console.log(`✓ voiceover · ${clips} clip${clips === 1 ? '' : 's'} (${generated} new) · ${formatDuration(storyboardSeconds(storyboard, voiceover))}`);
+  console.log(`✓ voiceover · ${clips} clip${clips === 1 ? '' : 's'} (${generated} new)${formatPace(voiceover)} · ${formatDuration(storyboardSeconds(storyboard, voiceover))}`);
 }
 
 function ensureDist() {
@@ -295,7 +330,8 @@ async function play(argv, resolveRun) {
     options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS, ...DIR_OPTION },
   });
   const port = intOption(values.port, 'port', 1);
-  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir);
+  const pace = parsePace(values);
+  const { dir, storyboard } = await loadValidProject(resolveRun(values).dir, pace);
   const distDir = ensureDist();
   let voiceover = await voiceoverFor(dir, storyboard, values);
 
@@ -303,11 +339,11 @@ async function play(argv, resolveRun) {
     if (file === 'meta.json') return;
     let project;
     try {
-      project = await loadProject(dir);
+      project = await loadProject(dir, pace);
       console.error(`mr-cast: ${file} changed`);
       if (file === 'storyboard.json' && !project.result.errors.length) {
         voiceover = await voiceoverFor(dir, project.storyboard, values);
-        project = await loadProject(dir);
+        project = await loadProject(dir, pace);
       }
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
@@ -356,7 +392,7 @@ function progressReporter(label) {
 async function render(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS, ...DIR_OPTION } });
   const run = resolveRun(values);
-  const { dir, hunks, storyboard } = await loadValidProject(run.dir);
+  const { dir, hunks, storyboard } = await loadValidProject(run.dir, parsePace(values));
   const voiceover = await voiceoverFor(dir, storyboard, values);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
@@ -385,12 +421,13 @@ async function still(argv, resolveRun) {
 }
 
 async function outline(argv, resolveRun) {
-  const { values } = parseArgs({ args: argv, options: DIR_OPTION });
-  const { dir, hunks, storyboard, result, style } = await loadValidProject(resolveRun(values).dir);
-  const voiceover = readVoiceover(dir);
+  const { values } = parseArgs({ args: argv, options: { ...PACE_OPTIONS, ...DIR_OPTION } });
+  const pace = parsePace(values);
+  const { dir, hunks, storyboard, result, style } = await loadValidProject(resolveRun(values).dir, pace);
+  const voiceover = timingVoiceover(dir, pace);
   const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
-  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style }));
+  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style, pace: formatPace(voiceover) }));
 }
 
 function installSkillCommand(argv) {

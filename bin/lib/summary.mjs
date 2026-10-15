@@ -216,7 +216,7 @@ function sceneGist(scene, hunks) {
 }
 
 /** `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. */
-export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, style }) {
+export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, style, pace = '' }) {
   const scenes = storyboard.scenes;
   const out = [storyboard.title, ...(storyboard.subtitle ? [storyboard.subtitle] : [])];
   const number = String(scenes.length).length;
@@ -229,7 +229,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, st
     out.push(`${head}${clip(sceneGist(scene, hunks), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
   });
   out.push('');
-  const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}`;
+  const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}${pace}`;
   out.push(`${plural(scenes.length, 'scene')} · ${length}${style ? ` · ${style} style` : ''}`);
   const covered = formatCoverage(coverage);
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
