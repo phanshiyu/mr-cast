@@ -105,17 +105,20 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   }));
 
   const spanOrder = [...spans].sort((a, b) => Math.min(a.from, a.to) - Math.min(b.from, b.to));
-  // Spans that only touch, like consecutive waits, share a lane and read as one bar in segments.
-  const spanLanes = assignLanes(spanOrder, (s) => [x(Math.min(s.from, s.to)), x(Math.max(s.from, s.to))], -0.5);
-  const spansTop = axisY + TICK_ZONE;
-  const placedSpans: PlacedSpan[] = spanOrder.map((span, i) => {
+  const fitted = spanOrder.map((span) => {
     const a = x(Math.min(span.from, span.to));
     const b = x(Math.max(span.from, span.to));
     const chars = Math.floor((b - a - 24) / (DETAIL_FONT * 0.52));
     const inside = chars >= Math.min(span.label.length, 8);
     const label = inside && span.label.length > chars ? `${span.label.slice(0, chars - 1).trimEnd()}…` : span.label;
-    return { span, x0: a, x1: b, y: spansTop + spanLanes[i]! * (SPAN_H + SPAN_GAP), label, inside };
+    // A label too long for its bar sits after it, so the next span in the lane must start past the label.
+    const reach = inside ? b : b + 24 + label.length * DETAIL_FONT * 0.56;
+    return { span, a, b, inside, label, reach };
   });
+  // Spans that only touch, like consecutive waits, share a lane and read as one bar in segments.
+  const spanLanes = assignLanes(fitted, (f) => [f.a, f.reach], -0.5);
+  const spansTop = axisY + TICK_ZONE;
+  const placedSpans: PlacedSpan[] = fitted.map((f, i) => ({ span: f.span, x0: f.a, x1: f.b, y: spansTop + spanLanes[i]! * (SPAN_H + SPAN_GAP), label: f.label, inside: f.inside }));
   const spanLaneCount = spans.length ? Math.max(...spanLanes) + 1 : 0;
   const height = spansTop + spanLaneCount * (SPAN_H + SPAN_GAP);
 
