@@ -1,13 +1,12 @@
 import type { TimelineEvent, TimelineScene, TimelineSpan } from '../types';
 import { formatValue, niceTicks } from './chartLayout';
+import { fitText, measure, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 import type { Box, LayoutBoxes } from './penGeometry';
-import { wrapLabel } from './wrapLabel';
 
 export const LABEL_FONT = 23;
 export const DETAIL_FONT = 19;
 export const STAMP_FONT = 17;
-const LABEL_LINE = 30;
-const DETAIL_LINE = 25;
 const STAMP_LINE = 24;
 const BOX_PAD_X = 18;
 const BOX_PAD_Y = 12;
@@ -27,8 +26,8 @@ export interface PlacedEvent {
   index: number;
   x: number;
   stamp: string;
-  label: string[];
-  detail: string[];
+  label: Fit;
+  detail: Fit | null;
   box: { x: number; y: number; w: number; h: number };
 }
 
@@ -37,8 +36,8 @@ export interface PlacedSpan {
   x0: number;
   x1: number;
   y: number;
-  /** Label text, cut to fit inside the bar; drawn beside it when the bar is too narrow. */
-  label: string;
+  /** Its label, inside the bar when it fits there, else beside it. */
+  label: Fit;
   inside: boolean;
 }
 
@@ -52,7 +51,8 @@ export interface TimelineLayout {
   height: number;
 }
 
-const textW = (chars: number, font: number) => chars * font * 0.5;
+/** Room a span keeps inside its bar around its label. */
+const SPAN_PAD = 24;
 
 /** Puts each item in the first lane where it does not overlap the items already there, scanning left to right. */
 function assignLanes<T>(items: T[], range: (item: T) => [number, number], gap: number, maxLanes = Infinity): number[] {
@@ -79,11 +79,12 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   const order = scene.events.map((event, index) => ({ event, index })).sort((a, b) => a.event.at - b.event.at || a.index - b.index);
   const boxes = order.map(({ event, index }) => {
     const stamp = formatValue(event.at, scene.unit);
-    const wanted = Math.max(textW(event.label.length, LABEL_FONT), textW((event.detail ?? '').length, DETAIL_FONT), textW(stamp.length, STAMP_FONT) * 1.2);
+    const one = (text: string, slot: typeof SLOTS.eventLabel) => fitText(text, sized(slot, Infinity), '').width;
+    const wanted = Math.max(one(event.label, SLOTS.eventLabel), event.detail ? one(event.detail, SLOTS.eventDetail) : 0, measure(stamp, { family: 'mono', weight: 700, size: STAMP_FONT }) * 1.2);
     const w = Math.max(BOX_MIN_W, Math.min(BOX_MAX_W, wanted + 2 * BOX_PAD_X));
-    const label = wrapLabel(event.label, Math.floor((w - 2 * BOX_PAD_X) / (LABEL_FONT * 0.5)));
-    const detail = event.detail ? wrapLabel(event.detail, Math.floor((w - 2 * BOX_PAD_X) / (DETAIL_FONT * 0.5))) : [];
-    const h = 2 * BOX_PAD_Y + STAMP_LINE + label.length * LABEL_LINE + detail.length * DETAIL_LINE;
+    const label = fitText(event.label, sized(SLOTS.eventLabel, w - 2 * BOX_PAD_X), `events[${index}].label`);
+    const detail = event.detail ? fitText(event.detail, sized(SLOTS.eventDetail, w - 2 * BOX_PAD_X), `events[${index}].detail`) : null;
+    const h = 2 * BOX_PAD_Y + STAMP_LINE + label.height + (detail?.height ?? 0);
     const cx = x(event.at);
     const left = Math.min(width - w, Math.max(0, cx - w / 2));
     return { event, index, cx, stamp, label, detail, w, h, left };
@@ -109,11 +110,12 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   const fitted = spanOrder.map((span) => {
     const a = x(Math.min(span.from, span.to));
     const b = x(Math.max(span.from, span.to));
-    const chars = Math.floor((b - a - 24) / (DETAIL_FONT * 0.52));
-    const inside = chars >= Math.min(span.label.length, 8);
-    const label = inside && span.label.length > chars ? `${span.label.slice(0, chars - 1).trimEnd()}…` : span.label;
+    const path = `spans[${spans.indexOf(span)}].label`;
+    const within = fitText(span.label, { ...sized(SLOTS.spanLabel, b - a - SPAN_PAD), min: SLOTS.spanLabel.size }, path);
     // A label too long for its bar sits after it, so the next span in the lane must start past the label.
-    const reach = inside ? b : b + 24 + label.length * DETAIL_FONT * 0.56;
+    const inside = within.fits;
+    const label = inside ? within : fitText(span.label, sized(SLOTS.spanLabel, width - (b + 12)), path);
+    const reach = inside ? b : b + SPAN_PAD + label.width;
     return { span, a, b, inside, label, reach };
   });
   // Spans that only touch, like consecutive waits, share a lane and read as one bar in segments.
@@ -145,7 +147,7 @@ export function timelineBoxes(layout: TimelineLayout): LayoutBoxes {
     ...layout.events.map((e): [string, Box] => [`ev:${e.index}`, card(e)]),
     ...layout.spans.map((s, i): [string, Box] => [`sp:${i}`, bar(s)]),
   ]);
-  const labels = layout.spans.flatMap((s) => (s.inside ? [] : [{ x: s.x1 + 12, y: s.y, width: s.label.length * 10, height: SPAN_H }]));
+  const labels = layout.spans.flatMap((s) => (s.inside ? [] : [{ x: s.x1 + 12, y: s.y, width: s.label.width, height: SPAN_H }]));
   const axis = { x: 0, y: layout.axisY - 26, width: layout.width, height: 70 };
   return { boxes, obstacles: [...boxes.values(), ...labels, axis] };
 }

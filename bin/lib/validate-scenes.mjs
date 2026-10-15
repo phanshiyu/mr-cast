@@ -15,9 +15,6 @@ const CHART_BARS_MAX = 24;
 const TIME_UNITS = ['ms', 's', 'min', 'h', 'd'];
 const TIMELINE_EVENTS_MAX = 8;
 const TIMELINE_SPANS_MAX = 4;
-// An event label wraps to two lines in a card about 300 pixels wide.
-const EVENT_LABEL_LONG = 48;
-const EVENT_DETAIL_LONG = 60;
 const FILES_MAX = 18;
 // A note sits on its file's row beside the line counts.
 const FILE_NOTE_LONG = 60;
@@ -107,9 +104,7 @@ export function checkTimeline(s, p, errors, warnings) {
       const q = `${p}.events[${j}]`;
       if (!isNum(e?.at)) errors.push(`${q}.at: required number, in the scene's unit`);
       if (!isStr(e?.label)) errors.push(`${q}.label: required string`);
-      else if (e.label.trim().length > EVENT_LABEL_LONG) warnings.push(`${q}.label: ${e.label.trim().length} characters; keep it under ${EVENT_LABEL_LONG} and move the rest to detail`);
       if (e?.detail !== undefined && !isText(e.detail)) errors.push(`${q}.detail: must be a string`);
-      else if (e?.detail && e.detail.trim().length > EVENT_DETAIL_LONG) warnings.push(`${q}.detail: ${e.detail.trim().length} characters; keep it under ${EVENT_DETAIL_LONG}`);
       if (e?.tone !== undefined && !TONES.includes(e.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
     });
     if (s.events.length > TIMELINE_EVENTS_MAX) warnings.push(`${p}.events: ${s.events.length} events; more than ${TIMELINE_EVENTS_MAX} get cramped, so split the timeline into two scenes`);

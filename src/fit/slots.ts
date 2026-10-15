@@ -53,4 +53,7 @@ export const SLOTS = {
   chartLabel: { ...LABEL, name: 'chart label', weight: 600, size: 22, min: 15, lines: 2, lineHeight: 1.3, width: 0, fix: 'shorten the label, or use fewer labels' },
   annotation: { ...LABEL, name: 'annotation', weight: 500, size: 23, min: 17, lines: 2, lineHeight: 31 / 23, width: 0, fix: 'shorten the annotation to the one thing the point shows' },
   legend: { ...SANS, name: 'series name', weight: 400, size: 21, min: 15, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the series name, e.g. "before" and "after"' },
+  eventLabel: { ...LABEL, name: 'event label', weight: 650, size: 23, min: 17, lines: 2, lineHeight: 30 / 23, width: 0, fix: 'shorten the label, and move the rest to detail' },
+  eventDetail: { ...LABEL, name: 'event detail', weight: 400, size: 19, min: 14, lines: 2, lineHeight: 25 / 19, width: 0, fix: 'shorten the detail' },
+  spanLabel: { ...SANS, name: 'span label', weight: 700, size: 19, min: 14, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the span label, e.g. "backoff 4 s"' },
 } satisfies Record<string, Slot>;

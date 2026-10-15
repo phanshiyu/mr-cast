@@ -11,6 +11,7 @@ import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
 import { layoutTests } from '../utils/testsLayout';
+import { layoutTimeline } from '../utils/timelineLayout';
 import { shellFits } from './shell';
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
@@ -37,7 +38,7 @@ const SCENE_FITS: SceneFits = {
     const box = contentBox(Boolean(scene.title));
     return layoutChart(scene, box.width, box.height);
   },
-  timeline: () => null,
+  timeline: (scene) => layoutTimeline(scene, contentBox(Boolean(scene.title)).width),
   files: () => null,
 };
 

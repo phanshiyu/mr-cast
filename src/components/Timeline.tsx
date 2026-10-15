@@ -4,13 +4,15 @@ import { stepTargets } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { TimelineScene } from '../types';
 import { formatValue } from '../utils/chartLayout';
-import { DETAIL_FONT, LABEL_FONT, SPAN_H, STAMP_FONT, layoutTimeline, type PlacedEvent, type PlacedSpan, type TimelineLayout, timelineBoxes } from '../utils/timelineLayout';
+import { SPAN_H, STAMP_FONT, layoutTimeline, type PlacedEvent, type PlacedSpan, type TimelineLayout, timelineBoxes } from '../utils/timelineLayout';
 import { staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, revealStarts, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
+import { measure } from '../../shared/textfit.mjs';
+import { FitText } from './FitText';
 import { clamp, colors, contentBox, fonts } from './theme';
 import { Badge, badgesOf, CornerBadges, EMPHASIS, emphasisRing } from './marks';
 import { tones } from './tones';
@@ -144,16 +146,8 @@ const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number; emph
       }}
     >
       <div style={{ fontFamily: fonts.mono, fontSize: STAMP_FONT, lineHeight: '24px', fontWeight: 700, color: tone.color }}>{placed.stamp}</div>
-      {placed.label.map((l, i) => (
-        <div key={i} style={{ fontSize: LABEL_FONT, lineHeight: '30px', fontWeight: 650, color: colors.text, whiteSpace: 'nowrap' }}>
-          {l}
-        </div>
-      ))}
-      {placed.detail.map((l, i) => (
-        <div key={i} style={{ fontSize: DETAIL_FONT, lineHeight: '25px', color: colors.muted, whiteSpace: 'nowrap' }}>
-          {l}
-        </div>
-      ))}
+      <FitText fit={placed.label} style={{ color: colors.text }} />
+      {placed.detail ? <FitText fit={placed.detail} style={{ color: colors.muted }} /> : null}
       <CornerBadges badges={badgesOf(placed.event)} size={12} top={-12} right={12} />
     </div>
   );
@@ -165,7 +159,7 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
   const w = Math.max(0, Math.min(full, playX - placed.x0));
   const label = interpolate(frame, [doneAt - 4, doneAt + 8], [0, 1], clamp);
   const duration = formatValue(Math.abs(placed.span.to - placed.span.from), unit);
-  const room = full - 24 - placed.label.length * DETAIL_FONT * 0.52 - duration.length * 17 * 0.62 - 20;
+  const room = full - 24 - placed.label.width - measure(duration, { family: 'mono', weight: 600, size: 17 }) - 20;
   return (
     <div style={{ opacity: emphasis.opacity }}>
       <div
@@ -194,15 +188,13 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          fontSize: DETAIL_FONT,
-          fontWeight: 700,
           color: tone.color,
           whiteSpace: 'nowrap',
           opacity: label,
         }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {placed.label}
+          <FitText fit={placed.label} inline />
           {badgesOf(placed.span).map((b, i) => (
             <Badge key={i} badge={b} size={12} />
           ))}
