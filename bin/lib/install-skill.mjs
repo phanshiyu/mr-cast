@@ -14,8 +14,9 @@ export function installSkill(root, claudeDir = process.env.CLAUDE_CONFIG_DIR ?? 
     .replace(/^export /gm, '')
     .trim();
 
+  const template = process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/SKILL.md');
   const skill = fs
-    .readFileSync(path.join(root, 'skill/SKILL.md'), 'utf8')
+    .readFileSync(template, 'utf8')
     .replaceAll('{{MR_CAST}}', () => root)
     .replace('{{STORYBOARD_TYPES}}', () => storyboardTypes);
 
