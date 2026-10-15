@@ -56,10 +56,10 @@
         { "from": "delivered", "to": "refunded", "label": "refund", "change": "removed" }
       ],
       "steps": [
-        { "state": "pending", "say": "Orders now start as pending instead of paid." },
-        { "transition": 0, "say": "Paying moves a pending order to paid." },
-        { "transition": 1, "say": "If nobody pays within twenty four hours, the timeout cancels it." },
-        { "state": "refunded", "say": "The refunded state is gone, along with the refund that led to it." }
+        { "focus": "pending", "say": "Orders now start as pending instead of paid." },
+        { "focus": "pending->paid", "say": "Paying moves a pending order to paid." },
+        { "focus": "timeout [24h]", "say": "If nobody pays within twenty four hours, the timeout cancels it." },
+        { "focus": ["refunded", "delivered->refunded"], "say": "The refunded state is gone, along with the refund that led to it." }
       ]
     },
     {
@@ -77,11 +77,11 @@
         { "cells": ["ORDER_EVENTS_TOPIC", "orders.v2", "Topic that lifecycle events are published to"] }
       ],
       "steps": [
-        { "row": 0, "say": "New orders now start as pending instead of paid." },
-        { "row": 1, "say": "A pending order gets twenty four hours to be paid." },
-        { "row": 2, "say": "A job looks for expired orders every five minutes." },
-        { "row": 3, "say": "A declined card is retried three times instead of never." },
-        { "row": 4, "say": "The refund window goes away with the refunded state." }
+        { "focus": "Value@0", "say": "New orders now start as pending instead of paid." },
+        { "focus": 1, "say": "A pending order gets twenty four hours to be paid." },
+        { "focus": 2, "say": "A job looks for expired orders every five minutes." },
+        { "focus": "Value@3", "say": "A declined card is retried three times instead of never." },
+        { "focus": 4, "say": "The refund window goes away with the refunded state." }
       ]
     },
     {
@@ -102,8 +102,9 @@
         "text": "Charge settles in the background job"
       },
       "steps": [
-        { "label": "p50", "say": "The median drops from three hundred twenty to one hundred eighty milliseconds." },
-        { "label": "p99", "say": "The slowest one percent falls from two point four seconds to under a second, because the charge now settles in a background job." }
+        { "focus": "series:after", "say": "Every percentile drops." },
+        { "focus": "p50", "say": "The median drops from three hundred twenty to one hundred eighty milliseconds." },
+        { "focus": "after@p99", "say": "The slowest one percent falls from two point four seconds to under a second, because the charge now settles in a background job." }
       ]
     },
     {
@@ -125,11 +126,11 @@
         { "from": 6, "to": 14, "label": "wait" }
       ],
       "steps": [
-        { "events": 0, "say": "The first charge is declined." },
-        { "events": 1, "say": "Two seconds later, the job tries again." },
-        { "events": 2, "say": "Then it waits four seconds before the second retry." },
-        { "events": 3, "say": "After eight more seconds comes the third and last retry." },
-        { "events": 4, "say": "Then it stops, and the order stays pending until the customer pays or the timeout cancels it." }
+        { "focus": 0, "say": "The first charge is declined." },
+        { "focus": 1, "say": "Two seconds later, the job tries again." },
+        { "focus": 2, "say": "Then it waits four seconds before the second retry." },
+        { "focus": 3, "say": "After eight more seconds comes the third and last retry." },
+        { "focus": 4, "say": "Then it stops, and the order stays pending until the customer pays or the timeout cancels it." }
       ]
     },
     {

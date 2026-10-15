@@ -22,41 +22,48 @@
         {
           "id": "client",
           "label": "Client",
-          "kind": "client"
+          "icon": "monitor",
+          "caption": "client"
         },
         {
           "id": "api",
           "label": "Express API",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "redis",
           "label": "Redis",
-          "kind": "db",
-          "modified": true
+          "icon": "database",
+          "caption": "datastore",
+          "change": "modified"
         },
         {
           "id": "orders",
           "label": "Orders service",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "pricing",
           "label": "Pricing",
-          "kind": "service"
+          "icon": "server",
+          "caption": "service"
         },
         {
           "id": "pg",
           "label": "Orders DB",
-          "kind": "db"
+          "icon": "database",
+          "caption": "datastore"
         },
         {
           "id": "events",
           "label": "Event queue",
-          "kind": "queue",
-          "modified": true
+          "icon": "layers",
+          "caption": "queue",
+          "change": "modified"
         }
       ],
       "edges": [
@@ -100,31 +107,36 @@
         {
           "id": "client",
           "label": "Client",
-          "kind": "client"
+          "icon": "monitor",
+          "caption": "client"
         },
         {
           "id": "api",
           "label": "Express API",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "redis",
           "label": "Redis",
-          "kind": "db",
-          "modified": true
+          "icon": "database",
+          "caption": "datastore",
+          "change": "modified"
         },
         {
           "id": "orders",
           "label": "createOrder",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "queue",
           "label": "Event queue",
-          "kind": "queue",
-          "modified": true
+          "icon": "layers",
+          "caption": "queue",
+          "change": "modified"
         }
       ],
       "messages": [
@@ -180,15 +192,15 @@
       ],
       "steps": [
         {
-          "messages": "0-2",
+          "focus": "0-2",
           "say": "A request first goes to the limiter, which asks Redis to count it."
         },
         {
-          "messages": "3-5",
+          "focus": "3-5",
           "say": "Only then does the orders service price the items and save the order."
         },
         {
-          "messages": "6-7",
+          "focus": "6-7",
           "say": "After the insert, the API publishes the event without waiting for anyone to consume it, and answers the client."
         }
       ]
@@ -229,7 +241,7 @@
       "type": "er",
       "chapter": "Data model",
       "title": "orders",
-      "narration": "The orders table gains a status column, starting as pending. Totals are now computed from the pricing service, and each order still belongs to one user with many line items.",
+      "narration": "The orders table changes in two columns, and its relations stay as they were.",
       "entities": [
         {
           "id": "users",
@@ -305,6 +317,23 @@
           "to": "items",
           "cardinality": "one-to-many",
           "label": "contains"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "orders.status",
+          "say": "It gains a status column, and every new order starts as pending."
+        },
+        {
+          "focus": "orders.total",
+          "say": "The total is now computed from the pricing service instead of the request."
+        },
+        {
+          "focus": [
+            "users->orders",
+            "orders->items"
+          ],
+          "say": "Each order still belongs to one user and holds many line items."
         }
       ]
     },

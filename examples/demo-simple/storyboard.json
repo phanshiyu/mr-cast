@@ -22,41 +22,48 @@
         {
           "id": "client",
           "label": "Client",
-          "kind": "client"
+          "icon": "monitor",
+          "caption": "client"
         },
         {
           "id": "api",
           "label": "Express API",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "redis",
           "label": "Redis",
-          "kind": "db",
-          "modified": true
+          "icon": "database",
+          "caption": "datastore",
+          "change": "modified"
         },
         {
           "id": "orders",
           "label": "Orders service",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "pricing",
           "label": "Pricing",
-          "kind": "service"
+          "icon": "server",
+          "caption": "service"
         },
         {
           "id": "pg",
           "label": "Orders DB",
-          "kind": "db"
+          "icon": "database",
+          "caption": "datastore"
         },
         {
           "id": "events",
           "label": "Event queue",
-          "kind": "queue",
-          "modified": true
+          "icon": "layers",
+          "caption": "queue",
+          "change": "modified"
         }
       ],
       "edges": [
@@ -100,31 +107,36 @@
         {
           "id": "client",
           "label": "Client",
-          "kind": "client"
+          "icon": "monitor",
+          "caption": "client"
         },
         {
           "id": "api",
           "label": "Express API",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "redis",
           "label": "Redis",
-          "kind": "db",
-          "modified": true
+          "icon": "database",
+          "caption": "datastore",
+          "change": "modified"
         },
         {
           "id": "orders",
           "label": "createOrder",
-          "kind": "service",
-          "modified": true
+          "icon": "server",
+          "caption": "service",
+          "change": "modified"
         },
         {
           "id": "queue",
           "label": "Event queue",
-          "kind": "queue",
-          "modified": true
+          "icon": "layers",
+          "caption": "queue",
+          "change": "modified"
         }
       ],
       "messages": [
@@ -180,15 +192,15 @@
       ],
       "steps": [
         {
-          "messages": "0-2",
+          "focus": "0-2",
           "say": "First the A P I counts it in Redis."
         },
         {
-          "messages": "3-5",
+          "focus": "3-5",
           "say": "Then create order prices and saves the order."
         },
         {
-          "messages": "6-7",
+          "focus": "6-7",
           "say": "Last, the A P I publishes the event and does not wait. Then it answers the client."
         }
       ]

@@ -19,10 +19,10 @@
       "title": "POST /orders",
       "narration": "A request reaches the Express API, which asks Redis to count it. Under the limit the orders service runs. Over the limit the API answers right away.",
       "participants": [
-        { "id": "client", "label": "Client", "kind": "client" },
-        { "id": "api", "label": "Express API", "kind": "service", "modified": true },
-        { "id": "redis", "label": "Redis", "kind": "db" },
-        { "id": "orders", "label": "createOrder", "kind": "service" }
+        { "id": "client", "label": "Client", "icon": "monitor", "caption": "client" },
+        { "id": "api", "label": "Express API", "icon": "server", "caption": "service", "highlight": true },
+        { "id": "redis", "label": "Redis", "icon": "database", "caption": "datastore" },
+        { "id": "orders", "label": "createOrder", "icon": "server", "caption": "service" }
       ],
       "messages": [
         { "from": "client", "to": "api", "label": "POST /orders" },

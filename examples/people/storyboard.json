@@ -1,0 +1,331 @@
+{
+  "title": "How a support ticket gets resolved",
+  "subtitle": "From a customer's message to a fix and back",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "The idea",
+      "summary": "A customer's problem travels through three teams before it comes back as an answer.",
+      "bullets": [
+        "The customer writes in once and never has to repeat the story",
+        "A support agent owns the ticket from start to finish",
+        "Engineering joins only when the agent finds a real bug",
+        "The customer hears back at every handover"
+      ],
+      "narration": "When a customer reports a problem, three groups of people pass it along until it is fixed. Here is who they are and how the ticket moves between them."
+    },
+    {
+      "type": "arch",
+      "chapter": "Who is involved",
+      "layout": "TB",
+      "nodes": [
+        {
+          "id": "customer",
+          "label": "Customer",
+          "icon": "user",
+          "caption": "reports a problem",
+          "tone": "good",
+          "group": "Customer"
+        },
+        {
+          "id": "agent",
+          "label": "Support agent",
+          "icon": "headset",
+          "caption": "owns the ticket",
+          "highlight": true,
+          "group": "Support team"
+        },
+        {
+          "id": "guides",
+          "label": "Help guides",
+          "icon": "book-open",
+          "caption": "known fixes",
+          "group": "Support team"
+        },
+        {
+          "id": "engineer",
+          "label": "On-call engineer",
+          "icon": "laptop",
+          "caption": "fixes real bugs",
+          "group": "Engineering"
+        },
+        {
+          "id": "tracker",
+          "label": "Bug tracker",
+          "icon": "bug",
+          "caption": "one issue per bug",
+          "group": "Engineering"
+        }
+      ],
+      "edges": [
+        {
+          "from": "customer",
+          "to": "agent",
+          "label": "writes to the help desk"
+        },
+        {
+          "from": "agent",
+          "to": "guides",
+          "label": "checks first",
+          "style": "dashed"
+        },
+        {
+          "from": "agent",
+          "to": "engineer",
+          "label": "works with",
+          "direction": "both"
+        },
+        {
+          "from": "engineer",
+          "to": "tracker",
+          "label": "files",
+          "direction": "none"
+        }
+      ],
+      "narration": "The customer sits outside. The support team owns the ticket, and engineering helps when the problem is a bug.",
+      "steps": [
+        {
+          "focus": "customer",
+          "say": "It starts with one customer who has a problem."
+        },
+        {
+          "focus": "customer->agent",
+          "say": "They write to the help desk, and the message lands with one support agent."
+        },
+        {
+          "focus": "agent",
+          "say": "That agent owns the ticket until it is resolved, whoever else helps."
+        },
+        {
+          "focus": [
+            "agent->guides",
+            "guides"
+          ],
+          "say": "The agent checks the help guides first, because most problems already have a known fix."
+        },
+        {
+          "focus": [
+            "agent-engineer",
+            "group:Engineering"
+          ],
+          "say": "When the guides have no answer, the agent and the on-call engineer work on it together."
+        }
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "One ticket",
+      "title": "A wrong invoice",
+      "participants": [
+        {
+          "id": "customer",
+          "label": "Customer",
+          "icon": "user",
+          "caption": "pays the bill",
+          "tone": "good"
+        },
+        {
+          "id": "agent",
+          "label": "Support agent",
+          "icon": "headset",
+          "caption": "owns the ticket",
+          "highlight": true
+        },
+        {
+          "id": "engineer",
+          "label": "Engineer",
+          "icon": "laptop",
+          "caption": "on call"
+        },
+        {
+          "id": "billing",
+          "label": "Billing system",
+          "icon": "receipt",
+          "caption": "sends invoices"
+        }
+      ],
+      "messages": [
+        {
+          "from": "customer",
+          "to": "agent",
+          "label": "my invoice is wrong"
+        },
+        {
+          "from": "agent",
+          "to": "agent",
+          "label": "check the account",
+          "note": "guides cover refunds, not this"
+        },
+        {
+          "from": "agent",
+          "to": "engineer",
+          "label": "escalate with details"
+        },
+        {
+          "from": "engineer",
+          "to": "billing",
+          "label": "fix the tax rate"
+        },
+        {
+          "from": "billing",
+          "to": "engineer",
+          "label": "invoice reissued",
+          "kind": "return"
+        },
+        {
+          "from": "engineer",
+          "to": "agent",
+          "label": "fixed and checked",
+          "kind": "return"
+        },
+        {
+          "from": "agent",
+          "to": "customer",
+          "label": "new invoice and apology",
+          "kind": "async",
+          "modified": true
+        }
+      ],
+      "narration": "Follow one ticket through the people who touch it.",
+      "steps": [
+        {
+          "focus": [
+            "customer",
+            "0-1"
+          ],
+          "say": "The customer reports a wrong invoice, and the agent checks the account first."
+        },
+        {
+          "focus": [
+            "engineer",
+            "2"
+          ],
+          "say": "The guides do not cover it, so the agent escalates to the engineer with every detail already gathered."
+        },
+        {
+          "focus": "3-4",
+          "say": "The engineer corrects the tax rate and the billing system reissues the invoice."
+        },
+        {
+          "focus": [
+            "5-6",
+            "customer"
+          ],
+          "say": "The fix goes back to the agent, who tells the customer and sends the new invoice."
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "Handovers",
+      "title": "Who holds the ticket",
+      "steps": [
+        {
+          "actor": "Customer",
+          "icon": "user",
+          "tone": "good",
+          "action": "Describes the problem once",
+          "say": "The customer describes the problem once, in their own words."
+        },
+        {
+          "actor": "Support agent",
+          "icon": "headset",
+          "tone": "accent",
+          "action": "Reproduces it and writes the steps down",
+          "say": "The agent reproduces it and writes down the exact steps."
+        },
+        {
+          "actor": "Engineer",
+          "icon": "laptop",
+          "action": "Fixes the cause, not the symptom",
+          "say": "The engineer fixes the cause, so the next customer never sees it."
+        },
+        {
+          "actor": "Support agent",
+          "icon": "headset",
+          "tone": "accent",
+          "action": "Confirms the fix with the customer",
+          "say": "The agent confirms the fix with the customer and closes the ticket."
+        }
+      ],
+      "narration": "At each handover the ticket gains something the next person needs."
+    },
+    {
+      "type": "timeline",
+      "chapter": "How long it takes",
+      "title": "A typical escalated ticket",
+      "unit": "h",
+      "events": [
+        {
+          "at": 0,
+          "label": "Ticket opened",
+          "detail": "customer writes in",
+          "tone": "neutral"
+        },
+        {
+          "at": 1,
+          "label": "First reply",
+          "detail": "agent acknowledges",
+          "tone": "good"
+        },
+        {
+          "at": 3,
+          "label": "Escalated",
+          "detail": "engineer joins",
+          "tone": "warn"
+        },
+        {
+          "at": 20,
+          "label": "Fix shipped",
+          "detail": "invoice reissued",
+          "tone": "accent"
+        },
+        {
+          "at": 22,
+          "label": "Ticket closed",
+          "detail": "customer confirms",
+          "tone": "good"
+        }
+      ],
+      "spans": [
+        {
+          "from": 0,
+          "to": 1,
+          "label": "first reply target",
+          "tone": "good"
+        },
+        {
+          "from": 3,
+          "to": 20,
+          "label": "waiting on engineering",
+          "tone": "warn"
+        }
+      ],
+      "narration": "Most of the time a ticket like this is open, it waits on engineering.",
+      "steps": [
+        {
+          "focus": [
+            "0-1",
+            "span:first reply target"
+          ],
+          "say": "The customer hears back within an hour."
+        },
+        {
+          "focus": 2,
+          "say": "Three hours in, the agent escalates."
+        },
+        {
+          "focus": [
+            "span:waiting on engineering",
+            3
+          ],
+          "say": "Then seventeen hours pass while engineering finds and ships the fix."
+        },
+        {
+          "focus": 4,
+          "say": "The agent closes the ticket once the customer confirms."
+        }
+      ]
+    }
+  ]
+}
