@@ -245,7 +245,27 @@ export interface TestsScene extends SceneBase {
   gaps: string[];
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene;
+/** A cell's text, or `{ before, after }` for a value this change replaced: the old value is struck through beside the new one. */
+export type TableCell = string | { before: string; after: string };
+
+/**
+ * One cell per column. An added or removed row holds plain text; a row with a `{ before, after }`
+ * cell is modified, with or without `change: "modified"`.
+ */
+export type TableRow = { cells: TableCell[]; change?: 'modified' } | { cells: string[]; change: 'added' | 'removed' };
+
+export interface TableScene extends SceneBase {
+  type: 'table';
+  title?: string;
+  /** Column headers, left to right. Up to 6. */
+  columns: string[];
+  /** Up to 10 rows. Long text wraps to two lines. */
+  rows: TableRow[];
+  /** Row indexes (0-based) to spotlight one at a time, in the order the narration names them. */
+  highlight?: number[];
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene;
 
 export interface Storyboard {
   title: string;

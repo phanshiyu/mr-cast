@@ -1,6 +1,6 @@
 {
   "title": "Order lifecycle overhaul",
-  "subtitle": "Scene gallery: state, Mermaid and tests scenes",
+  "subtitle": "Scene gallery: state, table, Mermaid and tests scenes",
   "scenes": [
     {
       "type": "intent",
@@ -37,6 +37,22 @@
         { "from": "paid", "to": "cancelled", "label": "cancel" },
         { "from": "delivered", "to": "refunded", "label": "refund", "change": "removed" }
       ]
+    },
+    {
+      "type": "table",
+      "chapter": "Settings",
+      "title": "Order settings",
+      "narration": "New orders now start as pending instead of paid. A twenty four hour payment timeout and a five minute sweep job are new. A declined card is retried three times instead of never, and the refund window goes away with the refunded state.",
+      "columns": ["Setting", "Value", "What it controls"],
+      "rows": [
+        { "cells": ["ORDER_INITIAL_STATUS", { "before": "paid", "after": "pending" }, "Status createOrder gives a new order"] },
+        { "cells": ["PAYMENT_TIMEOUT", "24h", "How long an order may stay unpaid before the timeout job cancels it"], "change": "added" },
+        { "cells": ["TIMEOUT_SWEEP_INTERVAL", "5 min", "How often the timeout job looks for expired orders"], "change": "added" },
+        { "cells": ["MAX_PAYMENT_RETRIES", { "before": "0", "after": "3" }, "Declined charges retried before the order stays pending"] },
+        { "cells": ["REFUND_WINDOW_DAYS", "30", "Days after delivery a refund was allowed"], "change": "removed" },
+        { "cells": ["ORDER_EVENTS_TOPIC", "orders.v2", "Topic that lifecycle events are published to"] }
+      ],
+      "highlight": [0, 1, 2, 3, 4]
     },
     {
       "type": "mermaid",

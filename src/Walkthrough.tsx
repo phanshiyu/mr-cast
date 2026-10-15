@@ -4,6 +4,7 @@ import { ArchGraph } from './components/ArchGraph';
 import { Captions } from './components/Captions';
 import { CodeDiff } from './components/CodeDiff';
 import { DataFlow } from './components/DataFlow';
+import { DataTable } from './components/DataTable';
 import { ErDiagram } from './components/ErDiagram';
 import { IntentCard } from './components/IntentCard';
 import { MermaidDiagram } from './components/MermaidDiagram';
@@ -12,7 +13,7 @@ import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
 import { colors, fonts } from './components/theme';
-import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TestsScene, WalkthroughProps } from './types';
+import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -25,6 +26,7 @@ interface SceneByType {
   state: StateScene;
   mermaid: MermaidScene;
   tests: TestsScene;
+  table: TableScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -37,6 +39,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   state: StateDiagram,
   mermaid: MermaidDiagram,
   tests: TestMatrix,
+  table: DataTable,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

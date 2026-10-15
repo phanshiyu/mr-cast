@@ -158,8 +158,9 @@ A code scene may walk its hunk in `steps` instead of `focusLinesAfter` and `flow
 | `state` | A state machine with an entry dot, final states, and labelled transitions. Added, removed and modified states and transitions are marked. |
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph, pie, ...) drawn as a static themed SVG. A fallback for diagrams the other scenes don't cover. |
 | `tests` | A test matrix: each test case with its status (added, changed, removed, existing) and the behavior it proves, then a "Not tested" panel listing important behaviors no test covers. With no cases it states that the change has no tests. |
+| `table` | Rows and columns of text, such as settings, API parameters or error codes. Added, removed and modified rows are marked, a changed cell strikes its old value beside the new one, and `highlight` spotlights rows one at a time. |
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `state`, `mermaid` and `tests` scenes.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `state`, `table`, `mermaid` and `tests` scenes.
 
 ## Layout
 

@@ -187,6 +187,11 @@ function sceneGist(scene, hunks) {
       return titled(`mermaid ${scene.code.trim().split(/\s/)[0]}`);
     case 'tests':
       return `${scene.subject ? `${scene.subject} · ` : ''}${count(scene.cases, 'case')}, ${count(scene.gaps, 'gap')}`;
+    case 'table': {
+      const changed = scene.rows.filter((r) => r.change || r.cells.some((c) => typeof c !== 'string')).length;
+      const extra = [changed ? `${changed} changed` : '', scene.highlight?.length ? `${scene.highlight.length} highlighted` : ''].filter(Boolean);
+      return titled(`${count(scene.columns, 'column')}, ${count(scene.rows, 'row')}${extra.map((e) => `, ${e}`).join('')}`);
+    }
     default:
       return '';
   }

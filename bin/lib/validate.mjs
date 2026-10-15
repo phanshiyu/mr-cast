@@ -3,11 +3,12 @@
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
+import { checkTable } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests'];
+const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CHANGES = ['added', 'removed', 'modified'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
@@ -230,6 +231,8 @@ function checkCoverage(sb, hunks, errors, warnings) {
 }
 
 const DIAGRAM_TYPES = ['arch', 'sequence', 'flow', 'er', 'state', 'mermaid'];
+// Overview scenes that draw facts rather than structure: they belong before the code, but do not show how the pieces fit.
+const OVERVIEW_TYPES = ['table'];
 // Prose and config: changing them alone gives a reviewer no component interaction to draw.
 const NON_LOGIC_LANGUAGES = ['markdown', 'json', 'yaml', 'toml', 'text'];
 
@@ -266,7 +269,7 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
   }
   if (firstCode >= 0) {
     for (const { s, i } of indexed) {
-      if (i > firstCode && DIAGRAM_TYPES.includes(s.type)) {
+      if (i > firstCode && (DIAGRAM_TYPES.includes(s.type) || OVERVIEW_TYPES.includes(s.type))) {
         const title = s.chapter ? `, "${s.chapter}"` : '';
         warnings.push(`scenes[${i}] (${s.type}${title}) comes after code scenes[${firstCode}]..; move the high-level diagrams ahead of the code so the walkthrough goes overview, diagrams, code, tests`);
       }
@@ -569,6 +572,10 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         }
         break;
       }
+
+      case 'table':
+        checkTable(s, p, errors, warnings);
+        break;
 
       case 'mermaid':
         if (!isStr(s.code)) errors.push(`${p}.code: required string of Mermaid source`);
