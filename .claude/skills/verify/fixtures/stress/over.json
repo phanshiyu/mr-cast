@@ -118,7 +118,7 @@
           "from": "a",
           "to": "r",
           "label": "INCR rl:{ip}:{minute-window}",
-          "note": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
+          "note": "this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end this text keeps going well past anything the slot could hold even at its smallest readable size, because it repeats itself again and again and again without end"
         },
         {
           "from": "r",
