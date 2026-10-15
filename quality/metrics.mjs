@@ -31,7 +31,10 @@ function highlighted(scene, hunk) {
 }
 
 function measure(name, dir) {
-  const repo = path.join(dir, 'repo', '.mr-cast');
+  const runs = path.join(dir, 'repo', '.mr-cast');
+  let current = '';
+  try { current = fs.readFileSync(path.join(runs, '.current'), 'utf8').trim(); } catch { /* no run yet */ }
+  const repo = path.join(runs, current);
   const sb = readJson(path.join(repo, 'storyboard.json'));
   const hunks = readJson(path.join(repo, 'hunks.json')) ?? {};
   if (!sb) return { fixture: name, hasStoryboard: false };

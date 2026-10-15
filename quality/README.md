@@ -20,21 +20,21 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
 
 1. Variant. Build a skill variant from a SKILL.md template (placeholders `{{MR_CAST}}`, `{{STORYBOARD_TYPES}}`):
 
-       quality/variant.sh skill/mr-cast-review/SKILL.md /path/to/variants/current
+       quality/variant.sh skill/mr-cast/SKILL.md /path/to/variants/current
        quality/variant.sh /path/to/other/SKILL.md /path/to/variants/other
 
    This runs `mr-cast install-skill` with `CLAUDE_CONFIG_DIR=<out>` and `MR_CAST_SKILL_TEMPLATE=<source>`,
-   so `~/.claude` is untouched. The result is `<out>/skills/mr-cast-review/SKILL.md`.
+   so `~/.claude` is untouched. The result is `<out>/skills/mr-cast/SKILL.md`, beside the references.
 
 2. Prepare. One workdir per variant:
 
        quality/prepare.sh /path/to/runs/current /path/to/variants/current
 
    Creates `<workdir>/<fixture>/repo` (fixture repo, feature branch checked out) and
-   `<workdir>/<fixture>/notes/mr-cast-review.md` (the variant skill).
+   `<workdir>/<fixture>/notes/mr-cast/` (the variant skill and its references).
 
 3. Writers. One fresh agent per fixture, cwd `<workdir>/<fixture>/repo`, with the writer prompt below.
-   Run them in parallel. They write `repo/.mr-cast/storyboard.json`.
+   Run them in parallel. They write `storyboard.json` in the run `extract` starts, `repo/.mr-cast/<branch>/`.
 
 4. Collect:
 
@@ -77,7 +77,7 @@ and reports points over questions, accuracy and mean ease per fixture and overal
 
 Run in `<workdir>/<fixture>/repo`. Use the text as is.
 
-    Make a walkthrough video of this branch with mr-cast so the team can review it. Instructions are in ../notes/mr-cast-review.md. Get it validated, and don't stop to ask me about the outline; I'll open the player myself, don't start it.
+    Make a walkthrough video of this branch with mr-cast so the team can review it. Instructions are in ../notes/mr-cast/SKILL.md. Get it validated, and don't stop to ask me about the outline; I'll open the player myself, don't start it.
 
 ### (b) Reviewer
 
