@@ -2,7 +2,7 @@
 
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
-import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
+import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
@@ -17,8 +17,11 @@ const TEST_GAPS_MAX = 4;
 
 const MAX_LINE_RANGE = 10000;
 // A code scene walks its focus ranges top to bottom; long or many ranges turn it back into a wall of code.
-const FOCUS_RANGE_COMFORTABLE = 8;
-const FOCUS_RANGE_MAX = 15;
+// The simple style explains a line or two at a time, so its ranges are shorter.
+const RANGE_LIMITS = { standard: { comfortable: 8, max: 15 }, simple: { comfortable: 3, max: 6 } };
+// Simple style is written for a viewer reading subtitles in a second language: short sentences.
+const SIMPLE_SENTENCE_MAX = 18;
+const SIMPLE_SENTENCE_AVG = 12;
 const FOCUS_RANGES_PER_SCENE = 3;
 // With a flow diagram each range gets a labelled step beside the code, so one more stays readable.
 const FOCUS_RANGES_WITH_FLOW = 4;
@@ -31,6 +34,7 @@ const FLOW_LABEL_MAX = 60;
 const SUBSTANTIAL_HUNK_LINES = 15;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
+const plural = (n, word) => (n === 1 ? word : `${word}s`);
 
 /** @returns {boolean} whether `ref` is a line number or an "a-b" range of reasonable size */
 function checkLineRef(ref, path, errors) {
@@ -72,7 +76,7 @@ function checkFocusInHunk(refs, hunk, side, path, warnings) {
 
 const formatRange = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
 
-function checkFocusSize(scene, hunk, p, errors, warnings) {
+function checkFocusSize(scene, hunk, limits, p, errors, warnings) {
   const sides = [
     { key: 'focusLinesAfter', ranges: focusRanges(scene.focusLinesAfter) },
     { key: 'focusLinesBefore', ranges: focusRanges(scene.focusLinesBefore) },
@@ -80,9 +84,9 @@ function checkFocusSize(scene, hunk, p, errors, warnings) {
   for (const { key, ranges } of sides) {
     for (const [a, b] of ranges) {
       const size = b - a + 1;
-      if (size <= FOCUS_RANGE_COMFORTABLE) continue;
-      const msg = `${p}.${key}: range ${a}-${b} is ${size} lines; highlight at most ${FOCUS_RANGE_COMFORTABLE} (${FOCUS_RANGE_MAX} max) and move the rest to another code scene`;
-      (size > FOCUS_RANGE_MAX ? errors : warnings).push(msg);
+      if (size <= limits.comfortable) continue;
+      const msg = `${p}.${key}: range ${a}-${b} is ${size} lines; highlight at most ${limits.comfortable} (${limits.max} max) and move the rest to another code scene`;
+      (size > limits.max ? errors : warnings).push(msg);
     }
   }
   const used = sides.filter((s) => s.ranges.length);
@@ -95,9 +99,9 @@ function checkFocusSize(scene, hunk, p, errors, warnings) {
   if (count > 0 || !hunk) return;
   // Without focus a diff hunk highlights its changed lines and a source snippet highlights all of them.
   if (hunk.status === 'source') {
-    if (hunk.lines.length > UNFOCUSED_CHANGE_MAX) errors.push(`${p}: snippet ${hunk.id} is ${hunk.lines.length} lines and the scene sets no focus; set focusLinesAfter to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
+    if (hunk.lines.length > UNFOCUSED_CHANGE_MAX) errors.push(`${p}: snippet ${hunk.id} is ${hunk.lines.length} lines and the scene sets no focus; set focusLinesAfter to the at most ${limits.comfortable} lines the narration discusses`);
   } else if (hunk.additions + hunk.deletions > UNFOCUSED_CHANGE_MAX) {
-    errors.push(`${p}: hunk ${hunk.id} changes ${hunk.additions + hunk.deletions} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
+    errors.push(`${p}: hunk ${hunk.id} changes ${hunk.additions + hunk.deletions} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${limits.comfortable} lines the narration discusses`);
   }
 }
 
@@ -127,7 +131,7 @@ function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
  * highlighted. The steps are the scene's only focus, play in the order written, and that order
  * must be the hunk's top-to-bottom order, so step k's words always play over step k's lines.
  */
-function checkCodeSteps(scene, hunk, p, errors, warnings) {
+function checkCodeSteps(scene, hunk, limits, p, errors, warnings) {
   const { steps } = scene;
   if (!Array.isArray(steps) || steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { lines, say }`);
   for (const key of ['focusLinesAfter', 'focusLinesBefore', 'flow']) {
@@ -161,8 +165,8 @@ function checkCodeSteps(scene, hunk, p, errors, warnings) {
   ranges.forEach(({ side, range: [a, b] }, j) => {
     const q = `${p}.steps[${j}].${side === 'oldLine' ? 'oldLines' : 'lines'}`;
     const size = b - a + 1;
-    if (size > FOCUS_RANGE_COMFORTABLE) {
-      (size > FOCUS_RANGE_MAX ? errors : warnings).push(`${q}: ${a}-${b} is ${size} lines; a step highlights at most ${FOCUS_RANGE_COMFORTABLE} (${FOCUS_RANGE_MAX} max), so split it into more steps`);
+    if (size > limits.comfortable) {
+      (size > limits.max ? errors : warnings).push(`${q}: ${a}-${b} is ${size} lines; a step highlights at most ${limits.comfortable} (${limits.max} max), so split it into more steps`);
     }
     const earlier = ranges.findIndex((r, i) => i < j && r.side === side && r.range[0] <= b && a <= r.range[1]);
     if (earlier >= 0) errors.push(`${q}: ${formatRange([a, b])} overlaps steps[${earlier}] (${formatRange(ranges[earlier].range)}); each line belongs to one step`);
@@ -341,14 +345,68 @@ async function checkMermaid(diagrams, errors, warnings) {
   }
 }
 
+/** Sentences of a spoken text, split at a full stop, question mark or exclamation mark followed by a space. */
+const sentences = (text) => String(text ?? '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+
+const excerpt = (text) => (text.length > 50 ? `${text.slice(0, 47)}...` : text);
+
+/** Simple style: every spoken text of the scene in short sentences, for a viewer reading in a second language. */
+function checkReadability(scene, p, warnings) {
+  const spoken = [[`${p}.narration`, scene.narration]];
+  if (scene.type === 'code' && Array.isArray(scene.steps)) scene.steps.forEach((step, j) => spoken.push([`${p}.steps[${j}].say`, step?.say]));
+  let total = 0;
+  let count = 0;
+  for (const [path, text] of spoken) {
+    for (const sentence of sentences(text)) {
+      const words = wordCount(sentence);
+      total += words;
+      count++;
+      if (words > SIMPLE_SENTENCE_MAX) warnings.push(`${path}: a sentence of ${words} words ("${excerpt(sentence)}"); in simple style keep each sentence under ${SIMPLE_SENTENCE_MAX} words`);
+    }
+  }
+  if (count && total / count > SIMPLE_SENTENCE_AVG) warnings.push(`${p}: sentences average ${Math.round(total / count)} words; in simple style keep them around ${SIMPLE_SENTENCE_AVG} or fewer`);
+}
+
 /**
- * @param {'diff' | 'explain'} mode  "explain" (meta.json of `mr-cast explain init`) narrates source
- *   snippets instead of a diff, so diff coverage, test and risk rules do not apply.
+ * Simple style: every changed line of a hunk the video shows is inside a step of some scene showing it.
+ * A scene without an explicit focus is already told to add steps, so its hunk is not listed again.
  */
-export async function validateStoryboard(sb, hunks, mode = 'diff') {
+function checkSimpleLineCoverage(sb, hunks, warnings) {
+  const scenesOf = new Map();
+  sb.scenes.forEach((s, i) => {
+    if (s?.type !== 'code' || !Object.hasOwn(hunks, s.hunkId) || hunks[s.hunkId].status === 'source') return;
+    if (!scenesOf.has(s.hunkId)) scenesOf.set(s.hunkId, []);
+    scenesOf.get(s.hunkId).push({ scene: s, i });
+  });
+  for (const [hunkId, shown] of scenesOf) {
+    const hunk = hunks[hunkId];
+    const ranges = shown.map(({ scene }) => sceneFocusRanges(scene));
+    if (ranges.some((r) => r.length === 0)) continue;
+    const covered = (line) => ranges.flat().some(({ side, range: [a, b] }) => line[side] !== null && line[side] >= a && line[side] <= b);
+    const missed = hunk.lines.filter((line) => line.type !== 'context' && !covered(line));
+    if (!missed.length) continue;
+    const parts = [];
+    const adds = missed.filter((l) => l.type === 'add').map((l) => l.newLine);
+    const dels = missed.filter((l) => l.type === 'del').map((l) => l.oldLine);
+    if (adds.length) parts.push(`new-file ${plural(adds.length, 'line')} ${focusRanges(adds).map(formatRange).join(', ')}`);
+    if (dels.length) parts.push(`old-file ${plural(dels.length, 'line')} ${focusRanges(dels).map(formatRange).join(', ')}`);
+    const where = shown.map(({ i }) => `scenes[${i}]`).join(', ');
+    warnings.push(`${hunkId} ${hunk.file}: no step of ${where} covers changed ${parts.join(' or ')}; in simple style every changed line gets a step`);
+  }
+}
+
+/**
+ * @param {{ mode?: 'diff' | 'explain', style?: 'simple' }} meta  From meta.json. "explain" (`mr-cast explain init`)
+ *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply.
+ *   "simple" (`--simple`) is explained line by line in plain words, so steps are short, every changed
+ *   line of a shown hunk has a step, and sentences stay short.
+ */
+export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {}) {
   const errors = [];
   const warnings = [];
   const diagrams = [];
+  const simple = style === 'simple';
+  const limits = simple ? RANGE_LIMITS.simple : RANGE_LIMITS.standard;
   if (!sb || typeof sb !== 'object') return { errors: ['storyboard must be a JSON object'], warnings };
   if (!isStr(sb.title)) errors.push('title: required string');
   if (!Array.isArray(sb.scenes) || sb.scenes.length === 0) {
@@ -362,6 +420,7 @@ export async function validateStoryboard(sb, hunks, mode = 'diff') {
     if (!TYPES.includes(s.type)) return errors.push(`${p}.type: must be one of ${TYPES.join(', ')} (got ${JSON.stringify(s.type)})`);
     if (!isStr(s.narration)) errors.push(`${p}.narration: required string`);
     if (s.chapter !== undefined && typeof s.chapter !== 'string') errors.push(`${p}.chapter: must be a string`);
+    if (simple) checkReadability(s, p, warnings);
 
     switch (s.type) {
       case 'intent':
@@ -399,14 +458,15 @@ export async function validateStoryboard(sb, hunks, mode = 'diff') {
         if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
         if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
         if (s.steps !== undefined) {
-          checkCodeSteps(s, hunk, p, errors, warnings);
+          checkCodeSteps(s, hunk, limits, p, errors, warnings);
           break;
         }
+        if (simple) warnings.push(`${p}: simple style walks the code line by line; replace focusLinesAfter and flow with steps, each with the words to say over its lines`);
         const afterOk = checkLineRefs(s.focusLinesAfter, `${p}.focusLinesAfter`, errors);
         const beforeOk = checkLineRefs(s.focusLinesBefore, `${p}.focusLinesBefore`, errors);
         if (hunk && afterOk) checkFocusInHunk(s.focusLinesAfter, hunk, 'new', `${p}.focusLinesAfter`, warnings);
         if (hunk && beforeOk) checkFocusInHunk(s.focusLinesBefore, hunk, 'old', `${p}.focusLinesBefore`, warnings);
-        if ((afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined)) checkFocusSize(s, hunk, p, errors, warnings);
+        if ((afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined)) checkFocusSize(s, hunk, limits, p, errors, warnings);
         const refsOk = (afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined);
         if (s.flow !== undefined) checkCodeFlow(s, refsOk ? hunk : undefined, refsOk, p, errors, warnings);
         break;
@@ -516,6 +576,7 @@ export async function validateStoryboard(sb, hunks, mode = 'diff') {
 
   await checkMermaid(diagrams, errors, warnings);
   checkStoryShape(sb.scenes, hunks ?? {}, mode, warnings);
+  if (simple) checkSimpleLineCoverage(sb, hunks ?? {}, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
     return { errors, warnings, coverage: null };

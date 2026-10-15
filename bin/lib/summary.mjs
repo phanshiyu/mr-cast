@@ -57,7 +57,7 @@ function formatFileLine(f) {
  * The compact hunk index printed by `extract`.
  * @param {{ branch, base, ahead, working, mergeBase, untracked: string[] }} ctx
  */
-export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, storyboardPath, nameArg = '' }) {
+export function formatIndex({ ctx, files, hunks, skipped, maxLines, style, hunksPath, storyboardPath, nameArg = '' }) {
   const all = Object.values(hunks);
   const adds = all.reduce((n, h) => n + h.additions, 0);
   const dels = all.reduce((n, h) => n + h.deletions, 0);
@@ -84,7 +84,8 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, s
   if (ctx.untracked.length) {
     out.push(`not included: ${plural(ctx.untracked.length, 'untracked file')} (git add -N <file> to include)`);
   }
-  out.push(`line numbers: + is the new-file line (use in focusLinesAfter), - is the old-file line (focusLinesBefore)`);
+  out.push(`line numbers: + is the new-file line (use in steps or focusLinesAfter), - is the old-file line (oldLines or focusLinesBefore)`);
+  if (style === 'simple') out.push('style: simple · explain the code line by line in plain words; every changed line of a shown hunk gets a step of at most 3 lines');
   out.push(`wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${nameArg}\` and \`mr-cast play${nameArg}\``);
   return out.join('\n');
 }
@@ -119,7 +120,7 @@ function formatCoverage(coverage) {
 }
 
 /** Lines for `validate`; the last line is the verdict. */
-export function formatValidation({ errors, warnings, coverage }, { storyboard, hunks, seconds }) {
+export function formatValidation({ errors, warnings, coverage }, { storyboard, hunks, seconds, style }) {
   const out = [
     ...errors.map((e) => `error: ${e}`),
     ...warnings.map((w) => `warning: ${w}`),
@@ -128,7 +129,7 @@ export function formatValidation({ errors, warnings, coverage }, { storyboard, h
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
   if (errors.length) out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
-  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${formatCoverage(coverage)}`);
+  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${style ? ` · ${style} style` : ''}${formatCoverage(coverage)}`);
   return out;
 }
 
@@ -192,7 +193,7 @@ function sceneGist(scene, hunks) {
 }
 
 /** `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. */
-export function formatOutline({ storyboard, hunks, coverage, seconds, voiced }) {
+export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, style }) {
   const scenes = storyboard.scenes;
   const out = [storyboard.title, ...(storyboard.subtitle ? [storyboard.subtitle] : [])];
   const number = String(scenes.length).length;
@@ -206,7 +207,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced }) 
   });
   out.push('');
   const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}`;
-  out.push(`${plural(scenes.length, 'scene')} · ${length}`);
+  out.push(`${plural(scenes.length, 'scene')} · ${length}${style ? ` · ${style} style` : ''}`);
   const covered = formatCoverage(coverage);
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
   return out.join('\n');

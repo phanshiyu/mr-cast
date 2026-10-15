@@ -25,10 +25,12 @@ const { version: VERSION } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package
 
 const USAGE = `usage: mr-cast <command> [options]
 
-  extract [base] [--working] [--context N] [--max-lines N] [--all-files] [--name slug]
+  extract [base] [--working] [--simple] [--context N] [--max-lines N] [--all-files] [--name slug]
       Diff the current branch against base (default: origin/HEAD, main, master, ...),
       write .mr-cast/hunks.json and print a hunk index.
       --working    diff merge-base against the working tree (staged + unstaged)
+      --simple     the walkthrough explains the code line by line in plain words; validate then
+                   wants a step of at most 3 lines for every changed line and short sentences
       --context    context lines per hunk (default 4)
       --max-lines  changed lines shown per hunk in the index (default 14)
       --all-files  include lockfiles, minified and build output
@@ -52,10 +54,10 @@ const USAGE = `usage: mr-cast <command> [options]
   several can coexist and render at once; all but extract also take
   --dir <path> to use any data directory
 
-  explain init [--title text] [--name slug] [--reset]
+  explain init [--title text] [--name slug] [--simple] [--reset]
                   start an explanation in .mr-cast/explain/<slug> (in the git repo, else the current
                   directory); the slug comes from the title unless --name; prints the directory;
-                  reopening one keeps its storyboard unless --reset
+                  reopening one keeps its storyboard unless --reset; --simple as for extract
   explain snippet <file> <start>-<end> | <file>:<start>-<end> ...
                   add real source lines as code for scenes, like snippet above
   explain validate | outline | voice | play | render | still
@@ -112,21 +114,32 @@ function readJson(file, missingHint) {
 
 const DIR_OPTION = { dir: { type: 'string' }, name: { type: 'string' } };
 
-/** "explain" when `mr-cast explain init` made the directory; anything else holds a diff. */
-function readMode(dir) {
-  try {
-    return JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')).mode === 'explain' ? 'explain' : 'diff';
-  } catch {
-    return 'diff';
-  }
+/**
+ * What meta.json says about the run: mode "explain" when `mr-cast explain init` made the directory
+ * (anything else holds a diff), and style "simple" when extract or init ran with --simple.
+ */
+function readMeta(dir) {
+  let raw = {};
+  try { raw = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch { /* a diff run without meta, or none yet */ }
+  return { mode: raw?.mode === 'explain' ? 'explain' : 'diff', style: raw?.style === 'simple' ? 'simple' : undefined };
+}
+
+const STYLE_OPTION = { simple: { type: 'boolean', default: false } };
+
+/** The style a run is written in: "simple" with --simple. A rerun without it drops the style and says so. */
+function styleFor(values, previous, command) {
+  if (values.simple) return 'simple';
+  if (previous?.style === 'simple') console.error(`note: dropped the simple style; pass --simple to \`${command}\` to keep it`);
+  return undefined;
 }
 
 async function loadProject(dir) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first, with the same --name');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
-  const result = await validateStoryboard(storyboard, hunks, readMode(dir));
+  const meta = readMeta(dir);
+  const result = await validateStoryboard(storyboard, hunks, meta);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, readVoiceover(dir));
-  return { dir, hunks, storyboard, result, lines: formatValidation(result, { storyboard, hunks, seconds }) };
+  return { dir, hunks, storyboard, result, style: meta.style, lines: formatValidation(result, { storyboard, hunks, seconds, style: meta.style }) };
 }
 
 /** Validate, print problems to stderr, and stop on errors. */
@@ -147,6 +160,7 @@ function extract(argv) {
       context: { type: 'string', default: '4' },
       'max-lines': { type: 'string', default: '14' },
       'all-files': { type: 'boolean', default: false },
+      ...STYLE_OPTION,
       name: DIR_OPTION.name,
     },
   });
@@ -180,13 +194,14 @@ function extract(argv) {
   const snippets = Object.values(previous ?? {}).filter((h) => h?.status === 'source' && typeof h.id === 'string');
 
   const written = { ...hunks, ...Object.fromEntries(snippets.map((h) => [h.id, h])) };
+  const style = styleFor(values, readMeta(dir), `extract${nameArg}`);
 
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(hunksPath, `${JSON.stringify(written, null, 2)}\n`);
   fs.writeFileSync(path.join(dir, 'meta.json'), `${JSON.stringify({
     base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
     head: 'HEAD', headSha: diff.headSha, branch: diff.branch,
-    working: values.working, generatedAt: new Date().toISOString(),
+    working: values.working, style, generatedAt: new Date().toISOString(),
     files, skipped: diff.skipped,
   }, null, 2)}\n`);
 
@@ -199,7 +214,7 @@ function extract(argv) {
 
   console.log(formatIndex({
     ctx: { branch: diff.branch, base, ahead: diff.ahead, working: values.working, mergeBase: diff.mergeBase, untracked: diff.untracked },
-    files, hunks, skipped: diff.skipped, maxLines,
+    files, hunks, skipped: diff.skipped, maxLines, style,
     hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath), nameArg,
   }));
 }
@@ -371,11 +386,11 @@ async function still(argv, resolveRun) {
 
 async function outline(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: DIR_OPTION });
-  const { dir, hunks, storyboard, result } = await loadValidProject(resolveRun(values).dir);
+  const { dir, hunks, storyboard, result, style } = await loadValidProject(resolveRun(values).dir);
   const voiceover = readVoiceover(dir);
   const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
-  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced }));
+  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style }));
 }
 
 function installSkillCommand(argv) {
@@ -402,12 +417,12 @@ async function upgradeCommand(argv) {
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
 function explainInit(argv) {
-  const { values } = parseArgs({ args: argv, options: { ...DIR_OPTION, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
+  const { values } = parseArgs({ args: argv, options: { ...DIR_OPTION, ...STYLE_OPTION, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
   const { dir, name } = initExplainRun(values);
   const root = findRepoRoot();
   if (root && !values.dir) ensureExcluded(root);
   const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
-  if (fs.existsSync(files.meta) && readMode(dir) !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --name or --dir`);
+  if (fs.existsSync(files.meta) && readMeta(dir).mode !== 'explain') throw new UserError(`${rel(dir)} holds a diff walkthrough (made by \`mr-cast extract\`); pass another --name or --dir`);
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
   let previous = {};
@@ -417,6 +432,7 @@ function explainInit(argv) {
   writeJson(files.meta, {
     mode: 'explain',
     title: values.title ?? previous.title ?? null,
+    style: styleFor(values, values.reset ? null : previous, 'explain init'),
     createdAt: previous.createdAt ?? new Date().toISOString(),
   });
 
@@ -436,7 +452,7 @@ function explainInit(argv) {
 function snippet(argv, resolveRun) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
   const { dir, name } = resolveRun(values);
-  const explain = readMode(dir) === 'explain';
+  const explain = readMeta(dir).mode === 'explain';
   const nameArg = name ? ` --name ${name}` : values.dir ? ` --dir ${values.dir}` : '';
   const hunksPath = path.join(dir, 'hunks.json');
   const hunks = readJson(hunksPath, explain ? 'run `mr-cast explain init` first' : `run \`mr-cast extract${nameArg}\` first, then add snippets beside its hunks`);
