@@ -137,7 +137,7 @@ A walkthrough of an explanation has no diff. `mr-cast init` starts it, `mr-cast 
 
 A snippet renders as a code scene with a neutral SOURCE badge and its line range. It has no added or removed lines, so it uses the single-column view. Focus steps, the callout and the `flow` step diagram work as they do for a diff hunk. Without a focus the whole snippet is one step, and `validate` requires a focus on snippets longer than 12 lines.
 
-`validate` skips the diff rules for an explanation. It does not check hunk coverage, `skipped`, test files, or the tests scene, and the intent scene's `risk` is optional. It still checks the schema, focus limits, `flow` steps, and that the video opens with an intent scene and shows a diagram before the code. Its summary ends in `explain` instead of hunk coverage. An older node's `modified: true` becomes a KEY highlight instead of a CHANGED mark.
+`validate` skips the diff rules for an explanation. It does not check hunk coverage, `skipped`, test files, or the tests scene, and the intent scene's `risk` is optional. It still checks the schema, focus limits, `flow` steps, and that the video opens with an intent scene and shows a diagram before the code. Its summary ends in `explain` instead of hunk coverage. An explanation has no diff, so `validate` warns about every `change` mark in one, unless the storyboard or the scene sets `"explainsChange": true` because it explains a change. An older `modified: true` on a node or message becomes a highlight there instead of a CHANGED mark.
 
 ## Simple style
 
@@ -194,25 +194,56 @@ Arch nodes and sequence participants are the same kind of card, so they can show
 
 - `icon`: any [Lucide icon](https://lucide.dev/icons) name in kebab-case, such as `user`, `users`, `headset`, `building-2`, `server` or `database`. `validate` rejects a name Lucide lacks and suggests close ones. Without it the card has no icon.
 - `caption`: a short line under the label, such as `customer` or `datastore`. Without it there is none.
-- `change`: `added` (green, NEW), `removed` (dashed and struck through) or `modified` (CHANGED), as in the er and state scenes.
-- `highlight`: a key part of the idea, drawn in the accent colour with a KEY badge.
-- `tone`: the icon's colour (`neutral`, `accent`, `good`, `bad` or `warn`), to tell kinds of things apart.
+- `change`, `highlight` and `badge`: see [Marks](#marks).
+- `tone`: the colour of the icon and the badge (`neutral`, `accent`, `good`, `bad` or `warn`), to tell kinds of things apart.
 
-An arch node also takes a `group`. Nodes with the same group are drawn inside one labelled box, in the order each group's first node appears. An arch edge takes a `label`, a `direction` (`forward` by default, `both` for a two-way relationship, `none` for a plain line), a `style` (`flow` moves dashes along a forward edge, `solid` is a still line and the default otherwise, `dashed` is for a weak or indirect link), and a `change`. An arch scene lays out left to right, or top to bottom with `"layout": "TB"`, which suits hierarchies and teams. `validate` warns past 12 nodes. A flow step takes an `icon` and a `tone` for its actor.
+An arch node also takes a `group`. Nodes with the same group are drawn inside one labelled box, in the order each group's first node appears. An arch edge takes a `label`, a `direction` (`forward` by default, `both` for a two-way relationship, `none` for a plain line), a `style` (`flow` moves dashes along a forward edge, `solid` is a still line and the default otherwise, `dashed` is for a weak or indirect link), and a `change` or `highlight`. An arch scene lays out left to right, or top to bottom with `"layout": "TB"`, which suits hierarchies and teams. `validate` warns past 12 nodes. A flow step takes an `icon` and a `tone` for its actor.
 
 Older storyboards that give a node `kind` (`service`, `db`, `queue` or `client`) and `modified: true` still work: `kind` stands for an icon and caption, and `modified` for a `modified` change, or a highlight in an explanation.
+
+### Marks
+
+Three marks say three different things, and one never stands in for another:
+
+- `change` says what the diff does to an item: `added` (green, NEW), `removed` (red, dashed and struck through, REMOVED) or `modified` (blue, CHANGED). Mark exactly what the diff changes. A viewer reads every change mark as a fact about the diff.
+- `highlight: true` says "look here" for a part the whole scene is about. It draws a soft white glow and no word, a colour no change uses. To point at parts one at a time as the voice names them, use `steps` instead.
+- `badge` is a label of your own, up to 14 characters, such as `"hot path"`, `"v2"`, `"owner"` or `"key"`, drawn as a pill in the item's `tone` (neutral by default). Next to a change badge it comes second.
+
+| Item | `change` | `highlight` | `badge`, `tone` |
+| --- | --- | --- | --- |
+| arch node, sequence participant | yes, with a badge | yes | yes |
+| arch edge | yes | yes | no |
+| sequence message | yes, with a badge | yes | yes |
+| er table | yes, with a badge | yes | yes |
+| er field, er relation, state transition | yes, by colour and a `+`/`−`/`~` marker | yes | yes |
+| state | yes, with a badge | yes | yes |
+| table row | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
+| timeline event, span | no | yes | yes (events and spans already take `tone`) |
+| files entry | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
+| tests case | its `status` | no | yes |
+
+Badges, legends, code headers and the tests scene use one set of words for a change: NEW, CHANGED and REMOVED. A code scene's header says RENAMED for a renamed file and SOURCE for a snippet.
+
+`validate` keeps the marks honest:
+
+- In a diff walkthrough it warns when more than 60% of the items of an arch, sequence, er or state scene carry change marks (from 4 items up), since the marks then stop telling the viewer what changed.
+- It warns when an er table or field, a state, or a table row is marked `added` or `removed` but its name appears on no changed line of the diff, and when a files entry's `change` disagrees with `hunks.json`.
+- In an explanation it warns about any change mark unless `"explainsChange": true` is set on the storyboard or the scene.
+- It warns when a `badge` is a change word (`new`, `added`, `changed`, `modified`, `removed` or `deleted`): use `change` for the diff instead.
+
+A tests scene that is not about a diff's tests can rename its panels with `titles`, for example `{ "subject": "Checked", "proves": "Shows", "gaps": "Open questions", "none": "Nothing checks this yet" }`.
 
 | Scene | Shows |
 | --- | --- |
 | `intent` | Summary, risk badge, bullets, and diff stats. |
-| `arch` | Nodes and edges, laid out automatically left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons). Changed and key nodes and changed edges are marked. With `steps`, the voice walks the graph node by node and edge by edge. |
+| `arch` | Nodes and edges, laid out automatically left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons). Changed, highlighted and badged nodes and edges are marked. With `steps`, the voice walks the graph node by node and edge by edge. |
 | `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. |
 | `flow` | A step-by-step trace with the payload at each step. With a `say` on each step, the current step follows the voice. |
-| `sequence` | A sequence diagram: participants (the same cards as arch nodes) with lifelines, and call, return and async messages drawn in order. Changed messages are highlighted. With `steps`, messages draw in as the voice reaches them. |
+| `sequence` | A sequence diagram: participants (the same cards as arch nodes) with lifelines, and call, return and async messages drawn in order. Changed, highlighted and badged messages are marked. With `steps`, messages draw in as the voice reaches them. |
 | `er` | An entity-relationship diagram with crow's-foot relations. Added, removed and modified tables, fields and relations are marked. With `steps`, each table, field or relation lights as the voice names it. |
 | `state` | A state machine with an entry dot, final states, and labelled transitions. Added, removed and modified states and transitions are marked. With `steps`, each state or transition lights as the voice names it. |
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph, pie, ...) drawn as a static themed SVG. A fallback for diagrams the other scenes don't cover. |
-| `tests` | A test matrix: each test case with its status (added, changed, removed, existing) and the behavior it proves, then a "Not tested" panel listing important behaviors no test covers. With no cases it states that the change has no tests. |
+| `tests` | A test matrix: each test case with its status (new, changed, removed, existing) and the behavior it proves, then a "Not tested" panel listing important behaviors no test covers. With no cases it states that the change has no tests. `titles` renames the panels. |
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. Added, removed and modified rows are marked, a changed cell strikes its old value beside the new one, and `highlight` spotlights rows one at a time. With `steps`, each row, column or cell lights just before its own spoken words. |
 | `chart` | A bar or line chart of one or more series over labels, with value labels and a unit. Bars grow and lines draw in. With two series, such as before and after, each label gets a change badge like −42%, green or red by `better`. `annotation` calls out one point. With `steps`, each label, series or value lights as the voice names it. |
 | `timeline` | Events on a time axis in ms, s, min, h or d, each with a label and detail, and `spans` for waits and windows drawn under the axis with their length. A playhead reveals them left to right before the voice starts, or with `steps` moves to each step's events as the voice reaches them. |
