@@ -33,5 +33,6 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Diff walkthrough](./diff-walkthrough.md) covers extract, validate, outline, still, voice and render on a branch diff, named runs, `--working`, and the gallery of scene types.
 - [Simple style and snippets](./simple-mode.md) covers `extract --simple`, line-by-line `steps`, snippets beside a diff, and the simple-style checks.
 - [Explain mode](./explain-mode.md) covers `explain init/snippet/validate/outline/still/render`, the current explanation, and explanations outside a git repo.
+- [Diagram nodes and focus](./diagrams.md) covers icons, captions, change and key marks on nodes, arch edges, layouts and groups, focus steps on every diagram, their validation hints, and 0.10 storyboards.
 - [Browser player](./player.md) covers `play`: serving, chapter navigation, live reload, voiced poster, port fallback, the Host check and load errors.
 - [Skills and upkeep](./skills-and-upkeep.md) covers `install-skill`, the version-change refresh, `uninstall-skill`, `prune`, `upgrade` and the update notice.

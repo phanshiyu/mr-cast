@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.0
+
+- **Diagrams of anything, not only services.** Arch nodes and sequence participants share one card: any [Lucide icon](https://lucide.dev/icons) by name (`user`, `headset`, `building-2`, `database`, ...), a free `caption`, a `change` (added, removed, modified) drawn as in the er and state scenes, a `highlight` for a key part, and a `tone`. A storyboard can now show customers, teams and the relationships between them as well as a system. Flow actors take an icon and a tone too.
+- **Arch edges, layouts and groups.** An edge takes a `direction` (`forward`, `both`, `none`), a `style` (`flow`, `solid`, `dashed`) and a `change`. `"layout": "TB"` lays a graph out top to bottom. Nodes with the same `group` are drawn inside one labelled box.
+- **Move the viewer's attention.** Every diagram's `steps` take `focus`: one ref or several, such as a node, an edge `"a->b"`, a group, an ER field `"orders.status"`, a table cell `"Value@2"`, a chart series or value `"after@p99"`, a timeline span, a test gap or an intent bullet. What a step focuses lights half a second before its words while the rest dims. Arch, intent and tests scenes take steps for the first time.
+- `validate` checks icon names, node, group and edge references and every focus ref, and suggests the closest name when one is wrong. `outline` shows an arch scene's groups and layout.
+- **Older storyboards still work.** `kind` and `modified: true` on nodes, and the older step keys (`messages`, `events`, `entity`, `state`, `transition`, `label`, `row`, `path`), are rewritten to the new fields when a storyboard is loaded. In an explanation, an older participant's `modified` now shows KEY instead of CHANGED, as arch nodes already did. A sequence participant without `kind` no longer shows a generic box icon and "participant" caption.
+- Timeline steps now dim the events and spans they do not focus, like every other diagram.
+- `examples/people/` explains how a support ticket gets resolved, with no code. The skills teach the new fields and when to step the focus.
+- Fixed: a timeline span too short for its label no longer has the label covered by the next span.
+- The player bundles every Lucide icon so any name resolves in stills and renders without waiting: about 640 kB more JavaScript (170 kB gzipped), served locally.
+
 ## 0.10.0
 
 - **Diagrams draw before the voice.** Every scene type has a build time in one table in `shared/timing.mjs`, at most 1.8 seconds, and its narration starts 0.3 seconds after the build. Sequence messages, timeline events, chart bars, state and ER changes, tests and table rows no longer arrive spread over the scene, so the voice never names something that is not on screen yet. Long builds stagger faster instead of waiting longer.

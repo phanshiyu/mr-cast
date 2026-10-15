@@ -30,6 +30,7 @@
     "skill/",
     "examples/demo/*.json",
     "examples/demo-simple/*.json",
+    "examples/people/*.json",
     "tsconfig.json",
     "README.md",
     "LICENSE",
