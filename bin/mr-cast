@@ -11,34 +11,40 @@ while [ -L "$src" ]; do
 done
 DIR="$(cd -P "$(dirname "$src")" && pwd)"
 
-node_ok() {
-  [ -n "$1" ] && [ -x "$1" ] &&
-    "$1" -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' >/dev/null 2>&1
+node_major() {
+  [ -n "$1" ] && [ -x "$1" ] && "$1" -p 'process.versions.node.split(".")[0]' 2>/dev/null
 }
 
-find_node() {
-  local candidate
+# Every node binary we can find, most preferred first.
+node_candidates() {
   # type -P skips shell functions and aliases, returning only a real binary on PATH.
-  candidate="$(type -P node 2>/dev/null || true)"
-  if node_ok "$candidate"; then echo "$candidate"; return; fi
-
+  type -P node 2>/dev/null || true
   local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
   if [ -s "$nvm_dir/nvm.sh" ]; then
-    candidate="$(
+    (
       export NVM_DIR="$nvm_dir"
       # shellcheck disable=SC1091
       . "$nvm_dir/nvm.sh" --no-use >/dev/null 2>&1 || true
       nvm which default 2>/dev/null || nvm which node 2>/dev/null || true
-    )"
-    if node_ok "$candidate"; then echo "$candidate"; return; fi
-    for candidate in $(ls -d "$nvm_dir"/versions/node/v*/bin/node 2>/dev/null | sort -rV); do
-      if node_ok "$candidate"; then echo "$candidate"; return; fi
-    done
+    )
+    ls -d "$nvm_dir"/versions/node/v*/bin/node 2>/dev/null | sort -rV
   fi
+  echo /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node | tr ' ' '\n'
+}
 
-  for candidate in /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
-    if node_ok "$candidate"; then echo "$candidate"; return; fi
-  done
+# Remotion rendering hangs on Node 26, so prefer the 20-24 LTS lines and only fall back to newer ones.
+find_node() {
+  local candidate major fallback=""
+  while IFS= read -r candidate; do
+    major="$(node_major "$candidate")" || continue
+    [ -n "$major" ] || continue
+    if [ "$major" -ge 20 ] && [ "$major" -le 24 ]; then echo "$candidate"; return; fi
+    if [ "$major" -gt 24 ] && [ -z "$fallback" ]; then fallback="$candidate"; fi
+  done < <(node_candidates)
+  if [ -n "$fallback" ]; then
+    echo "mr-cast: no Node 20-24 found, using $("$fallback" -v); rendering may hang on this version" >&2
+    echo "$fallback"
+  fi
 }
 
 NODE="$(find_node)"
