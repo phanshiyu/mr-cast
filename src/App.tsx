@@ -3,7 +3,7 @@ import { ArrowRightLeft, ChartColumn, ChartGantt, CircleDot, FolderTree, Code2, 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultChapter } from './components/theme';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
-import type { HunkMap, Scene, Storyboard, Voiceover } from './types';
+import type { HunkMap, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
 import { Walkthrough } from './Walkthrough';
@@ -17,7 +17,9 @@ interface Meta {
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; file: string; message: string }
-  | { status: 'ready'; storyboard: Storyboard; hunks: HunkMap; meta: Meta | null; voiceover: Voiceover | null };
+  // One `walkthrough` object per load: the Player restarts its frame clock whenever `inputProps` changes
+  // identity, and this component re-renders on every frame.
+  | { status: 'ready'; walkthrough: WalkthroughProps; meta: Meta | null };
 
 const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, arch: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree };
 
@@ -53,7 +55,11 @@ async function loadAll(): Promise<LoadState> {
     if (!Array.isArray(storyboard.scenes) || storyboard.scenes.length === 0) {
       throw new DataError('storyboard.json', 'expected a non-empty "scenes" array');
     }
-    return { status: 'ready', storyboard: normalizeStoryboard(storyboard, hunks), hunks, meta, voiceover };
+    return {
+      status: 'ready',
+      walkthrough: { storyboard: normalizeStoryboard(storyboard, hunks), hunks, showCaptions: false, voiceover, audioBaseUrl: './data/' },
+      meta,
+    };
   } catch (err) {
     if (err instanceof DataError) return { status: 'error', file: err.file, message: err.message };
     return { status: 'error', file: 'unknown', message: String(err) };
@@ -85,8 +91,8 @@ export const App: React.FC = () => {
   }, [reload]);
 
   const ready = state.status === 'ready' ? state : null;
-  const chapters = useMemo(() => (ready ? timeline(ready.storyboard, ready.voiceover) : []), [ready]);
-  const total = ready ? totalDurationInFrames(ready.storyboard, ready.voiceover) : 1;
+  const chapters = useMemo(() => (ready ? timeline(ready.walkthrough.storyboard, ready.walkthrough.voiceover) : []), [ready]);
+  const total = ready ? totalDurationInFrames(ready.walkthrough.storyboard, ready.walkthrough.voiceover) : 1;
   const voiced = chapters.some((c) => c.segments.some((s) => s.clip));
 
   useEffect(() => {
@@ -149,7 +155,8 @@ export const App: React.FC = () => {
     );
   }
 
-  const { storyboard, hunks, meta, voiceover } = state;
+  const { walkthrough, meta } = state;
+  const { storyboard } = walkthrough;
   const active = chapters[current]!;
   const branch = meta?.branch ?? meta?.head;
 
@@ -211,7 +218,7 @@ export const App: React.FC = () => {
             <Player
               ref={playerRef}
               component={Walkthrough}
-              inputProps={{ storyboard, hunks, showCaptions: false, voiceover, audioBaseUrl: './data/' }}
+              inputProps={walkthrough}
               durationInFrames={total}
               compositionWidth={WIDTH}
               compositionHeight={HEIGHT}

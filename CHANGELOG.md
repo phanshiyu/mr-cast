@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: the player played at two thirds of real time (20 frames a second instead of 30), so the voice ran ahead and was pulled back every two seconds, which sounded slow and stuttering. The page rebuilt the Player's `inputProps` on every frame, and each rebuild restarted Remotion's frame clock.
+
 ## 0.11.0
 
 - **Diagrams of anything, not only services.** Arch nodes and sequence participants share one card: any [Lucide icon](https://lucide.dev/icons) by name (`user`, `headset`, `building-2`, `database`, ...), a free `caption`, a `change` (added, removed, modified) drawn as in the er and state scenes, a `highlight` for a key part, and a `tone`. A storyboard can now show customers, teams and the relationships between them as well as a system. Flow actors take an icon and a tone too.
