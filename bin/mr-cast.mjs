@@ -64,9 +64,10 @@ const USAGE = `usage: mr-cast <command> [options]
       --older-than  list only what has not changed in this many days
       --json        print the list as JSON
 
-  install-skill   install the mr-cast-review, mr-cast-explain and mr-cast-prune Claude Code skills and
-                  the /mr-cast-render and /mr-cast-explain-render commands into ~/.claude, and remove
-                  the skills and commands earlier versions installed that this one no longer does
+  install-skill   install the mr-cast-review, mr-cast-explain, mr-cast-prune and mr-cast-upgrade Claude
+                  Code skills and the /mr-cast-render and /mr-cast-explain-render commands into
+                  ~/.claude, and remove the skills and commands earlier versions installed that this
+                  one no longer does; later commands refresh them after an upgrade
   uninstall-skill remove every skill and command mr-cast installed into ~/.claude
   upgrade [--check]
                   update mr-cast to the latest version on npm (npm install -g), then its skills;

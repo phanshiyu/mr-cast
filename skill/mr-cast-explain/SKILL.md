@@ -11,6 +11,8 @@ The video retells the explanation you already gave. It is not a new investigatio
 
 The CLI is `{{MR_CAST}}/bin/mr-cast`. Run every command from the directory your explanation is about, usually the repository root, because snippet paths are relative to it. The wrapper finds a working Node itself, so call it directly rather than through `node`.
 
+If a command prints `mr-cast <version> is available`, tell the user once, at the end of your reply, that they can ask you to upgrade mr-cast. Do not upgrade unless they ask.
+
 ## 1. Start the explanation
 
 ```bash

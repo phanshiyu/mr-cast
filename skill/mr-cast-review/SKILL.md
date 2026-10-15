@@ -9,6 +9,8 @@ Make an animated walkthrough of the current branch's diff with mr-cast. You writ
 
 The CLI is `{{MR_CAST}}/bin/mr-cast`. Run every command from inside the user's repository. The wrapper finds a working Node itself, so call it directly rather than through `node`.
 
+If a command prints `mr-cast <version> is available`, tell the user once, at the end of your reply, that they can ask you to upgrade mr-cast. Do not upgrade unless they ask.
+
 ## 1. Extract the diff
 
 ```bash
