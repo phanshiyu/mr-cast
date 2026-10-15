@@ -41,6 +41,8 @@ export const defaultChapter: Record<Scene['type'], string> = {
   flow: 'Data flow',
   sequence: 'Sequence',
   er: 'Data model',
+  state: 'States',
+  mermaid: 'Diagram',
 };
 
 export const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };

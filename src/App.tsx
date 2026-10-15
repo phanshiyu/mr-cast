@@ -1,5 +1,5 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { ArrowRightLeft, Code2, GitBranch, Network, Play, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, CircleDot, Code2, Shapes, GitBranch, Network, Play, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultChapter } from './components/theme';
 import type { HunkMap, Scene, Storyboard, Voiceover } from './types';
@@ -18,7 +18,7 @@ type LoadState =
   | { status: 'error'; file: string; message: string }
   | { status: 'ready'; storyboard: Storyboard; hunks: HunkMap; meta: Meta | null; voiceover: Voiceover | null };
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, arch: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2 };
+const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, arch: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes };
 
 class DataError extends Error {
   constructor(readonly file: string, message: string) {

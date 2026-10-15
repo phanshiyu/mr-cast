@@ -1,0 +1,43 @@
+{
+  "title": "Order lifecycle overhaul",
+  "subtitle": "Scene gallery: state and Mermaid scenes",
+  "scenes": [
+    {
+      "type": "state",
+      "chapter": "Order states",
+      "title": "Order",
+      "narration": "Orders now start as pending instead of paid. Payment moves them to paid, a twenty four hour timeout cancels them, and the old refunded state is gone.",
+      "initial": "pending",
+      "states": [
+        { "id": "pending", "label": "Pending", "change": "added" },
+        { "id": "paid", "label": "Paid" },
+        { "id": "shipped", "label": "Shipped", "change": "modified" },
+        { "id": "delivered", "label": "Delivered", "final": true },
+        { "id": "cancelled", "label": "Cancelled", "final": true },
+        { "id": "refunded", "label": "Refunded", "final": true, "change": "removed" }
+      ],
+      "transitions": [
+        { "from": "pending", "to": "paid", "label": "pay", "change": "added" },
+        { "from": "pending", "to": "cancelled", "label": "timeout [24h]", "change": "added" },
+        { "from": "pending", "to": "pending", "label": "retry payment", "change": "added" },
+        { "from": "paid", "to": "shipped", "label": "ship" },
+        { "from": "shipped", "to": "delivered", "label": "deliver" },
+        { "from": "paid", "to": "cancelled", "label": "cancel" },
+        { "from": "delivered", "to": "refunded", "label": "refund", "change": "removed" }
+      ]
+    },
+    {
+      "type": "mermaid",
+      "chapter": "Rollout plan",
+      "title": "Release timeline",
+      "narration": "For anything the built-in scenes do not cover, the storyboard can fall back to a Mermaid diagram, like this rollout timeline.",
+      "code": "gantt\n  dateFormat YYYY-MM-DD\n  title Rollout\n  section Backend\n  Migration        :done, m1, 2026-10-01, 2d\n  Dual write       :active, m2, after m1, 3d\n  section Clients\n  Read new status  :c1, after m2, 2d\n  Remove legacy    :c2, after c1, 1d"
+    },
+    {
+      "type": "mermaid",
+      "chapter": "Class view",
+      "narration": "A Mermaid class diagram shows the new payment strategy interface and its two implementations.",
+      "code": "classDiagram\n  class PaymentStrategy {\n    <<interface>>\n    +charge(order) Receipt\n  }\n  class CardPayment {\n    +charge(order) Receipt\n  }\n  class WalletPayment {\n    +charge(order) Receipt\n  }\n  PaymentStrategy <|.. CardPayment\n  PaymentStrategy <|.. WalletPayment"
+    }
+  ]
+}

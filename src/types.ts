@@ -166,7 +166,40 @@ export interface ErScene extends SceneBase {
   relations: ErRelation[];
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene;
+export interface StateNode {
+  id: string;
+  label: string;
+  /** A terminal state, drawn with a double border. */
+  final?: boolean;
+  change?: Change;
+}
+
+export interface StateTransition {
+  from: string;
+  /** Same as `from` for a self-transition. */
+  to: string;
+  /** The event or guard, e.g. "pay" or "timeout [24h]". */
+  label?: string;
+  change?: Change;
+}
+
+export interface StateScene extends SceneBase {
+  type: 'state';
+  title?: string;
+  /** Id of the starting state; drawn with an entry dot. */
+  initial?: string;
+  states: StateNode[];
+  transitions: StateTransition[];
+}
+
+export interface MermaidScene extends SceneBase {
+  type: 'mermaid';
+  title?: string;
+  /** Mermaid source for diagrams no other scene covers. Rendered as a static diagram. */
+  code: string;
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene;
 
 export interface Storyboard {
   title: string;

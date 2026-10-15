@@ -6,7 +6,7 @@ import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er'];
+const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CHANGES = ['added', 'removed', 'modified'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
@@ -200,6 +200,29 @@ export function validateStoryboard(sb, hunks) {
         });
         break;
       }
+
+      case 'state': {
+        const ids = checkIds(s.states, `${p}.states`, errors, (n, q) => {
+          if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
+          if (n?.final !== undefined && typeof n.final !== 'boolean') errors.push(`${q}.final: must be a boolean`);
+          if (n?.change !== undefined && !CHANGES.includes(n.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
+        });
+        if (!ids) break;
+        if (ids.size > 10) warnings.push(`${p}.states: ${ids.size} states; more than 10 get cramped`);
+        if (s.initial !== undefined && !ids.has(s.initial)) errors.push(`${p}.initial: unknown state id ${JSON.stringify(s.initial)}`);
+        if (!Array.isArray(s.transitions)) { errors.push(`${p}.transitions: required array (may be empty)`); break; }
+        s.transitions.forEach((t, j) => {
+          const q = `${p}.transitions[${j}]`;
+          for (const k of ['from', 'to']) if (!ids.has(t?.[k])) errors.push(`${q}.${k}: unknown state id ${JSON.stringify(t?.[k])}`);
+          if (t?.label !== undefined && typeof t.label !== 'string') errors.push(`${q}.label: must be a string`);
+          if (t?.change !== undefined && !CHANGES.includes(t.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
+        });
+        break;
+      }
+
+      case 'mermaid':
+        if (!isStr(s.code)) errors.push(`${p}.code: required string of Mermaid source`);
+        break;
     }
   });
 
