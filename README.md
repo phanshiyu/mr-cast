@@ -2,9 +2,13 @@
 
 mr-cast turns the diff of a git branch into an animated walkthrough video. An LLM writes a short storyboard that references diff hunks by id. mr-cast plays it in a browser or renders it to MP4 with Remotion.
 
+It can also animate an explanation that has no diff behind it, such as how a subsystem works or why a bug happens. The scenes are the same, and code scenes show snippets of real source files instead of diff hunks.
+
 ## Use it from Claude Code
 
 In any git repository, ask Claude to "create a video from this merge request", or run `/mr-cast [base-branch]` for the browser player or `/mr-render [base-branch]` for an MP4. The `mr-video` skill extracts the diff, writes `.mr-cast/storyboard.json`, validates it, and plays or renders it.
+
+After Claude explains something in a conversation, such as a system, a flow, a bug, or a design, ask it to "animate that", or run `/explain-in-animation` for the browser player or `/explain-in-animation mp4` for an MP4. The `explain-in-animation` skill turns the explanation into a storyboard of diagrams and real code snippets, then plays or renders it. See [Explain mode](#explain-mode).
 
 ## Install
 
@@ -12,10 +16,10 @@ Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. T
 
 ```bash
 npm install -g @shiyuphan/mr-cast
-mr-cast install-skill   # installs the mr-video skill plus the /mr-cast and /mr-render commands
+mr-cast install-skill   # installs the mr-video and explain-in-animation skills and their commands
 ```
 
-The skill points at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it.
+The skills point at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it.
 
 From a clone instead:
 
@@ -41,6 +45,24 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast play [--port N] [--no-open] [--voice name] [--no-voice]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. |
 | `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders `walkthrough.mp4` at 1920x1080, 30 fps, with the voice-over and burned-in subtitles. The first run downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`, or `$XDG_CACHE_HOME/mr-cast/remotion` when that is set. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's settled end state, just before it fades out, to check layout. |
+
+`validate`, `voice`, `play`, `render` and `still` take `--dir <path>` to read the storyboard from another directory instead of `.mr-cast/`.
+
+## Explain mode
+
+Explain mode makes a walkthrough of an explanation instead of a diff. Code scenes reference snippets of unchanged source files. Run these from the directory the explanation is about, usually the repository root.
+
+| Command | What it does |
+| --- | --- |
+| `mr-cast explain init [--title text] [--reset]` | Creates the data directory with an empty `hunks.json` and a `meta.json` that marks it as an explanation, and prints its path. The directory is `.mr-cast/explain` in the git repository, or in the current directory outside one. Rerunning it keeps the storyboard and snippets. `--reset` deletes them. |
+| `mr-cast explain snippet <file>:<start>-<end> ...` | Reads those lines of each file and adds them to `hunks.json` as snippets `s1`, `s2`, ... Prints each snippet with the file's own line numbers for `focusLinesAfter`. Also accepts `<file> <start>-<end>`. Adding the same range again keeps its id. A snippet holds at most 80 lines. |
+| `mr-cast explain validate`, `voice`, `play`, `render`, `still` | The commands above, on the explanation's directory. |
+
+Every `explain` command takes `--dir <path>` to use another directory.
+
+A snippet renders as a code scene with a neutral SOURCE badge and its line range. It has no added or removed lines, so it uses the single-column view. Focus steps, the callout and the `flow` step diagram work as they do for a diff hunk. Without a focus the whole snippet is one step, and `validate` requires a focus on snippets longer than 12 lines.
+
+`validate` skips the diff rules in explain mode. It does not check hunk coverage, `skipped`, test files, or the tests scene, and the intent scene's `risk` is optional. It still checks the schema, focus limits, `flow` steps, and that the video opens with an intent scene and shows a diagram before the code. Its summary ends in `explain` instead of hunk coverage. A highlighted `arch` node is badged KEY instead of CHANGED.
 
 ## Voice
 
@@ -77,6 +99,7 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 - `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share. `shared/voice.mjs` names each clip by its narration.
-- `skill/SKILL.md` is the skill template that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
+- `bin/lib/explain.mjs` turns source line ranges into snippets for explain mode.
+- `skill/mr-video/SKILL.md` and `skill/explain-in-animation/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
 For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.

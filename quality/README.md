@@ -20,7 +20,7 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
 
 1. Variant. Build a skill variant from a SKILL.md template (placeholders `{{MR_CAST}}`, `{{STORYBOARD_TYPES}}`):
 
-       quality/variant.sh skill/SKILL.md /path/to/variants/current
+       quality/variant.sh skill/mr-video/SKILL.md /path/to/variants/current
        quality/variant.sh /path/to/other/SKILL.md /path/to/variants/other
 
    This runs `mr-cast install-skill` with `CLAUDE_CONFIG_DIR=<out>` and `MR_CAST_SKILL_TEMPLATE=<source>`,
