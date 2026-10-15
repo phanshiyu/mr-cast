@@ -3,6 +3,6 @@
 import os from 'node:os';
 import path from 'node:path';
 
-export function cacheDir(name) {
-  return path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'mr-cast', name);
-}
+export const cacheRoot = () => path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'mr-cast');
+
+export const cacheDir = (name) => path.join(cacheRoot(), name);

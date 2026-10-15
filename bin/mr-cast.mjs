@@ -8,7 +8,8 @@ import { UserError } from './lib/errors.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
-import { ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
+import { dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
+import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
 import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
 import { startServer } from './lib/server.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
@@ -52,6 +53,13 @@ const USAGE = `usage: mr-cast <command> [options]
   explain validate | outline | voice | play | render | still
                   the commands above, on the explanation's directory
       every explain command takes --name <slug> (default: the most recent init) or --dir <path>
+
+  prune [id...] [--older-than days] [--json]
+                  list what mr-cast can delete to free disk space: walkthroughs, their videos, stills
+                  and voice clips in .mr-cast (in the git repo, else the current directory), and the
+                  shared cache in ~/.cache/mr-cast; with ids from that list, delete exactly those
+      --older-than  list only what has not changed in this many days
+      --json        print the list as JSON
 
   install-skill   install the mr-cast-review and mr-cast-explain Claude Code skills and the
                   /mr-cast-render and /mr-cast-explain-render commands into ~/.claude, and remove
@@ -439,7 +447,30 @@ async function explain([sub, ...rest]) {
   await run(rest, explainRun);
 }
 
-const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand };
+async function prune(argv) {
+  const { values, positionals } = parseArgs({
+    args: argv, allowPositionals: true,
+    options: { 'older-than': { type: 'string' }, json: { type: 'boolean', default: false } },
+  });
+  const dataRoot = dataDir(findRepoRoot() ?? process.cwd());
+  const olderThanDays = values['older-than'] === undefined ? null : intOption(values['older-than'], 'older-than', 0);
+  const listing = listArtifacts({ dataRoot, olderThanDays });
+  if (positionals.length === 0) {
+    if (values.json) console.log(JSON.stringify(listingJson(listing, dataRoot), null, 2));
+    else for (const line of formatListing(listing)) console.log(line);
+    return;
+  }
+  if (values.json) throw new UserError('--json only applies to the listing; pass it without ids');
+  const { removed, skipped } = await pruneArtifacts(resolveIds(listing, positionals, `mr-cast prune${olderThanDays === null ? '' : ` --older-than ${olderThanDays}`}`), dataRoot);
+  for (const { artifact, bytes, with: outer } of removed) {
+    console.log(outer ? `removed ${artifact.id} (with ${outer})` : `removed ${artifact.id} · ${formatBytes(bytes)} · ${rel(artifact.path)}`);
+  }
+  for (const { artifact, reason } of skipped) console.error(`mr-cast: kept ${artifact.id}: ${reason}`);
+  console.log(`freed ${formatBytes(removed.reduce((n, r) => n + r.bytes, 0))}`);
+  if (skipped.length) process.exitCode = 1;
+}
+
+const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune };
 
 function version() {
   const { version: own } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));

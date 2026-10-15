@@ -17,6 +17,12 @@ const NAME_MAX = 40;
 const RESERVED = new Set(['explain', 'audio', 'stills']);
 const CURRENT_FILE = '.current';
 
+/** Whether `name` (an entry of .mr-cast/) is a named diff run's directory rather than part of the default run. */
+export const isRunName = (name) => NAME.test(name) && !RESERVED.has(name);
+
+/** Whether `name` (an entry of .mr-cast/explain/) can be an explanation's directory. */
+export const isExplanationName = (name) => NAME.test(name);
+
 export function parseRunName(value) {
   if (!NAME.test(value) || value.length > NAME_MAX) {
     throw new UserError(`--name "${value}" must be lowercase letters, digits and single dashes, at most ${NAME_MAX} characters, e.g. rate-limit`);
@@ -72,7 +78,7 @@ function listExplanations(root) {
   return names.filter((n) => NAME.test(n) && isExplanation(path.join(root, n)));
 }
 
-function readCurrent(root) {
+export function readCurrent(root) {
   try {
     const name = fs.readFileSync(path.join(root, CURRENT_FILE), 'utf8').trim();
     return NAME.test(name) ? name : null;
@@ -87,6 +93,8 @@ export function writeCurrent(root, name) {
   fs.writeFileSync(tmp, `${name}\n`);
   fs.renameSync(tmp, path.join(root, CURRENT_FILE));
 }
+
+export const clearCurrent = (root) => fs.rmSync(path.join(root, CURRENT_FILE), { force: true });
 
 function missingExplanation(root, what) {
   const known = listExplanations(root);

@@ -6,7 +6,7 @@ const MAX_SKIPPED_NAMES = 10;
 const MINUS = '−';
 
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** One entry per changed file, in diff order, with the ids of its hunks. */
 export function summarizeFiles(parsedFiles, hunks) {
