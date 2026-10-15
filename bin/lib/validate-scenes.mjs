@@ -3,7 +3,6 @@
 
 import { diffFiles, sceneFiles } from '../../shared/files.mjs';
 
-const CHANGES = ['added', 'removed', 'modified'];
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
 // A cell wraps to two lines; past this it is cut at a typical column width.
@@ -53,7 +52,6 @@ export function checkTable(s, p, errors, warnings) {
     const q = `${p}.rows[${j}]`;
     if (!Array.isArray(row?.cells)) return errors.push(`${q}.cells: required array with one cell per column`);
     if (row.cells.length !== s.columns.length) errors.push(`${q}.cells: ${row.cells.length} cell${row.cells.length === 1 ? '' : 's'} for ${s.columns.length} columns; give one cell per column ("" for an empty one)`);
-    if (row.change !== undefined && !CHANGES.includes(row.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
     row.cells.forEach((cell, k) => {
       const c = `${q}.cells[${k}]`;
       if (isText(cell)) {
@@ -157,7 +155,6 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
       if (!isStr(f?.path)) return errors.push(`${q}.path: required string`);
       if (seen.has(f.path)) errors.push(`${q}.path: "${f.path}" is listed twice`);
       seen.add(f.path);
-      if (f.change !== undefined && !CHANGES.includes(f.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
       for (const k of ['additions', 'deletions']) if (f[k] !== undefined && !isCount(f[k])) errors.push(`${q}.${k}: must be a whole number of lines, 0 or more`);
       if (mode !== 'explain' && !known.has(f.path)) unknown.push(f.path);
     });

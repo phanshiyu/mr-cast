@@ -5,13 +5,13 @@ import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
 import { checkArch, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
+import { checkMarks } from './validate-marks.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
 const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
-const CHANGES = ['added', 'removed', 'modified'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
 const TEST_CASES_MAX = 10;
@@ -501,12 +501,10 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
       case 'er': {
         const ids = checkIds(s.entities, `${p}.entities`, errors, (e, q) => {
           if (!isStr(e?.name)) errors.push(`${q}.name: required string`);
-          if (e?.change !== undefined && !CHANGES.includes(e.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
           if (!Array.isArray(e?.fields) || e.fields.length === 0) return errors.push(`${q}.fields: required non-empty array`);
           e.fields.forEach((f, k) => {
             if (!isStr(f?.name)) errors.push(`${q}.fields[${k}].name: required string`);
             if (f?.type !== undefined && typeof f.type !== 'string') errors.push(`${q}.fields[${k}].type: must be a string`);
-            if (f?.change !== undefined && !CHANGES.includes(f.change)) errors.push(`${q}.fields[${k}].change: must be one of ${CHANGES.join(', ')}`);
           });
           if (e.fields.length > 10) warnings.push(`${q}.fields: ${e.fields.length} fields; show only the ones the change touches plus keys`);
         });
@@ -517,7 +515,6 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           const q = `${p}.relations[${j}]`;
           for (const k of ['from', 'to']) if (!ids.has(r?.[k])) errors.push(`${q}.${k}: unknown entity id ${JSON.stringify(r?.[k])}`);
           if (!CARDINALITIES.includes(r?.cardinality)) errors.push(`${q}.cardinality: must be one of ${CARDINALITIES.join(', ')}`);
-          if (r?.change !== undefined && !CHANGES.includes(r.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
         break;
       }
@@ -526,7 +523,6 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         const ids = checkIds(s.states, `${p}.states`, errors, (n, q) => {
           if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
           if (n?.final !== undefined && typeof n.final !== 'boolean') errors.push(`${q}.final: must be a boolean`);
-          if (n?.change !== undefined && !CHANGES.includes(n.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
         if (!ids) break;
         if (ids.size > 10) warnings.push(`${p}.states: ${ids.size} states; more than 10 get cramped`);
@@ -536,7 +532,6 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
           const q = `${p}.transitions[${j}]`;
           for (const k of ['from', 'to']) if (!ids.has(t?.[k])) errors.push(`${q}.${k}: unknown state id ${JSON.stringify(t?.[k])}`);
           if (t?.label !== undefined && typeof t.label !== 'string') errors.push(`${q}.label: must be a string`);
-          if (t?.change !== undefined && !CHANGES.includes(t.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
         });
         break;
       }
@@ -588,6 +583,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
     checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
   });
 
+  checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
   checkStoryShape(sb.scenes, hunks ?? {}, mode, warnings);
   if (simple) checkSimpleLineCoverage(sb, hunks ?? {}, warnings);

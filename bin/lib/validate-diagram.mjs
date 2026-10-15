@@ -6,7 +6,6 @@ import { NODE_KINDS } from '../../shared/normalize.mjs';
 import { didYouMean } from './suggest.mjs';
 import { TONES } from './validate-scenes.mjs';
 
-const CHANGES = ['added', 'removed', 'modified'];
 const DIRECTIONS = ['forward', 'both', 'none'];
 const EDGE_STYLES = ['flow', 'solid', 'dashed'];
 const LAYOUTS = ['LR', 'TB'];
@@ -34,14 +33,12 @@ export function checkIcon(icon, q, errors) {
   errors.push(`${q}: "${icon}" is not a Lucide icon${hint || '; pick one from https://lucide.dev/icons'}`);
 }
 
-/** The fields a node shares across arch and sequence scenes, plus the older `kind` and `modified`. */
+/** The fields a node shares across arch and sequence scenes, plus the older `kind` and `modified`. Marks are checked in validate-marks.mjs. */
 export function checkNodeFields(n, q, errors, warnings) {
   if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
   checkIcon(n?.icon, `${q}.icon`, errors);
   if (n?.caption !== undefined && typeof n.caption !== 'string') errors.push(`${q}.caption: must be a string`);
   else if (n?.caption && n.caption.trim().length > CAPTION_LONG) warnings.push(`${q}.caption: ${n.caption.trim().length} characters; keep it under ${CAPTION_LONG} so it fits on one line under the label`);
-  if (n?.change !== undefined && !CHANGES.includes(n.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
-  if (n?.highlight !== undefined && typeof n.highlight !== 'boolean') errors.push(`${q}.highlight: must be a boolean`);
   if (n?.tone !== undefined && !TONES.includes(n.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
   if (n?.kind !== undefined && !NODE_KINDS.includes(n.kind)) errors.push(`${q}.kind: must be one of ${NODE_KINDS.join(', ')}, or use icon and caption instead`);
   if (n?.modified !== undefined && typeof n.modified !== 'boolean') errors.push(`${q}.modified: must be a boolean; prefer change or highlight`);
@@ -85,6 +82,5 @@ export function checkArch(s, p, errors, warnings) {
     if (e?.label !== undefined && typeof e.label !== 'string') errors.push(`${q}.label: must be a string`);
     if (e?.direction !== undefined && !DIRECTIONS.includes(e.direction)) errors.push(`${q}.direction: must be one of ${DIRECTIONS.join(', ')}`);
     if (e?.style !== undefined && !EDGE_STYLES.includes(e.style)) errors.push(`${q}.style: must be one of ${EDGE_STYLES.join(', ')}`);
-    if (e?.change !== undefined && !CHANGES.includes(e.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
   });
 }
