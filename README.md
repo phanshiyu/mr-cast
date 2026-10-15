@@ -14,6 +14,8 @@ The MP4 is named after the walkthrough's title, such as `.mr-cast/rate-limiting-
 
 To update mr-cast, ask Claude to "upgrade mr-cast". See [Upgrade](#upgrade).
 
+For a walkthrough that explains the code line by line in plain words, ask for it "like I'm new to this", "line by line", "ELI5", or "for a non-native speaker", or pass `--simple` to `/mr-cast-render`. Claude then reads the callers, types, tests and config around the change, shows the key ones before the change, and voices each changed line or small group while it is highlighted. See [Simple style](#simple-style).
+
 To free disk space, ask Claude to "prune mr-cast" or "clean up old mr-cast videos". The `mr-cast-prune` skill lists the walkthroughs, rendered videos, stills, voice clips and cached downloads with their sizes, asks you which to delete, and deletes only what you pick. See [Pruning](#pruning).
 
 ### Upgrading from 0.5
@@ -67,10 +69,11 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 
 | Command | What it does |
 | --- | --- |
-| `mr-cast extract [base] [--working]` | Diffs `base...HEAD` and writes `hunks.json` and `meta.json`. Prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Lockfiles and build output are skipped unless you pass `--all-files`. |
-| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`. Exits 1 on errors. |
-| `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It lists the title, one line per scene with its type, chapter and what it shows, the length, and the hunk coverage. A code scene shows its file, focus lines and `flow` step count. A diagram shows its node, state or participant counts, and a tests scene its cases and gaps. |
-| `mr-cast voice [--voice name]` | Speaks each scene's narration into `.mr-cast/audio/` and writes `voiceover.json`. Only changed narration is spoken again. |
+| `mr-cast extract [base] [--working] [--simple]` | Diffs `base...HEAD` and writes `hunks.json` and `meta.json`. Prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. `--simple` records the [simple style](#simple-style). Lockfiles and build output are skipped unless you pass `--all-files`. Snippets added earlier are kept. |
+| `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2`, ... beside the diff's hunks, for the callers, definitions, types or config a change depends on. Prints each snippet with the file's own line numbers. Snippets do not count toward hunk coverage. Also accepts `<file> <start>-<end>`, keeps the id when the same range is added again, and holds at most 80 lines each. |
+| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when `meta.json` records it. Exits 1 on errors. |
+| `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It lists the title, one line per scene with its type, chapter and what it shows, the length, the style, and the hunk coverage. A code scene shows its file and its steps, or its focus lines and `flow` step count. A diagram shows its node, state or participant counts, and a tests scene its cases and gaps. |
+| `mr-cast voice [--voice name]` | Speaks each scene's narration and each code step into `.mr-cast/audio/` and writes `voiceover.json`. Only changed text is spoken again. |
 | `mr-cast play [--port N] [--no-open] [--voice name] [--no-voice]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. |
 | `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders an MP4 at 1920x1080, 30 fps, with the voice-over and burned-in subtitles, and prints its path. The file goes in the data directory and is named after the storyboard title, such as `rate-limiting-for-the-orders-api.mp4`. Without a usable title it takes the run's name, then `walkthrough.mp4`. The first run downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`, or `$XDG_CACHE_HOME/mr-cast/remotion` when that is set. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's settled end state, just before it fades out, to check layout. |
@@ -106,8 +109,8 @@ Explain mode makes a walkthrough of an explanation instead of a diff. Code scene
 
 | Command | What it does |
 | --- | --- |
-| `mr-cast explain init [--title text] [--name slug] [--reset]` | Creates the explanation's data directory with an empty `hunks.json` and a `meta.json` that marks it as an explanation, and prints its path and slug. The directory is `.mr-cast/explain/<slug>` in the git repository, or in the current directory outside one. The slug is a short kebab-case form of the title, or `--name`. If another explanation already has that slug, the new one gets a numbered suffix such as `-2`. Rerunning it with the same title or name reopens that explanation and keeps its storyboard and snippets. `--reset` deletes them. |
-| `mr-cast explain snippet <file>:<start>-<end> ...` | Reads those lines of each file and adds them to `hunks.json` as snippets `s1`, `s2`, ... Prints each snippet with the file's own line numbers for `focusLinesAfter`. Also accepts `<file> <start>-<end>`. Adding the same range again keeps its id. A snippet holds at most 80 lines. |
+| `mr-cast explain init [--title text] [--name slug] [--simple] [--reset]` | Creates the explanation's data directory with an empty `hunks.json` and a `meta.json` that marks it as an explanation, and prints its path and slug. The directory is `.mr-cast/explain/<slug>` in the git repository, or in the current directory outside one. The slug is a short kebab-case form of the title, or `--name`. If another explanation already has that slug, the new one gets a numbered suffix such as `-2`. Rerunning it with the same title or name reopens that explanation and keeps its storyboard and snippets. `--reset` deletes them. `--simple` records the [simple style](#simple-style). |
+| `mr-cast explain snippet <file>:<start>-<end> ...` | The same as `mr-cast snippet`, on the explanation's directory. |
 | `mr-cast explain validate`, `outline`, `voice`, `play`, `render`, `still` | The commands above, on the explanation's directory. |
 
 Every `explain` command takes `--name <slug>` to pick an explanation. Without it, the commands use the explanation that `explain init` started most recently in this repository, recorded in `.mr-cast/explain/.current`, and print its name on stderr. `--dir <path>` uses any directory instead. Several explanations can coexist and render at the same time.
@@ -116,11 +119,21 @@ A snippet renders as a code scene with a neutral SOURCE badge and its line range
 
 `validate` skips the diff rules in explain mode. It does not check hunk coverage, `skipped`, test files, or the tests scene, and the intent scene's `risk` is optional. It still checks the schema, focus limits, `flow` steps, and that the video opens with an intent scene and shows a diagram before the code. Its summary ends in `explain` instead of hunk coverage. A highlighted `arch` node is badged KEY instead of CHANGED.
 
+## Simple style
+
+The simple style is for a viewer who is new to the code, reads English as a second language, or both. The walkthrough explains the changed code line by line in plain words, and shows the unchanged code the change depends on before the change itself. `mr-cast extract --simple` and `mr-cast explain init --simple` record `"style": "simple"` in `meta.json`. A later `extract` or `init` without the flag drops the style and says so. `validate` and `outline` name the style, and in it `validate` also checks:
+
+- Every code scene uses `steps`, and each step highlights at most 3 lines. A step past 6 lines is an error.
+- Every changed line of a hunk the video shows is inside a step of some scene showing it. The warning lists the lines left out. Blank lines and snippets are not counted.
+- Sentences stay short. It warns about a sentence over 18 words and about a scene whose sentences average more than 12.
+
+The skills switch to this style when the request asks for it, and pass `--simple` through from the `/mr-cast-render` and `/mr-cast-explain-render` commands. `examples/demo-simple/` is the demo change told this way.
+
 ## Voice
 
 `play` and `render` read each scene's narration aloud with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a small text-to-speech model that runs offline on the CPU. The first run downloads the model (about 90 MB) into `~/.cache/mr-cast/models`, or `$XDG_CACHE_HOME/mr-cast/models` when that is set. Speaking a scene takes a few seconds.
 
-Clips are cached in `.mr-cast/audio/` under a hash of the voice and the narration text. A rerun speaks only the scenes whose narration changed and deletes clips that no scene uses.
+Each spoken text, a scene's narration or a code step's `say`, is one clip, cached in `.mr-cast/audio/` under a hash of the voice and the text. A rerun speaks only the texts that changed and deletes clips that no scene uses.
 
 - `--voice <name>` picks the voice. The default is `af_heart`. Others include `af_bella`, `af_nicole`, `am_michael`, `am_fenrir`, `bf_emma`, and `bm_george`. The choice is saved in `voiceover.json`, so later runs keep it.
 - `--no-voice` skips the voice-over. Scenes are silent and timed from word count.
@@ -132,11 +145,13 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 
 `src/types.ts` defines the schema. A storyboard has a title and a list of scenes, and each scene has `narration`. A voiced scene lasts as long as its clip, plus 0.4 seconds before it and 0.8 seconds after. Without a voice-over, scene length is the narration word count at 160 words per minute plus 1.5 seconds, with a 3-second minimum.
 
+A code scene may walk its hunk in `steps` instead of `focusLinesAfter` and `flow`. Each step names its `lines` (or `oldLines` for removed code) and what to `say` while they are highlighted, and lasts as long as that takes, so the voice tracks the line. The scene's `narration` is then the intro spoken before the first step, while the diff morphs in. Removed lines stay on screen until the narration moves past the last step about them, then collapse. A `label` on every step draws the step diagram beside the code, as `flow` does. Steps are written top to bottom, at most 8 per scene and 6 with labels.
+
 | Scene | Shows |
 | --- | --- |
 | `intent` | Summary, risk badge, bullets, and diff stats. |
 | `arch` | Components and edges, laid out automatically. Changed nodes are highlighted. |
-| `code` | One hunk, in split or morph view. Focused lines stay bright, and a callout explains them. |
+| `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. |
 | `flow` | A step-by-step trace with the payload at each step. |
 | `sequence` | A sequence diagram: participants with lifelines, and call, return and async messages drawn in order. Changed messages are highlighted. |
 | `er` | An entity-relationship diagram with crow's-foot relations. Added, removed and modified tables, fields and relations are marked. |
@@ -144,14 +159,14 @@ The player does not autoplay a voiced walkthrough, because browsers block autopl
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph, pie, ...) drawn as a static themed SVG. A fallback for diagrams the other scenes don't cover. |
 | `tests` | A test matrix: each test case with its status (added, changed, removed, existing) and the behavior it proves, then a "Not tested" panel listing important behaviors no test covers. With no cases it states that the change has no tests. |
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/gallery/` shows the `state`, `mermaid` and `tests` scenes.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `state`, `mermaid` and `tests` scenes.
 
 ## Layout
 
 - `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` resolves `--name` and `--dir` to a data directory, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
-- `shared/timing.mjs` holds the duration formula that the CLI and the player share. `shared/voice.mjs` names each clip by its narration.
-- `bin/lib/explain.mjs` turns source line ranges into snippets for explain mode.
+- `shared/timing.mjs` holds the duration formula that the CLI and the player share: a scene is a sequence of spoken segments, its narration and then each code step. `shared/voice.mjs` names each clip by its text.
+- `bin/lib/explain.mjs` turns source line ranges into snippets for `snippet` and `explain snippet`.
 - `skill/mr-cast-review/SKILL.md`, `skill/mr-cast-explain/SKILL.md`, `skill/mr-cast-prune/SKILL.md` and `skill/mr-cast-upgrade/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
 For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.
