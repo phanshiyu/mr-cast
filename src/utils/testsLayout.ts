@@ -1,11 +1,9 @@
+import { fitBlock, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 import type { Box as PenBox, LayoutBoxes } from './penGeometry';
 import { rowBadgeRoom } from './marks';
-import type { TestCase } from '../types';
-import { wrapLabel } from './wrapLabel';
+import type { TestCase, TestsScene } from '../types';
 
-/** Average advance per em, rounded up so estimated line lengths never overflow. */
-const MONO_ADVANCE = 0.61;
-const SANS_ADVANCE = 0.49;
 
 const MAX_FONT = 25;
 /** With no matrix on screen the gaps are the whole story, so they may run larger. */
@@ -36,13 +34,17 @@ export interface Box {
 
 export interface PlacedCase extends Box {
   test: TestCase;
-  name: string[];
-  proves: string[];
+  name: Fit;
+  proves: Fit;
 }
 
 export interface PlacedGap extends Box {
-  lines: string[];
+  text: Fit;
 }
+
+/** The scene's panel titles: its own words, or the defaults. */
+export type TestsTitles = Required<NonNullable<TestsScene['titles']>>;
+export const DEFAULT_TITLES: TestsTitles = { subject: 'Under test', proves: 'Proves', gaps: 'Not tested', none: 'No tests in this change' };
 
 export interface TestsLayout {
   /** Body text size; the test name renders slightly smaller in mono. */
@@ -55,17 +57,18 @@ export interface TestsLayout {
   rows: PlacedCase[];
   gapsPanel: Box;
   gaps: PlacedGap[];
-  /** Some text still needed a third line at the smallest font and was cut. */
+  /** Some text needs more lines than it may take. */
   truncated: boolean;
   /** Total height in layout pixels. */
   height: number;
   /** Below 1 when even the smallest font overflows: the scene draws at `width / scale` and shrinks to fit. */
   scale: number;
+  /** Whether the matrix and gaps fit the frame at a readable size. */
+  room: Fit;
+  titles: { proves: Fit; gaps: Fit; none: Fit; subject: { title: Fit; text: Fit } | null };
 }
 
-const cut = (original: string, lines: string[]) => lines[lines.length - 1]!.endsWith('…') && !original.trim().endsWith('…');
-
-function attempt(cases: readonly TestCase[], gaps: readonly string[], width: number, font: number) {
+function attempt(cases: readonly TestCase[], gaps: readonly string[], width: number, font: number, maxLines = 2) {
   const lineHeight = Math.round(font * LINE_HEIGHT);
   const nameFont = Math.round(font * 0.92);
   const pad = Math.round(font * 0.45);
@@ -81,14 +84,12 @@ function attempt(cases: readonly TestCase[], gaps: readonly string[], width: num
     const provesW = textW - nameW;
     const nameX = ROW_PAD_X + CHECK_W + COL_GAP + STATUS_W + COL_GAP;
     const provesX = nameX + nameW + COL_GAP;
-    const nameChars = Math.floor(nameW / (nameFont * MONO_ADVANCE));
-    const provesChars = Math.floor(provesW / (font * SANS_ADVANCE));
     let rowY = MATRIX_HEADER_H;
-    for (const test of cases) {
-      const name = wrapLabel(test.name, nameChars);
-      const proves = wrapLabel(test.proves, provesChars);
-      truncated ||= cut(test.name, name) || cut(test.proves, proves);
-      const h = Math.max(name.length, proves.length) * lineHeight + 2 * pad;
+    for (const [i, test] of cases.entries()) {
+      const name = fitTextAt(test.name, { ...sized(SLOTS.testName, nameW), lines: maxLines }, `cases[${i}].name`, nameFont);
+      const proves = fitTextAt(test.proves, { ...sized(SLOTS.testProves, provesW), lines: maxLines }, `cases[${i}].proves`, font);
+      truncated ||= !name.fits || !proves.fits;
+      const h = Math.max(name.lines.length, proves.lines.length) * lineHeight + 2 * pad;
       rows.push({ test, name, proves, x: 0, y: rowY, w: width, h });
       rowY += h + ROW_GAP;
     }
@@ -104,47 +105,68 @@ function attempt(cases: readonly TestCase[], gaps: readonly string[], width: num
   // Gaps sit in two columns once there are enough of them to fill a row.
   const cols = gaps.length >= 2 ? 2 : 1;
   const itemW = (width - 2 * GAPS_PAD - (cols - 1) * GAP_ITEM_GAP) / cols;
-  const gapChars = Math.floor((itemW - GAP_MARKER_W - 2 * pad) / (font * SANS_ADVANCE));
-  const wrapped = gaps.map((g) => {
-    const lines = wrapLabel(g, gapChars);
-    truncated ||= cut(g, lines);
-    return lines;
+  const wrapped = gaps.map((g, i) => {
+    const text = fitTextAt(g, { ...sized(SLOTS.testGap, itemW - GAP_MARKER_W - 2 * pad), lines: maxLines }, `gaps[${i}]`, font);
+    truncated ||= !text.fits;
+    return text;
   });
   const placedGaps: PlacedGap[] = [];
   let gy = y + GAPS_HEADER_H;
   for (let i = 0; i < wrapped.length; i += cols) {
     const band = wrapped.slice(i, i + cols);
-    const h = Math.max(...band.map((l) => l.length)) * lineHeight + 2 * pad;
-    band.forEach((lines, c) => placedGaps.push({ lines, x: GAPS_PAD + c * (itemW + GAP_ITEM_GAP), y: gy, w: itemW, h }));
+    const h = Math.max(...band.map((t) => t.lines.length)) * lineHeight + 2 * pad;
+    band.forEach((text, c) => placedGaps.push({ text, x: GAPS_PAD + c * (itemW + GAP_ITEM_GAP), y: gy, w: itemW, h }));
     gy += h + GAP_ITEM_GAP;
   }
   const gapsH = gaps.length ? gy - GAP_ITEM_GAP - y + GAPS_PAD : GAPS_HEADER_H + lineHeight + GAPS_PAD;
   const gapsPanel = { x: 0, y, w: width, h: gapsH };
 
-  return { font, nameFont, lineHeight, matrix, emptyCard, rows, gapsPanel, gaps: placedGaps, truncated, height: y + gapsH, scale: 1 };
+  return { font, nameFont, lineHeight, matrix, emptyCard, rows, gapsPanel, gaps: placedGaps, truncated, height: y + gapsH, scale: 1, room: fitBlock('cases', 'tests scene', true, '') };
 }
 
-/**
- * Places the test matrix and the "Not tested" panel in a box, from character counts so stills stay
- * deterministic. Picks the largest font at which every line fits on two lines and the whole stack
- * fits the height; failing that, the largest that fits the height; failing that, the smallest font
- * laid out wider and scaled down, so text never runs into the caption band.
- */
+/** Room the "No tests" card's title has beside its icon. */
+const EMPTY_TITLE_W = (width: number) => width - 2 * 52 - 112 - 40;
+
+/** The scene's own panel titles and subject, fitted to where they sit. */
+function titleFits(scene: TestsScene, layout: Omit<TestsLayout, 'titles'>, width: number): TestsLayout['titles'] {
+  const titles: TestsTitles = { ...DEFAULT_TITLES, ...scene.titles };
+  const at = (key: keyof TestsTitles) => (scene.titles?.[key] ? `titles.${key}` : '');
+  const label = { ...SLOTS.panelTitle, size: 17, weight: 700 };
+  return {
+    proves: fitText(titles.proves, sized(label, layout.matrix?.provesW ?? width), at('proves')),
+    gaps: fitText(titles.gaps, sized(SLOTS.panelTitle, width - 2 * GAPS_PAD - 24 - 12 - 80), at('gaps')),
+    none: fitText(titles.none, sized(SLOTS.emptyTitle, EMPTY_TITLE_W(width)), at('none')),
+    subject: scene.subject
+      ? { title: fitText(titles.subject, sized({ ...SLOTS.panelTitle, size: 16, weight: 700 }, SUBJECT_W), at('subject')), text: fitText(scene.subject, sized(SLOTS.testSubject, SUBJECT_W), 'subject') }
+      : null,
+  };
+}
+
+/** The subject sits at the right end of the header, at most this wide. */
+export const SUBJECT_W = 698;
+
 /** Font size of a case's own badges, drawn at its right end. */
 export const ROW_BADGE = 13;
 
-export function layoutTests(cases: readonly TestCase[], gaps: readonly string[], width: number, height: number): TestsLayout {
-  let fallback: TestsLayout | null = null;
+/**
+ * Places the test matrix and the "Not tested" panel in a box. Picks the largest font at which every text
+ * fits its two lines and the whole stack fits the height; failing that, the smallest font with three
+ * lines a text; failing that, the smallest font laid out wider and scaled down, so text never runs into
+ * the caption band, which `validate` reports.
+ */
+export function layoutTests(scene: TestsScene, width: number, height: number): TestsLayout {
+  const { cases, gaps } = scene;
+  const done = (layout: Omit<TestsLayout, 'titles'>): TestsLayout => ({ ...layout, titles: titleFits(scene, layout, layout.matrix?.w ?? width / layout.scale) });
   for (let font = cases.length ? MAX_FONT : MAX_FONT_NO_CASES; font >= MIN_FONT; font--) {
     const result = attempt(cases, gaps, width, font);
-    if (result.height > height) continue;
-    if (!result.truncated) return result;
-    fallback ??= result;
+    if (result.height <= height && !result.truncated) return done(result);
   }
-  if (fallback) return fallback;
+  // At the smallest font a text may take a third line; a scene that still overflows draws smaller and is reported.
+  const last = attempt(cases, gaps, width, MIN_FONT, 3);
+  if (last.height <= height) return done(last);
   // A wider layout wraps less, so it is never taller: scaling by the first estimate always fits.
-  const scale = height / attempt(cases, gaps, width, MIN_FONT).height;
-  return { ...attempt(cases, gaps, width / scale, MIN_FONT), scale };
+  const scale = height / last.height;
+  return done({ ...attempt(cases, gaps, width / scale, MIN_FONT, 3), scale, room: fitBlock('cases', 'tests scene', false, 'split the cases into two tests scenes, or shorten them') });
 }
 
 const boxOf = (b: Box) => ({ x: b.x, y: b.y, width: b.w, height: b.h });

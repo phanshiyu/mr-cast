@@ -44,4 +44,10 @@ export const SLOTS = {
   hunkHeader: { ...MONO, name: 'hunk header', weight: 400, size: 20, min: 14, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'it is drawn smaller; nothing to change' },
   callout: { ...SANS, name: 'callout', weight: 500, size: 28, min: 22, lines: 5, lineHeight: 1.35, width: 0, fix: 'shorten the callout to the one point the code makes' },
   code: { ...MONO, name: 'code line', weight: 400, size: 23, min: 15, lines: 1, lineHeight: 1.65, markup: false, width: 0, fix: 'set "view": "morph", which gives the code twice the width' },
+  testName: { ...MONO, name: 'test name', weight: 600, size: 25, min: 14, lines: 2, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the name, or split the cases into two tests scenes' },
+  testProves: { ...LABEL, name: 'what the test proves', weight: 400, size: 25, min: 15, lines: 2, lineHeight: 1.3, width: 0, fix: 'shorten what it proves, or split the cases into two tests scenes' },
+  testGap: { ...LABEL, name: 'gap', weight: 400, size: 25, min: 15, lines: 2, lineHeight: 1.3, width: 0, fix: 'shorten the gap' },
+  testSubject: { ...MONO, name: 'subject', weight: 400, size: 22, min: 16, lines: 2, lineHeight: 1.25, markup: false, width: 0, fix: 'shorten the subject, e.g. "listEvents in src/lib/pagination.ts"' },
+  panelTitle: { ...SANS, name: 'panel title', weight: 800, size: 20, min: 13, lines: 1, lineHeight: 1.2, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the title' },
+  emptyTitle: { ...SANS, name: 'no-tests title', weight: 800, size: 54, min: 36, lines: 1, lineHeight: 1.2, letterSpacing: -1, width: 0, fix: 'shorten the title' },
 } satisfies Record<string, Slot>;

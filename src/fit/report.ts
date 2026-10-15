@@ -9,6 +9,7 @@ import { layoutIntent } from '../utils/intentLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
+import { layoutTests } from '../utils/testsLayout';
 import { shellFits } from './shell';
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
@@ -23,7 +24,10 @@ const SCENE_FITS: SceneFits = {
   er: (scene) => layoutEr(scene.entities, scene.relations),
   state: (scene) => layoutState(scene.states, scene.transitions, scene.initial),
   mermaid: () => null,
-  tests: () => null,
+  tests: (scene) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutTests(scene, box.width, box.height);
+  },
   table: (scene) => {
     const box = contentBox(Boolean(scene.title));
     return layoutTable(scene.columns, scene.rows, box.width, box.height);
