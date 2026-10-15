@@ -9,8 +9,9 @@ import { installSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { dataDir, ensureExcluded, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { startServer } from './lib/server.mjs';
-import { changedHunkIds, formatIndex, formatValidation, summarizeFiles } from './lib/summary.mjs';
+import { changedHunkIds, formatDuration, formatIndex, formatValidation, summarizeFiles } from './lib/summary.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
+import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -24,10 +25,13 @@ const USAGE = `usage: mr-cast <command> [options]
       --max-lines  changed lines shown per hunk in the index (default 14)
       --all-files  include lockfiles, minified and build output
   validate        check .mr-cast/storyboard.json against hunks.json
-  play [--port N] [--no-open]
+  voice [--voice name]
+                  speak each scene's narration with Kokoro into .mr-cast/audio (default voice af_heart)
+  play [--port N] [--no-open] [--voice name] [--no-voice]
                   serve the live player (default port 4747)
-  render [--out file.mp4]
+  render [--out file.mp4] [--voice name] [--no-voice]
                   render the walkthrough to MP4 (default .mr-cast/walkthrough.mp4)
+                  play and render voice the narration first unless --no-voice
   still [sceneIndex...] [--out dir]
                   render PNG stills of scenes (0-based; default all, .mr-cast/stills)
   install-skill   install the mr-video Claude Code skill and /mr-cast command into ~/.claude
@@ -64,7 +68,7 @@ function loadProject() {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` first');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const result = validateStoryboard(storyboard, hunks);
-  const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard);
+  const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, readVoiceover(dir));
   return { dir, hunks, storyboard, result, lines: formatValidation(result, { storyboard, hunks, seconds }) };
 }
 
@@ -143,6 +147,42 @@ function validate(argv) {
   if (result.errors.length) process.exit(1);
 }
 
+const VOICE_OPTIONS = { voice: { type: 'string' }, 'no-voice': { type: 'boolean', default: false } };
+
+function reportVoiceProgress(event) {
+  if (event.type === 'download') console.error(`mr-cast: downloading the Kokoro voice model (about 90 MB, first run only) into ${event.cacheDir}`);
+  else if (event.type === 'clip') {
+    const text = event.text.length > 60 ? `${event.text.slice(0, 57)}...` : event.text;
+    console.error(`  voiced ${event.done}/${event.total} · ${event.seconds.toFixed(1)}s · ${text}`);
+  }
+}
+
+/** Voice-over for play and render. Any failure falls back to silent scenes with estimated timing. */
+async function voiceoverFor(dir, storyboard, values) {
+  if (values['no-voice']) return null;
+  try {
+    return await ensureVoiceover({ dataDir: dir, storyboard, voice: values.voice, onProgress: reportVoiceProgress });
+  } catch (err) {
+    console.error(`mr-cast: warning: continuing without voice-over: ${err.message}`);
+    return null;
+  }
+}
+
+async function voice(argv) {
+  const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice } });
+  const { dir, storyboard } = loadValidProject();
+  let generated = 0;
+  const voiceover = await ensureVoiceover({
+    dataDir: dir, storyboard, voice: values.voice,
+    onProgress: (event) => {
+      if (event.type === 'clip') generated++;
+      reportVoiceProgress(event);
+    },
+  });
+  const clips = Object.keys(voiceover.clips).length;
+  console.log(`✓ voiceover · ${clips} clip${clips === 1 ? '' : 's'} (${generated} new) · ${formatDuration(storyboardSeconds(storyboard, voiceover))}`);
+}
+
 function ensureDist() {
   if (process.env.MR_CAST_DIST) {
     const dist = path.resolve(process.env.MR_CAST_DIST);
@@ -173,27 +213,36 @@ function openBrowser(url) {
 async function play(argv) {
   const { values } = parseArgs({
     args: argv,
-    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false } },
+    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS },
   });
   const port = intOption(values.port, 'port', 1);
-  const { dir } = loadValidProject();
+  const { dir, storyboard } = loadValidProject();
   const distDir = ensureDist();
+  let voiceover = await voiceoverFor(dir, storyboard, values);
 
-  const onDataChange = (file) => {
+  const onDataChange = async (file) => {
     if (file === 'meta.json') return;
+    let project;
     try {
-      const { lines } = loadProject();
+      project = loadProject();
       console.error(`mr-cast: ${file} changed`);
-      for (const line of lines) console.error(`  ${line}`);
+      if (file === 'storyboard.json' && !project.result.errors.length) {
+        voiceover = await voiceoverFor(dir, project.storyboard, values);
+        project = loadProject();
+      }
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
+      return;
     }
+    for (const line of project.lines) console.error(`  ${line}`);
   };
-  const server = await startServer({ distDir, dataDir: dir, port, onDataChange });
+  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover });
   console.log(`mr-cast player: ${server.url}`);
   if (!values['no-open']) openBrowser(server.url);
 
-  const shutdown = () => server.close().then(() => process.exit(0));
+  // Once Kokoro has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
+  // so stop everything holding the event loop and let Node exit on its own.
+  const shutdown = () => server.close();
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
 }
@@ -226,13 +275,14 @@ function progressReporter(label) {
 }
 
 async function render(argv) {
-  const { values } = parseArgs({ args: argv, options: { out: { type: 'string' } } });
+  const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS } });
   const { dir, hunks, storyboard } = loadValidProject();
+  const voiceover = await voiceoverFor(dir, storyboard, values);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, 'walkthrough.mp4'));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   const progress = progressReporter('rendering');
-  const written = await renderVideo({ hunks, storyboard, outFile, onProgress: progress.update });
+  const written = await renderVideo({ hunks, storyboard, voiceover, dataDir: dir, outFile, onProgress: progress.update });
   progress.done();
   console.log(written ?? outFile);
 }
@@ -249,7 +299,8 @@ async function still(argv) {
   const { renderStills } = await importRender();
   const outDir = path.resolve(values.out ?? path.join(dir, 'stills'));
   fs.mkdirSync(outDir, { recursive: true });
-  const files = await renderStills({ hunks, storyboard, outDir, scenes: scenes.length ? scenes : undefined });
+  const voiceover = readVoiceover(dir);
+  const files = await renderStills({ hunks, storyboard, voiceover, outDir, scenes: scenes.length ? scenes : undefined });
   for (const f of files) console.log(path.resolve(f));
 }
 
@@ -258,7 +309,7 @@ function installSkillCommand(argv) {
   for (const file of installSkill(ROOT)) console.log(`wrote ${file}`);
 }
 
-const COMMANDS = { extract, validate, play, render, still, 'install-skill': installSkillCommand };
+const COMMANDS = { extract, validate, voice, play, render, still, 'install-skill': installSkillCommand };
 
 async function main([command, ...rest]) {
   if (!command || command === 'help' || command === '--help' || command === '-h') {
@@ -282,5 +333,5 @@ main(process.argv.slice(2)).catch((err) => {
   else if (err instanceof UserError) console.error(`mr-cast: ${err.message}`);
   else if (err.code?.startsWith?.('ERR_PARSE_ARGS')) console.error(`mr-cast: ${err.message.split('. ')[0]}; see \`mr-cast help\``);
   else console.error(`mr-cast: ${err.message} (set MR_CAST_DEBUG=1 for details)`);
-  process.exit(1);
+  process.exitCode = 1; // not process.exit(): see shutdown in play()
 });

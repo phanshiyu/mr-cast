@@ -3,11 +3,14 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { sceneDurationInFrames } from '../../shared/timing.mjs';
+import { sendFile } from './server.mjs';
+import { AUDIO_NAME } from './voice.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/remotion/index.ts');
@@ -58,12 +61,38 @@ async function withRetry(label, fn) {
   }
 }
 
-async function prepare({ hunks, storyboard }) {
+/**
+ * Serves .mr-cast/audio/*.wav on a random local port for the length of a render. The bundle is cached
+ * by source hash, so clips cannot go into its public dir.
+ */
+async function serveAudio(dataDir) {
+  const server = http.createServer((req, res) => {
+    const name = new URL(req.url, 'http://127.0.0.1').pathname.match(/^\/audio\/([^/]+)$/)?.[1];
+    if (req.method !== 'GET' || !name || !AUDIO_NAME.test(name)) {
+      res.writeHead(404);
+      return res.end();
+    }
+    sendFile(req, res, path.join(dataDir, 'audio', name));
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  return {
+    url: `http://127.0.0.1:${server.address().port}/`,
+    close: () => new Promise((resolve) => {
+      server.close(() => resolve());
+      server.closeAllConnections();
+    }),
+  };
+}
+
+async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl }) {
   // Remotion locates its Chrome download from process.cwd(); without this it re-downloads Chrome into the user's repo.
   process.chdir(ROOT);
   await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
   const serveUrl = await getServeUrl();
-  const inputProps = { storyboard, hunks, showCaptions: true };
+  const inputProps = { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl };
   const browser = await withRetry('launching the browser', () => openBrowser('chrome'));
   try {
     const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, puppeteerInstance: browser });
@@ -74,38 +103,44 @@ async function prepare({ hunks, storyboard }) {
   }
 }
 
-export async function renderVideo({ hunks, storyboard, outFile, onProgress }) {
+export async function renderVideo({ hunks, storyboard, voiceover, dataDir, outFile, onProgress }) {
   const out = path.resolve(outFile);
   await mkdir(path.dirname(out), { recursive: true });
-  const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard });
+  const audio = voiceover ? await serveAudio(dataDir) : null;
   try {
-    await renderMedia({
-      composition,
-      serveUrl,
-      inputProps,
-      codec: 'h264',
-      outputLocation: out,
-      puppeteerInstance: browser,
-      onProgress: ({ progress }) => onProgress?.(progress),
-    });
+    const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover, audioBaseUrl: audio?.url });
+    try {
+      await renderMedia({
+        composition,
+        serveUrl,
+        inputProps,
+        codec: 'h264',
+        outputLocation: out,
+        puppeteerInstance: browser,
+        onProgress: ({ progress }) => onProgress?.(progress),
+      });
+    } finally {
+      await browser.close({ silent: true });
+    }
   } finally {
-    await browser.close({ silent: true });
+    await audio?.close();
   }
   return out;
 }
 
-export async function renderStills({ hunks, storyboard, outDir, scenes }) {
+/** Stills take scene timing from `voiceover` but play no audio. */
+export async function renderStills({ hunks, storyboard, voiceover, outDir, scenes }) {
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
   const starts = [];
   let from = 0;
   for (const scene of storyboard.scenes) {
-    const duration = sceneDurationInFrames(scene.narration);
+    const duration = sceneDurationInFrames(scene.narration, voiceover);
     starts.push({ from, duration });
     from += duration;
   }
   const indices = scenes ?? storyboard.scenes.map((_, i) => i);
-  const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard });
+  const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover });
   const written = [];
   try {
     for (const index of indices) {

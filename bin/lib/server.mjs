@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { AUDIO_NAME } from './voice.mjs';
 
 const HOST = '127.0.0.1';
 const PORT_ATTEMPTS = 21;
@@ -18,15 +19,30 @@ const TYPES = {
   '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
 };
 
-function sendFile(res, file, headers = {}) {
+/** Streams `file`, honouring a single-range Range header so media elements can seek. */
+export function sendFile(req, res, file, headers = {}) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'not found');
-    res.writeHead(200, {
-      'Content-Type': TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream',
-      'Content-Length': st.size,
+    const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
+    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+    if (!range || (!range[1] && !range[2])) {
+      res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Accept-Ranges': 'bytes', ...headers });
+      return fs.createReadStream(file).pipe(res);
+    }
+    const start = range[1] ? Number(range[1]) : Math.max(0, st.size - Number(range[2]));
+    const end = range[1] && range[2] ? Math.min(Number(range[2]), st.size - 1) : st.size - 1;
+    if (start > end) {
+      res.writeHead(416, { 'Content-Range': `bytes */${st.size}` });
+      return res.end();
+    }
+    res.writeHead(206, {
+      'Content-Type': type,
+      'Content-Length': end - start + 1,
+      'Content-Range': `bytes ${start}-${end}/${st.size}`,
+      'Accept-Ranges': 'bytes',
       ...headers,
     });
-    fs.createReadStream(file).pipe(res);
+    fs.createReadStream(file, { start, end }).pipe(res);
   });
 }
 
@@ -56,9 +72,10 @@ function listen(server, port) {
 
 /**
  * Serve the player from `distDir` and live data from `dataDir`.
- * `onDataChange(fileName)` runs (debounced) before clients are told to reload.
+ * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload.
+ * `getVoiceover()` is the voiceover the player should use, or null for silent scenes.
  */
-export async function startServer({ distDir, dataDir, port, onDataChange }) {
+export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover }) {
   const root = path.resolve(distDir);
   const clients = new Set();
   let allowedHosts = new Set();
@@ -78,19 +95,33 @@ export async function startServer({ distDir, dataDir, port, onDataChange }) {
       return;
     }
 
+    if (pathname === '/data/voiceover.json') {
+      const voiceover = getVoiceover?.();
+      if (!voiceover) return send(res, 404, 'not found');
+      res.writeHead(200, { 'Content-Type': TYPES['.json'], 'Cache-Control': 'no-store' });
+      return res.end(JSON.stringify(voiceover));
+    }
+
+    const audio = pathname.match(/^\/data\/audio\/([^/]+)$/);
+    if (audio) {
+      if (!AUDIO_NAME.test(audio[1])) return send(res, 404, 'not found');
+      // Clip names are content hashes, so a cached clip never goes stale.
+      return sendFile(req, res, path.join(dataDir, 'audio', audio[1]), { 'Cache-Control': 'max-age=31536000, immutable' });
+    }
+
     const data = pathname.match(/^\/data\/([^/]+)$/);
     if (data) {
       if (!DATA_FILES.has(data[1])) return send(res, 404, 'not found');
-      return sendFile(res, path.join(dataDir, data[1]), { 'Cache-Control': 'no-store' });
+      return sendFile(req, res, path.join(dataDir, data[1]), { 'Cache-Control': 'no-store' });
     }
 
     const file = safeJoin(root, pathname);
     if (!file) return send(res, 403, 'forbidden');
     fs.stat(file, (err, st) => {
-      if (!err && st.isFile()) return sendFile(res, file);
+      if (!err && st.isFile()) return sendFile(req, res, file);
       // Client-side routes have no extension; missing assets should 404, not return HTML.
       if (path.extname(pathname)) return send(res, 404, 'not found');
-      sendFile(res, path.join(root, 'index.html'), { 'Cache-Control': 'no-store' });
+      sendFile(req, res, path.join(root, 'index.html'), { 'Cache-Control': 'no-store' });
     });
   });
 
@@ -110,6 +141,7 @@ export async function startServer({ distDir, dataDir, port, onDataChange }) {
 
   const pending = new Set();
   let timer = null;
+  let handling = Promise.resolve();
   const watcher = fs.watch(dataDir, (_event, name) => {
     // Some platforms omit the file name; treat that as "something changed".
     const file = name ? String(name) : 'storyboard.json';
@@ -119,8 +151,16 @@ export async function startServer({ distDir, dataDir, port, onDataChange }) {
     timer = setTimeout(() => {
       const changed = [...pending];
       pending.clear();
-      for (const f of changed) onDataChange?.(f);
-      broadcast('data: change\n\n');
+      handling = handling.then(async () => {
+        for (const f of changed) {
+          try {
+            await onDataChange?.(f);
+          } catch (err) {
+            console.error(`mr-cast: ${f} changed · ${err.message}`);
+          }
+        }
+        broadcast('data: change\n\n');
+      });
     }, DEBOUNCE_MS);
   });
   watcher.on('error', (err) => console.error(`mr-cast: stopped watching ${dataDir} (${err.message}); restart play to resume live reload`));
