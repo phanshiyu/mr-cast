@@ -12,7 +12,6 @@ const CHART_LABELS_MAX = 12;
 const CHART_SERIES_MAX = 4;
 // Past this many bars each one gets too thin to carry its value label.
 const CHART_BARS_MAX = 24;
-const ANNOTATION_LONG = 90;
 const TIME_UNITS = ['ms', 's', 'min', 'h', 'd'];
 const TIMELINE_EVENTS_MAX = 8;
 const TIMELINE_SPANS_MAX = 4;
@@ -93,7 +92,6 @@ export function checkChart(s, p, errors, warnings) {
   if (note === undefined) return;
   if (!note || typeof note !== 'object') return errors.push(`${p}.annotation: must be { at, series?, text }`);
   if (!isStr(note.text)) errors.push(`${p}.annotation.text: required string`);
-  else if (note.text.trim().length > ANNOTATION_LONG) warnings.push(`${p}.annotation.text: ${note.text.trim().length} characters; keep it under ${ANNOTATION_LONG} so it fits on two lines`);
   if (!s.labels.includes(note.at)) errors.push(`${p}.annotation.at: ${JSON.stringify(note.at)} is not one of the labels (${s.labels.map((l) => JSON.stringify(l)).join(', ')})`);
   if (note.series !== undefined && !names.has(note.series)) errors.push(`${p}.annotation.series: ${JSON.stringify(note.series)} is not a series name`);
 }

@@ -2,6 +2,7 @@ import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
 import { fitArch } from '../utils/archLayout';
+import { layoutChart } from '../utils/chartLayout';
 import { layoutCode } from '../utils/codeLayout';
 import { layoutEr } from '../utils/erLayout';
 import { layoutFlow } from '../utils/flowLayout';
@@ -32,7 +33,10 @@ const SCENE_FITS: SceneFits = {
     const box = contentBox(Boolean(scene.title));
     return layoutTable(scene.columns, scene.rows, box.width, box.height);
   },
-  chart: () => null,
+  chart: (scene) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutChart(scene, box.width, box.height);
+  },
   timeline: () => null,
   files: () => null,
 };

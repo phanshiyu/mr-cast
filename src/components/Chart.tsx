@@ -7,9 +7,10 @@ import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, type ChartLayou
 import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
 import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { PenMarks } from './PenMarks';
-import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
+import type { Fit } from '../../shared/textfit.mjs';
+import { FitText } from './FitText';
 import { clamp, colors, contentBox, fonts } from './theme';
 import { seriesTone, tones } from './tones';
 
@@ -67,14 +68,14 @@ const SlotGlow: React.FC<{ layout: ChartLayout; i: number; emphasis: Emphasis }>
     />
   ) : null;
 
-const Legend: React.FC<{ scene: ChartScene; seriesOpacity: (s: number) => number }> = ({ scene, seriesOpacity }) => (
+const Legend: React.FC<{ scene: ChartScene; layout: ChartLayout; seriesOpacity: (s: number) => number }> = ({ scene, layout, seriesOpacity }) => (
   <div style={{ display: 'flex', gap: 26, fontSize: 21, color: colors.muted, flexShrink: 0, paddingBottom: 6, alignItems: 'center' }}>
-    {scene.series.map((s, i) => {
+    {scene.series.map((_, i) => {
       const tone = tones[seriesTone(scene.series, i)];
       return (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: seriesOpacity(i) }}>
           <span style={{ width: 22, height: scene.kind === 'bar' ? 22 : 5, borderRadius: scene.kind === 'bar' ? 6 : 3, background: tone.color }} />
-          <span style={{ color: colors.text }}>{s.name}</span>
+          <FitText fit={layout.legend[i]!} inline style={{ color: colors.text }} />
         </div>
       );
     })}
@@ -126,28 +127,21 @@ const Grid: React.FC<{ layout: ChartLayout; unit: string | undefined; appear: nu
 
 const XLabels: React.FC<{ layout: ChartLayout; appear: number; emphasisOf: (i: number) => Emphasis }> = ({ layout, appear, emphasisOf }) => (
   <>
-    {layout.xLabels.map((lines, i) => (
-      <div
+    {layout.xLabels.map((text, i) => (
+      <FitText
         key={i}
+        fit={text}
+        align="center"
         style={{
           position: 'absolute',
           left: layout.xs[i]! - layout.slotW / 2,
           width: layout.slotW,
           top: layout.xLabelTop,
-          textAlign: 'center',
-          fontSize: layout.xLabelFont,
           lineHeight: `${Math.round(layout.xLabelFont * 1.3)}px`,
-          fontWeight: 600,
           color: emphasisOf(i).glow > 0 ? colors.text : '#c9cedb',
           opacity: appear * emphasisOf(i).opacity,
         }}
-      >
-        {lines.map((l, j) => (
-          <div key={j} style={{ whiteSpace: 'nowrap' }}>
-            {l}
-          </div>
-        ))}
-      </div>
+      />
     ))}
   </>
 );
@@ -370,8 +364,8 @@ function chartTargets(scene: ChartScene, layout: ChartLayout, size: { width: num
   );
   scene.labels.forEach((_, i) => {
     const text = layout.xLabels[i]!;
-    const width = Math.min(layout.slotW, Math.max(...text.map((t) => t.length)) * layout.xLabelFont * 0.55 + 8);
-    const label = { x: layout.xs[i]! - width / 2, y: layout.xLabelTop - 4, width, height: text.length * layout.xLabelFont * 1.3 + 8 };
+    const width = Math.min(layout.slotW, text.width + 8);
+    const label = { x: layout.xs[i]! - width / 2, y: layout.xLabelTop - 4, width, height: text.lines.length * layout.xLabelFont * 1.3 + 8 };
     boxes.set(`l:${i}`, label);
     obstacles.push(label);
     if (scene.series.length === 2) obstacles.push({ x: layout.xs[i]! - 60, y: slotTop(scene, layout, i) - BADGE_H, width: 120, height: BADGE_H });
@@ -394,18 +388,17 @@ function annotationPoint(scene: ChartScene, layout: ChartLayout): Point | null {
 }
 
 interface NoteBox {
-  lines: string[];
+  text: Fit;
   left: number;
   top: number;
   w: number;
   h: number;
 }
 
-function placeNote(text: string, point: Point, layout: ChartLayout, width: number): NoteBox {
-  const lines = wrapLabel(text, 44);
-  const w = Math.min(620, Math.max(...lines.map((l) => l.length)) * 12.4 + 52);
-  const h = lines.length * 31 + 28;
-  return { lines, w, h, left: Math.min(width - w, Math.max(layout.axisW, point.x - w / 2)), top: (ANNOTATION_BAND - h) / 2 - 6 };
+function placeNote(text: Fit, point: Point, layout: ChartLayout, width: number): NoteBox {
+  const w = Math.min(620, text.width + 52);
+  const h = text.height + 28;
+  return { text, w, h, left: Math.min(width - w, Math.max(layout.axisW, point.x - w / 2)), top: (ANNOTATION_BAND - h) / 2 - 6 };
 }
 
 /** The dashed leader from the note down to its point, drawn under the data labels so they stay legible. */
@@ -433,19 +426,11 @@ const Note: React.FC<{ note: NoteBox; appear: number }> = ({ note, appear }) => 
       background: 'linear-gradient(180deg, #1d2136, #161a2a)',
       border: `1px solid ${colors.accent}88`,
       boxShadow: `0 18px 48px rgba(0,0,0,0.5), 0 0 32px ${colors.accentSoft}`,
-      fontSize: 23,
-      lineHeight: '31px',
-      fontWeight: 500,
-      textAlign: 'center',
       opacity: appear,
       transform: `translateY(${(1 - appear) * 14}px) scale(${0.95 + 0.05 * appear})`,
     }}
   >
-    {note.lines.map((l, i) => (
-      <div key={i} style={{ whiteSpace: 'nowrap' }}>
-        {l}
-      </div>
-    ))}
+    <FitText fit={note.text} align="center" />
   </div>
 );
 
@@ -477,12 +462,12 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
   const noteAt = noteStep >= 0 ? stepFroms[noteStep]! : timeline.doneAt - 8;
   const noteIn = spring({ frame: frame - noteAt, fps, config: { damping: 16, stiffness: 120 } });
   const notePulse = interpolate(frame, [noteAt + 4, noteAt + 12, noteAt + 40], [0, 1, 0.35], clamp);
-  const note = point && scene.annotation ? placeNote(scene.annotation.text, point, layout, box.width) : null;
+  const note = point && layout.note ? placeNote(layout.note, point, layout, box.width) : null;
   // A bar's note stops above the bar's own value; a line's runs to the ring around its point.
   const leaderEnd = point ? (scene.kind === 'bar' ? point.y - VALUE_FONT * 1.25 - 18 : point.y - 15) : 0;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Legend scene={scene} seriesOpacity={seriesOpacity} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Legend scene={scene} layout={layout} seriesOpacity={seriesOpacity} />}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
         {scene.labels.map((_, i) => (
           <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />

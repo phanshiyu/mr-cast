@@ -50,4 +50,7 @@ export const SLOTS = {
   testSubject: { ...MONO, name: 'subject', weight: 400, size: 22, min: 16, lines: 2, lineHeight: 1.25, markup: false, width: 0, fix: 'shorten the subject, e.g. "listEvents in src/lib/pagination.ts"' },
   panelTitle: { ...SANS, name: 'panel title', weight: 800, size: 20, min: 13, lines: 1, lineHeight: 1.2, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the title' },
   emptyTitle: { ...SANS, name: 'no-tests title', weight: 800, size: 54, min: 36, lines: 1, lineHeight: 1.2, letterSpacing: -1, width: 0, fix: 'shorten the title' },
+  chartLabel: { ...LABEL, name: 'chart label', weight: 600, size: 22, min: 15, lines: 2, lineHeight: 1.3, width: 0, fix: 'shorten the label, or use fewer labels' },
+  annotation: { ...LABEL, name: 'annotation', weight: 500, size: 23, min: 17, lines: 2, lineHeight: 31 / 23, width: 0, fix: 'shorten the annotation to the one thing the point shows' },
+  legend: { ...SANS, name: 'series name', weight: 400, size: 21, min: 15, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the series name, e.g. "before" and "after"' },
 } satisfies Record<string, Slot>;

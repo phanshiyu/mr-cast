@@ -1,5 +1,6 @@
 import type { ChartScene } from '../types';
-import { wrapLabel } from './wrapLabel';
+import { fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 
 const MINUS = '−';
 /** Units that sit against the number rather than after a space. */
@@ -53,7 +54,10 @@ export function delta(a: number, b: number, better: ChartScene['better']): { tex
   return { text, direction: improved ? 'good' : 'bad' };
 }
 
-const X_LABEL_FONTS = [22, 20, 18];
+/** Widest a series name runs in the legend, and the annotation's note. */
+const LEGEND_NAME_W = 240;
+const NOTE_MAX_W = 620;
+const NOTE_PAD_X = 52;
 const TICK_CHAR_W = 10.5;
 /** Room above the highest value for its label and a change badge. */
 const HEADROOM = 84;
@@ -76,7 +80,10 @@ export interface ChartLayout {
   /** Width of one bar; 0 for a line chart. */
   barW: number;
   barGap: number;
-  xLabels: string[][];
+  /** Every label at one shared size. */
+  xLabels: Fit[];
+  legend: Fit[];
+  note: Fit | null;
 }
 
 export function layoutChart(scene: ChartScene, width: number, height: number): ChartLayout {
@@ -89,16 +96,11 @@ export function layoutChart(scene: ChartScene, width: number, height: number): C
   const x0 = axisW;
   const x1 = width - PLOT_RIGHT_PAD;
   const slotW = (x1 - x0) / n;
-  // The largest font at which every label fits on two lines without a cut.
-  let xLabelFont = X_LABEL_FONTS[0]!;
-  let xLabels: string[][] = [];
-  for (const font of X_LABEL_FONTS) {
-    const chars = Math.max(6, Math.floor((slotW - 12) / (font * 0.5)));
-    xLabels = scene.labels.map((l) => wrapLabel(l, chars));
-    xLabelFont = font;
-    if (xLabels.every((lines, i) => !lines[lines.length - 1]!.endsWith('…') || scene.labels[i]!.trim().endsWith('…'))) break;
-  }
-  const labelLines = Math.max(...xLabels.map((l) => l.length));
+  // The largest size at which every label fits on two lines.
+  const labelSlot = sized(SLOTS.chartLabel, slotW - 12);
+  const xLabelFont = Math.min(...scene.labels.map((l) => fitText(l, labelSlot, '').size));
+  const xLabels = scene.labels.map((l, i) => fitTextAt(l, labelSlot, `labels[${i}]`, xLabelFont));
+  const labelLines = Math.max(...xLabels.map((l) => l.lines.length));
   const belowLabels = scene.kind === 'line' && scene.series.length === 2 ? 36 : 0;
   const y0 = (scene.annotation ? ANNOTATION_BAND : 0) + HEADROOM;
   const y1 = height - 18 - belowLabels - labelLines * Math.round(xLabelFont * 1.3);
@@ -117,6 +119,8 @@ export function layoutChart(scene: ChartScene, width: number, height: number): C
     barW,
     barGap,
     xLabels,
+    legend: scene.series.map((series, i) => fitText(series.name, sized(SLOTS.legend, LEGEND_NAME_W), `series[${i}].name`)),
+    note: scene.annotation ? fitText(scene.annotation.text, sized(SLOTS.annotation, NOTE_MAX_W - NOTE_PAD_X), 'annotation.text') : null,
   };
 }
 
