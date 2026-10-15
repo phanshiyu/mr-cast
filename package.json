@@ -15,7 +15,7 @@
     "install-skill": "node scripts/install-skill.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20 <25"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.535",
