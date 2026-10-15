@@ -17,6 +17,8 @@ export const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
 /** Code sizes: the readable range, largest first. Past the smallest, code still shrinks to HARD_MIN rather than lose a character. */
 const FONT_RANGE: Record<View, { min: number; max: number }> = { split: { min: 14, max: 20 }, morph: { min: 15, max: 23 } };
 const HARD_MIN = 10;
+/** Room kept between the end of the longest line and the edge of its panel. */
+const CODE_RIGHT_PAD = 14;
 export const PANEL_PAD = 18;
 export const HEADER_H = 92;
 export const HEADER_GAP = 22;
@@ -55,7 +57,7 @@ export interface CodeMetrics {
 
 function codeMetrics(hunk: Hunk, texts: readonly string[], view: View, panelW: number): CodeMetrics {
   const inner = panelW - 2;
-  const column = view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - morphGutterW(hunk);
+  const column = (view === 'split' ? (inner - 1) / 2 - SPLIT_GUTTER_W : inner - morphGutterW(hunk)) - CODE_RIGHT_PAD;
   const lines = texts.map(expandTabs);
   const { min, max } = FONT_RANGE[view];
   const slot = { ...sized(SLOTS.code, column), size: max, min };
