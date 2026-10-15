@@ -1,29 +1,26 @@
-import type { Scene, Storyboard, VoiceClip, Voiceover } from '../types';
-import { FPS, sceneDurationInFrames as framesForNarration } from '../../shared/timing.mjs';
-import { clipFor } from '../../shared/voice.mjs';
+import type { Scene, Storyboard, Voiceover } from '../types';
+import { FPS, sceneDurationInFrames, sceneSegments, type SpokenSegment } from '../../shared/timing.mjs';
 
-export { FPS, VOICE_LEAD_FRAMES, spokenWordIndex, wordCount } from '../../shared/timing.mjs';
+export { FPS, VOICE_LEAD_FRAMES, sceneDurationInFrames, spokenAt, wordCount } from '../../shared/timing.mjs';
+export type { SpokenSegment } from '../../shared/timing.mjs';
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
-
-export function sceneDurationInFrames(scene: Scene, voiceover?: Voiceover | null): number {
-  return framesForNarration(scene.narration, voiceover);
-}
 
 export interface TimedScene {
   scene: Scene;
   index: number;
   from: number;
   durationInFrames: number;
-  /** The scene's voice-over, when voiceover.json has one for its narration. */
-  clip: VoiceClip | undefined;
+  /** What the scene speaks, in order, each timed from the scene's start. */
+  segments: SpokenSegment[];
 }
 
 export function timeline(storyboard: Storyboard, voiceover?: Voiceover | null): TimedScene[] {
   let from = 0;
   return storyboard.scenes.map((scene, index) => {
+    const segments = sceneSegments(scene, voiceover);
     const durationInFrames = sceneDurationInFrames(scene, voiceover);
-    const timed = { scene, index, from, durationInFrames, clip: clipFor(voiceover, scene.narration) };
+    const timed = { scene, index, from, durationInFrames, segments };
     from += durationInFrames;
     return timed;
   });

@@ -450,5 +450,5 @@ export async function validateStoryboard(sb, hunks, mode = 'diff') {
 }
 
 export function storyboardSeconds(sb, voiceover) {
-  return (sb.scenes ?? []).reduce((sum, s) => sum + sceneDurationInFrames(s?.narration, voiceover), 0) / FPS;
+  return (sb.scenes ?? []).reduce((sum, s) => sum + sceneDurationInFrames(s, voiceover), 0) / FPS;
 }

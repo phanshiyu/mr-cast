@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const { sceneDurationInFrames, wordCount, FPS } = await import(pathToFileURL(path.join(root, 'shared/timing.mjs')));
+const { sceneDurationInFrames, spokenTexts, wordCount, FPS } = await import(pathToFileURL(path.join(root, 'shared/timing.mjs')));
 const { expandLineRefs } = await import(pathToFileURL(path.join(root, 'shared/focus.mjs')));
 const { isTestFile } = await import(pathToFileURL(path.join(root, 'shared/test-files.mjs')));
 
@@ -43,8 +43,8 @@ function measure(name, dir) {
   const testsScene = { present: false, cases: 0, gaps: 0 };
   for (const s of scenes) {
     mix[s.type] = (mix[s.type] ?? 0) + 1;
-    words += wordCount(s.narration);
-    frames += sceneDurationInFrames(s.narration, null);
+    words += spokenTexts(s).reduce((n, text) => n + wordCount(text), 0);
+    frames += sceneDurationInFrames(s, null);
     if (s.type === 'code') {
       codeScenes++;
       covered.add(s.hunkId);

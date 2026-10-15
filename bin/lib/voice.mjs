@@ -1,7 +1,9 @@
-// Voice-over: one Kokoro clip per distinct narration, cached in .mr-cast/audio under its narrationKey.
+// Voice-over: one Kokoro clip per distinct spoken text (a scene's narration or a code step's `say`),
+// cached in .mr-cast/audio under its narrationKey.
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { spokenTexts } from '../../shared/timing.mjs';
 import { DEFAULT_VOICE, narrationKey } from '../../shared/voice.mjs';
 import { cacheDir } from './cache.mjs';
 import { UserError } from './errors.mjs';
@@ -110,7 +112,7 @@ function writeAtomic(file, data) {
 }
 
 /**
- * Makes .mr-cast/voiceover.json and audio/*.wav match the storyboard's narration: generates missing
+ * Makes .mr-cast/voiceover.json and audio/*.wav match what the storyboard speaks: generates missing
  * clips, drops clips no scene uses, and returns the voiceover. The model loads only when a clip is
  * missing. `voice` defaults to the voice already in voiceover.json, then af_heart.
  */
@@ -119,11 +121,11 @@ export async function ensureVoiceover({ dataDir, storyboard, voice, onProgress }
   const chosen = voice ?? previous?.voice ?? DEFAULT_VOICE;
   const clips = {};
   const missing = new Map();
-  for (const { narration } of storyboard.scenes) {
-    const key = narrationKey(narration, chosen);
+  for (const text of storyboard.scenes.flatMap(spokenTexts)) {
+    const key = narrationKey(text, chosen);
     const known = previous?.clips[key];
     if (known && fs.existsSync(path.join(dataDir, known.src))) clips[key] = known;
-    else missing.set(key, narration.trim());
+    else missing.set(key, text.trim());
   }
 
   if (missing.size) {

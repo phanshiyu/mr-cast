@@ -13,7 +13,7 @@ import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
 import { colors, fonts } from './components/theme';
 import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TestsScene, WalkthroughProps } from './types';
-import { VOICE_LEAD_FRAMES, timeline } from './utils/timing';
+import { timeline } from './utils/timing';
 
 interface SceneByType {
   intent: IntentScene;
@@ -57,15 +57,19 @@ const Backdrop: React.FC = () => (
 export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl }) => (
   <AbsoluteFill style={{ backgroundColor: colors.bg, fontFamily: fonts.sans }}>
     <Backdrop />
-    {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, clip }) => (
+    {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, segments }) => (
       <Sequence key={index} from={from} durationInFrames={durationInFrames} name={`${index + 1}. ${scene.chapter ?? scene.type}`}>
-        {renderScene(scene.type, { scene, hunks, storyboard, durationInFrames })}
-        {clip && audioBaseUrl !== undefined ? (
-          <Sequence from={VOICE_LEAD_FRAMES} layout="none" name="voice-over">
-            <Html5Audio src={audioBaseUrl + clip.src} />
-          </Sequence>
-        ) : null}
-        {showCaptions ? <Captions narration={scene.narration} durationInFrames={durationInFrames} voiceover={voiceover} /> : null}
+        {renderScene(scene.type, { scene, hunks, storyboard, durationInFrames, segments })}
+        {audioBaseUrl === undefined
+          ? null
+          : segments.map((segment, k) =>
+              segment.clip ? (
+                <Sequence key={k} from={segment.from} layout="none" name={`voice-over ${k + 1}`}>
+                  <Html5Audio src={audioBaseUrl + segment.clip.src} />
+                </Sequence>
+              ) : null,
+            )}
+        {showCaptions ? <Captions segments={segments} durationInFrames={durationInFrames} /> : null}
       </Sequence>
     ))}
   </AbsoluteFill>

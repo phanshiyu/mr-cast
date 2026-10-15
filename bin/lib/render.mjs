@@ -203,7 +203,7 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, s
   const starts = [];
   let from = 0;
   for (const scene of storyboard.scenes) {
-    const duration = sceneDurationInFrames(scene.narration, voiceover);
+    const duration = sceneDurationInFrames(scene, voiceover);
     starts.push({ from, duration });
     from += duration;
   }

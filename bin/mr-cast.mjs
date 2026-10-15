@@ -15,7 +15,8 @@ import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
-import { narrationKey } from '../shared/voice.mjs';
+import { clipFor } from '../shared/voice.mjs';
+import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
@@ -363,7 +364,7 @@ async function outline(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: DIR_OPTION });
   const { dir, hunks, storyboard, result } = await loadValidProject(resolveRun(values).dir);
   const voiceover = readVoiceover(dir);
-  const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => voiceover.clips[narrationKey(s.narration, voiceover.voice)]);
+  const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
   console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced }));
 }

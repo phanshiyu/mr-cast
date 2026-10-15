@@ -1,21 +1,19 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
-import type { Voiceover } from '../types';
-import { spokenWordIndex } from '../utils/timing';
+import { spokenAt, type SpokenSegment } from '../utils/timing';
 import { captionPage } from '../utils/captions';
 import { CAPTION_BAND, clamp, colors, fonts } from './theme';
 
 const MAX_CHARS = 72;
 
 interface CaptionsProps {
-  narration: string;
+  segments: readonly SpokenSegment[];
   durationInFrames: number;
-  voiceover: Voiceover | null | undefined;
 }
 
-export const Captions: React.FC<CaptionsProps> = ({ narration, durationInFrames, voiceover }) => {
+export const Captions: React.FC<CaptionsProps> = ({ segments, durationInFrames }) => {
   const frame = useCurrentFrame();
-  const current = spokenWordIndex(narration, frame, voiceover);
-  const { words, lines } = captionPage(narration, current, MAX_CHARS);
+  const { text, word } = spokenAt(segments, frame);
+  const { words, lines } = captionPage(text, word, MAX_CHARS);
   const opacity = interpolate(frame, [0, 8, durationInFrames - 6, durationInFrames], [0, 1, 1, 0], clamp);
 
   return (
@@ -38,8 +36,8 @@ export const Captions: React.FC<CaptionsProps> = ({ narration, durationInFrames,
                 <span
                   key={wi}
                   style={{
-                    color: wi === current ? colors.text : wi < current ? 'rgba(242,244,248,0.92)' : 'rgba(242,244,248,0.38)',
-                    textShadow: wi === current ? `0 0 18px ${colors.accentGlow}` : undefined,
+                    color: wi === word ? colors.text : wi < word ? 'rgba(242,244,248,0.92)' : 'rgba(242,244,248,0.38)',
+                    textShadow: wi === word ? `0 0 18px ${colors.accentGlow}` : undefined,
                   }}
                 >
                   {words[wi]}{' '}

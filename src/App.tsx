@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultChapter } from './components/theme';
 import type { HunkMap, Scene, Storyboard, Voiceover } from './types';
 import { captionPage } from './utils/captions';
-import { FPS, HEIGHT, WIDTH, formatTime, spokenWordIndex, timeline, totalDurationInFrames, type TimedScene } from './utils/timing';
+import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
 import { Walkthrough } from './Walkthrough';
 
 interface Meta {
@@ -85,7 +85,7 @@ export const App: React.FC = () => {
   const ready = state.status === 'ready' ? state : null;
   const chapters = useMemo(() => (ready ? timeline(ready.storyboard, ready.voiceover) : []), [ready]);
   const total = ready ? totalDurationInFrames(ready.storyboard, ready.voiceover) : 1;
-  const voiced = chapters.some((c) => c.clip);
+  const voiced = chapters.some((c) => c.segments.some((s) => s.clip));
 
   useEffect(() => {
     const player = playerRef.current;
@@ -227,7 +227,7 @@ export const App: React.FC = () => {
               style={{ width: '100%', aspectRatio: '16 / 9' }}
             />
           </div>
-          <SubtitleHud narration={active.scene.narration} frameInScene={frame - active.from} voiceover={voiceover} />
+          <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
           <footer className="text-xs text-slate-500">
             <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter
           </footer>
@@ -250,9 +250,9 @@ const renderPlayPoster = () => (
   </div>
 );
 
-const SubtitleHud: React.FC<{ narration: string; frameInScene: number; voiceover: Voiceover | null }> = ({ narration, frameInScene, voiceover }) => {
-  const current = spokenWordIndex(narration, frameInScene, voiceover);
-  const { words, lines } = captionPage(narration, current, 90);
+const SubtitleHud: React.FC<{ segments: readonly SpokenSegment[]; frameInScene: number }> = ({ segments, frameInScene }) => {
+  const { text, word: current } = spokenAt(segments, frameInScene);
+  const { words, lines } = captionPage(text, current, 90);
   return (
     <div className="min-h-[5.5rem] rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-4 text-center text-lg leading-relaxed">
       {lines.map((line, li) => (
