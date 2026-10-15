@@ -1,7 +1,13 @@
 import type { ArchEdge, ArchNode, ArchScene } from '../types';
+import { wrapLabel } from './wrapLabel';
 
 export const NODE_W = 320;
+/** Widest a card grows when the frame has room across, so long titles keep the full font. */
+const NODE_W_MAX = 440;
 export const NODE_H = 104;
+/** Largest scale a small graph is drawn at. */
+const MAX_SCALE = 1.3;
+/** Margin around the graph across the layers. */
 const PAD = 40;
 const LOOP_LIFT = 90;
 const LANE_MARGIN = 14;
@@ -10,6 +16,18 @@ export const GROUP_PAD = 26;
 export const GROUP_HEAD = 44;
 /** Between one group's box and the next band of nodes. */
 const BAND_GAP = 40;
+
+export const LABEL_FONT = 19;
+export const LABEL_LINE_HEIGHT = 1.3;
+export const LABEL_PAD = { x: 12, y: 5 };
+const GROUP_FONT = 18;
+const MONO_ADVANCE = 0.61;
+/** Room between an edge label and whatever closes the gap before it or opens after it. */
+const LABEL_CLEAR = 10;
+/** Room an arrowhead needs before the node it points at, when no group strip already gives it. */
+const ARROW_CLEAR = 24;
+/** Width of the strip around a group's border that a label must not cover. */
+const BORDER_CLEAR = 6;
 
 export type ArchDirection = NonNullable<ArchScene['layout']>;
 
@@ -21,20 +39,24 @@ interface Axes {
   /** Node extent along u and along v. */
   U: number;
   V: number;
+  /** Least gap between layers; a gap grows to hold its labels and group strips. */
   uGap: number;
   vGap: number;
-  /**
-   * Where along an edge between neighbouring layers its label sits. Top to bottom, a group's name sits
-   * just above its first node, so labels sit nearer the source and clear it.
-   */
-  labelAt: number;
+  /** Margin before the first layer and after the last. */
+  uPad: number;
+  /** Characters per label line: left to right a label sits in a column gap, top to bottom in a row gap, where width is free. */
+  labelChars: number;
+  /** A label's extent along u, from its width and height. */
+  labelU: (box: { width: number; height: number }) => number;
   xy: (u: number, v: number) => Pt;
 }
 
-const AXES: Record<ArchDirection, Axes> = {
-  LR: { U: NODE_W, V: NODE_H, uGap: 280, vGap: 64, labelAt: 0.5, xy: (u, v) => ({ x: u, y: v }) },
-  TB: { U: NODE_H, V: NODE_W, uGap: 130, vGap: 56, labelAt: 0.4, xy: (u, v) => ({ x: v, y: u }) },
-};
+/** Top to bottom the frame is short for its layers, so the layers keep less margin there. */
+function axesFor(direction: ArchDirection, nodeW: number): Axes {
+  return direction === 'LR'
+    ? { U: nodeW, V: NODE_H, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
+    : { U: NODE_H, V: nodeW, uGap: 64, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
+}
 
 export interface Pt {
   x: number;
@@ -49,12 +71,21 @@ export interface PositionedNode {
   y: number;
 }
 
+export interface EdgeLabelBox {
+  lines: string[];
+  /** Centre in layout units. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface RoutedEdge {
   edge: ArchEdge;
   index: number;
   /** SVG path data. */
   d: string;
-  mid: Pt;
+  label: EdgeLabelBox | null;
 }
 
 export interface PlacedGroup {
@@ -65,6 +96,8 @@ export interface PlacedGroup {
   height: number;
   /** Earliest layer it holds a node in, for when it draws in. */
   layer: number;
+  /** Which end of its top edge the name sits at: top to bottom, the end that edges coming in from outside avoid. */
+  nameAt: 'left' | 'right';
 }
 
 export interface ArchLayout {
@@ -72,6 +105,7 @@ export interface ArchLayout {
   edges: RoutedEdge[];
   groups: PlacedGroup[];
   layerCount: number;
+  nodeWidth: number;
   width: number;
   height: number;
 }
@@ -141,34 +175,79 @@ function orderLayers(columns: ArchNode[][], dagEdges: readonly ArchEdge[]): void
 }
 
 /**
- * Bands across the layers: one per group, in order of each group's first node, and one for the nodes
- * without a group. A band keeps the same v range in every layer, so group boxes never overlap.
+ * A band holds one group's nodes, or one run of neighbouring layers of nodes without a group, and keeps
+ * one v range across its layers. Bands whose layers do not overlap share a track, so group boxes never
+ * overlap and the graph is only as deep across the layers as its busiest stretch.
  */
 interface Band {
   name: string | null;
-  /** Most nodes the band has in any one layer. */
+  /** First and last layer it holds a node in. */
+  first: number;
+  last: number;
+  /** Most nodes it has in any one layer. */
   size: number;
+  track: number;
   /** Where its nodes start along v. */
   v0: number;
 }
 
 function bandsOf(nodes: readonly ArchNode[], columns: readonly ArchNode[][]): Band[] {
-  const names = [...new Set(nodes.map((n) => n.group ?? null))];
-  return names.map((name) => ({
-    name,
-    size: Math.max(...columns.map((col) => col.filter((n) => (n.group ?? null) === name).length)),
-    v0: 0,
-  }));
+  const bands: Band[] = [];
+  for (const name of new Set(nodes.map((n) => n.group ?? null))) {
+    const counts = columns.map((col) => col.filter((n) => (n.group ?? null) === name).length);
+    const layers = counts.flatMap((c, l) => (c ? [l] : []));
+    const runs: [number, number][] = [];
+    for (const l of layers) {
+      const run = runs.at(-1);
+      if (run && (name !== null || run[1] === l - 1)) run[1] = l;
+      else runs.push([l, l]);
+    }
+    for (const [first, last] of runs) bands.push({ name, first, last, size: Math.max(...counts.slice(first, last + 1)), track: 0, v0: 0 });
+  }
+  const tracks: Band[][] = [];
+  for (const band of bands) {
+    let t = tracks.findIndex((track) => track.every((o) => o.last < band.first || o.first > band.last));
+    if (t < 0) t = tracks.push([]) - 1;
+    tracks[t]!.push(band);
+    band.track = t;
+  }
+  return bands;
 }
 
-/** A cubic bezier in layer coordinates, as path data plus the point at `t` where its label sits. */
-function cubic(axes: Axes, p0: Pt, p1: Pt, p2: Pt, p3: Pt, t = 0.5): { d: string; mid: Pt } {
-  const [a, b, c, d] = [p0, p1, p2, p3].map((p) => axes.xy(p.x, p.y)) as [Pt, Pt, Pt, Pt];
-  const w = [(1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3] as const;
-  return {
-    d: `M ${a.x} ${a.y} C ${b.x} ${b.y}, ${c.x} ${c.y}, ${d.x} ${d.y}`,
-    mid: { x: w[0] * a.x + w[1] * b.x + w[2] * c.x + w[3] * d.x, y: w[0] * a.y + w[1] * b.y + w[2] * c.y + w[3] * d.y },
+/** An edge's path data and points along all of it, and the point `at(t)` in layout units, from `t0`, where its label may sit. */
+interface Curve {
+  d: string;
+  points: Pt[];
+  at: (t: number) => Pt;
+  t0: number;
+}
+
+function bezier(a: Pt, b: Pt, c: Pt, d: Pt): (t: number) => Pt {
+  return (t) => {
+    const w = [(1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3] as const;
+    return { x: w[0] * a.x + w[1] * b.x + w[2] * c.x + w[3] * d.x, y: w[0] * a.y + w[1] * b.y + w[2] * c.y + w[3] * d.y };
   };
+}
+
+const sample = (f: (t: number) => Pt, n = 32) => Array.from({ length: n + 1 }, (_, i) => f(i / n));
+
+/** A cubic bezier in layer coordinates. */
+function cubic(axes: Axes, p0: Pt, p1: Pt, p2: Pt, p3: Pt, t0 = 0.5): Curve {
+  const [a, b, c, d] = [p0, p1, p2, p3].map((p) => axes.xy(p.x, p.y)) as [Pt, Pt, Pt, Pt];
+  const at = bezier(a, b, c, d);
+  return { d: `M ${a.x} ${a.y} C ${b.x} ${b.y}, ${c.x} ${c.y}, ${d.x} ${d.y}`, points: sample(at), at, t0 };
+}
+
+/** The t at which an edge between neighbouring layers, with its handles halfway along u, reaches `u`. */
+function tAtU(u0: number, u3: number, u: number): number {
+  const target = (u - u0) / (u3 - u0);
+  let [lo, hi] = [0, 1];
+  for (let i = 0; i < 40; i++) {
+    const t = (lo + hi) / 2;
+    if (1.5 * t * (1 - t) + t ** 3 < target) lo = t;
+    else hi = t;
+  }
+  return (lo + hi) / 2;
 }
 
 /**
@@ -193,104 +272,281 @@ function skipLane(axes: Axes, a: Placed, b: Placed, all: readonly Placed[]): num
   return Math.abs(mid - before) <= Math.abs(mid - after) ? before : after;
 }
 
-function route(axes: Axes, edge: ArchEdge, index: number, a: Placed, b: Placed, all: readonly Placed[]): RoutedEdge {
-  const { U, V, uGap, xy } = axes;
+/** `labelU` is where along u a label between neighbouring layers sits best. */
+function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: readonly Placed[], labelU: number): Curve {
+  const { U, V, xy } = axes;
   if (b.layer > a.layer) {
     const p0 = { x: a.u + U, y: a.v + V / 2 };
     const p3 = { x: b.u, y: b.v + V / 2 };
     const lane = skipLane(axes, a, b, all);
     if (lane !== null) {
-      const gap = uGap / 2;
-      const pts = [p0, { x: p0.x + gap / 2, y: p0.y }, { x: p0.x + gap - gap / 2, y: lane }, { x: p0.x + gap, y: lane }, { x: p3.x - gap, y: lane }, { x: p3.x - gap + gap / 2, y: lane }, { x: p3.x - gap / 2, y: p3.y }, p3].map(
+      const g0 = gaps[a.layer]! / 2;
+      const g1 = gaps[b.layer - 1]! / 2;
+      const pts = [p0, { x: p0.x + g0 / 2, y: p0.y }, { x: p0.x + g0 / 2, y: lane }, { x: p0.x + g0, y: lane }, { x: p3.x - g1, y: lane }, { x: p3.x - g1 / 2, y: lane }, { x: p3.x - g1 / 2, y: p3.y }, p3].map(
         (p) => xy(p.x, p.y),
       );
       const s = (p: Pt) => `${p.x} ${p.y}`;
       const d = `M ${s(pts[0]!)} C ${s(pts[1]!)}, ${s(pts[2]!)}, ${s(pts[3]!)} L ${s(pts[4]!)} C ${s(pts[5]!)}, ${s(pts[6]!)}, ${s(pts[7]!)}`;
-      return { edge, index, d, mid: xy((p0.x + gap + p3.x - gap) / 2, lane) };
+      const [l0, l1] = [pts[3]!, pts[4]!];
+      const at = (t: number) => ({ x: l0.x + (l1.x - l0.x) * t, y: l0.y + (l1.y - l0.y) * t });
+      const points = [...sample(bezier(pts[0]!, pts[1]!, pts[2]!, pts[3]!), 16), ...sample(at, 16), ...sample(bezier(pts[4]!, pts[5]!, pts[6]!, pts[7]!), 16)];
+      return { d, points, at, t0: 0.5 };
     }
     const du = (p3.x - p0.x) / 2;
-    return { edge, index, ...cubic(axes, p0, { x: p0.x + du, y: p0.y }, { x: p3.x - du, y: p3.y }, p3, b.layer === a.layer + 1 ? axes.labelAt : 0.5) };
+    return cubic(axes, p0, { x: p0.x + du, y: p0.y }, { x: p3.x - du, y: p3.y }, p3, b.layer === a.layer + 1 ? tAtU(p0.x, p3.x, labelU) : 0.5);
   }
   if (b.layer === a.layer) {
     const down = b.v > a.v;
     const p0 = { x: a.u + U / 2 + 40, y: down ? a.v + V : a.v };
     const p3 = { x: b.u + U / 2 + 40, y: down ? b.v : b.v + V };
     const bulge = U / 2 + 10;
-    return { edge, index, ...cubic(axes, p0, { x: p0.x + bulge, y: p0.y }, { x: p3.x + bulge, y: p3.y }, p3) };
+    return cubic(axes, p0, { x: p0.x + bulge, y: p0.y }, { x: p3.x + bulge, y: p3.y }, p3);
   }
   const spanned = all.filter((n) => n.layer >= b.layer && n.layer <= a.layer);
   const top = Math.min(...spanned.map((n) => n.v)) - LOOP_LIFT;
   const p0 = { x: a.u + U / 2, y: a.v };
   const p3 = { x: b.u + U / 2, y: b.v };
-  return { edge, index, ...cubic(axes, p0, { x: p0.x, y: top }, { x: p3.x, y: top }, p3) };
+  return cubic(axes, p0, { x: p0.x, y: top }, { x: p3.x, y: top }, p3);
 }
 
-export function layoutArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], direction: ArchDirection = 'LR'): ArchLayout {
-  const axes = AXES[direction];
-  const { U, V, uGap, vGap, xy } = axes;
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const grow = (r: Rect, by: number): Rect => ({ x: r.x - by, y: r.y - by, width: r.width + 2 * by, height: r.height + 2 * by });
+
+function overlap(a: Rect, b: Rect): number {
+  const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+/** Where a group's name sits inside its box, and the font it is set in. */
+export const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
+
+/** What a label must stay clear of in a group: its four borders and its name. */
+/** Widest a group's name may run before it is cut short: top to bottom it keeps to half the box, clear of edges entering at the middle. */
+export const groupNameMax = (g: PlacedGroup, direction: ArchDirection) => (direction === 'TB' ? g.width / 2 - 34 : g.width - 44);
+
+function groupObstacles(g: PlacedGroup, direction: ArchDirection): Rect[] {
+  const b = BORDER_CLEAR;
+  const nameW = Math.min(g.name.length * (0.66 * GROUP_NAME.font + GROUP_NAME.letterSpacing), groupNameMax(g, direction));
+  return [
+    { x: g.x - b, y: g.y - b, width: g.width + 2 * b, height: 2 * b },
+    { x: g.x - b, y: g.y + g.height - b, width: g.width + 2 * b, height: 2 * b },
+    { x: g.x - b, y: g.y - b, width: 2 * b, height: g.height + 2 * b },
+    { x: g.x + g.width - b, y: g.y - b, width: 2 * b, height: g.height + 2 * b },
+    { x: g.nameAt === 'left' ? g.x + GROUP_NAME.x : g.x + g.width - GROUP_NAME.x - nameW, y: g.y + GROUP_NAME.y, width: nameW, height: GROUP_NAME.font * 1.3 },
+  ];
+}
+
+function labelSize(text: string, chars: number): { lines: string[]; width: number; height: number } {
+  const lines = wrapLabel(text, chars);
+  return {
+    lines,
+    width: Math.max(...lines.map((l) => l.length)) * MONO_ADVANCE * LABEL_FONT + 2 * LABEL_PAD.x + 2,
+    height: lines.length * LABEL_FONT * LABEL_LINE_HEIGHT + 2 * LABEL_PAD.y + 2,
+  };
+}
+
+/** Where along `curve` a label may sit, nearest its `t0` first. */
+function labelSpots(curve: Curve): Pt[] {
+  const ts = [curve.t0];
+  for (let k = 1; k <= 30; k++) for (const t of [curve.t0 - 0.03 * k, curve.t0 + 0.03 * k]) if (t > 0.05 && t < 0.95) ts.push(t);
+  return ts.map(curve.at);
+}
+
+/** What a label of `size` at `at` covers: area of `obstacles` (`cost`), then points of other edges' `lines`. */
+function labelCost(at: Pt, size: { width: number; height: number }, obstacles: readonly Rect[], lines: readonly Pt[]): { cost: number; crossed: number } {
+  const rect = { x: at.x - size.width / 2, y: at.y - size.height / 2, width: size.width, height: size.height };
+  return {
+    cost: obstacles.reduce((sum, o) => sum + overlap(rect, o), 0),
+    crossed: lines.filter((p) => p.x > rect.x && p.x < rect.x + rect.width && p.y > rect.y && p.y < rect.y + rect.height).length,
+  };
+}
+
+/** The spot along `curve` that covers least, nearest its `t0` among equals. */
+function placeLabel(curve: Curve, size: { width: number; height: number }, obstacles: readonly Rect[], lines: readonly Pt[]): Pt & { cost: number } {
+  let best = { at: curve.at(curve.t0), cost: Infinity, crossed: Infinity };
+  for (const at of labelSpots(curve)) {
+    const { cost, crossed } = labelCost(at, size, obstacles, lines);
+    if (cost < best.cost || (cost === best.cost && crossed < best.crossed)) best = { at, cost, crossed };
+    if (cost === 0 && crossed === 0) break;
+  }
+  return { ...best.at, cost: best.cost };
+}
+
+/**
+ * Lays the graph out in layout units with cards `nodeW` wide. Each gap between layers is sized to hold
+ * what crosses it: the strip below a group that ends, the name strip above a group that starts, and
+ * the tallest (top to bottom) or widest (left to right) label between those two layers. A gap where a
+ * label still finds no clear spot, say beside another label, grows by that label and is laid out again.
+ */
+export function layoutArch(nodes: readonly ArchNode[], edges: readonly ArchEdge[], direction: ArchDirection = 'LR', nodeW = NODE_W): ArchLayout {
+  const extra: number[] = [];
+  for (let pass = 0; ; pass++) {
+    const { layout, crowded } = layoutPass(nodes, edges, direction, nodeW, extra);
+    if (!crowded.size || pass === 3) return layout;
+    for (const [gap, grow] of crowded) extra[gap] = (extra[gap] ?? 0) + grow;
+  }
+}
+
+/** One layout with each gap `extra[l]` larger; `crowded` maps a gap to how much a label there lacks room for. */
+function layoutPass(
+  nodes: readonly ArchNode[],
+  edges: readonly ArchEdge[],
+  direction: ArchDirection,
+  nodeW: number,
+  extra: readonly number[],
+): { layout: ArchLayout; crowded: Map<number, number> } {
+  const axes = axesFor(direction, nodeW);
+  const { U, V, vGap, xy } = axes;
   const ids = new Set(nodes.map((n) => n.id));
   const valid = edges.filter((e) => ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
   const back = backEdges(nodes, valid);
   const dag = valid.filter((e) => !back.has(e));
   const layerOf = assignLayers(nodes, dag);
+  const layer = (id: string) => layerOf.get(id)!;
 
-  const layerCount = Math.max(1, ...nodes.map((n) => layerOf.get(n.id)! + 1));
+  const layerCount = Math.max(1, ...nodes.map((n) => layer(n.id) + 1));
   const columns: ArchNode[][] = Array.from({ length: layerCount }, () => []);
-  for (const n of nodes) columns[layerOf.get(n.id)!]!.push(n);
+  for (const n of nodes) columns[layer(n.id)]!.push(n);
   orderLayers(columns, dag);
   const bands = bandsOf(nodes, columns);
-  const bandOf = (n: ArchNode) => bands.findIndex((b) => b.name === (n.group ?? null));
-  for (const col of columns) col.sort((a, b) => bandOf(a) - bandOf(b));
+  const bandOf = (n: ArchNode) => bands.find((b) => b.name === (n.group ?? null) && b.first <= layer(n.id) && layer(n.id) <= b.last)!;
+  for (const col of columns) col.sort((a, b) => bandOf(a).track - bandOf(b).track);
 
-  const grouped = bands.some((b) => b.name !== null);
   // The group name sits above its nodes: along v left to right, along u top to bottom.
   const headV = direction === 'LR' ? GROUP_HEAD : 0;
   const headU = direction === 'TB' ? GROUP_HEAD : 0;
-  const hasBackward = valid.some((e) => back.has(e) || layerOf.get(e.to)! < layerOf.get(e.from)!);
+  const hasBackward = valid.some((e) => back.has(e) || layer(e.to) < layer(e.from));
   const top = PAD + (hasBackward ? LOOP_LIFT : 0);
   const extent = (count: number) => count * V + (count - 1) * vGap;
+  const trackCount = Math.max(...bands.map((b) => b.track)) + 1;
   let cursor = top;
-  bands.forEach((band, i) => {
-    if (band.name !== null) cursor += headV + GROUP_PAD;
-    band.v0 = cursor;
-    cursor += extent(band.size) + (band.name !== null ? GROUP_PAD : 0) + (i < bands.length - 1 ? BAND_GAP : 0);
+  for (let t = 0; t < trackCount; t++) {
+    const members = bands.filter((b) => b.track === t);
+    const named = members.some((b) => b.name !== null);
+    const size = Math.max(...members.map((b) => b.size));
+    if (named) cursor += headV + GROUP_PAD;
+    for (const band of members) band.v0 = cursor + (extent(size) - extent(band.size)) / 2;
+    cursor += extent(size) + (named ? GROUP_PAD : 0) + (t < trackCount - 1 ? BAND_GAP : 0);
+  }
+
+  const named = bands.filter((b) => b.name !== null);
+  /** Along u, what group boxes take after layer `l` ends and before it starts. */
+  const closing = (l: number) => (named.some((b) => b.last === l) ? GROUP_PAD : 0);
+  const opening = (l: number) => (named.some((b) => b.first === l) ? GROUP_PAD + headU : 0);
+  const sizes = new Map(valid.flatMap((e) => (e.label ? [[e, labelSize(e.label, axes.labelChars)] as const] : [])));
+  const gaps = Array.from({ length: layerCount - 1 }, (_, l) => {
+    const between = valid.filter((e) => sizes.has(e) && Math.min(layer(e.from), layer(e.to)) === l && Math.abs(layer(e.to) - layer(e.from)) === 1);
+    const label = Math.max(0, ...between.map((e) => axes.labelU(sizes.get(e)!)));
+    return Math.max(axes.uGap, closing(l) + (label ? label + 2 * LABEL_CLEAR : 0) + Math.max(opening(l + 1), ARROW_CLEAR)) + (extra[l] ?? 0);
   });
-  const u0 = PAD + (grouped ? GROUP_PAD + headU : 0);
-  const uOf = (layer: number) => u0 + layer * (U + uGap);
+  const uStart = [axes.uPad + opening(0)];
+  gaps.forEach((gap, l) => uStart.push(uStart[l]! + U + gap));
+  const uOf = (l: number) => uStart[l]!;
+  /** Midway between whatever closes the gap after layer `l` and whatever opens the next layer. */
+  const labelU = (l: number) => (uOf(l) + U + closing(l) + uOf(l + 1) - opening(l + 1)) / 2;
 
   const placed = new Map<string, Placed>();
-  columns.forEach((col, layer) => {
-    bands.forEach((band, b) => {
-      const members = col.filter((n) => bandOf(n) === b);
+  columns.forEach((col, l) => {
+    bands.forEach((band) => {
+      const members = col.filter((n) => bandOf(n) === band);
       members.forEach((node, i) => {
-        placed.set(node.id, { node, layer, u: uOf(layer), v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap) });
+        placed.set(node.id, { node, layer: l, u: uOf(l), v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap) });
       });
     });
   });
 
-  const groups = bands.flatMap((band): PlacedGroup[] => {
-    if (band.name === null) return [];
-    const layers = [...placed.values()].filter((p) => p.node.group === band.name).map((p) => p.layer);
-    const [first, last] = [Math.min(...layers), Math.max(...layers)];
+  const groups = named.map((band): PlacedGroup => {
+    const { first, last } = band;
     const a = xy(uOf(first) - GROUP_PAD - headU, band.v0 - GROUP_PAD - headV);
     const b = xy(uOf(last) + U + GROUP_PAD, band.v0 + extent(band.size) + GROUP_PAD);
-    return [{ name: band.name, x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y, layer: first }];
+    const incoming = valid.filter((e) => placed.get(e.to)!.node.group === band.name && layer(e.to) === first && placed.get(e.from)!.node.group !== band.name);
+    const from = incoming.map((e) => placed.get(e.from)!.v + V / 2);
+    const enterBefore = from.length > 0 && from.reduce((sum, v) => sum + v, 0) / from.length < band.v0 + extent(band.size) / 2;
+    return { name: band.name!, x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y, layer: first, nameAt: direction === 'TB' && enterBefore ? 'right' : 'left' };
   });
 
   const all = [...placed.values()];
-  const hasSameLayer = valid.some((e) => layerOf.get(e.to) === layerOf.get(e.from));
-  const uSize = uOf(layerCount - 1) + U + (grouped ? GROUP_PAD : 0) + PAD + (hasSameLayer ? 80 : 0);
+  const card = xy(U, V);
+  const obstacles: Rect[] = [
+    ...all.map((p) => grow({ ...xy(p.u, p.v), width: card.x, height: card.y }, 6)),
+    ...groups.flatMap((g) => groupObstacles(g, direction)),
+  ];
+  const crowded = new Map<number, number>();
+  const curves = valid.map((e) => {
+    const [a, b] = [placed.get(e.from)!, placed.get(e.to)!];
+    return route(axes, gaps, a, b, all, labelU(Math.min(a.layer, b.layer)));
+  });
+  const others = (i: number) => curves.flatMap((c, j) => (j === i ? [] : c.points));
+  // Labels with the fewest clear spots go first, so a label that could sit anywhere along its edge
+  // does not take the one spot another has.
+  const clearSpots = (i: number) =>
+    labelSpots(curves[i]!).filter((at) => {
+      const { cost, crossed } = labelCost(at, sizes.get(valid[i]!)!, obstacles, others(i));
+      return cost === 0 && crossed === 0;
+    }).length;
+  const labelled = valid.flatMap((e, i) => (sizes.has(e) ? [{ i, spots: clearSpots(i) }] : [])).sort((a, b) => a.spots - b.spots);
+  const labels = new Map<number, EdgeLabelBox>();
+  for (const { i } of labelled) {
+    const [e, size] = [valid[i]!, sizes.get(valid[i]!)!];
+    const { cost, ...at } = placeLabel(curves[i]!, size, obstacles, others(i));
+    const [la, lb] = [layer(e.from), layer(e.to)];
+    if (cost > 0 && Math.abs(la - lb) === 1) crowded.set(Math.min(la, lb), Math.max(crowded.get(Math.min(la, lb)) ?? 0, axes.labelU(size) + LABEL_CLEAR));
+    labels.set(i, { ...size, ...at });
+    obstacles.push(grow({ x: at.x - size.width / 2, y: at.y - size.height / 2, width: size.width, height: size.height }, 4));
+  }
+  const routed = valid.map((e, i): RoutedEdge => ({ edge: e, index: edges.indexOf(e), d: curves[i]!.d, label: labels.get(i) ?? null }));
+
+  const hasSameLayer = valid.some((e) => layer(e.to) === layer(e.from));
+  const uSize = uOf(layerCount - 1) + U + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
   const vSize = cursor + PAD;
   const size = xy(uSize, vSize);
-  return {
+  const layout = {
     nodes: nodes.map((n) => {
       const p = placed.get(n.id)!;
       return { node: n, layer: p.layer, ...xy(p.u, p.v) };
     }),
-    edges: valid.map((e) => route(axes, e, edges.indexOf(e), placed.get(e.from)!, placed.get(e.to)!, all)),
+    edges: routed,
     groups,
     layerCount,
+    nodeWidth: nodeW,
     width: size.x,
     height: size.y,
   };
+  return { layout, crowded };
+}
+
+/** Scale that fits a layout into `box`, never above MAX_SCALE. */
+const fitScale = (layout: ArchLayout, box: { width: number; height: number }) => Math.min(box.width / layout.width, box.height / layout.height, MAX_SCALE);
+
+/**
+ * The layout that draws largest in `box`. Cards widen from NODE_W towards NODE_W_MAX while that lets
+ * every title take a larger font (`titleFont(width)`, shared by all cards) and does not shrink the
+ * graph: top to bottom a wider card only spends room across a frame that is wide for its height.
+ */
+export function fitArch(
+  nodes: readonly ArchNode[],
+  edges: readonly ArchEdge[],
+  direction: ArchDirection,
+  box: { width: number; height: number },
+  titleFont: (width: number) => number,
+): { layout: ArchLayout; scale: number; titleFont: number } {
+  const base = layoutArch(nodes, edges, direction, NODE_W);
+  const floor = fitScale(base, box);
+  let best = { layout: base, scale: floor, titleFont: titleFont(NODE_W) };
+  for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
+    const font = titleFont(w);
+    if (font <= best.titleFont) continue;
+    const layout = layoutArch(nodes, edges, direction, w);
+    const scale = fitScale(layout, box);
+    if (scale < floor * 0.995) break;
+    best = { layout, scale, titleFont: font };
+  }
+  return best;
 }

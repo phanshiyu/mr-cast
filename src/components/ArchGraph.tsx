@@ -2,11 +2,10 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ArchEdge, ArchNode, ArchScene, Change } from '../types';
-import { NODE_H, NODE_W, layoutArch, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
+import { GROUP_NAME, LABEL_FONT, LABEL_LINE_HEIGHT, LABEL_PAD, NODE_H, fitArch, groupNameMax, type ArchDirection, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
-import { wrapLabel } from '../utils/wrapLabel';
 import { ChangeLegend, changeTone } from './ChangeLegend';
-import { NodeCard } from './NodeCard';
+import { NodeCard, sharedTitleFont } from './NodeCard';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
@@ -94,46 +93,39 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
   );
 };
 
-/**
- * Characters per line of an edge label: about 250px at the label font left to right, inside the column
- * gap; top to bottom the label sits in a row gap, where width is free and height is not.
- */
-const EDGE_LABEL_CHARS = { LR: 22, TB: 32 } as const;
-
-const EdgeLabel: React.FC<{ routed: RoutedEdge; chars: number; appear: number; emphasis: Emphasis }> = ({ routed, chars, appear, emphasis }) => {
-  const change = routed.edge.change;
+const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; change: Change | undefined; appear: number; emphasis: Emphasis }> = ({ label, change, appear, emphasis }) => {
   const color = change ? changeTone[change].color : colors.muted;
   return (
     <div
       style={{
         position: 'absolute',
-        left: routed.mid.x,
-        top: routed.mid.y,
+        left: label.x,
+        top: label.y,
         transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.06 * emphasis.glow)})`,
         opacity: appear * emphasis.opacity,
-        padding: '5px 12px',
+        padding: `${LABEL_PAD.y}px ${LABEL_PAD.x}px`,
         borderRadius: 10,
         background: '#0d0f16',
         border: `1px solid ${emphasis.glow > 0 ? colors.accent : change ? `${color}99` : colors.borderStrong}`,
         boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : undefined,
         color: emphasis.glow > 0 && !change ? colors.text : color,
         fontFamily: fonts.mono,
-        fontSize: 17,
-        lineHeight: 1.3,
+        fontSize: LABEL_FONT,
+        lineHeight: LABEL_LINE_HEIGHT,
         textAlign: 'center',
         whiteSpace: 'pre',
         textDecoration: change === 'removed' ? 'line-through' : 'none',
       }}
     >
-      {wrapLabel(routed.edge.label ?? '', chars).map((line, i) => (
+      {label.lines.map((line, i) => (
         <div key={i}>{line}</div>
       ))}
     </div>
   );
 };
 
-/** A labelled box behind a group's nodes. Top to bottom, its name stays in the left half, clear of edges entering at the middle. */
-const GroupBox: React.FC<{ group: PlacedGroup; vertical: boolean; appear: number; emphasis: Emphasis }> = ({ group, vertical, appear, emphasis }) => (
+/** A labelled box behind a group's nodes. */
+const GroupBox: React.FC<{ group: PlacedGroup; direction: ArchDirection; appear: number; emphasis: Emphasis }> = ({ group, direction, appear, emphasis }) => (
   <div
     style={{
       position: 'absolute',
@@ -152,12 +144,12 @@ const GroupBox: React.FC<{ group: PlacedGroup; vertical: boolean; appear: number
     <div
       style={{
         position: 'absolute',
-        left: 22,
-        top: 12,
-        maxWidth: vertical ? group.width / 2 - 34 : group.width - 44,
-        fontSize: 16,
+        [group.nameAt]: GROUP_NAME.x,
+        top: GROUP_NAME.y,
+        maxWidth: groupNameMax(group, direction),
+        fontSize: GROUP_NAME.font,
         fontWeight: 700,
-        letterSpacing: 1.4,
+        letterSpacing: GROUP_NAME.letterSpacing,
         textTransform: 'uppercase',
         color: emphasis.glow > 0 ? colors.accent : colors.muted,
         ...ellipsis,
@@ -177,11 +169,12 @@ function legendChanges(scene: ArchScene): Set<Change> {
 export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const layout = useMemo(() => layoutArch(scene.nodes, scene.edges, scene.layout), [scene.nodes, scene.edges, scene.layout]);
+  const { layout, scale, titleFont } = useMemo(
+    () => fitArch(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false), (width) => sharedTitleFont(scene.nodes, width, 'large')),
+    [scene.nodes, scene.edges, scene.layout],
+  );
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
-  const box = contentBox(false);
-  const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.3);
   // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.
   const layerStagger = Math.min(6, (NODES_END - NODE_START) / Math.max(1, layout.layerCount - 1));
   const edgeStagger = Math.min(4, (buildFrames('arch') - NODES_END - EDGE_LABEL_END) / Math.max(1, layout.edges.length - 1));
@@ -200,7 +193,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
             <GroupBox
               key={group.name}
               group={group}
-              vertical={scene.layout === 'TB'}
+              direction={scene.layout ?? 'LR'}
               emphasis={emphasisOf(`g:${group.name}`)}
               appear={interpolate(frame, [NODE_START - 4 + group.layer * layerStagger, NODE_START + 6 + group.layer * layerStagger], [0, 1], clamp)}
             />
@@ -230,19 +223,20 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
               node={placed.node}
               x={placed.x}
               y={placed.y}
-              width={NODE_W}
+              width={layout.nodeWidth}
               height={NODE_H}
               size="large"
+              titleFont={titleFont}
               emphasis={nodeEmphasis(placed.node)}
               appear={spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />
           ))}
           {layout.edges.map((routed, i) =>
-            routed.edge.label ? (
+            routed.label ? (
               <EdgeLabel
                 key={i}
-                routed={routed}
-                chars={EDGE_LABEL_CHARS[scene.layout ?? 'LR']}
+                label={routed.label}
+                change={routed.edge.change}
                 emphasis={emphasisOf(`e:${routed.index}`)}
                 appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp)}
               />
