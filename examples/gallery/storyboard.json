@@ -1,6 +1,6 @@
 {
   "title": "Order lifecycle overhaul",
-  "subtitle": "Scene gallery: state, table, chart, Mermaid and tests scenes",
+  "subtitle": "Scene gallery: state, table, chart, timeline, Mermaid and tests scenes",
   "scenes": [
     {
       "type": "intent",
@@ -71,6 +71,25 @@
         "at": "p99",
         "text": "Charge settles in the background job"
       }
+    },
+    {
+      "type": "timeline",
+      "chapter": "Payment retries",
+      "title": "A declined card",
+      "unit": "s",
+      "narration": "When a card is declined, the pay job retries with doubling waits of two, four and eight seconds. After the third retry it stops, and the order stays pending until the customer pays or the timeout cancels it.",
+      "events": [
+        { "at": 0, "label": "First charge", "detail": "card declined", "tone": "bad" },
+        { "at": 2, "label": "Retry 1", "detail": "declined again", "tone": "bad" },
+        { "at": 6, "label": "Retry 2", "detail": "declined again", "tone": "bad" },
+        { "at": 14, "label": "Retry 3", "detail": "last attempt", "tone": "bad" },
+        { "at": 14.5, "label": "Order stays pending", "detail": "customer can pay again", "tone": "warn" }
+      ],
+      "spans": [
+        { "from": 0, "to": 2, "label": "wait" },
+        { "from": 2, "to": 6, "label": "wait" },
+        { "from": 6, "to": 14, "label": "wait" }
+      ]
     },
     {
       "type": "mermaid",

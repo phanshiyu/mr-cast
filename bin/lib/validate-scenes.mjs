@@ -14,6 +14,12 @@ const CHART_SERIES_MAX = 4;
 // Past this many bars each one gets too thin to carry its value label.
 const CHART_BARS_MAX = 24;
 const ANNOTATION_LONG = 90;
+const TIME_UNITS = ['ms', 's', 'min', 'h', 'd'];
+const TIMELINE_EVENTS_MAX = 8;
+const TIMELINE_SPANS_MAX = 4;
+// An event label wraps to two lines in a card about 300 pixels wide.
+const EVENT_LABEL_LONG = 48;
+const EVENT_DETAIL_LONG = 60;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isText = (v) => typeof v === 'string';
@@ -90,4 +96,34 @@ export function checkChart(s, p, errors, warnings) {
   else if (note.text.trim().length > ANNOTATION_LONG) warnings.push(`${p}.annotation.text: ${note.text.trim().length} characters; keep it under ${ANNOTATION_LONG} so it fits on two lines`);
   if (!s.labels.includes(note.at)) errors.push(`${p}.annotation.at: ${JSON.stringify(note.at)} is not one of the labels (${s.labels.map((l) => JSON.stringify(l)).join(', ')})`);
   if (note.series !== undefined && !names.has(note.series)) errors.push(`${p}.annotation.series: ${JSON.stringify(note.series)} is not a series name`);
+}
+
+const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+
+export function checkTimeline(s, p, errors, warnings) {
+  if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
+  if (!TIME_UNITS.includes(s.unit)) errors.push(`${p}.unit: must be one of ${TIME_UNITS.join(', ')}`);
+  if (!Array.isArray(s.events) || s.events.length === 0) errors.push(`${p}.events: required non-empty array of { at, label, detail?, tone? }`);
+  else {
+    s.events.forEach((e, j) => {
+      const q = `${p}.events[${j}]`;
+      if (!isNum(e?.at)) errors.push(`${q}.at: required number, in the scene's unit`);
+      if (!isStr(e?.label)) errors.push(`${q}.label: required string`);
+      else if (e.label.trim().length > EVENT_LABEL_LONG) warnings.push(`${q}.label: ${e.label.trim().length} characters; keep it under ${EVENT_LABEL_LONG} and move the rest to detail`);
+      if (e?.detail !== undefined && !isText(e.detail)) errors.push(`${q}.detail: must be a string`);
+      else if (e?.detail && e.detail.trim().length > EVENT_DETAIL_LONG) warnings.push(`${q}.detail: ${e.detail.trim().length} characters; keep it under ${EVENT_DETAIL_LONG}`);
+      if (e?.tone !== undefined && !TONES.includes(e.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
+    });
+    if (s.events.length > TIMELINE_EVENTS_MAX) warnings.push(`${p}.events: ${s.events.length} events; more than ${TIMELINE_EVENTS_MAX} get cramped, so split the timeline into two scenes`);
+  }
+  if (s.spans === undefined) return;
+  if (!Array.isArray(s.spans)) return errors.push(`${p}.spans: must be an array of { from, to, label, tone? }`);
+  s.spans.forEach((span, j) => {
+    const q = `${p}.spans[${j}]`;
+    if (!isNum(span?.from) || !isNum(span?.to)) errors.push(`${q}: from and to are required numbers, in the scene's unit`);
+    else if (span.from >= span.to) errors.push(`${q}: from (${span.from}) must be before to (${span.to})`);
+    if (!isStr(span?.label)) errors.push(`${q}.label: required string`);
+    if (span?.tone !== undefined && !TONES.includes(span.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
+  });
+  if (s.spans.length > TIMELINE_SPANS_MAX) warnings.push(`${p}.spans: ${s.spans.length} spans; keep the ${TIMELINE_SPANS_MAX} the narration names`);
 }

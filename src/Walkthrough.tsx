@@ -13,8 +13,9 @@ import type { SceneProps } from './components/sceneProps';
 import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
+import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
-import type { ArchScene, ChartScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, WalkthroughProps } from './types';
+import type { ArchScene, ChartScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -29,6 +30,7 @@ interface SceneByType {
   tests: TestsScene;
   table: TableScene;
   chart: ChartScene;
+  timeline: TimelineScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -43,6 +45,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   tests: TestMatrix,
   table: DataTable,
   chart: Chart,
+  timeline: Timeline,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

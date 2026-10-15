@@ -196,6 +196,11 @@ function sceneGist(scene, hunks) {
       const series = scene.series.map((x) => x.name).join(', ');
       return titled(`${scene.kind} chart of ${series} over ${count(scene.labels, 'label')}${scene.unit ? ` in ${scene.unit}` : ''}${scene.annotation ? ', 1 annotation' : ''}`);
     }
+    case 'timeline': {
+      const ats = [...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((x) => [x.from, x.to])];
+      const spans = scene.spans?.length ? `, ${count(scene.spans, 'span')}` : '';
+      return titled(`${count(scene.events, 'event')}${spans} over ${Math.min(...ats)}-${Math.max(...ats)} ${scene.unit}`);
+    }
     default:
       return '';
   }

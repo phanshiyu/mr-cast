@@ -294,7 +294,35 @@ export interface ChartScene extends SceneBase {
   annotation?: { at: string; series?: string; text: string };
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene;
+export interface TimelineEvent {
+  /** Position on the axis, in the scene's unit. */
+  at: number;
+  label: string;
+  /** A second, smaller line under the label. */
+  detail?: string;
+  tone?: Tone;
+}
+
+export interface TimelineSpan {
+  from: number;
+  to: number;
+  /** What fills the interval, e.g. "rate-limit window" or "backoff 4 s". */
+  label: string;
+  tone?: Tone;
+}
+
+export interface TimelineScene extends SceneBase {
+  type: 'timeline';
+  title?: string;
+  /** Unit of every `at`, `from` and `to`. */
+  unit: 'ms' | 's' | 'min' | 'h' | 'd';
+  /** Revealed left to right. Up to 8. */
+  events: TimelineEvent[];
+  /** Intervals drawn as bands under the axis, such as a wait, a window or a phase. Up to 4. */
+  spans?: TimelineSpan[];
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene;
 
 export interface Storyboard {
   title: string;

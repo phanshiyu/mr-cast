@@ -46,6 +46,7 @@ export const defaultChapter: Record<Scene['type'], string> = {
   tests: 'Tests',
   table: 'Table',
   chart: 'Chart',
+  timeline: 'Timeline',
 };
 
 export const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };

@@ -160,8 +160,9 @@ A code scene may walk its hunk in `steps` instead of `focusLinesAfter` and `flow
 | `tests` | A test matrix: each test case with its status (added, changed, removed, existing) and the behavior it proves, then a "Not tested" panel listing important behaviors no test covers. With no cases it states that the change has no tests. |
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. Added, removed and modified rows are marked, a changed cell strikes its old value beside the new one, and `highlight` spotlights rows one at a time. |
 | `chart` | A bar or line chart of one or more series over labels, with value labels and a unit. Bars grow and lines draw in. With two series, such as before and after, each label gets a change badge like −42%, green or red by `better`. `annotation` calls out one point. |
+| `timeline` | Events on a time axis in ms, s, min, h or d, each with a label and detail, and `spans` for waits and windows drawn under the axis with their length. A playhead reveals them left to right, stopping at each event. |
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `state`, `table`, `chart`, `mermaid` and `tests` scenes.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style, with a context snippet and steps on every code scene. `examples/gallery/` shows the `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes.
 
 ## Layout
 
