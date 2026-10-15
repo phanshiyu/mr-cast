@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { sceneDurationInFrames, wordCount, FPS } = await import(pathToFileURL(path.join(root, 'shared/timing.mjs')));
 const { expandLineRefs } = await import(pathToFileURL(path.join(root, 'shared/focus.mjs')));
+const { isTestFile } = await import(pathToFileURL(path.join(root, 'shared/test-files.mjs')));
 
 const work = path.resolve(process.argv[2] ?? '');
 if (!process.argv[2] || !fs.existsSync(work)) {
@@ -51,10 +52,16 @@ function measure(name, dir) {
       maxLines = Math.max(maxLines, n);
     }
   }
+  const all = Object.values(hunks);
+  const shown = all.filter((h) => covered.has(h.id));
+  const lineSum = (hs) => hs.reduce((n, h) => n + changedLines(h), 0);
+  const tests = all.filter((h) => isTestFile(h.file));
   return {
     fixture: name, hasStoryboard: true, validation: status, scenes: scenes.length, sceneMix: mix,
     estSeconds: Math.round(frames / FPS), narrationWords: words, highlightedLines: lines, maxLinesInScene: maxLines,
-    codeScenes, hunksCovered: [...covered].filter((id) => hunks[id]).length, hunksTotal: Object.keys(hunks).length,
+    codeScenes, hunksCovered: shown.length, hunksTotal: all.length,
+    linesCovered: lineSum(shown), linesTotal: lineSum(all),
+    testHunksShown: tests.filter((h) => covered.has(h.id)).length, testHunksTotal: tests.length,
   };
 }
 
@@ -72,17 +79,22 @@ const total = have.length ? {
   scenes: sum('scenes'), sceneMix: mixTotal, estSeconds: sum('estSeconds'), narrationWords: sum('narrationWords'),
   highlightedLines: sum('highlightedLines'), maxLinesInScene: Math.max(...have.map((r) => r.maxLinesInScene)),
   codeScenes: sum('codeScenes'), hunksCovered: sum('hunksCovered'), hunksTotal: sum('hunksTotal'),
+  linesCovered: sum('linesCovered'), linesTotal: sum('linesTotal'),
+  testHunksShown: sum('testHunksShown'), testHunksTotal: sum('testHunksTotal'),
 } : null;
 
 fs.writeFileSync(path.join(work, 'metrics.json'), `${JSON.stringify({ fixtures: rows, total }, null, 2)}\n`);
 
 const mixStr = (m) => Object.entries(m).map(([t, n]) => `${t}:${n}`).join(' ');
-const table = [['fixture', 'valid', 'scenes', 'secs', 'words', 'hl lines', 'max hl', 'code', 'hunks', 'mix']];
+// Share of changed lines that sit in shown hunks, so one big unshown hunk outweighs several small ones.
+const linePct = (r) => (r.linesTotal ? `${Math.round((100 * r.linesCovered) / r.linesTotal)}%` : '-');
+const testCol = (r) => (r.testHunksTotal ? `${r.testHunksShown}/${r.testHunksTotal}` : '-');
+const table = [['fixture', 'valid', 'scenes', 'secs', 'words', 'hl lines', 'max hl', 'code', 'hunks', 'lines shown', 'tests', 'mix']];
 for (const r of rows) {
   table.push(r.hasStoryboard
-    ? [r.fixture, r.validation, r.scenes, r.estSeconds, r.narrationWords, r.highlightedLines, r.maxLinesInScene, r.codeScenes, `${r.hunksCovered}/${r.hunksTotal}`, mixStr(r.sceneMix)]
+    ? [r.fixture, r.validation, r.scenes, r.estSeconds, r.narrationWords, r.highlightedLines, r.maxLinesInScene, r.codeScenes, `${r.hunksCovered}/${r.hunksTotal}`, linePct(r), testCol(r), mixStr(r.sceneMix)]
     : [r.fixture, 'no storyboard']);
 }
-if (total) table.push(['TOTAL', `${total.validationPass}/${total.fixtures}`, total.scenes, total.estSeconds, total.narrationWords, total.highlightedLines, total.maxLinesInScene, total.codeScenes, `${total.hunksCovered}/${total.hunksTotal}`, mixStr(total.sceneMix)]);
+if (total) table.push(['TOTAL', `${total.validationPass}/${total.fixtures}`, total.scenes, total.estSeconds, total.narrationWords, total.highlightedLines, total.maxLinesInScene, total.codeScenes, `${total.hunksCovered}/${total.hunksTotal}`, linePct(total), testCol(total), mixStr(total.sceneMix)]);
 const widths = table[0].map((_, i) => Math.max(...table.map((r) => String(r[i] ?? '').length)));
 for (const r of table) console.log(r.map((c, i) => String(c ?? '').padEnd(widths[i])).join('  ').trimEnd());
