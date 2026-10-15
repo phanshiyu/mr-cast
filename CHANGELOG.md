@@ -2,6 +2,24 @@
 
 ## 0.12.0
 
+- **One entry instead of four.** `/mr-cast` replaces the `mr-cast-review` and `mr-cast-explain` skills and the `/mr-cast-render` and `/mr-cast-explain-render` commands. It takes the source from your words and arguments ("this branch", a base branch, "animate that"), else from what exists: the branch's changes, an explanation Claude just gave, or both, when its first question asks which. With neither, it says what it makes and stops. The `/` menu is now `/mr-cast`, `/mr-cast-prune` and `/mr-cast-upgrade`.
+
+  | Before | After |
+  |---|---|
+  | `/mr-cast-review [base]` | `/mr-cast [base]` |
+  | `/mr-cast-render [base]` | `/mr-cast mp4 [base]` |
+  | `/mr-cast-explain` | `/mr-cast` (after Claude explains something) |
+  | `/mr-cast-explain-render` | `/mr-cast mp4` (after Claude explains something) |
+  | `/mr-cast-prune`, `/mr-cast-upgrade` | unchanged |
+
+  Reinstalling the skills (any `mr-cast` command after `npm install -g`, or `mr-cast install-skill`) deletes the old skills and commands. Start a new Claude Code session afterwards.
+- **MP4 is a word, not a command.** "mp4", "video file", "render", "save" or "share" in the request, or `/mr-cast mp4`, makes an MP4. Otherwise the player starts. "Just make it", "use the defaults" and "no questions" skip the questions. "Render" no longer does.
+- **Last choices first.** The audience and pace you chose last are offered first next time, marked "(Last time)". They are kept in `~/.config/mr-cast/last-choices.json`.
+- **One set of commands for both sources.** `mr-cast extract` and the new `mr-cast init --title` (was `explain init`) each start a run in `.mr-cast/<name>/` and make it the current run. `snippet`, `validate`, `outline`, `voice`, `play`, `render` and `still` work on the current run, whatever its source, or on `--name <slug>`. `extract` without `--name` names the run after the branch. `mr-cast explain <command>` still works, and `--dir` reaches walkthroughs that 0.11 left in `.mr-cast/` or `.mr-cast/explain/<name>/`.
+- **A run keeps its settings.** `--audience familiar|new|overview` (`new` is the simple style, and `--simple` still works), `--pace`, `--speed`, `--voice` and `--no-voice` are given once to `extract` or `init`. A flag on a later command changes them from then on. A rerun of `extract` now keeps the simple style instead of dropping it.
+- `mr-cast status` prints the branch's commits and files ahead of its base, the uncommitted files, and your last choices. The skill decides the source from it.
+- `mr-cast help` shows the commands you run yourself first and the skill's pipeline after. `help --all` adds `voice`, `still` and the rarer options.
+- The skill reads its shared steps from `SKILL.md`, and the steps for one source from `references/branch.md` or `references/explanation.md`, so a run reads less text than before.
 - **Arch graphs fill the frame.** Groups and runs of ungrouped nodes share a column when their layers do not overlap, so grouped graphs are no longer a wide staircase: a 12-node top-to-bottom graph with five groups draws at 0.61 scale instead of 0.47. When the frame has room across, cards widen so long titles keep the full font.
 - **One title size per graph.** Every card in an arch graph shares one title font, so a long title such as "On-call engineer" no longer leaves its card smaller than its neighbours. A one-word title too wide for its card shrinks instead of breaking mid-word.
 - **Edge labels stay clear.** Each gap between layers is sized for its labels and for group borders and names, and a label is placed along its edge clear of nodes, group borders, group names, other labels and, where possible, other edges. Top to bottom, a group's name sits at the end of its box away from incoming edges. Edge labels are 19px and group names 18px (were 17 and 16).
