@@ -88,7 +88,7 @@ function writeManifest(claudeDir, root, files) {
   const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const target = path.join(claudeDir, MANIFEST);
   const tmp = `${target}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify({ version, files }, null, 2)}\n`);
+  fs.writeFileSync(tmp, `${JSON.stringify({ version, root: fs.realpathSync(root), files }, null, 2)}\n`);
   fs.renameSync(tmp, target);
 }
 
@@ -135,6 +135,45 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
   }
   writeManifest(claudeDir, root, files);
   return { written: targets.map(([file]) => file), ...stale };
+}
+
+/**
+ * The install manifest when its skills point at the package in `root`, else null. A manifest from before
+ * the root was recorded matches when the review skill it installed calls this package's CLI.
+ */
+function manifestFrom(root, claudeDir) {
+  let manifest;
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(claudeDir, MANIFEST), 'utf8'));
+  } catch {
+    return null;
+  }
+  const own = fs.realpathSync(root);
+  if (manifest.root !== undefined) return manifest.root === own ? manifest : null;
+  return fromThisPackage(path.join(claudeDir, 'skills/mr-cast-review/SKILL.md'), own) ? manifest : null;
+}
+
+const fromThisPackage = (file, root) => {
+  try {
+    return fs.readFileSync(file, 'utf8').includes(`${root}/bin/mr-cast`);
+  } catch {
+    return false;
+  }
+};
+
+/** Whether the installed skills point at the package in `root`. */
+export const skillsInstalledFrom = (root, claudeDir = defaultClaudeDir()) => manifestFrom(root, claudeDir) !== null;
+
+/**
+ * Reinstalls the skills when this package installed them under another version, as after
+ * `npm install -g` replaces it. Skills another copy of mr-cast installed, such as a clone, stay as they
+ * are, so two copies never take turns rewriting them. Returns whether it reinstalled.
+ */
+export function refreshSkills(root, version, claudeDir = defaultClaudeDir()) {
+  const manifest = manifestFrom(root, claudeDir);
+  if (!manifest || manifest.version === version) return false;
+  installSkill(root, claudeDir);
+  return true;
 }
 
 /** Removes every file mr-cast installed, then the manifest. Returns { removed, kept } absolute paths. */

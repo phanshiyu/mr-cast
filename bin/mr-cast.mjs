@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 import { buildHunkIndex, parseUnifiedDiff } from './lib/diff.mjs';
 import { UserError } from './lib/errors.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
-import { installSkill, uninstallSkill } from './lib/install-skill.mjs';
+import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
@@ -18,6 +18,7 @@ import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const { version: VERSION } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 
 const USAGE = `usage: mr-cast <command> [options]
 
@@ -473,11 +474,18 @@ async function prune(argv) {
 const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune };
 
 function version() {
-  const { version: own } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  console.log(`mr-cast ${own} (node ${process.versions.node})`);
+  console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);
+}
+
+/** Never fails the command: a skill refresh that cannot write is retried on the next run. */
+function refreshSkillsQuietly() {
+  try {
+    if (refreshSkills(ROOT, VERSION)) console.error(`mr-cast: updated Claude Code skills to ${VERSION}`);
+  } catch { /* retried next run */ }
 }
 
 async function main([command, ...rest]) {
+  if (command !== 'install-skill' && command !== 'uninstall-skill') refreshSkillsQuietly();
   if (!command || command === 'help' || command === '--help' || command === '-h') {
     console.log(USAGE);
     return;
