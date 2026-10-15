@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.12.0
+
+- **Arch graphs fill the frame.** Groups and runs of ungrouped nodes share a column when their layers do not overlap, so grouped graphs are no longer a wide staircase: a 12-node top-to-bottom graph with five groups draws at 0.61 scale instead of 0.47. When the frame has room across, cards widen so long titles keep the full font.
+- **One title size per graph.** Every card in an arch graph shares one title font, so a long title such as "On-call engineer" no longer leaves its card smaller than its neighbours. A one-word title too wide for its card shrinks instead of breaking mid-word.
+- **Edge labels stay clear.** Each gap between layers is sized for its labels and for group borders and names, and a label is placed along its edge clear of nodes, group borders, group names, other labels and, where possible, other edges. Top to bottom, a group's name sits at the end of its box away from incoming edges. Edge labels are 19px and group names 18px (were 17 and 16).
+
 ## 0.11.1
 
 - Fixed: the player played at two thirds of real time (20 frames a second instead of 30), so the voice ran ahead and was pulled back every two seconds, which sounded slow and stuttering. The page rebuilt the Player's `inputProps` on every frame, and each rebuild restarted Remotion's frame clock.
