@@ -12,6 +12,7 @@ import { dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase 
 import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
 import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
 import { startServer } from './lib/server.mjs';
+import { updateNotice } from './lib/update.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
 import { narrationKey } from '../shared/voice.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
@@ -506,10 +507,16 @@ async function main([command, ...rest]) {
   await run(rest, diffRun);
 }
 
-main(process.argv.slice(2)).catch((err) => {
+const argv = process.argv.slice(2);
+// Computed before the command runs and printed after it, on stderr, so stdout stays parseable.
+const notice = argv[0] === 'upgrade' ? null : updateNotice(ROOT, VERSION);
+
+main(argv).catch((err) => {
   if (process.env.MR_CAST_DEBUG === '1') console.error(err);
   else if (err instanceof UserError) console.error(`mr-cast: ${err.message}`);
   else if (err.code?.startsWith?.('ERR_PARSE_ARGS')) console.error(`mr-cast: ${err.message.split('. ')[0]}; see \`mr-cast help\``);
   else console.error(`mr-cast: ${err.message} (set MR_CAST_DEBUG=1 for details)`);
   process.exitCode = 1; // not process.exit(): see shutdown in play()
+}).finally(() => {
+  if (notice) console.error(notice);
 });
