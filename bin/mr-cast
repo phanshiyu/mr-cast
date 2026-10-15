@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Finds a real node >= 20 without relying on the caller's shell setup: `node` may be
+# missing from PATH or shadowed by a broken shell function (nvm lazy-load shims).
+set -eo pipefail
+
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  link_dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  [[ "$src" != /* ]] && src="$link_dir/$src"
+done
+DIR="$(cd -P "$(dirname "$src")" && pwd)"
+
+node_ok() {
+  [ -n "$1" ] && [ -x "$1" ] &&
+    "$1" -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' >/dev/null 2>&1
+}
+
+find_node() {
+  local candidate
+  # type -P skips shell functions and aliases, returning only a real binary on PATH.
+  candidate="$(type -P node 2>/dev/null || true)"
+  if node_ok "$candidate"; then echo "$candidate"; return; fi
+
+  local nvm_dir="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$nvm_dir/nvm.sh" ]; then
+    candidate="$(
+      export NVM_DIR="$nvm_dir"
+      # shellcheck disable=SC1091
+      . "$nvm_dir/nvm.sh" --no-use >/dev/null 2>&1 || true
+      nvm which default 2>/dev/null || nvm which node 2>/dev/null || true
+    )"
+    if node_ok "$candidate"; then echo "$candidate"; return; fi
+    for candidate in $(ls -d "$nvm_dir"/versions/node/v*/bin/node 2>/dev/null | sort -rV); do
+      if node_ok "$candidate"; then echo "$candidate"; return; fi
+    done
+  fi
+
+  for candidate in /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
+    if node_ok "$candidate"; then echo "$candidate"; return; fi
+  done
+}
+
+NODE="$(find_node)"
+if [ -z "$NODE" ]; then
+  echo "mr-cast: no node >= 20 found (checked PATH, nvm in ${NVM_DIR:-$HOME/.nvm}, /opt/homebrew/bin, /usr/local/bin). Install Node 20+." >&2
+  exit 1
+fi
+
+# Child processes (vite, remotion) look up `node` on PATH.
+export PATH="$(dirname "$NODE"):$PATH"
+exec "$NODE" "$DIR/mr-cast.mjs" "$@"
