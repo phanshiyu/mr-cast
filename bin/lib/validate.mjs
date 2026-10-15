@@ -124,6 +124,6 @@ export function validateStoryboard(sb, hunks) {
   return { errors, warnings };
 }
 
-export function storyboardSeconds(sb) {
-  return (sb.scenes ?? []).reduce((sum, s) => sum + sceneDurationInFrames(s?.narration), 0) / FPS;
+export function storyboardSeconds(sb, voiceover) {
+  return (sb.scenes ?? []).reduce((sum, s) => sum + sceneDurationInFrames(s?.narration, voiceover), 0) / FPS;
 }

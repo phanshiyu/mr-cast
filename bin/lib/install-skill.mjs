@@ -7,7 +7,7 @@ import path from 'node:path';
 export function installSkill(root, claudeDir = process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude')) {
   const types = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
   const start = types.search(/^export type Risk =/m);
-  const end = types.indexOf('// ─── Composition props');
+  const end = types.indexOf('// ─── ', start);
   if (start < 0 || end < 0) throw new Error('src/types.ts: storyboard section markers not found');
   const storyboardTypes = types
     .slice(start, end)

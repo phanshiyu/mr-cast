@@ -31,7 +31,7 @@ export interface Hunk {
 export type HunkMap = Record<string, Hunk>;
 
 // ─── storyboard.json (written by the LLM) ────────────────────────────────────
-// bin/lib/install-skill.mjs copies this block into the skill, from the Risk declaration up to Composition props.
+// bin/lib/install-skill.mjs copies this block into the skill, from the Risk declaration up to the next section.
 
 export type Risk = 'low' | 'medium' | 'high';
 export type NodeKind = 'service' | 'db' | 'queue' | 'client';
@@ -39,7 +39,7 @@ export type NodeKind = 'service' | 'db' | 'queue' | 'client';
 interface SceneBase {
   /** Short title shown in the chapter sidebar. Defaults to a per-type label. */
   chapter?: string;
-  /** Voice-over / subtitle text. Scene length is derived from its word count. */
+  /** Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice. */
   narration: string;
 }
 
@@ -108,6 +108,20 @@ export interface Storyboard {
   scenes: Scene[];
 }
 
+// ─── voiceover.json (written by `mr-cast voice`) ─────────────────────────────
+
+export interface VoiceClip {
+  /** WAV path relative to the .mr-cast directory, e.g. "audio/1a2b3c4d.wav". */
+  src: string;
+  seconds: number;
+}
+
+export interface Voiceover {
+  voice: string;
+  /** Keyed by narrationKey(narration, voice) from shared/voice.mjs. */
+  clips: Record<string, VoiceClip>;
+}
+
 // ─── Composition props ───────────────────────────────────────────────────────
 
 export interface WalkthroughProps {
@@ -115,5 +129,9 @@ export interface WalkthroughProps {
   hunks: HunkMap;
   /** Burn subtitles into the video (on for MP4 renders, off in the player which has its own HUD). */
   showCaptions: boolean;
+  /** Voiced scenes last as long as their clip and play it. Without it, scenes are silent and timed from word count. */
+  voiceover?: Voiceover | null;
+  /** URL prefix for clip `src` paths: "./data/" in the player, a local server in renders. Without it no audio plays (stills). */
+  audioBaseUrl?: string;
   [key: string]: unknown;
 }
