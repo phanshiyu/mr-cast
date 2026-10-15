@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
 import { ArchGraph } from './components/ArchGraph';
 import { Captions } from './components/Captions';
+import { Chart } from './components/Chart';
 import { CodeDiff } from './components/CodeDiff';
 import { DataFlow } from './components/DataFlow';
 import { DataTable } from './components/DataTable';
@@ -13,7 +14,7 @@ import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
 import { colors, fonts } from './components/theme';
-import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, WalkthroughProps } from './types';
+import type { ArchScene, ChartScene, CodeScene, ErScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -27,6 +28,7 @@ interface SceneByType {
   mermaid: MermaidScene;
   tests: TestsScene;
   table: TableScene;
+  chart: ChartScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -40,6 +42,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   mermaid: MermaidDiagram,
   tests: TestMatrix,
   table: DataTable,
+  chart: Chart,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

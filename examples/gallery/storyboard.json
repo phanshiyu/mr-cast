@@ -1,6 +1,6 @@
 {
   "title": "Order lifecycle overhaul",
-  "subtitle": "Scene gallery: state, table, Mermaid and tests scenes",
+  "subtitle": "Scene gallery: state, table, chart, Mermaid and tests scenes",
   "scenes": [
     {
       "type": "intent",
@@ -53,6 +53,24 @@
         { "cells": ["ORDER_EVENTS_TOPIC", "orders.v2", "Topic that lifecycle events are published to"] }
       ],
       "highlight": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "chart",
+      "chapter": "Checkout latency",
+      "title": "Checkout latency",
+      "kind": "bar",
+      "unit": "ms",
+      "better": "lower",
+      "narration": "Checkout no longer waits for the charge to settle, so it gets faster across the board. The median drops from three hundred twenty to one hundred eighty milliseconds, and the slowest one percent falls from two point four seconds to under a second.",
+      "labels": ["p50", "p90", "p99"],
+      "series": [
+        { "name": "before", "values": [320, 910, 2400] },
+        { "name": "after", "values": [180, 420, 960] }
+      ],
+      "annotation": {
+        "at": "p99",
+        "text": "Charge settles in the background job"
+      }
     },
     {
       "type": "mermaid",

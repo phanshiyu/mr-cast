@@ -7,6 +7,13 @@ const TABLE_ROWS_MAX = 10;
 // A cell wraps to two lines; past this it is cut at a typical column width.
 const TABLE_CELL_LONG = 70;
 const HIGHLIGHT_STEPS_MAX = 5;
+export const TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
+const CHART_KINDS = ['bar', 'line'];
+const CHART_LABELS_MAX = 12;
+const CHART_SERIES_MAX = 4;
+// Past this many bars each one gets too thin to carry its value label.
+const CHART_BARS_MAX = 24;
+const ANNOTATION_LONG = 90;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isText = (v) => typeof v === 'string';
@@ -51,4 +58,36 @@ export function checkTable(s, p, errors, warnings) {
   if (s.rows.length > TABLE_ROWS_MAX) warnings.push(`${p}.rows: ${s.rows.length} rows; more than ${TABLE_ROWS_MAX} get cramped, so split the table into two scenes`);
   const rows = s.rows.length;
   checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, { plural: 'row indexes', one: `a row index from 0 to ${rows - 1}` }, (n) => Number.isInteger(n) && n >= 0 && n < rows);
+}
+
+export function checkChart(s, p, errors, warnings) {
+  for (const k of ['title', 'unit']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
+  if (!CHART_KINDS.includes(s.kind)) errors.push(`${p}.kind: must be one of ${CHART_KINDS.join(', ')}`);
+  if (s.better !== undefined && !['lower', 'higher'].includes(s.better)) errors.push(`${p}.better: must be "lower" or "higher"`);
+  if (!Array.isArray(s.labels) || s.labels.length === 0 || !s.labels.every(isStr)) return errors.push(`${p}.labels: required non-empty array of strings, one per x position`);
+  const n = s.labels.length;
+  if (new Set(s.labels).size !== n) errors.push(`${p}.labels: each label must be different`);
+  if (n > CHART_LABELS_MAX) warnings.push(`${p}.labels: ${n} labels; more than ${CHART_LABELS_MAX} get cramped`);
+  if (s.kind === 'line' && n < 2) warnings.push(`${p}.labels: a line needs at least two labels; use kind "bar" for one`);
+  if (!Array.isArray(s.series) || s.series.length === 0) return errors.push(`${p}.series: required non-empty array of { name, values, tone? }`);
+  const names = new Set();
+  s.series.forEach((series, j) => {
+    const q = `${p}.series[${j}]`;
+    if (!isStr(series?.name)) errors.push(`${q}.name: required string`);
+    else if (names.has(series.name)) errors.push(`${q}.name: duplicate series name "${series.name}"`);
+    else names.add(series.name);
+    if (series?.tone !== undefined && !TONES.includes(series.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
+    if (!Array.isArray(series?.values) || !series.values.every((v) => typeof v === 'number' && Number.isFinite(v))) return errors.push(`${q}.values: required array of numbers`);
+    if (series.values.length !== n) errors.push(`${q}.values: ${series.values.length} values for ${n} labels; give one value per label`);
+    if (s.kind === 'bar' && series.values.some((v) => v < 0)) errors.push(`${q}.values: bars start at zero, so values must be 0 or more; use kind "line" for negative values`);
+  });
+  if (s.series.length > CHART_SERIES_MAX) warnings.push(`${p}.series: ${s.series.length} series; more than ${CHART_SERIES_MAX} are hard to tell apart`);
+  if (s.kind === 'bar' && n * s.series.length > CHART_BARS_MAX) warnings.push(`${p}: ${n * s.series.length} bars; keep it to ${CHART_BARS_MAX} so each bar can carry its value`);
+  const note = s.annotation;
+  if (note === undefined) return;
+  if (!note || typeof note !== 'object') return errors.push(`${p}.annotation: must be { at, series?, text }`);
+  if (!isStr(note.text)) errors.push(`${p}.annotation.text: required string`);
+  else if (note.text.trim().length > ANNOTATION_LONG) warnings.push(`${p}.annotation.text: ${note.text.trim().length} characters; keep it under ${ANNOTATION_LONG} so it fits on two lines`);
+  if (!s.labels.includes(note.at)) errors.push(`${p}.annotation.at: ${JSON.stringify(note.at)} is not one of the labels (${s.labels.map((l) => JSON.stringify(l)).join(', ')})`);
+  if (note.series !== undefined && !names.has(note.series)) errors.push(`${p}.annotation.series: ${JSON.stringify(note.series)} is not a series name`);
 }

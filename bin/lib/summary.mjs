@@ -192,6 +192,10 @@ function sceneGist(scene, hunks) {
       const extra = [changed ? `${changed} changed` : '', scene.highlight?.length ? `${scene.highlight.length} highlighted` : ''].filter(Boolean);
       return titled(`${count(scene.columns, 'column')}, ${count(scene.rows, 'row')}${extra.map((e) => `, ${e}`).join('')}`);
     }
+    case 'chart': {
+      const series = scene.series.map((x) => x.name).join(', ');
+      return titled(`${scene.kind} chart of ${series} over ${count(scene.labels, 'label')}${scene.unit ? ` in ${scene.unit}` : ''}${scene.annotation ? ', 1 annotation' : ''}`);
+    }
     default:
       return '';
   }

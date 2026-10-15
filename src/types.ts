@@ -265,7 +265,36 @@ export interface TableScene extends SceneBase {
   highlight?: number[];
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene;
+/** Colour of a series, event or span. Neutral is grey, accent is the highlight blue, good green, bad red, warn amber. */
+export type Tone = 'neutral' | 'accent' | 'good' | 'bad' | 'warn';
+
+export interface ChartSeries {
+  /** Shown in the legend, e.g. "before" and "after". */
+  name: string;
+  /** One number per label, in the same order. Bars need values of 0 or more. */
+  values: number[];
+  /** Defaults: one series is accent; two are neutral then accent (before, after); more cycle through the tones. */
+  tone?: Tone;
+}
+
+export interface ChartScene extends SceneBase {
+  type: 'chart';
+  /** "bar" for categories (p50, p95, p99), "line" for a trend over ordered labels (dates, versions, load). */
+  kind: 'bar' | 'line';
+  title?: string;
+  /** Unit printed after each value, e.g. "ms", "MB", "%", "req/s". */
+  unit?: string;
+  /** X-axis categories, left to right. Up to 12. */
+  labels: string[];
+  /** Up to 4. With exactly two, each label gets a badge with the change from the first to the second, e.g. "−42%". */
+  series: ChartSeries[];
+  /** Which direction is an improvement, so the change badges read green or red. Without it they stay neutral. */
+  better?: 'lower' | 'higher';
+  /** Calls out one point: the value at label `at` of series `series` (a series name, default the last series). */
+  annotation?: { at: string; series?: string; text: string };
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene;
 
 export interface Storyboard {
   title: string;
