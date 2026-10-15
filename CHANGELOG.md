@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0
+
+- **Pen marks.** A step can draw by hand on what it points at: `"mark"` is `circle`, `underline`, `box`, `arrow`, `strike` or `cross`, with an optional handwritten `"note"` of up to 40 characters. The mark goes on the step's first `focus` ref, or on a code step's lines, or on a `"token"` such as `"max: 20"` that occurs once on them. It draws itself in the half second before the step's words and fades when the next step starts. The note sits where it covers the least, never on the target.
+- Every scene with focus steps takes marks: arch nodes, edges and groups, sequence participants and messages, er tables, fields and relations, states and transitions, table rows, columns and cells, chart labels, series and values, timeline events and spans, files, test cases and gaps, intent bullets, and code lines and tokens. Each scene places them from its own layout, so stills and renders match.
+- `validate` checks `mark`, `note` and `token`, and warns when a scene marks more than 2 steps. `outline` counts the marks.
+- The skill teaches when to mark: the one thing a sentence is about on a busy screen, a risky value, a missing piece, and rarely.
+- The demo, gallery and people examples each draw a mark. The demo's arch scene now walks its graph in steps, and its wiring scene walks two steps.
+- The player bundles the Caveat typeface for notes: 51 kB of font, about 7 kB more JavaScript gzipped.
+
 ## 0.12.0
 
 - **One entry instead of four.** `/mr-cast` replaces the `mr-cast-review` and `mr-cast-explain` skills and the `/mr-cast-render` and `/mr-cast-explain-render` commands. It takes the source from your words and arguments ("this branch", a base branch, "animate that"), else from what exists: the branch's changes, an explanation Claude just gave, or both, when its first question asks which. With neither, it says what it makes and stops. The `/` menu is now `/mr-cast`, `/mr-cast-prune` and `/mr-cast-upgrade`.
