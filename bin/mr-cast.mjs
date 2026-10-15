@@ -13,6 +13,7 @@ import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts,
 import { diffRun, explainRun, initExplainRun, videoName, writeCurrent } from './lib/runs.mjs';
 import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
+import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, summarizeFiles } from './lib/summary.mjs';
 import { narrationKey } from '../shared/voice.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
@@ -67,6 +68,9 @@ const USAGE = `usage: mr-cast <command> [options]
                   the /mr-cast-render and /mr-cast-explain-render commands into ~/.claude, and remove
                   the skills and commands earlier versions installed that this one no longer does
   uninstall-skill remove every skill and command mr-cast installed into ~/.claude
+  upgrade [--check]
+                  update mr-cast to the latest version on npm (npm install -g), then its skills;
+                  --check only reports the installed and latest versions
   version         print the mr-cast and Node versions (also --version, -v)
   help            show this message`;
 
@@ -379,6 +383,11 @@ function uninstallSkillCommand(argv) {
   if (removed.length === 0) console.log('nothing to remove; no mr-cast skills are installed');
 }
 
+async function upgradeCommand(argv) {
+  const { values } = parseArgs({ args: argv, options: { check: { type: 'boolean', default: false } } });
+  await upgrade({ root: ROOT, version: VERSION, check: values.check });
+}
+
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
 function explainInit(argv) {
@@ -472,7 +481,7 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune };
+const COMMANDS = { extract, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);
