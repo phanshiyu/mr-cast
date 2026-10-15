@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed: the player played at two thirds of real time (20 frames a second instead of 30), so the voice ran ahead and was pulled back every two seconds, which sounded slow and stuttering. The page rebuilt the Player's `inputProps` on every frame, and each rebuild restarted Remotion's frame clock.
+- `play` and `render` print `mr-cast: pace: slower (saved; pass --pace normal to change)` when they use a pace that is not normal.
 
 ## 0.11.0
 

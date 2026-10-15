@@ -13,6 +13,7 @@
 - `play-host-check` answers 403 `forbidden host` to a foreign Host header (DNS-rebinding guard).
 - `play-refuses-invalid` exits 1 before serving when the storyboard has errors.
 - `play-explain` serves an explanation with `explain play`.
+- `play-pace` prints `mr-cast: pace: slower (saved; pass --pace normal to change)` to stderr when `voiceover.json` holds a pace that is not normal and no `--pace` or `--speed` was passed; with a flag, the `(saved; ...)` part is left out. `render` prints the same line.
 - `play-real-time` plays at real time: 30 frames a second at 1x, so a voiced clip never drifts from its scene. Measured over 30 s of play, the time label advances 30 s and no audio tag is re-seeked.
 
 ## How to get to it (user POV)

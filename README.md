@@ -136,7 +136,7 @@ The skills switch to this style when you answer that the video is for someone ne
 Each spoken text, a scene's narration or a step's `say`, is one clip, cached in `.mr-cast/audio/` under a hash of the voice, the speed and the text. A rerun speaks only the texts that changed and deletes clips that no scene uses. `voiceover.json` also records when each sentence of a clip starts and ends, so the subtitles follow the voice through the pauses.
 
 - `--voice <name>` picks the voice. The default is `af_heart`. Others include `af_bella`, `af_nicole`, `am_michael`, `am_fenrir`, `bf_emma`, and `bm_george`. The choice is saved in `voiceover.json`, so later runs keep it.
-- `--pace <slower|normal|faster>` sets how fast the voice speaks and how long it pauses. `slower` is speed 0.85 with every pause 1.5 times as long, and `faster` is speed 1.15 with pauses 0.85 times as long. The choice is saved like the voice. Changing the speed voices every clip again.
+- `--pace <slower|normal|faster>` sets how fast the voice speaks and how long it pauses. `slower` is speed 0.85 with every pause 1.5 times as long, and `faster` is speed 1.15 with pauses 0.85 times as long. The choice is saved like the voice, and `play` and `render` print `mr-cast: pace: slower (saved; pass --pace normal to change)` when they use a saved pace that is not normal. Changing the speed voices every clip again.
 - `--speed <x>` sets the voice's speed alone, from 0.5 to 2, and overrides the speed `--pace` sets.
 - `--no-voice` skips the voice-over. Scenes are silent and timed for reading at 130 words a minute, scaled by the pace.
 - If the model cannot load, for example offline on the first run, `play` and `render` print a warning and continue without voice. `mr-cast voice` exits 1 instead.

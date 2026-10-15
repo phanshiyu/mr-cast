@@ -250,12 +250,26 @@ async function validate(argv, resolveRun) {
 const PACE_OPTIONS = { pace: { type: 'string' }, speed: { type: 'string' } };
 const VOICE_OPTIONS = { voice: { type: 'string' }, 'no-voice': { type: 'boolean', default: false }, ...PACE_OPTIONS };
 
-/** " · slower pace", " · 0.9x, pauses x1.2", or "" at the normal pace. */
-function formatPace(voiceover) {
+/** "slower", "normal", "faster", or "0.9x, pauses x1.2". */
+function paceName(voiceover) {
   const { speed, pauses } = paceOf(voiceover);
   const named = Object.entries(PACES).find(([, p]) => p.speed === speed && p.pauses === pauses)?.[0];
-  if (named) return named === 'normal' ? '' : ` · ${named} pace`;
-  return ` · ${speed}x${pauses === 1 ? '' : `, pauses x${pauses}`}`;
+  return named ?? `${speed}x${pauses === 1 ? '' : `, pauses x${pauses}`}`;
+}
+
+/** " · slower pace", " · 0.9x, pauses x1.2", or "" at the normal pace. */
+function formatPace(voiceover) {
+  const name = paceName(voiceover);
+  if (name === 'normal') return '';
+  return Object.hasOwn(PACES, name) ? ` · ${name} pace` : ` · ${name}`;
+}
+
+/** Say which pace play and render use when it is not the normal one, so a pace saved by an earlier --pace is not a surprise. */
+function reportPace(voiceover, requested) {
+  const name = paceName(voiceover);
+  if (name === 'normal') return;
+  const saved = Object.keys(requested).length === 0 ? ' (saved; pass --pace normal to change)' : '';
+  console.error(`mr-cast: pace: ${name}${saved}`);
 }
 
 function reportVoiceProgress(event) {
@@ -338,6 +352,7 @@ async function play(argv, resolveRun) {
   const { dir, storyboard } = await loadValidProject(resolveRun(values).dir, pace);
   const distDir = ensureDist();
   let voiceover = await voiceoverFor(dir, storyboard, values);
+  reportPace(voiceover, pace);
 
   const onDataChange = async (file) => {
     if (file === 'meta.json') return;
@@ -396,8 +411,10 @@ function progressReporter(label) {
 async function render(argv, resolveRun) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS, ...DIR_OPTION } });
   const run = resolveRun(values);
-  const { dir, hunks, storyboard } = await loadValidProject(run.dir, parsePace(values));
+  const pace = parsePace(values);
+  const { dir, hunks, storyboard } = await loadValidProject(run.dir, pace);
   const voiceover = await voiceoverFor(dir, storyboard, values);
+  reportPace(voiceover, pace);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
