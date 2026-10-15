@@ -205,6 +205,17 @@ export interface Storyboard {
   title: string;
   subtitle?: string;
   scenes: Scene[];
+  /**
+   * Hunks deliberately left out of every code scene, each with the reason a reviewer would accept,
+   * e.g. "formatting only", "generated lockfile", "renamed import". `validate` warns about every
+   * test hunk and every hunk of 15+ changed lines that is neither shown nor listed here.
+   */
+  skipped?: SkippedHunk[];
+}
+
+export interface SkippedHunk {
+  hunkId: string;
+  reason: string;
 }
 
 // ─── voiceover.json (written by `mr-cast voice`) ─────────────────────────────

@@ -1,6 +1,7 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
 import { expandLineRefs, focusRanges } from '../../shared/focus.mjs';
+import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
@@ -17,6 +18,8 @@ const FOCUS_RANGE_COMFORTABLE = 8;
 const FOCUS_RANGE_MAX = 15;
 const FOCUS_RANGES_PER_SCENE = 3;
 const UNFOCUSED_CHANGE_MAX = 12;
+// A hunk this large changes enough that leaving it out of the video must be a stated choice.
+const SUBSTANTIAL_HUNK_LINES = 15;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
@@ -72,6 +75,39 @@ function checkFocusSize(scene, hunk, p, errors, warnings) {
   if (count === 0 && changed > UNFOCUSED_CHANGE_MAX) {
     errors.push(`${p}: hunk ${hunk.id} changes ${changed} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
   }
+}
+
+const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h.additions}`);
+
+/**
+ * Every hunk a reviewer needs must be shown in a code scene or listed in `skipped` with a reason.
+ * Returns the counts behind validate's summary line.
+ */
+function checkCoverage(sb, hunks, errors, warnings) {
+  const shown = new Set(sb.scenes.filter((s) => s?.type === 'code' && Object.hasOwn(hunks, s.hunkId)).map((s) => s.hunkId));
+  const skipped = new Set();
+  if (sb.skipped !== undefined && !Array.isArray(sb.skipped)) errors.push('skipped: must be an array of { hunkId, reason }');
+  else (sb.skipped ?? []).forEach((entry, i) => {
+    const p = `skipped[${i}]`;
+    if (!isStr(entry?.hunkId)) errors.push(`${p}.hunkId: required string`);
+    else if (!Object.hasOwn(hunks, entry.hunkId)) errors.push(`${p}.hunkId: "${entry.hunkId}" not found in hunks.json`);
+    else if (shown.has(entry.hunkId)) warnings.push(`${p}: ${entry.hunkId} is also shown in a code scene; remove it from skipped or drop the scene`);
+    else skipped.add(entry.hunkId);
+    if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);
+  });
+
+  const tests = { shown: 0, total: 0 };
+  for (const h of Object.values(hunks)) {
+    const isTest = isTestFile(h.file);
+    if (isTest) {
+      tests.total++;
+      if (shown.has(h.id)) tests.shown++;
+    }
+    if (shown.has(h.id) || skipped.has(h.id)) continue;
+    if (isTest) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}): changed tests are not walked through; show the test cases in a code scene or list ${h.id} in skipped with a reason`);
+    else if (h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}) is not shown; add a code scene or list it in skipped with a reason`);
+  }
+  return { shown: shown.size, skipped: skipped.size, total: Object.keys(hunks).length, tests };
 }
 
 /** Checks a non-empty array of items with unique string ids; returns the id set, or null if the array is unusable. */
@@ -265,8 +301,9 @@ export async function validateStoryboard(sb, hunks) {
   });
 
   await checkMermaid(diagrams, errors, warnings);
+  const coverage = checkCoverage(sb, hunks ?? {}, errors, warnings);
 
-  return { errors, warnings };
+  return { errors, warnings, coverage };
 }
 
 export function storyboardSeconds(sb, voiceover) {

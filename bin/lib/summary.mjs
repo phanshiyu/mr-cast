@@ -100,8 +100,17 @@ export function formatDuration(seconds) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** "shows 9/13 hunks, skipped 2, tests 2/2 shown", or nothing for a storyboard without hunks. */
+function formatCoverage({ shown, skipped, total, tests }) {
+  if (!total) return '';
+  const parts = [`shows ${shown}/${total} hunks`];
+  if (skipped) parts.push(`skipped ${skipped}`);
+  if (tests.total) parts.push(`tests ${tests.shown}/${tests.total} shown`);
+  return ` · ${parts.join(', ')}`;
+}
+
 /** Lines for `validate`; the last line is the verdict. */
-export function formatValidation({ errors, warnings }, { storyboard, hunks, seconds }) {
+export function formatValidation({ errors, warnings, coverage }, { storyboard, hunks, seconds }) {
   const out = [
     ...errors.map((e) => `error: ${e}`),
     ...warnings.map((w) => `warning: ${w}`),
@@ -110,6 +119,6 @@ export function formatValidation({ errors, warnings }, { storyboard, hunks, seco
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
   if (errors.length) out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
-  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}`);
+  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${formatCoverage(coverage)}`);
   return out;
 }
