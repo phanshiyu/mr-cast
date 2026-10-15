@@ -20,12 +20,53 @@ export function detectLanguage(file) {
   return LANGUAGES[ext] ?? 'text';
 }
 
-function unquote(p) {
-  // git quotes paths with special chars: "a/foo\tbar"
-  if (p.startsWith('"') && p.endsWith('"')) {
-    return p.slice(1, -1).replace(/\\(["\\])/g, '$1').replace(/\\t/g, '\t').replace(/\\n/g, '\n');
+const C_ESCAPES = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
+
+/**
+ * Read a C-style quoted token (git's quote_c_style) starting at `s[start] === '"'`.
+ * Octal escapes are raw bytes, so the token is decoded as UTF-8 at the end.
+ * @returns {[string, number]} the decoded text and the index just past the closing quote
+ */
+function readQuoted(s, start) {
+  const bytes = [];
+  let i = start + 1;
+  while (i < s.length && s[i] !== '"') {
+    if (s[i] === '\\') {
+      const oct = s.slice(i + 1, i + 4);
+      if (/^[0-7]{3}$/.test(oct)) { bytes.push(parseInt(oct, 8)); i += 4; continue; }
+      bytes.push(C_ESCAPES[s[i + 1]] ?? s.charCodeAt(i + 1));
+      i += 2;
+    } else {
+      const ch = String.fromCodePoint(s.codePointAt(i));
+      bytes.push(...Buffer.from(ch));
+      i += ch.length;
+    }
   }
-  return p;
+  return [Buffer.from(bytes).toString('utf8'), i + 1];
+}
+
+function unquote(p) {
+  return p.startsWith('"') ? readQuoted(p, 0)[0] : p;
+}
+
+/**
+ * Split the `a/X b/Y` part of a `diff --git` header. Without quoting the separator is ambiguous
+ * when paths contain " b/", but non-renames have X === Y, so the midpoint split is tried first.
+ * Renames fall back to the first " b/"; their `rename from/to` lines override the result anyway.
+ */
+function parseGitHeaderPaths(rest) {
+  if (rest.startsWith('"')) {
+    const [a, end] = readQuoted(rest, 0);
+    return [a, unquote(rest.slice(end + 1))];
+  }
+  const mid = (rest.length - 1) / 2;
+  if (Number.isInteger(mid) && rest[mid] === ' ' && rest.slice(2, mid) === rest.slice(mid + 3)) {
+    return [rest.slice(0, mid), rest.slice(mid + 1)];
+  }
+  const quotedB = rest.indexOf(' "b/');
+  const sep = quotedB >= 0 ? quotedB : rest.indexOf(' b/');
+  if (sep < 0) return [null, rest];
+  return [rest.slice(0, sep), unquote(rest.slice(sep + 1))];
 }
 
 function stripPrefix(p) {
@@ -50,10 +91,10 @@ export function parseUnifiedDiff(text) {
     const line = lines[i];
 
     if (line.startsWith('diff --git ')) {
-      const m = line.match(/^diff --git (?:"?a\/(.+?)"?) (?:"?b\/(.+?)"?)$/);
+      const [a, b] = parseGitHeaderPaths(line.slice(11));
       file = {
-        file: m ? m[2] : line.slice(11),
-        oldFile: m ? m[1] : null,
+        file: b.replace(/^b\//, ''),
+        oldFile: a && a.replace(/^a\//, ''),
         status: 'modified',
         binary: false,
         hunks: [],
@@ -90,7 +131,7 @@ export function parseUnifiedDiff(text) {
     if (!hunk) continue;
 
     const tag = line[0];
-    const body = line.slice(1);
+    const body = line.slice(1).replace(/\r$/, '');
     if (tag === ' ') hunk.lines.push({ type: 'context', oldLine: oldNo++, newLine: newNo++, text: body });
     else if (tag === '-') hunk.lines.push({ type: 'del', oldLine: oldNo++, newLine: null, text: body });
     else if (tag === '+') hunk.lines.push({ type: 'add', oldLine: null, newLine: newNo++, text: body });
