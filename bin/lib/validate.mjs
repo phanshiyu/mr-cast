@@ -414,9 +414,9 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', style?: 'simple' }} meta  From meta.json. "explain" (`mr-cast explain init`)
- *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply.
- *   "simple" (`--simple`) is explained line by line in plain words, so steps are short, every changed
+ * @param {{ mode?: 'diff' | 'explain', style?: 'simple' }} meta  The mode from meta.json: "explain" (`mr-cast init`)
+ *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply. The style
+ *   from the command's flags: "simple" (`--audience new`) is explained line by line in plain words, so steps are short, every changed
  *   line of a shown hunk has a step, and sentences stay short.
  */
 export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = {}) {

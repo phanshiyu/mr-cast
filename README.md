@@ -90,10 +90,10 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | Command | What it does |
 | --- | --- |
 | `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the audience and pace you chose last time. The skill decides the video's source from it. |
-| `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. Diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Lockfiles and build output are skipped unless you pass `--all-files`. Running it again on the same branch keeps the storyboard, the snippets and the settings. |
+| `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. Diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Lockfiles and build output are skipped unless you pass `--all-files`. Running it again on the same branch keeps the storyboard and the snippets. |
 | `mr-cast init --title text [--reset]` | Starts a walkthrough of an explanation, which has no diff, in `.mr-cast/<title-slug>/` (in the git repository, or the current directory outside one), and prints its path. If another walkthrough already has that slug, the new one gets a numbered suffix such as `-2`. Rerunning it with the same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2`, ...: the code of an explanation, or the callers, definitions, types or config a change depends on. Prints each snippet with the file's own line numbers. Snippets do not count toward hunk coverage, and a later `extract` keeps them. Also accepts `<file> <start>-<end>`, keeps the id when the same range is added again, and holds at most 80 lines each. |
-| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. Prints the length, estimated at the run's pace until the narration is voiced. Exits 1 on errors. |
+| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. Prints the length, estimated at the `--pace` given until the narration is voiced at it. Exits 1 on errors. |
 | `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It lists the title, one line per scene with its type, chapter and what it shows, the length, the style, and the hunk coverage. A code scene shows its file and its steps, or its focus lines and `flow` step count. A diagram shows its node, state or participant counts, and a tests scene its cases and gaps. A table shows its columns and rows, a chart its series and labels, a timeline its events and range, and a files scene its files and line counts. Each scene also counts the steps that draw a pen mark. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
 | `mr-cast play [--port N] [--no-open]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. The player has a playback speed control from 0.75x to 1.5x. |
@@ -107,14 +107,14 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 
 Each walkthrough is a run: one directory in `.mr-cast/`, from `extract` or `init`. The run either starts becomes the current run, recorded in `.mr-cast/.current`, and every later command works on it and prints its name on stderr. Pass `--name <slug>` to `extract` or `init` to name a run yourself, and to any later command to work on another run. The slug is lowercase letters, digits and dashes, and `explain`, `audio` and `stills` are reserved, since earlier versions used those folders. `--dir <path>` points any command after `extract` or `init` at another directory, such as a walkthrough from 0.11 in `.mr-cast` or `.mr-cast/explain/<name>`.
 
-A run keeps its settings in `meta.json`. Give them to `extract` or `init`. The same flag on any later command changes them from then on.
+These settings are flags on `extract`, `init`, `validate`, `outline`, `voice`, `play`, `render` and `still`. A flag applies to its own command only, and the run does not keep it. A command without a flag uses its default, so pass the same flags to each command of a walkthrough.
 
 | Setting | What it does |
 | --- | --- |
-| `--audience familiar\|new\|overview` | Who the video is for: someone who knows the code, someone new to it, or the team in a quick overview. `new` is the [simple style](#simple-style), and `--simple` is the same as `--audience new`. |
-| `--pace slower\|normal\|faster` | How fast the voice speaks and how long it pauses. See [Voice](#voice). |
+| `--audience familiar\|new\|overview` | Who the video is for: someone who knows the code (the default), someone new to it, or the team in a quick overview. `new` is the [simple style](#simple-style), and `--simple` is the same as `--audience new`. |
+| `--pace slower\|normal\|faster` | How fast the voice speaks and how long it pauses. The default is `normal`. See [Voice](#voice). |
 | `--speed x` | The voice's speed alone, from 0.5 to 2. It overrides the speed `--pace` sets. |
-| `--voice name` | The Kokoro voice, which also turns a silent run's voice back on. |
+| `--voice name` | The Kokoro voice. The default is `af_heart`. |
 | `--no-voice` | A silent walkthrough with subtitles timed for reading. |
 
 The last `--audience` and `--pace` (or `--no-voice`) you chose are also kept in `~/.config/mr-cast/last-choices.json`, or `$XDG_CONFIG_HOME/mr-cast/last-choices.json` when that is set. `mr-cast status` prints them, and the skill offers them first.
@@ -145,7 +145,7 @@ A snippet renders as a code scene with a neutral SOURCE badge and its line range
 
 ## Simple style
 
-The simple style is for a viewer who is new to the code, reads English as a second language, or both. The walkthrough explains the changed code line by line in plain words, and shows the unchanged code the change depends on before the change itself. `--audience new` (or `--simple`) on `extract` or `init` records it with the run, which keeps it until another `--audience` changes it. `validate` and `outline` name the style, and in it `validate` also checks:
+The simple style is for a viewer who is new to the code, reads English as a second language, or both. The walkthrough explains the changed code line by line in plain words, and shows the unchanged code the change depends on before the change itself. Pass `--audience new` (or `--simple`) to each command. `validate` and `outline` then name the style, and in it `validate` also checks:
 
 - Every code scene uses `steps`, and each step highlights at most 3 lines. A step past 6 lines is an error.
 - Every changed line of a hunk the video shows is inside a step of some scene showing it. The warning lists the lines left out. Blank lines and snippets are not counted.
@@ -159,10 +159,10 @@ The skill switches to this style when you answer that the video is for someone n
 
 Each spoken text, a scene's narration or a step's `say`, is one clip, cached in the run's `audio/` under a hash of the voice, the speed and the text. A rerun speaks only the texts that changed and deletes clips that no scene uses. `voiceover.json` also records when each sentence of a clip starts and ends, so the subtitles follow the voice through the pauses.
 
-These are [run settings](#runs): give them to `extract` or `init`, and the run keeps them.
+These are [settings](#runs): flags that apply to the one command they are given to. `voiceover.json` records the voice and pace its clips were made with, but a later command does not take them from it.
 
 - `--voice <name>` picks the voice. The default is `af_heart`. Others include `af_bella`, `af_nicole`, `am_michael`, `am_fenrir`, `bf_emma`, and `bm_george`.
-- `--pace <slower|normal|faster>` sets how fast the voice speaks and how long it pauses. `slower` is speed 0.85 with every pause 1.5 times as long, and `faster` is speed 1.15 with pauses 0.85 times as long. `play` and `render` print `mr-cast: pace: slower (the run's setting; pass --pace normal to change)` when the pace is not normal. Changing the speed voices every clip again.
+- `--pace <slower|normal|faster>` sets how fast the voice speaks and how long it pauses. `slower` is speed 0.85 with every pause 1.5 times as long, and `faster` is speed 1.15 with pauses 0.85 times as long. `play` and `render` print `mr-cast: pace: slower` when the pace is not normal. Changing the speed voices every clip again, and so does going back to it.
 - `--speed <x>` sets the voice's speed alone, from 0.5 to 2, and overrides the speed `--pace` sets.
 - `--no-voice` skips the voice-over. Scenes are silent and timed for reading at 130 words a minute, scaled by the pace.
 - If the model cannot load, for example offline on the first run, `play` and `render` print a warning and continue without voice. `mr-cast voice` exits 1 instead.
@@ -316,7 +316,7 @@ A tests scene that is not about a diff's tests can rename its panels with `title
 
 ## Layout
 
-- `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` finds a command's run (the current one, `--name` or `--dir`), `lib/settings.mjs` keeps a run's settings and the last choices, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
+- `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` finds a command's run (the current one, `--name` or `--dir`), `lib/settings.mjs` turns a command's flags into its settings and keeps the last choices, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share: a scene is a sequence of spoken segments, its narration and then each step, each with a lead and a tail scaled by the pace, and each scene type's build time, which the narration waits for. `shared/steps.mjs` lists the steps each scene type speaks, and `shared/targets.mjs` what a step's `focus` can name in each scene type. `shared/normalize.mjs` rewrites older field names once, where a storyboard enters. `shared/voice.mjs` names each clip by its voice, speed and text, and defines the paces. `shared/files.mjs` builds the file list of a `files` scene for both. `shared/pen-marks.mjs` says what a step's pen mark draws on, and `src/components/PenMarks.tsx` draws every scene's marks from the boxes the scene gives it.
 - `shared/textfit.mjs` fits a text to its place: it wraps, shrinks and reports what does not fit, from the widths in `shared/font-metrics.mjs` (made by `node scripts/measure-fonts.mjs`). `shared/markup.mjs` parses inline markup. Each scene fits its text in layout code under `src/utils/`, against the places listed in `src/fit/slots.ts`, and draws it with `src/components/FitText.tsx`; `src/fit/report.ts` runs the same layouts for `validate` (`bin/lib/validate-fit.mjs` bundles it with esbuild). `scripts/check-text.mjs`, part of `npm run typecheck`, fails on text clipping or an ellipsis under `src/`.

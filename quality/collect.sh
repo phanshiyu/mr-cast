@@ -19,7 +19,7 @@ for dir in "$work"/*/; do
     echo "$name: validation FAILED (see $dir/validate.txt)"
     continue
   fi
-  # still renders from the saved storyboard and ignores voice-over; there is no --no-voice flag on it
+  # a still is its scene's settled end state, so the pace and voice flags do not change it
   if ! (cd "$repo" && "$cli" still --out "$run/stills") >"$dir/stills.txt" 2>&1; then
     echo "$name: still rendering FAILED (see $dir/stills.txt)"
     continue
