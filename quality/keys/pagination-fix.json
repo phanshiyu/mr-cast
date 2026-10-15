@@ -44,6 +44,26 @@
         "old cursors lack id",
         "decoded with empty id"
       ]
+    },
+    {
+      "id": "q6",
+      "question": "Which tests does this MR add or change, what scenarios do they cover, and what important case is untested?",
+      "answer": "The MR changes src/lib/pagination.spec.ts: the fake DB now filters and sorts on (createdAt, id), and two tests are added. One checks that a last page that is exactly full has nextCursor null; the other pages through four events sharing one timestamp with limit 2 and checks none are dropped (a, b, c, d). Untested: decoding an old cursor without id (the backward-compat path in decodeCursor), and the real SQL row-comparison, since the DB is faked.",
+      "must_mention": [
+        "new test: exactly-full last page returns null nextCursor",
+        "new test: events with identical timestamps are not dropped across pages",
+        "old cursor without id (decodeCursor fallback) is untested"
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "List the files this MR changes in a meaningful way and say in a few words what changed in each.",
+      "answer": "src/lib/cursor.ts: Cursor gains id field; decodeCursor accepts old cursors without id, defaulting to empty string; src/lib/pagination.ts: query orders and filters by (created_at, id) tuple, fetches limit+1 rows, nextCursor only when an extra row exists and includes id; src/lib/pagination.spec.ts: fake DB updated for (createdAt, id) ordering; adds full-last-page and same-timestamp tests",
+      "must_mention": [
+        "src/lib/cursor.ts: Cursor gains id field; decodeCursor accepts old cursors without id, defaulting to empty string",
+        "src/lib/pagination.ts: query orders and filters by (created_at, id) tuple, fetches limit+1 rows, nextCursor only when an extra row exists and includes id",
+        "src/lib/pagination.spec.ts: fake DB updated for (createdAt, id) ordering; adds full-last-page and same-timestamp tests"
+      ]
     }
   ]
 }

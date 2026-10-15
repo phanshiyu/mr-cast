@@ -44,6 +44,29 @@
         "INCR and PEXPIRE are separate non-atomic calls",
         "event publish is not atomic with the DB insert"
       ]
+    },
+    {
+      "id": "q6",
+      "question": "Which tests does this MR add or change, what scenarios do they cover, and what important case is untested?",
+      "answer": "No tests are added or changed in this MR. The most important untested behavior is the rate limiter itself: requests over 20 per minute getting 429 with Retry-After, and the behavior when Redis fails or is unavailable (the middleware has no error handling).",
+      "must_mention": [
+        "no tests added or changed",
+        "429 over-limit path / Retry-After untested",
+        "Redis failure behavior untested"
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "List the files this MR changes in a meaningful way and say in a few words what changed in each.",
+      "answer": "src/api/rate-limit.ts: new Redis-backed fixed-window rate limit middleware returning 429 with Retry-After; src/api/server.ts: applies rateLimit (20 per 60s) to /orders and publishes order.created after creating an order; src/services/orders.ts: createOrder rejects empty orders, prices items via priceFor, and stores status pending; src/queue/events.ts: new publish function that only logs the topic and payload; src/legacy-throttle.ts: deleted unused in-memory throttle; docs.md: README.md renamed to docs.md with a rate limit sentence added",
+      "must_mention": [
+        "src/api/rate-limit.ts: new Redis-backed fixed-window rate limit middleware returning 429 with Retry-After",
+        "src/api/server.ts: applies rateLimit (20 per 60s) to /orders and publishes order.created after creating an order",
+        "src/services/orders.ts: createOrder rejects empty orders, prices items via priceFor, and stores status pending",
+        "src/queue/events.ts: new publish function that only logs the topic and payload",
+        "src/legacy-throttle.ts: deleted unused in-memory throttle",
+        "docs.md: README.md renamed to docs.md with a rate limit sentence added"
+      ]
     }
   ]
 }

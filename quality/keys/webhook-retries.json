@@ -44,6 +44,35 @@
         "no jitter or retries 4xx",
         "enqueue not transactional with event insert"
       ]
+    },
+    {
+      "id": "q6",
+      "question": "Which tests does this MR add or change, what scenarios do they cover, and what important case is untested?",
+      "answer": "The MR adds src/webhooks/backoff.spec.ts (retryDelayMs starts at base delay and doubles, is capped at maxDelayMs; nextAttemptAt adds the delay to now) and src/webhooks/worker.spec.ts (attemptDelivery: delivered on 2xx, retry on 500 while attempts remain, dead on final attempt, network error retryable; runOnce: schedules retry with exponential backoff, marks exhausted deliveries dead). The repository is mocked. Untested: a worker crash leaving deliveries stuck in in_flight (nothing reclaims them); also untested are the SQL in repository.ts, signer.ts, dead-letter replay, and 4xx handling.",
+      "must_mention": [
+        "backoff.spec.ts: base delay doubling and maxDelayMs cap",
+        "worker.spec.ts: delivered on 2xx, retry vs dead by attempts, network error retry, runOnce backoff scheduling",
+        "crash leaving deliveries stuck in in_flight is untested"
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "List the files this MR changes in a meaningful way and say in a few words what changed in each.",
+      "answer": "db/migrations/007_webhook_deliveries.sql: creates webhook_delivery_status enum, webhook_deliveries table and indexes; src/config/webhooks.ts: env-driven webhook config (poll interval, batch size, max attempts, base/max delay, timeout); src/events/publish.ts: publishEvent now enqueues webhook deliveries for the account; src/server.ts: starts webhook worker and stops it on SIGTERM; src/webhooks/backoff.ts: exponential retry delay capped at max, plus nextAttemptAt; src/webhooks/backoff.spec.ts: tests doubling, cap and nextAttemptAt; src/webhooks/deadLetter.ts: inspect and replay dead deliveries; src/webhooks/repository.ts: SQL for enqueue, claimDue with SKIP LOCKED, mark delivered/retry/dead, list and requeue dead; src/webhooks/signer.ts: HMAC-SHA256 payload signature; src/webhooks/types.ts: Delivery, Endpoint, DeliveryStatus and AttemptOutcome types; src/webhooks/worker.ts: polling worker that claims, POSTs, classifies outcome, retries or dead-letters; src/webhooks/worker.spec.ts: tests attemptDelivery outcomes and runOnce retry/dead scheduling",
+      "must_mention": [
+        "db/migrations/007_webhook_deliveries.sql: creates webhook_delivery_status enum, webhook_deliveries table and indexes",
+        "src/config/webhooks.ts: env-driven webhook config (poll interval, batch size, max attempts, base/max delay, timeout)",
+        "src/events/publish.ts: publishEvent now enqueues webhook deliveries for the account",
+        "src/server.ts: starts webhook worker and stops it on SIGTERM",
+        "src/webhooks/backoff.ts: exponential retry delay capped at max, plus nextAttemptAt",
+        "src/webhooks/backoff.spec.ts: tests doubling, cap and nextAttemptAt",
+        "src/webhooks/deadLetter.ts: inspect and replay dead deliveries",
+        "src/webhooks/repository.ts: SQL for enqueue, claimDue with SKIP LOCKED, mark delivered/retry/dead, list and requeue dead",
+        "src/webhooks/signer.ts: HMAC-SHA256 payload signature",
+        "src/webhooks/types.ts: Delivery, Endpoint, DeliveryStatus and AttemptOutcome types",
+        "src/webhooks/worker.ts: polling worker that claims, POSTs, classifies outcome, retries or dead-letters",
+        "src/webhooks/worker.spec.ts: tests attemptDelivery outcomes and runOnce retry/dead scheduling"
+      ]
     }
   ]
 }

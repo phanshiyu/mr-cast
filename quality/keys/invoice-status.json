@@ -44,6 +44,27 @@
         "partially_paid cannot go to void",
         "dual write of state and status"
       ]
+    },
+    {
+      "id": "q6",
+      "question": "Which tests does this MR add or change, what scenarios do they cover, and what important case is untested?",
+      "answer": "No tests are added or changed in this MR. The most important untested behavior is the migration backfill (mapping state to status, and treating invoices with settled payments as partially_paid) plus the new transitions such as partially_paid and mark_uncollectible; also untested is the effective_status fallback for rows with NULL status.",
+      "must_mention": [
+        "no tests added or changed",
+        "backfill migration is untested",
+        "partially_paid / uncollectible transitions or NULL-status fallback untested"
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "List the files this MR changes in a meaningful way and say in a few words what changed in each.",
+      "answer": "app/models/invoice.py: adds InvoiceStatus enum, nullable indexed status column and effective_status property falling back to state; app/services/invoices.py: transitions move to InvoiceStatus (adds partially_paid and uncollectible), dual-writes legacy state, apply_payment sets partially_paid, adds mark_uncollectible; migrations/versions/0042_add_invoice_status.py: creates invoice_status enum, adds status column, backfills with one UPDATE, adds index; app/api/invoices.py: serializer now returns status via effective_status",
+      "must_mention": [
+        "app/models/invoice.py: adds InvoiceStatus enum, nullable indexed status column and effective_status property falling back to state",
+        "app/services/invoices.py: transitions move to InvoiceStatus (adds partially_paid and uncollectible), dual-writes legacy state, apply_payment sets partially_paid, adds mark_uncollectible",
+        "migrations/versions/0042_add_invoice_status.py: creates invoice_status enum, adds status column, backfills with one UPDATE, adds index",
+        "app/api/invoices.py: serializer now returns status via effective_status"
+      ]
     }
   ]
 }
