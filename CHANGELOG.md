@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0
+
+- **Choices before the video.** The skills ask who the video is for (a reviewer, someone new to the code, or a quick overview for the team), which areas to go deeper on, and the pace. All three are multiple choice with the recommended answer first, and any your request already answers are skipped. A quick overview is a new mode with diagrams and little code. Before a render, approving the outline takes one click. The player skips that step.
+- **Calmer pacing.** A scene builds for a second before the voice starts, and new code is drawn by then. Each step lights 0.5 seconds before its voice names it and holds 1.2 seconds after. Silent scenes read at 130 words a minute instead of 160. Subtitles follow each sentence of the voice instead of drifting through the pauses.
+- **Pace and speed.** `--pace slower|normal|faster` on `voice`, `play`, `render`, `validate` and `outline` sets the voice's speed and the length of every pause. `--speed <0.5-2>` sets the speed alone. Both are saved in `voiceover.json`. A new speed voices the narration again.
+- **Steps on table and files scenes.** Each row or file can carry its own spoken words and lights just before them. Without steps, the spotlight now follows the narration instead of running ahead of it.
+- **Chapter markers in MP4s.** Rendered videos carry one chapter per chapter title.
+- **Player speed control.** The browser player plays at 0.75x, 1x, 1.25x or 1.5x.
+- `validate` warns when the narration over an `arch` or `sequence` diagram runs past 35 words.
+- Fixed: the browser player now reloads when storyboard.json changes.
+
 ## 0.8.0
 
 - **Simple mode.** Ask for a walkthrough "line by line", "like I'm new to this", "ELI5" or "for a non-native speaker", or pass `--simple` to `extract`, `explain init` or `/mr-cast-render`. Code is explained one line or small group at a time in short, plain sentences. `validate` checks step size, line coverage and sentence length.
