@@ -3,7 +3,9 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, ErField, ErRelation, ErScene } from '../types';
-import { erBoxes, HEADER_H, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import { erBoxes, HEADER_H, RELATION_LABEL_MAX, ROW_H, layoutEr, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import type { Fit } from '../../shared/textfit.mjs';
+import { FitText } from './FitText';
 import { centredStage, staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
@@ -11,7 +13,7 @@ import { CHANGE_WORD } from '../utils/marks';
 import { Badge, badgesOf, EMPHASIS, emphasisRing, type BadgeSpec } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, ellipsis, fitFontSize, fonts } from './theme';
+import { clamp, colors, contentBox, fonts } from './theme';
 
 const AMBER = '#fbbf24';
 const AMBER_BG = 'rgba(251, 191, 36, 0.13)';
@@ -62,8 +64,9 @@ const Pills: React.FC<{ badges: readonly BadgeSpec[]; scale: number }> = ({ badg
   </div>
 );
 
-const FieldRow: React.FC<{ field: ErField; index: number; at: number | undefined; frame: number; dimmed: boolean; lit: number }> = ({
+const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }; index: number; at: number | undefined; frame: number; dimmed: boolean; lit: number }> = ({
   field,
+  text,
   index,
   at,
   frame,
@@ -136,7 +139,7 @@ const FieldRow: React.FC<{ field: ErField; index: number; at: number | undefined
           {Icon ? <Icon size={19} strokeWidth={2.2} color={field.pk ? '#e8c46a' : '#8fb4ff'} /> : null}
         </div>
         <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex' }}>
-          <div style={{ fontSize: 21, fontWeight: field.pk ? 650 : 500, color: nameColor, ...ellipsis }}>{field.name}</div>
+          <FitText fit={text.name} weight={field.pk ? 650 : 500} style={{ color: nameColor, lineHeight: 'normal' }} />
           {badgesOf(field, { change: false }).map((b, i) => (
             <Badge key={i} badge={b} size={12} style={{ marginLeft: 10, alignSelf: 'center' }} />
           ))}
@@ -148,19 +151,14 @@ const FieldRow: React.FC<{ field: ErField; index: number; at: number | undefined
                 top: '50%',
                 height: 2.5,
                 marginTop: -1,
-                width: `calc(${struck} * (${field.name.length}ch + 4px))`,
+                width: struck * (text.name.width + 4),
                 maxWidth: '100%',
-                fontSize: 21,
                 background: colors.del,
               }}
             />
           ) : null}
         </div>
-        {field.type ? (
-          <div style={{ fontSize: 18, color: field.change === 'removed' ? colors.faint : colors.muted, flexShrink: 0, maxWidth: '45%', ...ellipsis }}>
-            {field.type}
-          </div>
-        ) : null}
+        {text.type ? <FitText fit={text.type} style={{ color: field.change === 'removed' ? colors.faint : colors.muted, flexShrink: 0, lineHeight: 'normal' }} /> : null}
       </div>
     </div>
   );
@@ -225,23 +223,13 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
         }}
       >
         <Table2 size={24} strokeWidth={2} color={iconColor} style={{ flexShrink: 0 }} />
-        <div
-          style={{
-            fontFamily: fonts.mono,
-            fontSize: fitFontSize(entity.name, 25, 18, 18),
-            fontWeight: 700,
-            color: colors.text,
-            textDecoration: removed ? 'line-through' : 'none',
-            textDecorationColor: colors.del,
-            textDecorationThickness: 3,
-            ...ellipsis,
-          }}
-        >
-          {entity.name}
-        </div>
+        <FitText
+          fit={placed.name}
+          style={{ color: colors.text, textDecoration: removed ? 'line-through' : 'none', textDecorationColor: colors.del, textDecorationThickness: 3, lineHeight: 'normal' }}
+        />
       </div>
       {entity.fields.map((field, i) => (
-        <FieldRow key={i} field={field} index={i} at={fieldAt.get(`${entity.id}/${i}`)} frame={frame} dimmed={removed} lit={fieldLit(i)} />
+        <FieldRow key={i} field={field} text={placed.fields[i]!} index={i} at={fieldAt.get(`${entity.id}/${i}`)} frame={frame} dimmed={removed} lit={fieldLit(i)} />
       ))}
       {badges.length ? <Pills badges={badges} scale={pillScale} /> : null}
     </div>
@@ -311,7 +299,7 @@ const RelationLabel: React.FC<{ routed: RoutedRelation; appear: number; emphasis
     top: routed.mid.y,
     transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.06 * emphasis.glow)})`,
     opacity: appear * emphasis.opacity,
-    maxWidth: 170,
+    maxWidth: RELATION_LABEL_MAX,
   };
   const box: React.CSSProperties = {
     padding: '4px 12px',
@@ -320,15 +308,11 @@ const RelationLabel: React.FC<{ routed: RoutedRelation; appear: number; emphasis
     border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || relation.highlight ? `${color}88` : colors.borderStrong}`,
     boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : relation.highlight && !change ? `0 0 18px ${EMPHASIS.glow}` : undefined,
     color,
-    fontFamily: fonts.mono,
-    fontSize: 17,
     textDecoration: change === 'removed' ? 'line-through' : 'none',
-    ...ellipsis,
   };
-  const text = `${change === 'added' ? '+ ' : ''}${relation.label}`;
+  const text = routed.label ? <FitText fit={routed.label} align="center" style={routed.label.lines.length > 1 ? undefined : { lineHeight: 'normal' }} /> : null;
   const badges = badgesOf(relation, { change: false });
   if (!badges.length) return <div style={{ ...placement, ...box }}>{text}</div>;
-  // The label clips its text, so the badges sit on a wrapper of the same size.
   return (
     <div style={placement}>
       <div style={box}>{text}</div>

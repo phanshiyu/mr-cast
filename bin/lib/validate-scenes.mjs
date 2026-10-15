@@ -5,8 +5,6 @@ import { diffFiles, sceneFiles } from '../../shared/files.mjs';
 
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
-// A cell wraps to two lines; past this it is cut at a typical column width.
-const TABLE_CELL_LONG = 70;
 const HIGHLIGHT_STEPS_MAX = 5;
 export const TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
 const CHART_KINDS = ['bar', 'line'];
@@ -54,10 +52,7 @@ export function checkTable(s, p, errors, warnings) {
     if (row.cells.length !== s.columns.length) errors.push(`${q}.cells: ${row.cells.length} cell${row.cells.length === 1 ? '' : 's'} for ${s.columns.length} columns; give one cell per column ("" for an empty one)`);
     row.cells.forEach((cell, k) => {
       const c = `${q}.cells[${k}]`;
-      if (isText(cell)) {
-        if (cell.trim().length > TABLE_CELL_LONG) warnings.push(`${c}: ${cell.trim().length} characters; keep a cell under ${TABLE_CELL_LONG} so it fits on two lines`);
-        return;
-      }
+      if (isText(cell)) return;
       if (!cell || typeof cell !== 'object' || !isText(cell.before) || !isText(cell.after)) {
         return errors.push(`${c}: must be a string, or { before, after } strings for a value this change replaced`);
       }

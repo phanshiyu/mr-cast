@@ -1,7 +1,8 @@
+import { fitBlock, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 import type { Box, LayoutBoxes } from './penGeometry';
 import { rowBadgeRoom } from './marks';
 import type { TableCell, TableRow } from '../types';
-import { wrapLabel } from './wrapLabel';
 
 /** Average advance per em, rounded up so estimated line lengths never overflow. */
 const MONO_ADVANCE = 0.61;
@@ -27,9 +28,9 @@ const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
 const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text);
 
 export type PlacedCell =
-  | { kind: 'text'; mono: boolean; lines: string[] }
+  | { kind: 'text'; mono: boolean; text: Fit }
   /** `inline` puts the struck value and the new one on one line; otherwise the new value goes under the old. */
-  | { kind: 'change'; mono: boolean; inline: boolean; before: string[]; after: string[] };
+  | { kind: 'change'; mono: boolean; inline: boolean; before: Fit; after: Fit };
 
 export interface PlacedRow {
   row: TableRow;
@@ -45,12 +46,17 @@ export interface TableLayout {
   lineHeight: number;
   /** Left edge and width of each column, in layout pixels from the row's left edge. */
   cols: { x: number; w: number }[];
+  /** Each column's header, fitted to its column. */
+  headers: Fit[];
   rows: PlacedRow[];
   width: number;
   height: number;
+  /** Some cell needs more lines than it may take. */
   truncated: boolean;
   /** Below 1 when even the smallest font overflows: the table draws at `width / scale` and shrinks to fit. */
   scale: number;
+  /** Whether the table fits the frame at a readable size. */
+  room: Fit;
 }
 
 const cellText = (cell: TableCell) => (typeof cell === 'string' ? cell : `${cell.before}${ARROW}${cell.after}`);
@@ -61,23 +67,6 @@ export const cellFont = (font: number, mono: boolean) => (mono ? Math.round(font
 const cellMono = (cell: TableCell) => (typeof cell === 'string' ? isCodeLike(cell) : isCodeLike(cell.before) && isCodeLike(cell.after));
 const advance = (mono: boolean) => (mono ? MONO_ADVANCE : SANS_ADVANCE);
 const charWidth = (font: number, mono: boolean) => cellFont(font, mono) * advance(mono);
-/**
- * Wraps a code-like cell into at most two lines, breaking after separators such as `_`, `/`, `.` and
- * `:` rather than mid-word. Text that still does not fit is cut with an ellipsis.
- */
-function wrapCode(text: string, chars: number): string[] {
-  const clean = text.trim();
-  if (clean.length <= chars) return [clean];
-  const pieces = clean.split(/(?<=[_/.:\-])/);
-  let first = '';
-  while (pieces.length && first.length + pieces[0]!.length <= chars) first += pieces.shift()!;
-  if (!first) return wrapLabel(clean, chars);
-  const rest = pieces.join('');
-  return [first, rest.length <= chars ? rest : `${rest.slice(0, chars - 1)}…`];
-}
-
-const cut = (original: string, lines: string[]) => lines[lines.length - 1]!.endsWith('…') && !original.trim().endsWith('…');
-
 function rowChange(row: TableRow): PlacedRow['change'] {
   if (row.change) return row.change;
   return row.cells.some((c) => typeof c !== 'string') ? 'modified' : null;
@@ -121,7 +110,16 @@ function columnWidths(columns: readonly string[], rows: readonly TableRow[], tex
 /** Font size of a row's own badges, drawn at its right end. */
 export const ROW_BADGE = 13;
 
-function attempt(columns: readonly string[], rows: readonly TableRow[], width: number, font: number) {
+/** A cell's text at the table's font, in at most `lines` lines of its column; the first column is bolder. */
+function fitCell(text: string, mono: boolean, first: boolean, width: number, font: number, lines: number, path: string): Fit {
+  const slot = mono ? SLOTS.tableCode : SLOTS.tableCell;
+  return fitTextAt(text, { ...sized(slot, width), lines, weight: first ? 650 : 450 }, path, cellFont(font, mono));
+}
+
+/** Room an inline change takes besides its two values: the gaps around the arrow, and the arrow. */
+const INLINE_ARROW = (font: number) => 2 * 0.4 * font + 0.85 * font;
+
+function attempt(columns: readonly string[], rows: readonly TableRow[], width: number, font: number, maxLines = 2) {
   const lineHeight = Math.round(font * LINE_HEIGHT);
   const pad = Math.round(font * 0.5);
   const textW = width - 2 * PAD_X - MARKER_W - (columns.length - 1) * COL_GAP - rowBadgeRoom(rows, ROW_BADGE);
@@ -135,53 +133,58 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
 
   let truncated = false;
   let y = HEADER_H;
-  const placed: PlacedRow[] = rows.map((row) => {
+  const placed: PlacedRow[] = rows.map((row, r) => {
     const cells = columns.map((_, i): PlacedCell => {
       const cell = row.cells[i] ?? '';
       const mono = cellMono(cell);
-      const chars = Math.max(4, Math.floor(widths[i]! / charWidth(font, mono) + 0.01));
+      const path = `rows[${r}].cells[${i}]`;
+      const first = i === 0;
       if (typeof cell === 'string') {
-        const lines = !cell.trim() ? [''] : mono ? wrapCode(cell, chars) : wrapLabel(cell, chars);
-        truncated ||= cut(cell, lines);
-        return { kind: 'text', mono, lines };
+        const text = fitCell(cell.trim(), mono, first, widths[i]!, font, maxLines, path);
+        truncated ||= !text.fits;
+        return { kind: 'text', mono, text };
       }
-      if (cellChars(cell) <= chars) return { kind: 'change', mono, inline: true, before: [cell.before], after: [cell.after] };
-      const wrap = mono ? wrapCode : wrapLabel;
-      const before = wrap(cell.before, chars);
-      const after = wrap(cell.after, chars);
-      truncated ||= cut(cell.before, before) || cut(cell.after, after);
+      const before = fitCell(cell.before, mono, first, widths[i]!, font, maxLines, `${path}.before`);
+      const after = fitCell(cell.after, mono, true, widths[i]!, font, maxLines, `${path}.after`);
+      const inlineW = before.widths[0]! + after.widths[0]! + INLINE_ARROW(cellFont(font, mono));
+      if (before.lines.length === 1 && after.lines.length === 1 && inlineW <= widths[i]!) return { kind: 'change', mono, inline: true, before, after };
+      truncated ||= !before.fits || !after.fits;
       return { kind: 'change', mono, inline: false, before, after };
     });
-    const lines = Math.max(...cells.map((c) => (c.kind === 'text' ? c.lines.length : c.inline ? 1 : c.before.length + c.after.length)));
+    const lines = Math.max(...cells.map((c) => (c.kind === 'text' ? c.text.lines.length : c.inline ? 1 : c.before.lines.length + c.after.lines.length)));
     const h = lines * lineHeight + 2 * pad;
     const out = { row, change: rowChange(row), cells, y, h };
     y += h + ROW_GAP;
     return out;
   });
-  return { font, lineHeight, cols, rows: placed, width, height: y - ROW_GAP, truncated, scale: 1 };
+  const headers = columns.map((c, i) => fitText(c, sized(SLOTS.tableHeader, widths[i]! + COL_GAP / 2), `columns[${i}]`));
+  return { font, lineHeight, cols, headers, rows: placed, width, height: y - ROW_GAP, truncated, scale: 1, room: fitBlock('rows', 'table', true, '') };
 }
 
 /**
- * Places a table in a box from character counts, so stills stay deterministic. Picks the largest font
- * at which no cell is cut and the table fits the height; failing that, the largest that fits the
- * height; failing that, the smallest font laid out wider and scaled down.
+ * Places a table in a box, so stills stay deterministic. Picks the largest font at which every cell fits
+ * its two lines and the table fits the height; failing that, the smallest font with three lines a cell;
+ * failing that, the smallest font laid out wider and scaled down, which `validate` reports.
  */
 export function layoutTable(columns: readonly string[], rows: readonly TableRow[], width: number, height: number): TableLayout {
-  let fallback: TableLayout | null = null;
   for (let font = MAX_FONT; font >= MIN_FONT; font--) {
     const result = attempt(columns, rows, width, font);
-    if (result.height > height) continue;
-    if (!result.truncated) return result;
-    fallback ??= result;
+    if (result.height <= height && !result.truncated) return result;
   }
-  if (fallback) return fallback;
-  const scale = height / attempt(columns, rows, width, MIN_FONT).height;
-  return { ...attempt(columns, rows, width / scale, MIN_FONT), scale };
+  // At the smallest font a cell may take a third line; a table that still overflows draws smaller and is reported.
+  const last = attempt(columns, rows, width, MIN_FONT, 3);
+  const fix = 'shorten the cells, or split the table into two scenes';
+  if (last.height <= height) return last;
+  const scale = height / last.height;
+  return { ...attempt(columns, rows, width / scale, MIN_FONT, 3), scale, room: fitBlock('rows', 'table', false, fix) };
 }
 
-/** Text a cell shows, line by line, as the table scene draws it. */
-const cellLines = (cell: PlacedCell): string[] =>
-  cell.kind === 'text' ? cell.lines : cell.inline ? [`${cell.before[0]} → ${cell.after[0]}`] : [...cell.before, ...cell.after];
+/** The width and lines of a cell's text as the table scene draws it. */
+function cellExtent(cell: PlacedCell, font: number): { width: number; lines: number } {
+  if (cell.kind === 'text') return { width: cell.text.width, lines: cell.text.lines.length };
+  if (cell.inline) return { width: cell.before.width + cell.after.width + INLINE_ARROW(font), lines: 1 };
+  return { width: Math.max(cell.before.width, cell.after.width), lines: cell.before.lines.length + cell.after.lines.length };
+}
 
 /**
  * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a row, a
@@ -194,10 +197,9 @@ export function tableBoxes(layout: TableLayout): LayoutBoxes {
   layout.rows.forEach((row, r) => {
     boxes.set(`r:${r}`, { x: 0, y: row.y, width: layout.width, height: row.h });
     row.cells.forEach((cell, c) => {
-      const lines = cellLines(cell);
-      const font = cellFont(layout.font, cell.mono);
-      const width = Math.min(layout.cols[c]!.w, Math.max(...lines.map((l) => l.length)) * font * (cell.mono ? 0.61 : 0.53));
-      const height = lines.length * layout.lineHeight;
+      const extent = cellExtent(cell, cellFont(layout.font, cell.mono));
+      const width = Math.min(layout.cols[c]!.w, extent.width);
+      const height = extent.lines * layout.lineHeight;
       boxes.set(`x:${r}/${c}`, { x: layout.cols[c]!.x, y: row.y + (row.h - height) / 2, width: Math.max(24, width), height });
     });
   });

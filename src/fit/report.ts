@@ -2,8 +2,11 @@ import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
 import { fitArch } from '../utils/archLayout';
+import { layoutEr } from '../utils/erLayout';
 import { layoutIntent } from '../utils/intentLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
+import { layoutState } from '../utils/stateLayout';
+import { layoutTable } from '../utils/tableLayout';
 import { shellFits } from './shell';
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
@@ -15,11 +18,14 @@ const SCENE_FITS: SceneFits = {
   code: () => null,
   flow: () => null,
   sequence: (scene) => layoutSequence(scene.participants, scene.messages, contentBox(Boolean(scene.title))),
-  er: () => null,
-  state: () => null,
+  er: (scene) => layoutEr(scene.entities, scene.relations),
+  state: (scene) => layoutState(scene.states, scene.transitions, scene.initial),
   mermaid: () => null,
   tests: () => null,
-  table: () => null,
+  table: (scene) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutTable(scene.columns, scene.rows, box.width, box.height);
+  },
   chart: () => null,
   timeline: () => null,
   files: () => null,

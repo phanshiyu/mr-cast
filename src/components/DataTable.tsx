@@ -3,14 +3,15 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, TableScene } from '../types';
 import { brighter, focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
-import { COL_GAP, HEADER_FONT, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, cellFont, layoutTable, type PlacedCell, type PlacedRow, type TableLayout, tableBoxes } from '../utils/tableLayout';
+import { COL_GAP, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, layoutTable, type PlacedCell, type PlacedRow, type TableLayout, tableBoxes } from '../utils/tableLayout';
 import { staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { ChangeLegend } from './ChangeLegend';
 import { badgesOf, changeTone, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
+import { FitText } from './FitText';
+import { clamp, colors, contentBox, fonts } from './theme';
 
 const START = 10;
 /** Every row has started landing by this frame, so all have landed by the end of the build. */
@@ -23,42 +24,29 @@ function highlightRows(scene: TableScene, layout: TableLayout): number[] {
   return layout.rows.flatMap((r, i) => (r.change ? [i] : []));
 }
 
-const Lines: React.FC<{ lines: string[]; style?: React.CSSProperties }> = ({ lines, style }) => (
-  <>
-    {lines.map((line, i) => (
-      <div key={i} style={{ whiteSpace: 'nowrap', ...style }}>
-        {line}
-      </div>
-    ))}
-  </>
-);
-
 const Struck: React.CSSProperties = { color: STRUCK, textDecoration: 'line-through', textDecorationColor: colors.del, textDecorationThickness: 2.5 };
 
 const Cell: React.FC<{ cell: PlacedCell; first: boolean; removed: boolean; layout: TableLayout }> = ({ cell, first, removed, layout }) => {
   const base: React.CSSProperties = {
-    fontFamily: cell.mono ? fonts.mono : fonts.sans,
-    fontSize: cellFont(layout.font, cell.mono),
     lineHeight: `${layout.lineHeight}px`,
-    fontWeight: first ? 650 : 450,
     color: removed ? colors.muted : first ? colors.text : '#d5d9e3',
     ...(removed ? { textDecoration: 'line-through', textDecorationColor: colors.del, textDecorationThickness: 2.5 } : null),
   };
-  if (cell.kind === 'text') return <Lines lines={cell.lines} style={base} />;
-  const after: React.CSSProperties = { color: colors.add, fontWeight: 650 };
+  if (cell.kind === 'text') return <FitText fit={cell.text} style={base} />;
+  const after: React.CSSProperties = { ...base, color: colors.add };
   if (cell.inline) {
     return (
-      <div style={{ ...base, display: 'flex', gap: '0.4em', whiteSpace: 'nowrap' }}>
-        <span style={Struck}>{cell.before[0]}</span>
-        <span style={{ color: colors.faint }}>→</span>
-        <span style={after}>{cell.after[0]}</span>
+      <div style={{ display: 'flex', gap: '0.4em', fontSize: cell.after.size, lineHeight: `${layout.lineHeight}px` }}>
+        <FitText fit={cell.before} style={{ ...base, ...Struck }} />
+        <span style={{ color: colors.faint, fontFamily: cell.mono ? fonts.mono : fonts.sans }}>→</span>
+        <FitText fit={cell.after} style={after} />
       </div>
     );
   }
   return (
-    <div style={base}>
-      <Lines lines={cell.before} style={Struck} />
-      <Lines lines={cell.after} style={after} />
+    <div>
+      <FitText fit={cell.before} style={{ ...base, ...Struck }} />
+      <FitText fit={cell.after} style={after} />
     </div>
   );
 };
@@ -181,24 +169,12 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
         }}
       >
         <div style={{ position: 'absolute', left: 0, top: 0, width: layout.width, height: HEADER_H, opacity: headerIn }}>
-          {scene.columns.map((column, i) => (
-            <div
+          {layout.headers.map((header, i) => (
+            <FitText
               key={i}
-              style={{
-                position: 'absolute',
-                left: layout.cols[i]!.x,
-                width: layout.cols[i]!.w + COL_GAP / 2,
-                top: 8,
-                fontSize: HEADER_FONT,
-                fontWeight: 700,
-                letterSpacing: 2.5,
-                textTransform: 'uppercase',
-                color: focus(`c:${i}`).glow > 0 ? colors.accent : colors.faint,
-                ...ellipsis,
-              }}
-            >
-              {column}
-            </div>
+              fit={header}
+              style={{ position: 'absolute', left: layout.cols[i]!.x, top: 8, lineHeight: 'normal', color: focus(`c:${i}`).glow > 0 ? colors.accent : colors.faint }}
+            />
           ))}
         </div>
         {layout.rows.map((placed, i) => (

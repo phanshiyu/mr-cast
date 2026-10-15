@@ -1,4 +1,6 @@
-import { badgeWords } from './marks';
+import { fitText, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
+import { badgesWidth, badgeWords } from './marks';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
 import type { ErEntity, ErField, ErRelation } from '../types';
 
@@ -35,6 +37,9 @@ export interface PlacedEntity extends Rect {
   entity: ErEntity;
   row: number;
   col: number;
+  /** Its name in the header, and each field's name and type in its row. */
+  name: Fit;
+  fields: { name: Fit; type: Fit | null }[];
 }
 
 export interface RelationEnd {
@@ -51,6 +56,7 @@ export interface RoutedRelation {
   to: RelationEnd;
   /** Halfway along the connector, for the label. */
   mid: Pt;
+  label: Fit | null;
 }
 
 export interface ErLayout {
@@ -239,6 +245,31 @@ interface EndSpec {
   straight: boolean;
 }
 
+/** A relation label's pill: at most this wide, and its padding and border across. */
+export const RELATION_LABEL_MAX = 170;
+const RELATION_LABEL_CHROME = 2 * 12 + 2;
+
+/**
+ * An entity's name and its fields' names and types, fitted to a card `w` wide. A row holds its marker,
+ * key icon, name, badges and type; the type takes at most 45% of the row.
+ */
+function entityText(entity: ErEntity, index: number, w: number): Pick<PlacedEntity, 'name' | 'fields'> {
+  const path = `entities[${index}]`;
+  const row = w - 30;
+  return {
+    name: fitText(entity.name, sized(SLOTS.entityName, w - 72), `${path}.name`),
+    fields: entity.fields.map((field, k) => {
+      const type = field.type ? fitText(field.type, sized(SLOTS.fieldType, 0.45 * row), `${path}.fields[${k}].type`) : null;
+      const badges = field.badge ? badgesWidth([field.badge], 12) + 10 : 0;
+      const room = row - 60 - (type ? type.width + 10 : 0) - badges;
+      return { name: fitText(field.name, sized(SLOTS.fieldName, room), `${path}.fields[${k}].name`), type };
+    }),
+  };
+}
+
+/** Half a relation label pill's height: one line, or as many as its label wrapped to. */
+const labelHalfHeight = (label: Fit | null) => Math.max(LABEL_HALF_H, label ? (label.height + 10) / 2 : 0);
+
 /** Matches the label pill in ErDiagram: 17px mono plus padding, capped at its max width. */
 export const labelHalfWidth = (text: string) => Math.min(170, 26 + text.length * 10.4) / 2;
 
@@ -414,7 +445,7 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
 
   const placed = entities.map<PlacedEntity>((entity, i) => {
     const { r, c } = cells[i]!;
-    return { entity, row: r, col: c, x: grid.colLeft(c), y: rowTop[r]! + offsets[i]!, w: cardW, h: cardHeight(entity) };
+    return { entity, row: r, col: c, x: grid.colLeft(c), y: rowTop[r]! + offsets[i]!, w: cardW, h: cardHeight(entity), ...entityText(entity, i, cardW) };
   });
   const placedById = new Map(placed.map((p) => [p.entity.id, p]));
 
@@ -456,7 +487,8 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
       relation.from === relation.to && relation.label
         ? { x: points[1]!.x + normal[from.side].x * (labelHalfWidth(relation.label) + 8), y: (from.point.y + to.point.y) / 2 }
         : labelPoint(points);
-    return { relation, points, d: roundedPath(points), from, to, mid };
+    const label = relation.label ? fitText(`${relation.change === 'added' ? '+ ' : ''}${relation.label}`, sized(SLOTS.relationLabel, RELATION_LABEL_MAX - RELATION_LABEL_CHROME), `relations[${relations.indexOf(relation)}].label`) : null;
+    return { relation, points, d: roundedPath(points), from, to, mid, label };
   });
 
   // Fit the frame to everything drawn, then shift so the content starts at PAD.
@@ -466,7 +498,7 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
     if (!r.relation.label) continue;
     const half = labelHalfWidth(r.relation.label);
     xs.push(r.mid.x - half, r.mid.x + half);
-    ys.push(r.mid.y - LABEL_HALF_H, r.mid.y + LABEL_HALF_H);
+    ys.push(r.mid.y - labelHalfHeight(r.label), r.mid.y + labelHalfHeight(r.label));
   }
   const dx = PAD - Math.min(...xs);
   const dy = PAD - Math.min(...ys);
@@ -497,7 +529,7 @@ export function erBoxes(layout: ErLayout): LayoutBoxes {
     const lift = badgeWords(e.entity).length ? BADGE_LIFT : 0;
     return { x: e.x, y: e.y - lift, width: e.w, height: e.h + lift };
   };
-  const relation = (r: RoutedRelation): Box => (r.relation.label ? around(r.mid, 2 * labelHalfWidth(r.relation.label), 2 * LABEL_HALF_H) : around(r.mid, 40, 40));
+  const relation = (r: RoutedRelation): Box => (r.relation.label ? around(r.mid, 2 * labelHalfWidth(r.relation.label), 2 * labelHalfHeight(r.label)) : around(r.mid, 40, 40));
   const boxes = new Map<string, Box>([
     ...layout.entities.map((e): [string, Box] => [`e:${e.entity.id}`, card(e)]),
     ...layout.entities.flatMap((e) => e.entity.fields.map((_, k): [string, Box] => [`f:${e.entity.id}/${k}`, { x: e.x + 6, y: e.y + HEADER_H + k * ROW_H + 2, width: e.w - 12, height: ROW_H - 4 }])),

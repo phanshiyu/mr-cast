@@ -1,7 +1,8 @@
+import { fitText, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 import { badgeWords } from './marks';
 import type { StateNode, StateTransition } from '../types';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
-import { wrapLabel } from './wrapLabel';
 
 export interface Pt {
   x: number;
@@ -15,6 +16,7 @@ export const LABEL_FONT = 18;
 export const LABEL_LINE_H = 22;
 const LABEL_PAD_Y = 6;
 const LABEL_MAX_CHARS = 22;
+const MONO_ADVANCE = 0.61;
 export const ARROW_LEN = 14;
 const MIN_W = 170;
 const MAX_W = 360;
@@ -36,20 +38,23 @@ function badgeWidth(text: string): number {
   return Math.ceil(text.length * (BADGE_FONT * 0.76 + 1) + 22);
 }
 
-/** A transition label pill: its text wrapped to at most two lines, sized from the mono advance of the render browser's font. */
+/** A transition label pill: its text fitted to LABEL_MAX_CHARS monospace cells, and the pill's size. */
 export interface LabelBox {
-  lines: string[];
+  text: Fit;
   w: number;
   h: number;
 }
 
-const labelHeight = (lines: number) => lines * LABEL_LINE_H + 2 * LABEL_PAD_Y;
+const labelHeight = (lines: number, size = LABEL_FONT) => lines * LABEL_LINE_H * (size / LABEL_FONT) + 2 * LABEL_PAD_Y;
 
-function labelBox(t: StateTransition): LabelBox {
-  const lines = wrapLabel((t.change === 'added' ? '+ ' : '') + (t.label ?? ''), LABEL_MAX_CHARS);
-  const longest = Math.max(...lines.map((l) => l.length));
-  return { lines, w: Math.ceil(longest * LABEL_FONT * 0.61 + 26), h: labelHeight(lines.length) };
+function labelBox(t: StateTransition, path: string): LabelBox {
+  const text = fitText((t.change === 'added' ? '+ ' : '') + (t.label ?? ''), sized(SLOTS.transitionLabel, LABEL_MAX_CHARS * LABEL_FONT * MONO_ADVANCE), path);
+  const cells = Math.max(...text.lines.map((line) => line.reduce((n, run) => n + run.text.length, 0)));
+  return { text, w: Math.ceil(Math.max(cells * text.size * MONO_ADVANCE, text.width) + 26), h: labelHeight(text.lines.length, text.size) };
 }
+
+/** Room a state's label has: its pill less the padding and its badges. */
+const labelRoom = (state: StateNode, w: number) => w - 2 * PAD_X - badgeWords(state).reduce((sum, word) => sum + badgeWidth(word) + 14, 0);
 
 function stateWidth(state: StateNode): number {
   const badges = badgeWords(state).reduce((sum, word) => sum + badgeWidth(word) + 14, 0);
@@ -59,6 +64,8 @@ function stateWidth(state: StateNode): number {
 
 export interface PlacedState {
   state: StateNode;
+  /** Its label, fitted to its pill. */
+  label: Fit;
   layer: number;
   /** Position within its column, top to bottom. */
   row: number;
@@ -229,6 +236,8 @@ type Plan =
   | { kind: 'arc'; t: StateTransition; a: PlacedState; b: PlacedState; above: boolean; level: number; topA: boolean; topB: boolean };
 
 export function layoutState(states: readonly StateNode[], transitions: readonly StateTransition[], initial: string | undefined): StateLayout {
+  const labels = new Map(transitions.map((t, i) => [t, labelBox(t, `transitions[${i}].label`)]));
+  const labelOf = (t: StateTransition) => labels.get(t)!;
   const ids = new Set(states.map((s) => s.id));
   const edges = transitions.filter((t) => ids.has(t.from) && ids.has(t.to));
   const { layerOf, unreachable } = assignLayers(states, edges, initial);
@@ -241,7 +250,7 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   /** Space a state's self-loops (with labels) take above it. */
   const loopReserve = (id: string) => {
     const loops = edges.filter((e) => e.from === id && e.to === id);
-    const labelH = Math.max(labelHeight(1), ...loops.map((e) => (e.label ? labelBox(e).h : 0)));
+    const labelH = Math.max(labelHeight(1), ...loops.map((e) => (e.label ? labelOf(e).h : 0)));
     return loops.length ? 0.75 * (LOOP_H + (loops.length - 1) * LOOP_STEP) + labelH + 10 : 0;
   };
 
@@ -254,7 +263,9 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
     let y = -bodyH / 2;
     col.forEach((s, row) => {
       y += gaps[row]!;
-      placed.set(s.id, { state: s, layer, row, x: 0, y, w: stateWidth(s), h: STATE_H });
+      const w = stateWidth(s);
+      const label = fitText(s.label, sized(SLOTS.stateLabel, labelRoom(s, w)), `states[${states.indexOf(s)}].label`);
+      placed.set(s.id, { state: s, label, layer, row, x: 0, y, w, h: STATE_H });
       y += STATE_H;
     });
   });
@@ -339,7 +350,7 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
     if (gap >= 0 && gap < gapW.length) gapW[gap] = Math.max(gapW[gap]!, w);
   };
   for (const p of plans) {
-    const lw = p.t.label ? labelBox(p.t).w : 0;
+    const lw = p.t.label ? labelOf(p.t).w : 0;
     if (p.kind === 'gap') widen(Math.min(p.a.layer, p.b.layer), lw + 64);
     if (p.kind === 'channel') widen(p.side === 'right' ? p.a.layer : p.a.layer - 1, CHANNEL + Math.abs(p.offset) / 2 + lw + 40);
   }
@@ -351,7 +362,7 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   const colBottom = (l: number) => Math.max(...columns[l]!.map((s) => at(s.id).y + STATE_H));
 
   const route = (p: Plan, i: number): Route => {
-    const box = p.t.label ? labelBox(p.t) : null;
+    const box = p.t.label ? labelOf(p.t) : null;
     const lw = box?.w ?? null;
     const labelAt = (pt: Pt) => (box === null ? null : { ...pt, ...box });
     const dy = (end: 'from' | 'to') => portDy.get(`${i}:${end}`) ?? 0;

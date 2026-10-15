@@ -6,9 +6,6 @@ import type { Change, StateScene, StateTransition } from '../types';
 import {
   ARROW_LEN,
   BADGE_FONT,
-  LABEL_FONT,
-  LABEL_LINE_H,
-  STATE_FONT,
   layoutState,
   type PlacedState,
   type Pt,
@@ -24,7 +21,8 @@ import { ChangeLegend } from './ChangeLegend';
 import { Badge, badgesOf, changeTone, CornerBadges, EMPHASIS, emphasisRing } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
+import { FitText } from './FitText';
+import { clamp, colors, contentBox } from './theme';
 
 const EDGE = 'rgba(170, 178, 200, 0.7)';
 const START = 8;
@@ -113,19 +111,18 @@ const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: readonl
         padding: '0 26px',
       }}
     >
-      <div
+      <FitText
+        fit={placed.label}
+        align="center"
         style={{
-          fontSize: STATE_FONT,
-          fontWeight: 650,
           color: removed ? colors.muted : colors.text,
           textDecoration: removed ? 'line-through' : 'none',
           textDecorationColor: colors.del,
           textDecorationThickness: 3,
-          ...ellipsis,
+          flexShrink: 0,
+          lineHeight: placed.label.lines.length > 1 ? undefined : 'normal',
         }}
-      >
-        {state.label}
-      </div>
+      />
       {badges.map((b, i) => (
         <Badge key={i} badge={b} size={BADGE_FONT} style={{ transform: `scale(${badgeScale})` }} />
       ))}
@@ -199,16 +196,10 @@ const TransitionLabel: React.FC<{ routed: RoutedTransition; appear: number; puls
         border: `1px solid ${change || highlight ? `${color}99` : colors.borderStrong}`,
         boxShadow: pulse > 0 ? `0 0 ${24 * pulse}px ${color}88` : highlight ? `0 0 18px ${EMPHASIS.glow}` : 'none',
         color,
-        fontFamily: fonts.mono,
-        fontSize: LABEL_FONT,
-        lineHeight: `${LABEL_LINE_H}px`,
-        whiteSpace: 'pre',
         textDecoration: change === 'removed' ? 'line-through' : 'none',
       }}
     >
-      {label.lines.map((line, i) => (
-        <span key={i}>{line}</span>
-      ))}
+      <FitText fit={label.text} align="center" />
       <CornerBadges badges={badgesOf(transition, { change: false })} size={12} top={-19} right={-4} />
     </div>
   );
