@@ -29,6 +29,7 @@
     "dist/",
     "skill/",
     "examples/demo/*.json",
+    "examples/demo-simple/*.json",
     "tsconfig.json",
     "README.md",
     "LICENSE"

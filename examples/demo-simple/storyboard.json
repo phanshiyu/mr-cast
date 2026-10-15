@@ -1,0 +1,415 @@
+{
+  "title": "Rate limiting for the Orders API, line by line",
+  "subtitle": "feature/rate-limit → main · simple style",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Why this change",
+      "narration": "This change does three things. It limits how many orders one address can send per minute. It prices each item from the pricing service. And it sends an event for every new order. There are no tests.",
+      "summary": "Limit POST /orders to 20 per minute per IP, price items from the pricing service, and publish order.created.",
+      "risk": "medium",
+      "bullets": [
+        "If Redis is down, every order request fails",
+        "The event is sent after the save, so a queue error fails a saved order",
+        "No tests cover the limiter, the prices, or the event"
+      ]
+    },
+    {
+      "type": "arch",
+      "chapter": "Where it fits",
+      "narration": "Here is the system. A client sends a request to the Express A P I. The A P I asks Redis to count the request. Then the orders service prices the items and saves the order. At the end, the A P I publishes an event to the queue.",
+      "nodes": [
+        {
+          "id": "client",
+          "label": "Client",
+          "kind": "client"
+        },
+        {
+          "id": "api",
+          "label": "Express API",
+          "kind": "service",
+          "modified": true
+        },
+        {
+          "id": "redis",
+          "label": "Redis",
+          "kind": "db",
+          "modified": true
+        },
+        {
+          "id": "orders",
+          "label": "Orders service",
+          "kind": "service",
+          "modified": true
+        },
+        {
+          "id": "pricing",
+          "label": "Pricing",
+          "kind": "service"
+        },
+        {
+          "id": "pg",
+          "label": "Orders DB",
+          "kind": "db"
+        },
+        {
+          "id": "events",
+          "label": "Event queue",
+          "kind": "queue",
+          "modified": true
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "api",
+          "label": "POST /orders"
+        },
+        {
+          "from": "api",
+          "to": "redis",
+          "label": "INCR rl:ip"
+        },
+        {
+          "from": "api",
+          "to": "orders"
+        },
+        {
+          "from": "orders",
+          "to": "pricing",
+          "label": "priceFor"
+        },
+        {
+          "from": "orders",
+          "to": "pg",
+          "label": "insert"
+        },
+        {
+          "from": "api",
+          "to": "events",
+          "label": "order.created"
+        }
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "Who calls whom",
+      "title": "POST /orders",
+      "narration": "Follow one request in order. The A P I counts it in Redis first. Then it calls create order. Create order prices the items and saves the order. Then the A P I publishes the event. It does not wait for anyone to read it.",
+      "participants": [
+        {
+          "id": "client",
+          "label": "Client",
+          "kind": "client"
+        },
+        {
+          "id": "api",
+          "label": "Express API",
+          "kind": "service",
+          "modified": true
+        },
+        {
+          "id": "redis",
+          "label": "Redis",
+          "kind": "db",
+          "modified": true
+        },
+        {
+          "id": "orders",
+          "label": "createOrder",
+          "kind": "service",
+          "modified": true
+        },
+        {
+          "id": "queue",
+          "label": "Event queue",
+          "kind": "queue",
+          "modified": true
+        }
+      ],
+      "messages": [
+        {
+          "from": "client",
+          "to": "api",
+          "label": "POST /orders"
+        },
+        {
+          "from": "api",
+          "to": "redis",
+          "label": "INCR rl:ip:window",
+          "modified": true
+        },
+        {
+          "from": "redis",
+          "to": "api",
+          "label": "count",
+          "kind": "return",
+          "modified": true
+        },
+        {
+          "from": "api",
+          "to": "orders",
+          "label": "createOrder(body)"
+        },
+        {
+          "from": "orders",
+          "to": "orders",
+          "label": "price items",
+          "modified": true,
+          "note": "priceFor per SKU, in parallel"
+        },
+        {
+          "from": "orders",
+          "to": "api",
+          "label": "order",
+          "kind": "return"
+        },
+        {
+          "from": "api",
+          "to": "queue",
+          "label": "order.created",
+          "kind": "async",
+          "modified": true
+        },
+        {
+          "from": "api",
+          "to": "client",
+          "label": "201 Created",
+          "kind": "return"
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "A request, step by step",
+      "title": "POST /orders",
+      "narration": "Here is the data at each step. The limiter counts the request. The service prices the items and saves the order. The A P I publishes a small event. Then it answers the client.",
+      "steps": [
+        {
+          "actor": "rateLimit",
+          "action": "count the request in Redis",
+          "payload": "rl:203.0.113.9:28391 → 3"
+        },
+        {
+          "actor": "createOrder",
+          "action": "price every item",
+          "payload": "prices: [1299, 499]"
+        },
+        {
+          "actor": "db.insert",
+          "action": "save the order",
+          "payload": "{ id: \"k3x9\", total: 3097, status: \"pending\" }"
+        },
+        {
+          "actor": "publish",
+          "action": "send order.created",
+          "payload": "{ orderId: \"k3x9\", total: 3097 }"
+        },
+        {
+          "actor": "Express API",
+          "action": "answer 201 Created"
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "What saves an order today",
+      "narration": "Before the change, look at the database client. The orders service uses it to save orders. This file does not change.",
+      "hunkId": "s1",
+      "steps": [
+        {
+          "lines": 1,
+          "say": "Line one defines the d b object. It is the database client."
+        },
+        {
+          "lines": "2-3",
+          "say": "Insert takes a table name and a row. It returns the row with a new id."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The limiter, part one",
+      "narration": "This is the new rate limit file. It has one function. Let us read it from the top.",
+      "hunkId": "h2",
+      "steps": [
+        {
+          "lines": "1-2",
+          "say": "Line one imports the request types from Express. Line two imports the Redis client. Redis is a fast store for small values."
+        },
+        {
+          "lines": "4-5",
+          "say": "Lines four and five start the options type. Window m s is the length of one time window, in milliseconds."
+        },
+        {
+          "lines": "6-7",
+          "say": "Line six is max. It is the number of requests allowed in one window. Line seven closes the type."
+        },
+        {
+          "lines": "9-10",
+          "say": "Line nine defines the rate limit function. It takes the options. Line ten returns a middleware. A middleware is a function that runs before the route."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Count the request",
+      "narration": "Now the body of the middleware. It runs once for every request to the orders route. First it counts the request.",
+      "hunkId": "h2",
+      "calloutText": "The key expires with the window, so Redis cleans it up.",
+      "steps": [
+        {
+          "lines": 11,
+          "say": "Line eleven builds a key. The key has the I P address and the current minute. So each address gets a new key every minute.",
+          "label": "Build a key for this address and minute"
+        },
+        {
+          "lines": 12,
+          "say": "Line twelve adds one to the count for that key in Redis. Redis returns the new count.",
+          "label": "Count the request in Redis"
+        },
+        {
+          "lines": 13,
+          "say": "Line thirteen runs only on the first request in a window. It tells Redis to delete the key after one minute.",
+          "label": "On the first hit, expire the key after a minute"
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Refuse or pass",
+      "narration": "The count decides what happens next.",
+      "hunkId": "h2",
+      "calloutText": "Retry-After tells the client how many seconds to wait.",
+      "steps": [
+        {
+          "lines": 14,
+          "say": "Line fourteen checks the count. Max is twenty. So this is true from the twenty first request on.",
+          "label": "Is the count over the limit?"
+        },
+        {
+          "lines": "15-16",
+          "say": "Line fifteen adds a Retry After header. It tells the client to wait sixty seconds. Line sixteen answers with status four twenty nine. That means too many requests.",
+          "label": "Refuse with Retry-After and 429",
+          "outcome": "Past twenty: too many requests"
+        },
+        {
+          "lines": "17-18",
+          "say": "Line seventeen closes the if. Line eighteen calls next. That lets the request go on to the route.",
+          "label": "Under the limit, pass the request on"
+        },
+        {
+          "lines": "19-20",
+          "say": "Lines nineteen and twenty close the middleware and the function.",
+          "label": "End of the function"
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Wiring it in",
+      "narration": "This is the server file. Four lines are new.",
+      "hunkId": "h3",
+      "calloutText": "publish runs after the insert, so a queue error fails a saved order.",
+      "steps": [
+        {
+          "lines": 3,
+          "say": "Line three imports the rate limit function."
+        },
+        {
+          "lines": 4,
+          "say": "Line four imports publish from the queue module."
+        },
+        {
+          "lines": 8,
+          "say": "Line eight puts the limiter on the orders path. The window is sixty thousand milliseconds. That is one minute. Max is twenty."
+        },
+        {
+          "lines": 12,
+          "say": "Line twelve runs after the order is saved. It publishes an order created event with the order id and the total."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Real prices",
+      "narration": "This is the orders service. It used a fixed price of ten. Now it asks the pricing service.",
+      "hunkId": "h6",
+      "calloutText": "Pricing lookups run in parallel with Promise.all.",
+      "steps": [
+        {
+          "lines": 2,
+          "say": "Line two imports price for from the pricing module."
+        },
+        {
+          "oldLines": "9-10",
+          "say": "The old lines nine and ten are removed. They priced every item at ten and saved the order."
+        },
+        {
+          "lines": 10,
+          "say": "The new line ten rejects an empty order. It throws an error."
+        },
+        {
+          "lines": 11,
+          "say": "Line eleven asks the price of each item. The calls run at the same time with Promise all."
+        },
+        {
+          "lines": 12,
+          "say": "Line twelve adds up quantity times price for each item. That is the total."
+        },
+        {
+          "lines": 13,
+          "say": "Line thirteen saves the order with the total and a status of pending."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The event",
+      "narration": "This is the new queue module.",
+      "hunkId": "h5",
+      "steps": [
+        {
+          "lines": "1-3",
+          "say": "The publish function takes a topic and a payload. Today it only logs them. A real queue would come later."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Old code removed",
+      "narration": "This old file is deleted. Nothing imported it any more.",
+      "hunkId": "h4",
+      "steps": [
+        {
+          "oldLines": "1-3",
+          "say": "The old throttle kept a map of counts in memory. It counted hits per key."
+        },
+        {
+          "oldLines": "4-6",
+          "say": "It allowed up to one hundred hits per key. Memory is lost on restart, so Redis replaces it."
+        }
+      ]
+    },
+    {
+      "type": "tests",
+      "chapter": "What is tested",
+      "title": "Test coverage",
+      "subject": "rateLimit, createOrder and the orders route",
+      "narration": "This change adds no tests. Nothing checks the limit, the prices, or the event. The gaps are listed here.",
+      "cases": [],
+      "gaps": [
+        "The twenty first request in a minute from one IP gets 429 with a Retry-After header",
+        "When Redis is down the limiter throws, so every order request fails",
+        "When the queue is down after the insert, the client gets an error for a saved order",
+        "Empty orders are rejected and totals use prices from the pricing service"
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "hunkId": "h1",
+      "reason": "one line in the docs"
+    }
+  ]
+}
