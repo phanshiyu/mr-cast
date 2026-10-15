@@ -1,6 +1,5 @@
 node_modules
 dist/
-.cache/
 .mr-cast/
 todo.md
 decisions.tsv

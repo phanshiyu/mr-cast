@@ -39,7 +39,7 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`. Exits 1 on errors. |
 | `mr-cast voice [--voice name]` | Speaks each scene's narration into `.mr-cast/audio/` and writes `voiceover.json`. Only changed narration is spoken again. |
 | `mr-cast play [--port N] [--no-open] [--voice name] [--no-voice]` | Voices the narration, then serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads data when `storyboard.json` changes, after any changed narration is voiced. |
-| `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders `walkthrough.mp4` at 1920x1080, 30 fps, with the voice-over and burned-in subtitles. The first run downloads Chrome Headless Shell into `node_modules/.remotion`. |
+| `mr-cast render [--out file.mp4] [--voice name] [--no-voice]` | Voices the narration, then renders `walkthrough.mp4` at 1920x1080, 30 fps, with the voice-over and burned-in subtitles. The first run downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`, or `$XDG_CACHE_HOME/mr-cast/remotion` when that is set. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene, 60% of the way through, to check layout. |
 
 ## Voice

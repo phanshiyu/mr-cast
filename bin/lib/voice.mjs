@@ -1,9 +1,9 @@
 // Voice-over: one Kokoro clip per distinct narration, cached in .mr-cast/audio under its narrationKey.
 
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { DEFAULT_VOICE, narrationKey } from '../../shared/voice.mjs';
+import { cacheDir } from './cache.mjs';
 import { UserError } from './errors.mjs';
 
 const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
@@ -15,10 +15,6 @@ const AUDIO_DIR = 'audio';
 export const AUDIO_NAME = /^[0-9a-f]{8}\.wav$/;
 const CLIP_SRC = /^audio\/[0-9a-f]{8}\.wav$/;
 const OWNED_FILE = /^[0-9a-f]{8}\.wav(\.tmp-\d+)?$/;
-
-function modelCacheDir() {
-  return path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'mr-cast', 'models');
-}
 
 /** voiceover.json as written by ensureVoiceover, or null when it is missing or malformed. */
 export function readVoiceover(dataDir) {
@@ -41,17 +37,17 @@ let model = null;
 /** Loads Kokoro once per process. A failed load is forgotten so the next call retries. */
 function loadModel(onProgress) {
   model ??= (async () => {
-    const cacheDir = modelCacheDir();
+    const modelDir = cacheDir('models');
     try {
       const { env } = await import('@huggingface/transformers');
-      env.cacheDir = cacheDir;
+      env.cacheDir = modelDir;
       const { KokoroTTS, TextSplitterStream } = await import('kokoro-js');
-      if (!fs.existsSync(path.join(cacheDir, MODEL_ID, 'onnx', MODEL_FILE))) onProgress?.({ type: 'download', cacheDir });
+      if (!fs.existsSync(path.join(modelDir, MODEL_ID, 'onnx', MODEL_FILE))) onProgress?.({ type: 'download', cacheDir: modelDir });
       const tts = await KokoroTTS.from_pretrained(MODEL_ID, { dtype: 'q8', device: 'cpu' });
       return { tts, TextSplitterStream };
     } catch (err) {
       model = null;
-      throw new UserError(`could not load the Kokoro voice model (${err.message}); the first run downloads about 90 MB from huggingface.co into ${cacheDir}`);
+      throw new UserError(`could not load the Kokoro voice model (${err.message}); the first run downloads about 90 MB from huggingface.co into ${modelDir}`);
     }
   })();
   return model;

@@ -2,19 +2,21 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { sceneDurationInFrames } from '../../shared/timing.mjs';
+import { cacheDir } from './cache.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/remotion/index.ts');
-const CACHE = path.join(ROOT, '.cache/bundle');
+const BUNDLE_CACHE = cacheDir('bundle');
+const BROWSER_CACHE = cacheDir('remotion');
 const COMPOSITION_ID = 'Walkthrough';
 
 async function listFiles(dir) {
@@ -41,13 +43,14 @@ async function sourceHash() {
 /** Reuses the webpack bundle while src/ and shared/ are unchanged; bundling takes several seconds. */
 async function getServeUrl() {
   const key = await sourceHash();
-  const outDir = path.join(CACHE, key);
+  const outDir = path.join(BUNDLE_CACHE, key);
   if (existsSync(path.join(outDir, 'index.html'))) return outDir;
   await rm(outDir, { recursive: true, force: true });
-  await mkdir(CACHE, { recursive: true });
-  const serveUrl = await bundle({ entryPoint: ENTRY, outDir });
-  for (const stale of await readdir(CACHE)) {
-    if (stale !== key) await rm(path.join(CACHE, stale), { recursive: true, force: true });
+  await mkdir(BUNDLE_CACHE, { recursive: true });
+  // webpack's own cache would go to node_modules/.cache inside the package; the bundle cache above makes it redundant.
+  const serveUrl = await bundle({ entryPoint: ENTRY, outDir, enableCaching: false });
+  for (const stale of await readdir(BUNDLE_CACHE)) {
+    if (stale !== key) await rm(path.join(BUNDLE_CACHE, stale), { recursive: true, force: true });
   }
   return serveUrl;
 }
@@ -87,13 +90,29 @@ async function serveAudio(dataDir) {
   };
 }
 
+/**
+ * Remotion has no option for where it downloads Chrome: it walks up from process.cwd() to the nearest
+ * package.json and uses that folder's node_modules/.remotion. Our own package.json pins the walk to the cache.
+ */
+async function ensureChrome() {
+  await mkdir(BROWSER_CACHE, { recursive: true });
+  await writeFile(path.join(BROWSER_CACHE, 'package.json'), '{ "private": true }\n');
+  const cwd = process.cwd();
+  process.chdir(BROWSER_CACHE);
+  try {
+    const status = await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
+    if (!status.path) throw new Error(`Chrome Headless Shell is missing from ${BROWSER_CACHE} after downloading it`);
+    return status.path;
+  } finally {
+    process.chdir(cwd);
+  }
+}
+
 async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl }) {
-  // Remotion locates its Chrome download from process.cwd(); without this it re-downloads Chrome into the user's repo.
-  process.chdir(ROOT);
-  await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
+  const browserExecutable = await ensureChrome();
   const serveUrl = await getServeUrl();
   const inputProps = { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl };
-  const browser = await withRetry('launching the browser', () => openBrowser('chrome'));
+  const browser = await withRetry('launching the browser', () => openBrowser('chrome', { browserExecutable }));
   try {
     const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, puppeteerInstance: browser });
     return { serveUrl, inputProps, browser, composition };
