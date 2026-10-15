@@ -8,7 +8,9 @@
 // the scene's start, its narration's voice start and its declared build end, and writes PNG frames to
 // <out dir>: `NN-<type>-voice-1.png` one frame before the narration's voice and `NN-<type>-settled.png`
 // at the scene's settled end, plus `NN-<type>-step-K-pre.png` (one frame before step K's voice) and
-// `NN-<type>-step-K-say.png` (0.6 s into it) for stepped scenes. `changed` is the share of pixels above
+// `NN-<type>-step-K-say.png` (0.6 s into it) for stepped scenes. A step with a pen `mark` adds
+// `NN-<type>-step-K-draw.png` halfway through the pen's stroke and `NN-<type>-step-K-next.png` once
+// the next step has started and the mark has faded (the scene's end for the last step). `changed` is the share of pixels above
 // the caption band that differ by more than 40 grey levels between the voice-1 frame and the settled
 // frame; for a scene without steps it stays near 0 when the build was complete before the voice.
 
@@ -38,6 +40,8 @@ mkdirSync(outDir, { recursive: true });
 const COMPOSITOR = path.join(REPO, 'node_modules/@remotion/compositor-darwin-arm64');
 const env = { ...process.env, DYLD_LIBRARY_PATH: COMPOSITOR };
 const W = 1920;
+/** Frames after the next step starts by which a pen mark has faded (src/components/PenMarks.tsx), plus one. */
+const MARK_CLEAR = 9;
 const CROP_H = 920;
 
 // The middle of a frame's interval, so the decoder lands on that frame and not its neighbour.
@@ -71,7 +75,13 @@ for (const [i, scene] of storyboard.scenes.entries()) {
   const stepRows = segments.slice(1).map((segment, k) => {
     png(from + segment.voiceFrom - 1, `${name}-step-${k + 1}-pre.png`);
     png(from + segment.voiceFrom + Math.round(0.6 * FPS), `${name}-step-${k + 1}-say.png`);
-    return `step ${k + 1} lit ${seconds(from + segment.from)} voice ${seconds(from + segment.voiceFrom)}`;
+    const mark = sceneSteps(scene)[k]?.mark;
+    if (mark) {
+      png(from + Math.round((segment.from + segment.voiceFrom) / 2), `${name}-step-${k + 1}-draw.png`);
+      const next = segments[k + 2];
+      png(from + (next ? next.from + MARK_CLEAR : settledFrame(duration)), `${name}-step-${k + 1}-next.png`);
+    }
+    return `step ${k + 1}${mark ? ` (${mark})` : ''} lit ${seconds(from + segment.from)} voice ${seconds(from + segment.voiceFrom)}`;
   });
   rows.push({ scene: name, chapter: scene.chapter ?? '', start: seconds(from), buildEnd: seconds(build), voiceStart: seconds(voice), lead: seconds(voice - build), changed: diff === null ? 'stepped' : `${(diff * 100).toFixed(2)}%`, steps: stepRows.join('; ') });
   from += duration;
