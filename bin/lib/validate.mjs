@@ -5,7 +5,10 @@ import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'arch', 'code', 'flow'];
+const TYPES = ['intent', 'arch', 'code', 'flow', 'sequence', 'er'];
+const MESSAGE_KINDS = ['call', 'return', 'async'];
+const CHANGES = ['added', 'removed', 'modified'];
+const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 
 const MAX_LINE_RANGE = 10000;
 
@@ -48,6 +51,20 @@ export function expandLineRefs(refs = []) {
     }
   }
   return out;
+}
+
+/** Checks a non-empty array of items with unique string ids; returns the id set, or null if the array is unusable. */
+function checkIds(items, path, errors, checkItem) {
+  if (!Array.isArray(items) || items.length === 0) { errors.push(`${path}: required non-empty array`); return null; }
+  const ids = new Set();
+  items.forEach((item, i) => {
+    const q = `${path}[${i}]`;
+    if (!isStr(item?.id)) errors.push(`${q}.id: required string`);
+    else if (ids.has(item.id)) errors.push(`${q}.id: duplicate id "${item.id}"`);
+    else ids.add(item.id);
+    checkItem(item, q);
+  });
+  return ids;
 }
 
 export function validateStoryboard(sb, hunks) {
@@ -118,6 +135,49 @@ export function validateStoryboard(sb, hunks) {
         });
         if (s.steps.length > 8) warnings.push(`${p}.steps: ${s.steps.length} steps; consider splitting into two flow scenes`);
         break;
+
+      case 'sequence': {
+        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) => {
+          if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
+          if (n?.kind !== undefined && !KINDS.includes(n.kind)) errors.push(`${q}.kind: must be one of ${KINDS.join(', ')}`);
+        });
+        if (!ids) break;
+        if (ids.size > 6) warnings.push(`${p}.participants: ${ids.size} participants; more than 6 get cramped`);
+        if (!Array.isArray(s.messages) || s.messages.length === 0) { errors.push(`${p}.messages: required non-empty array`); break; }
+        s.messages.forEach((m, j) => {
+          const q = `${p}.messages[${j}]`;
+          for (const k of ['from', 'to']) if (!ids.has(m?.[k])) errors.push(`${q}.${k}: unknown participant id ${JSON.stringify(m?.[k])}`);
+          if (!isStr(m?.label)) errors.push(`${q}.label: required string`);
+          if (m?.kind !== undefined && !MESSAGE_KINDS.includes(m.kind)) errors.push(`${q}.kind: must be one of ${MESSAGE_KINDS.join(', ')}`);
+          if (m?.note !== undefined && typeof m.note !== 'string') errors.push(`${q}.note: must be a string`);
+        });
+        if (s.messages.length > 12) warnings.push(`${p}.messages: ${s.messages.length} messages; consider splitting into two sequence scenes`);
+        break;
+      }
+
+      case 'er': {
+        const ids = checkIds(s.entities, `${p}.entities`, errors, (e, q) => {
+          if (!isStr(e?.name)) errors.push(`${q}.name: required string`);
+          if (e?.change !== undefined && !CHANGES.includes(e.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
+          if (!Array.isArray(e?.fields) || e.fields.length === 0) return errors.push(`${q}.fields: required non-empty array`);
+          e.fields.forEach((f, k) => {
+            if (!isStr(f?.name)) errors.push(`${q}.fields[${k}].name: required string`);
+            if (f?.type !== undefined && typeof f.type !== 'string') errors.push(`${q}.fields[${k}].type: must be a string`);
+            if (f?.change !== undefined && !CHANGES.includes(f.change)) errors.push(`${q}.fields[${k}].change: must be one of ${CHANGES.join(', ')}`);
+          });
+          if (e.fields.length > 10) warnings.push(`${q}.fields: ${e.fields.length} fields; show only the ones the change touches plus keys`);
+        });
+        if (!ids) break;
+        if (ids.size > 6) warnings.push(`${p}.entities: ${ids.size} entities; more than 6 get cramped`);
+        if (!Array.isArray(s.relations)) { errors.push(`${p}.relations: required array (may be empty)`); break; }
+        s.relations.forEach((r, j) => {
+          const q = `${p}.relations[${j}]`;
+          for (const k of ['from', 'to']) if (!ids.has(r?.[k])) errors.push(`${q}.${k}: unknown entity id ${JSON.stringify(r?.[k])}`);
+          if (!CARDINALITIES.includes(r?.cardinality)) errors.push(`${q}.cardinality: must be one of ${CARDINALITIES.join(', ')}`);
+          if (r?.change !== undefined && !CHANGES.includes(r.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
+        });
+        break;
+      }
     }
   });
 

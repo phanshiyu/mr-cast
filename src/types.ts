@@ -100,7 +100,73 @@ export interface FlowScene extends SceneBase {
   steps: FlowStep[];
 }
 
-export type Scene = IntentScene | ArchScene | CodeScene | FlowScene;
+export type MessageKind = 'call' | 'return' | 'async';
+
+export interface SequenceParticipant {
+  id: string;
+  label: string;
+  kind?: NodeKind;
+  /** Highlight as touched by this change. */
+  modified?: boolean;
+}
+
+export interface SequenceMessage {
+  from: string;
+  /** Same as `from` for a self-call. */
+  to: string;
+  label: string;
+  /** "call" (default) is a solid arrow, "return" a dashed one, "async" an open arrowhead. */
+  kind?: MessageKind;
+  /** Highlight a message this change adds or alters. */
+  modified?: boolean;
+  /** Short annotation shown beside the message. */
+  note?: string;
+}
+
+export interface SequenceScene extends SceneBase {
+  type: 'sequence';
+  title?: string;
+  participants: SequenceParticipant[];
+  /** In time order, top to bottom. */
+  messages: SequenceMessage[];
+}
+
+export type Change = 'added' | 'removed' | 'modified';
+export type Cardinality = 'one-to-one' | 'one-to-many' | 'many-to-many';
+
+export interface ErField {
+  name: string;
+  type?: string;
+  pk?: boolean;
+  fk?: boolean;
+  change?: Change;
+}
+
+export interface ErEntity {
+  id: string;
+  /** Table or model name as it appears in code. */
+  name: string;
+  fields: ErField[];
+  change?: Change;
+}
+
+export interface ErRelation {
+  /** For one-to-many, `from` is the "one" side and `to` the "many" side. */
+  from: string;
+  to: string;
+  cardinality: Cardinality;
+  label?: string;
+  change?: Change;
+}
+
+export interface ErScene extends SceneBase {
+  type: 'er';
+  title?: string;
+  entities: ErEntity[];
+  relations: ErRelation[];
+}
+
+export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene;
 
 export interface Storyboard {
   title: string;

@@ -39,6 +39,8 @@ export const defaultChapter: Record<Scene['type'], string> = {
   arch: 'Architecture',
   code: 'Code change',
   flow: 'Data flow',
+  sequence: 'Sequence',
+  er: 'Data model',
 };
 
 export const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };

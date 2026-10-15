@@ -4,10 +4,12 @@ import { ArchGraph } from './components/ArchGraph';
 import { Captions } from './components/Captions';
 import { CodeDiff } from './components/CodeDiff';
 import { DataFlow } from './components/DataFlow';
+import { ErDiagram } from './components/ErDiagram';
 import { IntentCard } from './components/IntentCard';
 import type { SceneProps } from './components/sceneProps';
+import { SequenceDiagram } from './components/SequenceDiagram';
 import { colors, fonts } from './components/theme';
-import type { ArchScene, CodeScene, FlowScene, IntentScene, WalkthroughProps } from './types';
+import type { ArchScene, CodeScene, ErScene, FlowScene, IntentScene, SequenceScene, WalkthroughProps } from './types';
 import { VOICE_LEAD_FRAMES, timeline } from './utils/timing';
 
 interface SceneByType {
@@ -15,6 +17,8 @@ interface SceneByType {
   arch: ArchScene;
   code: CodeScene;
   flow: FlowScene;
+  sequence: SequenceScene;
+  er: ErScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -22,6 +26,8 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   arch: ArchGraph,
   code: CodeDiff,
   flow: DataFlow,
+  sequence: SequenceDiagram,
+  er: ErDiagram,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {
