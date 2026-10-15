@@ -1,5 +1,6 @@
 import { continueRender, delayRender, interpolate, useCurrentFrame } from 'remotion';
 import caveat from '../assets/caveat-latin-600.woff2';
+import { plainText } from '../../shared/markup.mjs';
 import { markedKeys } from '../../shared/pen-marks.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import type { CodeStep, FocusStep, HunkMap, Scene } from '../types';
@@ -93,7 +94,7 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
   if (!target) return null;
   const clutter = { target, obstacles: targets.obstacles ?? [...boxes.values()], lines: targets.lines ?? [] };
   const seed = seedOf(`${k}:${step.mark}:${step.note ?? ''}`);
-  const note = step.note?.trim() || null;
+  const note = plainText(step.note ?? '').trim() || null;
   const noteSize = { width: note ? noteWidth(note) + 8 : 0, height: note ? Math.round(NOTE_FONT * 1.25) : 0 };
   const arrow = step.mark === 'arrow' ? placeArrow(noteSize, clutter, area) : null;
   const sketch = arrow ? arrowSketch(arrow.tail, target, seed, PEN) : sketchMark(step.mark as Exclude<typeof step.mark, 'arrow'>, target, area, seed, PEN);

@@ -7,6 +7,8 @@ import { checkArch, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
+import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
+import { normalizeStoryboard } from '../../shared/normalize.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
@@ -583,10 +585,13 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
     }
     checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
     checkPenMarks(s, p, hunks ?? {}, errors, warnings);
+    checkSpokenMarkup(s, p, warnings);
   });
 
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
+  // The layouts trust the schema, so text is fitted only once everything else is valid.
+  if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);
   checkStoryShape(sb.scenes, hunks ?? {}, mode, warnings);
   if (simple) checkSimpleLineCoverage(sb, hunks ?? {}, warnings);
   if (mode === 'explain') {

@@ -6,6 +6,7 @@
 // items before the voice names them, and its longer tail leaves time to reread them. The voice lasts as long as its clip, or as long as its words take to
 // read at WORDS_PER_MINUTE without one. The pace scales the reading speed and every pause.
 
+import { plainText } from './markup.mjs';
 import { sceneSteps } from './steps.mjs';
 import { clipFor, paceOf } from './voice.mjs';
 
@@ -55,9 +56,9 @@ export function wordCount(text) {
   return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** The texts a scene speaks, in order: its narration, then each step's `say`. */
+/** The texts a scene speaks, in order: its narration, then each step's `say`, without markup, which is only drawn. */
 export function spokenTexts(scene) {
-  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)];
+  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)].map((text) => (typeof text === 'string' ? plainText(text) : text));
 }
 
 /**
