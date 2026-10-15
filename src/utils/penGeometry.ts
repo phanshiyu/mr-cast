@@ -259,7 +259,7 @@ export interface Clutter {
 const LINE_COST = 25;
 
 const cost = (b: Box, { target, mark, obstacles, lines }: Clutter) => {
-  const near = grow(b, 4);
+  const near = grow(b, 10);
   return (
     50 * overlap(b, grow(target, 4)) +
     (mark ? 8 * overlap(b, mark) : 0) +
