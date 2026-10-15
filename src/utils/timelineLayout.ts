@@ -16,7 +16,7 @@ const LANE_GAP = 18;
 const SIDE_PAD = 40;
 /** Space between the axis and the first lane of event boxes, crossed by each event's stem. */
 const STEM_MIN = 34;
-export const TICK_ZONE = 44;
+const TICK_ZONE = 44;
 export const SPAN_H = 44;
 const SPAN_GAP = 14;
 const LANES_MAX = 4;

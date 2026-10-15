@@ -1,7 +1,6 @@
 import type { ShownFile } from '../../shared/files.mjs';
 
 const MONO_ADVANCE = 0.61;
-const SANS_ADVANCE = 0.5;
 const MAX_FONT = 26;
 const MIN_FONT = 17;
 export const PAD_X = 20;
@@ -153,6 +152,3 @@ export function layoutFiles(rows: readonly TreeRow[], width: number, height: num
   const scale = height / attempt(columns, width, MIN_FONT, counts).height;
   return { ...attempt(columns, width / scale, MIN_FONT, counts), maxLines, scale };
 }
-
-/** Characters of note text that fit the note column. */
-export const noteChars = (layout: FilesLayout) => Math.floor(layout.noteW / (layout.font * 0.92 * SANS_ADVANCE));

@@ -22,7 +22,7 @@ export const HEADER_FONT = 17;
 /** Identifiers, paths, numbers with units and the like read as code, so they render in mono. */
 const CODE_LIKE = /^[^\s]+$/;
 const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
-export const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text);
+const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text);
 
 export type PlacedCell =
   | { kind: 'text'; mono: boolean; lines: string[] }
@@ -76,7 +76,7 @@ function wrapCode(text: string, chars: number): string[] {
 
 const cut = (original: string, lines: string[]) => lines[lines.length - 1]!.endsWith('…') && !original.trim().endsWith('…');
 
-export function rowChange(row: TableRow): PlacedRow['change'] {
+function rowChange(row: TableRow): PlacedRow['change'] {
   if (row.change) return row.change;
   return row.cells.some((c) => typeof c !== 'string') ? 'modified' : null;
 }
