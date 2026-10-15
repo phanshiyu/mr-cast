@@ -11,7 +11,8 @@ import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../ut
 import { Badge, badgesOf, changeTone } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
+import { FitText } from './FitText';
+import { clamp, colors, contentBox, fonts } from './theme';
 
 const START = 10;
 /** Every row has started landing by this frame, so the rows, bars and notes are in by the end of the build. */
@@ -59,13 +60,14 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
         ))}
         <div style={{ position: 'absolute', left, top: 0, bottom: 0, display: 'flex', alignItems: 'center', gap: Math.round(layout.font * 0.4) }}>
           <Folder size={iconSize} strokeWidth={2} color={colors.muted} />
-          <span style={{ fontFamily: fonts.mono, fontSize: layout.font, fontWeight: 600, color: colors.muted, whiteSpace: 'nowrap' }}>{row.name}</span>
+          <FitText fit={placed.name} inline style={{ color: colors.muted }} />
         </div>
       </div>
     );
   }
 
-  const { file, note } = row;
+  const { file } = row;
+  const { note } = placed;
   const tone = file.change ? changeTone[file.change] : null;
   const removed = file.change === 'removed';
   const Icon = file.test ? FlaskConical : FileCode2;
@@ -107,20 +109,11 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
       </div>
       <div style={{ position: 'absolute', left, width: layout.nameX + layout.nameW - left, top: 0, bottom: 0, display: 'flex', alignItems: 'center', gap: Math.round(layout.font * 0.4) }}>
         <Icon size={iconSize} strokeWidth={2} color={file.test ? colors.accent : tone && !removed ? tone.color : colors.muted} style={{ flexShrink: 0 }} />
-        <span
-          style={{
-            fontFamily: fonts.mono,
-            fontSize: layout.font,
-            fontWeight: 600,
-            color: removed ? colors.muted : colors.text,
-            textDecoration: removed ? 'line-through' : 'none',
-            textDecorationColor: colors.del,
-            textDecorationThickness: 2.5,
-            ...ellipsis,
-          }}
-        >
-          {row.name}
-        </span>
+        <FitText
+          fit={placed.name}
+          inline
+          style={{ color: removed ? colors.muted : colors.text, textDecoration: removed ? 'line-through' : 'none', textDecorationColor: colors.del, textDecorationThickness: 2.5 }}
+        />
         {file.test ? (
           <span
             style={{
@@ -156,13 +149,12 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
             bottom: 0,
             display: 'flex',
             alignItems: 'center',
-            fontSize: Math.round(layout.font * 0.92),
             color: '#c9cedb',
             opacity: noteIn,
             transform: `translateX(${(1 - noteIn) * 12}px)`,
           }}
         >
-          <span style={ellipsis}>{note}</span>
+          <FitText fit={note} style={note.lines.length > 1 ? undefined : { lineHeight: 'normal' }} />
         </div>
       ) : null}
     </div>

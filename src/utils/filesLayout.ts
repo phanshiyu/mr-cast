@@ -1,3 +1,5 @@
+import { fitText, type Fit } from '../../shared/textfit.mjs';
+import { SLOTS, sized } from '../fit/slots';
 import { badgesWidth } from './marks';
 import type { Box, LayoutBoxes } from './penGeometry';
 import type { ShownFile } from '../../shared/files.mjs';
@@ -24,6 +26,9 @@ export interface PlacedRow {
   /** Left edge of the row's column. */
   x: number;
   y: number;
+  /** Its name, fitted to the name column, and a file's note, fitted to the note column. */
+  name: Fit;
+  note: Fit | null;
 }
 
 export interface FilesLayout {
@@ -112,6 +117,18 @@ function splitColumns(rows: readonly TreeRow[]): TreeRow[][] {
   return [rows.slice(0, at), [...ancestors, ...rows.slice(at)]];
 }
 
+/**
+ * A note on one line of its row, shrinking to three quarters of the tree's font; then on two lines, at a
+ * size two lines of which fit the row.
+ */
+function noteFit(text: string, width: number, font: number, rowH: number, path: string): Fit {
+  const slot = sized(SLOTS.fileNote, width);
+  const one = fitText(text, { ...slot, size: Math.round(font * 0.92), min: Math.round(font * 0.72), lines: 1 }, path);
+  if (one.fits) return one;
+  const two = Math.min(Math.round(font * 0.72), Math.floor(rowH / (2 * SLOTS.fileNote.lineHeight)));
+  return fitText(text, { ...slot, size: Math.max(two, SLOTS.fileNote.min), lines: 2 }, path);
+}
+
 function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number, counts: boolean) {
   const width = (totalWidth - (columns.length - 1) * COLUMN_GUTTER) / columns.length;
   const all = columns.flat();
@@ -127,7 +144,10 @@ function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number
   const countsX = counts ? nameX + nameW + COL_GAP : null;
   const noteX = (countsX ?? nameX + nameW) + (counts ? COUNT_CHARS * font * 0.62 + 14 + BAR_MAX : 0) + COL_GAP;
   const noteW = width - PAD_X - noteX;
-  const rows = columns.flatMap((column, c) => column.map((row, i) => ({ row, x: c * (width + COLUMN_GUTTER), y: i * rowH })));
+  const extras = (r: TreeRow) => (r.kind === 'file' ? (r.file.test ? font * 3.4 : 0) + (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0) : 0);
+  const name = (r: TreeRow) => fitText(r.name, { ...sized(SLOTS.fileName, nameW - r.depth * indent - iconW - extras(r)), size: font }, r.kind === 'file' ? `files[${JSON.stringify(r.file.path)}]` : '');
+  const note = (r: TreeRow) => (r.kind === 'file' && r.note ? noteFit(r.note, noteW, font, rowH, `notes[${JSON.stringify(r.file.path)}]`) : null);
+  const rows = columns.flatMap((column, c) => column.map((row, i) => ({ row, x: c * (width + COLUMN_GUTTER), y: i * rowH, name: name(row), note: note(row) })));
   const height = Math.max(...columns.map((column) => column.length)) * rowH;
   return { font, rowH, indent, rows, width, nameX, nameW, countsX, noteX, noteW, totalWidth, height };
 }
@@ -163,14 +183,14 @@ export function filesBoxes(layout: FilesLayout): LayoutBoxes {
   const iconW = Math.round(layout.font * 0.95) + Math.round(layout.font * 0.4);
   const boxes = new Map<string, Box>();
   const obstacles: Box[] = [];
-  for (const { row, x, y } of layout.rows) {
+  for (const { row, x, y, name: text, note } of layout.rows) {
     const left = x + layout.nameX + row.depth * layout.indent;
-    const name = { x: left, y: y + 4, width: Math.min(iconW + row.name.length * layout.font * MONO_ADVANCE, layout.nameX + layout.nameW - (left - x)), height: layout.rowH - 8 };
+    const name = { x: left, y: y + 4, width: Math.min(iconW + text.width, layout.nameX + layout.nameW - (left - x)), height: layout.rowH - 8 };
     obstacles.push(name);
     if (row.kind !== 'file') continue;
     boxes.set(`f:${row.file.path}`, name);
     if (layout.countsX !== null) obstacles.push({ x: x + layout.countsX, y, width: layout.noteX - layout.countsX - 12, height: layout.rowH });
-    if (row.note) obstacles.push({ x: x + layout.noteX, y, width: Math.min(layout.noteW, row.note.length * layout.font * 0.5), height: layout.rowH });
+    if (note) obstacles.push({ x: x + layout.noteX, y, width: Math.min(layout.noteW, note.width), height: layout.rowH });
   }
   return { boxes, obstacles };
 }

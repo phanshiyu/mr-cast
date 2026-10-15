@@ -1,3 +1,4 @@
+import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
@@ -5,6 +6,7 @@ import { fitArch } from '../utils/archLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutCode } from '../utils/codeLayout';
 import { layoutEr } from '../utils/erLayout';
+import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
 import { layoutIntent } from '../utils/intentLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
@@ -39,7 +41,10 @@ const SCENE_FITS: SceneFits = {
     return layoutChart(scene, box.width, box.height);
   },
   timeline: (scene) => layoutTimeline(scene, contentBox(Boolean(scene.title)).width),
-  files: () => null,
+  files: (scene, _storyboard, hunks) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+  },
 };
 
 /** Every fit inside a layout, found by walking it, so a text a layout fits can never go unreported. */

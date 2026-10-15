@@ -16,8 +16,6 @@ const TIME_UNITS = ['ms', 's', 'min', 'h', 'd'];
 const TIMELINE_EVENTS_MAX = 8;
 const TIMELINE_SPANS_MAX = 4;
 const FILES_MAX = 18;
-// A note sits on its file's row beside the line counts.
-const FILE_NOTE_LONG = 60;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isText = (v) => typeof v === 'string';
@@ -159,7 +157,6 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
       const q = `${p}.notes[${JSON.stringify(path)}]`;
       if (!paths.has(path)) errors.push(`${q}: not one of the files this scene lists`);
       if (!isStr(note)) errors.push(`${q}: must be a non-empty string`);
-      else if (note.trim().length > FILE_NOTE_LONG) warnings.push(`${q}: ${note.trim().length} characters; keep a note under ${FILE_NOTE_LONG} so it fits on its row`);
     }
   }
   const what = { plural: 'file paths', one: 'a path this scene lists' };
