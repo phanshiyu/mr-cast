@@ -63,18 +63,18 @@ function readJson(file, missingHint) {
   }
 }
 
-function loadProject() {
+async function loadProject() {
   const dir = dataDir(repoRoot());
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` first');
   const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
-  const result = validateStoryboard(storyboard, hunks);
+  const result = await validateStoryboard(storyboard, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, readVoiceover(dir));
   return { dir, hunks, storyboard, result, lines: formatValidation(result, { storyboard, hunks, seconds }) };
 }
 
 /** Validate, print problems to stderr, and stop on errors. */
-function loadValidProject() {
-  const project = loadProject();
+async function loadValidProject() {
+  const project = await loadProject();
   if (project.result.errors.length || project.result.warnings.length) {
     for (const line of project.lines) console.error(line);
   }
@@ -140,9 +140,9 @@ function extract(argv) {
   }));
 }
 
-function validate(argv) {
+async function validate(argv) {
   parseArgs({ args: argv, options: {} });
-  const { result, lines } = loadProject();
+  const { result, lines } = await loadProject();
   for (const line of lines) console.log(line);
   if (result.errors.length) process.exit(1);
 }
@@ -170,7 +170,7 @@ async function voiceoverFor(dir, storyboard, values) {
 
 async function voice(argv) {
   const { values } = parseArgs({ args: argv, options: { voice: VOICE_OPTIONS.voice } });
-  const { dir, storyboard } = loadValidProject();
+  const { dir, storyboard } = await loadValidProject();
   let generated = 0;
   const voiceover = await ensureVoiceover({
     dataDir: dir, storyboard, voice: values.voice,
@@ -216,7 +216,7 @@ async function play(argv) {
     options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...VOICE_OPTIONS },
   });
   const port = intOption(values.port, 'port', 1);
-  const { dir, storyboard } = loadValidProject();
+  const { dir, storyboard } = await loadValidProject();
   const distDir = ensureDist();
   let voiceover = await voiceoverFor(dir, storyboard, values);
 
@@ -224,11 +224,11 @@ async function play(argv) {
     if (file === 'meta.json') return;
     let project;
     try {
-      project = loadProject();
+      project = await loadProject();
       console.error(`mr-cast: ${file} changed`);
       if (file === 'storyboard.json' && !project.result.errors.length) {
         voiceover = await voiceoverFor(dir, project.storyboard, values);
-        project = loadProject();
+        project = await loadProject();
       }
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
@@ -276,7 +276,7 @@ function progressReporter(label) {
 
 async function render(argv) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...VOICE_OPTIONS } });
-  const { dir, hunks, storyboard } = loadValidProject();
+  const { dir, hunks, storyboard } = await loadValidProject();
   const voiceover = await voiceoverFor(dir, storyboard, values);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, 'walkthrough.mp4'));
@@ -289,7 +289,7 @@ async function render(argv) {
 
 async function still(argv) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' } } });
-  const { dir, hunks, storyboard } = loadValidProject();
+  const { dir, hunks, storyboard } = await loadValidProject();
   const count = storyboard.scenes.length;
   const scenes = positionals.map((p) => {
     const n = Number(p);

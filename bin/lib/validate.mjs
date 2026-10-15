@@ -88,9 +88,46 @@ function checkIds(items, path, errors, checkItem) {
   return ids;
 }
 
-export function validateStoryboard(sb, hunks) {
+/**
+ * Mermaid's parser runs in Node except that it sanitizes labels with DOMPurify, which has no hooks or
+ * sanitize() without a DOM. Validation discards the parsed labels, so pass-through stand-ins suffice.
+ */
+async function loadMermaidParser() {
+  const { default: DOMPurify } = await import('dompurify');
+  Object.assign(DOMPurify, { addHook() {}, removeHook() {}, removeHooks() {}, sanitize: (html) => html });
+  const { default: mermaid } = await import('mermaid');
+  return mermaid;
+}
+
+/** Mermaid's message on one line, without the caret line that only lines up in monospace. */
+function mermaidMessage(err) {
+  return String(err?.message ?? err).split('\n').map((l) => l.trim()).filter((l) => l && !/^-*\^$/.test(l)).join(' ');
+}
+
+async function checkMermaid(diagrams, errors, warnings) {
+  if (diagrams.length === 0) return;
+  let mermaid;
+  try {
+    mermaid = await loadMermaidParser();
+  } catch (err) {
+    warnings.push(`could not load Mermaid to check diagram syntax (${err.message}); run \`mr-cast still\` on mermaid scenes`);
+    return;
+  }
+  for (const { p, code } of diagrams) {
+    try {
+      await mermaid.parse(code);
+    } catch (err) {
+      // Syntax errors are plain Errors; a TypeError means the Node stand-ins fell short, not that the diagram is wrong.
+      if (err instanceof TypeError) warnings.push(`${p}.code: could not check Mermaid syntax (${err.message}); run \`mr-cast still\` on this scene`);
+      else errors.push(`${p}.code: invalid Mermaid: ${mermaidMessage(err)}`);
+    }
+  }
+}
+
+export async function validateStoryboard(sb, hunks) {
   const errors = [];
   const warnings = [];
+  const diagrams = [];
   if (!sb || typeof sb !== 'object') return { errors: ['storyboard must be a JSON object'], warnings };
   if (!isStr(sb.title)) errors.push('title: required string');
   if (!Array.isArray(sb.scenes) || sb.scenes.length === 0) {
@@ -222,9 +259,12 @@ export function validateStoryboard(sb, hunks) {
 
       case 'mermaid':
         if (!isStr(s.code)) errors.push(`${p}.code: required string of Mermaid source`);
+        else diagrams.push({ p, code: s.code });
         break;
     }
   });
+
+  await checkMermaid(diagrams, errors, warnings);
 
   return { errors, warnings };
 }
