@@ -1,6 +1,6 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
-import { expandLineRefs, focusRanges } from '../../shared/focus.mjs';
+import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 
@@ -20,7 +20,11 @@ const MAX_LINE_RANGE = 10000;
 const FOCUS_RANGE_COMFORTABLE = 8;
 const FOCUS_RANGE_MAX = 15;
 const FOCUS_RANGES_PER_SCENE = 3;
+// With a flow diagram each range gets a labelled step beside the code, so one more stays readable.
+const FOCUS_RANGES_WITH_FLOW = 4;
 const UNFOCUSED_CHANGE_MAX = 12;
+// A step label beside the code wraps to two lines; longer than this and it stops reading as a step.
+const FLOW_LABEL_MAX = 60;
 // A hunk this large changes enough that leaving it out of the video must be a stated choice.
 const SUBSTANTIAL_HUNK_LINES = 15;
 
@@ -70,14 +74,36 @@ function checkFocusSize(scene, hunk, p, errors, warnings) {
   }
   const used = sides.filter((s) => s.ranges.length);
   const count = used.reduce((n, s) => n + s.ranges.length, 0);
-  if (count > FOCUS_RANGES_PER_SCENE) {
+  const maxRanges = scene.flow === undefined ? FOCUS_RANGES_PER_SCENE : FOCUS_RANGES_WITH_FLOW;
+  if (count > maxRanges) {
     const list = used.map((s) => `${s.key} ${s.ranges.map(formatRange).join(', ')}`).join('; ');
-    warnings.push(`${p}: ${count} focus ranges (${list}); keep at most ${FOCUS_RANGES_PER_SCENE} per scene and split the rest into another code scene`);
+    warnings.push(`${p}: ${count} focus ranges (${list}); keep at most ${maxRanges} per scene and split the rest into another code scene`);
   }
   const changed = hunk ? hunk.additions + hunk.deletions : 0;
   if (count === 0 && changed > UNFOCUSED_CHANGE_MAX) {
     errors.push(`${p}: hunk ${hunk.id} changes ${changed} lines and the scene sets no focus; set focusLinesAfter (or focusLinesBefore for deletions) to the at most ${FOCUS_RANGE_COMFORTABLE} lines the narration discusses`);
   }
+}
+
+/** A code scene's `flow` names one step per focus range, in the order the ranges play. */
+function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
+  const { flow } = scene;
+  if (!Array.isArray(flow) || flow.length === 0) return errors.push(`${p}.flow: must be a non-empty array of { label, outcome? }`);
+  flow.forEach((step, j) => {
+    const q = `${p}.flow[${j}]`;
+    if (!isStr(step?.label)) return errors.push(`${q}.label: required string`);
+    if (step.label.trim().length > FLOW_LABEL_MAX) warnings.push(`${q}.label: ${step.label.trim().length} characters; keep a step under ${FLOW_LABEL_MAX} so it reads at a glance`);
+    if (step.outcome !== undefined && typeof step.outcome !== 'string') errors.push(`${q}.outcome: must be a string`);
+  });
+  if (!refsOk) return;
+  const ranges = sceneFocusRanges(scene);
+  if (!ranges.length) return errors.push(`${p}.flow: needs focusLinesAfter or focusLinesBefore with one range per step`);
+  if (!hunk) return;
+  const order = focusStepOrder(scene, hunk);
+  if (order.length === flow.length) return;
+  const list = order.map((id) => (ranges[id] ? formatRange(ranges[id].range) : 'the changed lines')).join(', ');
+  const plural = order.length === 1 ? 'range' : 'ranges';
+  errors.push(`${p}.flow: ${flow.length} steps, but the focus has ${order.length} ${plural} (${list}); give each range exactly one step, in that top-to-bottom order`);
 }
 
 const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h.additions}`);
@@ -280,6 +306,8 @@ export async function validateStoryboard(sb, hunks) {
         if ((afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined)) checkFocusSize(s, hunk, p, errors, warnings);
         if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
         if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
+        const refsOk = (afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined);
+        if (s.flow !== undefined) checkCodeFlow(s, refsOk ? hunk : undefined, refsOk, p, errors, warnings);
         break;
       }
 

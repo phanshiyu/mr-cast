@@ -81,8 +81,11 @@ export interface CodeScene extends SceneBase {
   /** Old-file line numbers to emphasise (useful for deletions). */
   focusLinesBefore?: LineRef[];
   calloutText?: string;
-  /** "split" = side-by-side; "morph" = removed lines collapse, added lines grow in. Auto when omitted. */
+  /** "split" = side-by-side; "morph" = removed lines collapse, added lines grow in. Auto when omitted (morph when `flow` is set). */
   view?: 'split' | 'morph';
+  /** A short flow diagram beside the code: one step per focus range, in the same top-to-bottom order.
+   *  Each step says in plain words what that range does, e.g. "count the request in Redis". */
+  flow?: { label: string; outcome?: string }[];
 }
 
 export interface FlowStep {

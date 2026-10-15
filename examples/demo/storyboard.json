@@ -297,12 +297,30 @@
     {
       "type": "code",
       "chapter": "The limiter",
-      "narration": "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit. Past twenty requests it answers 429 with a Retry-After header.",
+      "narration": "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit. Past twenty requests it answers 429 with a Retry-After header. Otherwise the request moves on.",
       "hunkId": "h2",
       "focusLinesAfter": [
-        "11-18"
+        "11-12",
+        13,
+        "14-17",
+        18
       ],
-      "calloutText": "Expiry is set once per window, so the key cleans itself up."
+      "calloutText": "Expiry is set once per window, so the key cleans itself up.",
+      "flow": [
+        {
+          "label": "Count this request in the IP's one-minute window"
+        },
+        {
+          "label": "On the first hit, expire the key with the window"
+        },
+        {
+          "label": "Over the limit? Refuse the request",
+          "outcome": "Past twenty: too many requests, with Retry-After"
+        },
+        {
+          "label": "Under the limit, pass the request on"
+        }
+      ]
     },
     {
       "type": "code",
