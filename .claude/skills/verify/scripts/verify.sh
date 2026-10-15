@@ -22,8 +22,8 @@ usage: verify.sh <command> <run-dir> [args]
   mrc     <run> <label> [--cwd dir] -- <mr-cast args>
                                         run bin/mr-cast in the demo repo (or dir under <run>); save the
                                         command, stdout, stderr and exit code to <run>/evidence/<label>.txt
-  play-start <run> <label> [--cwd dir] [explain] [play args]
-                                        start \`mr-cast [explain] play --no-open\` in the background; print its URL
+  play-start <run> <label> [--cwd dir] [play args]
+                                        start \`mr-cast play --no-open\` in the background; print its URL
   play-stop  <run> [label]              stop the player(s) this run started; copy their logs to evidence
   browse  <run> <label> <url> <step>... drive the player in Chrome Headless Shell (steps: see scripts/browse.mjs)
   probe   <mp4>                         ffprobe duration and streams
@@ -53,6 +53,7 @@ run_paths() {
   export PATH="$(dirname "$NODE"):$PATH"
   export MR_CAST_NO_UPDATE_CHECK="${MR_CAST_NO_UPDATE_CHECK-1}"
   export CLAUDE_CONFIG_DIR="$WORK/claude"
+  export XDG_CONFIG_HOME="$WORK/config"
 }
 
 cmd_env() {
@@ -61,7 +62,7 @@ cmd_env() {
 unset -f node npm npx nvm _load_nvm 2>/dev/null
 export PATH="$(dirname "$NODE"):\$PATH"
 export MR_CAST_NO_UPDATE_CHECK=1
-export CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR"
+export CLAUDE_CONFIG_DIR="$CLAUDE_CONFIG_DIR" XDG_CONFIG_HOME="$XDG_CONFIG_HOME"
 export RUN="$RUN" EV="$EV" DEMO="$DEMO" MRC="$MRC" V="$HERE/verify.sh" REPO="$REPO"
 EOF
 }
@@ -144,9 +145,7 @@ cmd_play_start() {
   [ -f "$dir/$label.pid" ] && kill -0 "$(cat "$dir/$label.pid")" 2>/dev/null && die "player $label already runs (pid $(cat "$dir/$label.pid")); play-stop it first"
   local cwd="$DEMO"
   if [ "${1:-}" = "--cwd" ]; then cwd="$(cd "$2" && pwd -P)"; shift 2; fi
-  local sub=(play)
-  if [ "${1:-}" = "explain" ]; then sub=(explain play); shift; fi
-  (cd "$cwd" && exec "$MRC" "${sub[@]}" --no-open "$@") >"$dir/$label.out" 2>"$dir/$label.err" &
+  (cd "$cwd" && exec "$MRC" play --no-open "$@") >"$dir/$label.out" 2>"$dir/$label.err" &
   local pid=$!
   echo "$pid" >"$dir/$label.pid"
   local url=""

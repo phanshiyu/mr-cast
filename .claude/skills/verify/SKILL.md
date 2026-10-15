@@ -1,15 +1,15 @@
 ---
 name: verify
-description: Drive mr-cast (the CLI that turns a git diff or an explanation into an animated Remotion walkthrough) the way a user does, and capture proof. Covers the CLI in a demo git repo (extract, snippet, validate, outline, voice, still, render, explain, prune, upgrade, install-skill), the browser player that `play` serves, and the Claude Code skills it installs. Use to prove a change to mr-cast works before calling it done, to reproduce a bug, or when asked to run, render or screenshot mr-cast.
+description: Drive mr-cast (the CLI that turns a git diff or an explanation into an animated Remotion walkthrough) the way a user does, and capture proof. Covers the CLI in a demo git repo (status, extract, init, snippet, validate, outline, voice, still, render, run settings, prune, upgrade, install-skill), the browser player that `play` serves, and the Claude Code skills it installs. Use to prove a change to mr-cast works before calling it done, to reproduce a bug, or when asked to run, render or screenshot mr-cast.
 ---
 
 # Verify mr-cast
 
 mr-cast is a CLI. A user runs `bin/mr-cast` inside a git repo, writes a storyboard JSON, and gets PNG stills, an MP4, or a live browser player. Three surfaces:
 
-- **CLI** (primary). `bin/mr-cast` is a bash launcher that finds Node 20 to 24 and runs `bin/mr-cast.mjs`. Data lands in `<repo>/.mr-cast/`.
+- **CLI** (primary). `bin/mr-cast` is a bash launcher that finds Node 20 to 24 and runs `bin/mr-cast.mjs`. Each walkthrough is a run in `<repo>/.mr-cast/<name>/`. `extract` names it after the branch (`feature-rate-limit` in the demo), `init` after the title, and later commands work on the current run in `.mr-cast/.current`.
 - **Browser player.** `mr-cast play` serves the built player (`dist/`) and the run's data on `127.0.0.1:4747`, or the next free port.
-- **Installed Claude Code skills.** `install-skill` writes four skills and two commands into `$CLAUDE_CONFIG_DIR` (default `~/.claude`) with a manifest.
+- **Installed Claude Code skills.** `install-skill` writes the `mr-cast` skill (with `references/`), `mr-cast-prune` and `mr-cast-upgrade` into `$CLAUDE_CONFIG_DIR` (default `~/.claude`) with a manifest.
 
 Everything goes through one harness, `scripts/verify.sh`, plus `scripts/browse.mjs` for the player. The feature map in [`features/README.md`](features/README.md) holds one recipe per feature. Read it before you drive anything.
 
@@ -19,7 +19,7 @@ Each Bash call starts a fresh shell, so start each one with these two lines. Pic
 
 ```bash
 V=<mr-cast checkout>/.claude/skills/verify/scripts/verify.sh; RUN=<your run dir>
-eval "$($V env $RUN)"   # sets PATH to a real Node 20-24, MR_CAST_NO_UPDATE_CHECK=1, CLAUDE_CONFIG_DIR=$RUN/work/claude, and $EV $DEMO $MRC $REPO $V
+eval "$($V env $RUN)"   # sets PATH to a real Node 20-24, MR_CAST_NO_UPDATE_CHECK=1, CLAUDE_CONFIG_DIR=$RUN/work/claude, XDG_CONFIG_HOME=$RUN/work/config, and $EV $DEMO $MRC $REPO $V
 ```
 
 Use the checkout you are verifying (a worktree verifies its own code), for example `~/projects/mr-cast`.
@@ -53,16 +53,16 @@ It is read-only and exits 1 on any `FAIL`. It checks five things: the launcher r
 | What | Command |
 | --- | --- |
 | Run the CLI as a user, with a transcript | `$V mrc $RUN <label> -- <mr-cast args>` runs in `$DEMO`. It writes `$EV/<label>.txt` (the command, stdout, stderr and `--- exit N`), echoes the output, and exits with the CLI's code. Add `--cwd <dir under $RUN>` before `--` to run elsewhere, for example outside any git repo. |
-| Start the player | `URL=$($V play-start $RUN <label> --no-voice [--port N] [--name x \| --dir d])` starts `mr-cast play --no-open` in the background and prints `http://127.0.0.1:<port>` once it serves. Put `explain` after the label to run `mr-cast explain play` instead. |
+| Start the player | `URL=$($V play-start $RUN <label> --no-voice [--port N] [--name x \| --dir d])` starts `mr-cast play --no-open` on the current run in the background and prints `http://127.0.0.1:<port>` once it serves. |
 | Drive the player | `$V browse $RUN <label> "$URL/" wait:<text> press:ArrowRight shot:<name> ...` writes `$EV/<label>/<name>.png`, `$EV/<label>/<name>.txt` (visible page text) and `$EV/<label>/console.txt`. Steps are `wait:`, `click:`, `press:`, `sleep:`, `run:` and `shot:`, documented at the top of `scripts/browse.mjs`. |
 | Stop the player | `$V play-stop $RUN [label]` copies its stdout and stderr to `$EV/play-<label>.*.txt`. |
 | Inspect a video | `$V probe <mp4>` prints duration and streams. `$V frame <mp4> <seconds> <out.png>` extracts one frame. |
 
-Put render and still output straight into evidence with `--out`, for example `$V mrc $RUN still -- still 0 5 --out $EV/stills`. Otherwise it lands in `$DEMO/.mr-cast`, which cleanup deletes.
+Put render and still output straight into evidence with `--out`, for example `$V mrc $RUN still -- still 0 5 --out $EV/stills`. Otherwise it lands in the run's directory under `$DEMO/.mr-cast`, which cleanup deletes.
 
 Fixtures:
 
-- **`examples/demo/storyboard.json`.** Copy it into `$DEMO/.mr-cast/` after `extract`. It has 9 scenes (intent, arch, sequence, flow, er, 3 code, tests).
+- **`examples/demo/storyboard.json`.** Copy it into `$DEMO/.mr-cast/feature-rate-limit/` after `extract`. It has 9 scenes (intent, arch, sequence, flow, er, 3 code, tests).
 - **`examples/demo-simple/storyboard.json`.** Use it after `extract --simple` plus `snippet src/db/client.ts:1-5`. It has 13 scenes.
 - **`examples/gallery/{hunks,storyboard}.json`.** Copy both into a dir under `$RUN` and use `--dir`. It covers the files, state, table, chart, timeline and mermaid scenes.
 - **`.claude/skills/verify/fixtures/explain-storyboard.json`.** An explanation of `src/api/rate-limit.ts` (snippet `s1` = lines 1-20).
@@ -92,7 +92,7 @@ It stops every player this run started (by recorded pid, never by process name),
 ## Isolation and safety
 
 - **Runs in parallel.** Each run has its own demo repo and config dir. `play` picks the next free port. Renders share `~/.cache/mr-cast` safely (atomic bundle cache, download locks).
-- **Never touch the user's real state.** `~/.claude/.mr-cast-install.json` points at this clone, so any mr-cast command run without a temp `CLAUDE_CONFIG_DIR` can rewrite `~/.claude` skills when versions differ. `verify.sh` always sets `CLAUDE_CONFIG_DIR=$RUN/work/claude`.
+- **Never touch the user's real state.** `~/.claude/.mr-cast-install.json` points at this clone, so any mr-cast command run without a temp `CLAUDE_CONFIG_DIR` can rewrite `~/.claude` skills when versions differ. `extract`, `init` and any command given `--audience`, `--pace` or `--no-voice` write the user's last choices into `$XDG_CONFIG_HOME/mr-cast`. `verify.sh` always sets `CLAUDE_CONFIG_DIR=$RUN/work/claude` and `XDG_CONFIG_HOME=$RUN/work/config`.
 - **Never prune the real cache.** `~/.cache/mr-cast` holds Chrome and the voice model that renders need. For prune or upgrade tests, prefix the command with `XDG_CACHE_HOME=$RUN/work/xdg`. `verify.sh mrc` refuses `prune cache:*` unless `XDG_CACHE_HOME` is under `$RUN`.
 - **Use only the Node versions the harness picks.** Never call `node` bare in Claude Code's shell, where it is a broken nvm lazy-load function, and never use Homebrew's Node 26, which hangs Remotion renders. `eval "$($V env $RUN)"` fixes both. The launcher `bin/mr-cast` finds Node on its own.
 - **ffmpeg and ffprobe.** They live in `node_modules/@remotion/compositor-darwin-arm64/` and need `DYLD_LIBRARY_PATH` set to that dir. `$V probe` and `$V frame` handle that.
