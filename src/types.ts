@@ -80,8 +80,27 @@ interface SceneBase {
 /** What a step points the viewer at. Each scene type's `steps` says which refs it takes. */
 export type FocusRef = string | number;
 
+/**
+ * A pen stroke drawn by hand on what a step points at: "circle" rings it, "underline" and "box" draw
+ * under and around it, "arrow" points at it from a free spot with the `note` at its tail, "strike"
+ * crosses it out with one line and "cross" with an X.
+ */
+export type PenMark = 'circle' | 'underline' | 'box' | 'arrow' | 'strike' | 'cross';
+
+/**
+ * Optional pen marks on a step. The mark draws itself in the half second before the step's words and
+ * is gone when the next step starts. Mark rarely: the one thing the sentence is about on a busy screen,
+ * a risky value, a missing piece. Focus alone is enough on a simple diagram.
+ */
+export interface PenMarks {
+  /** Drawn on the step's first focus ref (all of it, for a range), or a code step's lines or `token`. */
+  mark?: PenMark;
+  /** A short handwritten label beside the mark, up to 40 characters, e.g. "single point of failure". Needs `mark`. */
+  note?: string;
+}
+
 /** One beat of a diagram: what to light, and the words spoken while it is lit. */
-export interface FocusStep {
+export interface FocusStep extends PenMarks {
   /** One ref, or several lit together, such as a node and the edge leaving it. */
   focus: FocusRef | FocusRef[];
   /** Spoken while it is lit. The light lands half a second before the words. */
@@ -162,7 +181,7 @@ export interface ArchScene extends SceneBase {
 export type LineRef = number | string;
 
 /** One step of a code scene: the lines it highlights and the words spoken while they are highlighted. */
-export interface CodeStep {
+export interface CodeStep extends PenMarks {
   /** New-file line number or "a-b" range to highlight (the + numbers in the index). Set this or `oldLines`. */
   lines?: LineRef;
   /** Old-file line number or range, for removed code. */
@@ -173,6 +192,8 @@ export interface CodeStep {
   label?: string;
   /** Where a labelled step branches or ends, e.g. "past twenty it answers too many requests". */
   outcome?: string;
+  /** Text that occurs exactly once in the step's lines, e.g. "max: 20", for `mark` to draw on instead of the whole lines. */
+  token?: string;
 }
 
 export interface CodeScene extends SceneBase {

@@ -219,12 +219,14 @@ function sceneGist(scene, hunks) {
   }
 }
 
-/** A diagram's gist, with its step count when it walks steps. Code scenes list their steps themselves. */
+/** A diagram's gist, with its step count when it walks steps, and how many steps draw a pen mark. Code scenes list their steps themselves. */
 function gistWithSteps(scene, hunks) {
   const gist = sceneGist(scene, hunks);
+  const marked = sceneSteps(scene).filter((step) => step?.mark).length;
+  const marks = marked ? `, ${plural(marked, 'mark')}` : '';
   const steps = scene.type === 'code' ? 0 : sceneSteps(scene).length;
-  if (!steps) return gist;
-  return scene.type === 'flow' ? `${gist}, each spoken` : `${gist} · ${plural(steps, 'step')} spoken`;
+  if (!steps) return `${gist}${marks}`;
+  return scene.type === 'flow' ? `${gist}, each spoken` : `${gist} · ${plural(steps, 'step')} spoken${marks}`;
 }
 
 /** `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. */

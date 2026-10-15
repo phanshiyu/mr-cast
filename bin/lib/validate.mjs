@@ -6,6 +6,7 @@ import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
 import { checkArch, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkMarks } from './validate-marks.mjs';
+import { checkPenMarks } from './validate-pen-marks.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
@@ -581,6 +582,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         break;
     }
     checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
+    checkPenMarks(s, p, hunks ?? {}, errors, warnings);
   });
 
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);

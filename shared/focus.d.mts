@@ -1,4 +1,4 @@
-import type { CodeScene, Hunk, LineRef } from '../src/types';
+import type { CodeScene, CodeStep, Hunk, LineRef } from '../src/types';
 
 export interface SceneFocusRange {
   side: 'newLine' | 'oldLine';
@@ -10,3 +10,5 @@ export declare function focusRanges(refs?: readonly LineRef[]): [number, number]
 export declare function sceneFocusRanges(scene: CodeScene): SceneFocusRange[];
 export declare function lineFocusRanges(scene: CodeScene, hunk: Hunk): (number | null)[];
 export declare function focusStepOrder(scene: CodeScene, hunk: Hunk): number[];
+/** Indexes into `hunk.lines` of the lines a code step highlights. */
+export declare function stepLines(hunk: Hunk, step: CodeStep): number[];

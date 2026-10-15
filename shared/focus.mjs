@@ -55,6 +55,12 @@ function stepRange(step) {
   return { side, range };
 }
 
+/** Indexes into `hunk.lines` of the lines a code step highlights. */
+export function stepLines(hunk, step) {
+  const { side, range: [a, b] } = stepRange(step);
+  return hunk.lines.flatMap((line, i) => (line[side] !== null && line[side] >= a && line[side] <= b ? [i] : []));
+}
+
 /**
  * The scene's focus ranges. With `steps`, one per step in step order. Otherwise focusLinesAfter
  * (new-file numbers) first, then focusLinesBefore (old-file).
