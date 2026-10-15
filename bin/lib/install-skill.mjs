@@ -1,6 +1,6 @@
-// Installs the mr-cast-review and mr-cast-explain skills and their render commands into the Claude
-// config dir, pointing at this install, and records them in a manifest so the next install or
-// uninstall-skill removes whatever this version wrote that the next one no longer does. The storyboard
+// Installs the mr-cast-review, mr-cast-explain and mr-cast-prune skills and the render commands into
+// the Claude config dir, pointing at this install, and records them in a manifest so the next install
+// or uninstall-skill removes whatever this version wrote that the next one no longer does. The storyboard
 // schema is copied from src/types.ts so the skills cannot drift from the player.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -107,6 +107,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
     // MR_CAST_SKILL_TEMPLATE swaps in a variant of the review skill (quality/variant.sh).
     [review, fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-cast-review/SKILL.md'))],
     [explain, fill(path.join(root, 'skill/mr-cast-explain/SKILL.md'))],
+    [path.join(claudeDir, 'skills/mr-cast-prune/SKILL.md'), fill(path.join(root, 'skill/mr-cast-prune/SKILL.md'))],
     [
       path.join(claudeDir, 'commands/mr-cast-render.md'),
       command({
