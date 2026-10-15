@@ -7,8 +7,8 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
-import { ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
-import { sceneDurationInFrames, settledFrame } from '../../shared/timing.mjs';
+import { RenderInternals, ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import { FPS, sceneDurationInFrames, settledFrame } from '../../shared/timing.mjs';
 import { cacheDir } from './cache.mjs';
 import { whileUsing, withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
@@ -191,7 +191,53 @@ async function renderVideoUsingCaches({ hunks, storyboard, voiceover, dataDir, o
   } finally {
     await audio?.close();
   }
+  await addChapters(out, videoChapters(storyboard, voiceover));
   return out;
+}
+
+/** One chapter per run of scenes with the same chapter title (the scene type without one), in milliseconds. */
+export function videoChapters(storyboard, voiceover) {
+  const chapters = [];
+  let from = 0;
+  for (const scene of storyboard.scenes) {
+    const title = scene.chapter?.trim() || scene.type;
+    const end = from + sceneDurationInFrames(scene, voiceover);
+    const last = chapters[chapters.length - 1];
+    if (last?.title === title) last.end = end;
+    else chapters.push({ title, start: from, end });
+    from = end;
+  }
+  const ms = (frames) => Math.round((frames / FPS) * 1000);
+  return chapters.map((c) => ({ title: c.title, start: ms(c.start), end: ms(c.end) }));
+}
+
+/**
+ * Writes chapter markers into the MP4 by remuxing it with the ffmpeg Remotion ships; nothing is re-encoded.
+ * That ffmpeg reads no FFMETADATA files, so the chapters come from a concat script's `chapter` lines. The
+ * script reads only the video stream, whose timestamps start at 0, so the chapters keep their exact times.
+ */
+async function addChapters(file, chapters) {
+  const script = `${file}.chapters.ffconcat`;
+  const tmp = `${file}.chapters.mp4`;
+  const quoted = `'${file.replaceAll("'", "'\\''")}'`;
+  const lines = chapters.map((c, i) => `chapter ${i} ${c.start / 1000} ${c.end / 1000}`);
+  await writeFile(script, ['ffconcat version 1.0', `file ${quoted}`, 'stream', 'exact_stream_id 1', ...lines, ''].join('\n'));
+  try {
+    await RenderInternals.callFf({
+      bin: 'ffmpeg',
+      args: [
+        '-y', '-v', 'error', '-i', file, '-f', 'concat', '-safe', '0', '-i', script,
+        '-map', '0', '-map_chapters', '1', '-codec', 'copy',
+        ...chapters.flatMap((c, i) => [`-metadata:c:${i}`, `title=${c.title}`]),
+        tmp,
+      ],
+      indent: false, logLevel: 'error', binariesDirectory: null, cancelSignal: undefined,
+    });
+    await rename(tmp, file);
+  } finally {
+    await rm(script, { force: true });
+    await rm(tmp, { force: true });
+  }
 }
 
 /** Each still shows its scene's settled end state. Stills take scene timing from `voiceover` but play no audio. */
