@@ -4,7 +4,7 @@ mr-cast turns the diff of a git branch into an animated walkthrough video. An LL
 
 ## Use it from Claude Code
 
-In any git repository, ask Claude to "create a video from this merge request", or run `/mr-cast [base-branch]`. The `mr-video` skill extracts the diff, writes `.mr-cast/storyboard.json`, validates it, and starts the player.
+In any git repository, ask Claude to "create a video from this merge request", or run `/mr-cast [base-branch]` for the browser player or `/mr-render [base-branch]` for an MP4. The `mr-video` skill extracts the diff, writes `.mr-cast/storyboard.json`, validates it, and plays or renders it.
 
 ## Install
 
@@ -12,7 +12,7 @@ Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. T
 
 ```bash
 npm install -g @shiyuphan/mr-cast
-mr-cast install-skill   # writes ~/.claude/skills/mr-video/SKILL.md and ~/.claude/commands/mr-cast.md
+mr-cast install-skill   # installs the mr-video skill plus the /mr-cast and /mr-render commands
 ```
 
 The skill points at the installed package, so rerun `mr-cast install-skill` after you upgrade or move it.
