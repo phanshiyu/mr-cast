@@ -60,7 +60,8 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
         const key = `${fit.path}\n${fit.slot}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        errors.push(fit.text ? `${at}: ${quote(fit.text)} does not fit its ${fit.slot}, even at ${fit.min}px; ${fit.fix}` : `${at}: the ${fit.slot} does not fit the screen at the smallest readable size; ${fit.fix}`);
+        const message = fit.text ? `${at}: ${quote(fit.text)} does not fit its ${fit.slot}, even at ${fit.min}px; ${fit.fix}` : `${at}: the ${fit.slot} does not fit the screen at the smallest readable size; ${fit.fix}`;
+        (fit.severity === 'warning' ? warnings : errors).push(message);
       }
       if (fit.text && styledShare(fit.text) > STYLED_SHARE_MAX && wordCount(fit.text) >= STYLED_MIN_WORDS && !seen.has(`${fit.path}\nstyled`)) {
         seen.add(`${fit.path}\nstyled`);

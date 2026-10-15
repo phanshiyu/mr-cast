@@ -263,6 +263,7 @@ export function wrapRuns(runs, font, width, { balanced = false, force = false } 
  *   markup?: boolean,
  *   oneLineMin?: number,
  *   fix: string,
+ *   severity?: 'warning',
  * }} Slot
  *
  * @typedef {{
@@ -331,6 +332,7 @@ export function fitText(text, slot, path) {
     fits: r.fits,
     min: slot.min,
     markupErrors: errors,
+    severity: slot.severity,
   });
   if (slot.oneLineMin !== undefined) {
     for (let size = slot.size; size >= slot.oneLineMin; size--) {
@@ -354,4 +356,41 @@ export function fitTextAt(text, slot, path, size) {
 /** A whole block that must fit a space, such as a table's rows in the frame, as a report entry. */
 export function fitBlock(path, slot, fits, fix) {
   return { fit: true, path, text: '', slot, fix, size: 0, font: { family: 'sans', weight: 400, size: 0 }, lines: [], widths: [], width: 0, height: 0, lineHeight: 0, fits, min: 0, markupErrors: [] };
+}
+
+/**
+ * Lines that must not wrap, such as code, at the largest size in [slot.min, slot.size] where every line
+ * fits `slot.width` and all of them fit `height`. Reports `fits: false` at slot.min when they do not.
+ * @param {string[]} lines
+ * @param {Slot} slot
+ * @param {number} height
+ * @param {string} path
+ * @returns {Fit}
+ */
+export function fitLines(lines, slot, height, path) {
+  const width = typeof slot.width === 'function' ? slot.width(lines.length, slot.size) : slot.width;
+  const widthsAt = (size) => lines.map((line) => measure(line, fontOf(slot, size)));
+  let size = slot.size;
+  while (size > slot.min && (Math.max(0, ...widthsAt(size)) > width + 0.01 || lines.length * size * slot.lineHeight > height + 0.01)) size--;
+  const widths = widthsAt(size);
+  const fits = Math.max(0, ...widths) <= width + 0.01 && lines.length * size * slot.lineHeight <= height + 0.01;
+  const widest = widths.indexOf(Math.max(0, ...widths));
+  return {
+    fit: true,
+    path,
+    text: lines[widest] ?? '',
+    slot: slot.name,
+    fix: slot.fix,
+    size,
+    font: fontOf(slot, size),
+    lines: lines.map((text) => [{ text }]),
+    widths,
+    width: Math.max(0, ...widths),
+    height: lines.length * size * slot.lineHeight,
+    lineHeight: slot.lineHeight,
+    fits,
+    min: slot.min,
+    markupErrors: [],
+    severity: slot.severity,
+  };
 }

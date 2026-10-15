@@ -33,4 +33,9 @@ export const SLOTS = {
   tableCell: { ...SANS, name: 'table cell', weight: 650, size: 30, min: 17, lines: 2, lineHeight: 1.3, balanced: true, width: 0, fix: 'shorten the cell, or split the table' },
   tableCode: { ...MONO, name: 'table cell', weight: 650, size: 28, min: 16, lines: 2, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the cell, or split the table' },
   tableHeader: { ...SANS, name: 'column header', weight: 700, size: 17, min: 12, lines: 1, lineHeight: 1.3, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the header' },
+  flowActor: { ...MONO, name: 'actor chip', weight: 600, size: 19, min: 14, lines: 1, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the actor\'s name' },
+  flowAction: { ...SANS, name: 'step', weight: 650, size: 30, min: 20, lines: 2, lineHeight: 1.25, width: 0, fix: 'shorten the action, or use fewer steps so each has two lines' },
+  flowStrip: { ...MONO, name: 'current step strip', weight: 700, size: 24, min: 16, lines: 1, lineHeight: 1.3, markup: false, width: 0, fix: 'shorten the actor\'s name' },
+  flowHeadline: { ...SANS, name: 'step card', weight: 700, size: 64, oneLineMin: 64, min: 36, lines: 3, lineHeight: 1.15, letterSpacing: -1, width: 0, fix: 'shorten the action' },
+  payload: { ...MONO, name: 'payload', weight: 400, size: 40, min: 12, lines: 1, lineHeight: 1.5, markup: false, width: 0, fix: 'shorten the payload to the fields the step changes' },
 } satisfies Record<string, Slot>;

@@ -39,6 +39,11 @@ export interface Slot {
   oneLineMin?: number;
   /** What to do when it does not fit, said to the storyboard's author. */
   fix: string;
+  /**
+   * "warning" for text the author did not write and cannot shorten, such as a line of code or a file's
+   * path: `validate` warns instead of failing when it does not fit.
+   */
+  severity?: 'warning';
 }
 
 /** A text fitted into a slot: exactly the lines a scene draws. */
@@ -62,6 +67,7 @@ export interface Fit {
   fits: boolean;
   min: number;
   markupErrors: MarkupError[];
+  severity?: 'warning';
 }
 
 export declare const CODE_SCALE: number;
@@ -75,5 +81,7 @@ export declare function slotRuns(text: string, slot: Slot): { runs: Run[]; error
 export declare function fitText(text: string, slot: Slot, path: string): Fit;
 /** The same text and slot at one given size, such as one title size shared by every card. */
 export declare function fitTextAt(text: string, slot: Slot, path: string, size: number): Fit;
+/** Lines that must not wrap, such as code, at the largest size where all of them fit the width and `height`. */
+export declare function fitLines(lines: readonly string[], slot: Slot, height: number, path: string): Fit;
 /** A whole block that must fit a space, such as a table's rows in the frame, as a report entry. */
 export declare function fitBlock(path: string, slot: string, fits: boolean, fix: string): Fit;

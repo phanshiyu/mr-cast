@@ -1,34 +1,27 @@
 import { ArrowRight, Check } from 'lucide-react';
 import type { Token } from 'prism-react-renderer';
+import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { FlowScene, FlowStep } from '../types';
+import { COLUMN_GAP, LIST_W, STRIP_H, layoutFlow, type FlowLayout, type StepCard } from '../utils/flowLayout';
 import { plainCodeColor, tokenColor, tokenizeLines } from '../utils/highlight';
 import { spotlightStarts } from '../utils/spotlight';
 import { lucideIcon } from './icons';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, contentBox, ellipsis, fitFontSize, fonts } from './theme';
+import { FitText } from './FitText';
+import { clamp, colors, fonts } from './theme';
 import { tones } from './tones';
 
-const LIST_W = 600;
-const COLUMN_GAP = 56;
 const TRANSITION = 14;
 const ROWS_START = 4;
 /** Every row has started landing by this frame, so the list is in by the end of the build. */
 const ROWS_END = 16;
 
-/** Pretty-printed JSON when the payload parses, otherwise the raw text. */
-function formatPayload(payload: string): { text: string; language: string } {
-  try {
-    return { text: JSON.stringify(JSON.parse(payload), null, 2), language: 'json' };
-  } catch {
-    return { text: payload, language: 'plain' };
-  }
-}
-
-const StepRow: React.FC<{ step: FlowStep; index: number; state: 'past' | 'active' | 'future'; appear: number; height: number }> = ({
+const StepRow: React.FC<{ step: FlowStep; text: FlowLayout['rows'][number]; index: number; state: 'past' | 'active' | 'future'; appear: number; height: number }> = ({
   step,
+  text,
   index,
   state,
   appear,
@@ -65,22 +58,23 @@ const StepRow: React.FC<{ step: FlowStep; index: number; state: 'past' | 'active
         <div
           style={{
             display: 'inline-block',
-            maxWidth: '100%',
             padding: '3px 12px',
             borderRadius: 8,
             background: tone?.bg ?? (active ? colors.accentSoft : 'rgba(255,255,255,0.05)'),
             color: chipColor,
             fontFamily: fonts.mono,
-            fontSize: 19,
+            fontSize: text.actor.size,
             fontWeight: 600,
             boxSizing: 'border-box',
-            ...ellipsis,
+            // As wide as its text, so this clips nothing; it sets the chip's baseline at its bottom edge.
+            overflow: 'hidden',
+            verticalAlign: 'baseline',
           }}
         >
           {Icon ? <Icon size={19} strokeWidth={2.2} style={{ display: 'inline-block', verticalAlign: -3, marginRight: 8 }} /> : null}
-          {step.actor}
+          <FitText fit={text.actor} inline />
         </div>
-        <div style={{ fontSize: active ? 30 : 27, fontWeight: active ? 650 : 500, marginTop: 6, lineHeight: 1.25, ...clampLines(height >= 150 ? 2 : 1) }}>{step.action}</div>
+        <FitText fit={active ? text.action : text.idle} style={{ marginTop: 6 }} />
       </div>
     </div>
   );
@@ -89,7 +83,7 @@ const StepRow: React.FC<{ step: FlowStep; index: number; state: 'past' | 'active
 const CodeLines: React.FC<{ lines: Token[][]; fontSize: number }> = ({ lines, fontSize }) => (
   <div style={{ fontFamily: fonts.mono, fontSize, lineHeight: 1.5, color: plainCodeColor }}>
     {lines.map((tokens, i) => (
-      <div key={i} style={{ ...ellipsis, whiteSpace: 'pre' }}>
+      <div key={i} style={{ whiteSpace: 'pre' }}>
         {tokens.map((t, j) => (
           <span key={j} style={{ color: tokenColor(t.types) }}>
             {t.content}
@@ -101,23 +95,17 @@ const CodeLines: React.FC<{ lines: Token[][]; fontSize: number }> = ({ lines, fo
   </div>
 );
 
-const PayloadCard: React.FC<{ step: FlowStep; height: number }> = ({ step, height }) => {
-  if (!step.payload) {
+const PayloadCard: React.FC<{ card: StepCard; height: number }> = ({ card, height }) => {
+  if (card.kind === 'headline') {
     return (
       <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 64px', textAlign: 'center' }}>
-        <div style={{ fontSize: fitFontSize(step.action, 64, 40, 36), fontWeight: 700, letterSpacing: -1, lineHeight: 1.15, ...clampLines(3) }}>
-          {step.action}
-        </div>
+        <FitText fit={card.text} align="center" />
       </div>
     );
   }
-  const { text, language } = formatPayload(step.payload);
-  const lines = tokenizeLines(text, language);
-  const longest = Math.max(...text.split('\n').map((l) => l.length));
-  const fontSize = Math.max(12, Math.min(40, Math.floor(1000 / Math.max(1, longest * 0.6)), Math.floor((height - 48) / (lines.length * 1.5))));
   return (
-    <div style={{ height, display: 'flex', alignItems: 'center', padding: '0 52px', overflow: 'hidden' }}>
-      <CodeLines lines={lines} fontSize={fontSize} />
+    <div style={{ height, display: 'flex', alignItems: 'center', padding: '0 52px' }}>
+      <CodeLines lines={tokenizeLines(card.text, card.language)} fontSize={card.lines.size} />
     </div>
   );
 };
@@ -125,8 +113,7 @@ const PayloadCard: React.FC<{ step: FlowStep; height: number }> = ({ step, heigh
 export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const hasTitle = Boolean(scene.title);
-  const box = contentBox(hasTitle);
+  const layout = useMemo(() => layoutFlow(scene), [scene]);
   const steps = scene.steps;
   // With a `say` per step, step k is current from its segment; without, the steps share the narration.
   const said = segments.length > 1;
@@ -135,10 +122,8 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
   const active = said ? reached : Math.max(0, reached);
   const local = active < 0 ? 0 : frame - starts[active]!;
   const rowStagger = Math.min(4, (ROWS_END - ROWS_START) / Math.max(1, steps.length - 1));
-  const stepH = Math.min(170, box.height / steps.length);
-  const panelW = box.width - LIST_W - COLUMN_GAP;
-  const stripH = 76;
-  const cardH = box.height - stripH - 20;
+  const { stepH, panelW, cardH } = layout;
+  const stripH = STRIP_H;
 
   const enter = active <= 0 && !said ? 1 : interpolate(local, [0, TRANSITION], [0, 1], clamp);
   const progress = active < 0 ? 0 : (active + enter) / steps.length;
@@ -165,6 +150,7 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
             <StepRow
               key={i}
               step={step}
+              text={layout.rows[i]!}
               index={i}
               height={stepH}
               state={i < active ? 'past' : i === active ? 'active' : 'future'}
@@ -188,9 +174,9 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
               boxSizing: 'border-box',
             }}
           >
-            <span style={{ color: current ? colors.accent : colors.faint, fontWeight: 700, maxWidth: panelW * 0.4, ...ellipsis }}>{current ? current.actor : 'start'}</span>
+            {current ? <FitText fit={layout.strip[active]!} style={{ color: colors.accent, lineHeight: 'normal' }} /> : <span style={{ color: colors.faint, fontWeight: 700 }}>start</span>}
             <ArrowRight size={26} color={next ? colors.muted : colors.faint} style={{ flexShrink: 0 }} />
-            <span style={{ color: next ? colors.text : colors.faint, maxWidth: panelW * 0.4, ...ellipsis }}>{next ? next.actor : 'done'}</span>
+            {next ? <FitText fit={layout.strip[active + 1]!} weight={400} style={{ color: colors.text, lineHeight: 'normal' }} /> : <span style={{ color: colors.faint }}>done</span>}
             <div style={{ flex: 1 }} />
             <span style={{ color: colors.faint, fontSize: 20, flexShrink: 0 }}>
               step {Math.max(0, active + 1)}/{steps.length}
@@ -208,15 +194,15 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
             }}
           >
             <div style={{ position: 'absolute', left: 0, top: 0, height: 4, width: `${progress * 100}%`, background: colors.accent, opacity: 0.7 }} />
-            {current ? null : <PayloadCard step={{ actor: '', action: scene.title ?? `${steps.length} steps` }} height={cardH} />}
+            {current ? null : <PayloadCard card={layout.intro} height={cardH} />}
             {previous ? (
               <div style={{ position: 'absolute', inset: 0, opacity: 1 - enter, transform: `translateX(${-enter * 80}px)` }}>
-                <PayloadCard step={previous} height={cardH} />
+                <PayloadCard card={layout.cards[active - 1]!} height={cardH} />
               </div>
             ) : null}
             {current ? (
               <div style={{ position: 'absolute', inset: 0, opacity: enter, transform: `translateX(${(1 - enter) * 80}px)` }}>
-                <PayloadCard step={current} height={cardH} />
+                <PayloadCard card={layout.cards[active]!} height={cardH} />
               </div>
             ) : null}
           </div>

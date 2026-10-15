@@ -28,37 +28,57 @@ function runStyle(run: Run, weight: number): CSSProperties | undefined {
   return style;
 }
 
+const Line: React.FC<{ runs: Run[]; width: number; weight: number }> = ({ runs, width, weight }) => (
+  <span data-fit-w={width.toFixed(1)}>
+    {runs.length
+      ? runs.map((run, j) => (
+          <span key={j} style={runStyle(run, weight)}>
+            {run.text}
+          </span>
+        ))
+      : ' '}
+  </span>
+);
+
 /**
  * Draws a fitted text line by line, exactly as shared/textfit.mjs wrapped it, in the font it was measured
  * in. `weight` draws it lighter than measured, such as a bullet before its step lights it; never heavier.
  * Lines never wrap again or clip: a text too long for its slot runs past it, and `validate` reports it.
+ * `inline` draws it as a span, for text that sits in a line with other content, such as an icon.
  */
-export const FitText: React.FC<{ fit: Fit; weight?: number; align?: 'left' | 'center' | 'right'; style?: CSSProperties }> = ({ fit, weight, align, style }) => {
+export const FitText: React.FC<{ fit: Fit; weight?: number; align?: 'left' | 'center' | 'right'; inline?: boolean; style?: CSSProperties }> = ({ fit, weight, align, inline, style }) => {
   const w = Math.min(weight ?? fit.font.weight, fit.font.weight);
+  const font: CSSProperties = {
+    fontFamily: fonts[fit.font.family],
+    fontSize: fit.size,
+    fontWeight: w,
+    letterSpacing: fit.font.letterSpacing,
+    textTransform: fit.font.upper ? 'uppercase' : undefined,
+  };
+  if (inline) {
+    return (
+      <span style={{ ...font, whiteSpace: 'pre', ...style }}>
+        {fit.lines.map((line, i) => (
+          <span key={i}>
+            {i > 0 ? <br /> : null}
+            <Line runs={line} width={fit.widths[i]!} weight={w} />
+          </span>
+        ))}
+      </span>
+    );
+  }
   return (
     <div
       style={{
-        fontFamily: fonts[fit.font.family],
-        fontSize: fit.size,
-        fontWeight: w,
+        ...font,
         lineHeight: fit.lineHeight,
-        letterSpacing: fit.font.letterSpacing,
-        textTransform: fit.font.upper ? 'uppercase' : undefined,
         textAlign: align,
         ...style,
       }}
     >
       {fit.lines.map((line, i) => (
         <div key={i} style={{ whiteSpace: 'pre' }}>
-          <span data-fit-w={fit.widths[i]!.toFixed(1)}>
-            {line.length
-              ? line.map((run, j) => (
-                  <span key={j} style={runStyle(run, w)}>
-                    {run.text}
-                  </span>
-                ))
-              : ' '}
-          </span>
+          <Line runs={line} width={fit.widths[i]!} weight={w} />
         </div>
       ))}
     </div>

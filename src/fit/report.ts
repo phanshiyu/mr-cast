@@ -3,6 +3,7 @@ import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
 import { fitArch } from '../utils/archLayout';
 import { layoutEr } from '../utils/erLayout';
+import { layoutFlow } from '../utils/flowLayout';
 import { layoutIntent } from '../utils/intentLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
@@ -16,7 +17,7 @@ const SCENE_FITS: SceneFits = {
   intent: (scene, storyboard) => layoutIntent(scene, storyboard),
   arch: (scene) => fitArch(scene.nodes, scene.edges, scene.layout ?? 'LR', contentBox(false)),
   code: () => null,
-  flow: () => null,
+  flow: (scene) => layoutFlow(scene),
   sequence: (scene) => layoutSequence(scene.participants, scene.messages, contentBox(Boolean(scene.title))),
   er: (scene) => layoutEr(scene.entities, scene.relations),
   state: (scene) => layoutState(scene.states, scene.transitions, scene.initial),
