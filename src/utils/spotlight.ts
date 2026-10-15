@@ -1,4 +1,6 @@
 import { interpolate } from 'remotion';
+import { targetSteps } from '../../shared/targets.mjs';
+import type { HunkMap, Scene } from '../types';
 import type { SpokenSegment } from './timing';
 
 const STEP_FADE = 14;
@@ -27,22 +29,38 @@ export function spotlightStarts(segments: readonly SpokenSegment[], count: numbe
   return Array.from({ length: count }, (_, k) => start + (k * (end - start)) / count);
 }
 
-/** Spotlights items one at a time from `starts`: the current item at full strength, visited ones softer, the rest dimmed. Items outside the steps dim once the first step starts. */
+/**
+ * Spotlights items as steps light them: an item the current step lights at full strength, one an earlier
+ * step lit softer, the rest dimmed once the first step starts. An item may be lit by several steps.
+ */
 export function spotlight(frame: number, starts: readonly number[]) {
   const count = starts.length;
   const reached = (k: number) => (k < count ? interpolate(frame, [starts[k]!, starts[k]! + STEP_FADE], [0, 1], clamp) : 0);
   const dim = reached(0);
   return {
-    emphasis(step: number | null): Emphasis {
-      const now = step === null ? 0 : reached(step);
-      const passed = step === null ? 0 : reached(step + 1);
+    emphasis(steps: readonly number[]): Emphasis {
+      const now = steps.reduce((sum, k) => sum + reached(k) - reached(k + 1), 0);
+      const seen = steps.length ? reached(Math.min(...steps)) : 0;
       return {
-        opacity: 1 - (1 - DIM_OPACITY) * (dim - now) - (1 - VISITED_OPACITY) * passed,
-        bar: now - 0.7 * passed,
-        glow: now - passed,
+        opacity: 1 - (1 - DIM_OPACITY) * (dim - seen) - (1 - VISITED_OPACITY) * (seen - now),
+        bar: now + 0.3 * (seen - now),
+        glow: now,
       };
     },
   };
+}
+
+/** The stronger of two emphases, part by part: an item lit through its own focus or a container's. */
+export const brighter = (a: Emphasis, b: Emphasis): Emphasis => ({ opacity: Math.max(a.opacity, b.opacity), bar: Math.max(a.bar, b.bar), glow: Math.max(a.glow, b.glow) });
+
+/** An item at least as bright as the brightest of `others`, such as a node beside a lit edge, so a lit edge never joins two dim nodes. */
+export const asBrightAs = (own: Emphasis, others: readonly Emphasis[]): Emphasis => ({ ...own, opacity: Math.max(own.opacity, ...others.map((e) => e.opacity)) });
+
+/** Emphasis by item key (see shared/targets.mjs) for a scene whose steps take `focus`. */
+export function focusSpotlight(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[], frame: number) {
+  const steps = targetSteps(scene, hunks);
+  const { emphasis } = spotlight(frame, segments.slice(1).map((segment) => segment.from));
+  return (key: string): Emphasis => emphasis(steps.get(key) ?? []);
 }
 
 /** The step being shown at `frame`: k from segment k + 1's start, or -1 before the first step. */

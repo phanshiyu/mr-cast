@@ -5,9 +5,11 @@ import { buildFrames } from '../../shared/timing.mjs';
 import type { FlowScene, FlowStep } from '../types';
 import { plainCodeColor, tokenColor, tokenizeLines } from '../utils/highlight';
 import { spotlightStarts } from '../utils/spotlight';
+import { lucideIcon } from './icons';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
+import { tones } from './tones';
 
 const LIST_W = 600;
 const COLUMN_GAP = 56;
@@ -33,6 +35,9 @@ const StepRow: React.FC<{ step: FlowStep; index: number; state: 'past' | 'active
   height,
 }) => {
   const active = state === 'active';
+  const Icon = lucideIcon(step.icon);
+  const tone = step.tone ? tones[step.tone] : null;
+  const chipColor = tone?.color ?? (active ? colors.accent : colors.muted);
   return (
     <div style={{ display: 'flex', gap: 22, height, opacity: appear }}>
       <div
@@ -63,8 +68,8 @@ const StepRow: React.FC<{ step: FlowStep; index: number; state: 'past' | 'active
             maxWidth: '100%',
             padding: '3px 12px',
             borderRadius: 8,
-            background: active ? colors.accentSoft : 'rgba(255,255,255,0.05)',
-            color: active ? colors.accent : colors.muted,
+            background: tone?.bg ?? (active ? colors.accentSoft : 'rgba(255,255,255,0.05)'),
+            color: chipColor,
             fontFamily: fonts.mono,
             fontSize: 19,
             fontWeight: 600,
@@ -72,6 +77,7 @@ const StepRow: React.FC<{ step: FlowStep; index: number; state: 'past' | 'active
             ...ellipsis,
           }}
         >
+          {Icon ? <Icon size={19} strokeWidth={2.2} style={{ display: 'inline-block', verticalAlign: -3, marginRight: 8 }} /> : null}
           {step.actor}
         </div>
         <div style={{ fontSize: active ? 30 : 27, fontWeight: active ? 650 : 500, marginTop: 6, lineHeight: 1.25, ...clampLines(height >= 150 ? 2 : 1) }}>{step.action}</div>

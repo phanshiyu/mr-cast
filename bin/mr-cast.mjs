@@ -18,6 +18,7 @@ import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnipp
 import { DEFAULT_VOICE, PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
+import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { ensureVoiceover, parsePace, readVoiceover, resolvePace } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -153,9 +154,11 @@ function timingVoiceover(dir, pace = {}) {
 
 async function loadProject(dir, pace) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` (or `mr-cast explain init`) first, with the same --name');
-  const storyboard = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
+  const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const meta = readMeta(dir);
-  const result = await validateStoryboard(storyboard, hunks, meta);
+  const result = await validateStoryboard(raw, hunks, meta);
+  // Past validation, older field names are rewritten once, so everything downstream sees one shape.
+  const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, pace));
   return { dir, hunks, storyboard, result, style: meta.style, lines: formatValidation(result, { storyboard, hunks, seconds, style: meta.style }) };
 }

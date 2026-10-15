@@ -2,6 +2,7 @@ import { Player, type PlayerRef } from '@remotion/player';
 import { ArrowRightLeft, ChartColumn, ChartGantt, CircleDot, FolderTree, Code2, FlaskConical, Shapes, GitBranch, Network, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { defaultChapter } from './components/theme';
+import { normalizeStoryboard } from '../shared/normalize.mjs';
 import type { HunkMap, Scene, Storyboard, Voiceover } from './types';
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
@@ -44,7 +45,7 @@ async function fetchJson<T>(file: string): Promise<T> {
 async function loadAll(): Promise<LoadState> {
   try {
     const [storyboard, hunks, meta, voiceover] = await Promise.all([
-      fetchJson<Storyboard>('storyboard.json'),
+      fetchJson<{ scenes?: unknown }>('storyboard.json'),
       fetchJson<HunkMap>('hunks.json'),
       fetchJson<Meta>('meta.json').catch(() => null),
       fetchJson<Voiceover>('voiceover.json').catch(() => null),
@@ -52,7 +53,7 @@ async function loadAll(): Promise<LoadState> {
     if (!Array.isArray(storyboard.scenes) || storyboard.scenes.length === 0) {
       throw new DataError('storyboard.json', 'expected a non-empty "scenes" array');
     }
-    return { status: 'ready', storyboard, hunks, meta, voiceover };
+    return { status: 'ready', storyboard: normalizeStoryboard(storyboard, hunks), hunks, meta, voiceover };
   } catch (err) {
     if (err instanceof DataError) return { status: 'error', file: err.file, message: err.message };
     return { status: 'error', file: 'unknown', message: String(err) };

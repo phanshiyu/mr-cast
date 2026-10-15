@@ -1,26 +1,23 @@
-import { Box, Database, Layers, Monitor, Server, StickyNote, type LucideIcon } from 'lucide-react';
+import { StickyNote } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { indexRange } from '../../shared/steps.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
-import type { MessageKind, NodeKind, SequenceScene } from '../types';
+import { stepTargets } from '../../shared/targets.mjs';
+import type { MessageKind, SequenceScene } from '../types';
 import {
   BAR_W,
   CARD_H,
   LABEL_LINE_HEIGHT,
   layoutSequence,
   type PlacedMessage,
-  type PlacedParticipant,
   type Pt,
   type SequenceLayout,
 } from '../utils/sequenceLayout';
-import { currentStep, revealStarts } from '../utils/spotlight';
+import { currentStep, focusSpotlight, revealStarts } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
+import { NodeCard, nodeMark } from './NodeCard';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
-
-const kindIcon: Record<NodeKind, LucideIcon> = { service: Server, db: Database, queue: Layers, client: Monitor };
-const kindLabel: Record<NodeKind, string> = { service: 'service', db: 'datastore', queue: 'queue', client: 'client' };
 
 const HEADER_START = 6;
 const HEADERS_END = 14;
@@ -37,125 +34,6 @@ const HEAD = 14;
 const neutralStroke = '#c4cad8';
 const returnStroke = 'rgba(170, 178, 200, 0.62)';
 const noteAmber = 'rgba(251, 191, 36, 0.45)';
-
-/** Sans advance per em, rounded up from SF Pro semibold so estimates err towards smaller text. */
-const SANS_ADVANCE = 0.58;
-
-/** Break opportunities at spaces and camelCase or punctuation boundaries: "PaymentProvider|Client". */
-function labelTokens(label: string): string[] {
-  return label.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=[\s:._/-])/).filter(Boolean);
-}
-
-/** Lines a greedy browser-style wrap of `tokens` takes at `fontSize` in `width`. */
-function wrappedLines(tokens: readonly string[], fontSize: number, width: number): number {
-  let lines = 1;
-  let used = 0;
-  for (const token of tokens) {
-    const w = token.length * SANS_ADVANCE * fontSize;
-    const fit = used + token.trimEnd().length * SANS_ADVANCE * fontSize <= width;
-    if (used > 0 && !fit) {
-      lines += 1;
-      used = w;
-    } else used += w;
-  }
-  return lines;
-}
-
-/** Title font for a participant card: one line down to 20px, then two lines, never splitting a token. */
-function titleFit(label: string, width: number): { fontSize: number; twoLines: boolean } {
-  const tokens = labelTokens(label);
-  for (let fontSize = 25; fontSize >= 20; fontSize--) {
-    if (wrappedLines(tokens, fontSize, width) === 1) return { fontSize, twoLines: false };
-  }
-  for (let fontSize = 25; fontSize > 15; fontSize--) {
-    const lines = wrappedLines(tokens, fontSize, width);
-    if (lines <= 2) return { fontSize, twoLines: lines === 2 };
-  }
-  return { fontSize: 15, twoLines: true };
-}
-
-const ParticipantCard: React.FC<{ placed: PlacedParticipant; width: number; top: number; appear: number }> = ({ placed, width, top, appear }) => {
-  const { participant } = placed;
-  const Icon = participant.kind ? kindIcon[participant.kind] : Box;
-  const modified = participant.modified;
-  const compact = width < 290;
-  const icon = compact ? 40 : 48;
-  const pad = compact ? 14 : 16;
-  const gap = compact ? 12 : 14;
-  const title = titleFit(participant.label, width - 2 * pad - icon - gap - 4);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: placed.x - width / 2,
-        top,
-        width,
-        height: CARD_H,
-        boxSizing: 'border-box',
-        display: 'flex',
-        alignItems: 'center',
-        gap,
-        padding: `0 ${pad}px`,
-        borderRadius: 18,
-        background: modified ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised,
-        border: `2px solid ${modified ? colors.accent : colors.borderStrong}`,
-        boxShadow: modified ? `0 0 0 5px ${colors.accentSoft}, 0 0 40px ${colors.accentGlow}` : '0 12px 32px rgba(0,0,0,0.4)',
-        opacity: appear,
-        transform: `translateY(${(1 - appear) * 18}px) scale(${0.92 + 0.08 * appear})`,
-      }}
-    >
-      <div
-        style={{
-          width: icon,
-          height: icon,
-          borderRadius: 12,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: modified ? colors.accentSoft : 'rgba(255,255,255,0.05)',
-          color: modified ? colors.accent : colors.muted,
-          flexShrink: 0,
-        }}
-      >
-        <Icon size={icon * 0.55} strokeWidth={2} />
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: title.fontSize, fontWeight: 650, lineHeight: 1.15, color: colors.text, overflowWrap: 'anywhere', ...clampLines(2) }}>
-          {labelTokens(participant.label).map((token, i) => (
-            <span key={i}>
-              {i > 0 ? <wbr /> : null}
-              {token}
-            </span>
-          ))}
-        </div>
-        {title.twoLines ? null : (
-          <div style={{ fontSize: 17, color: colors.faint, marginTop: 3, ...ellipsis }}>
-            {participant.kind ? kindLabel[participant.kind] : 'participant'}
-          </div>
-        )}
-      </div>
-      {modified ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: -14,
-            right: 14,
-            padding: '3px 10px',
-            borderRadius: 999,
-            background: colors.accent,
-            color: '#0b0d18',
-            fontSize: 14,
-            fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: 'uppercase',
-          }}
-        >
-          changed
-        </div>
-      ) : null}
-    </div>
-  );
-};
 
 /** The first `t` (0..1) of a polyline by length, plus the heading of its last segment. */
 function partialPolyline(points: readonly Pt[], t: number): { points: Pt[]; angle: number } {
@@ -286,18 +164,36 @@ function revealFront(layout: SequenceLayout, starts: number[], drawFrames: numbe
   return interpolate(frame, [...input, lastEnd + 8], [...ys, layout.height], clamp);
 }
 
-export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, durationInFrames, segments }) => {
+/**
+ * Messages each step lights, and the last message drawn by the end of each step: a step draws every message
+ * up to the last one it or an earlier step focuses, and the last step also draws and lights any after.
+ */
+function messageSteps(scene: SequenceScene, count: number): { lasts: number[]; lit: Set<number>[] } {
+  const focused = stepTargets(scene).map((keys) => keys.flatMap((key) => (key.startsWith('m:') ? [Number(key.slice(2))] : [])));
+  let reach = -1;
+  const lasts = focused.map((ms) => (reach = Math.max(reach, ...ms)));
+  const lit = focused.map((ms, k) => {
+    const set = new Set(ms);
+    if (k === focused.length - 1) for (let i = Math.max(-1, ...ms, k > 0 ? lasts[k - 1]! : -1) + 1; i < count; i++) set.add(i);
+    return set;
+  });
+  return { lasts, lit };
+}
+
+export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutSequence(scene.participants, scene.messages, box), [scene.participants, scene.messages, box.width, box.height]);
   // Without steps every message draws in before the voice; with them, each step's messages draw with its words.
-  const ranges = (scene.steps ?? []).map((step): [number, number] => indexRange(step.messages) ?? [0, 0]);
   const count = layout.messages.length;
-  const starts = revealStarts(segments, count, ranges.map(([, last]) => last), MESSAGES_START, buildFrames('sequence') - MESSAGE_FRAMES, STEP_STAGGER);
+  const steps = useMemo(() => messageSteps(scene, count), [scene, count]);
+  const starts = revealStarts(segments, count, steps.lasts, MESSAGES_START, buildFrames('sequence') - MESSAGE_FRAMES, STEP_STAGGER);
   const step = currentStep(segments, frame);
-  const lit: [number, number] | null = step < 0 ? null : [ranges[step]![0], step === ranges.length - 1 ? count - 1 : ranges[step]![1]];
-  const isLit = (i: number) => lit !== null && i >= lit[0] && i <= lit[1];
+  const litSet = step < 0 ? null : steps.lit[step]!;
+  const isLit = (i: number) => litSet !== null && litSet.has(i);
+  const lit: [number, number] | null = litSet?.size ? [Math.min(...litSet), Math.max(...litSet)] : null;
+  const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const front = revealFront(layout, starts, DRAW_FRAMES, frame);
   const lifeline = interpolate(frame, [LIFELINE_START, LIFELINE_START + LIFELINE_FRAMES], [0, 1], clamp);
   const headerStagger = Math.min(5, (HEADERS_END - HEADER_START) / Math.max(1, layout.participants.length - 1));
@@ -326,8 +222,8 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, du
                 x2={p.x}
                 y1={layout.lifelineTop}
                 y2={layout.lifelineTop + (layout.height - layout.lifelineTop) * lifeline}
-                stroke={p.participant.modified ? colors.accent : 'rgba(255,255,255,0.22)'}
-                strokeOpacity={p.participant.modified ? 0.45 : 1}
+                stroke={nodeMark(p.participant)?.color ?? 'rgba(255,255,255,0.22)'}
+                strokeOpacity={nodeMark(p.participant) ? 0.45 : 1}
                 strokeWidth={2}
                 strokeDasharray="6 10"
               />
@@ -357,11 +253,15 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, du
             ))}
           </svg>
           {layout.participants.map((p, i) => (
-            <ParticipantCard
+            <NodeCard
               key={p.participant.id}
-              placed={p}
+              node={p.participant}
+              x={p.x - layout.cardW / 2}
+              y={layout.cardTop}
               width={layout.cardW}
-              top={layout.cardTop}
+              height={CARD_H}
+              size={layout.cardW < 290 ? 'compact' : 'small'}
+              emphasis={{ ...emphasisOf(`p:${p.participant.id}`), opacity: 1 }}
               appear={spring({ frame: frame - HEADER_START - i * headerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />
           ))}

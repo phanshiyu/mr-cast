@@ -35,7 +35,6 @@ export type HunkMap = Record<string, Hunk>;
 // bin/lib/install-skill.mjs copies this block into the skill, from the Risk declaration up to the next section.
 
 export type Risk = 'low' | 'medium' | 'high';
-export type NodeKind = 'service' | 'db' | 'queue' | 'client';
 
 interface SceneBase {
   /** Short title shown in the chapter sidebar. Defaults to a per-type label. */
@@ -47,32 +46,87 @@ interface SceneBase {
   narration: string;
 }
 
+/** What a step points the viewer at. Each scene type's `steps` says which refs it takes. */
+export type FocusRef = string | number;
+
+/** One beat of a diagram: what to light, and the words spoken while it is lit. */
+export interface FocusStep {
+  /** One ref, or several lit together, such as a node and the edge leaving it. */
+  focus: FocusRef | FocusRef[];
+  /** Spoken while it is lit. The light lands half a second before the words. */
+  say: string;
+}
+
 export interface IntentScene extends SceneBase {
   type: 'intent';
   summary: string;
   /** Required in a diff walkthrough. An explanation (explain mode) leaves it out. */
   risk?: Risk;
   bullets: string[];
+  /**
+   * Move the viewer's attention as the voice explains: every bullet shows, then each step lights the
+   * bullets it focuses just before its `say` is spoken. `narration` is then the intro. A ref is a bullet index (0-based).
+   */
+  steps?: FocusStep[];
 }
 
-export interface ArchNode {
+/**
+ * A card in an arch or sequence scene: a service, a database, a person, a team, a document, a device.
+ * Older storyboards wrote `kind` ("service", "db", "queue" or "client") for the icon and caption, and
+ * `modified: true` for a change or a key part; both still work.
+ */
+export interface DiagramNode {
   id: string;
   label: string;
-  kind: NodeKind;
-  /** Highlight as touched by this change, or in an explanation as a key part of the idea. */
-  modified?: boolean;
+  /**
+   * Any Lucide icon name in kebab-case (https://lucide.dev/icons), e.g. "server", "database", "user",
+   * "users", "headset", "building-2", "smartphone", "file-text". Drawn left of the label; none when absent.
+   */
+  icon?: string;
+  /** A short line under the label saying what it is, e.g. "datastore", "customer", "on call". None when absent. */
+  caption?: string;
+  /** What this change does to it: added (green, "new"), removed (dashed and struck through) or modified ("changed"). */
+  change?: Change;
+  /** A key part of the idea, drawn in the accent colour with a "key" badge. Use it in an explanation. */
+  highlight?: boolean;
+  /** Colour of its icon, for telling kinds of things apart, e.g. people "good" and systems "neutral". */
+  tone?: Tone;
+}
+
+export interface ArchNode extends DiagramNode {
+  /** Name of a group, e.g. "Support team". Nodes with the same group are drawn inside one labelled box. */
+  group?: string;
 }
 
 export interface ArchEdge {
   from: string;
   to: string;
   label?: string;
+  /** "forward" (default) points from → to, "both" points at each end for a two-way relationship, "none" draws a plain line. */
+  direction?: 'forward' | 'both' | 'none';
+  /**
+   * "flow" moves dashes along a forward edge, for requests or data in motion; "solid" is a still line,
+   * for a relationship such as "reports to"; "dashed" is a still dashed line, for a weak, optional or
+   * indirect link. Defaults to "flow" for a forward edge and "solid" otherwise.
+   */
+  style?: 'flow' | 'solid' | 'dashed';
+  /** An edge this change adds (green), removes (dashed red) or alters (accent). */
+  change?: Change;
 }
 
 export interface ArchScene extends SceneBase {
   type: 'arch';
   nodes: ArchNode[];
   edges: ArchEdge[];
+  /** "LR" (default) lays the graph out left to right; "TB" top to bottom, which suits hierarchies such as people and teams. */
+  layout?: 'LR' | 'TB';
+  /**
+   * Move the viewer's attention as the voice explains: the whole graph draws first, then each step lights
+   * what it focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
+   * A ref is a node id, an edge "from->to" (or "a-b" for either direction), a group "group:Support team",
+   * or an edge index. Walk a path with a node, then its edge, then the next node.
+   */
+  steps?: FocusStep[];
 }
 
 /** A line number or an inclusive range written as "12-18". */
@@ -117,6 +171,10 @@ export interface FlowStep {
   action: string;
   /** The data as it looks after this step (JSON, a struct, a short code snippet...). */
   payload?: string;
+  /** A Lucide icon name for the actor, as on a diagram node, e.g. "user" or "server". */
+  icon?: string;
+  /** Colour of the actor's chip and icon. */
+  tone?: Tone;
   /**
    * Spoken while this step is the current one; it becomes current just before its words. Give every step
    * a `say` or none. Without them the current step moves through the steps while the narration plays.
@@ -133,13 +191,7 @@ export interface FlowScene extends SceneBase {
 
 export type MessageKind = 'call' | 'return' | 'async';
 
-export interface SequenceParticipant {
-  id: string;
-  label: string;
-  kind?: NodeKind;
-  /** Highlight as touched by this change, or in an explanation as a key participant. */
-  modified?: boolean;
-}
+export type SequenceParticipant = DiagramNode;
 
 export interface SequenceMessage {
   from: string;
@@ -162,16 +214,11 @@ export interface SequenceScene extends SceneBase {
   messages: SequenceMessage[];
   /**
    * Walk the messages in order, each step with its own words: the participants draw first, then each step's
-   * messages draw in just before its `say` is spoken. `narration` is then the intro spoken before the first step.
+   * messages draw in and light up just before its `say` is spoken. `narration` is then the intro.
+   * A ref is a message index (0-based), an inclusive "a-b" range of them, or a participant id. A step draws
+   * every message up to the last one it focuses, so focus them in order.
    */
-  steps?: SequenceStep[];
-}
-
-export interface SequenceStep {
-  /** Message index (0-based) or an inclusive "a-b" range, after the previous step's messages. */
-  messages: number | string;
-  /** Spoken as these messages draw in. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 export type Change = 'added' | 'removed' | 'modified';
@@ -208,17 +255,11 @@ export interface ErScene extends SceneBase {
   entities: ErEntity[];
   relations: ErRelation[];
   /**
-   * Walk the tables one at a time, each with its own words. The whole model draws first, then each step's
-   * table lights up just before its `say` is spoken while the rest dims. `narration` is then the intro.
+   * Move the viewer's attention as the voice explains: the whole model draws first, then each step lights
+   * what it focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
+   * A ref is an entity id, a field "entity.field" (e.g. "orders.status"), a relation "from->to", or a relation index.
    */
-  steps?: ErStep[];
-}
-
-export interface ErStep {
-  /** An entity id. */
-  entity: string;
-  /** Spoken while the table is lit. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 export interface StateNode {
@@ -246,21 +287,12 @@ export interface StateScene extends SceneBase {
   states: StateNode[];
   transitions: StateTransition[];
   /**
-   * Walk the machine one state or transition at a time, each with its own words. The whole machine draws
-   * first, then each step's item lights up just before its `say` is spoken while the rest dims.
-   * `narration` is then the intro spoken before the first step.
+   * Move the viewer's attention as the voice explains: the whole machine draws first, then each step lights
+   * what it focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
+   * A ref is a state id, a transition "from->to" (every transition between them), a transition's exact
+   * label such as "pay", or a transition index (0-based) to pick one of several.
    */
-  steps?: StateStep[];
-}
-
-/** Set `state` or `transition`. */
-export interface StateStep {
-  /** A state id. */
-  state?: string;
-  /** A transition index (0-based). */
-  transition?: number;
-  /** Spoken while it is lit. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 export interface MermaidScene extends SceneBase {
@@ -292,6 +324,12 @@ export interface TestsScene extends SceneBase {
   cases: TestCase[];
   /** Important behaviors this change introduces that no test covers. Empty means you checked and found none. */
   gaps: string[];
+  /**
+   * Move the viewer's attention as the voice explains: the matrix draws first, then each step lights what
+   * it focuses just before its `say` is spoken. `narration` is then the intro.
+   * A ref is a case index (0-based), a case's name, or a gap "gap:0".
+   */
+  steps?: FocusStep[];
 }
 
 /** A cell's text, or `{ before, after }` for a value this change replaced: the old value is struck through beside the new one. */
@@ -313,17 +351,11 @@ export interface TableScene extends SceneBase {
   /** Row indexes (0-based) to spotlight one at a time, in the order the narration names them. */
   highlight?: number[];
   /**
-   * Walk rows one at a time, each with its own words: the row lights up just before its `say` is spoken.
-   * `narration` is then the intro spoken before the first step. Replaces `highlight`.
+   * Move the viewer's attention as the voice explains: each step lights what it focuses just before its
+   * `say` is spoken while the rest dims. `narration` is then the intro. Replaces `highlight`.
+   * A ref is a row index (0-based), a column "col:Header", or one cell "Header@row", e.g. "p99@2".
    */
-  steps?: TableStep[];
-}
-
-export interface TableStep {
-  /** Row index (0-based). */
-  row: number;
-  /** Spoken while the row is lit. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 /** Colour of a series, event or span. Neutral is grey, accent is the highlight blue, good green, bad red, warn amber. */
@@ -354,18 +386,12 @@ export interface ChartScene extends SceneBase {
   /** Calls out one point: the value at label `at` of series `series` (a series name, default the last series). */
   annotation?: { at: string; series?: string; text: string };
   /**
-   * Walk the labels one at a time, each with its own words. The whole chart draws first, then each step's
-   * label lights up just before its `say` is spoken while the rest dims; the annotation appears with the
-   * step on its label. `narration` is then the intro spoken before the first step.
+   * Move the viewer's attention as the voice explains: the whole chart draws first, then each step lights
+   * what it focuses just before its `say` is spoken while the rest dims; the annotation appears with the
+   * first step that focuses its point or label. `narration` is then the intro.
+   * A ref is a label, a series "series:after", or one value "series@label", e.g. "after@p99".
    */
-  steps?: ChartStep[];
-}
-
-export interface ChartStep {
-  /** One of the labels. */
-  label: string;
-  /** Spoken while the label is lit. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 export interface TimelineEvent {
@@ -396,16 +422,11 @@ export interface TimelineScene extends SceneBase {
   spans?: TimelineSpan[];
   /**
    * Walk the events in order, each step with its own words: the axis draws first, then the playhead moves
-   * to each step's events just before its `say` is spoken. `narration` is then the intro spoken before the first step.
+   * to the last event a step focuses, and what it focuses lights up, just before its `say` is spoken.
+   * `narration` is then the intro. A ref is an event index (0-based), an inclusive "a-b" range of them,
+   * or a span "span:label".
    */
-  steps?: TimelineStep[];
-}
-
-export interface TimelineStep {
-  /** Event index (0-based) or an inclusive "a-b" range, after the previous step's events. */
-  events: number | string;
-  /** Spoken as the playhead reaches these events. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 export interface FileEntry {
@@ -431,17 +452,11 @@ export interface FilesScene extends SceneBase {
   /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
   highlight?: string[];
   /**
-   * Walk files one at a time, each with its own words: the file lights up just before its `say` is spoken.
-   * `narration` is then the intro spoken before the first step. Replaces `highlight`.
+   * Move the viewer's attention as the voice explains: each step lights the files it focuses just before
+   * its `say` is spoken while the rest dims. `narration` is then the intro. Replaces `highlight`.
+   * A ref is a path in the tree.
    */
-  steps?: FileStep[];
-}
-
-export interface FileStep {
-  /** A path in the tree. */
-  path: string;
-  /** Spoken while the file is lit. */
-  say: string;
+  steps?: FocusStep[];
 }
 
 export type Scene = IntentScene | ArchScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene;

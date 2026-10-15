@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { indexRange } from '../../shared/steps.mjs';
+import { stepTargets } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { TimelineScene } from '../types';
 import { formatValue } from '../utils/chartLayout';
 import { DETAIL_FONT, LABEL_FONT, SPAN_H, STAMP_FONT, layoutTimeline, type PlacedEvent, type PlacedSpan, type TimelineLayout } from '../utils/timelineLayout';
-import { revealStarts } from '../utils/spotlight';
+import { focusSpotlight, revealStarts, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -18,10 +18,29 @@ const RISE_FRAMES = 14;
 /** Frames the playhead takes to move to a step's events. */
 const TRAVEL_FRAMES = 8;
 
+/** Per step, the last event drawn by its end and the furthest value it focuses, both never moving back. */
+function stepReach(scene: TimelineScene): { lasts: number[]; values: number[] } {
+  const focused = stepTargets(scene);
+  let last = -1;
+  let value = -Infinity;
+  const lasts: number[] = [];
+  const values: number[] = [];
+  for (const keys of focused) {
+    const events = keys.flatMap((k) => (k.startsWith('ev:') ? [Number(k.slice(3))] : []));
+    const spans = keys.flatMap((k) => (k.startsWith('sp:') ? [scene.spans![Number(k.slice(3))]!] : []));
+    last = Math.max(last, ...events);
+    value = Math.max(value, ...events.map((i) => scene.events[i]!.at), ...spans.map((sp) => Math.max(sp.from, sp.to)));
+    lasts.push(last);
+    values.push(value);
+  }
+  return { lasts, values };
+}
+
 /**
  * The playhead's keyframes, as frames and x positions. Without steps it sweeps every event and span
  * edge during the build, so the whole timeline is drawn before the voice. With steps it waits at the
- * start, then moves to each step's last event as that step begins, and the last step runs to the end.
+ * start, then moves to the furthest event or span end each step focuses as that step begins, and the
+ * last step runs to the end.
  */
 function playheadKeys(scene: TimelineScene, layout: TimelineLayout, segments: readonly SpokenSegment[]) {
   const values = [...new Set([...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((s) => [s.from, s.to])])].sort((a, b) => a - b);
@@ -29,12 +48,11 @@ function playheadKeys(scene: TimelineScene, layout: TimelineLayout, segments: re
   const endX = layout.x(values[values.length - 1]!);
   const times = [START + 4];
   const xs = [startX];
-  const steps = scene.steps ?? [];
-  if (steps.length && segments.length > 1) {
-    steps.forEach((step, k) => {
+  const reach = stepReach(scene).values;
+  if (reach.length && segments.length > 1) {
+    reach.forEach((value, k) => {
       const at = segments[k + 1]!.from;
-      const last = indexRange(step.events)?.[1] ?? 0;
-      const target = k === steps.length - 1 ? endX : layout.x(scene.events[last]?.at ?? values[0]!);
+      const target = k === reach.length - 1 ? endX : Number.isFinite(value) ? layout.x(value) : startX;
       times.push(at, at + TRAVEL_FRAMES);
       xs.push(xs[xs.length - 1]!, target);
     });
@@ -62,7 +80,7 @@ function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, segments: r
   };
   // A step's events rise while the playhead travels to them, so they are up before the voice names
   // them; an event at the playhead's start still waits for its step.
-  const lasts = (scene.steps ?? []).map((step) => indexRange(step.events)?.[1] ?? 0);
+  const { lasts } = stepReach(scene);
   const stepped = lasts.length > 0 && segments.length > 1;
   const stepFrom = revealStarts(segments, scene.events.length, lasts, 0, 0, 0);
   return {
@@ -99,7 +117,7 @@ const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; at: number; fram
   );
 };
 
-const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number }> = ({ placed, at, frame }) => {
+const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number; emphasis: Emphasis }> = ({ placed, at, frame, emphasis }) => {
   const { fps } = useVideoConfig();
   const tone = tones[placed.event.tone ?? 'accent'];
   const { rise, flash } = eventMotion(frame, fps, at);
@@ -117,9 +135,9 @@ const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number }> = 
         borderRadius: 14,
         background: colors.raised,
         border: `1.5px solid ${tone.color}${flash > 0 ? 'cc' : '66'}`,
-        boxShadow: `0 14px 36px rgba(0,0,0,0.45), 0 0 ${30 * flash}px ${tone.color}55`,
-        opacity: rise,
-        transform: `translateY(${(1 - rise) * 18}px)`,
+        boxShadow: `0 14px 36px rgba(0,0,0,0.45), 0 0 ${30 * flash}px ${tone.color}55${emphasis.glow > 0 ? `, 0 0 0 ${3 * emphasis.glow}px ${tone.color}, 0 0 ${40 * emphasis.glow}px ${tone.color}66` : ''}`,
+        opacity: rise * emphasis.opacity,
+        transform: `translateY(${(1 - rise) * 18}px) scale(${1 + 0.03 * emphasis.glow})`,
       }}
     >
       <div style={{ fontFamily: fonts.mono, fontSize: STAMP_FONT, lineHeight: '24px', fontWeight: 700, color: tone.color }}>{placed.stamp}</div>
@@ -137,7 +155,7 @@ const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number }> = 
   );
 };
 
-const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneAt: number; frame: number }> = ({ placed, playX, unit, doneAt, frame }) => {
+const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneAt: number; frame: number; emphasis: Emphasis }> = ({ placed, playX, unit, doneAt, frame, emphasis }) => {
   const tone = tones[placed.span.tone ?? 'warn'];
   const full = placed.x1 - placed.x0;
   const w = Math.max(0, Math.min(full, playX - placed.x0));
@@ -145,7 +163,7 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
   const duration = formatValue(Math.abs(placed.span.to - placed.span.from), unit);
   const room = full - 24 - placed.label.length * DETAIL_FONT * 0.52 - duration.length * 17 * 0.62 - 20;
   return (
-    <>
+    <div style={{ opacity: emphasis.opacity }}>
       <div
         style={{
           position: 'absolute',
@@ -156,7 +174,8 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
           boxSizing: 'border-box',
           borderRadius: 10,
           background: `repeating-linear-gradient(135deg, ${tone.bg}, ${tone.bg} 10px, transparent 10px, transparent 18px), ${tone.bg}`,
-          border: w > 0 ? `1.5px solid ${tone.color}99` : 'none',
+          border: w > 0 ? `1.5px solid ${tone.color}${emphasis.glow > 0 ? '' : '99'}` : 'none',
+          boxShadow: emphasis.glow > 0 ? `0 0 ${36 * emphasis.glow}px ${tone.color}77` : undefined,
           overflow: 'hidden',
         }}
       />
@@ -181,17 +200,18 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
         <span>{placed.label}</span>
         {placed.inside && room > 0 ? <span style={{ fontFamily: fonts.mono, fontSize: 17, fontWeight: 600, opacity: 0.8 }}>{duration}</span> : null}
       </div>
-    </>
+    </div>
   );
 };
 
-export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, durationInFrames, segments }) => {
+export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutTimeline(scene, box.width), [scene, box.width]);
   const playhead = useMemo(() => buildPlayhead(scene, layout, segments), [scene, layout, segments]);
   const scale = Math.min(1, box.height / layout.height);
   const playX = playhead.playX(frame);
+  const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const axisIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
   const headOpacity = interpolate(frame, [START + 2, START + 8, playhead.last + 6, playhead.last + 18], [0, 1, 1, 0], clamp);
   const { axisY, ticks } = layout;
@@ -227,7 +247,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, durationI
           </div>
         ))}
         {layout.spans.map((placed, i) => (
-          <SpanBar key={i} placed={placed} playX={playX} unit={scene.unit} doneAt={playhead.reachedAt(Math.max(placed.span.from, placed.span.to))} frame={frame} />
+          <SpanBar key={i} placed={placed} playX={playX} unit={scene.unit} doneAt={playhead.reachedAt(Math.max(placed.span.from, placed.span.to))} frame={frame} emphasis={emphasisOf(`sp:${i}`)} />
         ))}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
           {layout.events.map((placed) => (
@@ -235,7 +255,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, durationI
           ))}
         </svg>
         {layout.events.map((placed) => (
-          <EventCard key={placed.index} placed={placed} at={playhead.eventAt(placed.index)} frame={frame} />
+          <EventCard key={placed.index} placed={placed} at={playhead.eventAt(placed.index)} frame={frame} emphasis={emphasisOf(`ev:${placed.index}`)} />
         ))}
         <div
           style={{

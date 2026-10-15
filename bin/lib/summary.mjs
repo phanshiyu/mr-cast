@@ -160,8 +160,11 @@ function sceneGist(scene, hunks) {
     case 'intent':
       return `${scene.risk ? `${scene.risk} risk · ` : ''}${scene.summary}`;
     case 'arch': {
-      const key = scene.nodes.filter((n) => n.modified).length;
-      return `${count(scene.nodes, 'node')}, ${count(scene.edges, 'edge')}${key ? `, ${key} highlighted` : ''}`;
+      const groups = new Set(scene.nodes.flatMap((n) => (n.group ? [n.group] : []))).size;
+      const changed = scene.nodes.filter((n) => n.change).length;
+      const key = scene.nodes.filter((n) => n.highlight).length;
+      const extra = [groups ? plural(groups, 'group') : '', scene.layout === 'TB' ? 'top to bottom' : '', changed ? `${changed} changed` : '', key ? `${key} key` : ''];
+      return [count(scene.nodes, 'node'), count(scene.edges, 'edge'), ...extra].filter(Boolean).join(', ');
     }
     case 'code': {
       const hunk = hunks[scene.hunkId];

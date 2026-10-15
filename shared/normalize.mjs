@@ -1,0 +1,70 @@
+// Turns a storyboard as written, older field names included, into the shape the scenes draw. It runs once
+// where a storyboard enters: after `validate` in the CLI and after the player fetches storyboard.json.
+
+/** What `kind` meant before nodes had their own icon and caption. */
+const KINDS = {
+  service: { icon: 'server', caption: 'service' },
+  db: { icon: 'database', caption: 'datastore' },
+  queue: { icon: 'layers', caption: 'queue' },
+  client: { icon: 'monitor', caption: 'client' },
+};
+
+/** The key each scene type's steps used before `focus`. */
+const LEGACY_FOCUS = {
+  sequence: ['messages'],
+  timeline: ['events'],
+  er: ['entity'],
+  state: ['state', 'transition'],
+  chart: ['label'],
+  table: ['row'],
+  files: ['path'],
+};
+
+export const NODE_KINDS = Object.keys(KINDS);
+export const legacyFocusKeys = (type) => LEGACY_FOCUS[type] ?? [];
+
+/** An explanation walks through unchanged source snippets; a diff walkthrough always has a changed hunk. */
+export const isExplanation = (hunks) => Object.values(hunks ?? {}).every((h) => h.status === 'source');
+
+const defined = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+
+/** `modified: true` marked a node the change touched, or in an explanation a key part. */
+function normalizeNode(raw, explain) {
+  const { kind, modified, ...node } = raw;
+  const legacy = KINDS[kind];
+  const marked = modified === true && node.change === undefined && node.highlight === undefined;
+  return defined({
+    ...node,
+    icon: node.icon ?? legacy?.icon,
+    caption: node.caption ?? legacy?.caption,
+    change: marked && !explain ? 'modified' : node.change,
+    highlight: marked && explain ? true : node.highlight,
+  });
+}
+
+/** A scene's steps with each older focus key renamed to `focus`. */
+export function focusSteps(scene) {
+  const keys = legacyFocusKeys(scene.type);
+  if (!Array.isArray(scene.steps) || !keys.length) return scene.steps;
+  return scene.steps.map((step) => {
+    if (step?.focus !== undefined) return step;
+    const key = keys.find((k) => step?.[k] !== undefined);
+    if (!key) return step;
+    const { [key]: focus, ...rest } = step;
+    return { ...rest, focus };
+  });
+}
+
+function normalizeScene(scene, explain) {
+  const steps = focusSteps(scene);
+  const out = steps === scene.steps ? { ...scene } : { ...scene, steps };
+  if (scene.type === 'arch') out.nodes = scene.nodes.map((n) => normalizeNode(n, explain));
+  if (scene.type === 'sequence') out.participants = scene.participants.map((n) => normalizeNode(n, explain));
+  return out;
+}
+
+/** Expects a storyboard that passed `validate`; returns it with every older field name replaced. */
+export function normalizeStoryboard(storyboard, hunks) {
+  const explain = isExplanation(hunks);
+  return { ...storyboard, scenes: storyboard.scenes.map((scene) => normalizeScene(scene, explain)) };
+}

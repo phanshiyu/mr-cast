@@ -5,7 +5,7 @@ import { sceneFiles } from '../../shared/files.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { FilesScene } from '../types';
 import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow } from '../utils/filesLayout';
-import { spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
+import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { changeTone } from './ChangeLegend';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -195,13 +195,15 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
   const files = useMemo(() => sceneFiles(scene, hunks), [scene, hunks]);
   const rows = useMemo(() => treeRows(files, scene.notes ?? {}), [files, scene.notes]);
   const layout = useMemo(() => layoutFiles(rows, box.width, box.height), [rows, box.width, box.height]);
-  // Spotlight the steps or `highlight` in their order, or else every file with a note, top to bottom.
-  const stepPaths = scene.steps?.length
-    ? scene.steps.map((step) => step.path)
-    : scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
+  // With steps, each lights the files it focuses. Without, the narration walks `highlight` in order, or
+  // else every file with a note, top to bottom.
+  const walked = scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
   const rowStagger = Math.min(4, (ROWS_END - START - 4) / Math.max(1, rows.length - 1));
   const rowAt = (i: number) => START + 4 + i * rowStagger;
-  const { emphasis } = spotlight(frame, spotlightStarts(segments, stepPaths.length, buildFrames('files')));
+  const { emphasis } = spotlight(frame, spotlightStarts(segments, walked.length, buildFrames('files')));
+  const focus = focusSpotlight(scene, hunks, segments, frame);
+  const fileEmphasis = (path: string | null) =>
+    scene.steps?.length ? focus(`f:${path}`) : emphasis(path !== null && walked.includes(path) ? [walked.indexOf(path)] : []);
 
   return (
     <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.files} title={scene.title} aside={<Totals files={files} />}>
@@ -217,8 +219,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
         }}
       >
         {layout.rows.map((placed, i) => {
-          const step = placed.row.kind === 'file' ? stepPaths.indexOf(placed.row.file.path) : -1;
-          const e = emphasis(step < 0 ? null : step);
+          const e = fileEmphasis(placed.row.kind === 'file' ? placed.row.file.path : null);
           // Directories stay readable while files are spotlit: they are the map, not the subject.
           const shown = placed.row.kind === 'dir' ? { ...e, opacity: Math.max(e.opacity, 0.7) } : e;
           return <Row key={i} placed={placed} layout={layout} at={rowAt(i)} emphasis={shown} frame={frame} />;

@@ -1,6 +1,7 @@
 import { AlertTriangle, FileCode2, ShieldAlert, ShieldCheck, type LucideIcon } from 'lucide-react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { HunkMap, IntentScene, Risk } from '../types';
+import { focusSpotlight } from '../utils/spotlight';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, clampLines, colors, defaultChapter, ellipsis, fitFontSize, fonts, riskColors } from './theme';
@@ -68,8 +69,9 @@ const RiskBadge: React.FC<{ risk: Risk; appear: number }> = ({ risk, appear }) =
   );
 };
 
-export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, storyboard, durationInFrames }) => {
+export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, storyboard, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
+  const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const { fps } = useVideoConfig();
   const stats = diffStats(hunks);
   const pop = (delay: number) => spring({ frame: frame - delay, fps, config: { damping: 18, stiffness: 120 } });
@@ -117,6 +119,7 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
         <div style={{ marginTop: 44, display: 'flex', flexDirection: 'column', gap: 20, minHeight: 0 }}>
           {bullets.map((bullet, i) => {
             const p = pop(20 + i * 7);
+            const e = emphasisOf(`b:${i}`);
             return (
               <div
                 key={i}
@@ -124,8 +127,8 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
                   display: 'flex',
                   alignItems: 'baseline',
                   gap: 22,
-                  opacity: p,
-                  transform: `translateX(${(1 - p) * -36}px)`,
+                  opacity: p * e.opacity,
+                  transform: `translateX(${(1 - p) * -36 + 12 * e.glow}px)`,
                 }}
               >
                 <div
@@ -134,12 +137,12 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
                     height: 12,
                     borderRadius: 4,
                     background: colors.accent,
-                    boxShadow: `0 0 16px ${colors.accentGlow}`,
+                    boxShadow: `0 0 ${16 + 20 * e.glow}px ${colors.accentGlow}`,
                     flexShrink: 0,
-                    transform: 'translateY(-6px)',
+                    transform: `translateY(-6px) scale(${1 + 0.5 * e.glow})`,
                   }}
                 />
-                <div style={{ fontSize: bulletSize, lineHeight: 1.3, color: 'rgba(242,244,248,0.9)', ...ellipsis }}>{bullet}</div>
+                <div style={{ fontSize: bulletSize, lineHeight: 1.3, color: e.glow > 0 ? colors.text : 'rgba(242,244,248,0.9)', fontWeight: e.glow > 0 ? 600 : 400, ...ellipsis }}>{bullet}</div>
               </div>
             );
           })}

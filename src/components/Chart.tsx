@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ChartScene } from '../types';
 import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, type ChartLayout, type Direction } from '../utils/chartLayout';
-import { spotlight, type Emphasis } from '../utils/spotlight';
+import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -64,12 +65,12 @@ const SlotGlow: React.FC<{ layout: ChartLayout; i: number; emphasis: Emphasis }>
     />
   ) : null;
 
-const Legend: React.FC<{ scene: ChartScene }> = ({ scene }) => (
+const Legend: React.FC<{ scene: ChartScene; seriesOpacity: (s: number) => number }> = ({ scene, seriesOpacity }) => (
   <div style={{ display: 'flex', gap: 26, fontSize: 21, color: colors.muted, flexShrink: 0, paddingBottom: 6, alignItems: 'center' }}>
     {scene.series.map((s, i) => {
       const tone = tones[seriesTone(scene.series, i)];
       return (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: seriesOpacity(i) }}>
           <span style={{ width: 22, height: scene.kind === 'bar' ? 22 : 5, borderRadius: scene.kind === 'bar' ? 6 : 3, background: tone.color }} />
           <span style={{ color: colors.text }}>{s.name}</span>
         </div>
@@ -200,14 +201,14 @@ const Badge: React.FC<{ x: number; y: number; text: string; direction: Direction
   );
 };
 
-const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; barAt: (i: number, s: number) => number; noted: Point | null; pulse: number; emphasisOf: (i: number) => Emphasis }> = ({
+const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; barAt: (i: number, s: number) => number; noted: Point | null; pulse: number; valueOf: ValueEmphasis }> = ({
   scene,
   layout,
   frame,
   barAt,
   noted,
   pulse,
-  emphasisOf,
+  valueOf,
 }) => {
   const { fps } = useVideoConfig();
   const k = scene.series.length;
@@ -226,8 +227,10 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
           const x = barX(layout, layout.xs[i]!, s, k);
           const label = interpolate(frame, [at + 12, at + 20], [0, 1], clamp);
           const ring = noted && noted.label === i && noted.series === s ? `, 0 0 0 ${3 + 6 * pulse}px ${tone.color}${Math.round(40 + 120 * pulse).toString(16).padStart(2, '0')}` : '';
+          const lit = valueOf(s, i);
+          const focusRing = lit.glow > 0 ? `, 0 0 0 ${4 * lit.glow}px ${colors.text}cc, 0 0 ${36 * lit.glow}px ${tone.color}` : '';
           return (
-            <div key={`${i}-${s}`} style={{ opacity: emphasisOf(i).opacity }}>
+            <div key={`${i}-${s}`} style={{ opacity: lit.opacity }}>
               <div
                 style={{
                   position: 'absolute',
@@ -237,7 +240,7 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
                   height: h,
                   borderRadius: '10px 10px 3px 3px',
                   background: `linear-gradient(180deg, ${tone.color}, ${tone.color}aa)`,
-                  boxShadow: `0 0 28px ${tone.color}33, inset 0 1px 0 rgba(255,255,255,0.25)${ring}`,
+                  boxShadow: `0 0 28px ${tone.color}33, inset 0 1px 0 rgba(255,255,255,0.25)${ring}${focusRing}`,
                 }}
               />
               <ValueLabel x={x + layout.barW / 2} y={top} text={formatValue(value, scene.unit)} color={s === k - 1 ? colors.text : '#b9c0d0'} appear={label} size={size} />
@@ -249,13 +252,14 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
   );
 };
 
-const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; drawAt: (s: number) => number; drawFrames: number; emphasisOf: (i: number) => Emphasis }> = ({
+const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; drawAt: (s: number) => number; drawFrames: number; valueOf: ValueEmphasis; labelGlow: (i: number) => number }> = ({
   scene,
   layout,
   frame,
   drawAt,
   drawFrames,
-  emphasisOf,
+  valueOf,
+  labelGlow,
 }) => {
   const { x0, x1, y1 } = layout.plot;
   const k = scene.series.length;
@@ -290,7 +294,7 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
           const base = layout.y(Math.max(0, layout.ticks[0]!));
           const area = `M ${layout.xs[0]},${base} L ${pts.join(' L ')} L ${layout.xs[layout.xs.length - 1]},${base} Z`;
           return (
-            <g key={s} clipPath={`url(#chart-reveal-${s})`}>
+            <g key={s} clipPath={`url(#chart-reveal-${s})`} opacity={Math.max(...series.values.map((_, i) => valueOf(s, i).opacity))}>
               {k === 1 || (k === 2 && s === 1) ? <path d={area} fill={`url(#chart-fill-${s})`} /> : null}
               <path d={`M ${pts.join(' L ')}`} fill="none" stroke={tone.color} strokeWidth={s === k - 1 ? 5 : 4} strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s === 0 && k > 1 && !series.tone ? '2 10' : undefined} />
             </g>
@@ -301,7 +305,8 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
             const tone = tones[seriesTone(scene.series, s)];
             const at = drawAt(s) + drawFrames * ((layout.xs[i]! - layout.xs[0]!) / Math.max(1, x1 - x0));
             const pop = interpolate(frame, [at, at + 8], [0, 1], clamp);
-            return <circle key={`${s}-${i}`} cx={layout.xs[i]} cy={layout.y(v)} r={(8 + 3 * emphasisOf(i).glow) * pop} fill={colors.bg} stroke={tone.color} strokeWidth={4} />;
+            const lit = valueOf(s, i);
+            return <circle key={`${s}-${i}`} cx={layout.xs[i]} cy={layout.y(v)} r={(8 + 3 * Math.max(lit.glow, labelGlow(i))) * pop} fill={colors.bg} stroke={tone.color} strokeWidth={4} opacity={lit.opacity} />;
           }),
         )}
       </svg>
@@ -318,7 +323,7 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
               y={layout.y(v)}
               text={formatValue(v, scene.unit)}
               color={s === k - 1 ? colors.text : '#b9c0d0'}
-              appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * emphasisOf(i).opacity}
+              appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * valueOf(s, i).opacity}
               below={below}
               size={VALUE_FONT}
             />
@@ -407,22 +412,30 @@ const Note: React.FC<{ note: NoteBox; appear: number }> = ({ note, appear }) => 
   </div>
 );
 
-export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrames, segments }) => {
+/** How lit one value is: bright through its label, its series or itself, and glowing through its series or itself. */
+type ValueEmphasis = (series: number, label: number) => Emphasis;
+
+export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutChart(scene, box.width, box.height), [scene, box.width, box.height]);
   const timeline = buildTimeline(scene);
-  // Each step lights its label while the rest dim.
+  // Each step lights its labels, series or values while the rest dim. A label stays bright while any of its values is lit.
   const stepFroms = segments.slice(1).map((segment) => segment.from);
-  const { emphasis } = spotlight(frame, stepFroms);
-  const stepOf = new Map((scene.steps ?? []).map((step, k) => [scene.labels.indexOf(step.label), k]));
-  const emphasisOf = (i: number) => emphasis(stepOf.get(i) ?? null);
+  const focus = focusSpotlight(scene, hunks, segments, frame);
+  const valueOf: ValueEmphasis = (s, i) => {
+    const own = brighter(focus(`s:${s}`), focus(`p:${s}/${i}`));
+    return { ...own, opacity: Math.max(own.opacity, focus(`l:${i}`).opacity) };
+  };
+  const emphasisOf = (i: number): Emphasis => ({ ...focus(`l:${i}`), opacity: Math.max(...scene.series.map((_, s) => valueOf(s, i).opacity)) });
+  const seriesOpacity = (s: number) => Math.max(...scene.labels.map((_, i) => valueOf(s, i).opacity));
   const gridIn = interpolate(frame, [START, START + 14], [0, 1], clamp);
   const pair = scene.series.length === 2;
   const point = annotationPoint(scene, layout);
-  // The note lands with the build, or with the step that names its label.
-  const noteStep = scene.annotation ? (scene.steps ?? []).findIndex((step) => step.label === scene.annotation!.at) : -1;
+  // The note lands with the build, or with the first step that focuses its label or its value.
+  const noteSteps = point ? [...(targetSteps(scene).get(`l:${point.label}`) ?? []), ...(targetSteps(scene).get(`p:${point.series}/${point.label}`) ?? [])] : [];
+  const noteStep = noteSteps.length ? Math.min(...noteSteps) : -1;
   const noteAt = noteStep >= 0 ? stepFroms[noteStep]! : timeline.doneAt - 8;
   const noteIn = spring({ frame: frame - noteAt, fps, config: { damping: 16, stiffness: 120 } });
   const notePulse = interpolate(frame, [noteAt + 4, noteAt + 12, noteAt + 40], [0, 1, 0.35], clamp);
@@ -431,7 +444,7 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrame
   const leaderEnd = point ? (scene.kind === 'bar' ? point.y - VALUE_FONT * 1.25 - 18 : point.y - 15) : 0;
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.chart} title={scene.title} aside={<Legend scene={scene} />}>
+    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.chart} title={scene.title} aside={<Legend scene={scene} seriesOpacity={seriesOpacity} />}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
         {scene.labels.map((_, i) => (
           <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />
@@ -442,9 +455,9 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, durationInFrame
           <Leader note={note} point={point} end={leaderEnd} appear={noteIn} pulse={notePulse} color={tones[seriesTone(scene.series, point.series)].color} ring={scene.kind === 'line'} />
         ) : null}
         {scene.kind === 'bar' ? (
-          <Bars scene={scene} layout={layout} frame={frame} barAt={timeline.barAt} noted={point} pulse={notePulse} emphasisOf={emphasisOf} />
+          <Bars scene={scene} layout={layout} frame={frame} barAt={timeline.barAt} noted={point} pulse={notePulse} valueOf={valueOf} />
         ) : (
-          <Lines scene={scene} layout={layout} frame={frame} drawAt={timeline.drawAt} drawFrames={timeline.drawFrames} emphasisOf={emphasisOf} />
+          <Lines scene={scene} layout={layout} frame={frame} drawAt={timeline.drawAt} drawFrames={timeline.drawFrames} valueOf={valueOf} labelGlow={(i) => emphasisOf(i).glow} />
         )}
         {pair
           ? scene.labels.map((_, i) => {

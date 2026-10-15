@@ -1,159 +1,215 @@
-import { Database, Layers, Monitor, Server, type LucideIcon } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
-import type { ArchScene, NodeKind } from '../types';
-import { NODE_H, NODE_W, layoutArch, type PositionedNode, type RoutedEdge } from '../utils/archLayout';
+import type { ArchEdge, ArchNode, ArchScene, Change } from '../types';
+import { NODE_H, NODE_W, layoutArch, type PlacedGroup, type RoutedEdge } from '../utils/archLayout';
+import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { wrapLabel } from '../utils/wrapLabel';
+import { ChangeLegend, changeTone } from './ChangeLegend';
+import { NodeCard } from './NodeCard';
 import { SceneShell } from './SceneShell';
-import { isExplanation, type SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
-
-const kindIcon: Record<NodeKind, LucideIcon> = { service: Server, db: Database, queue: Layers, client: Monitor };
-const kindLabel: Record<NodeKind, string> = { service: 'service', db: 'datastore', queue: 'queue', client: 'client' };
+import type { SceneProps } from './sceneProps';
+import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
 
 const NODE_START = 8;
 const NODES_END = 20;
 const EDGE_DRAW = 12;
 const EDGE_LABEL_END = 16;
+const MUTED = 'rgba(170,178,200,0.55)';
 
-const NodeCard: React.FC<{ placed: PositionedNode; appear: number; badge: string }> = ({ placed, appear, badge }) => {
-  const { node } = placed;
-  const Icon = kindIcon[node.kind];
-  const accent = node.modified ? colors.accent : colors.muted;
+/** Arrowhead colours, one marker each: plain, key, and one per change. */
+const MARKERS = { muted: 'rgba(170,178,200,0.8)', accent: colors.accent, added: colors.add, removed: colors.del } as const;
+type MarkerTone = keyof typeof MARKERS;
+
+const isKey = (n: ArchNode | undefined) => Boolean(n && (n.highlight || n.change === 'modified'));
+
+/** An edge's colour: its own change, else accent between two key nodes, else plain. */
+function edgeTone(edge: ArchEdge, nodes: ReadonlyMap<string, ArchNode>): { stroke: string; marker: MarkerTone } {
+  if (edge.change) return { stroke: changeTone[edge.change].color, marker: edge.change === 'modified' ? 'accent' : edge.change };
+  if (isKey(nodes.get(edge.from)) && isKey(nodes.get(edge.to))) return { stroke: colors.accent, marker: 'accent' };
+  return { stroke: MUTED, marker: 'muted' };
+}
+
+const edgeStyle = (edge: ArchEdge) => edge.style ?? ((edge.direction ?? 'forward') === 'forward' ? 'flow' : 'solid');
+
+const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone: ReturnType<typeof edgeTone>; emphasis: Emphasis }> = ({ routed, draw, frame, tone, emphasis }) => {
+  const { edge } = routed;
+  const direction = edge.direction ?? 'forward';
+  const style = edgeStyle(edge);
+  const removed = edge.change === 'removed';
+  const marker = `url(#arrow-${tone.marker})`;
+  const heads = {
+    markerEnd: direction === 'none' ? undefined : marker,
+    markerStart: direction === 'both' ? marker : undefined,
+    opacity: interpolate(draw, [0.85, 1], [0, 1], clamp),
+  };
+  const id = `arch-reveal-${routed.index}`;
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: placed.x,
-        top: placed.y,
-        width: NODE_W,
-        height: NODE_H,
-        boxSizing: 'border-box',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 18,
-        padding: '0 22px',
-        borderRadius: 20,
-        background: node.modified ? 'linear-gradient(180deg, #1c2033, #151826)' : colors.raised,
-        border: `2px solid ${node.modified ? colors.accent : colors.borderStrong}`,
-        boxShadow: node.modified ? `0 0 0 6px ${colors.accentSoft}, 0 0 48px ${colors.accentGlow}` : '0 12px 32px rgba(0,0,0,0.4)',
-        opacity: appear,
-        transform: `translateY(${(1 - appear) * 20}px) scale(${0.92 + 0.08 * appear})`,
-      }}
-    >
-      <div
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 14,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: node.modified ? colors.accentSoft : 'rgba(255,255,255,0.05)',
-          color: accent,
-          flexShrink: 0,
-        }}
-      >
-        <Icon size={30} strokeWidth={2} />
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: fitFontSize(node.label, 28, 12, 21), fontWeight: 650, color: colors.text, ...ellipsis }}>{node.label}</div>
-        <div style={{ fontSize: 19, color: colors.faint, marginTop: 4, ...ellipsis }}>{kindLabel[node.kind]}</div>
-      </div>
-      {node.modified ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: -16,
-            right: 18,
-            padding: '4px 12px',
-            borderRadius: 999,
-            background: colors.accent,
-            color: '#0b0d18',
-            fontSize: 16,
-            fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: 'uppercase',
-          }}
-        >
-          {badge}
-        </div>
+    <g opacity={draw > 0 ? emphasis.opacity * (removed ? 0.78 : 1) : 0}>
+      {emphasis.glow > 0 || (edge.change && !removed) ? (
+        <path
+          d={routed.d}
+          fill="none"
+          stroke={emphasis.glow > 0 && !edge.change ? colors.accent : tone.stroke}
+          strokeOpacity={(edge.change && !removed ? 0.22 : 0) + 0.45 * emphasis.glow}
+          strokeWidth={10}
+          strokeLinecap="round"
+          pathLength={1}
+          strokeDasharray="1 1"
+          strokeDashoffset={1 - draw}
+        />
       ) : null}
-    </div>
-  );
-};
-
-const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; highlighted: boolean }> = ({ routed, draw, frame, highlighted }) => {
-  const stroke = highlighted ? colors.accent : 'rgba(170,178,200,0.55)';
-  return (
-    <g opacity={draw > 0 ? 1 : 0}>
-      <path d={routed.d} fill="none" stroke={stroke} strokeOpacity={0.25} strokeWidth={3} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
-      <path
-        d={routed.d}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeDasharray="10 12"
-        strokeDashoffset={-frame * 1.4}
-        opacity={interpolate(draw, [0.85, 1], [0, 1], clamp)}
-        markerEnd={`url(#arrow-${highlighted ? 'accent' : 'muted'})`}
-      />
+      {style === 'flow' && !removed ? (
+        <>
+          <path d={routed.d} fill="none" stroke={tone.stroke} strokeOpacity={0.25} strokeWidth={3} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
+          <path
+            d={routed.d}
+            fill="none"
+            stroke={tone.stroke}
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeDasharray="10 12"
+            strokeDashoffset={-frame * 1.4}
+            {...heads}
+          />
+        </>
+      ) : (
+        <>
+          <mask id={id} maskUnits="userSpaceOnUse">
+            <path d={routed.d} fill="none" stroke="#fff" strokeWidth={14} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
+          </mask>
+          <path
+            d={routed.d}
+            fill="none"
+            stroke={tone.stroke}
+            strokeWidth={3}
+            strokeLinecap="round"
+            strokeDasharray={style === 'dashed' || removed ? '10 9' : undefined}
+            mask={`url(#${id})`}
+          />
+          <path d={routed.d} fill="none" stroke="transparent" strokeWidth={3} {...heads} />
+        </>
+      )}
     </g>
   );
 };
 
-/** Characters per line of an edge label; about 250px at the label font, inside the column gap. */
-const EDGE_LABEL_CHARS = 22;
+/**
+ * Characters per line of an edge label: about 250px at the label font left to right, inside the column
+ * gap; top to bottom the label sits in a row gap, where width is free and height is not.
+ */
+const EDGE_LABEL_CHARS = { LR: 22, TB: 32 } as const;
 
-const EdgeLabel: React.FC<{ routed: RoutedEdge; appear: number }> = ({ routed, appear }) => (
+const EdgeLabel: React.FC<{ routed: RoutedEdge; chars: number; appear: number; emphasis: Emphasis }> = ({ routed, chars, appear, emphasis }) => {
+  const change = routed.edge.change;
+  const color = change ? changeTone[change].color : colors.muted;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: routed.mid.x,
+        top: routed.mid.y,
+        transform: `translate(-50%, -50%) scale(${(0.9 + 0.1 * appear) * (1 + 0.06 * emphasis.glow)})`,
+        opacity: appear * emphasis.opacity,
+        padding: '5px 12px',
+        borderRadius: 10,
+        background: '#0d0f16',
+        border: `1px solid ${emphasis.glow > 0 ? colors.accent : change ? `${color}99` : colors.borderStrong}`,
+        boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : undefined,
+        color: emphasis.glow > 0 && !change ? colors.text : color,
+        fontFamily: fonts.mono,
+        fontSize: 17,
+        lineHeight: 1.3,
+        textAlign: 'center',
+        whiteSpace: 'pre',
+        textDecoration: change === 'removed' ? 'line-through' : 'none',
+      }}
+    >
+      {wrapLabel(routed.edge.label ?? '', chars).map((line, i) => (
+        <div key={i}>{line}</div>
+      ))}
+    </div>
+  );
+};
+
+/** A labelled box behind a group's nodes. Top to bottom, its name stays in the left half, clear of edges entering at the middle. */
+const GroupBox: React.FC<{ group: PlacedGroup; vertical: boolean; appear: number; emphasis: Emphasis }> = ({ group, vertical, appear, emphasis }) => (
   <div
     style={{
       position: 'absolute',
-      left: routed.mid.x,
-      top: routed.mid.y,
-      transform: `translate(-50%, -50%) scale(${0.9 + 0.1 * appear})`,
-      opacity: appear,
-      padding: '5px 12px',
-      borderRadius: 10,
-      background: '#0d0f16',
-      border: `1px solid ${colors.borderStrong}`,
-      color: colors.muted,
-      fontFamily: fonts.mono,
-      fontSize: 17,
-      lineHeight: 1.3,
-      textAlign: 'center',
-      whiteSpace: 'pre',
+      left: group.x,
+      top: group.y,
+      width: group.width,
+      height: group.height,
+      boxSizing: 'border-box',
+      borderRadius: 26,
+      border: `2px solid ${emphasis.glow > 0 ? colors.accent : 'rgba(255,255,255,0.1)'}`,
+      background: emphasis.glow > 0 ? `rgba(124,140,255,${0.04 + 0.05 * emphasis.glow})` : 'rgba(255,255,255,0.025)',
+      boxShadow: emphasis.glow > 0 ? `0 0 ${40 * emphasis.glow}px ${colors.accentSoft}` : undefined,
+      opacity: appear * Math.max(emphasis.opacity, 0.7),
     }}
   >
-    {wrapLabel(routed.edge.label ?? '', EDGE_LABEL_CHARS).map((line, i) => (
-      <div key={i}>{line}</div>
-    ))}
+    <div
+      style={{
+        position: 'absolute',
+        left: 22,
+        top: 12,
+        maxWidth: vertical ? group.width / 2 - 34 : group.width - 44,
+        fontSize: 16,
+        fontWeight: 700,
+        letterSpacing: 1.4,
+        textTransform: 'uppercase',
+        color: emphasis.glow > 0 ? colors.accent : colors.muted,
+        ...ellipsis,
+      }}
+    >
+      {group.name}
+    </div>
   </div>
 );
 
-export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames }) => {
+/** Nodes carry badges; the legend decodes the colours of changed edges, so it shows only when an edge changes. */
+function legendChanges(scene: ArchScene): Set<Change> {
+  if (!scene.edges.some((e) => e.change)) return new Set();
+  return new Set([...scene.nodes, ...scene.edges].flatMap((x) => (x.change ? [x.change] : [])));
+}
+
+export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const layout = useMemo(() => layoutArch(scene.nodes, scene.edges), [scene.nodes, scene.edges]);
+  const layout = useMemo(() => layoutArch(scene.nodes, scene.edges, scene.layout), [scene.nodes, scene.edges, scene.layout]);
+  const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
+  const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = contentBox(false);
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.3);
-  const modified = new Set(scene.nodes.filter((n) => n.modified).map((n) => n.id));
-  // Nodes land layer by layer, then the edges draw, all before the voice starts.
+  // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.
   const layerStagger = Math.min(6, (NODES_END - NODE_START) / Math.max(1, layout.layerCount - 1));
   const edgeStagger = Math.min(4, (buildFrames('arch') - NODES_END - EDGE_LABEL_END) / Math.max(1, layout.edges.length - 1));
   const edgeAt = (i: number) => NODES_END + i * edgeStagger;
+  const changes = legendChanges(scene);
+  const nodeEmphasis = (node: ArchNode) => {
+    const own = node.group ? brighter(emphasisOf(`n:${node.id}`), emphasisOf(`g:${node.group}`)) : emphasisOf(`n:${node.id}`);
+    return asBrightAs(own, scene.edges.flatMap((e, i) => (e.from === node.id || e.to === node.id ? [emphasisOf(`e:${i}`)] : [])));
+  };
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.arch}>
+    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.arch} aside={changes.size ? <ChangeLegend used={changes} /> : undefined}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
+          {layout.groups.map((group) => (
+            <GroupBox
+              key={group.name}
+              group={group}
+              vertical={scene.layout === 'TB'}
+              emphasis={emphasisOf(`g:${group.name}`)}
+              appear={interpolate(frame, [NODE_START - 4 + group.layer * layerStagger, NODE_START + 6 + group.layer * layerStagger], [0, 1], clamp)}
+            />
+          ))}
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
             <defs>
-              {(['accent', 'muted'] as const).map((tone) => (
+              {(Object.keys(MARKERS) as MarkerTone[]).map((tone) => (
                 <marker key={tone} id={`arrow-${tone}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill={tone === 'accent' ? colors.accent : 'rgba(170,178,200,0.8)'} />
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill={MARKERS[tone]} />
                 </marker>
               ))}
             </defs>
@@ -162,7 +218,8 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
                 key={i}
                 routed={routed}
                 frame={frame}
-                highlighted={modified.has(routed.edge.from) && modified.has(routed.edge.to)}
+                tone={edgeTone(routed.edge, nodes)}
+                emphasis={emphasisOf(`e:${routed.index}`)}
                 draw={interpolate(frame, [edgeAt(i), edgeAt(i) + EDGE_DRAW], [0, 1], clamp)}
               />
             ))}
@@ -170,14 +227,25 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
           {layout.nodes.map((placed) => (
             <NodeCard
               key={placed.node.id}
-              placed={placed}
-              badge={isExplanation(hunks) ? 'key' : 'changed'}
+              node={placed.node}
+              x={placed.x}
+              y={placed.y}
+              width={NODE_W}
+              height={NODE_H}
+              size="large"
+              emphasis={nodeEmphasis(placed.node)}
               appear={spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } })}
             />
           ))}
           {layout.edges.map((routed, i) =>
             routed.edge.label ? (
-              <EdgeLabel key={i} routed={routed} appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp)} />
+              <EdgeLabel
+                key={i}
+                routed={routed}
+                chars={EDGE_LABEL_CHARS[scene.layout ?? 'LR']}
+                emphasis={emphasisOf(`e:${routed.index}`)}
+                appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp)}
+              />
             ) : null,
           )}
         </div>

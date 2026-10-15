@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, StateScene } from '../types';
 import {
@@ -15,7 +16,7 @@ import {
   type RoutedTransition,
   type StateLayout,
 } from '../utils/stateLayout';
-import { spotlight, type Emphasis } from '../utils/spotlight';
+import { focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { ChangeLegend, changeTone } from './ChangeLegend';
 import { SceneShell } from './SceneShell';
@@ -34,9 +35,8 @@ interface Timeline {
   entryAt: number;
   stateAt: Map<string, number>;
   transitionAt: (index: number) => number;
-  /** Step and pulse moment per stepped item, keyed `s:${id}` or `t:${index}`. */
-  stepOf: Map<string, number>;
-  pulseAt: Map<string, number>;
+  /** Pulse moments of each focused item, keyed `s:${id}` or `t:${index}`: one per step that lights it. */
+  pulseAt: Map<string, number[]>;
 }
 
 function buildTimeline(scene: StateScene, layout: StateLayout, segments: readonly SpokenSegment[]): Timeline {
@@ -53,18 +53,16 @@ function buildTimeline(scene: StateScene, layout: StateLayout, segments: readonl
   const transitionRank = new Map(transitionOrder.map((t, i) => [t, i]));
   const transitionsStart = STATES_END + 4;
   const transitionStagger = Math.min(5, (buildFrames('state') - transitionsStart - TRANSITION_FRAMES - 4) / Math.max(1, transitions.length - 1));
-  const steps = (scene.steps ?? []).map((step, k) => ({ key: step.state !== undefined ? `s:${step.state}` : `t:${step.transition}`, from: segments[k + 1]?.from ?? 0 }));
 
   return {
     entryAt: START,
     stateAt,
     transitionAt: (index) => transitionsStart + transitionRank.get(index)! * transitionStagger,
-    stepOf: new Map(steps.map((step, k) => [step.key, k])),
-    pulseAt: new Map(steps.map((step) => [step.key, step.from])),
+    pulseAt: new Map([...targetSteps(scene)].map(([key, steps]) => [key, steps.map((k) => segments[k + 1]?.from ?? 0)])),
   };
 }
 
-const pulseOf = (frame: number, at: number | undefined) => (at === undefined ? 0 : interpolate(frame, [at, at + 7, at + 32], [0, 1, 0], clamp));
+const pulseOf = (frame: number, ats: readonly number[] = []) => Math.max(0, ...ats.map((at) => interpolate(frame, [at, at + 7, at + 32], [0, 1, 0], clamp)));
 
 function arrowHead(tip: Pt, dir: Pt): string {
   const base = { x: tip.x - dir.x * (ARROW_LEN + 1), y: tip.y - dir.y * (ARROW_LEN + 1) };
@@ -72,7 +70,7 @@ function arrowHead(tip: Pt, dir: Pt): string {
   return `M ${tip.x} ${tip.y} L ${base.x - dir.y * half} ${base.y + dir.x * half} L ${base.x + dir.y * half} ${base.y - dir.x * half} Z`;
 }
 
-const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: number | undefined; emphasis: Emphasis; frame: number }> = ({ placed, start, pulseAt, emphasis, frame }) => {
+const StateCard: React.FC<{ placed: PlacedState; start: number; pulseAt: readonly number[] | undefined; emphasis: Emphasis; frame: number }> = ({ placed, start, pulseAt, emphasis, frame }) => {
   const { state } = placed;
   const { fps } = useVideoConfig();
   const appear = spring({ frame: frame - start, fps, config: { damping: 16, stiffness: 110 } });
@@ -228,13 +226,12 @@ function usedChanges(scene: StateScene): Set<Change> {
   return used;
 }
 
-export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, durationInFrames, segments }) => {
+export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const layout = useMemo(() => layoutState(scene.states, scene.transitions, scene.initial), [scene.states, scene.transitions, scene.initial]);
   const timeline = useMemo(() => buildTimeline(scene, layout, segments), [scene, layout, segments]);
-  const { emphasis } = spotlight(frame, segments.slice(1).map((segment) => segment.from));
-  const emphasisOf = (key: string) => emphasis(timeline.stepOf.get(key) ?? null);
+  const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = contentBox(Boolean(scene.title));
   const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.25);
   const draws = layout.transitions.map((_, i) =>
@@ -266,7 +263,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, duration
               frame={frame}
               start={timeline.stateAt.get(placed.state.id)!}
               pulseAt={timeline.pulseAt.get(`s:${placed.state.id}`)}
-              emphasis={emphasisOf(`s:${placed.state.id}`)}
+              emphasis={asBrightAs(emphasisOf(`s:${placed.state.id}`), scene.transitions.flatMap((t, i) => (t.from === placed.state.id || t.to === placed.state.id ? [emphasisOf(`t:${i}`)] : [])))}
             />
           ))}
           {layout.transitions.map((routed, i) => (

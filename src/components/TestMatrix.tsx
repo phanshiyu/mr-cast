@@ -17,6 +17,7 @@ import {
   type PlacedGap,
   type TestsLayout,
 } from '../utils/testsLayout';
+import { focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -95,7 +96,7 @@ const Lines: React.FC<{ lines: string[]; style: React.CSSProperties }> = ({ line
   </div>
 );
 
-const CaseRow: React.FC<{ row: PlacedCase; layout: TestsLayout; at: number; frame: number }> = ({ row, layout, at, frame }) => {
+const CaseRow: React.FC<{ row: PlacedCase; layout: TestsLayout; at: number; frame: number; emphasis: Emphasis }> = ({ row, layout, at, frame, emphasis }) => {
   const { fps } = useVideoConfig();
   const matrix = layout.matrix!;
   const status = row.test.status ?? 'added';
@@ -115,12 +116,13 @@ const CaseRow: React.FC<{ row: PlacedCase; layout: TestsLayout; at: number; fram
         width: row.w,
         height: row.h,
         borderRadius: 14,
-        background: `rgba(255,255,255,${0.025 + 0.05 * flash})`,
-        boxShadow: `inset 0 0 0 1px ${colors.border}, 0 0 ${26 * flash}px ${tone.color}33`,
-        opacity: land * (removed ? 0.82 : 1),
-        transform: `translateX(${(1 - land) * -40}px)`,
+        background: emphasis.glow > 0 ? `rgba(124, 140, 255, ${0.025 + 0.1 * emphasis.glow})` : `rgba(255,255,255,${0.025 + 0.05 * flash})`,
+        boxShadow: `inset 0 0 0 ${emphasis.glow > 0 ? 2 : 1}px ${emphasis.glow > 0 ? colors.accent : colors.border}, 0 0 ${26 * flash + 34 * emphasis.glow}px ${tone.color}33`,
+        opacity: land * (removed ? 0.82 : 1) * emphasis.opacity,
+        transform: `translateX(${(1 - land) * -40}px) scale(${1 + 0.008 * emphasis.glow})`,
       }}
     >
+      {emphasis.bar > 0 ? <div style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 5, borderRadius: 3, background: colors.accent, opacity: emphasis.bar }} /> : null}
       <div style={{ position: 'absolute', left: ROW_PAD_X, top: 0, bottom: 0, width: CHECK_W, display: 'flex', alignItems: 'center' }}>
         <CheckMark status={status} draw={draw} />
       </div>
@@ -231,10 +233,10 @@ const EmptyCard: React.FC<{ layout: TestsLayout; frame: number }> = ({ layout, f
   );
 };
 
-const GapItem: React.FC<{ gap: PlacedGap; layout: TestsLayout; at: number; frame: number }> = ({ gap, layout, at, frame }) => {
+const GapItem: React.FC<{ gap: PlacedGap; layout: TestsLayout; at: number; frame: number; emphasis: Emphasis }> = ({ gap, layout, at, frame, emphasis }) => {
   const { fps } = useVideoConfig();
-  const appear = spring({ frame: frame - at, fps, config: { damping: 15, stiffness: 130 } });
-  const pulse = interpolate(frame, [at + 4, at + 12, at + 40], [0, 1, 0], clamp);
+  const appear = spring({ frame: frame - at, fps, config: { damping: 15, stiffness: 130 } }) * emphasis.opacity;
+  const pulse = Math.max(interpolate(frame, [at + 4, at + 12, at + 40], [0, 1, 0], clamp), 0.8 * emphasis.glow);
   return (
     <div
       style={{
@@ -271,7 +273,13 @@ const GapItem: React.FC<{ gap: PlacedGap; layout: TestsLayout; at: number; frame
   );
 };
 
-const GapsPanel: React.FC<{ layout: TestsLayout; at: number; gapAt: (i: number) => number; frame: number }> = ({ layout, at, gapAt, frame }) => {
+const GapsPanel: React.FC<{ layout: TestsLayout; at: number; gapAt: (i: number) => number; frame: number; gapEmphasis: (i: number) => Emphasis }> = ({
+  layout,
+  at,
+  gapAt,
+  frame,
+  gapEmphasis,
+}) => {
   const { fps } = useVideoConfig();
   const panel = layout.gapsPanel;
   const appear = spring({ frame: frame - at, fps, config: { damping: 18, stiffness: 120 } });
@@ -317,7 +325,7 @@ const GapsPanel: React.FC<{ layout: TestsLayout; at: number; gapAt: (i: number) 
           No gaps found. Every important behavior in this change has a test.
         </div>
       ) : (
-        layout.gaps.map((gap, i) => <GapItem key={i} gap={{ ...gap, y: gap.y - panel.y }} layout={layout} at={gapAt(i)} frame={frame} />)
+        layout.gaps.map((gap, i) => <GapItem key={i} gap={{ ...gap, y: gap.y - panel.y }} layout={layout} at={gapAt(i)} frame={frame} emphasis={gapEmphasis(i)} />)
       )}
     </div>
   );
@@ -334,8 +342,9 @@ const Subject: React.FC<{ subject: string }> = ({ subject }) => (
   </div>
 );
 
-export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, durationInFrames }) => {
+export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
+  const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutTests(scene.cases, scene.gaps, box.width, box.height), [scene.cases, scene.gaps, box.width, box.height]);
   const timeline = useMemo(() => buildTimeline(layout), [layout]);
@@ -362,9 +371,9 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, durationIn
       >
         {layout.matrix ? <MatrixHeader scene={scene} layout={layout} appear={headerIn} /> : <EmptyCard layout={layout} frame={frame} />}
         {layout.rows.map((row, i) => (
-          <CaseRow key={i} row={row} layout={layout} at={timeline.rowAt(i)} frame={frame} />
+          <CaseRow key={i} row={row} layout={layout} at={timeline.rowAt(i)} frame={frame} emphasis={emphasisOf(`c:${i}`)} />
         ))}
-        <GapsPanel layout={layout} at={timeline.panelAt} gapAt={timeline.gapAt} frame={frame} />
+        <GapsPanel layout={layout} at={timeline.panelAt} gapAt={timeline.gapAt} frame={frame} gapEmphasis={(i) => emphasisOf(`g:${i}`)} />
       </div>
     </SceneShell>
   );
