@@ -57,8 +57,8 @@ const formatRange = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
 
 function checkFocusSize(scene, hunk, p, errors, warnings) {
   const sides = [
-    { key: 'focusLinesAfter', ranges: focusRanges(expandLineRefs(scene.focusLinesAfter ?? [])) },
-    { key: 'focusLinesBefore', ranges: focusRanges(expandLineRefs(scene.focusLinesBefore ?? [])) },
+    { key: 'focusLinesAfter', ranges: focusRanges(scene.focusLinesAfter) },
+    { key: 'focusLinesBefore', ranges: focusRanges(scene.focusLinesBefore) },
   ];
   for (const { key, ranges } of sides) {
     for (const [a, b] of ranges) {

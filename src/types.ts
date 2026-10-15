@@ -76,7 +76,7 @@ export type LineRef = number | string;
 export interface CodeScene extends SceneBase {
   type: 'code';
   hunkId: string;
-  /** New-file line numbers to emphasise; everything else is dimmed. Each run of consecutive lines is one step, shown top to bottom. Defaults to the changed lines. */
+  /** New-file line numbers to emphasise; everything else is dimmed. Each "a-b" string is one step and consecutive plain numbers join into one; steps play top to bottom. Defaults to the changed lines. */
   focusLinesAfter?: LineRef[];
   /** Old-file line numbers to emphasise (useful for deletions). */
   focusLinesBefore?: LineRef[];

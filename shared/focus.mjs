@@ -16,13 +16,31 @@ export function expandLineRefs(refs = []) {
 }
 
 /** Maximal runs of consecutive line numbers, ascending, as [first, last] pairs. */
-export function focusRanges(lines) {
+function numberRuns(lines) {
   const sorted = [...lines].sort((a, b) => a - b);
   const ranges = [];
   for (const n of sorted) {
     const last = ranges[ranges.length - 1];
-    if (last && n === last[1] + 1) last[1] = n;
+    if (last && n <= last[1] + 1) last[1] = Math.max(last[1], n);
     else ranges.push([n, n]);
+  }
+  return ranges;
+}
+
+/**
+ * The focus ranges named by `refs`, ascending, as [first, last] pairs. Consecutive plain numbers join
+ * into one range; each string ref ("12-18" or "13") stands alone, so touching strings stay separate
+ * steps. Ranges that overlap merge.
+ */
+export function focusRanges(refs = []) {
+  const numbers = refs.filter((ref) => typeof ref === 'number');
+  const strings = refs.filter((ref) => typeof ref !== 'number').map((ref) => [...expandLineRefs([ref])]).filter((lines) => lines.length);
+  const pieces = [...numberRuns(numbers), ...strings.map((lines) => [Math.min(...lines), Math.max(...lines)])].sort((x, y) => x[0] - y[0]);
+  const ranges = [];
+  for (const [a, b] of pieces) {
+    const last = ranges[ranges.length - 1];
+    if (last && a <= last[1]) last[1] = Math.max(last[1], b);
+    else ranges.push([a, b]);
   }
   return ranges;
 }
@@ -30,8 +48,8 @@ export function focusRanges(lines) {
 /** The scene's focus ranges: focusLinesAfter (new-file numbers) first, then focusLinesBefore (old-file). */
 export function sceneFocusRanges(scene) {
   return [
-    ...focusRanges(expandLineRefs(scene.focusLinesAfter)).map((range) => ({ side: 'newLine', range })),
-    ...focusRanges(expandLineRefs(scene.focusLinesBefore)).map((range) => ({ side: 'oldLine', range })),
+    ...focusRanges(scene.focusLinesAfter).map((range) => ({ side: 'newLine', range })),
+    ...focusRanges(scene.focusLinesBefore).map((range) => ({ side: 'oldLine', range })),
   ];
 }
 
