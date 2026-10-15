@@ -25,7 +25,7 @@ import { CHANGE_WORD } from '../utils/marks';
 import { badgesOf, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
+import { clamp, colors, contentBox, fonts } from './theme';
 
 const AMBER = '#fbbf24';
 const AMBER_BG = 'rgba(251, 191, 36, 0.08)';
@@ -366,9 +366,8 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
 
   return (
     <SceneShell
+      scene={scene}
       durationInFrames={durationInFrames}
-      eyebrow={scene.chapter ?? defaultChapter.tests}
-      title={scene.title}
       aside={scene.subject ? <Subject subject={scene.subject} title={titles.subject} /> : undefined}
     >
       {/* A short matrix sits a little above centre rather than leaving the lower screen empty. */}

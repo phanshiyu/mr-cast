@@ -10,7 +10,7 @@ import { PenMarks } from './PenMarks';
 import { wrapLabel } from '../utils/wrapLabel';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
+import { clamp, colors, contentBox, fonts } from './theme';
 import { seriesTone, tones } from './tones';
 
 const START = 10;
@@ -482,7 +482,7 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
   const leaderEnd = point ? (scene.kind === 'bar' ? point.y - VALUE_FONT * 1.25 - 18 : point.y - 15) : 0;
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.chart} title={scene.title} aside={<Legend scene={scene} seriesOpacity={seriesOpacity} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Legend scene={scene} seriesOpacity={seriesOpacity} />}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
         {scene.labels.map((_, i) => (
           <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />

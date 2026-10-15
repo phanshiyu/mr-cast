@@ -1,13 +1,15 @@
 import { AlertTriangle, FileCode2, ShieldAlert, ShieldCheck, type LucideIcon } from 'lucide-react';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import type { HunkMap, IntentScene, Risk } from '../types';
 import type { Box, MarkTargets } from '../utils/penGeometry';
+import { layoutIntent, SUBTITLE_SEPARATOR, SUMMARY_W } from '../utils/intentLayout';
 import { focusSpotlight } from '../utils/spotlight';
+import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, defaultChapter, ellipsis, fitFontSize, fonts, riskColors } from './theme';
+import { clamp, colors, fonts, riskColors } from './theme';
 
 const riskIcon: Record<Risk, LucideIcon> = { low: ShieldCheck, medium: AlertTriangle, high: ShieldAlert };
 
@@ -91,8 +93,7 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
   const { fps } = useVideoConfig();
   const stats = diffStats(hunks);
   const pop = (delay: number) => spring({ frame: frame - delay, fps, config: { damping: 18, stiffness: 120 } });
-  const bullets = scene.bullets.slice(0, 6);
-  const bulletSize = bullets.length > 4 ? 32 : 36;
+  const layout = useMemo(() => layoutIntent(scene, storyboard), [scene, storyboard]);
   // The card flows like a page, so it is the one scene that measures where its bullets landed.
   const root = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -115,8 +116,8 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
 
   return (
     <SceneShell
+      scene={scene}
       durationInFrames={durationInFrames}
-      eyebrow={scene.chapter ?? defaultChapter.intent}
       aside={
         stats.files ? (
           <div style={{ display: 'flex', gap: 12, opacity: interpolate(frame, [10, 22], [0, 1], clamp) }}>
@@ -131,28 +132,28 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
       }
     >
       <div ref={root} style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', paddingBottom: 24, boxSizing: 'border-box' }}>
-        <div style={{ fontSize: 28, color: colors.muted, fontWeight: 500, ...ellipsis }}>
-          {storyboard.title}
-          {storyboard.subtitle ? <span style={{ color: colors.faint }}>{'  ·  '}{storyboard.subtitle}</span> : null}
+        <div style={{ display: 'flex', alignItems: 'baseline', color: colors.muted }}>
+          <FitText fit={layout.title} style={{ lineHeight: 'normal' }} />
+          {layout.subtitle ? (
+            <>
+              <span style={{ whiteSpace: 'pre', color: colors.faint, fontSize: layout.subtitle.size, fontWeight: layout.subtitle.font.weight }}>{SUBTITLE_SEPARATOR}</span>
+              <FitText fit={layout.subtitle} style={{ color: colors.faint, lineHeight: 'normal' }} />
+            </>
+          ) : null}
         </div>
         <div
           style={{
             marginTop: 22,
-            fontSize: fitFontSize(scene.summary, 68, 90, 44),
-            lineHeight: 1.12,
-            fontWeight: 700,
-            letterSpacing: -1.5,
-            maxWidth: 1580,
-            ...clampLines(3),
+            maxWidth: SUMMARY_W,
             transform: `translateY(${(1 - pop(4)) * 24}px)`,
             opacity: pop(4),
           }}
         >
-          {scene.summary}
+          <FitText fit={layout.summary} />
         </div>
         {scene.risk ? <RiskBadge risk={scene.risk} appear={pop(12)} /> : null}
         <div ref={list} style={{ marginTop: 44, display: 'flex', flexDirection: 'column', gap: 20, minHeight: 0 }}>
-          {bullets.map((bullet, i) => {
+          {layout.bullets.map((bullet, i) => {
             const p = pop(20 + i * 7);
             const e = emphasisOf(`b:${i}`);
             return (
@@ -177,7 +178,9 @@ export const IntentCard: React.FC<SceneProps<IntentScene>> = ({ scene, hunks, st
                     transform: `translateY(-6px) scale(${1 + 0.5 * e.glow})`,
                   }}
                 />
-                <div ref={(el) => { texts.current[i] = el; }} style={{ fontSize: bulletSize, lineHeight: 1.3, color: e.glow > 0 ? colors.text : 'rgba(242,244,248,0.9)', fontWeight: e.glow > 0 ? 600 : 400, ...ellipsis }}>{bullet}</div>
+                <div ref={(el) => { texts.current[i] = el; }} style={{ color: e.glow > 0 ? colors.text : 'rgba(242,244,248,0.9)' }}>
+                  <FitText fit={bullet} weight={e.glow > 0 ? 600 : 400} />
+                </div>
               </div>
             );
           })}

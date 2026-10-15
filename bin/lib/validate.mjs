@@ -19,6 +19,7 @@ const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
 const TEST_CASES_MAX = 10;
 const TEST_GAPS_MAX = 4;
+const INTENT_BULLETS_MAX = 6;
 
 const MAX_LINE_RANGE = 10000;
 // A code scene walks its focus ranges top to bottom; long or many ranges turn it back into a wall of code.
@@ -444,7 +445,7 @@ export async function validateStoryboard(sb, hunks, { mode = 'diff', style } = {
         if (!isStr(s.summary)) errors.push(`${p}.summary: required string`);
         if ((mode === 'diff' || s.risk !== undefined) && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
         if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
-        else if (s.bullets.length > 6) warnings.push(`${p}.bullets: ${s.bullets.length} bullets; more than 6 will be cramped`);
+        else if (s.bullets.length > INTENT_BULLETS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${INTENT_BULLETS_MAX}, so keep the ones that matter most and say the rest`);
         break;
 
       case 'arch':

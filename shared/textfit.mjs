@@ -9,7 +9,7 @@
 //
 // Widths come from shared/font-metrics.mjs, measured in the browser that renders stills and videos.
 
-import { ADVANCES, MEASURED_CHARS, MEASURED_SIZES, MEASURED_WEIGHTS } from './font-metrics.mjs';
+import { ADVANCES, KERNING, MEASURED_CHARS, MEASURED_SIZES, MEASURED_WEIGHTS } from './font-metrics.mjs';
 import { parseMarkup } from './markup.mjs';
 
 /**
@@ -60,11 +60,43 @@ function charWidth(ch, family, weight, size) {
   return lerp(at(w), at(w + 1), tw) * size;
 }
 
+const kernTables = new Map();
+/** Kerning pairs of a family at a measured weight and band, in em. */
+function kernTable(family, weight, band) {
+  const key = `${family}${weight}${band}`;
+  if (!kernTables.has(key)) {
+    const list = KERNING[family]?.[weight]?.[band];
+    kernTables.set(key, new Map(list ? list.split('\n').map((entry) => [entry.slice(0, 2), Number(entry.slice(2)) / 1000]) : []));
+  }
+  return kernTables.get(key);
+}
+
+/** Kerning bands a size falls in: text up to 20px, display from 28px, both in between. */
+const bandsAt = (size) => (size <= 20 ? ['text'] : size >= 28 ? ['display'] : ['text', 'display']);
+
+/**
+ * What the pair `a` then `b` takes off their advances, in px. Between two measured weights, or between
+ * the text and display sizes, it takes the change nearer zero, so a width is never underestimated.
+ */
+function kerning(a, b, family, weight, size) {
+  if (!a || family === 'mono') return 0;
+  const pair = a + b;
+  const [w, tw] = bracket(MEASURED_WEIGHTS, weight);
+  const ws = tw === 0 ? [MEASURED_WEIGHTS[w]] : [MEASURED_WEIGHTS[w], MEASURED_WEIGHTS[Math.min(w + 1, MEASURED_WEIGHTS.length - 1)]];
+  let k = -Infinity;
+  for (const wk of ws) for (const band of bandsAt(size)) k = Math.max(k, kernTable(family, wk, band).get(pair) ?? 0);
+  return k * size;
+}
+
 /** Width of plain text in `font`, in px. */
 export function measure(text, font) {
   const shown = font.upper ? String(text).toUpperCase() : String(text);
   let width = 0;
-  for (const ch of shown) width += charWidth(ch, font.family, font.weight, font.size) + (font.letterSpacing ?? 0);
+  let prev = '';
+  for (const ch of shown) {
+    width += charWidth(ch, font.family, font.weight, font.size) + kerning(prev, ch, font.family, font.weight, font.size) + (font.letterSpacing ?? 0);
+    prev = ch;
+  }
   return width;
 }
 
@@ -103,7 +135,7 @@ function layoutChars(runs, font) {
     const shown = font.upper && !run.code ? run.text.toUpperCase() : run.text;
     const list = [...shown];
     list.forEach((ch, k) => {
-      let w = charWidth(ch, f.family, f.weight, f.size) + (run.code ? 0 : font.letterSpacing ?? 0);
+      let w = charWidth(ch, f.family, f.weight, f.size) + kerning(list[k - 1], ch, f.family, f.weight, f.size) + (run.code ? 0 : font.letterSpacing ?? 0);
       if (run.code && k === 0) w += CODE_PAD * font.size;
       if (run.code && k === list.length - 1) w += CODE_PAD * font.size;
       chars.push({ ch, run, w });

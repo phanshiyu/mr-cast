@@ -1,11 +1,13 @@
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
+import { layoutIntent } from '../utils/intentLayout';
+import { shellFits } from './shell';
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
 type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap) => unknown };
 
 const SCENE_FITS: SceneFits = {
-  intent: () => null,
+  intent: (scene, storyboard) => layoutIntent(scene, storyboard),
   arch: () => null,
   code: () => null,
   flow: () => null,
@@ -42,7 +44,7 @@ export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
   return storyboard.scenes.map((scene, i) => {
     const out: Fit[] = [];
     const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap) => unknown;
-    collect(fits(scene, storyboard, hunks), out, new Set());
+    collect([shellFits(scene), fits(scene, storyboard, hunks)], out, new Set());
     return { scene: i, fits: out };
   });
 }

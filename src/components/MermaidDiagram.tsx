@@ -4,7 +4,7 @@ import { interpolate, spring, useCurrentFrame, useDelayRender, useVideoConfig } 
 import type { MermaidScene } from '../types';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
+import { clamp, colors, contentBox, fonts } from './theme';
 
 /** Mermaid lays text out at 16px; past this, small diagrams look blown up rather than legible. */
 const MAX_UPSCALE = 1.9;
@@ -199,7 +199,7 @@ export const MermaidDiagram: React.FC<SceneProps<MermaidScene>> = ({ scene, dura
   }
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.mermaid} title={scene.title}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames}>
       {body}
     </SceneShell>
   );

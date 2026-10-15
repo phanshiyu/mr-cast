@@ -19,7 +19,7 @@ import { SceneShell } from './SceneShell';
 import { badgesOf, CornerBadges, EMPHASIS } from './marks';
 import { NodeCard, nodeMark } from './NodeCard';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
+import { clamp, clampLines, colors, contentBox, ellipsis, fonts } from './theme';
 
 const HEADER_START = 6;
 const HEADERS_END = 14;
@@ -219,7 +219,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const marks = useMemo(() => staged(sequenceBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.sequence} title={scene.title}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>

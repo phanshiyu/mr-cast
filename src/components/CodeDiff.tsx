@@ -14,7 +14,7 @@ import { SceneShell } from './SceneShell';
 import { layoutSteps, StepDiagram, type FlowSteps } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
 import type { SpokenSegment } from '../utils/timing';
-import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, defaultChapter, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
+import { clamp, clampLines, CODE_TAB_SIZE, codeColumns, colors, contentBox, ellipsis, fitCodeFontSize, fitFontSize, fonts } from './theme';
 
 const SIGN_W = 26;
 const SPLIT_NUMBER_W = 66;
@@ -694,7 +694,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
 export const CodeDiff: React.FC<SceneProps<CodeScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const hunk = hunks[scene.hunkId];
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.code}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames}>
       {hunk ? <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} segments={segments} /> : <MissingHunk hunkId={scene.hunkId} />}
     </SceneShell>
   );

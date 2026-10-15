@@ -8,7 +8,7 @@ import { spotlightStarts } from '../utils/spotlight';
 import { lucideIcon } from './icons';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, clampLines, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
+import { clamp, clampLines, colors, contentBox, ellipsis, fitFontSize, fonts } from './theme';
 import { tones } from './tones';
 
 const LIST_W = 600;
@@ -147,7 +147,7 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
   const next = steps[active + 1];
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.flow} title={scene.title}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', gap: COLUMN_GAP }}>
         <div style={{ width: LIST_W, position: 'relative', flexShrink: 0 }}>
           <div style={{ position: 'absolute', left: 23, top: 24, width: 3, height: stepH * (steps.length - 1), background: colors.border }} />

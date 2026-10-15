@@ -10,7 +10,7 @@ import { ChangeLegend } from './ChangeLegend';
 import { badgesOf, changeTone, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
+import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
 
 const START = 10;
 /** Every row has started landing by this frame, so all have landed by the end of the build. */
@@ -168,7 +168,7 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
   const used = new Set<Change>(layout.rows.flatMap((r) => (r.change ? [r.change] : [])));
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.table} title={scene.title} aside={<ChangeLegend used={used} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<ChangeLegend used={used} />}>
       <div
         style={{
           position: 'absolute',

@@ -11,7 +11,7 @@ import { CHANGE_WORD } from '../utils/marks';
 import { Badge, badgesOf, EMPHASIS, emphasisRing, type BadgeSpec } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, ellipsis, fitFontSize, fonts } from './theme';
+import { clamp, colors, contentBox, ellipsis, fitFontSize, fonts } from './theme';
 
 const AMBER = '#fbbf24';
 const AMBER_BG = 'rgba(251, 191, 36, 0.13)';
@@ -402,7 +402,7 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, duratio
   const draws = layout.relations.map((_, i) => interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + RELATION_FRAMES], [0, 1], clamp));
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.er} title={scene.title} aside={<Legend scene={scene} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Legend scene={scene} />}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>

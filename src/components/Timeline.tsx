@@ -11,7 +11,7 @@ import { focusSpotlight, revealStarts, type Emphasis } from '../utils/spotlight'
 import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, fonts } from './theme';
+import { clamp, colors, contentBox, fonts } from './theme';
 import { Badge, badgesOf, CornerBadges, EMPHASIS, emphasisRing } from './marks';
 import { tones } from './tones';
 
@@ -230,7 +230,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
   const right = ticks[ticks.length - 1]!.x;
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.timeline} title={scene.title}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames}>
       <div
         style={{
           position: 'absolute',

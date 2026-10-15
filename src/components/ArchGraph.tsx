@@ -11,7 +11,7 @@ import { NodeCard, sharedTitleFont } from './NodeCard';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
+import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
 
 const NODE_START = 8;
 const NODES_END = 20;
@@ -195,7 +195,7 @@ export const ArchGraph: React.FC<SceneProps<ArchScene>> = ({ scene, hunks, durat
   };
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.arch} aside={changes.size ? <ChangeLegend used={changes} /> : undefined}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={changes.size ? <ChangeLegend used={changes} /> : undefined}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           {layout.groups.map((group) => (

@@ -26,7 +26,7 @@ const WEIGHTS = [400, 500, 600, 700, 800];
  * The system sans changes its optical size and tracking with the font size up to about 28px, so it is
  * measured at each of these sizes and interpolated between them; from the last one up it scales.
  */
-const SIZES = [10, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 32, 40, 60, 100];
+const SIZES = [10, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 28, 32, 40, 60, 80, 100];
 const EXTRA = '…→←↔−–—·•’‘“”×÷≤≥≠≈✓✗€£¥°±§¶©®™¡¿«»';
 /** Printable ASCII and the symbols the scenes draw. Accented letters measure as their base letter. */
 const CHARS = [...Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)), ...EXTRA];
@@ -66,18 +66,54 @@ try {
     const weights = ${JSON.stringify(WEIGHTS)};
     const chars = ${JSON.stringify(CHARS)};
     const sizes = ${JSON.stringify(SIZES)};
-    const ctx = document.createElement('canvas').getContext('2d');
+    // Widths as the page lays text out: a canvas measures some fonts a little differently from the DOM.
+    const box = document.createElement('div');
+    box.style.cssText = 'position:absolute;left:0;top:0;white-space:pre;font-kerning:normal';
+    document.body.appendChild(box);
+    const widths = (family, weight, size, texts) => {
+      box.style.font = weight + ' ' + size + 'px ' + family;
+      // One span per line, so no text is shaped together with its neighbour's.
+      box.replaceChildren(...texts.map((t) => Object.assign(document.createElement('div'), { innerHTML: '<span></span>' })));
+      [...box.children].forEach((line, i) => (line.firstChild.textContent = texts[i]));
+      const out = [...box.children].map((el) => el.firstChild.getBoundingClientRect().width);
+      box.replaceChildren();
+      return out;
+    };
     const out = {};
     for (const [name, family] of Object.entries(families)) {
       out[name] = {};
       for (const w of weights) {
-        out[name][w] = sizes.map((size) => {
-          ctx.font = w + ' ' + size + 'px ' + family;
-          return chars.map((c) => Math.round((ctx.measureText(c.repeat(20)).width / 20 / size) * 10000) / 10000);
-        });
+        out[name][w] = sizes.map((size) => widths(family, w, size, chars.map((c) => c.repeat(20))).map((px) => Math.round((px / 20 / size) * 10000) / 10000));
       }
     }
-    return out;
+    // Kerning: what a pair of ASCII characters takes off (or adds to) their two advances. It moves with
+    // the size, as the optical size does, and settles from 28px up. Each weight keeps two tables, one for
+    // text sizes and one for display sizes, each with the value nearest zero (or the largest gain) across
+    // its sizes: an estimate that never comes out narrower than the browser draws.
+    const kern = {};
+    const ascii = chars.filter((c) => c >= ' ' && c <= '~');
+    const pairs = ascii.flatMap((a) => ascii.map((b) => a + b));
+    const bands = { text: [12, 16, 20], display: [28, 100] };
+    for (const [name, family] of Object.entries(families)) {
+      if (name === 'mono') continue;
+      kern[name] = {};
+      for (const w of weights) {
+        kern[name][w] = {};
+        for (const [band, bandSizes] of Object.entries(bands)) {
+          const best = new Map();
+          for (const size of bandSizes) {
+            const single = new Map(ascii.map((c, i) => [c, widths(family, w, size, [c.repeat(20)])[0] / 20]));
+            const both = widths(family, w, size, pairs);
+            pairs.forEach((pair, i) => {
+              const k = (both[i] - single.get(pair[0]) - single.get(pair[1])) / size;
+              best.set(pair, best.has(pair) ? Math.max(best.get(pair), k) : k);
+            });
+          }
+          kern[name][w][band] = [...best].filter(([, k]) => Math.abs(k) >= 0.004).map(([pair, k]) => [pair, Math.round(k * 1000)]);
+        }
+      }
+    }
+    return { advances: out, kern };
   })()`);
   ws.close();
 
@@ -96,7 +132,7 @@ try {
     '',
     '/** ADVANCES[family][weight][k][i] is the width in em of MEASURED_CHARS[i] at MEASURED_SIZES[k]px; a monospace family has one row. */',
     'export const ADVANCES = {',
-    ...Object.entries(measured).map(([family, byWeight]) => {
+    ...Object.entries(measured.advances).map(([family, byWeight]) => {
       const rows = Object.entries(byWeight).map(([w, bySize]) => {
         const same = bySize.every((row) => row.every((v, i) => Math.abs(v - bySize[0][i]) < 0.0015));
         const kept = same ? [bySize[bySize.length - 1]] : bySize;
@@ -104,6 +140,20 @@ try {
       });
       return `  ${family}: {\n${rows.join('\n')}\n  },`;
     }),
+    '};',
+    '',
+    '/**',
+    ' * KERNING[family][weight][band] lists each pair of ASCII characters that a font sets closer or wider than',
+    ' * their two advances, as the pair and the change in thousandths of an em, one per line. The text',
+    ' * band holds for sizes up to 20px and the display band from 28px; each keeps the change nearest zero across its sizes.',
+    ' */',
+    'export const KERNING = {',
+    ...Object.entries(measured.kern).map(
+      ([family, byWeight]) =>
+        `  ${family}: {\n${Object.entries(byWeight)
+          .map(([w, bands]) => `    ${w}: {\n${Object.entries(bands).map(([band, pairs]) => `      ${band}: ${JSON.stringify(pairs.map(([p, k]) => p + k).join('\n'))},`).join('\n')}\n    },`)
+          .join('\n')}\n  },`,
+    ),
     '};',
     '',
   ];

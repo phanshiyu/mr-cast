@@ -11,7 +11,7 @@ import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../ut
 import { Badge, badgesOf, changeTone } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox, defaultChapter, ellipsis, fonts } from './theme';
+import { clamp, colors, contentBox, ellipsis, fonts } from './theme';
 
 const START = 10;
 /** Every row has started landing by this frame, so the rows, bars and notes are in by the end of the build. */
@@ -213,7 +213,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
     scene.steps?.length ? focus(`f:${path}`) : emphasis(path !== null && walked.includes(path) ? [walked.indexOf(path)] : []);
 
   return (
-    <SceneShell durationInFrames={durationInFrames} eyebrow={scene.chapter ?? defaultChapter.files} title={scene.title} aside={<Totals files={files} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Totals files={files} />}>
       <div
         style={{
           position: 'absolute',
