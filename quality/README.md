@@ -61,7 +61,9 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
 `metrics.mjs` reports per fixture and in total: validation result, scene count and type mix, estimated duration
 (shared/timing, no voice), narration words, highlighted code lines (focus refs, or every changed line of the hunk when a code
 scene has no focus), the most lines highlighted in one scene, code scene count, hunks covered over hunks total,
-the share of changed lines that sit in shown hunks, and test hunks shown over test hunks (shared/test-files).
+the share of changed lines that sit in shown hunks, test hunks shown over test hunks (shared/test-files), and whether the
+storyboard has a tests scene with its case and gap counts (`yes 4c/2g`). A hunk linked from a tests scene case counts as shown,
+as it does in `validate`.
 
 `grade.mjs` reads `grades.json` files shaped as
 

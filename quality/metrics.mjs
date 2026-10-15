@@ -40,6 +40,7 @@ function measure(name, dir) {
   const mix = {};
   let words = 0, lines = 0, maxLines = 0, codeScenes = 0, frames = 0;
   const covered = new Set();
+  const testsScene = { present: false, cases: 0, gaps: 0 };
   for (const s of scenes) {
     mix[s.type] = (mix[s.type] ?? 0) + 1;
     words += wordCount(s.narration);
@@ -50,6 +51,13 @@ function measure(name, dir) {
       const n = highlighted(s, hunks[s.hunkId]);
       lines += n;
       maxLines = Math.max(maxLines, n);
+    }
+    if (s.type === 'tests') {
+      testsScene.present = true;
+      testsScene.cases += s.cases?.length ?? 0;
+      testsScene.gaps += s.gaps?.length ?? 0;
+      // validate counts a case's linked hunk as shown, so the coverage columns do too.
+      for (const c of s.cases ?? []) if (c.hunkId) covered.add(c.hunkId);
     }
   }
   const all = Object.values(hunks);
@@ -62,6 +70,7 @@ function measure(name, dir) {
     codeScenes, hunksCovered: shown.length, hunksTotal: all.length,
     linesCovered: lineSum(shown), linesTotal: lineSum(all),
     testHunksShown: tests.filter((h) => covered.has(h.id)).length, testHunksTotal: tests.length,
+    testsScene,
   };
 }
 
@@ -81,6 +90,11 @@ const total = have.length ? {
   codeScenes: sum('codeScenes'), hunksCovered: sum('hunksCovered'), hunksTotal: sum('hunksTotal'),
   linesCovered: sum('linesCovered'), linesTotal: sum('linesTotal'),
   testHunksShown: sum('testHunksShown'), testHunksTotal: sum('testHunksTotal'),
+  testsScene: {
+    present: have.filter((r) => r.testsScene.present).length,
+    cases: have.reduce((a, r) => a + r.testsScene.cases, 0),
+    gaps: have.reduce((a, r) => a + r.testsScene.gaps, 0),
+  },
 } : null;
 
 fs.writeFileSync(path.join(work, 'metrics.json'), `${JSON.stringify({ fixtures: rows, total }, null, 2)}\n`);
@@ -89,12 +103,18 @@ const mixStr = (m) => Object.entries(m).map(([t, n]) => `${t}:${n}`).join(' ');
 // Share of changed lines that sit in shown hunks, so one big unshown hunk outweighs several small ones.
 const linePct = (r) => (r.linesTotal ? `${Math.round((100 * r.linesCovered) / r.linesTotal)}%` : '-');
 const testCol = (r) => (r.testHunksTotal ? `${r.testHunksShown}/${r.testHunksTotal}` : '-');
-const table = [['fixture', 'valid', 'scenes', 'secs', 'words', 'hl lines', 'max hl', 'code', 'hunks', 'lines shown', 'tests', 'mix']];
+// "yes 4c/2g": has a tests scene with 4 cases and 2 gaps. The total row counts fixtures with one instead.
+const testsSceneCol = ({ testsScene: t, fixtures }) => {
+  const counts = `${t.cases}c/${t.gaps}g`;
+  if (fixtures) return `${t.present}/${fixtures} ${counts}`;
+  return t.present ? `yes ${counts}` : 'no';
+};
+const table = [['fixture', 'valid', 'scenes', 'secs', 'words', 'hl lines', 'max hl', 'code', 'hunks', 'lines shown', 'tests', 'tests scene', 'mix']];
 for (const r of rows) {
   table.push(r.hasStoryboard
-    ? [r.fixture, r.validation, r.scenes, r.estSeconds, r.narrationWords, r.highlightedLines, r.maxLinesInScene, r.codeScenes, `${r.hunksCovered}/${r.hunksTotal}`, linePct(r), testCol(r), mixStr(r.sceneMix)]
+    ? [r.fixture, r.validation, r.scenes, r.estSeconds, r.narrationWords, r.highlightedLines, r.maxLinesInScene, r.codeScenes, `${r.hunksCovered}/${r.hunksTotal}`, linePct(r), testCol(r), testsSceneCol(r), mixStr(r.sceneMix)]
     : [r.fixture, 'no storyboard']);
 }
-if (total) table.push(['TOTAL', `${total.validationPass}/${total.fixtures}`, total.scenes, total.estSeconds, total.narrationWords, total.highlightedLines, total.maxLinesInScene, total.codeScenes, `${total.hunksCovered}/${total.hunksTotal}`, linePct(total), testCol(total), mixStr(total.sceneMix)]);
+if (total) table.push(['TOTAL', `${total.validationPass}/${total.fixtures}`, total.scenes, total.estSeconds, total.narrationWords, total.highlightedLines, total.maxLinesInScene, total.codeScenes, `${total.hunksCovered}/${total.hunksTotal}`, linePct(total), testCol(total), testsSceneCol(total), mixStr(total.sceneMix)]);
 const widths = table[0].map((_, i) => Math.max(...table.map((r) => String(r[i] ?? '').length)));
 for (const r of table) console.log(r.map((c, i) => String(c ?? '').padEnd(widths[i])).join('  ').trimEnd());
