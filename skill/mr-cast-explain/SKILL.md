@@ -25,6 +25,8 @@ Later `explain` commands use the most recently started explanation and name it o
 
 Running `init` again with the same title reopens that explanation and keeps its storyboard and snippets, and says so. Add `--reset` to start it over. A different title starts a new explanation.
 
+Add `--simple` when the user asked for a simple, line-by-line explanation. See [Simple mode](#simple-mode).
+
 ## 2. Add the code worth showing
 
 List the files and functions your explanation relied on. For each piece of code a viewer should see, add a snippet of the real lines.
@@ -70,6 +72,7 @@ The viewer is someone who did not read your explanation. A good walkthrough lets
 - Use an `er` scene for a data model. Show each table or model that matters with its keys and the fields the explanation uses.
 - Use a `flow` scene when data moving through steps is the story. Each step names a real actor (function, service, component) and shows the payload as it looks after that step. Use 3 to 7 steps.
 - Set `flow` on a `code` scene whose lines carry control flow, such as a branch, a retry-or-give-up decision, an allow-or-reject path, or a multi-step algorithm. The scene then draws a step diagram beside the code, and each step lights up with its range. Split the focus into one range per step, up to 4, and give `flow` one entry per range in the same top-to-bottom order. Write each `label` in plain words about what that range does, in under 60 characters. Add an `outcome` to a step that branches or ends the flow.
+- Use `steps` instead of `focusLinesAfter` and `flow` when the voice should track the lines. Each step names its `lines` and the words to `say` while they are highlighted, and lasts as long as those words take. Write the steps top to bottom, at most 8 per scene, and give every step a `label` to draw the step diagram beside the code. The scene's `narration` is then the intro spoken before the first step, so use it to say what the code is. Simple mode uses `steps` on every code scene.
 - Use a `mermaid` scene only for a diagram no other scene covers, such as a class diagram. Keep it to about 12 nodes, and run `explain still <sceneIndex>` to confirm it renders and fits.
 - Leave `change` off `er` and `state` items unless the explanation is itself about a change, such as a bug fix that adds a state.
 - Show one idea per code scene, and narrate exactly the lines highlighted. Set `focusLinesAfter` from the snippet's line numbers, as numbers or `"start-end"` strings. A snippet longer than 12 lines needs a focus. Without one, the whole snippet is highlighted as one step.
@@ -85,6 +88,25 @@ The viewer is someone who did not read your explanation. A good walkthrough lets
 - Spell out symbols and code the way a person would say them. Say "the create order function", not `createOrder()`, and "four twenty-nine", not `429`. Avoid markdown, slashes, arrows, and abbreviations the voice could misread.
 - Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds.
 - Let the explanation set the length. Cover every point a viewer needs, and cut only what is genuinely trivial. Give each scene a short `chapter` title.
+
+### Simple mode
+
+Use simple mode when the user asks for it. The triggers are phrases like "explain like I'm stupid", "ELI5", "simple", "line by line", "for a non-native speaker", "I'm new to this", or `--simple` among the arguments. Pass `--simple` to `explain init`. It records the style in `meta.json`, and `explain validate` and `explain outline` then say `simple style` and check the rules below.
+
+The viewer is new to the codebase, reads English as a second language, or both. They want to understand every line. A long video is fine.
+
+Build context first. Beyond the code your explanation named, read the callers of each function you show, the definitions and types it uses, the tests, and the config a value comes from. Add the key pieces as snippets and show them in `code` scenes before the code they support, as what this code does today. Diagrams still come first. Draw the idea before any code, and use the diagrams to anchor the names the steps will use.
+
+Write every `code` scene with `steps`. Walk the snippet's lines in order, one line or a small group of up to 3 lines per step. Give the scene a short `narration` that says what the thing is before the steps say what it does, such as "This is the rate limit function. It runs before each request to the orders route."
+
+Write for someone reading subtitles in a second language:
+
+- Use plain words. Prefer "gets" to "retrieves" and "stops" to "short-circuits".
+- Keep sentences under 18 words, one idea each. `explain validate` warns about longer ones.
+- Name what a thing is before what it does. "Redis is a fast store for small values. The limiter keeps its counters there."
+- Avoid idioms. Avoid jargon, or define it the first time. "A middleware is a function that runs before the route."
+- Say the value and its effect. "Max is twenty, so the twenty first request in a minute is refused."
+- In each step, say what the line does to the data, not how the syntax reads, unless the syntax is the point.
 
 ## 4. Check the plan with the user
 

@@ -113,7 +113,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
       path.join(claudeDir, 'commands/mr-cast-render.md'),
       command({
         description: "Render an MP4 walkthrough video of the current branch's diff (mr-cast)",
-        argumentHint: '[base-branch | --working]',
+        argumentHint: '[base-branch | --working | --simple]',
         skillPath: review,
         body: `In step 4, run \`render\` instead of \`play\`. ${rendered}\n\nArguments for \`mr-cast extract\`: $ARGUMENTS`,
       }),
@@ -122,7 +122,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
       path.join(claudeDir, 'commands/mr-cast-explain-render.md'),
       command({
         description: 'Render what you just explained as an MP4 walkthrough with diagrams and real code (mr-cast)',
-        argumentHint: '[what to focus on]',
+        argumentHint: '[what to focus on | --simple]',
         skillPath: explain,
         body: `Animate the explanation you gave most recently in this conversation. In step 5, run \`explain render\` instead of \`explain play\`. ${rendered}\n\nArguments: $ARGUMENTS`,
       }),
