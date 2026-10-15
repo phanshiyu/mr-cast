@@ -15,6 +15,7 @@ A user on a feature branch runs `mr-cast extract` to index the branch's diff int
 - `render` writes an H.264 1920x1080 MP4, with an AAC track when voiced.
 - `named-runs` keeps separate walkthroughs in `.mr-cast/<name>` with `--name`, or any dir with `--dir`.
 - `scene-gallery` renders every scene type (files, state, table, chart, timeline, mermaid and the rest).
+- `voice-sync` starts each narration's voice only after its scene has drawn in, and shows or lights each step's items before its words.
 
 ## How to get to it (user POV)
 
@@ -45,6 +46,7 @@ Preconditions:
 - **No changes.** Run `git -C $DEMO checkout -q main && $V mrc $RUN extract-main -- extract; git -C $DEMO checkout -q feature/rate-limit`. Exit 1 with `mr-cast: HEAD is on the base (main) with no changes ahead of main; use \`mr-cast extract --working\` …`.
 - **Working tree.** Edit a file without committing and extract it into a named run. Run `echo '// wip' >> $DEMO/src/db/client.ts && $V mrc $RUN extract-working -- extract --working --name wip; git -C $DEMO checkout -- src/db/client.ts`. Exit 0, and the index lists `src/db/client.ts` with the added `// wip` line. `$DEMO/.mr-cast/wip/hunks.json` exists.
 - **Scene gallery.** Run `mkdir -p $RUN/work/gallery && cp $REPO/examples/gallery/*.json $RUN/work/gallery/ && $V mrc $RUN gallery -- still --dir $RUN/work/gallery --out $EV/gallery`. Exit 0 and 9 PNGs. Open the `files`, `state`, `chart`, `timeline` and `mermaid` ones. Each scene draws its content fully, without clipping.
+- **Voice waits for the build.** Render the gallery and check its timing. Run `$V mrc $RUN gallery-render -- render --dir $RUN/work/gallery --no-voice --out $EV/gallery.mp4`, then `node $REPO/.claude/skills/verify/scripts/sync-check.mjs $RUN/work/gallery $EV/gallery.mp4 $EV/sync --no-voice` (drop `--no-voice` after `voice --dir` for a voiced render). It prints one row per scene with its build end and voice start, and the `changed` share between the frame before the voice and the settled frame, which stays near 0% for a scene without steps (a few percent for a `highlight` spotlight or a fading glow). The last line compares the timeline with ffprobe's duration. Open `$EV/sync/*-voice-1.png` to see every diagram fully drawn, and the `*-step-K-pre.png` and `*-step-K-say.png` pairs to see each step's item lit before its sentence starts.
 - **Proof.** Save the data tree with `ls -R $DEMO/.mr-cast > $EV/mr-cast-tree.txt`. The evidence then holds the transcripts, the stills, both MP4s with probe output and a frame.
 
 ## Gotchas
