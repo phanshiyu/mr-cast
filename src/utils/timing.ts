@@ -1,20 +1,12 @@
 import type { Scene, Storyboard } from '../types';
+import { FPS, WORDS_PER_MINUTE, wordCount, sceneDurationInFrames as framesForNarration } from '../../shared/timing.mjs';
 
-export const FPS = 30;
+export { FPS, wordCount };
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
 
-const WORDS_PER_MINUTE = 160;
-const BUFFER_SECONDS = 1.5;
-const MIN_SECONDS = 3;
-
-export function wordCount(text: string): number {
-  return text.trim().split(/\s+/).filter(Boolean).length;
-}
-
 export function sceneDurationInFrames(scene: Scene): number {
-  const seconds = Math.max(MIN_SECONDS, (wordCount(scene.narration ?? '') / WORDS_PER_MINUTE) * 60 + BUFFER_SECONDS);
-  return Math.ceil(seconds * FPS);
+  return framesForNarration(scene.narration);
 }
 
 export interface TimedScene {

@@ -1,5 +1,7 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
+import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
+
 const RISKS = ['low', 'medium', 'high'];
 const KINDS = ['service', 'db', 'queue', 'client'];
 const VIEWS = ['split', 'morph'];
@@ -106,10 +108,6 @@ export function validateStoryboard(sb, hunks) {
   return { errors, warnings };
 }
 
-// Mirrors src/utils/timing.ts so the CLI can report the video length.
 export function storyboardSeconds(sb) {
-  return (sb.scenes ?? []).reduce((sum, s) => {
-    const words = String(s?.narration ?? '').trim().split(/\s+/).filter(Boolean).length;
-    return sum + Math.max(3, (words / 160) * 60 + 1.5);
-  }, 0);
+  return (sb.scenes ?? []).reduce((sum, s) => sum + sceneDurationInFrames(s?.narration), 0) / FPS;
 }
