@@ -30,6 +30,8 @@ The viewer is a reviewer who has not read the diff. They should understand the c
 Resolve these `validate` warnings, because each one marks a gap a reviewer would notice:
 
 - A hunk is not shown or tests are not walked through. Add a code scene for the hunk, link it from a `tests` scene case, or add a `skipped` entry with a reason.
+- A substantial hunk is skipped because the diagrams cover it. Only the team's overview may do that. For a reviewer or someone new to the code, add a code scene for it.
+- The narration says a count the screen does not show, such as "seven tests" over nine cases, or "three things to check" over two bullets. Say the number on screen.
 - The scenes are out of top-down order, a diagram comes after code, a change to several files has no diagram, or many code scenes rest on too few diagrams. Move or add scenes as the warning says.
 - The storyboard has no `tests` scene.
 

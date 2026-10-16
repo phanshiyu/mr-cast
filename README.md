@@ -225,7 +225,7 @@ The narration is written to be heard once, like one person explaining the change
 | `tests` | Each test case with its status and the behavior it proves, then a "Not tested" panel of important behaviors no test covers. With no cases it says the change has no tests. |
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. A changed cell shows its old value struck through beside the new one. |
 | `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`. `annotation` calls out one point. |
-| `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. |
+| `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. The event cards sit in one row in time order. Cards of events close in time move apart, and a bent leader joins each to its dot, so no card covers another and no two leaders cross. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
 | `compare` | Two sides, such as before and after or two designs, row by row at the same height, so like sits beside like. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text or a short code snippet. With `steps`, rows show as the voice reaches them. |
 | `terminal` | A shell session in a window: each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls, so text never shrinks below a readable size. With `steps`, each step types its entries and the camera follows. |
@@ -362,6 +362,8 @@ Everything that names a change uses the same three words: NEW, CHANGED and REMOV
 - an er table or field, a state, or a table row is marked `added` or `removed` but its name is on no changed line of the diff, or a files entry's `change` disagrees with `hunks.json`;
 - an explanation has a change mark without `"explainsChange": true`;
 - a `badge` is a change word such as `new` or `removed`, which belongs in `change`.
+
+`validate` also warns when a video for a reviewer or someone new to the code skips a hunk of 15 or more changed lines with a reason that says the diagrams or the overview cover it, since only the team's overview leaves code to the diagrams. And it warns when the narration states a count the screen contradicts: "seven tests" in a tests scene that lists nine cases, "two new tests" against its added cases, a step's count against the cases it lights, or "three things to check" in an intent scene with two bullets.
 
 A tests scene that is not about a diff's tests can rename its panels with `titles`, for example `{ "subject": "Checked", "proves": "Shows", "gaps": "Open questions", "none": "Nothing checks this yet" }`.
 
