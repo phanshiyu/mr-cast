@@ -268,7 +268,7 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
   const first = indexed[0];
   if (first && first.s.type !== 'intent') {
     const opening = explain ? 'the idea and its key points' : 'the problem and the review concerns';
-    warnings.push(`scenes[${first.i}] is a ${first.s.type} scene; open with an intent scene that states ${opening}`);
+    warnings.push(`scenes[${first.i}] is ${/^[aeiou]/.test(first.s.type) ? "an" : "a"} ${first.s.type} scene; open with an intent scene that states ${opening}`);
   }
 
   const firstDiagram = firstOf((s) => DIAGRAM_TYPES.includes(s.type));
