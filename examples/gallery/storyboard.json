@@ -5,7 +5,7 @@
     {
       "type": "intent",
       "chapter": "Why this change",
-      "narration": "Orders now start unpaid and expire after a day, and refunds leave the order lifecycle. The tests cover each new transition, but not a payment racing the timeout.",
+      "narration": "Orders now start unpaid, and an unpaid order is cancelled after a day. Refunds are removed. The tests cover each new move between states, but not a payment that arrives just as the order times out.",
       "summary": "Start orders as pending, cancel unpaid orders after 24 hours, and drop the refunded state.",
       "risk": "medium",
       "bullets": [
@@ -18,7 +18,7 @@
       "type": "files",
       "chapter": "What changed",
       "title": "Files in this change",
-      "narration": "The change touches nine files. The lifecycle module gains the pending state, a new job cancels unpaid orders, the refund flow is deleted, and a migration moves existing orders over. Two test files cover it.",
+      "narration": "The change touches nine files. The lifecycle module, which lists the states an order can be in, gains the pending state. A new job cancels unpaid orders. The refund code is deleted, and a migration moves existing orders to the new states. Two test files cover the change.",
       "notes": {
         "src/orders/lifecycle.ts": "pending state and its transitions",
         "src/jobs/payment-timeout.ts": "cancels orders unpaid after 24 hours",
@@ -58,7 +58,7 @@
       "steps": [
         { "focus": "pending", "say": "Orders now start as pending instead of paid." },
         { "focus": "pending->paid", "say": "Paying moves a pending order to paid." },
-        { "focus": "timeout [24h]", "say": "If nobody pays within twenty four hours, the timeout cancels it." },
+        { "focus": "timeout [24h]", "say": "If nobody pays within twenty four hours, a timeout cancels the order." },
         { "focus": ["refunded", "delivered->refunded"], "say": "The refunded state is gone, along with the refund that led to it." }
       ]
     },
@@ -87,10 +87,10 @@
       ],
       "steps": [
         { "focus": ["start", "load"], "say": "The job loads each order that is still pending." },
-        { "focus": "paid", "say": "If the payment landed since, it leaves the order alone." },
-        { "focus": ["paid->old", "old"], "say": "If not, it checks whether the order is older than a day." },
+        { "focus": "paid", "say": "If the payment has arrived since, the job leaves the order alone." },
+        { "focus": ["paid->old", "old"], "say": "If not, the job checks whether the order is older than a day." },
         { "focus": ["cancel", "old->cancel"], "mark": "circle", "note": "new in this change", "say": "An unpaid order older than a day is cancelled, and its stock goes back on the shelf." },
-        { "focus": "done", "say": "That order ends cancelled." }
+        { "focus": "done", "say": "The cancelled order is finished." }
       ]
     },
     {
@@ -133,9 +133,9 @@
         "text": "Charge settles in the background job"
       },
       "steps": [
-        { "focus": "series:after", "say": "Every percentile drops." },
-        { "focus": "p50", "say": "The median drops from three hundred twenty to one hundred eighty milliseconds." },
-        { "focus": "after@p99", "say": "The slowest one percent falls from two point four seconds to under a second, because the charge now settles in a background job." }
+        { "focus": "series:after", "say": "Fast, typical and slow checkouts all get quicker." },
+        { "focus": "p50", "say": "The typical checkout drops from three hundred twenty to one hundred eighty milliseconds." },
+        { "focus": "after@p99", "say": "The slowest one percent falls from two point four seconds to under a second. The card charge now finishes in a background job." }
       ]
     },
     {
@@ -159,22 +159,22 @@
       "steps": [
         { "focus": 0, "say": "The first charge is declined." },
         { "focus": 1, "say": "Two seconds later, the job tries again." },
-        { "focus": 2, "say": "Then it waits four seconds before the second retry." },
+        { "focus": 2, "say": "Then the job waits four seconds before the second retry." },
         { "focus": 3, "say": "After eight more seconds comes the third and last retry." },
-        { "focus": 4, "say": "Then it stops, and the order stays pending until the customer pays or the timeout cancels it." }
+        { "focus": 4, "say": "Then the job gives up. The order stays pending until the customer pays, or the timeout cancels the order." }
       ]
     },
     {
       "type": "mermaid",
       "chapter": "Rollout plan",
       "title": "Release timeline",
-      "narration": "For anything the built-in scenes do not cover, the storyboard can fall back to a Mermaid diagram, like this rollout timeline.",
+      "narration": "Some diagrams have no scene of their own, like this rollout timeline. For those, the storyboard can use Mermaid, a common text format for charts.",
       "code": "gantt\n  dateFormat YYYY-MM-DD\n  title Rollout\n  section Backend\n  Migration        :done, m1, 2026-10-01, 2d\n  Dual write       :active, m2, after m1, 3d\n  section Clients\n  Read new status  :c1, after m2, 2d\n  Remove legacy    :c2, after c1, 1d"
     },
     {
       "type": "mermaid",
       "chapter": "Class view",
-      "narration": "A Mermaid class diagram shows the new payment strategy interface and its two implementations.",
+      "narration": "A class diagram shows the new payment interface, the one shape every payment method follows, and the two payment methods that follow it.",
       "code": "classDiagram\n  class PaymentStrategy {\n    <<interface>>\n    +charge(order) Receipt\n  }\n  class CardPayment {\n    +charge(order) Receipt\n  }\n  class WalletPayment {\n    +charge(order) Receipt\n  }\n  PaymentStrategy <|.. CardPayment\n  PaymentStrategy <|.. WalletPayment"
     },
     {
@@ -182,7 +182,7 @@
       "chapter": "What the tests prove",
       "title": "Order lifecycle tests",
       "subject": "transition in src/orders/lifecycle.ts",
-      "narration": "Five tests cover the new lifecycle. New orders start pending, paying moves them to paid, a failed charge keeps them pending, and the timeout cancels only unpaid orders. Nothing tests a payment racing the timeout.",
+      "narration": "Five tests cover the new lifecycle. New orders start pending, paying moves them to paid, a failed charge keeps them pending, and the timeout cancels only unpaid orders. Nothing tests a payment that arrives at the same moment the timeout fires.",
       "cases": [
         {"name": "creates new orders as pending", "proves": "A new order starts as pending instead of paid"},
         {"name": "pay moves a pending order to paid", "proves": "A successful charge sets the status to paid and records the payment id", "hunkId": "h15"},

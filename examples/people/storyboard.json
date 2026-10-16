@@ -86,11 +86,11 @@
       "steps": [
         {
           "focus": "customer",
-          "say": "It starts with one customer who has a problem."
+          "say": "The story starts with one customer who has a problem."
         },
         {
           "focus": "customer->agent",
-          "say": "They write to the help desk, and the message lands with one support agent."
+          "say": "The customer writes to the help desk, and the message lands with one support agent."
         },
         {
           "focus": "agent",
@@ -110,7 +110,7 @@
             "agent-engineer",
             "group:Engineering"
           ],
-          "say": "When the guides have no answer, the agent and the on-call engineer work on it together."
+          "say": "When the guides have no answer, the agent and the on-call engineer work on the problem together."
         }
       ]
     },
@@ -202,7 +202,7 @@
             "engineer",
             "2"
           ],
-          "say": "The guides do not cover it, so the agent escalates to the engineer with every detail already gathered."
+          "say": "The guides do not cover the problem. So the agent hands the ticket to the engineer, with every detail already gathered."
         },
         {
           "focus": "3-4",
@@ -234,13 +234,13 @@
           "icon": "headset",
           "tone": "accent",
           "action": "Reproduces it and writes the steps down",
-          "say": "The agent reproduces it and writes down the exact steps."
+          "say": "The agent makes the problem happen again, and writes down the exact steps."
         },
         {
           "actor": "Engineer",
           "icon": "laptop",
           "action": "Fixes the cause, not the symptom",
-          "say": "The engineer fixes the cause, so the next customer never sees it."
+          "say": "The engineer fixes the cause, so the next customer never sees the problem."
         },
         {
           "actor": "Support agent",
@@ -303,7 +303,7 @@
           "tone": "warn"
         }
       ],
-      "narration": "Most of the time a ticket like this is open, it waits on engineering.",
+      "narration": "A ticket like this spends most of its open time waiting on engineering.",
       "steps": [
         {
           "focus": [
@@ -314,7 +314,7 @@
         },
         {
           "focus": 2,
-          "say": "Three hours in, the agent escalates."
+          "say": "Three hours in, the agent hands the ticket to engineering."
         },
         {
           "focus": [

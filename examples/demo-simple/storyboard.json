@@ -17,7 +17,7 @@
     {
       "type": "graph",
       "chapter": "Where it fits",
-      "narration": "Here is the system. A client calls the Express A P I. It asks Redis to count the request. The orders service prices and saves the order. Then the A P I tells the queue.",
+      "narration": "Here is the system. A client calls the orders API. The API asks Redis, a fast shared store, to count the request. The orders service prices and saves the order. Then the API tells the queue.",
       "nodes": [
         {
           "id": "client",
@@ -194,15 +194,15 @@
       "steps": [
         {
           "focus": "0-2",
-          "say": "First the A P I counts it in Redis."
+          "say": "First the API counts the request in Redis."
         },
         {
           "focus": "3-5",
-          "say": "Then create order prices and saves the order."
+          "say": "Then the create order function prices the items and saves the order."
         },
         {
           "focus": "6-7",
-          "say": "Last, the A P I publishes the event and does not wait. Then it answers the client."
+          "say": "Last, the API sends the new order event and does not wait for a reader. Then the API answers the client."
         }
       ]
     },
@@ -228,41 +228,41 @@
           "actor": "db.insert",
           "action": "save the order",
           "payload": "{ id: \"k3x9\", total: 3097, status: \"pending\" }",
-          "say": "Then it saves the order."
+          "say": "Then the service saves the order."
         },
         {
           "actor": "publish",
           "action": "send order.created",
           "payload": "{ orderId: \"k3x9\", total: 3097 }",
-          "say": "The A P I publishes a small event."
+          "say": "The API sends a small event about the order."
         },
         {
           "actor": "Express API",
           "action": "answer 201 Created",
-          "say": "Then it answers the client."
+          "say": "Then the API answers the client."
         }
       ]
     },
     {
       "type": "code",
       "chapter": "What saves an order today",
-      "narration": "Before the change, look at the database client. The orders service uses it to save orders. This file does not change.",
+      "narration": "Before the change, look at the database client. The orders service uses the database client to save orders. This file does not change.",
       "hunkId": "s1",
       "steps": [
         {
           "lines": 1,
-          "say": "Line one defines the d b object. It is the database client."
+          "say": "Line one defines the database client."
         },
         {
           "lines": "2-3",
-          "say": "Insert takes a table name and a row. It returns the row with a new id."
+          "say": "The insert function takes a table name and a row. Insert gives back the row with a new id."
         }
       ]
     },
     {
       "type": "code",
       "chapter": "The limiter, part one",
-      "narration": "This is the new rate limit file. It has one function. Let us read it from the top.",
+      "narration": "This is the new rate limit file. The file has one function. Let us read it from the top.",
       "hunkId": "h2",
       "steps": [
         {
@@ -271,28 +271,28 @@
         },
         {
           "lines": "4-5",
-          "say": "Lines four and five start the options type. Window m s is the length of one time window, in milliseconds."
+          "say": "Lines four and five start the options. The window is the length of one time window, in milliseconds."
         },
         {
           "lines": "6-7",
-          "say": "Line six is max. It is the number of requests allowed in one window. Line seven closes the type."
+          "say": "Line six is the maximum. The maximum is the number of requests allowed in one window. Line seven closes the options."
         },
         {
           "lines": "9-10",
-          "say": "Line nine defines the rate limit function. It takes the options. Line ten returns a middleware. A middleware is a function that runs before the route."
+          "say": "Line nine defines the rate limit function. The function takes the options. Line ten returns a middleware. A middleware is a function that runs before the route."
         }
       ]
     },
     {
       "type": "code",
       "chapter": "Count the request",
-      "narration": "Now the body of the middleware. It runs once for every request to the orders route. First it counts the request.",
+      "narration": "Now the body of the middleware. The middleware runs once for every request to the orders route. First it counts the request.",
       "hunkId": "h2",
       "calloutText": "The key expires with the window, so Redis cleans it up.",
       "steps": [
         {
           "lines": 11,
-          "say": "Line eleven builds a key. The key has the I P address and the current minute. So each address gets a new key every minute.",
+          "say": "Line eleven builds a key. The key has the IP address and the current minute. So each address gets a new key every minute.",
           "label": "Build a key for this address and minute"
         },
         {
@@ -302,7 +302,7 @@
         },
         {
           "lines": 13,
-          "say": "Line thirteen runs only on the first request in a window. It tells Redis to delete the key after one minute.",
+          "say": "Line thirteen runs only on the first request in a window. Line thirteen tells Redis to delete the key after one minute.",
           "label": "On the first hit, expire the key after a minute"
         }
       ]
@@ -316,18 +316,18 @@
       "steps": [
         {
           "lines": 14,
-          "say": "Line fourteen checks the count. Max is twenty. So this is true from the twenty first request on.",
+          "say": "Line fourteen checks the count. The maximum is twenty. So the check is true from request number twenty-one on.",
           "label": "Is the count over the limit?"
         },
         {
           "lines": "15-16",
-          "say": "Line fifteen adds a Retry After header. It tells the client to wait sixty seconds. Line sixteen answers with status four twenty nine. That means too many requests.",
+          "say": "Line fifteen adds a header that tells the client to wait sixty seconds. Line sixteen answers with status four twenty-nine. That status means too many requests.",
           "label": "Refuse with Retry-After and 429",
           "outcome": "Past twenty: too many requests"
         },
         {
           "lines": "17-18",
-          "say": "Line seventeen closes the if. Line eighteen calls next. That lets the request go on to the route.",
+          "say": "Line seventeen closes the check. Line eighteen passes the request on to the route.",
           "label": "Under the limit, pass the request on"
         },
         {
@@ -350,44 +350,44 @@
         },
         {
           "lines": 4,
-          "say": "Line four imports publish from the queue module."
+          "say": "Line four imports the publish function from the queue module."
         },
         {
           "lines": 8,
-          "say": "Line eight puts the limiter on the orders path. The window is sixty thousand milliseconds. That is one minute. Max is twenty."
+          "say": "Line eight puts the limiter on the orders path. The window is sixty thousand milliseconds, which is one minute. The maximum is twenty."
         },
         {
           "lines": 12,
-          "say": "Line twelve runs after the order is saved. It publishes an order created event with the order id and the total."
+          "say": "Line twelve runs after the order is saved. Line twelve sends an order created event with the order id and the total."
         }
       ]
     },
     {
       "type": "code",
       "chapter": "Real prices",
-      "narration": "This is the orders service. It used a fixed price of ten. Now it asks the pricing service.",
+      "narration": "This is the orders service. The service used a fixed price of ten. Now the service asks the pricing service.",
       "hunkId": "h6",
       "calloutText": "Pricing lookups run in parallel with Promise.all.",
       "steps": [
         {
           "lines": 2,
-          "say": "Line two imports price for from the pricing module."
+          "say": "Line two imports the function that looks up a price."
         },
         {
           "oldLines": "9-10",
-          "say": "The old lines nine and ten are removed. They priced every item at ten and saved the order."
+          "say": "The old lines nine and ten are removed. The old lines priced every item at ten and saved the order."
         },
         {
           "lines": 10,
-          "say": "The new line ten rejects an empty order. It throws an error."
+          "say": "The new line ten refuses an empty order. Line ten throws an error."
         },
         {
           "lines": 11,
-          "say": "Line eleven asks the price of each item. The calls run at the same time with Promise all."
+          "say": "Line eleven asks the price of each item. All the price lookups run at the same time."
         },
         {
           "lines": 12,
-          "say": "Line twelve adds up quantity times price for each item. That is the total."
+          "say": "Line twelve adds up quantity times price for each item. The sum is the total."
         },
         {
           "lines": 13,
@@ -403,7 +403,7 @@
       "steps": [
         {
           "lines": "1-3",
-          "say": "The publish function takes a topic and a payload. Today it only logs them. A real queue would come later."
+          "say": "The publish function takes a topic and the data to send. Today the function only logs them. A real queue would come later."
         }
       ]
     },
@@ -415,11 +415,11 @@
       "steps": [
         {
           "oldLines": "1-3",
-          "say": "The old throttle kept a map of counts in memory. It counted hits per key."
+          "say": "The old throttle kept a count for each key in memory."
         },
         {
           "oldLines": "4-6",
-          "say": "It allowed up to one hundred hits per key. Memory is lost on restart, so Redis replaces it."
+          "say": "The old throttle allowed up to one hundred hits per key. Memory is lost on restart, so Redis replaces the throttle."
         }
       ]
     },
@@ -428,7 +428,7 @@
       "chapter": "What is tested",
       "title": "Test coverage",
       "subject": "rateLimit, createOrder and the orders route",
-      "narration": "This change adds no tests. Nothing checks the limit, the prices, or the event. The gaps are listed here.",
+      "narration": "This change adds no tests. Nothing checks the limit, the prices, or the event. The screen lists what is missing.",
       "cases": [],
       "gaps": [
         "The twenty first request in a minute from one IP gets 429 with a Retry-After header",

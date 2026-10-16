@@ -5,7 +5,7 @@
     {
       "type": "intent",
       "chapter": "Why this change",
-      "narration": "This merge request protects the orders endpoint from bursts of traffic, prices orders from the pricing service, and emits an event for every new order. It adds no tests, so the review rests on reading the code.",
+      "narration": "This change does three things to the orders API. It stops one visitor from flooding the API with requests. It prices each order with real prices. And it announces every new order to other services. There are no tests, so the code needs a careful read.",
       "summary": "Add Redis-backed rate limiting to POST /orders and publish order.created events.",
       "risk": "medium",
       "bullets": [
@@ -17,7 +17,7 @@
     {
       "type": "graph",
       "chapter": "Where it fits",
-      "narration": "Requests now pass through a rate limiter backed by Redis before they reach the orders service.",
+      "narration": "Here are the parts involved. The new piece is a rate limiter, which caps how many requests one visitor can send.",
       "nodes": [
         {
           "id": "client",
@@ -105,13 +105,13 @@
             "api->redis",
             "redis"
           ],
-          "say": "The API first counts each request in Redis."
+          "say": "The limiter keeps its counts in Redis, a shared in-memory store, so every server sees the same numbers."
         },
         {
           "focus": "redis",
           "mark": "arrow",
           "note": "no fallback",
-          "say": "Nothing catches a Redis error, so if Redis is down, every order fails."
+          "say": "The limiter does not handle a Redis outage. If Redis is down, the limiter fails, and so does every order."
         },
         {
           "focus": [
@@ -120,14 +120,14 @@
             "pricing",
             "pg"
           ],
-          "say": "Only then does the orders service price the items and save the order."
+          "say": "The orders service, the code that saves orders, now asks the pricing module for prices before it writes to the database."
         },
         {
           "focus": [
             "api->events",
             "events"
           ],
-          "say": "After the save, the API publishes to the new event queue."
+          "say": "The event queue is also new. Other services read the queue to learn about new orders."
         }
       ]
     },
@@ -135,7 +135,7 @@
       "type": "sequence",
       "chapter": "Who calls whom",
       "title": "POST /orders",
-      "narration": "Here is the new call order.",
+      "narration": "Here is the order of calls for one order request.",
       "participants": [
         {
           "id": "client",
@@ -225,15 +225,15 @@
       "steps": [
         {
           "focus": "0-2",
-          "say": "A request first goes to the limiter, which asks Redis to count it."
+          "say": "The request reaches the rate limiter first. The limiter asks Redis to add one to this visitor's count."
         },
         {
           "focus": "3-5",
-          "say": "Only then does the orders service price the items and save the order."
+          "say": "Then the orders service gets the prices and saves the order."
         },
         {
           "focus": "6-7",
-          "say": "After the insert, the API publishes the event without waiting for anyone to consume it, and answers the client."
+          "say": "After the save, the API puts an order created message on the queue. The API waits until the queue accepts the message, not until another service acts on it. Then the API answers the client."
         }
       ]
     },
@@ -241,7 +241,7 @@
       "type": "flow",
       "chapter": "A request, step by step",
       "title": "POST /orders",
-      "narration": "Follow one request. The limiter counts it, the service prices the items and saves the order, and the API publishes a compact event before responding.",
+      "narration": "Now follow the data. The client sends a user and a list of items. The limiter turns the visitor's IP address into a count of requests this minute. The saved order comes back with a total and a pending status. The message to the queue carries only the order's id and total.",
       "steps": [
         {
           "actor": "Client",
@@ -273,7 +273,7 @@
       "type": "er",
       "chapter": "Data model",
       "title": "orders",
-      "narration": "The orders table changes in two columns, and its relations stay as they were.",
+      "narration": "The orders table changes in two ways.",
       "entities": [
         {
           "id": "users",
@@ -353,25 +353,25 @@
       "steps": [
         {
           "focus": "orders.status",
-          "say": "It gains a status column, and every new order starts as pending."
+          "say": "The orders table gets a new status column. Every new order starts as pending."
         },
         {
           "focus": "orders.total",
-          "say": "The total is now computed from the pricing service instead of the request."
+          "say": "The order total now comes from the pricing module, not from what the client sent."
         },
         {
           "focus": [
             "users->orders",
             "orders->items"
           ],
-          "say": "Each order still belongs to one user and holds many line items."
+          "say": "Each order still belongs to one user, and still has many items."
         }
       ]
     },
     {
       "type": "code",
       "chapter": "The limiter",
-      "narration": "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit. Past twenty requests it answers 429 with a Retry-After header. Otherwise the request moves on.",
+      "narration": "The rate limiter counts each visitor's requests in the current minute, by IP address. The count starts again at zero every new minute, because Redis deletes the count when the minute ends. Past twenty requests, the limiter answers with a too many requests error, and says when to try again. Otherwise the request goes on.",
       "hunkId": "h2",
       "focusLinesAfter": [
         "11-12",
@@ -399,19 +399,19 @@
     {
       "type": "code",
       "chapter": "Wiring it in",
-      "narration": "The server mounts the limiter on the orders route and publishes an event after the order is saved.",
+      "narration": "The API puts the rate limiter in front of the orders route, the address clients send new orders to. The API also announces each order after the order is saved.",
       "hunkId": "h3",
       "steps": [
         {
           "lines": 8,
-          "say": "The orders route mounts the limiter with a one minute window and a limit of twenty.",
+          "say": "The limiter allows each visitor twenty requests in every one-minute window.",
           "mark": "circle",
           "token": "max: 20",
           "note": "per IP, per minute"
         },
         {
           "lines": 12,
-          "say": "After the insert, the route publishes order created and waits for it."
+          "say": "After the order is saved, the route sends the order created message, and waits until the queue accepts the message."
         }
       ],
       "calloutText": "publish runs after the insert, so a queue outage fails the request.",
@@ -420,7 +420,7 @@
     {
       "type": "code",
       "chapter": "Real prices",
-      "narration": "Order totals used a hard-coded price of ten. They now look up each SKU in parallel, and empty orders are rejected up front.",
+      "narration": "The order total used to price every item at ten. Now the orders service asks the pricing module for each item's real price. The service looks up all the prices at once, instead of one after another. An order with no items is refused before anything is saved.",
       "hunkId": "h6",
       "calloutText": "Pricing lookups run in parallel with Promise.all."
     },
@@ -429,7 +429,7 @@
       "chapter": "What is tested",
       "title": "Test coverage",
       "subject": "rateLimit, createOrder and the orders route",
-      "narration": "This change adds no tests. Nothing checks that the twenty first request in a minute gets too many requests, what happens when Redis or the queue is down, or that empty orders are rejected.",
+      "narration": "This change adds no tests. Nothing checks that a visitor's requests after the first twenty in a minute are refused. Nothing checks what happens when Redis or the queue is down. And nothing checks that an empty order is refused.",
       "cases": [],
       "gaps": [
         "The twenty first request in a minute from one IP gets 429 with a Retry-After header",

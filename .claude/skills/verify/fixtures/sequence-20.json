@@ -164,7 +164,7 @@
         },
         {
           "focus": "3-4",
-          "say": "On the first hit the key gets its expiry, and past twenty the request is refused."
+          "say": "The first request starts a one-minute count. Past twenty requests, the request is refused."
         },
         {
           "focus": "5-8",
@@ -174,15 +174,15 @@
           "focus": "9-13",
           "mark": "circle",
           "note": "after the insert",
-          "say": "The order is saved, then the event is published, and the client gets a 201."
+          "say": "The order is saved, then the event is sent, and the client hears the order was created."
         },
         {
           "focus": "14-18",
-          "say": "The twenty first request in the same minute is refused before any other work."
+          "say": "Request number twenty-one in the same minute is refused before any other work."
         },
         {
           "focus": 19,
-          "say": "The client waits for the Retry-After seconds."
+          "say": "The client waits as long as the answer told it to."
         }
       ]
     },
