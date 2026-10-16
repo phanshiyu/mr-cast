@@ -11,7 +11,7 @@ const NODE_W_MAX = 440;
 export const NODE_H = 104;
 /** A start or end pill is lower than a card; a decision's diamond is taller, as tall as its question needs. */
 export const TERMINAL_H = 80;
-const DECISION_HEIGHTS = [140, 160, 180, 200];
+const DECISION_HEIGHTS = [120, 140, 160, 180, 200];
 /** A decision's question keeps at least this size before its diamond grows. */
 const DECISION_COMFORT = 20;
 /** Room around a decision's question inside its diamond, and around a terminal's words inside its pill. */
@@ -28,6 +28,8 @@ const LANE_MARGIN = 14;
 /** Room around a group's nodes inside its box, and the strip its name sits in. */
 export const GROUP_PAD = 26;
 export const GROUP_HEAD = 44;
+/** Least gap between layers where a group's border crosses it, so edges have room on both sides of the border. */
+const BORDERED_GAP = 64;
 /** Between one group's box and the next band of nodes. */
 const BAND_GAP = 40;
 
@@ -85,11 +87,11 @@ function nodeTexts(nodes: readonly GraphNode[], w: number, diamond: number): Map
 
 /**
  * The layout runs in layer coordinates: `u` along the layers (the direction edges point) and `v` across
- * them. Left to right, u is x; top to bottom, u is y. Each direction has its own node extents and gaps.
+ * them. Left to right, u is x; top to bottom, u is y. Each direction has its own node extents and gaps;
+ * along u each layer takes what its own nodes need (Placed.uSize).
  */
 interface Axes {
-  /** Node extent along u and along v. */
-  U: number;
+  /** Node extent across the layers. */
   V: number;
   /** Least gap between layers; a gap grows to hold its labels and group strips. */
   uGap: number;
@@ -106,8 +108,8 @@ interface Axes {
 /** Top to bottom the frame is short for its layers, so the layers keep less margin there. */
 function axesFor(direction: GraphDirection, nodeW: number, cellH: number): Axes {
   return direction === 'LR'
-    ? { U: nodeW, V: cellH, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
-    : { U: cellH, V: nodeW, uGap: 64, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
+    ? { V: cellH, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
+    : { V: nodeW, uGap: 48, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
 }
 
 export interface Pt {
@@ -166,8 +168,6 @@ export interface GraphLayout {
   groups: PlacedGroup[];
   layerCount: number;
   nodeWidth: number;
-  /** Height of every node's cell: a card's, or a diamond's when the graph has decisions. */
-  cellHeight: number;
   /** Height of the graph's diamonds. */
   diamondHeight: number;
   /** Each node's text, by node id: a title and, on a card or step, a caption. */
@@ -185,6 +185,8 @@ interface Placed {
   layer: number;
   u: number;
   v: number;
+  /** Its layer's extent along u: the node width left to right, the tallest shape in the layer top to bottom. */
+  uSize: number;
   iu: number;
   iv: number;
 }
@@ -326,13 +328,13 @@ function tAtU(u0: number, u3: number, u: number): number {
  * before or after the in-between nodes along v instead. Points here are (u, v) in `x` and `y`.
  */
 function skipLane(axes: Axes, a: Placed, b: Placed, all: readonly Placed[]): number | null {
-  const { U, V, vGap } = axes;
+  const { V, vGap } = axes;
   const between = all.filter((n) => n.layer > a.layer && n.layer < b.layer);
   if (!between.length) return null;
   const v0 = a.v + V / 2;
   const v1 = b.v + V / 2;
   const blocked = between.some((n) => {
-    const t = (n.u + U / 2 - (a.u + U)) / (b.u - (a.u + U));
+    const t = (n.u + n.uSize / 2 - (a.u + a.uSize)) / (b.u - (a.u + a.uSize));
     const v = v0 + (v1 - v0) * t;
     return v > n.v - LANE_MARGIN && v < n.v + V + LANE_MARGIN;
   });
@@ -345,9 +347,9 @@ function skipLane(axes: Axes, a: Placed, b: Placed, all: readonly Placed[]): num
 
 /** `labelU` is where along u a label between neighbouring layers sits best. */
 function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: readonly Placed[], labelU: number): Curve {
-  const { U, V, xy } = axes;
+  const { V, xy } = axes;
   if (b.layer > a.layer) {
-    const p0 = { x: a.u + U - a.iu, y: a.v + V / 2 };
+    const p0 = { x: a.u + a.uSize - a.iu, y: a.v + V / 2 };
     const p3 = { x: b.u + b.iu, y: b.v + V / 2 };
     const lane = skipLane(axes, a, b, all);
     if (lane !== null) {
@@ -368,15 +370,15 @@ function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: r
   }
   if (b.layer === a.layer) {
     const down = b.v > a.v;
-    const p0 = { x: a.u + U / 2 + 40, y: down ? a.v + V - a.iv : a.v + a.iv };
-    const p3 = { x: b.u + U / 2 + 40, y: down ? b.v + b.iv : b.v + V - b.iv };
-    const bulge = U / 2 + 10;
+    const p0 = { x: a.u + a.uSize / 2 + 40, y: down ? a.v + V - a.iv : a.v + a.iv };
+    const p3 = { x: b.u + b.uSize / 2 + 40, y: down ? b.v + b.iv : b.v + V - b.iv };
+    const bulge = a.uSize / 2 + 10;
     return cubic(axes, p0, { x: p0.x + bulge, y: p0.y }, { x: p3.x + bulge, y: p3.y }, p3);
   }
   const spanned = all.filter((n) => n.layer >= b.layer && n.layer <= a.layer);
   const top = Math.min(...spanned.map((n) => n.v)) - LOOP_LIFT;
-  const p0 = { x: a.u + U / 2, y: a.v + a.iv };
-  const p3 = { x: b.u + U / 2, y: b.v + b.iv };
+  const p0 = { x: a.u + a.uSize / 2, y: a.v + a.iv };
+  const p3 = { x: b.u + b.uSize / 2, y: b.v + b.iv };
   return cubic(axes, p0, { x: p0.x, y: top }, { x: p3.x, y: top }, p3);
 }
 
@@ -479,9 +481,7 @@ function layoutPass(
   const heightOf = (n: GraphNode) => shapeHeight(shapeOf(n), diamond);
   const cellH = Math.max(...nodes.map(heightOf));
   const axes = axesFor(direction, nodeW, cellH);
-  const { U, V, vGap, xy } = axes;
-  /** A node's shape along u and across v, and how far it sits inside its cell. */
-  const insets = (n: GraphNode) => (direction === 'LR' ? { iu: 0, iv: (V - heightOf(n)) / 2 } : { iu: (U - heightOf(n)) / 2, iv: 0 });
+  const { V, vGap, xy } = axes;
   const ids = new Set(nodes.map((n) => n.id));
   const valid = edges.filter((e) => ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
   const back = backEdges(nodes, valid);
@@ -494,6 +494,9 @@ function layoutPass(
   for (const n of nodes) columns[layer(n.id)]!.push(n);
   orderLayers(columns, dag);
   const bands = bandsOf(nodes, columns);
+  /** Each layer's extent along u, and how far a node sits inside its cell. */
+  const uSizes = columns.map((col) => (direction === 'LR' ? nodeW : Math.max(TERMINAL_H, ...col.map(heightOf))));
+  const insets = (n: GraphNode, l: number) => (direction === 'LR' ? { iu: 0, iv: (V - heightOf(n)) / 2 } : { iu: (uSizes[l]! - heightOf(n)) / 2, iv: 0 });
   const bandOf = (n: GraphNode) => bands.find((b) => b.name === (n.group ?? null) && b.first <= layer(n.id) && layer(n.id) <= b.last)!;
   for (const col of columns) col.sort((a, b) => bandOf(a).track - bandOf(b).track);
 
@@ -522,20 +525,21 @@ function layoutPass(
   const gaps = Array.from({ length: layerCount - 1 }, (_, l) => {
     const between = valid.filter((e) => sizes.has(e) && Math.min(layer(e.from), layer(e.to)) === l && Math.abs(layer(e.to) - layer(e.from)) === 1);
     const label = Math.max(0, ...between.map((e) => axes.labelU(sizes.get(e)!)));
-    return Math.max(axes.uGap, closing(l) + (label ? label + 2 * LABEL_CLEAR : 0) + Math.max(opening(l + 1), ARROW_CLEAR)) + (extra[l] ?? 0);
+    const floor = closing(l) || opening(l + 1) ? Math.max(axes.uGap, BORDERED_GAP) : axes.uGap;
+    return Math.max(floor, closing(l) + (label ? label + 2 * LABEL_CLEAR : 0) + Math.max(opening(l + 1), ARROW_CLEAR)) + (extra[l] ?? 0);
   });
   const uStart = [axes.uPad + opening(0)];
-  gaps.forEach((gap, l) => uStart.push(uStart[l]! + U + gap));
+  gaps.forEach((gap, l) => uStart.push(uStart[l]! + uSizes[l]! + gap));
   const uOf = (l: number) => uStart[l]!;
   /** Midway between whatever closes the gap after layer `l` and whatever opens the next layer. */
-  const labelU = (l: number) => (uOf(l) + U + closing(l) + uOf(l + 1) - opening(l + 1)) / 2;
+  const labelU = (l: number) => (uOf(l) + uSizes[l]! + closing(l) + uOf(l + 1) - opening(l + 1)) / 2;
 
   const placed = new Map<string, Placed>();
   columns.forEach((col, l) => {
     bands.forEach((band) => {
       const members = col.filter((n) => bandOf(n) === band);
       members.forEach((node, i) => {
-        placed.set(node.id, { node, layer: l, u: uOf(l), v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap), ...insets(node) });
+        placed.set(node.id, { node, layer: l, u: uOf(l), uSize: uSizes[l]!, v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap), ...insets(node, l) });
       });
     });
   });
@@ -543,7 +547,7 @@ function layoutPass(
   const groups = named.map((band): PlacedGroup => {
     const { first, last } = band;
     const a = xy(uOf(first) - GROUP_PAD - headU, band.v0 - GROUP_PAD - headV);
-    const b = xy(uOf(last) + U + GROUP_PAD, band.v0 + extent(band.size) + GROUP_PAD);
+    const b = xy(uOf(last) + uSizes[last]! + GROUP_PAD, band.v0 + extent(band.size) + GROUP_PAD);
     const incoming = valid.filter((e) => placed.get(e.to)!.node.group === band.name && layer(e.to) === first && placed.get(e.from)!.node.group !== band.name);
     const from = incoming.map((e) => placed.get(e.from)!.v + V / 2);
     const enterBefore = from.length > 0 && from.reduce((sum, v) => sum + v, 0) / from.length < band.v0 + extent(band.size) / 2;
@@ -555,7 +559,7 @@ function layoutPass(
   const all = [...placed.values()];
   /** A node's shape in layout units. */
   const shapeBox = (p: Placed) => {
-    const size = xy(U - 2 * p.iu, V - 2 * p.iv);
+    const size = xy(p.uSize - 2 * p.iu, V - 2 * p.iv);
     return { ...xy(p.u + p.iu, p.v + p.iv), width: size.x, height: size.y };
   };
   const obstacles: Rect[] = [
@@ -588,7 +592,7 @@ function layoutPass(
   const routed = valid.map((e, i): RoutedEdge => ({ edge: e, index: edges.indexOf(e), d: curves[i]!.d, label: labels.get(i) ?? null, mid: curves[i]!.at(curves[i]!.t0), points: curves[i]!.points }));
 
   const hasSameLayer = valid.some((e) => layer(e.to) === layer(e.from));
-  const uSize = uOf(layerCount - 1) + U + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
+  const uSize = uOf(layerCount - 1) + uSizes[layerCount - 1]! + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
   const vSize = cursor + PAD;
   const size = xy(uSize, vSize);
   const layout = {
@@ -600,7 +604,6 @@ function layoutPass(
     groups,
     layerCount,
     nodeWidth: nodeW,
-    cellHeight: cellH,
     diamondHeight: diamond,
     texts: nodeTexts(nodes, nodeW, diamond),
     width: size.x,
@@ -613,22 +616,24 @@ function layoutPass(
 const fitScale = (layout: GraphLayout, box: { width: number; height: number }) => Math.min(box.width / layout.width, box.height / layout.height, MAX_SCALE);
 
 /**
- * The layout that draws largest in `box`. Cards widen from NODE_W towards NODE_W_MAX while that lets
- * every title take a larger font (one size shared by all cards) and does not shrink the graph: top to
- * bottom a wider card only spends room across a frame that is wide for its height.
+ * The layout that draws largest in `box`. Shapes widen from NODE_W towards NODE_W_MAX while that draws the
+ * graph larger, or lets every title take a larger font (one size shared by all cards) without drawing it
+ * smaller. Top to bottom the frame is wide for the layers, so a wider diamond, which holds its question
+ * on fewer lines and so is lower, draws the whole flowchart larger; left to right a wider shape never does.
  */
 export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[], direction: GraphDirection, box: { width: number; height: number }): { layout: GraphLayout; scale: number } {
   const base = layoutGraph(nodes, edges, direction, NODE_W);
   const floor = fitScale(base, box);
   const boxed = nodes.flatMap((n) => (shapeOf(n) === 'card' ? [n] : shapeOf(n) === 'step' ? [{ ...n, icon: undefined }] : []));
+  const lowers = (w: number) => decisionHeight(nodes, w) < decisionHeight(nodes, NODE_W);
   let best = { layout: base, scale: floor, titleFont: sharedTitleSize(boxed, NODE_W, NODE_H, 'large') };
   for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
     const font = sharedTitleSize(boxed, w, NODE_H, 'large');
-    if (font <= best.titleFont) continue;
+    if (font <= best.titleFont && !(direction === 'TB' && lowers(w))) continue;
     const layout = layoutGraph(nodes, edges, direction, w);
     const scale = fitScale(layout, box);
     if (scale < floor * 0.995) break;
-    best = { layout, scale, titleFont: font };
+    if (scale > best.scale * 1.005 || (font > best.titleFont && scale >= best.scale * 0.995)) best = { layout, scale, titleFont: Math.max(font, best.titleFont) };
   }
   return { layout: best.layout, scale: best.scale };
 }
