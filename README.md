@@ -210,11 +210,13 @@ The narration is written to be heard once, like one person explaining the change
 | `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
+| `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them. Each step can `set` cell values, `move` a pointer or range, and `show` or `hide` one, at its start: a changed value slides out and the new one in, briefly lit, and a pointer slides to its cell. |
+| `memory` | Call frames with their variables on the left and objects with their fields on the right. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
 | `review` | In [review mode](#review-mode), every flag worst first, with its severity, file and line, and claim, under "Claude's review". |
 
 Each spoken text is a segment: a lead, the voice, and a tail. The narration waits until the scene has drawn in, which takes 1 second, or the scene type's build time plus 0.3 seconds when longer. Most diagrams take 1.5 seconds, so their voice starts at 1.8. Each step's items light up 0.5 seconds before its voice and stay lit 1.2 seconds after it. Without a voice clip, a segment reads at 130 words per minute and holds 1.5 seconds after, 3 seconds at least. The pace scales the reading speed and every pause.
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `array` and `memory` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
 
 ### Steps
 
@@ -233,6 +235,8 @@ Diagrams take `steps` too, so the video can move the viewer's attention as it ex
 | `timeline` | An event index, an `"a-b"` range of them, or a span `"span:wait"`. The playhead moves to the furthest one. |
 | `files` | A path in the tree. |
 | `tests` | A case index, a case's name, or a gap `"gap:0"`. |
+| `array` | A cell index, an `"a-b"` range of cells, a pointer `"ptr:lo"`, or a range `"range:window"`. A step that changes something and has no `focus` focuses what it changes. |
+| `memory` | A frame `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. A step that changes something and has no `focus` focuses what it changes. |
 | `intent` | A bullet index. |
 
 A `flow` scene gives each of its own steps a `say` instead, and a step becomes current just before its words. Without steps, a diagram is fully drawn before the narration starts. `validate` checks every ref and suggests the closest name when one matches nothing.

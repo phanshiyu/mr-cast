@@ -165,6 +165,49 @@ const TARGETS = {
     },
     names: (scene) => [...list(scene.cases).map((c) => c?.name), ...list(scene.gaps).map((_, i) => `gap:${i}`)],
   },
+  array: {
+    resolve(scene, ref) {
+      const named = (prefix, items, key) => {
+        if (typeof ref !== 'string' || !ref.startsWith(prefix)) return undefined;
+        const name = ref.slice(prefix.length).trim();
+        return list(items).some((item) => item?.name === name) ? [`${key}:${name}`] : null;
+      };
+      const marker = named('ptr:', scene.pointers, 'ptr') ?? named('range:', scene.ranges, 'rg');
+      if (marker !== undefined) return marker;
+      const r = indexRange(ref);
+      return r && r[1] < list(scene.values).length ? range(r[0], r[1]).map((i) => `c:${i}`) : null;
+    },
+    names: (scene) => [
+      `0-${Math.max(0, list(scene.values).length - 1)}`,
+      ...list(scene.pointers).map((p) => `ptr:${p?.name}`),
+      ...list(scene.ranges).map((r) => `range:${r?.name}`),
+    ],
+  },
+  memory: {
+    resolve(scene, ref) {
+      if (typeof ref !== 'string') return null;
+      const frames = list(scene.frames);
+      const objects = list(scene.objects);
+      if (ref.startsWith('frame:')) {
+        const name = ref.slice(6).trim();
+        return frames.some((f) => f?.name === name) ? [`fr:${name}`] : null;
+      }
+      if (objects.some((o) => o?.id === ref)) return [`o:${ref}`];
+      const has = (record, key) => Boolean(record) && typeof record === 'object' && Object.hasOwn(record, key);
+      for (let at = ref.indexOf('.'); at > 0; at = ref.indexOf('.', at + 1)) {
+        const [owner, name] = [ref.slice(0, at), ref.slice(at + 1)];
+        if (frames.some((f) => f?.name === owner && has(f.vars, name))) return [`v:${owner}/${name}`];
+        if (objects.some((o) => o?.id === owner && has(o.fields, name))) return [`f:${owner}/${name}`];
+      }
+      return null;
+    },
+    names: (scene) => [
+      ...list(scene.frames).map((f) => `frame:${f?.name}`),
+      ...list(scene.frames).flatMap((f) => Object.keys(f?.vars ?? {}).map((v) => `${f?.name}.${v}`)),
+      ...list(scene.objects).map((o) => o?.id),
+      ...list(scene.objects).flatMap((o) => Object.keys(o?.fields ?? {}).map((k) => `${o?.id}.${k}`)),
+    ],
+  },
   intent: {
     resolve: (scene, ref) => (isIndex(ref, list(scene.bullets).length) ? [`b:${ref}`] : null),
     names: (scene) => list(scene.bullets).map((_, i) => String(i)),

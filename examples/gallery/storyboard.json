@@ -195,6 +195,46 @@
         "A payment that succeeds while the timeout job is cancelling the same order",
         "Orders already in the refunded state when the migration runs"
       ]
+    },
+    {
+      "type": "array",
+      "chapter": "Timeout sweep",
+      "title": "Pending orders, oldest first",
+      "label": "pending",
+      "narration": "The timeout job walks the pending orders oldest first, four orders at a time.",
+      "values": ["31 h", "27 h", "25 h", "24 h", "9 h", "6 h", "2 h", "1 h"],
+      "pointers": [{ "name": "cursor", "at": 0 }],
+      "ranges": [{ "name": "page", "from": 0, "to": 3 }],
+      "steps": [
+        { "focus": "range:page", "say": "The first page holds the four oldest pending orders." },
+        { "set": { "0": "[cancelled]{bad}", "1": "[cancelled]{bad}", "2": "[cancelled]{bad}" }, "say": "Three of those orders have waited more than a day, so the job cancels them." },
+        { "focus": 3, "mark": "circle", "note": "exactly 24 h: kept", "say": "The order at exactly twenty four hours stays pending, because the check asks for more than a day." },
+        { "move": { "cursor": 4, "page": "4-7" }, "say": "Then the cursor moves past the page, and the job reads the next four orders." },
+        { "focus": "4-7", "say": "None of these orders has waited a day yet, so the job stops until its next run." }
+      ]
+    },
+    {
+      "type": "memory",
+      "chapter": "Shared items",
+      "title": "Why the order changed with the cart",
+      "narration": "The checkout holds the customer's cart, and the cart points at a list of items.",
+      "frames": [
+        { "name": "checkout", "vars": { "cart": { "ref": "c1" }, "order": "null" } },
+        { "name": "create_order", "vars": { "cart": { "ref": "c1" } }, "hidden": true }
+      ],
+      "objects": [
+        { "id": "c1", "type": "Cart", "fields": { "items": { "ref": "l1" }, "total": "$12" } },
+        { "id": "l1", "type": "list", "fields": { "0": "mug", "1": "tea" } },
+        { "id": "o1", "type": "Order", "fields": { "items": { "ref": "l1" }, "status": "pending" }, "hidden": true },
+        { "id": "l2", "type": "list", "fields": { "0": "mug", "1": "tea" }, "hidden": true }
+      ],
+      "steps": [
+        { "show": ["frame:create_order"], "say": "The checkout calls the create order function and passes it the cart." },
+        { "show": ["o1"], "hide": ["frame:create_order"], "set": { "checkout.order": { "ref": "o1" } }, "say": "The create order function builds an order from the cart's items and hands the order back." },
+        { "focus": ["l1", "c1.items", "o1.items"], "mark": "circle", "note": "one list, two owners", "say": "Before the fix, the order kept the cart's own list, so both arrows lead to one list." },
+        { "set": { "l1.1": "cake" }, "say": "When the customer then swaps tea for cake in the cart, the order changes too." },
+        { "show": ["l2"], "set": { "o1.items": { "ref": "l2" } }, "say": "The fix gives the order its own copy of the list, so later cart edits leave the order alone." }
+      ]
     }
   ]
 }

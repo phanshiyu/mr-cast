@@ -2,6 +2,7 @@
 
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
+import { changesState } from '../../shared/state-steps.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 
 const LINE_WIDTH = 110;
@@ -219,6 +220,15 @@ function sceneGist(scene, hunks, storyboard) {
     }
     case 'review':
       return titled(formatFindings(storyboard.findings));
+    case 'array': {
+      const changes = (scene.steps ?? []).filter(changesState).length;
+      const extra = [scene.pointers?.length ? count(scene.pointers, 'pointer') : '', scene.ranges?.length ? count(scene.ranges, 'range') : '', changes ? `${changes} changing` : ''].filter(Boolean);
+      return titled(`${scene.label ? `${scene.label}, ` : ''}${count(scene.values, 'cell')}${extra.map((e) => `, ${e}`).join('')}`);
+    }
+    case 'memory': {
+      const changes = (scene.steps ?? []).filter(changesState).length;
+      return titled(`${count(scene.frames, 'frame')}, ${count(scene.objects, 'object')}${changes ? `, ${changes} changing` : ''}`);
+    }
     default:
       return '';
   }

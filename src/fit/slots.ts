@@ -62,4 +62,12 @@ export const SLOTS = {
   fileNote: { ...SANS, name: 'file note', weight: 400, size: 24, min: 16, lines: 1, lineHeight: 1.15, width: 0, fix: 'shorten the note to a few words' },
   decision: { ...LABEL, name: 'decision', weight: 650, size: 24, min: 15, lines: 3, lineHeight: 1.15, width: 0, fix: 'ask a shorter question, e.g. "Cache hit?", and put the detail in the narration' },
   terminal: { ...LABEL, name: 'start or end', weight: 650, size: 26, min: 16, lines: 2, lineHeight: 1.15, width: 0, fix: 'shorten it to a few words, e.g. "Order placed"' },
+  arrayLabel: { ...MONO, name: 'array name', weight: 600, size: 26, min: 18, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the array name' },
+  arrayValue: { ...MONO, name: 'cell value', weight: 650, size: 40, min: 16, lines: 2, lineHeight: 1.15, width: 0, fix: 'shorten the value, or show fewer cells so each is wider' },
+  pointerName: { ...MONO, name: 'pointer name', weight: 700, size: 22, min: 14, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the pointer name, e.g. "lo" or "head"' },
+  rangeLabel: { ...SANS, name: 'range name', weight: 700, size: 19, min: 19, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the range name, e.g. "window"' },
+  frameName: { ...MONO, name: 'frame name', weight: 700, size: 24, min: 16, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the function name' },
+  objectType: { ...MONO, name: 'object type', weight: 700, size: 21, min: 15, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the type, e.g. "list" or "Cart"' },
+  memoryName: { ...MONO, name: 'variable or field name', weight: 500, size: 22, min: 15, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the name' },
+  memoryValue: { ...MONO, name: 'value', weight: 650, size: 22, min: 15, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the value, or say the rest in the narration' },
 } satisfies Record<string, Slot>;

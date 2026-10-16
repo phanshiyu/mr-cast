@@ -1,0 +1,58 @@
+{
+  "title": "State scenes at their edges",
+  "scenes": [
+    {
+      "type": "array",
+      "chapter": "Binary search",
+      "label": "nums",
+      "narration": "Binary search looks for five in sixteen sorted numbers.",
+      "values": [1, 3, 4, 6, 8, 9, 11, 13, 15, 17, 20, 22, 25, 27, 30, 33],
+      "pointers": [{ "name": "lo", "at": 0, "tone": "good" }, { "name": "hi", "at": 15, "tone": "warn" }, { "name": "mid", "at": 7, "hidden": true }],
+      "ranges": [{ "name": "still possible", "from": 0, "to": 15 }],
+      "steps": [
+        { "show": ["ptr:mid"], "say": "The middle number is thirteen, which is more than five." },
+        { "move": { "hi": 6, "still possible": "0-6" }, "say": "So the high end moves left of the middle." },
+        { "move": { "mid": 3 }, "say": "The new middle is six, still more than five." },
+        { "move": { "hi": 2, "still possible": "0-2" }, "say": "The high end moves again." },
+        { "move": { "mid": 1 }, "say": "Now the middle is three, which is less than five." },
+        { "move": { "lo": 2, "mid": 2, "still possible": "2-2" }, "say": "The low end, the middle and the high end all meet on four." },
+        { "move": { "lo": 3 }, "hide": ["range:still possible"], "focus": ["ptr:lo", "ptr:hi"], "mark": "arrow", "note": "lo passed hi: not found", "say": "Four is less than five, so the low end passes the high end, and the search stops." }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "Ring buffer",
+      "label": "ring",
+      "narration": "A ring buffer of six slots keeps the latest events.",
+      "values": ["a", "b", "c", "", "", ""],
+      "pointers": [{ "name": "head", "at": 0 }, { "name": "tail", "at": 3 }],
+      "steps": [
+        { "set": { "3": "d", "4": "e", "5": "f" }, "move": { "tail": 6 }, "say": "Three more events fill the buffer, and the tail runs past the last slot." },
+        { "focus": "ptr:tail", "mark": "circle", "note": "off by one", "say": "Without wrapping around, the tail points at a slot that does not exist." },
+        { "move": { "tail": 0 }, "set": { "0": "g" }, "say": "With the wrap, the next event overwrites the oldest slot." }
+      ]
+    },
+    {
+      "type": "memory",
+      "chapter": "Linked list",
+      "narration": "A linked list of three nodes, and a cursor walking it.",
+      "frames": [
+        { "name": "main", "vars": { "head": { "ref": "n1" }, "cur": { "ref": "n1" } } },
+        { "name": "append(n4)", "vars": { "node": { "ref": "n4" }, "last": { "ref": "n3" } }, "hidden": true }
+      ],
+      "objects": [
+        { "id": "n1", "type": "Node", "fields": { "val": 1, "next": { "ref": "n2" } } },
+        { "id": "n2", "type": "Node", "fields": { "val": 2, "next": { "ref": "n3" } } },
+        { "id": "n3", "type": "Node", "fields": { "val": 3, "next": "None" } },
+        { "id": "n4", "type": "Node", "fields": { "val": 4, "next": "None" }, "hidden": true }
+      ],
+      "steps": [
+        { "set": { "main.cur": { "ref": "n2" } }, "say": "The cursor moves to the second node." },
+        { "set": { "main.cur": { "ref": "n3" } }, "say": "Then to the third." },
+        { "show": ["frame:append(n4)", "n4"], "say": "A call to append makes a fourth node." },
+        { "set": { "n3.next": { "ref": "n1" } }, "focus": "n3.next", "mark": "circle", "note": "should be n4", "say": "The bug links the last node back to the first, which makes a loop." },
+        { "hide": ["frame:append(n4)"], "say": "Append returns, and the fourth node is left with nothing pointing at it." }
+      ]
+    }
+  ]
+}
