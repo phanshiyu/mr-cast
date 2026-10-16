@@ -58,10 +58,12 @@ Every question is multiple choice. Put the recommended option first and end its 
 
    When you already know the audience is someone new to this code, recommend "Slower" and list it first, unless a last choice comes first.
 
-The answers become the run's settings. Pass them when you start the run, and the run keeps them for every later command:
+The answers become the flags, written `<flags>` in every command below:
 
 - Audience: `--audience familiar`, `--audience new` or `--audience overview`.
 - Pace: `--pace normal`, `--pace slower` or `--pace faster`, or `--no-voice` for "No voice, subtitles only".
+
+For example, `<flags>` is `--audience new --pace slower`. Pass `<flags>` to every `extract`, `init`, `validate`, `outline`, `play`, `render` and `still` command. A flag applies to its own command only, and the run does not keep it. A command without the flags checks and times the video for a familiar audience at the normal pace, and voices it.
 
 mr-cast remembers these two answers, and `status` shows them next time.
 
@@ -87,7 +89,7 @@ Write `storyboard.json` in the run's directory, the one `extract` or `init` prin
 Then check it.
 
 ```bash
-{{MR_CAST}}/bin/mr-cast validate
+{{MR_CAST}}/bin/mr-cast validate <flags>
 ```
 
 Fix every error and rerun until it prints `✓ storyboard ok`. Resolve the warnings the reference names too. Treat other warnings as advice.
@@ -112,7 +114,7 @@ The viewer has not read the diff or your explanation. A good walkthrough lets th
 - Use a `sequence` scene when the order of calls matters, such as a request path, a new hop, async work, or retries. List messages in time order, use `return` for responses and `async` for fire-and-forget, and use a self-message (`from` equal to `to`) for significant internal work. Keep it to 6 participants. A longer sequence keeps every message readable and scrolls under its pinned participants, the camera following the steps, so walk one with more than about 12 messages in `steps`, each a few messages long. Past 24 messages split it into two scenes. Prefer `flow` when the data's shape is the story, and `sequence` when who calls whom is.
 - Use an `er` scene for a data model or a schema change. Show each table that matters and its directly related tables, with keys and the fields in play.
 - Use a `state` scene for a lifecycle or status machine. Find the states in enums, status columns, or reducers. Set `initial`, mark terminal states `final`, and label each transition with its event or guard. Keep it to 10 states.
-- Use a `mermaid` scene only for a diagram no other scene covers, such as a class diagram, gantt chart, git graph, or pie chart. Keep it to about 12 nodes, and run `{{MR_CAST}}/bin/mr-cast still <sceneIndex>` to confirm it renders and fits.
+- Use a `mermaid` scene only for a diagram no other scene covers, such as a class diagram, gantt chart, git graph, or pie chart. Keep it to about 12 nodes, and run `{{MR_CAST}}/bin/mr-cast still <sceneIndex> <flags>` to confirm it renders and fits.
 - Use a `table` scene for facts that line up in rows, such as config, API parameters, error codes, or a decision matrix. For the branch, mark rows the diff adds or removes with `change`, and write a value it changes as `{ "before": "0", "after": "3" }`. List row indexes in `highlight` in the order the narration names them. Keep it to 10 rows and 6 columns, and put it before the code with the diagrams.
 - Use a `chart` scene when a number is the story, such as latency, size, memory, a count, or a limit. Use `bar` for categories like p50, p95 and p99, and `line` for a trend. Give two series named `before` and `after` to get a change badge on each label, and set `better` to `lower` or `higher` so the badges read green or red. Use real measured or documented values, never invented ones. Set `annotation` on the one point the narration explains.
 - Use a `timeline` scene when timing is the story, such as retries and backoff, timeouts, expiry windows, a schedule, or a rollout plan. Place each event at its real time in one `unit`, and draw waits and windows as `spans`. Keep it to 8 events and 4 spans.
@@ -137,7 +139,7 @@ The viewer has not read the diff or your explanation. A good walkthrough lets th
 
 ### Simple mode
 
-Use simple mode when the audience is `new`. The run records it, and `validate` and `outline` then say `simple style` and check the rules below. Phrases like "explain like I'm stupid", "ELI5", "simple", "line by line", "for a non-native speaker" or "I'm new to this" answer the audience this way when the user asked for a video. They never start a video by themselves.
+Use simple mode when the audience is `new`. With `--audience new` in `<flags>`, `validate` and `outline` say `simple style` and check the rules below. Phrases like "explain like I'm stupid", "ELI5", "simple", "line by line", "for a non-native speaker" or "I'm new to this" answer the audience this way when the user asked for a video. They never start a video by themselves.
 
 The viewer is new to the codebase, reads English as a second language, or both. They want to understand every line. A long video is fine.
 
@@ -166,7 +168,7 @@ Use overview mode when the audience is `overview`. The viewer wants to know what
 ## 5. Check the plan with the user
 
 ```bash
-{{MR_CAST}}/bin/mr-cast outline
+{{MR_CAST}}/bin/mr-cast outline <flags>
 ```
 
 For the player, show the outline and go straight to step 6. The player reloads as you edit, so the user can ask for changes while it plays.
@@ -177,22 +179,22 @@ Before an MP4, show the outline as it prints, with at most one sentence of your 
 - "Make it shorter". Description: "Cut minor scenes and trim the narration."
 - "Make it longer". Description: "Add more steps, diagrams and edge cases."
 
-The user can pick Other to describe any other change. Apply the change and rerun `validate`. If the change was substantial, show the new outline and ask again. Render once they pick "Render it". Skip this question when the user said "just make it", "use the defaults" or "no questions".
+The user can pick Other to describe any other change. Apply the change and rerun `validate <flags>`. If the change was substantial, show the new outline and ask again. Render once they pick "Render it". Skip this question when the user said "just make it", "use the defaults" or "no questions".
 
 ## 6. Show it
 
 Start the player as a background command so it keeps running.
 
 ```bash
-{{MR_CAST}}/bin/mr-cast play
+{{MR_CAST}}/bin/mr-cast play <flags>
 ```
 
-`play` and `render` voice the narration first, in the run's voice and at its pace. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. After that, each new or changed scene takes a few seconds to speak. If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
+`play` and `render` voice the narration first, in the voice and at the pace their flags give. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. After that, each new or changed scene takes a few seconds to speak. If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
 
-A flag on any command changes the run's settings from then on: `--pace slower|normal|faster`, `--no-voice`, and `--voice <name>` to pick a voice and turn the voice back on: `af_heart` (default), `af_bella`, `am_michael`, `bf_emma`, or `bm_george`.
+To change the pace or turn the voice off, change `<flags>` and pass the new flags to every command after that. To pick another voice, add `--voice <name>` to `<flags>`: `af_heart` (default), `af_bella`, `am_michael`, `bf_emma`, or `bm_george`.
 
 `play` prints `mr-cast player: http://127.0.0.1:<port>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
 
-For an MP4, run `{{MR_CAST}}/bin/mr-cast render` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the run's directory, named after the storyboard title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, with a chapter marker for each chapter title, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different runs can run at the same time.
+For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the run's directory, named after the storyboard title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, with a chapter marker for each chapter title, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different runs can run at the same time.
 
-To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast still [sceneIndex...]` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a large hunk or snippet.
+To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast still [sceneIndex...] <flags>` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a large hunk or snippet.

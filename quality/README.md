@@ -41,7 +41,7 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
        quality/collect.sh /path/to/runs/current
 
    For each repo with a storyboard it runs `mr-cast validate` (result in `<fixture>/validate.status`, output in `validate.txt`),
-   renders a still of every scene with `mr-cast still` (stills ignore voice-over, so `--no-voice` does not apply),
+   renders a still of every scene with `mr-cast still` (a still is its scene's settled end state, so the pace and voice flags do not change it),
    and writes `<fixture>/packet/scene-NN.png` and `packet.md` (chapter, type, narration per scene; no diff, no code text, no skill).
    Fixtures that fail validation get no packet.
 

@@ -5,11 +5,11 @@ The video retells an explanation you gave in this conversation, such as how a su
 ## Start the run
 
 ```bash
-{{MR_CAST}}/bin/mr-cast init --title "How the rate limiter works" --audience <a> --pace <p>
+{{MR_CAST}}/bin/mr-cast init --title "How the rate limiter works" <flags>
 ```
 
 - Give a short title for what you explained. The run's directory is `.mr-cast/<title-slug>/` in the git repository, or in the current directory outside one. `init` prints it.
-- Pass the settings from step 2: `--audience`, and `--pace` or `--no-voice`.
+- `<flags>` are the flags from step 2: `--audience`, and `--pace` or `--no-voice`.
 - Running `init` again with the same title reopens the run and keeps its storyboard and snippets. Add `--reset` to start it over. A different title starts a new run.
 
 Run `init` and `snippet` from the directory your explanation is about, usually the repository root, because snippet paths are relative to it.

@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spokenTexts, wordCount } from '../../shared/timing.mjs';
-import { DEFAULT_VOICE, PACES, narrationKey, paceOf } from '../../shared/voice.mjs';
+import { PACES, narrationKey } from '../../shared/voice.mjs';
 import { cacheDir } from './cache.mjs';
 import { UserError } from './errors.mjs';
 import { withLock } from './lock.mjs';
@@ -27,7 +27,7 @@ const isPauses = (n) => Number.isFinite(n) && n > 0 && n <= 4;
 /**
  * The pace --pace and --speed ask for, as { speed?, pauses? }: --pace names both, and --speed, a number
  * from 0.5 to 2 kept to two decimals so clip names stay stable, overrides its speed. What neither sets
- * stays as voiceover.json has it.
+ * is absent, for the normal pace.
  */
 export function parsePace({ pace, speed }) {
   if (pace !== undefined && !Object.hasOwn(PACES, pace)) throw new UserError(`--pace must be one of ${Object.keys(PACES).join(', ')} (got "${pace}")`);
@@ -39,9 +39,6 @@ export function parsePace({ pace, speed }) {
   }
   return chosen;
 }
-
-/** The pace `requested` asks for, falling back to the saved voiceover's, then the normal pace. */
-export const resolvePace = (requested, saved) => ({ ...paceOf(saved), ...requested });
 
 const isSentence = (s) => Number.isInteger(s?.words) && s.words >= 0 && Number.isFinite(s.start) && Number.isFinite(s.end) && s.end >= s.start;
 
@@ -158,13 +155,11 @@ function writeAtomic(file, data) {
 
 /**
  * Makes .mr-cast/voiceover.json and audio/*.wav match what the storyboard speaks: generates missing
- * clips, drops clips no scene uses, and returns the voiceover. The model loads only when a clip is
- * missing. `voice` and each part of `pace` default to what voiceover.json has, then af_heart at the normal pace.
+ * clips in `voice` at `pace`, drops clips no scene uses, and returns the voiceover. The model loads only when
+ * a clip is missing. voiceover.json records what its clips were made with; it never chooses the voice or pace.
  */
-export async function ensureVoiceover({ dataDir, storyboard, voice, pace: requested = {}, onProgress }) {
+export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace: { speed, pauses }, onProgress }) {
   const previous = readVoiceover(dataDir);
-  const chosen = voice ?? previous?.voice ?? DEFAULT_VOICE;
-  const { speed, pauses } = resolvePace(requested, previous);
   const clips = {};
   const missing = new Map();
   for (const text of storyboard.scenes.flatMap(spokenTexts)) {

@@ -59,6 +59,6 @@ Preconditions:
 - `render` and `voice` without `--no-voice` need the Kokoro model in `~/.cache/mr-cast/models`. A voice failure prints `warning: continuing without voice-over` and still exits 0, so check for the audio stream with `probe` rather than trusting the exit code.
 - `extract` names the base from `origin/HEAD`, then `main`, `master`, and so on. The demo repo has no remote, so it picks `main`.
 - A re-extract whose hunks are identical prints no note at all. Only changed or vanished hunk ids are reported.
-- `--no-voice` is a run setting, so it sticks: after **Render silent**, `render --name short` stays silent until `--voice af_heart`. That is why the voiced render comes first.
+- `--no-voice` applies to its own command only: `render --name short` after **Render silent** is voiced again.
 - Commands without `--name` or `--dir` use the current run, the one the last `extract` or `init` made. `extract --working --name wip` makes `wip` current, so later steps that mean the branch's run need `--name feature-rate-limit` or another plain `extract`.
 - A directory needs `meta.json` to be a run that `--name` finds. A hand-made one copies it from another run.
