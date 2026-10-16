@@ -50,9 +50,11 @@ export const PlanPage: React.FC<{
   hasVideo: boolean;
   title: string;
   branch?: string;
+  /** An explanation has no tests scene at the end. */
+  explanation: boolean;
   /** Keys move between rows and change picks only while the page is on screen. */
   active: boolean;
-}> = ({ plan, built, token, hasVideo, title, branch, active }) => {
+}> = ({ plan, built, token, hasVideo, title, branch, explanation, active }) => {
   const [local, setLocal] = useState(plan);
   const [row, setRow] = useState(0);
   const [save, setSave] = useState<Save>({ status: 'idle' });
@@ -183,7 +185,7 @@ export const PlanPage: React.FC<{
           />
         ))}
       </ol>
-      <FixedRow text="The tests, and what is left to check." />
+      {explanation ? null : <FixedRow text="The tests, and what is left to check." />}
 
       <p className="mt-6 hidden text-xs text-slate-500 sm:block">
         <Kbd>↑</Kbd> <Kbd>↓</Kbd> topic · <Kbd>1</Kbd> <Kbd>2</Kbd> <Kbd>3</Kbd> skip, brief, deep · <Kbd>←</Kbd> <Kbd>→</Kbd> how it is shown

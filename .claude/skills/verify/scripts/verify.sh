@@ -170,7 +170,7 @@ serve_start() {
     sleep 0.2
   done
   [ -n "$url" ] || die "player $label printed no URL in 120s; see $dir/$label.err"
-  # The token rides in the fragment; recipes append paths to the bare origin.
+  # The token is in the URL fragment; recipes append paths to the bare origin.
   echo "${url%%/#*}" | sed 's|/plan#.*||' >"$dir/$label.url"
   echo "$url" >"$dir/$label.token-url"
   if [ "$sub" = plan ]; then echo "$url"; else cat "$dir/$label.url"; fi

@@ -53,7 +53,8 @@ It is read-only and exits 1 on any `FAIL`. It checks five things: the launcher r
 | What | Command |
 | --- | --- |
 | Run the CLI as a user, with a transcript | `$V mrc $RUN <label> -- <mr-cast args>` runs in `$DEMO`. It writes `$EV/<label>.txt` (the command, stdout, stderr and `--- exit N`), echoes the output, and exits with the CLI's code. Add `--cwd <dir under $RUN>` before `--` to run elsewhere, for example outside any git repo. |
-| Start the player | `URL=$($V play-start $RUN <label> --no-voice [--port N] [--name x \| --dir d])` starts `mr-cast play --no-open` on the current run in the background and prints `http://127.0.0.1:<port>` once it serves. |
+| Start the player | `URL=$($V play-start $RUN <label> --no-voice [--port N] [--name x \| --dir d])` starts `mr-cast play --no-open` on the current run in the background and prints `http://127.0.0.1:<port>` once it serves. The URL with the plan's write token is in `$RUN/work/play/<label>.token-url`. |
+| Start the plan page | `PURL=$($V plan-start $RUN <label>)` starts `mr-cast plan --no-open` and prints its URL with the token, `http://127.0.0.1:<port>/plan#token=<hex>`. Stop it with `play-stop`. |
 | Drive the player | `$V browse $RUN <label> "$URL/" wait:<text> press:ArrowRight shot:<name> ...` writes `$EV/<label>/<name>.png`, `$EV/<label>/<name>.txt` (visible page text) and `$EV/<label>/console.txt`. Steps are `wait:`, `click:`, `press:`, `sleep:`, `run:` and `shot:`, documented at the top of `scripts/browse.mjs`. |
 | Stop the player | `$V play-stop $RUN [label]` copies its stdout and stderr to `$EV/play-<label>.*.txt`. |
 | Inspect a video | `$V probe <mp4>` prints duration and streams. `$V frame <mp4> <seconds> <out.png>` extracts one frame. |
@@ -69,6 +70,7 @@ Fixtures:
 - **`.claude/skills/verify/fixtures/layers.json`.** Four layers scenes: items with a returning path and no steps, seven layers of five items with pen marks, three bare layers walked in steps, and a middleware chain a cache answers early; use it with an empty `hunks.json` (see `features/diagrams.md`).
 - **`.claude/skills/verify/fixtures/sequence-20.json`.** Two 20-message sequences, one walked in steps with a pen mark and one without steps; use it with `examples/demo/hunks.json`.
 - **`.claude/skills/verify/fixtures/state-scenes.json`.** A 16-cell binary search with three pointers meeting on one cell and a range that shrinks then hides, a ring buffer whose tail runs past the end, and a linked list in memory with a call frame that comes and goes and a reference back to the first node; use it with a `hunks.json` of `{}` (see `features/diagrams.md`).
+- **`.claude/skills/verify/fixtures/plan/{plan,storyboard}.json`.** A five-topic plan of the demo diff (one deep, three brief, one skipped, one with a single view) and the demo storyboard with each scene tagged by topic; use them after `extract` (see `features/plan.md`).
 - **`examples/review/storyboard.json`.** A reviewed walkthrough of the repository `scripts/review-demo.sh <dir>` creates (branch `feature/password-reset`, a planted bug, risk and nit). Use it after `extract` in that repository (see `features/review-mode.md`).
 - **`.claude/skills/verify/fixtures/explain-storyboard.json`.** An explanation of `src/api/rate-limit.ts` (snippet `s1` = lines 1-20).
 

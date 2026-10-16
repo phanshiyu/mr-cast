@@ -37,5 +37,6 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Diagram nodes and focus](./diagrams.md) covers icons, captions, change and key marks on nodes, graph edges, layouts, groups and flowchart shapes, scrolling long sequences, focus steps on every diagram, their validation hints, and 0.10 storyboards.
 - [Text fit and inline markup](./text-fit.md) covers wrapping and shrinking every display text instead of cutting it, the fit errors in `validate`, inline markup, the measured font metrics, and the checks that keep text from being clipped.
 - [Review mode](./review-mode.md) covers `findings`, flagged code steps, the `review` recap scene, `review.md`, its validation, and that a storyboard without findings renders as before.
+- [The plan page](./plan.md) covers `plan.json`, `mr-cast plan`, picking depth and view with the mouse and keys, live reload, the write token, topics in `validate` and `outline`, and the player's Plan tab.
 - [Browser player](./player.md) covers `play`: serving, chapter navigation, live reload, voiced poster, port fallback, the Host check and load errors.
 - [Skills and upkeep](./skills-and-upkeep.md) covers `install-skill`, the move from a 0.11 install, the version-change refresh, `uninstall-skill`, `prune`, `upgrade` and the update notice.

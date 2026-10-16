@@ -11,6 +11,7 @@ import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFram
 import { Walkthrough } from './Walkthrough';
 
 interface Meta {
+  mode?: 'diff' | 'explain';
   base?: string;
   head?: string;
   branch?: string;
@@ -213,6 +214,7 @@ export const App: React.FC = () => {
       hasVideo={Boolean(walkthrough)}
       title={walkthrough?.storyboard.title ?? 'What the video will cover'}
       branch={branch}
+      explanation={meta?.mode === 'explain'}
       active={shown === 'plan'}
     />
   );
@@ -337,7 +339,7 @@ const Tabs: React.FC<{ tab: Tab; onChange: (tab: Tab) => void }> = ({ tab, onCha
 );
 
 /** The plan page, or what stands in for it while plan.json is missing or has problems. */
-const PlanView: React.FC<{ plan: PlanData | null; token: string | null; hasVideo: boolean; title: string; branch?: string; active: boolean }> = ({ plan, ...props }) => {
+const PlanView: React.FC<{ plan: PlanData | null; token: string | null; hasVideo: boolean; title: string; branch?: string; explanation: boolean; active: boolean }> = ({ plan, ...props }) => {
   if (!plan) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">

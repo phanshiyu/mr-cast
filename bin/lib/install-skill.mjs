@@ -1,10 +1,11 @@
 // Installs the mr-cast, mr-cast-prune and mr-cast-upgrade skills into the Claude config dir, pointing at
 // this install, and records them in a manifest so the next install or uninstall-skill removes whatever this
-// version wrote that the next one no longer does. The storyboard schema is copied from src/types.ts so the
-// skill cannot drift from the player.
+// version wrote that the next one no longer does. The storyboard schema is copied from src/types.ts, and the
+// plan's views from shared/views.mjs, so the skill cannot drift from the player.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { VIEWS } from '../../shared/views.mjs';
 
 const MANIFEST = '.mr-cast-install.json';
 /** What versions before the manifest installed, relative to the Claude config dir. */
@@ -31,6 +32,13 @@ function storyboardTypes(root) {
   if (start < 0 || end < 0) throw new Error('src/types.ts: storyboard section markers not found');
   return types.slice(start, end).replace(/^export /gm, '').trim();
 }
+
+/** The plan's views as a Markdown table: the key plan.json names, what the user reads, and the scenes that draw it. */
+const viewsTable = () => [
+  '| View | The user reads | Scene |',
+  '| --- | --- | --- |',
+  ...Object.entries(VIEWS).map(([key, view]) => `| \`${key}\` | ${view.label} | ${view.scenes.map((t) => `\`${t}\``).join(', ')} |`),
+].join('\n');
 
 const fromMrCast = (file) => {
   try {
@@ -88,7 +96,8 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
   const fill = (template) => fs
     .readFileSync(template, 'utf8')
     .replaceAll('{{MR_CAST}}', () => root)
-    .replace('{{STORYBOARD_TYPES}}', () => schema);
+    .replace('{{STORYBOARD_TYPES}}', () => schema)
+    .replace('{{PLAN_VIEWS}}', viewsTable);
 
   const skill = (name, file = 'SKILL.md') => [path.join(claudeDir, 'skills', name, file), fill(path.join(root, 'skill', name, file))];
   const targets = [
