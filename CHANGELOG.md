@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.0
+
+- **Node 22.12 or newer.** mr-cast now needs Node 22.12 or newer, and Node 24 LTS is recommended. Node 20 reached end of life in April 2026, and Mermaid 12 needs 22.12. Node 22, 24 and 26 are tested. The launcher no longer avoids Node 26: the render hang seen with Homebrew's Node 26 no longer reproduces, with Homebrew's 26.8 or nvm's 26.12.
+- **No known vulnerabilities.** `npm audit` reported 9 (3 high) in 0.15, from the image library sharp and from onnxruntime's install helper, both pulled in by the voice. It reports none now, for this repository and for a plain `npm install` of the package. Transformers.js is 4.3 (with onnxruntime 1.30 and sharp 0.35), Mermaid is 12.2, and the rest are on their latest releases. Voices, stills and videos are unchanged. Every example renders the same pixels as in 0.15, and Mermaid diagrams keep their layout and flat look. A narration clip can run up to about 0.2 seconds shorter or longer, from the new onnxruntime, with the same words.
+- **Smaller install.** The voice wrapper is now part of mr-cast instead of the `kokoro-js` package, which held back the security fixes. It downloads a voice (about 0.5 MB) into `~/.cache/mr-cast/models` the first time you use it, instead of shipping all 54 voices (27 MB).
+- **Dependency upgrades rebuild the video bundle.** The cached render bundle was reused while `src/` was unchanged, so an upgrade that changed only dependencies, such as React or Mermaid, rendered with the old ones until `mr-cast prune cache:bundle`. The cache key now includes the package version and the lockfile.
+- `mr-cast upgrade` also updates a `pnpm add -g` install, with pnpm.
+- For contributors: the repository uses pnpm (`corepack enable`, then `pnpm install`), CI runs on every push and pull request, and Renovate keeps dependencies current. See [SECURITY.md](SECURITY.md).
+
 ## 0.15.0
 
 - **Settings flags apply to one command.** `--audience`, `--simple`, `--pace`, `--speed`, `--voice` and `--no-voice` no longer stick to a run. Since 0.12 they were saved in the run's `meta.json` (and the pace and voice in `voiceover.json` since 0.9), so an `outline --pace faster` to compare lengths left every later render faster. Now each flag applies to the command it is given to, and a command without it uses the default: audience familiar, normal pace, voice `af_heart`, voiced. Pass the same flags to each command; the skill now does, and the commands `extract` and `init` suggest next carry them. Clips voiced at another pace or in another voice stay in the run, so going back to them voices nothing again. Older `meta.json` files keep their `settings` and `style` keys, which are ignored. The audience and pace you chose last are still offered first in the questions, marked "(Last time)". `--voice` with `--no-voice` is now an error, and `voice` takes `--no-voice` and then voices nothing, so the same flags can go to every command.
