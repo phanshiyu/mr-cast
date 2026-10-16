@@ -10,7 +10,7 @@ Flag what a reviewer would read and say "wait, that's wrong". This is not a deep
 - A missing `await`, or a missing error path where a call can fail.
 - A security slip, such as a secret written to a log, unchecked input, or a check that can be skipped.
 - A risky path that no test covers, when it is easy to get wrong.
-- A broken API: a renamed or removed export, or a changed signature that callers still use.
+- A broken API: a renamed export or a changed signature that callers in the diff still use.
 - A confusing name, or a typo in a message a user sees.
 
 Leave out style preferences, design choices the change makes on purpose, and code the diff does not touch.
@@ -35,7 +35,7 @@ List them in the storyboard's `findings`, worst first. Each one has:
 
 - `id`, a short name such as `"order-before-payment"`.
 - `severity`, `bug`, `risk` or `nit`.
-- `file` and `line`, a new-file line or `"a-b"` range from the hunk index, on a line the diff shows.
+- `file` and `line`, a new-file line or `"a-b"` range of a few lines from the hunk index, on a line the diff shows. For a problem in removed code, point at the nearest new-file line of its hunk.
 - `claim`, what looks wrong in one short line, such as "the order is saved before the payment is checked".
 - `evidence`, one short line on what the code does and the input that breaks it, such as "`createOrder` runs before `chargeCard`, so a declined card leaves an unpaid order". It goes into `review.md`, not on screen.
 

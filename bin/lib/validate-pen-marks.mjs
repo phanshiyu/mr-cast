@@ -19,7 +19,7 @@ export function checkPenMarks(s, p, hunks, errors, warnings) {
     if (!step || typeof step !== 'object') return;
     const q = `${p}.steps[${i}]`;
     // A flagged step draws its finding's mark, a circle unless it names another.
-    if (step.mark === undefined && step.flag === undefined) {
+    if (step.mark === undefined && (step.flag === undefined || !code)) {
       if (step.note !== undefined) errors.push(`${q}.note: needs a mark to sit beside; add "mark": "arrow" to point the note at the step's focus`);
       if (step.token !== undefined) errors.push(`${q}.token: needs a mark to draw on it, such as "mark": "circle"`);
       return;

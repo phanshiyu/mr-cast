@@ -1,23 +1,23 @@
 // Checks review mode: the storyboard's `findings`, the code steps that `flag` them, and the review scene
 // that recaps them. A finding must sit on a line the diff shows and carry its evidence.
 
-import { expandLineRefs, focusRanges } from '../../shared/focus.mjs';
+import { focusRanges } from '../../shared/focus.mjs';
 import { plainText } from '../../shared/markup.mjs';
 import { NOTE_MAX } from '../../shared/pen-marks.mjs';
-import { SEVERITIES, findingLocation } from '../../shared/review.mjs';
+import { SEVERITIES, findingLocation, lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
 
 /** Past this many the recap is an audit, not the few things that clearly look wrong. */
 const FINDINGS_MAX = 8;
 /** One short line of evidence; longer reads as an essay in review.md. */
 const EVIDENCE_MAX = 240;
+/** A finding names a line or a short range, never most of a file. */
+const FINDING_LINES_MAX = 50;
 /** Words that say a flag is an opinion, not a fact the explanation states. */
-const OPINION = /\b(i think|i'd|i would|looks?|seems?|worth|might|may|probably|suspect|appears?|not sure|check|wonder)\b/i;
+const OPINION = /\b(i think|i'd|i would|looks? (off|wrong|risky|odd|broken|like)|seems?|worth|might|may|probably|suspect|appears?|not sure|wonder)\b/i;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
-const LINE_REF = /^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$/;
-const isLineRef = (v) => (Number.isInteger(v) && v > 0) || (typeof v === 'string' && LINE_REF.test(v));
-const span = (lines) => focusRanges([...lines]).map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(', ');
+const ranges = (lines) => focusRanges([...lines]).map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`)).join(', ');
 
 /** New-file lines each changed file shows, across its diff hunks. */
 function diffLines(hunks) {
@@ -43,9 +43,11 @@ function checkFinding(f, q, files, ids, errors, warnings) {
   if (!isStr(f.file)) return errors.push(`${q}.file: required, the file's path as the diff names it`);
   const shown = files.get(f.file);
   if (!shown) return errors.push(`${q}.file: "${f.file}" is not a file this diff changes${didYouMean(f.file, [...files.keys()])}`);
-  if (!isLineRef(f.line)) return errors.push(`${q}.line: ${JSON.stringify(f.line)} is not a line number or "a-b" range`);
-  const missing = [...expandLineRefs([f.line])].filter((n) => !shown.has(n));
-  if (missing.length) errors.push(`${q}.line: ${f.file} line ${span(missing)} is not in the diff, which shows its lines ${span(shown)}; point at a line the diff shows`);
+  const span = lineSpan(f.line);
+  if (!span) return errors.push(`${q}.line: ${JSON.stringify(f.line)} is not a line number or "a-b" range`);
+  if (span[1] - span[0] >= FINDING_LINES_MAX) return errors.push(`${q}.line: ${f.line} spans ${span[1] - span[0] + 1} lines; point at the line or the few lines that look wrong`);
+  const missing = Array.from({ length: span[1] - span[0] + 1 }, (_, i) => span[0] + i).filter((n) => !shown.has(n));
+  if (missing.length) errors.push(`${q}.line: ${f.file} line ${ranges(missing)} is not in the diff, which shows its lines ${ranges(shown)}; point at a line the diff shows`);
 }
 
 /** Every code step that flags a finding: on the finding's file, over one of its lines, worded as an opinion. */
@@ -61,12 +63,12 @@ function checkFlags(sb, hunks, byId, errors, warnings) {
       const finding = byId.get(step.flag);
       if (!finding) return errors.push(`${q}: no finding has id ${JSON.stringify(step.flag)}${typeof step.flag === 'string' ? didYouMean(step.flag, [...byId.keys()]) : ''}`);
       flagged.add(finding.id);
-      const hunk = hunks[s.hunkId];
+      const hunk = typeof s.hunkId === 'string' && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;
       if (!hunk) return;
       if (hunk.file !== finding.file) return errors.push(`${q}: "${finding.id}" is about ${finding.file}, but this scene shows ${hunk.file}`);
       if (step.lines === undefined) return errors.push(`${q}: "${finding.id}" points at new-file lines; flag it on a step with lines, not oldLines`);
-      const own = expandLineRefs([step.lines]);
-      if (isLineRef(finding.line) && ![...expandLineRefs([finding.line])].some((n) => own.has(n))) {
+      const [own, at] = [lineSpan(step.lines), lineSpan(finding.line)];
+      if (own && at && (at[1] < own[0] || own[1] < at[0])) {
         errors.push(`${q}: the step highlights lines ${step.lines}, but "${finding.id}" is at ${findingLocation(finding)}; flag it on the step that shows that line`);
       }
       if (step.note === undefined && isStr(finding.claim) && plainText(finding.claim).trim().length > NOTE_MAX) {

@@ -86,3 +86,8 @@ test('review.md lists the findings worst first as file:line bullets with their e
   );
   assert.equal(reviewMarkdown({ title: 'Reset', findings: [] }).endsWith('No findings. Nothing in the change looked wrong.\n'), true);
 });
+
+test('a huge line range is reported, not expanded', async () => {
+  const errors = await errorsOf(board({ findings: [{ ...finding, line: '2-99999999' }] }));
+  assert.ok(errors.includes('findings[0].line: 2-99999999 spans 99999998 lines; point at the line or the few lines that look wrong'), errors.join('\n'));
+});

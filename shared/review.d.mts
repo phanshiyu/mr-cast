@@ -8,6 +8,10 @@ export declare const FLAG_MARK: PenMark;
 export declare function isReviewed(storyboard: Storyboard): boolean;
 /** The finding a code step flags, or undefined. */
 export declare function flaggedFinding(storyboard: Storyboard, step: CodeStep): Finding | undefined;
+/** A line number or "a-b" range as [first, last], or null when it is neither. Never expands the range. */
+export declare function lineSpan(ref: unknown): [number, number] | null;
+/** The first line of review.md, by which mr-cast knows a review.md is its own. */
+export declare const REVIEW_HEADING: string;
 /** "src/a.ts:12" or "src/a.ts:12-14". */
 export declare function findingLocation(finding: Finding): string;
 /** The findings worst first, keeping the written order within a severity. */

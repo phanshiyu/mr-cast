@@ -20,7 +20,7 @@ import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
-import { isReviewed, reviewMarkdown } from '../shared/review.mjs';
+import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -143,11 +143,26 @@ async function loadProject(dir, settings) {
   return { dir, hunks, storyboard, result, style, review, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
+/** Whether `file` is absent or a review.md mr-cast wrote, so mr-cast may replace or remove it. */
+function ownReview(file) {
+  try {
+    return fs.readFileSync(file, 'utf8').startsWith(REVIEW_HEADING);
+  } catch (err) {
+    if (err.code === 'ENOENT') return true;
+    throw err;
+  }
+}
+
 /**
  * review.md, the findings of a reviewed storyboard as file:line bullets, so they can be acted on. A storyboard
- * without findings has none, so an earlier one is removed. Returns the file written, or null.
+ * without findings has none, so one mr-cast wrote earlier is removed. A file of the same name that mr-cast did
+ * not write is left alone. Returns the file written, or null.
  */
 function writeReview(file, storyboard, meta) {
+  if (!ownReview(file)) {
+    if (isReviewed(storyboard)) console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the review is not saved`);
+    return null;
+  }
   if (!isReviewed(storyboard)) {
     fs.rmSync(file, { force: true });
     return null;
@@ -434,7 +449,7 @@ async function render(argv) {
   progress.done();
   const video = written ?? outFile;
   // review.md is in the run's directory; a video saved elsewhere gets its own copy beside it.
-  const review = !isReviewed(storyboard) || path.dirname(path.resolve(video)) === path.resolve(dir) ? null : writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir));
+  const review = path.dirname(path.resolve(video)) === path.resolve(dir) ? null : writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir));
   console.log(video);
   if (review) console.log(review);
 }

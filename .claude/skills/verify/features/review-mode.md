@@ -7,7 +7,7 @@ A storyboard with `findings` is a reviewed walkthrough: besides explaining the b
 - `review-validate` checks each finding: its `file` is a changed file, every `line` is a new-file line of that file's diff hunks, `severity` is `bug`, `risk` or `nit`, and `claim` and `evidence` are set. A `flag` must name a finding, sit on a code step with `lines` in the finding's file, and those lines must hold the finding's line. With findings there must be one `review` scene, and with `"findings": []` none. It warns about a finding no step flags, a flagged step whose `say` has no opinion word ("I think", "looks", "worth"), a recap before the last code or tests scene, and more than 8 findings.
 - `review-flag` draws a flagged step's pen mark in the severity colour, a circle unless the step sets `mark`, with the note `<severity>: <note>`, the note defaulting to the plain claim. A claim over 40 characters needs the step's own `note`.
 - `review-recap` draws the `review` scene: a row per finding with a severity pill, `file:line` and the claim, fitted like every text, and fails `validate` when a claim does not fit.
-- `review-md` writes `review.md` on every valid command, and deletes it when the storyboard has no `findings`. `validate` prints `wrote <path>` before its verdict, which ends `· review: 1 bug, 1 risk, 1 nit`. `outline` adds `review: ...` and lists each code scene's flags.
+- `review-md` writes `review.md` on every valid command, and deletes one it wrote when the storyboard has no `findings`. `validate` prints `wrote <path>` before its verdict, which ends `· review: 1 bug, 1 risk, 1 nit`. `outline` adds `review: ...` and lists each code scene's flags.
 
 ## How to get to it (user POV)
 
@@ -27,5 +27,5 @@ Preconditions: the baseline in `README.md`. The example has its own repository.
 ## Gotchas
 
 - The skill must not show the example's answers to an agent under test: `references/review.md` uses an orders and payments example, not the password reset.
-- `review.md` is written by every command that loads a valid storyboard, not only `validate`, so a stale one never outlives its findings.
+- `review.md` is written by every command that loads a valid storyboard, not only `validate`, and removed by one whose storyboard has no findings. A failing `validate` leaves it as it was. mr-cast replaces or removes only a `review.md` that starts `# Review: `; any other file of that name is kept, with a warning when there are findings to save.
 - A flagged step counts as a marked step for timing (the pen lead) and for the 2-marks-a-scene warning.
