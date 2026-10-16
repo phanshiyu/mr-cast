@@ -38,7 +38,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-verify-chrome-'));
 const chrome = spawn(chromePath(), [
   '--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--mute-audio',
-  '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1920,1080', 'about:blank',
+  '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1920,1080',
+  // Ubuntu 24.04 blocks the unprivileged user namespaces Chrome's sandbox needs, as on GitHub's runners.
+  ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
+  'about:blank',
 ], { stdio: 'ignore' });
 
 let ws;

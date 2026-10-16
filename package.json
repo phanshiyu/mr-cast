@@ -43,7 +43,8 @@
     "demo": "bash scripts/demo.sh",
     "install-skill": "node bin/mr-cast.mjs install-skill",
     "test": "node --test \"test/*.test.mjs\"",
-    "prepack": "pnpm run typecheck && pnpm run build"
+    "prepack": "pnpm run typecheck && pnpm run build",
+    "validate:examples": "node scripts/validate-examples.mjs"
   },
   "engines": {
     "node": ">=22.12"

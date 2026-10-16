@@ -103,6 +103,10 @@ It stops every player this run started (by recorded pid, never by process name),
 
 `still` of 2 scenes takes about 1 s. `render --no-voice` of a 2-scene, 24 s cut takes about 8 s. `voice` for 2 clips takes about 9 s. A full 9-scene demo render with voice takes a few minutes. Prove a render on a cut-down storyboard (see `features/diff-walkthrough.md`) unless full length is the point.
 
+## CI
+
+`.github/workflows/ci.yml` runs typecheck, build, unit tests (`pnpm test`, Node 22, 24 and 26), `pnpm validate:examples`, `pnpm audit`, an npm install of the packed tarball, and `scripts/smoke.sh` on Linux: stills of the gallery and demo, one voiced clip, and the player text scan of `fixtures/stress/fits.json` checked by `text-check.mjs`. Run `scripts/smoke.sh <dir>` locally for the same check. It is a gate, not proof of a feature. Drive the recipes here for that.
+
 ## Maintaining this skill
 
 `/maintain-verification-skill` audits the feature map against the source and fixes drift. Add a feature file when a user-facing command or player behavior lands.
