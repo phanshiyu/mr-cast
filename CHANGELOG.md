@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.0
+
+- **Pick what the video covers before it is made.** After the Audience, Pace and Review questions, Claude cuts the change into 4 to 8 topics, named by what they do, and opens the plan page in your browser. Each topic has Skip, Brief and Deep, and two or three ways to show it in plain words, such as "Who calls whom, in order" or "Before vs after", with Claude's suggestion preselected. A topic with one fitting view says so in a line instead. The length estimate at the top follows your picks, each change saves at once, and the keys work too: up and down, 1, 2 and 3, left and right. Go back to the terminal and press Enter. The page replaces the Focus question.
+- **`mr-cast plan`** checks `plan.json` and serves the page. Claude's edits to `plan.json` reload it and briefly outline the topics that changed. Once the storyboard exists, the player has the same page as a Plan tab. A pick that differs from the video's is marked "Changed, not in the video yet", and "update the video" in the terminal rewrites only those topics.
+- **Writes are guarded.** The page sends one topic's choice at a time to the local server on 127.0.0.1, with a random per-server token from the URL mr-cast opened. The server refuses a write without the token, for an unknown topic or with a depth or view the topic does not offer, and replaces `plan.json` atomically. Without the token the page is read-only. The play URL now carries the token too, as `#token=...`.
+- **Scenes name their topic.** A scene's new `topic` field names a topic of `plan.json`. `validate` fails on an unknown topic, and warns about a kept topic with no scene, a skipped topic with scenes, and a scene that does not draw the picked view. A valid storyboard records the picks it was built from in `plan-built.json`. `outline` groups the scenes by topic and lists the skipped ones.
+
 ## 0.20.0
 
 The skill now tells Claude to write each video the way a good teacher explains the change, and in the order a reviewer asks about it. Two research summaries behind it are in `quality/research/`. They draw on worked examples and concreteness fading, Mayer's multimedia principles, refutation of likely misreadings, Google's code review guide, and studies of what reviewers need (Bacchelli and Bird 2013, Tao et al. 2012, Spadini et al. 2019, Baum et al.). No study tested narrated diff videos, so these rules are carried over from nearby fields.

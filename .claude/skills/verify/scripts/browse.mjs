@@ -3,7 +3,14 @@
 // usage: node browse.mjs <url> <outdir> <step>...
 //   wait:<text>    wait (15s max) until the page text contains <text>, ignoring case (CSS uppercases some labels)
 //   click:<text>   click the first button whose text contains <text>
-//   press:<key>    press a key (ArrowRight, ArrowLeft, Space, j, k), then wait 300ms for the player to re-render
+//   clickin:<scope>::<text>
+//                  click the first button containing <text> inside the first list item (li) containing <scope>,
+//                  such as one topic row of the plan page
+//   press:<key>    press a key (ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Space, j, k, 1, 2, 3), then wait 300ms
+//                  for the page to re-render
+//   size:<w>x<h>   resize the viewport, such as size:420x900 for a phone width
+//   fullshot:<name> like shot, but the whole page height, for a page that scrolls
+//   reload         reload the page, then wait 1s for it to load its data
 //   sleep:<ms>     wait
 //   run:<command>  run a shell command (sh -c) and wait for it, e.g. to edit storyboard.json
 //   shot:<name>    save <outdir>/<name>.png (1920x1080) and <outdir>/<name>.txt (the page's visible text)
@@ -91,7 +98,9 @@ const pageText = () => evaluate('document.body ? document.body.innerText : ""');
 
 const KEYS = {
   ArrowRight: { code: 'ArrowRight', keyCode: 39 }, ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
+  ArrowUp: { code: 'ArrowUp', keyCode: 38 }, ArrowDown: { code: 'ArrowDown', keyCode: 40 },
   Space: { key: ' ', code: 'Space', keyCode: 32 }, j: { code: 'KeyJ', keyCode: 74 }, k: { code: 'KeyK', keyCode: 75 },
+  1: { code: 'Digit1', keyCode: 49 }, 2: { code: 'Digit2', keyCode: 50 }, 3: { code: 'Digit3', keyCode: 51 },
 };
 
 const STEPS = {
@@ -105,6 +114,22 @@ const STEPS = {
   async click(text) {
     const ok = await evaluate(`(() => { const b = [...document.querySelectorAll('button')].find((el) => el.innerText.includes(${JSON.stringify(text)})); if (!b) return false; b.click(); return true; })()`);
     if (!ok) throw new Error(`no button containing "${text}"`);
+  },
+  async clickin(spec) {
+    const [scope, text] = spec.split('::');
+    const ok = await evaluate(`(() => {
+      const row = [...document.querySelectorAll('li')].find((el) => el.innerText.includes(${JSON.stringify(scope)}));
+      const b = row && [...row.querySelectorAll('button')].find((el) => el.innerText.includes(${JSON.stringify(text)}));
+      if (!b) return false; b.click(); return true; })()`);
+    if (!ok) throw new Error(`no button containing "${text}" in a list item containing "${scope}"`);
+  },
+  async reload() {
+    await cdp('Page.reload', { ignoreCache: true });
+    await sleep(1000);
+  },
+  async size(spec) {
+    const [width, height] = spec.split('x').map(Number);
+    await cdp('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   },
   async press(name) {
     const k = KEYS[name];
@@ -146,6 +171,14 @@ const STEPS = {
     }
     fs.writeFileSync(path.join(outDir, 'textscan.json'), JSON.stringify({ lines: [...lines], fits: [...fits.values()], clipped: [...clipped] }, null, 1));
     console.log(path.join(outDir, 'textscan.json'));
+  },
+  async fullshot(name) {
+    const { cssContentSize: size } = await cdp('Page.getLayoutMetrics');
+    const clip = { x: 0, y: 0, width: Math.ceil(size.width), height: Math.ceil(size.height), scale: 1 };
+    const { data } = await cdp('Page.captureScreenshot', { format: 'png', clip, captureBeyondViewport: true });
+    fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(data, 'base64'));
+    fs.writeFileSync(path.join(outDir, `${name}.txt`), `${await pageText()}\n`);
+    console.log(path.join(outDir, `${name}.png`));
   },
   async shot(name) {
     const { data } = await cdp('Page.captureScreenshot', { format: 'png' });

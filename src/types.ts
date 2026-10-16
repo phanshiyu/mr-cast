@@ -78,6 +78,11 @@ export interface Marks {
 interface SceneBase {
   /** Short title shown in the chapter sidebar. Defaults to a per-type label. */
   chapter?: string;
+  /**
+   * The id of the plan.json topic this scene shows, when the run has a plan. `validate` checks each topic's scenes
+   * against the depth and view the viewer picked. Leave it off scenes about the whole video, such as the intent.
+   */
+  topic?: string;
   /** In an explanation, this scene explains a change, so its `change` marks are meant (see Storyboard.explainsChange). */
   explainsChange?: boolean;
   /**
@@ -859,6 +864,43 @@ export interface Storyboard {
 export interface SkippedHunk {
   hunkId: string;
   reason: string;
+}
+
+// ─── plan.json (written by the LLM; the plan page writes each topic's `choice`) ─
+
+/** How much of the video a topic gets: none, its view and the key lines, or its view and then the code line by line. */
+export type Depth = 'skip' | 'brief' | 'deep';
+
+/** A way to show a topic, keyed in shared/views.mjs, which holds its plain label and the scene types that draw it. */
+export type ViewKey = 'parts' | 'calls' | 'data' | 'decisions' | 'states' | 'layers' | 'schema' | 'compare' | 'timing' | 'facts' | 'numbers' | 'shell' | 'memory' | 'steps' | 'code';
+
+/** What the video does with a topic. */
+export interface TopicPick {
+  depth: Depth;
+  view: ViewKey;
+}
+
+export interface PlanTopic {
+  /** A stable slug, such as "rate-limiter". Scenes name it in their `topic`. */
+  id: string;
+  title: string;
+  /** What the topic covers, in one line. */
+  summary: string;
+  files: string[];
+  /** The suggested depth. */
+  depth: Depth;
+  /** 1 to 3 ways to show it, the suggested one first. */
+  views: ViewKey[];
+  /** One line on why the suggested view fits. */
+  why?: string;
+  /** About how long the topic takes at each depth. */
+  seconds: { brief: number; deep: number };
+  /** The viewer's pick, written by the plan page. Absent means the suggestion. */
+  choice?: TopicPick;
+}
+
+export interface Plan {
+  topics: PlanTopic[];
 }
 
 // ─── voiceover.json (written by `mr-cast voice`) ─────────────────────────────

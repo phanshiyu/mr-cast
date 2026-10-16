@@ -12,6 +12,7 @@ import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot
 import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
 import { branchRun, currentRun, explanationRun, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
 import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
+import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
@@ -21,6 +22,7 @@ import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
+import { formatLength, planSeconds } from '../shared/plan.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -51,7 +53,10 @@ Used by the Claude Code skills:
                     it and keeps its storyboard unless --reset
   snippet <file>:<start>-<end> ...
                     add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
-  validate          check the run's storyboard.json
+  plan [--port N] [--no-open]
+                    check the run's plan.json and open the page where the user picks each topic's depth
+                    and view; the picks are written back into plan.json
+  validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
   play [--port N] [--no-open]
                     voice the narration and serve the live player (default port 4747)
@@ -59,7 +64,7 @@ Used by the Claude Code skills:
                     voice the narration and render an MP4 with chapter markers, named after the storyboard title
 
   extract and init make their run the current one, and the commands after them work on the current run.
-  extract, init, validate, outline, voice, play, render and still take these flags. A flag applies to its own command
+  extract, init, plan, validate, outline, voice, play, render and still take these flags. A flag applies to its own command
   only, and a command without it uses the default, so pass the same flags to each command:
       --audience familiar|new|overview   who the video is for; new is the simple style (also --simple)
       --pace slower|normal|faster        the voice's speed and the pauses around it (default normal)
@@ -134,13 +139,14 @@ async function loadProject(dir, settings) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
   const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const style = styleOf(settings);
+  const plan = readPlan(dir);
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
-  const result = await validateStoryboard(raw, hunks, { mode: readRunMeta(dir)?.mode === 'explain' ? 'explain' : 'diff', style });
+  const result = await validateStoryboard(raw, hunks, { mode: readRunMeta(dir)?.mode === 'explain' ? 'explain' : 'diff', style, plan });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, readRunMeta(dir));
-  return { dir, hunks, storyboard, result, style, review, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
+  return { dir, hunks, storyboard, plan, result, style, review, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
 /** Whether `file` is absent or a review.md mr-cast wrote, so mr-cast may replace or remove it. */
@@ -268,7 +274,9 @@ const RUN_OPTIONS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 async function validate(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const { dir, settings } = runFor(values);
-  const { result, lines, review } = await loadProject(dir, settings);
+  const { result, lines, review, plan } = await loadProject(dir, settings);
+  // The video is now built from these picks; the plan page marks a pick changed after this.
+  if (!result.errors.length && plan) recordBuilt(dir, plan.plan);
   // The verdict stays the last line.
   for (const line of lines.slice(0, -1)) console.log(line);
   if (review) console.log(`wrote ${rel(review)}`);
@@ -382,7 +390,7 @@ async function play(argv) {
   reportPace(voiceover);
 
   const onDataChange = async (file) => {
-    if (file === 'meta.json') return;
+    if (file === 'meta.json' || file === BUILT_FILE) return;
     let project;
     try {
       project = await loadProject(dir, settings);
@@ -398,11 +406,53 @@ async function play(argv) {
     for (const line of project.lines) console.error(`  ${line}`);
   };
   const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover });
-  console.log(`mr-cast player: ${server.url}`);
-  if (!values['no-open']) openBrowser(server.url);
+  const url = `${server.url}/#token=${server.token}`;
+  console.log(`mr-cast player: ${url}`);
+  if (!values['no-open']) openBrowser(url);
 
   // Once Kokoro has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
+  const shutdown = () => server.close();
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+}
+
+/** plan.json's problems as lines, and a summary line when it has no errors. */
+function planLines(planFile) {
+  const lines = [...planFile.errors.map((e) => `✗ plan.json: ${e}`), ...planFile.warnings.map((w) => `! plan.json: ${w}`)];
+  if (!planFile.errors.length) lines.push(`✓ plan ok · ${plural(planFile.plan.topics.length, 'topic')} · ${formatLength(planSeconds(planFile.plan)).toLowerCase()}`);
+  return lines;
+}
+
+/** Serves the plan page, where the user picks each topic's depth and view before the storyboard is written. */
+async function plan(argv) {
+  const { values } = parseArgs({
+    args: argv,
+    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...RUN_OPTIONS },
+  });
+  const port = intOption(values.port, 'port', 1);
+  const { dir, settings } = runFor(values);
+  const planFile = readPlan(dir);
+  if (!planFile) throw new UserError(`${rel(path.join(dir, 'plan.json'))} not found; write it first (schema: Plan in src/types.ts)`);
+  const lines = planLines(planFile);
+  if (planFile.errors.length) {
+    for (const line of lines) console.error(line);
+    process.exit(1);
+  }
+  for (const line of lines) console.error(line);
+  const distDir = ensureDist();
+
+  const onDataChange = (file) => {
+    if (file !== 'plan.json') return;
+    const changed = readPlan(dir);
+    if (!changed) return console.error('mr-cast: plan.json was removed; the page waits for it');
+    console.error('mr-cast: plan.json changed');
+    for (const line of planLines(changed)) console.error(`  ${line}`);
+  };
+  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings) });
+  const url = `${server.url}/plan#token=${server.token}`;
+  console.log(`mr-cast plan: ${url}`);
+  if (!values['no-open']) openBrowser(url);
   const shutdown = () => server.close();
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
@@ -475,11 +525,11 @@ async function still(argv) {
 async function outline(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const run = runFor(values);
-  const { dir, hunks, storyboard, result, style } = await loadValidProject(run.dir, run.settings);
+  const { dir, hunks, storyboard, result, style, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = timingVoiceover(dir, run.settings);
   const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
-  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style, pace: formatPace(voiceover) }));
+  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style, pace: formatPace(voiceover), plan: planFile?.plan }));
 }
 
 function installSkillCommand(argv) {
@@ -629,7 +679,7 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { status, extract, init, snippet, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
+const COMMANDS = { status, extract, init, snippet, plan, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);

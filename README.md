@@ -34,16 +34,22 @@ Type `/mr-cast`, or ask Claude to "create a video from this merge request". Afte
 - "That", "what you said" or "this explanation" means the explanation Claude just gave.
 - A bare "make a video of this" uses whichever source exists. When the branch has changes and both exist, the first question asks which one. When neither exists, the skill says what it can make and stops.
 
-The skill then asks up to four multiple-choice questions at once:
+The skill then asks up to three multiple-choice questions at once:
 
 - Who the video is for: a reviewer or teammate, someone new to the code, or the team in a quick overview.
-- Which areas to go deeper on.
 - The pace: normal, slower, faster, or no voice.
 - For a branch, whether Claude should also flag what looks wrong. The default is no. See [Review mode](#review-mode).
 
 The recommended answer is first in each question, so pressing enter gives the default video. A question your request already answers is skipped. Your last audience and pace are offered first next time, marked "(Last time)". Say "just make it", "use the defaults" or "no questions" to skip the questions.
 
-Claude writes the storyboard, validates it, and opens the browser player, which reloads as Claude edits. For a file to share, say "mp4", "video file", "render", "save" or "share", or type `/mr-cast mp4` (`/mr-cast mp4 main` for another base). Before rendering, Claude shows the outline and asks once whether to render it, make it shorter or longer, or change something. The MP4 is named after the walkthrough's title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, and has a chapter marker for each chapter.
+Next, Claude reads the change and opens the plan page in your browser. It lists the topics of this change, such as "Rate limiter: twenty orders a minute", with Claude's suggestion preselected. For each topic you pick a depth and a way to show it:
+
+- **Skip, Brief or Deep.** Brief shows the topic's picture and its key lines. Deep shows the picture, then the code line by line.
+- **How it is shown.** Two or three options in plain words, such as "Who calls whom, in order", "The data at each step" or "Before vs after". Hover one to see which scene draws it.
+
+The length estimate at the top follows your picks, and every change saves at once. Use the mouse, or the keys: up and down move between topics, 1, 2 and 3 pick Skip, Brief and Deep, and left and right change how it is shown. Then go back to the terminal and press Enter on the question Claude is waiting with. Answer "Use your picks" to skip the page, or type a change such as "add the migration as its own topic", and the page reloads with it. Claude skips the page when you said "just make it" or "no questions", and when the change has two topics or fewer.
+
+Claude writes the storyboard from your picks, validates it, and opens the browser player, which reloads as Claude edits. The player has a Plan tab with the same picks. A pick you change there is marked "Changed, not in the video yet". Say "update the video", and Claude rewrites only those topics. For a file to share, say "mp4", "video file", "render", "save" or "share", or type `/mr-cast mp4` (`/mr-cast mp4 main` for another base). Before rendering, Claude shows the outline and asks once whether to render it, make it shorter or longer, or change something. The MP4 is named after the walkthrough's title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, and has a chapter marker for each chapter.
 
 For a walkthrough that explains the code line by line in plain words, ask for it "like I'm new to this", "line by line", "ELI5" or "for a non-native speaker", or answer that the video is for someone new to the code. Claude then reads the callers, types, tests and config around the change, shows the important ones first, and voices each line or small group of lines while it is highlighted. See [Simple style](#simple-style).
 
@@ -78,10 +84,11 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Lockfiles and build output are skipped unless you pass `--all-files`. Running it again on the same branch keeps the storyboard and the snippets. |
 | `mr-cast init --title text [--reset]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/` (in the git repository, or the current directory outside one) and prints its path. A slug already in use gets a numbered suffix such as `-2`. Running it again with the same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Use it for the code of an explanation, or for the callers, types or config a change depends on. Snippets don't count toward hunk coverage, a later `extract` keeps them, and each holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. |
-| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. Prints the length, estimated at the given `--pace` until the narration is voiced. Exits 1 on errors. |
-| `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It has the title, one line per scene with its type, chapter and contents, the length, the style, the hunk coverage, and how many steps draw a pen mark. |
+| `mr-cast plan [--port N] [--no-open]` | Checks the run's `plan.json`, the topics Claude cut the change into, then serves the plan page at `http://127.0.0.1:4747/plan` and opens the browser. The page saves each pick into `plan.json`, and reloads when Claude edits it. See [The plan](#the-plan). |
+| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. With a `plan.json`, it also checks each scene's `topic` against your picks, and records the picks in `plan-built.json`. Prints the length, estimated at the given `--pace` until the narration is voiced. Exits 1 on errors. |
+| `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It has the title, one line per scene with its type, chapter and contents, the length, the style, the hunk coverage, and how many steps draw a pen mark. With a `plan.json`, the scenes are grouped by topic, and skipped topics are listed. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
-| `mr-cast play [--port N] [--no-open]` | Voices the narration, serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads when `storyboard.json` changes, once any changed narration is voiced. The player's speed control goes from 0.75x to 1.5x. |
+| `mr-cast play [--port N] [--no-open]` | Voices the narration, serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads when `storyboard.json` changes, once any changed narration is voiced. The player's speed control goes from 0.75x to 1.5x. With a `plan.json`, the player has a Plan tab. |
 | `mr-cast render [--out file.mp4]` | Voices the narration, then renders a 1920x1080, 30 fps MP4 with the voice-over, burned-in subtitles and chapter markers, and prints its path. The file goes in the run's directory, named after the storyboard title, or the run's name, or `walkthrough.mp4`. The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's end state, just before it fades out, to check layout. |
 | `mr-cast prune [id...] [--older-than days] [--json]` | Without ids, lists what can be deleted, with an id, size, age and description for each. With ids from that list, deletes exactly those. See [Pruning](#pruning). |
@@ -119,6 +126,14 @@ Several runs can render at once, in one repository or several, and they share th
 | `cache:bundle`, `cache:remotion`, `cache:models` | The player bundle, Chrome Headless Shell (about 580 MB), or the Kokoro voice model (about 90 MB). The next render or voice-over rebuilds or downloads them. |
 
 `--older-than <days>` lists only what has not changed in that many days. `--json` prints the list as JSON. `mr-cast prune <id>...` deletes only ids from a fresh listing with the same filter. An unknown id, or a cache that a render is using or a download has locked, makes it delete nothing. Deleting a run also deletes its videos, stills and clips.
+
+## The plan
+
+`plan.json` holds the topics of one walkthrough. Claude writes it in the run's directory before the storyboard. Each topic has an `id`, a `title`, a one-line `summary`, its `files`, a suggested `depth` (`skip`, `brief` or `deep`), one to three `views` with the suggested one first, an optional `why`, and `seconds`, about how long it takes at `brief` and at `deep`. The schema is `Plan` in `src/types.ts`, and the views are listed in `shared/views.mjs`, each with the plain label the page shows and the scene types that draw it.
+
+The page writes your pick as the topic's `choice`, `{ "depth": "deep", "view": "compare" }`, and nothing else. It sends each pick to the local server, which listens on 127.0.0.1 only. Every write needs the random token in the URL mr-cast opened, so another web page cannot change your plan. The server accepts only a `choice` for a known topic with a depth and view that topic offers, and writes `plan.json` by renaming a complete file into place. Opened without the token, the page is read-only.
+
+Each scene of the storyboard names its topic in `topic`. `validate` fails on a topic that is not in the plan, and warns when a topic you kept has no scene, when a topic you skipped still has scenes, and when a scene does not draw the view you picked.
 
 ## Explanations
 

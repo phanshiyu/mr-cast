@@ -33,8 +33,8 @@ The output is an MP4 when the request or the arguments say "mp4", "video file", 
 
 Ask with one `AskUserQuestion` call before you start the run. Ask only what the request leaves open:
 
-- The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), "slowly" (pace), or "focus on the migration" (focus). A request for a quick or short video answers the audience with the quick overview.
-- The user asked for your opinion of the branch, with words such as "review it", "with your review", "find issues" or "flag anything that looks wrong". That turns review on (question 5).
+- The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), or "slowly" (pace). A request for a quick or short video answers the audience with the quick overview. Words such as "focus on the migration" do not answer a question here. They shape your suggested picks in step 4.
+- The user asked for your opinion of the branch, with words such as "review it", "with your review", "find issues" or "flag anything that looks wrong". That turns review on (question 4).
 - The user said "just make it", "use the defaults" or "no questions". Skip the call and use the last choices from `status`, else the recommended options. Review stays off unless the words above turned it on.
 
 Say in one line which choice you used for each question you skipped. "Render" means an MP4. It does not skip the questions.
@@ -48,17 +48,14 @@ Every question is multiple choice. Put the recommended option first and end its 
    - `familiar`: "A reviewer of this change (Recommended)" for the branch, or "A teammate who knows this code (Recommended)" for an explanation. Description: "Diagrams, then the code behind each point."
    - `new`: "Someone new to this code". Description: "Walks the code one line at a time in plain words, after the code around it. Good for a second-language reader. Longer."
    - `overview`: "A quick overview for the team". Description: "Diagrams and behavior, with very little code. Usually under 3 minutes."
-3. Header "Focus", `multiSelect: true`, question "Anything to go deeper on? Everything is still covered." Leave this question out when you ask "Video of", because its options depend on the source. The user can still steer the emphasis with Other, or after the outline.
-   - First "All areas equally (Recommended)". Description: "Weigh each area by what the viewer needs."
-   - Then up to 3 options, each an area of the change or a key point of your explanation in a few concrete words, such as "Rate limiter (Redis counter, 429)". Name branch areas from the files `status` lists. Group small areas so the options cover everything. When the change has tests, one of the 3 can be "Walk through the test code", with the description "Step through each test's setup and assertions."
-4. Header "Pace", question "How should it sound?" `status` names these `normal`, `slower`, `faster` and `silent`.
+3. Header "Pace", question "How should it sound?" `status` names these `normal`, `slower`, `faster` and `silent`.
    - "Normal pace (Recommended)". Description: "About 130 words a minute, with pauses between steps."
    - "Slower". Description: "A slower voice and longer pauses. Good for new readers or a second language."
    - "Faster". Description: "A quicker voice and shorter pauses."
    - "No voice, subtitles only". Description: "A silent video, timed for reading."
 
    When you already know the audience is someone new to this code, recommend "Slower" and list it first, unless a last choice comes first.
-5. Only when the branch is live: header "Review", question "Should I also flag what looks wrong?"
+4. Only when the branch is live: header "Review", question "Should I also flag what looks wrong?"
    - "No, just explain (Recommended)". Description: "The video explains the change and gives no verdict."
    - "Yes, flag what looks off". Description: "I mark lines that look wrong as the walkthrough reaches them, as my opinion, recap them at the end and write them to review.md."
 
@@ -84,7 +81,70 @@ It says how to start the run, which code to show, and what the video must cover.
 
 The run starts in `.mr-cast/<slug>/` and becomes the current run. Every later command works on the current run. Several runs can coexist in one repository, such as one per branch, or one rendering while you write the next. When you work on more than one, pass `--name <slug>` to every command.
 
-## 4. Write the storyboard
+## 4. Let the user pick the topics
+
+Before you write the storyboard, cut the change into topics and let the user choose, in the browser, how much time each topic gets and how it is shown. Read the diff and the code around it first, as the reference says. For an explanation, the topics are the key points of your explanation.
+
+### Write plan.json
+
+Write `plan.json` in the run's directory, beside `hunks.json`:
+
+```json
+{
+  "topics": [
+    {
+      "id": "rate-limiter",
+      "title": "Rate limiter: twenty orders a minute",
+      "summary": "Counts each visitor's order requests per minute and refuses the twenty-first.",
+      "files": ["src/api/rate-limit.ts", "src/api/server.ts"],
+      "depth": "deep",
+      "views": ["calls", "data", "compare"],
+      "why": "The limit is a check that runs before the order is saved, so the order of calls shows it best.",
+      "seconds": { "brief": 45, "deep": 120 }
+    }
+  ]
+}
+```
+
+- **Topics.** Write 4 to 8 topics. Name each one by what it does, not by its file: "Rate limiter: twenty orders a minute", not "rate-limit.ts". A topic can span several files. Put routine changes, such as renames, formatting or deleted dead code, together in one topic. List the topics in the order the video shows them, the main behaviour first. The opening intent scene, and for the branch the closing tests scene, are always in the video, so they are not topics. The `id` is a short slug, and `summary` says in one line what the topic covers.
+- **Depth.** `depth` is your suggestion. `skip` leaves the topic out. `brief` shows the topic's view and the key lines. `deep` shows the view, then the code line by line. Suggest `deep` for the main behaviour and `brief` for the code that supports it. For the quick overview, suggest `brief` for most topics. For someone new to the code, suggest `deep` for every topic that changes logic.
+- **Views.** `views` lists 1 to 3 ways to show the topic, your suggestion first. Offer only views that truly fit the topic, and offer one when two would look almost the same. A choice that changes nothing teaches the user to ignore the choices. `why` says in one line why your suggestion fits. The user reads the label, never the key:
+
+{{PLAN_VIEWS}}
+
+`decisions` is a `graph` drawn as a flowchart. `code` shows only code scenes.
+- **Seconds.** `seconds` is about how long the topic takes at each depth, such as 30 to 50 for `brief` and 80 to 150 for `deep`. The page adds them up to show the user the length of the video.
+
+### Open the plan page
+
+Skip the page and use your suggestions when the user said "just make it", "use the defaults" or "no questions", or when the plan has 2 topics or fewer. Still write `plan.json`, so `validate` checks the scenes against it and the player's Plan tab lets the user change the picks later.
+
+Otherwise start the page as a background command:
+
+```bash
+{{MR_CAST}}/bin/mr-cast plan <flags>
+```
+
+It checks `plan.json` first. Fix every error it prints and run it again. Then it prints `mr-cast plan: <url>` and opens the browser. In the same reply, ask one `AskUserQuestion`, header "Plan", question "I opened the plan in your browser. Make the video from it?":
+
+- "Use my picks from the browser (Recommended)". Description: "Pick depth and view per topic there, then press Enter here."
+- "Use your picks". Description: "Skip the browser and use what I suggested."
+
+When the user writes something else with Other, such as "add the migration as its own topic", change `plan.json` to match. The page reloads by itself. Then ask the same question again.
+
+After the answer, stop the `mr-cast plan` command and read `plan.json`. The page saves each pick the user made as the topic's `choice`, `{ "depth": "deep", "view": "compare" }`. A topic without `choice` keeps your suggestion: its `depth` and the first of its `views`. When the user answered "Use your picks", remove every `choice` from `plan.json` first.
+
+### Write the scenes from the picks
+
+- Set `"topic": "<id>"` on every scene that shows a topic. Leave it off the intent, tests and review scenes.
+- A topic at `skip` gets no scene. List its hunks in `skipped` with the reason "the viewer chose to skip this topic".
+- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the quick overview.
+- A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`.
+- The shared rules below still put every diagram before the first code scene. Keep the topics in plan order within the diagrams, and again within the code.
+
+`validate` reports a scene whose `topic` is not in `plan.json`. It warns about a topic the user kept with no scene, a skipped topic that still has scenes, and a scene that does not draw the view the user picked. When the storyboard is valid, `validate` saves the picks the video is built from in `plan-built.json`, and `outline` groups the scenes by topic.
+
+## 5. Write the storyboard
 
 Write `storyboard.json` in the run's directory, the one `extract` or `init` printed. The JSON must match this TypeScript schema exactly.
 
@@ -215,13 +275,13 @@ Use overview mode when the audience is `overview`. The viewer wants to know what
 - Say behavior in the diagram narration, with real values, instead of in code scenes.
 - Aim for under 3 minutes.
 
-## 5. Check the plan with the user
+## 6. Check the plan with the user
 
 ```bash
 {{MR_CAST}}/bin/mr-cast outline <flags>
 ```
 
-For the player, show the outline and go straight to step 6. The player reloads as you edit, so the user can ask for changes while it plays.
+For the player, show the outline and go straight to step 7. The player reloads as you edit, so the user can ask for changes while it plays.
 
 Before an MP4, show the outline as it prints, with at most one sentence of your own. Then ask with one `AskUserQuestion` call, header "Plan", question "Render this plan?":
 
@@ -231,7 +291,7 @@ Before an MP4, show the outline as it prints, with at most one sentence of your 
 
 The user can pick Other to describe any other change. Apply the change and rerun `validate <flags>`. If the change was substantial, show the new outline and ask again. Render once they pick "Render it". Skip this question when the user said "just make it", "use the defaults" or "no questions".
 
-## 6. Show it
+## 7. Show it
 
 Start the player as a background command so it keeps running.
 
@@ -243,7 +303,9 @@ Start the player as a background command so it keeps running.
 
 To change the pace or turn the voice off, change `<flags>` and pass the new flags to every command after that. To pick another voice, add `--voice <name>` to `<flags>`: `af_heart` (default), `af_bella`, `am_michael`, `bf_emma`, or `bm_george`.
 
-`play` prints `mr-cast player: http://127.0.0.1:<port>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
+`play` prints `mr-cast player: <url>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
+
+With a `plan.json`, the player also has a Plan tab with the same picks. When the user changes a pick there, the row says "Changed, not in the video yet", and the page asks them to say "update the video" in the terminal. Then compare each topic's pick in `plan.json` with `plan-built.json`, rewrite only the scenes of the topics that differ, and run `validate <flags>`. Only those scenes need voicing again.
 
 For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the run's directory, named after the storyboard title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, with a chapter marker for each chapter title, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different runs can run at the same time.
 

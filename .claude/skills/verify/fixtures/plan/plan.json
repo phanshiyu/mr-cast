@@ -1,0 +1,51 @@
+{
+  "topics": [
+    {
+      "id": "rate-limiter",
+      "title": "Rate limiter: twenty orders a minute",
+      "summary": "Counts each visitor's order requests per minute in Redis and refuses the twenty-first.",
+      "files": ["src/api/rate-limit.ts", "src/api/server.ts"],
+      "depth": "deep",
+      "views": ["calls", "data", "compare"],
+      "why": "The limit is a check that runs before the order is saved, so the order of calls shows it best.",
+      "seconds": { "brief": 45, "deep": 120 }
+    },
+    {
+      "id": "real-prices",
+      "title": "Orders use real prices",
+      "summary": "The orders service asks the pricing module for each item's price and refuses an empty order.",
+      "files": ["src/services/orders.ts"],
+      "depth": "brief",
+      "views": ["data", "compare"],
+      "why": "The price changes shape as it moves from the request to the saved order.",
+      "seconds": { "brief": 40, "deep": 95 }
+    },
+    {
+      "id": "data-model",
+      "title": "Orders data model",
+      "summary": "Where an order, its items and their prices are stored.",
+      "files": [],
+      "depth": "brief",
+      "views": ["schema"],
+      "seconds": { "brief": 30, "deep": 60 }
+    },
+    {
+      "id": "order-events",
+      "title": "Order events on the queue",
+      "summary": "A new event tells other services an order was placed.",
+      "files": ["src/queue/events.ts"],
+      "depth": "brief",
+      "views": ["parts", "code"],
+      "seconds": { "brief": 30, "deep": 50 }
+    },
+    {
+      "id": "legacy-throttle",
+      "title": "Old throttle removed",
+      "summary": "The unused in-memory throttle is deleted.",
+      "files": ["src/legacy-throttle.ts", "docs.md"],
+      "depth": "skip",
+      "views": ["code"],
+      "seconds": { "brief": 15, "deep": 30 }
+    }
+  ]
+}

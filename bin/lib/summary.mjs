@@ -3,7 +3,9 @@
 import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
+import { pickOf } from '../../shared/plan.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
+import { VIEWS } from '../../shared/views.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 
 const LINE_WIDTH = 110;
@@ -266,15 +268,28 @@ function gistWithSteps(scene, hunks, storyboard) {
   return scene.type === 'flow' ? `${gist}, each spoken` : `${gist} · ${plural(steps, 'step')} spoken${marks}`;
 }
 
-/** `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. */
-export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, style, pace = '' }) {
+/** "Rate limiter (deep, before vs after)", the heading of a topic's scenes in the outline. */
+function topicHeading(topic) {
+  if (!topic) return 'No topic';
+  const { depth, view } = pickOf(topic);
+  return `${topic.title} (${depth}, ${VIEWS[view].label.toLowerCase()})`;
+}
+
+/**
+ * `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. With the run's
+ * valid `plan`, scenes are grouped under the topic they show, and topics the viewer skipped are listed.
+ */
+export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, style, pace = '', plan }) {
   const scenes = storyboard.scenes;
   const out = [storyboard.title, ...(storyboard.subtitle ? [storyboard.subtitle] : [])];
   const number = String(scenes.length).length;
   const typeWidth = Math.max(...scenes.map((s) => s.type.length));
   const chapterWidth = Math.min(24, Math.max(...scenes.map((s) => (s.chapter ?? '').length)));
+  const topics = new Map((plan?.topics ?? []).map((t) => [t.id, t]));
+  const grouped = topics.size > 0 && scenes.some((s) => topics.has(s.topic));
   out.push('');
   scenes.forEach((scene, i) => {
+    if (grouped && (i === 0 || scenes[i - 1].topic !== scene.topic)) out.push(`${i ? '\n' : ''}${topicHeading(topics.get(scene.topic))}`);
     const chapter = clip(scene.chapter ?? '', chapterWidth).padEnd(chapterWidth);
     const head = `${String(i + 1).padStart(number)}. ${scene.type.padEnd(typeWidth)}  ${chapter}  `;
     out.push(`${head}${clip(gistWithSteps(scene, hunks, storyboard), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
@@ -285,5 +300,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, st
   const covered = formatCoverage(coverage);
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
   if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
+  const skipped = [...topics.values()].filter((t) => pickOf(t).depth === 'skip').map((t) => t.title);
+  if (skipped.length) out.push(`skipped topics: ${skipped.join(', ')}`);
   return out.join('\n');
 }

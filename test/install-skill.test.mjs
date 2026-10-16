@@ -47,6 +47,8 @@ test('installed skills point at this package and carry the storyboard schema', (
   const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
   assert.equal(skill.includes('{{MR_CAST}}'), false);
   assert.equal(skill.includes('{{STORYBOARD_TYPES}}'), false);
+  assert.equal(skill.includes('{{PLAN_VIEWS}}'), false);
+  assert.ok(skill.includes('| `compare` | Before vs after | `compare` |'), 'the plan views table is filled from shared/views.mjs');
   assert.equal(skillsInstalledFrom(root, dir), true);
   assert.equal(skillsInstalledFrom(root, freshDir()), false);
 });
