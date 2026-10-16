@@ -148,3 +148,8 @@ test('validate requires a focus on a step that only hides, or whose changes are 
   ]);
   assert.deepEqual(await errorsOf({ ...hideOnly, steps: [{ hide: ['range:window'], focus: 'ptr:lo', say: 'The window is gone.' }] }), []);
 });
+
+test('validate says "an array step"', async () => {
+  const token = { ...search, steps: [{ focus: 'ptr:lo', mark: 'circle', token: 'lo', say: 'The low end starts at zero.' }] };
+  assert.deepEqual(await errorsOf(token), ['scenes[0].steps[0].token: only code steps take a token; an array step marks its first focus ref']);
+});

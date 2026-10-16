@@ -41,7 +41,6 @@ function compareSide(scene, name) {
   return side >= 0 ? side : null;
 }
 
-
 /** The layer ("l:id") or item ("i:id") a layers scene names by id, or by "layer.item" with ids that may hold dots. */
 function layerPart(scene, ref) {
   const layers = list(scene.layers);

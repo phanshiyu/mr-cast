@@ -16,6 +16,7 @@ import { checkArray, checkMemory } from './validate-state.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
+import { aType } from '../../shared/words.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
@@ -268,7 +269,7 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
   const first = indexed[0];
   if (first && first.s.type !== 'intent') {
     const opening = explain ? 'the idea and its key points' : 'the problem and the review concerns';
-    warnings.push(`scenes[${first.i}] is ${/^[aeiou]/.test(first.s.type) ? "an" : "a"} ${first.s.type} scene; open with an intent scene that states ${opening}`);
+    warnings.push(`scenes[${first.i}] is ${aType(first.s.type)} scene; open with an intent scene that states ${opening}`);
   }
 
   const firstDiagram = firstOf((s) => DIAGRAM_TYPES.includes(s.type));

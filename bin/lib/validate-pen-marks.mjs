@@ -4,6 +4,7 @@
 import { NOTE_MAX, PEN_MARKS, tokenHits } from '../../shared/pen-marks.mjs';
 import { FOCUS_TYPES } from '../../shared/targets.mjs';
 import { didYouMean } from './suggest.mjs';
+import { aType } from '../../shared/words.mjs';
 
 // Past this many marked steps a scene reads as scribbled over, and no mark stands out.
 const MARKED_STEPS_MAX = 2;
@@ -25,14 +26,14 @@ export function checkPenMarks(s, p, hunks, errors, warnings) {
       return;
     }
     marked++;
-    if (!code && !FOCUS_TYPES.includes(s.type)) return errors.push(`${q}.mark: a ${s.type} step has no focus to draw on; marks go on code steps and on diagram steps with a focus`);
+    if (!code && !FOCUS_TYPES.includes(s.type)) return errors.push(`${q}.mark: ${aType(s.type)} step has no focus to draw on; marks go on code steps and on diagram steps with a focus`);
     if (step.mark !== undefined && !PEN_MARKS.includes(step.mark)) errors.push(`${q}.mark: must be one of ${PEN_MARKS.join(', ')}${typeof step.mark === 'string' ? didYouMean(step.mark, PEN_MARKS) : ''}`);
     if (step.note !== undefined) {
       if (!isStr(step.note)) errors.push(`${q}.note: must be a non-empty string`);
       else if (step.note.trim().length > NOTE_MAX) errors.push(`${q}.note: ${step.note.trim().length} characters; a note is written on one line, so keep it to ${NOTE_MAX}`);
     }
     if (step.token === undefined) return;
-    if (!code) return errors.push(`${q}.token: only code steps take a token; a ${s.type} step marks its first focus ref`);
+    if (!code) return errors.push(`${q}.token: only code steps take a token; ${aType(s.type)} step marks its first focus ref`);
     if (!isStr(step.token)) return errors.push(`${q}.token: must be a non-empty string, text on the step's lines such as "max: 20"`);
     if (!hunk) return;
     const hits = tokenHits(hunk, step).length;

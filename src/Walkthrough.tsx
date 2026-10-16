@@ -1,21 +1,21 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
 import { ArrayDiagram } from './components/ArrayDiagram';
-import { GraphDiagram } from './components/GraphDiagram';
-import { MemoryDiagram } from './components/MemoryDiagram';
 import { Captions } from './components/Captions';
 import { Chart } from './components/Chart';
-import { Compare } from './components/Compare';
 import { CodeDiff } from './components/CodeDiff';
+import { Compare } from './components/Compare';
 import { DataFlow } from './components/DataFlow';
 import { DataTable } from './components/DataTable';
 import { ErDiagram } from './components/ErDiagram';
 import { FileTree } from './components/FileTree';
+import { GraphDiagram } from './components/GraphDiagram';
 import { IntentCard } from './components/IntentCard';
 import { LayerStack } from './components/LayerStack';
+import { MemoryDiagram } from './components/MemoryDiagram';
 import { MermaidDiagram } from './components/MermaidDiagram';
-import type { SceneProps } from './components/sceneProps';
 import { ReviewRecap } from './components/ReviewRecap';
+import type { SceneProps } from './components/sceneProps';
 import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
 import { Terminal } from './components/Terminal';
@@ -23,7 +23,7 @@ import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
 import './fonts';
-import type { ArrayScene, MemoryScene, CompareScene, TerminalScene, GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, LayersScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, IntentScene, LayersScene, MemoryScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {

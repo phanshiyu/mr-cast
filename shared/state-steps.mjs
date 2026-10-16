@@ -5,6 +5,7 @@
 
 import { indexRange } from './steps.mjs';
 import { memberKey, resolveRef, splitMemberKey } from './targets.mjs';
+import { aType } from './words.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const entries = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(v) : []);
@@ -143,7 +144,7 @@ export function walkStates(scene) {
       const moved = model.move?.(scene, name, value);
       if (!moved) {
         const names = model.moveNames(scene);
-        problem('move', name, model.move ? `names no pointer or range; ${names.length ? `they are ${names.map((n) => JSON.stringify(n)).join(', ')}` : 'the scene has none'}` : `a ${scene.type} scene has nothing to move; use set`, names);
+        problem('move', name, model.move ? `names no pointer or range; ${names.length ? `they are ${names.map((n) => JSON.stringify(n)).join(', ')}` : 'the scene has none'}` : `${aType(scene.type)} scene has nothing to move; use set`, names);
       } else if (moved.error) problem('move', name, `${JSON.stringify(value)} is no place; ${moved.error}`);
       else next.places[moved.key] = moved.place;
     }
