@@ -24,6 +24,8 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Must match the environment in the package's trusted publisher on npmjs.com.
+    environment: prod
     permissions:
       contents: read
       id-token: write
