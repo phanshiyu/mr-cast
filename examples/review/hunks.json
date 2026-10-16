@@ -1,0 +1,556 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "src/password.js",
+    "oldFile": null,
+    "status": "added",
+    "language": "javascript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 9,
+    "additions": 9,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "export const MIN_LENGTH = 12;\n\n/** Why a new password is not allowed, or null when it is. */\nexport function validPassword(password) {\n  if (typeof password !== 'string') return 'password must be text';\n  if (password.length < MIN_LENGTH) return `password must be at least ${MIN_LENGTH} characters`;\n  if (!/[0-9]/.test(password)) return 'password must contain a digit';\n  return null;\n}",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "export const MIN_LENGTH = 12;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "/** Why a new password is not allowed, or null when it is. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "export function validPassword(password) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  if (typeof password !== 'string') return 'password must be text';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  if (password.length < MIN_LENGTH) return `password must be at least ${MIN_LENGTH} characters`;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  if (!/[0-9]/.test(password)) return 'password must contain a digit';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  return null;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "}"
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "src/reset.js",
+    "oldFile": null,
+    "status": "added",
+    "language": "javascript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 22,
+    "additions": 22,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import { randomBytes } from 'node:crypto';\nimport { db } from './db.js';\nimport { validPassword } from './password.js';\n\nexport const TOKEN_TTL_MS = 15 * 60 * 1000;\n\n/** A one-time token that lets `userId` set a new password for the next 15 minutes. */\nexport async function createResetToken(userId, now = Date.now()) {\n  const token = randomBytes(32).toString('hex');\n  await db.resetTokens.insert({ token, userId, expiresAt: now + TOKEN_TTL_MS });\n  return token;\n}\n\n/** Sets the new password if the token is known and not expired, then retires the token. */\nexport async function redeemResetToken(token, newPassword, now = Date.now()) {\n  const row = await db.resetTokens.find(token);\n  if (!row || row.expiresAt <= now) throw new Error('invalid or expired token');\n  const problem = validPassword(newPassword);\n  if (problem) throw new Error(problem);\n  await db.users.setPassword(row.userId, newPassword);\n  await db.resetTokens.delete(row.userId);\n}",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { randomBytes } from 'node:crypto';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "import { db } from './db.js';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "import { validPassword } from './password.js';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "export const TOKEN_TTL_MS = 15 * 60 * 1000;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "/** A one-time token that lets `userId` set a new password for the next 15 minutes. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "export async function createResetToken(userId, now = Date.now()) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  const token = randomBytes(32).toString('hex');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  await db.resetTokens.insert({ token, userId, expiresAt: now + TOKEN_TTL_MS });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  return token;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "}"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "/** Sets the new password if the token is known and not expired, then retires the token. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "export async function redeemResetToken(token, newPassword, now = Date.now()) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "  const row = await db.resetTokens.find(token);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "  if (!row || row.expiresAt <= now) throw new Error('invalid or expired token');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "  const problem = validPassword(newPassword);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "  if (problem) throw new Error(problem);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "  await db.users.setPassword(row.userId, newPassword);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 21,
+        "text": "  await db.resetTokens.delete(row.userId);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 22,
+        "text": "}"
+      }
+    ]
+  },
+  "h3": {
+    "id": "h3",
+    "file": "src/routes.js",
+    "oldFile": null,
+    "status": "modified",
+    "language": "javascript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 27,
+    "additions": 18,
+    "deletions": 0,
+    "beforeCode": "import { db } from './db.js';\n\nexport async function handle(req) {\n  if (req.method === 'GET' && req.path === '/me') {\n    const user = await db.users.find(req.userId);\n    return user ? { status: 200, body: { id: user.id, email: user.email } } : { status: 404 };\n  }\n  return { status: 404 };\n}",
+    "afterCode": "import { db } from './db.js';\nimport { createResetToken, redeemResetToken } from './reset.js';\n\nexport async function handle(req) {\n  if (req.method === 'GET' && req.path === '/me') {\n    const user = await db.users.find(req.userId);\n    return user ? { status: 200, body: { id: user.id, email: user.email } } : { status: 404 };\n  }\n  if (req.method === 'POST' && req.path === '/reset/request') {\n    const user = await db.users.find(req.body.userId);\n    // Answer the same whether or not the user exists, so the endpoint does not reveal accounts.\n    if (!user) return { status: 202 };\n    const token = await createResetToken(user.id);\n    console.log(`reset requested for ${user.email}: token ${token}`);\n    await req.mailer.send(user.email, `Reset your password: https://example.test/reset?token=${token}`);\n    return { status: 202 };\n  }\n  if (req.method === 'POST' && req.path === '/reset/confirm') {\n    try {\n      await redeemResetToken(req.body.token, req.body.password);\n      return { status: 204 };\n    } catch (err) {\n      return { status: 400, body: { error: err.message } };\n    }\n  }\n  return { status: 404 };\n}",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { db } from './db.js';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "import { createResetToken, redeemResetToken } from './reset.js';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 3,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 4,
+        "text": "export async function handle(req) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 5,
+        "text": "  if (req.method === 'GET' && req.path === '/me') {"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 6,
+        "text": "    const user = await db.users.find(req.userId);"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 7,
+        "text": "    return user ? { status: 200, body: { id: user.id, email: user.email } } : { status: 404 };"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 8,
+        "text": "  }"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  if (req.method === 'POST' && req.path === '/reset/request') {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "    const user = await db.users.find(req.body.userId);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "    // Answer the same whether or not the user exists, so the endpoint does not reveal accounts."
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "    if (!user) return { status: 202 };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "    const token = await createResetToken(user.id);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "    console.log(`reset requested for ${user.email}: token ${token}`);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "    await req.mailer.send(user.email, `Reset your password: https://example.test/reset?token=${token}`);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "    return { status: 202 };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "  }"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "  if (req.method === 'POST' && req.path === '/reset/confirm') {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "    try {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "      await redeemResetToken(req.body.token, req.body.password);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 21,
+        "text": "      return { status: 204 };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 22,
+        "text": "    } catch (err) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 23,
+        "text": "      return { status: 400, body: { error: err.message } };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 24,
+        "text": "    }"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 25,
+        "text": "  }"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 26,
+        "text": "  return { status: 404 };"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 27,
+        "text": "}"
+      }
+    ]
+  },
+  "h4": {
+    "id": "h4",
+    "file": "test/reset.test.js",
+    "oldFile": null,
+    "status": "added",
+    "language": "javascript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 23,
+    "additions": 23,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import assert from 'node:assert/strict';\nimport { test } from 'node:test';\nimport { db } from '../src/db.js';\nimport { TOKEN_TTL_MS, createResetToken, redeemResetToken } from '../src/reset.js';\n\ntest('a fresh token sets the new password', async () => {\n  await db.users.insert({ id: 'u1', email: 'a@example.test', password: 'old' });\n  const token = await createResetToken('u1', 1000);\n  await redeemResetToken(token, 'correct horse 42', 2000);\n  assert.equal(await db.users.checkPassword('u1', 'correct horse 42'), true);\n});\n\ntest('an expired token is refused', async () => {\n  await db.users.insert({ id: 'u2', email: 'b@example.test', password: 'old' });\n  const token = await createResetToken('u2', 1000);\n  await assert.rejects(redeemResetToken(token, 'correct horse 42', 1000 + TOKEN_TTL_MS), /expired/);\n});\n\ntest('a weak password is refused', async () => {\n  await db.users.insert({ id: 'u3', email: 'c@example.test', password: 'old' });\n  const token = await createResetToken('u3', 1000);\n  await assert.rejects(redeemResetToken(token, 'short', 2000), /at least 12/);\n});",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import assert from 'node:assert/strict';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "import { test } from 'node:test';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "import { db } from '../src/db.js';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "import { TOKEN_TTL_MS, createResetToken, redeemResetToken } from '../src/reset.js';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "test('a fresh token sets the new password', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  await db.users.insert({ id: 'u1', email: 'a@example.test', password: 'old' });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  const token = await createResetToken('u1', 1000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  await redeemResetToken(token, 'correct horse 42', 2000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  assert.equal(await db.users.checkPassword('u1', 'correct horse 42'), true);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "test('an expired token is refused', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  await db.users.insert({ id: 'u2', email: 'b@example.test', password: 'old' });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "  const token = await createResetToken('u2', 1000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "  await assert.rejects(redeemResetToken(token, 'correct horse 42', 1000 + TOKEN_TTL_MS), /expired/);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "test('a weak password is refused', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "  await db.users.insert({ id: 'u3', email: 'c@example.test', password: 'old' });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 21,
+        "text": "  const token = await createResetToken('u3', 1000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 22,
+        "text": "  await assert.rejects(redeemResetToken(token, 'short', 2000), /at least 12/);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 23,
+        "text": "});"
+      }
+    ]
+  }
+}

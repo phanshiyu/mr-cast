@@ -14,6 +14,7 @@ const EXPECTED = [
   'skills/mr-cast/SKILL.md',
   'skills/mr-cast/references/branch.md',
   'skills/mr-cast/references/explanation.md',
+  'skills/mr-cast/references/review.md',
   'skills/mr-cast-prune/SKILL.md',
   'skills/mr-cast-upgrade/SKILL.md',
 ];

@@ -96,6 +96,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
     [path.join(claudeDir, 'skills/mr-cast/SKILL.md'), fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-cast/SKILL.md'))],
     skill('mr-cast', 'references/branch.md'),
     skill('mr-cast', 'references/explanation.md'),
+    skill('mr-cast', 'references/review.md'),
     skill('mr-cast-prune'),
     skill('mr-cast-upgrade'),
   ];

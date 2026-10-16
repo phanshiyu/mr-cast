@@ -67,6 +67,7 @@ Fixtures:
 - **`examples/gallery/{hunks,storyboard}.json`.** Copy both into a dir under `$RUN` and use `--dir`. It covers the files, state, flowchart graph, table, chart, timeline and mermaid scenes.
 - **`.claude/skills/verify/fixtures/stress/{fits,over}.json`.** Long text in every scene type, and the same with 18 items past their fit, listed in `over.expected.txt`; use them with `examples/demo/hunks.json` (see `features/text-fit.md`).
 - **`.claude/skills/verify/fixtures/sequence-20.json`.** Two 20-message sequences, one walked in steps with a pen mark and one without steps; use it with `examples/demo/hunks.json`.
+- **`examples/review/storyboard.json`.** A reviewed walkthrough of the repository `scripts/review-demo.sh <dir>` creates (branch `feature/password-reset`, a planted bug, risk and nit). Use it after `extract` in that repository (see `features/review-mode.md`).
 - **`.claude/skills/verify/fixtures/explain-storyboard.json`.** An explanation of `src/api/rate-limit.ts` (snippet `s1` = lines 1-20).
 
 Never point a command at `examples/` itself. `voice`, `still` and `render` write `audio/`, `stills/` and MP4s into the data dir.

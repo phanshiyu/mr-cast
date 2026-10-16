@@ -1,6 +1,6 @@
 ---
 name: mr-cast
-description: Make a narrated, animated video walkthrough of this branch's changes or of something you just explained, played in the browser or saved as an MP4. Use when the user asks for a video, walkthrough, or animation of a branch, diff, pull request, or merge request, or asks to animate, visualize, or make a video of an explanation, such as "animate that", "make a video of this", or "turn that into a video". Not for a code review or an explanation that does not ask for a video.
+description: Make a narrated, animated video walkthrough of this branch's changes or of something you just explained, played in the browser or saved as an MP4. Use when the user asks for a video, walkthrough, or animation of a branch, diff, pull request, or merge request, or asks to animate, visualize, or make a video of an explanation, such as "animate that", "make a video of this", or "turn that into a video". It can also flag what looks wrong in the branch as it walks through it, when the user asks for your review. Not for a code review or an explanation that does not ask for a video.
 argument-hint: "[mp4] [base-branch | --working | what to focus on]"
 ---
 
@@ -34,7 +34,8 @@ The output is an MP4 when the request or the arguments say "mp4", "video file", 
 Ask with one `AskUserQuestion` call before you start the run. Ask only what the request leaves open:
 
 - The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), "slowly" (pace), or "focus on the migration" (focus). A request for a quick or short video answers the audience with the quick overview.
-- The user said "just make it", "use the defaults" or "no questions". Skip the call and use the last choices from `status`, else the recommended options.
+- The user asked for your opinion of the branch, with words such as "review it", "with your review", "find issues" or "flag anything that looks wrong". That turns review on (question 5).
+- The user said "just make it", "use the defaults" or "no questions". Skip the call and use the last choices from `status`, else the recommended options. Review stays off unless the words above turned it on.
 
 Say in one line which choice you used for each question you skipped. "Render" means an MP4. It does not skip the questions.
 
@@ -57,6 +58,11 @@ Every question is multiple choice. Put the recommended option first and end its 
    - "No voice, subtitles only". Description: "A silent video, timed for reading."
 
    When you already know the audience is someone new to this code, recommend "Slower" and list it first, unless a last choice comes first.
+5. Only when the branch is live: header "Review", question "Should I also flag what looks wrong?"
+   - "No, just explain (Recommended)". Description: "The video explains the change and gives no verdict."
+   - "Yes, flag what looks off". Description: "I mark lines that look wrong as the walkthrough reaches them, as my opinion, recap them at the end and write them to review.md."
+
+   Review applies to the branch only. If the user picks their explanation in question 1, ignore this answer.
 
 The answers become the flags, written `<flags>` in every command below:
 
@@ -65,7 +71,7 @@ The answers become the flags, written `<flags>` in every command below:
 
 For example, `<flags>` is `--audience new --pace slower`. Pass `<flags>` to every `extract`, `init`, `validate`, `outline`, `play`, `render` and `still` command. A flag applies to its own command only, and the run does not keep it. A command without the flags checks and times the video for a familiar audience at the normal pace, and voices it.
 
-mr-cast remembers these two answers, and `status` shows them next time.
+mr-cast remembers these two answers, and `status` shows them next time. Review takes no flag: the storyboard's `findings` turn it on, so it is asked each time.
 
 ## 3. Start the run
 
@@ -74,7 +80,7 @@ Read the reference for the source, and only that one:
 - The branch: [references/branch.md](references/branch.md).
 - An explanation: [references/explanation.md](references/explanation.md).
 
-It says how to start the run, which code to show, and what the video must cover. Then come back to step 4.
+It says how to start the run, which code to show, and what the video must cover. When review is on, also read [references/review.md](references/review.md), which says how to find, check and show what looks wrong. Then come back to step 4.
 
 The run starts in `.mr-cast/<slug>/` and becomes the current run. Every later command works on the current run. Several runs can coexist in one repository, such as one per branch, or one rendering while you write the next. When you work on more than one, pass `--name <slug>` to every command.
 
@@ -198,3 +204,5 @@ To change the pace or turn the voice off, change `<flags>` and pass the new flag
 For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the run's directory, named after the storyboard title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, with a chapter marker for each chapter title, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different runs can run at the same time.
 
 To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast still [sceneIndex...] <flags>` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a large hunk or snippet.
+
+When review is on, `validate` writes the findings to `review.md` in the run's directory and prints its path, and `render --out` writes a copy beside the MP4. In your final reply, list every finding as `severity file:line claim`, one per line, and give the path of `review.md`. With no findings, say that nothing looked wrong.

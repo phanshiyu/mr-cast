@@ -34,11 +34,12 @@ Type `/mr-cast`, or ask Claude to "create a video from this merge request". Afte
 - "That", "what you said" or "this explanation" means the explanation Claude just gave.
 - A bare "make a video of this" uses whichever source exists. When the branch has changes and both exist, the first question asks which one. When neither exists, the skill says what it can make and stops.
 
-The skill then asks up to three multiple-choice questions at once:
+The skill then asks up to four multiple-choice questions at once:
 
 - Who the video is for: a reviewer or teammate, someone new to the code, or the team in a quick overview.
 - Which areas to go deeper on.
 - The pace: normal, slower, faster, or no voice.
+- For a branch, whether Claude should also flag what looks wrong. The default is no. See [Review mode](#review-mode).
 
 The recommended answer is first in each question, so pressing enter gives the default video. A question your request already answers is skipped. Your last audience and pace are offered first next time, marked "(Last time)". Say "just make it", "use the defaults" or "no questions" to skip the questions.
 
@@ -137,6 +138,40 @@ The simple style is for a viewer who is new to the code, reads English as a seco
 
 The skill uses this style when you say the video is for someone new to the code, or when your request asks for it. `examples/demo-simple/` is the demo change told this way.
 
+## Review mode
+
+By default the video explains the change and gives no verdict. In review mode Claude also flags what looks clearly wrong as it walks through the branch: an obvious bug, a missing `await` or error path, a wrong condition, a secret in a log, a risky path no test covers, or a confusing name. It is not a deep audit. Each flag is something a reviewer would read and say "wait, that's wrong".
+
+Turn it on with the "Review" question, or ask for it with words such as "review it", "with your review", "find issues" or "flag anything that looks wrong". It needs a branch. An explanation has no diff to review.
+
+Claude checks each flag against the code before it goes in. It reads the code around the line, finds the input that breaks it, and runs it when that is cheap. It drops anything it is not sure of. A review that finds nothing is a valid result, and the video then says so.
+
+Each flag has a severity:
+
+| Severity | Means |
+| --- | --- |
+| `bug` | Wrong today, with an input that breaks it. |
+| `risk` | Breaks under some input or later, or leaks something. |
+| `nit` | Small but worth a fix, such as a confusing name. |
+
+The flags stay apart from the explanation, so the explanation can be trusted even where Claude is wrong:
+
+- The flag appears where the walkthrough reaches its line. A pen circle in the severity's colour (red, orange or blue) rings the line, with the severity and a short handwritten note. The voice says it then, as an opinion: "I think this delete is a bug."
+- A last scene, headed "Claude's review" and "My opinion, checked against the code", recaps every flag worst first, with its file and line. A review with no flags has no recap scene.
+- `validate` writes `review.md` into the run's directory, with each flag as a `file:line` bullet and its evidence. `render --out` writes a copy beside the MP4, named after it. Claude's last reply lists the flags too.
+
+The storyboard holds the flags in `findings`. Each has an `id`, a `severity`, a `file` and `line` from the diff, a one-line `claim` shown on screen, and one line of `evidence` written to `review.md`. A code step shows one with `"flag": "<id>"`. `"findings": []` records a review that found nothing.
+
+```json
+{ "id": "token-reused", "severity": "bug", "file": "src/reset.js", "line": 21,
+  "claim": "Deletes by user id, so a used token still works",
+  "evidence": "delete(row.userId) removes nothing, so the same token works twice" }
+```
+
+`validate` checks that each flag's file and line are in the diff, that its severity is `bug`, `risk` or `nit`, and that it has evidence. It checks that each `flag` names a finding and sits on the step whose lines hold its line. It requires the recap scene when there are flags, and rejects it when there are none. It warns about a flag that no code step shows, and about a flagged step whose words do not sound like an opinion. Review mode takes no flag on the command line, because the storyboard's `findings` record it.
+
+`examples/review/` is a password reset change with a planted bug, risk and nit, reviewed this way, and `scripts/review-demo.sh <dir>` creates its git repository.
+
 ## Voice
 
 `play` and `render` read the narration aloud with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a small text-to-speech model that runs offline on the CPU. The first run downloads the model (about 90 MB) into `~/.cache/mr-cast/models`, and each voice (about 0.5 MB) the first time it is used. Speaking a scene takes a few seconds.
@@ -173,6 +208,7 @@ Browsers block autoplay with sound, so a voiced walkthrough waits for you to pre
 | `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
+| `review` | In [review mode](#review-mode), every flag worst first, with its severity, file and line, and claim, under "Claude's review". |
 
 Each spoken text is a segment: a lead, the voice, and a tail. The narration waits until the scene has drawn in, which takes 1 second, or the scene type's build time plus 0.3 seconds when longer. Most diagrams take 1.5 seconds, so their voice starts at 1.8. Each step's items light up 0.5 seconds before its voice and stay lit 1.2 seconds after it. Without a voice clip, a segment reads at 130 words per minute and holds 1.5 seconds after, 3 seconds at least. The pace scales the reading speed and every pause.
 
@@ -215,6 +251,8 @@ A step can draw on what it points at, like a reviewer circling a line on a print
 | `arrow` | An arrow pointing at it from free space nearby, with the note at its tail. |
 | `strike` | One line through it. |
 | `cross` | An X over it. |
+
+A code step with a review `flag` draws a circle in the flag's colour with its claim as the note, unless it names its own `mark` or `note`. See [Review mode](#review-mode).
 
 The mark goes on the step's first `focus` ref, or the whole range for a ref such as `"3-5"`. A code step marks its `lines`, or with a `token` only that text on them: `{ "lines": 8, "mark": "circle", "token": "max: 20", "say": "..." }`. The `note` is a few handwritten words, up to 40 characters, placed beside the mark where it covers least.
 

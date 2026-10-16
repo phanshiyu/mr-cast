@@ -1,0 +1,288 @@
+{
+  "title": "Password reset tokens",
+  "subtitle": "feature/password-reset",
+  "findings": [
+    {
+      "id": "token-reused",
+      "severity": "bug",
+      "file": "src/reset.js",
+      "line": 21,
+      "claim": "Deletes by user id, so a used token **still works**",
+      "evidence": "resetTokens is keyed by token, so delete(row.userId) removes nothing; redeeming the same token twice succeeds (ran it)."
+    },
+    {
+      "id": "token-logged",
+      "severity": "risk",
+      "file": "src/routes.js",
+      "line": 14,
+      "claim": "The reset token is written to the log",
+      "evidence": "console.log prints the full token; anyone who reads the logs can reset that user's password for 15 minutes."
+    },
+    {
+      "id": "password-name",
+      "severity": "nit",
+      "file": "src/password.js",
+      "line": 4,
+      "claim": "`validPassword` returns an error message, not a boolean",
+      "evidence": "It returns null for a good password and a string for a bad one, so `if (validPassword(p))` reads backwards."
+    }
+  ],
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Overview",
+      "narration": "Users who forget their password can now reset it. The service mails a one time token that is good for fifteen minutes, and the token lets the user set a new password.",
+      "summary": "Reset a forgotten password with a one-time token",
+      "risk": "high",
+      "bullets": [
+        "A used token must stop working",
+        "The token is a secret: nothing may log it",
+        "A weak new password is refused"
+      ]
+    },
+    {
+      "type": "files",
+      "chapter": "Files",
+      "narration": "Two new modules hold the logic. The routes file adds two endpoints, and one new test file covers the happy path and two refusals.",
+      "notes": {
+        "src/reset.js": "create and redeem tokens",
+        "src/password.js": "password rules",
+        "src/routes.js": "two new endpoints"
+      }
+    },
+    {
+      "type": "sequence",
+      "chapter": "Reset flow",
+      "narration": "A reset takes two requests: one asks for a token, the other spends it.",
+      "participants": [
+        {
+          "id": "user",
+          "label": "User",
+          "icon": "user",
+          "caption": "browser"
+        },
+        {
+          "id": "routes",
+          "label": "routes.js",
+          "icon": "server",
+          "caption": "handler",
+          "change": "modified"
+        },
+        {
+          "id": "reset",
+          "label": "reset.js",
+          "icon": "key-round",
+          "caption": "tokens",
+          "change": "added"
+        },
+        {
+          "id": "db",
+          "label": "db",
+          "icon": "database",
+          "caption": "store"
+        }
+      ],
+      "messages": [
+        {
+          "from": "user",
+          "to": "routes",
+          "label": "POST /reset/request"
+        },
+        {
+          "from": "routes",
+          "to": "reset",
+          "label": "createResetToken"
+        },
+        {
+          "from": "reset",
+          "to": "db",
+          "label": "insert token, expiry"
+        },
+        {
+          "from": "routes",
+          "to": "user",
+          "label": "email with link",
+          "kind": "async"
+        },
+        {
+          "from": "user",
+          "to": "routes",
+          "label": "POST /reset/confirm"
+        },
+        {
+          "from": "routes",
+          "to": "reset",
+          "label": "redeemResetToken"
+        },
+        {
+          "from": "reset",
+          "to": "db",
+          "label": "set password, retire token"
+        },
+        {
+          "from": "routes",
+          "to": "user",
+          "label": "204 No Content",
+          "kind": "return"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0-3",
+          "say": "First the user asks for a reset. The handler creates a token, stores it with its expiry, and mails a link."
+        },
+        {
+          "focus": "4-7",
+          "say": "Then the link posts the token with a new password. The token is checked, the password is set, and the token should be retired."
+        }
+      ]
+    },
+    {
+      "type": "state",
+      "chapter": "Token lifecycle",
+      "narration": "A token has three states. It starts issued, and ends either redeemed or expired. Neither end lets it be used again.",
+      "initial": "issued",
+      "states": [
+        {
+          "id": "issued",
+          "label": "Issued"
+        },
+        {
+          "id": "redeemed",
+          "label": "Redeemed",
+          "final": true
+        },
+        {
+          "id": "expired",
+          "label": "Expired",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "from": "issued",
+          "to": "redeemed",
+          "label": "redeem"
+        },
+        {
+          "from": "issued",
+          "to": "expired",
+          "label": "15 minutes pass"
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Request a reset",
+      "hunkId": "h3",
+      "narration": "This is the endpoint that starts a reset.",
+      "steps": [
+        {
+          "lines": "9-12",
+          "say": "The endpoint looks up the user. An unknown user gets the same accepted answer, so nobody can learn which accounts exist."
+        },
+        {
+          "lines": "13-14",
+          "flag": "token-logged",
+          "token": "token ${token}",
+          "say": "Then it makes a reset token. I think the next line is risky. It writes the whole token to the log, and anyone who holds that token can change the user's password."
+        },
+        {
+          "lines": "15-16",
+          "say": "Finally it emails the reset link to the user and answers that the request was accepted."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Create a token",
+      "hunkId": "h2",
+      "narration": "The reset module makes the token.",
+      "steps": [
+        {
+          "lines": "5",
+          "say": "A token lives for fifteen minutes."
+        },
+        {
+          "lines": "8-12",
+          "say": "The token is thirty two random bytes, written out as text. It is stored with its user and the time it runs out."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Redeem a token",
+      "hunkId": "h2",
+      "narration": "Redeeming a token sets the new password.",
+      "steps": [
+        {
+          "lines": "16-17",
+          "say": "A token that is unknown, or that has run out, is refused."
+        },
+        {
+          "lines": "18-19",
+          "say": "A new password that breaks the rules is refused, with the reason."
+        },
+        {
+          "lines": "20",
+          "say": "Then the user's password is changed."
+        },
+        {
+          "lines": "21",
+          "flag": "token-reused",
+          "note": "deletes by user id, not token",
+          "say": "I think this delete is a bug. Tokens are stored under the token itself, but the delete looks them up by the user's id, so nothing gets deleted. I tried it, and the same reset link worked a second time."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Password rules",
+      "hunkId": "h1",
+      "narration": "The password rules live in their own module.",
+      "steps": [
+        {
+          "lines": "4",
+          "flag": "password-name",
+          "note": "returns an error, not a yes or no",
+          "say": "A small one. I think the function's name sounds like a yes or no answer, but it gives back the reason a password is refused, or nothing when the password is fine."
+        },
+        {
+          "lines": "5-8",
+          "say": "A password must be text, at least twelve characters long, and contain a digit."
+        }
+      ]
+    },
+    {
+      "type": "tests",
+      "chapter": "Tests",
+      "narration": "Three new tests cover the reset. None of them uses a token twice, which is why the reuse bug still passes.",
+      "subject": "redeemResetToken in src/reset.js",
+      "cases": [
+        {
+          "name": "a fresh token sets the new password",
+          "proves": "a valid token changes the password",
+          "hunkId": "h4"
+        },
+        {
+          "name": "an expired token is refused",
+          "proves": "a token is refused at its expiry time",
+          "hunkId": "h4"
+        },
+        {
+          "name": "a weak password is refused",
+          "proves": "the password rules apply to a reset",
+          "hunkId": "h4"
+        }
+      ],
+      "gaps": [
+        "Redeeming the same token twice",
+        "The mailer failing after the token is stored"
+      ]
+    },
+    {
+      "type": "review",
+      "narration": "To recap, I flagged one bug, one risk and one nit. Fix the token reuse first: it lets a used reset link change the password again."
+    }
+  ]
+}

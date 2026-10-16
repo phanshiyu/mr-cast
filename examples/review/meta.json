@@ -1,0 +1,5 @@
+{
+  "mode": "diff",
+  "branch": "feature/password-reset",
+  "base": "main"
+}

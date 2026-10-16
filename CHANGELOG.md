@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.17.0
+
+- **Review mode.** Ask for Claude's review, with the new "Review" question or words such as "review it", "with your review" or "find issues", and the video also flags what looks clearly wrong in the branch: an obvious bug, a missing `await` or error path, a wrong condition, a secret in a log, a risky untested path, or a confusing name. It is off by default, and the video otherwise explains the change as before. Claude checks each flag against the code before it goes in, and drops what it is not sure of.
+- **Flags are drawn apart from the explanation.** A code step with `"flag": "<id>"` circles its line in the flag's severity colour (`bug` red, `risk` orange, `nit` blue) with the severity and a handwritten note, and the voice says it there as an opinion. A new `review` scene at the end recaps every flag worst first, with its file and line, under "Claude's review" and "My opinion, checked against the code". A review with no flags has no recap.
+- **review.md.** The storyboard's new `findings` hold the flags, each with a severity, a file and line, a claim and its evidence. `validate` writes them to `review.md` in the run's directory as `file:line` bullets with their evidence, and `render --out` writes a copy beside the MP4. `validate` and `outline` count them, as in `review: 1 bug, 1 risk, 1 nit`.
+- `validate` checks that each finding's file and line are in the diff, its severity is `bug`, `risk` or `nit`, and it has evidence. It checks that each `flag` sits on the step whose lines hold the finding's line, requires the recap when there are findings and rejects it when there are none. It warns about a finding no code step flags, and a flagged step whose words do not sound like an opinion.
+- Review mode takes no command-line flag: a storyboard with `findings`, even `[]`, is a reviewed one. A storyboard without them renders exactly as in 0.16.
+- The skill reads `references/review.md` when review is on, and its last reply lists the flags. `examples/review/` and `scripts/review-demo.sh` are a password reset change with a planted bug, risk and nit.
+
 ## 0.16.0
 
 - **Node 22.12 or newer.** mr-cast now needs Node 22.12 or newer, and Node 24 LTS is recommended. Node 20 reached end of life in April 2026, and Mermaid 12 needs 22.12. Node 22, 24 and 26 are tested. The launcher no longer avoids Node 26: the render hang seen with Homebrew's Node 26 no longer reproduces, with Homebrew's 26.8 or nvm's 26.12.
