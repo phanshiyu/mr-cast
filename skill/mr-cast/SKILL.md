@@ -202,7 +202,7 @@ After the answer, stop the `mr-cast plan` command and read `plan.json`. The page
 - A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`.
 - The shared rules below still put every diagram before the first code scene. Keep the topics in plan order within the diagrams, and again within the code.
 
-`validate` reports a scene whose `topic` is not in `plan.json`. It warns about a topic the user kept with no scene, a skipped topic that still has scenes, and a scene that does not draw the view the user picked. When the storyboard is valid, `validate` saves the picks the video is built from in `plan-built.json`, and `outline` groups the scenes by topic.
+`validate` reports a scene whose `topic` is not in `plan.json`. It warns about a topic the user kept with no scene, a skipped topic that still has scenes, a scene that does not draw the view the user picked, a `deep` topic with no code walked in `steps`, and a `brief` topic whose code is walked in steps. When the storyboard is valid, `validate` saves in `plan-built.json` the pick of each topic whose scenes show it, and `outline` groups the scenes by topic.
 
 ## 5. Write the storyboard
 

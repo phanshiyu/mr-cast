@@ -6,6 +6,7 @@ import path from 'node:path';
 import { mergeChoice, readPlan, recordBuilt } from '../bin/lib/plan.mjs';
 import { TOKEN_HEADER, startServer } from '../bin/lib/server.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { topicsBuilt } from '../bin/lib/validate-plan.mjs';
 import { formatOutline } from '../bin/lib/summary.mjs';
 import { checkPlan, formatLength, planSeconds } from '../shared/plan.mjs';
 
@@ -111,10 +112,13 @@ test('a write the disk refuses is a 500 with the reason, and the server keeps se
   assert.equal((await post({ topic: 'a', choice: { depth: 'deep', view: 'calls' } })).status, 200);
 }));
 
-test('the built picks are each topic pick', () => {
+test('the built picks are those of the topics the storyboard shows, and the rest keep the pick built before', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-plan-'));
-  recordBuilt(dir, plan(topic('a'), topic('b', { choice: { depth: 'skip', view: 'compare' } })));
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'plan-built.json'), 'utf8')), { topics: { a: { depth: 'brief', view: 'calls' }, b: { depth: 'skip', view: 'compare' } } });
+  const built = () => JSON.parse(fs.readFileSync(path.join(dir, 'plan-built.json'), 'utf8'));
+  recordBuilt(dir, plan(topic('a'), topic('b', { choice: { depth: 'skip', view: 'compare' } })), new Set(['a', 'b']));
+  assert.deepEqual(built(), { topics: { a: { depth: 'brief', view: 'calls' }, b: { depth: 'skip', view: 'compare' } } });
+  recordBuilt(dir, plan(topic('a', { choice: { depth: 'deep', view: 'calls' } }), topic('b', { choice: { depth: 'brief', view: 'calls' } }), topic('c')), new Set(['b']));
+  assert.deepEqual(built(), { topics: { a: { depth: 'brief', view: 'calls' }, b: { depth: 'brief', view: 'calls' } } });
   assert.equal(readPlan(dir), null);
   fs.rmSync(dir, { recursive: true });
 });
@@ -129,9 +133,32 @@ const topicsOf = async (scenes, p) => validateStoryboard({ title: 'Limits', scen
 const about = (list) => list.filter((m) => /topic|plan\.json/.test(m));
 
 test('a storyboard that follows the picks has no topic problems', async () => {
-  const p = plan(topic('limit'), topic('orders', { choice: { depth: 'deep', view: 'compare' } }), topic('logs', { choice: { depth: 'skip', view: 'calls' } }));
+  const p = plan(topic('limit'), topic('orders', { choice: { depth: 'brief', view: 'compare' } }), topic('logs', { choice: { depth: 'skip', view: 'calls' } }));
   const { errors, warnings } = await topicsOf([intent, sequence('limit'), compare('orders')], p);
   assert.deepEqual([...errors, ...about(warnings)], []);
+});
+
+const walked = (topicId, steps) => ({ type: 'code', topic: topicId, narration: 'The limiter.', steps: Array.from({ length: steps }, (_, i) => ({ focus: [`${i + 1}`] })) });
+
+test('a topic counts as built only when its scenes show its depth: deep walks code in steps, brief does not', async () => {
+  const p = plan(
+    topic('limit', { choice: { depth: 'deep', view: 'calls' } }),
+    topic('orders', { choice: { depth: 'deep', view: 'calls' } }),
+    topic('logs', { choice: { depth: 'brief', view: 'calls' } }),
+    topic('auth'),
+  );
+  const scenes = [intent, sequence('limit'), walked('limit', 3), sequence('orders'), walked('orders', 1), sequence('logs'), walked('logs', 4), sequence('auth'), walked('auth', 1)];
+  assert.deepEqual([...topicsBuilt({ scenes }, p)], ['limit', 'auth']);
+  const { warnings } = await topicsOf([intent, sequence('orders'), walked('orders', 1)], plan(topic('orders', { choice: { depth: 'deep', view: 'calls' } })));
+  assert.deepEqual(about(warnings), ['topic "orders": the viewer chose deep, and none of its code scenes walks the lines in steps; add a code scene with "steps"']);
+});
+
+test('the user flipping a topic the storyboard has not caught up with leaves that topic unbuilt', () => {
+  const before = plan(topic('a'), topic('b'));
+  const scenes = [intent, sequence('a'), sequence('b')];
+  assert.deepEqual([...topicsBuilt({ scenes }, before)], ['a', 'b']);
+  const flipped = plan(topic('a'), topic('b', { choice: { depth: 'deep', view: 'calls' } }));
+  assert.deepEqual([...topicsBuilt({ scenes }, flipped)], ['a']);
 });
 
 test('an unknown topic id is an error', async () => {

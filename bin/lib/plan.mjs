@@ -73,7 +73,19 @@ export function writeChoice(dir, body) {
   return { status: 200 };
 }
 
-/** Records each topic's pick as the one the video was built from. */
-export function recordBuilt(dir, plan) {
-  writeAtomic(path.join(dir, BUILT_FILE), { topics: Object.fromEntries(plan.topics.map((t) => [t.id, pickOf(t)])) });
+/**
+ * Records the pick of each topic in `built`, whose scenes show it, as the one the video was built from. Any
+ * other topic keeps the pick recorded for it before, so the plan page still marks its new pick as not in the video.
+ */
+export function recordBuilt(dir, plan, built) {
+  const file = path.join(dir, BUILT_FILE);
+  let before = {};
+  try {
+    before = JSON.parse(fs.readFileSync(file, 'utf8')).topics ?? {};
+  } catch { /* none yet, or unreadable: nothing to keep */ }
+  const topics = plan.topics.flatMap((t) => {
+    if (built.has(t.id)) return [[t.id, pickOf(t)]];
+    return Object.hasOwn(before, t.id) ? [[t.id, before[t.id]]] : [];
+  });
+  writeAtomic(file, { topics: Object.fromEntries(topics) });
 }

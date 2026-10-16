@@ -8,7 +8,7 @@ Before Claude writes a storyboard, it writes `plan.json` with the change's topic
 - **Picks.** Clicking a depth or a view tile saves at once ("Saved" by the header), and the length estimate follows. Keys: ArrowUp and ArrowDown move between rows, 1, 2 and 3 set Skip, Brief and Deep, ArrowLeft and ArrowRight change the view. A skipped row dims and hides its views. A topic with one view shows "Shown as: <label>". A changed row has an accent bar and "Back to suggested".
 - **Live reload.** An edit of `plan.json` on disk reloads the page and outlines new or changed rows for about two seconds. An invalid `plan.json` shows "The plan has problems" with the errors.
 - **Write guard.** POST `/plan/choice` needs the `X-Mr-Cast-Token` header and a JSON body `{ topic, choice }`. Without the token the page says "This page is read-only".
-- **Topics in validate and outline.** `validate` checks scene `topic` ids and the picks, and writes `plan-built.json` when the storyboard is valid. `outline` groups scenes under `<title> (<depth>, <view label>)` headings.
+- **Topics in validate and outline.** `validate` checks scene `topic` ids and the picks, and, when the storyboard is valid, writes to `plan-built.json` the pick of each topic whose scenes show it (a `deep` topic needs code walked in steps). `outline` groups scenes under `<title> (<depth>, <view label>)` headings.
 - **Plan tab.** `play` with a `plan.json` shows Video and Plan tabs. A changed pick shows "Changed, not in the video yet" and the bar "In the terminal, say: update the video".
 
 ## How to get to it (user POV)
