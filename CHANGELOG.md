@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.0
+
+- **A voice-over you can follow by ear.** The skill has one section, How the voice talks, for every audience: say what the code does in plain words, keep code names on screen, name each scene's subject, one idea per sentence, explain a needed term once, say why it matters, and say something new in each scene. It shows four before-and-after pairs from the demo. In a blind comparison, three listeners who heard only the voice-over each preferred the new demo narration, rating it 8.3 out of 10 on average against 5.7, with 3 stumbling phrases instead of 8.
+- **`validate` warns about spoken text that reads as code.** Narration and every `say` are checked for identifiers, file paths, routes, operators and settings read aloud, a bare status code, a sentence over 25 words, a scene that opens on a bare "It" or "This", and a short list of terms to explain or replace, such as "idempotent", "middleware", "SKU" and "Retry-After". Each warning quotes the phrase and suggests the spoken form. They are warnings, so an existing storyboard still validates.
+- **The voice says shorthand in words.** "e.g.", "i.e.", "5s", "200 ms", "20 req/min", an arrow and a version such as "v0.14.0" are read as words, and the subtitles show the same words. Kokoro read them as "ee jee", "fives", "em ess", nothing at all, and "vee zero point one four". Clips voiced from now on say Redis "red-iss", not "ri-deez". A narration with none of these voices exactly as before.
+- Every example's narration and steps are rewritten to the new standard. On-screen text keeps its code names.
 ## 0.17.0
 
 - **Review mode.** Ask for Claude's review, with the new "Review" question or words such as "review it", "with your review" or "find issues", and the video also flags what looks clearly wrong in the branch: an obvious bug, a missing `await` or error path, a wrong condition, a secret in a log, a risky untested path, or a confusing name. It is off by default, and the video otherwise explains the change as before. Claude checks each flag against the code before it goes in, and drops what it is not sure of.

@@ -189,6 +189,8 @@ If the model cannot load, for example offline on the first run, `play` and `rend
 
 Browsers block autoplay with sound, so a voiced walkthrough waits for you to press play.
 
+The narration is written to be heard once, like one person explaining the change to another. The skill tells Claude to name what code does in plain words and to keep code names on screen. `validate` warns when spoken text reads a code name, a file path or a bare status code aloud, opens a scene with a bare "It" or "This", runs past 25 words in a sentence, or uses a term such as "idempotent" without explaining it. Each warning quotes the phrase and suggests what to say. The voice reads a few written forms as words, so "e.g." becomes "for example", "5s" becomes "5 seconds", "200 ms" becomes "200 milliseconds", an arrow becomes "to" and "v0.14.0" becomes "version 0 point 14 point 0". The subtitles show the same words.
+
 ## Storyboard
 
 `src/types.ts` defines the schema. A storyboard has a title and a list of scenes, and each scene has `narration`.
