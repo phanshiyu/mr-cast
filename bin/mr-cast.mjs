@@ -416,31 +416,36 @@ async function play(argv) {
   let voiceover = settings.silent ? await voiceoverFor(dir, storyboard, settings) : voicedSoFar(dir, storyboard, settings);
   reportPace(voiceover);
 
-  // One voicing at a time. The first runs while the player already plays silent, and tells it after each clip so it
-  // can show the progress. A later one, for an edited storyboard, finishes before the player reloads, as before.
+  // One voicing at a time, and only for the newest storyboard: an edit made while one runs replaces any still waiting.
+  // The first runs while the player already plays silent, and tells it after each clip so it can show the progress.
   let voicing = Promise.resolve();
+  let turns = 0;
   const voiceInTurn = (sb, onClip) => {
+    const turn = ++turns;
     voicing = voicing.then(async () => {
+      if (turn !== turns) return false;
       voiceover = await voiceoverFor(dir, sb, settings, { onClip, ensure: ensureVoiceoverInChild });
+      return true;
     });
     return voicing;
   };
 
+  // An edited storyboard reloads at once, with the clips it already has; the player reloads again once it is voiced.
   const onDataChange = async (file) => {
     if (file === 'meta.json' || file === BUILT_FILE) return;
     let project;
     try {
       project = await loadProject(dir, settings);
-      console.error(`mr-cast: ${file} changed`);
-      if (file === 'storyboard.json' && !project.result.errors.length) {
-        await voiceInTurn(project.storyboard);
-        project = await loadProject(dir, settings);
-      }
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
       return;
     }
+    console.error(`mr-cast: ${file} changed`);
     for (const line of project.lines) console.error(`  ${line}`);
+    if (file !== 'storyboard.json' || project.result.errors.length || settings.silent) return;
+    void voiceInTurn(project.storyboard).then((voiced) => {
+      if (voiced) server.reload();
+    });
   };
   const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover });
   const url = `${server.url}/#token=${server.token}`;

@@ -221,6 +221,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
 
   // Tells open players that more of the voice-over is ready, without reloading the walkthrough.
   const voiceProgress = () => broadcast('event: voice\ndata: voice\n\n');
+  // Tells open players to reload the walkthrough, as after a change to its files.
+  const reload = () => broadcast('event: change\ndata: change\n\n');
 
-  return { url: `http://${HOST}:${bound}`, token, close, voiceProgress };
+  return { url: `http://${HOST}:${bound}`, token, close, voiceProgress, reload };
 }

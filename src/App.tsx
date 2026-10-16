@@ -120,6 +120,7 @@ export const App: React.FC = () => {
   const [frame, setFrame] = useState(0);
   const [rate, setRate] = useState(1);
   const [tab, setTab] = useState<Tab>(() => (onPlanPath() ? 'plan' : 'video'));
+  const [voiceEvents, setVoiceEvents] = useState(0);
   const token = useMemo(urlToken, []);
 
   const reload = useCallback(async () => {
@@ -129,15 +130,17 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     void reload();
+    // One stream per tab, since a browser opens at most six connections to a host.
     const events = new EventSource('./events');
     events.addEventListener('change', () => void reload());
+    events.addEventListener('voice', () => setVoiceEvents((n) => n + 1));
     return () => events.close();
   }, [reload]);
 
   const ready = state.status === 'ready' ? state : null;
   const walk = ready?.walkthrough ?? null;
   const view: Tab = !walk ? 'plan' : !ready?.plan ? 'video' : tab;
-  const voice = useVoiceChoice(walk?.storyboard ?? null, walk?.voiceover);
+  const voice = useVoiceChoice(walk?.storyboard ?? null, walk?.voiceover, voiceEvents);
   // The player mounts once the voice is decided, since whether it autoplays is fixed when it mounts.
   const shown = useMemo(() => (walk && voice.decided ? { ...walk, voiceover: voice.shown } : null), [walk, voice.decided, voice.shown]);
   const chapters = useMemo(() => (shown ? timeline(shown.storyboard, shown.voiceover) : []), [shown]);

@@ -11,6 +11,13 @@ export const VoicePill: React.FC<{ status: VoiceStatus; onVoice: () => void }> =
       </span>
     );
   }
+  if (status.kind === 'failed') {
+    return (
+      <span className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1 text-rose-200" aria-live="polite">
+        Voice failed, see the terminal
+      </span>
+    );
+  }
   if (status.kind !== 'ready') return null;
   return (
     <button
