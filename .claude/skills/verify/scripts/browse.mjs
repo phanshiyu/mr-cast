@@ -39,6 +39,8 @@ const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-verify-chrome-'))
 const chrome = spawn(chromePath(), [
   '--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--mute-audio',
   '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1920,1080',
+  // As Remotion renders: without it, Linux hints glyphs to whole-pixel advances and text draws wider than measured.
+  '--font-render-hinting=none',
   // Ubuntu 24.04 blocks the unprivileged user namespaces Chrome's sandbox needs, as on GitHub's runners.
   ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
   'about:blank',

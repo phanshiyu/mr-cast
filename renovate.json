@@ -55,6 +55,14 @@
       ]
     },
     {
+      "description": "Below 1.0 a minor release can break (esbuild 0.28 to 0.29), so those wait for a review too",
+      "matchCurrentVersion": "<1.0.0",
+      "matchUpdateTypes": [
+        "minor"
+      ],
+      "automerge": false
+    },
+    {
       "description": "Every Remotion package must stay on one version",
       "groupName": "Remotion",
       "matchPackageNames": [

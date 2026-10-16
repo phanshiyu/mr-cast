@@ -435,8 +435,9 @@ async function getVoiceFile(id) {
   } catch (err) {
     if (err.code !== "ENOENT") throw err;
   }
-  const response = await fetch(`${VOICE_DATA_URL}/${id}.bin`);
-  if (!response.ok) throw new Error(`could not download voice ${id} (HTTP ${response.status})`);
+  if (!hf.allowRemoteModels) throw new Error(`voice ${id} is not in ${path.dirname(file)} and remote models are off`);
+  const response = await fetch(`${VOICE_DATA_URL}/${id}.bin`, { signal: AbortSignal.timeout(120_000) });
+  if (!response.ok) throw new Error(`HTTP ${response.status} for ${response.url}`);
   const buffer = Buffer.from(await response.arrayBuffer());
   await fs.mkdir(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp-${process.pid}`;

@@ -182,6 +182,12 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
     if (!Object.hasOwn(tts.voices, chosen)) {
       throw new UserError(`unknown voice "${chosen}"; choose one of ${Object.keys(tts.voices).join(', ')}`);
     }
+    try {
+      const { getVoiceData } = await import('./kokoro/voices.js');
+      await getVoiceData(chosen);
+    } catch (err) {
+      throw new UserError(`could not get voice "${chosen}" (${err.cause?.message ?? err.message}); the first use of a voice downloads about 0.5 MB from huggingface.co into ${cacheDir('models')}`);
+    }
     fs.mkdirSync(path.join(dataDir, AUDIO_DIR), { recursive: true });
     let done = 0;
     for (const [key, text] of missing) {
