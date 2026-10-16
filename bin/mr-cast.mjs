@@ -13,7 +13,6 @@ import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts,
 import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
 import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
-import { topicsBuilt } from './lib/validate-plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
@@ -282,8 +281,8 @@ async function validate(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const { dir, settings } = runFor(values);
   const { result, lines, review, plan, storyboard } = await loadProject(dir, settings);
-  // The plan page marks a pick the video does not show yet; only topics whose scenes show their pick count as built.
-  if (!result.errors.length && plan) recordBuilt(dir, plan.plan, topicsBuilt(storyboard, plan.plan));
+  // The plan page marks each topic whose pick differs from the one the storyboard says it was written from.
+  if (!result.errors.length && plan) recordBuilt(dir, plan.plan, storyboard.plan);
   // The verdict stays the last line.
   for (const line of lines.slice(0, -1)) console.log(line);
   if (review) console.log(`wrote ${rel(review)}`);

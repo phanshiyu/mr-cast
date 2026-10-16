@@ -80,7 +80,7 @@ interface SceneBase {
   chapter?: string;
   /**
    * The id of the plan.json topic this scene shows, when the run has a plan. `validate` checks each topic's scenes
-   * against the depth and view the viewer picked. Leave it off scenes about the whole video, such as the intent.
+   * against the pick in the storyboard's `plan`. Leave it off scenes about the whole video, such as the intent.
    */
   topic?: string;
   /** In an explanation, this scene explains a change, so its `change` marks are meant (see Storyboard.explainsChange). */
@@ -859,6 +859,14 @@ export interface Storyboard {
    * Set it on one scene instead when only that scene shows a change.
    */
   explainsChange?: boolean;
+  /**
+   * With a plan.json only: the pick each topic's scenes were written from, by topic id, copied from plan.json
+   * (the topic's `choice`, else its `depth` and first view), such as `{ "rate-limiter": { "depth": "brief",
+   * "view": "calls" } }`. Update a topic's entry whenever you rewrite its scenes. `validate` checks each topic's
+   * scenes against it, warns when a pick in plan.json has changed since, and records it as what the video was
+   * built from, so the plan page marks every topic whose pick differs.
+   */
+  plan?: Record<string, TopicPick>;
 }
 
 export interface SkippedHunk {

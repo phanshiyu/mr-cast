@@ -199,12 +199,13 @@ After the answer, stop the `mr-cast plan` command and read `plan.json`. The page
 ### Write the scenes from the picks
 
 - Set `"topic": "<id>"` on every scene that shows a topic. Leave it off the intent, tests and review scenes.
+- Copy your picks into the storyboard's `plan`: for each topic, the pick you wrote its scenes from, `"plan": { "<id>": { "depth": "brief", "view": "calls" } }`. Update an entry whenever you rebuild that topic.
 - A topic at `skip` gets no scene. List its hunks in `skipped` with the reason "the viewer chose to skip this topic".
 - A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the short overview. List its other hunks in `skipped` with the reason "the viewer chose a brief look at this topic", in those words, since a reviewer's video otherwise warns about every substantial hunk it does not show.
 - A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`.
 - The shared rules below still put every diagram before the first code scene. Keep the topics in plan order within the diagrams, and again within the code.
 
-`validate` reports a scene whose `topic` is not in `plan.json`. It warns about a topic the user kept with no scene, a skipped topic that still has scenes, a scene that does not draw the view the user picked, a `deep` topic with no code walked in `steps`, and a `brief` topic whose code is walked in steps. When the storyboard is valid, `validate` saves in `plan-built.json` the pick of each topic whose scenes show it, and `outline` groups the scenes by topic.
+`validate` reports a scene or a `plan` entry whose topic is not in `plan.json`. It warns about a topic missing from `plan`, a pick in `plan.json` that changed since you wrote `plan`, a topic kept with no scene, a skipped topic that still has scenes, and a topic none of whose scenes draws its view. When the storyboard is valid, `validate` saves your `plan` in `plan-built.json`, and `outline` groups the scenes by topic.
 
 ## 5. Write the storyboard
 
@@ -367,7 +368,7 @@ To change the pace or turn the voice off, change `<flags>` and pass the new flag
 
 `play` prints `mr-cast player: <url>` and opens the browser. Give the user that URL. Tell them it starts silent with subtitles while the voice is made, and to press V or click "Play with voice" when that appears. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
 
-With a `plan.json`, the player also has a Plan tab with the same picks. When the user changes a pick there, the row says "Changed, not in the video yet", and the page asks them to say "update the video" in the terminal. Then compare each topic's pick in `plan.json` with `plan-built.json`, rewrite only the scenes of the topics that differ, and run `validate <flags>`. Only those scenes need voicing again.
+With a `plan.json`, the player also has a Plan tab with the same picks. When the user changes a pick there, the row says "Changed, not in the video yet", and the page asks them to say "update the video" in the terminal. Then run `validate <flags>`: it names each topic whose pick changed. Rewrite only the scenes of those topics, update their entries in the storyboard's `plan`, and run `validate <flags>` again. Only those scenes need voicing again.
 
 For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the run's directory, named after the storyboard title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, with a chapter marker for each chapter title, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different runs can run at the same time.
 

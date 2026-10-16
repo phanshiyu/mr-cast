@@ -1,6 +1,28 @@
 {
   "title": "Rate limiting for the Orders API",
   "subtitle": "feature/rate-limit → main",
+  "plan": {
+    "rate-limiter": {
+      "depth": "deep",
+      "view": "calls"
+    },
+    "real-prices": {
+      "depth": "brief",
+      "view": "data"
+    },
+    "data-model": {
+      "depth": "brief",
+      "view": "schema"
+    },
+    "order-events": {
+      "depth": "brief",
+      "view": "parts"
+    },
+    "legacy-throttle": {
+      "depth": "skip",
+      "view": "code"
+    }
+  },
   "scenes": [
     {
       "type": "intent",

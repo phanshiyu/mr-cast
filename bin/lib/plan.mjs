@@ -1,11 +1,11 @@
 // plan.json on disk. Claude writes the file; the plan page changes one topic's `choice` at a time through
 // writeChoice, which never takes more than that from the browser. plan-built.json records the picks the
-// current video was validated with, so the page can mark the picks the video does not have yet.
+// storyboard was written from, so the page can mark the picks the video does not have yet.
 
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { checkPlan, choiceError, pickOf } from '../../shared/plan.mjs';
+import { checkPlan, choiceError } from '../../shared/plan.mjs';
 import { locateJsonError } from './json.mjs';
 
 export const PLAN_FILE = 'plan.json';
@@ -74,18 +74,10 @@ export function writeChoice(dir, body) {
 }
 
 /**
- * Records the pick of each topic in `built`, whose scenes show it, as the one the video was built from. Any
- * other topic keeps the pick recorded for it before, so the plan page still marks its new pick as not in the video.
+ * Records the picks the storyboard says it was written from (its `plan`, already validated against `plan`) as the
+ * picks the video was built from, so the plan page marks each topic whose current pick differs.
  */
-export function recordBuilt(dir, plan, built) {
-  const file = path.join(dir, BUILT_FILE);
-  let before = {};
-  try {
-    before = JSON.parse(fs.readFileSync(file, 'utf8')).topics ?? {};
-  } catch { /* none yet, or unreadable: nothing to keep */ }
-  const topics = plan.topics.flatMap((t) => {
-    if (built.has(t.id)) return [[t.id, pickOf(t)]];
-    return Object.hasOwn(before, t.id) ? [[t.id, before[t.id]]] : [];
-  });
-  writeAtomic(file, { topics: Object.fromEntries(topics) });
+export function recordBuilt(dir, plan, written = {}) {
+  const topics = plan.topics.filter((t) => Object.hasOwn(written, t.id)).map((t) => [t.id, { depth: written[t.id].depth, view: written[t.id].view }]);
+  writeAtomic(path.join(dir, BUILT_FILE), { topics: Object.fromEntries(topics) });
 }
