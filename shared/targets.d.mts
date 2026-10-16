@@ -11,3 +11,7 @@ export declare function refNames(scene: Scene, hunks?: HunkMap): string[];
 export declare function stepTargets(scene: Scene, hunks?: HunkMap): string[][];
 /** For each item key, the steps that light it, in order. */
 export declare function targetSteps(scene: Scene, hunks?: HunkMap): Map<string, number[]>;
+/** The item key of a memory frame's variable ("v") or an object's field ("f"); any owner and name round-trip. */
+export declare function memberKey(kind: 'v' | 'f', owner: string, name: string): string;
+/** A member key's owner, its owner's item key ("fr:name" or "o:id"), and its name. */
+export declare function splitMemberKey(key: string): { owner: string; ownerKey: string; name: string };

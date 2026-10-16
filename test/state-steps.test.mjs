@@ -113,3 +113,26 @@ test('validate requires a focus only on a step that changes nothing', async () =
   ]);
   assert.deepEqual(await errorsOf(search), []);
 });
+
+test('a variable, field or frame whose name holds "/" keeps its owner and name apart', async () => {
+  const cache = {
+    type: 'memory',
+    narration: 'The cache keeps each response by its path.',
+    frames: [{ name: 'serve/api', vars: { 'req/id': 7, cache: { ref: 'c' } } }],
+    objects: [
+      { id: 'c', type: 'dict', fields: { '/api/me': { ref: 'u' } } },
+      { id: 'u', type: 'User', fields: { name: 'Ada' } },
+      { id: 'v', type: 'User', fields: { name: 'Bo' }, hidden: true },
+    ],
+    steps: [{ set: { 'c./api/me': { ref: 'v' } }, say: 'Now the cache holds the other user.' }],
+  };
+  assert.deepEqual(resolveRef(cache, 'c./api/me'), ['f:c//api/me']);
+  assert.deepEqual(resolveRef(cache, 'serve/api.req/id'), ['v:serve%2Fapi/req/id']);
+  assert.deepEqual(walkStates(cache).problems.map((p) => [p.ref, p.message]), [
+    ['c./api/me', 'points at "v" from this step, but "v" is hidden then; show it in this step or an earlier one, or start it shown'],
+  ]);
+  const shown = { ...cache, steps: [{ set: { 'c./api/me': { ref: 'v' } }, show: ['v'], say: 'Now the cache holds the other user.' }] };
+  const r = await validateStoryboard({ title: 't', scenes: [shown] }, {}, { mode: 'explain' });
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.warnings.filter((w) => w.includes('could not check')), []);
+});

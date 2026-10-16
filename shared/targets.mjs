@@ -260,8 +260,8 @@ const TARGETS = {
       const has = (record, key) => Boolean(record) && typeof record === 'object' && Object.hasOwn(record, key);
       for (let at = ref.indexOf('.'); at > 0; at = ref.indexOf('.', at + 1)) {
         const [owner, name] = [ref.slice(0, at), ref.slice(at + 1)];
-        if (frames.some((f) => f?.name === owner && has(f.vars, name))) return [`v:${owner}/${name}`];
-        if (objects.some((o) => o?.id === owner && has(o.fields, name))) return [`f:${owner}/${name}`];
+        if (frames.some((f) => f?.name === owner && has(f.vars, name))) return [memberKey('v', owner, name)];
+        if (objects.some((o) => o?.id === owner && has(o.fields, name))) return [memberKey('f', owner, name)];
       }
       return null;
     },
@@ -277,6 +277,19 @@ const TARGETS = {
     names: (scene) => list(scene.bullets).map((_, i) => String(i)),
   },
 };
+
+/**
+ * The item key of a memory frame's variable (`kind` "v") or an object's field ("f"). The owner is
+ * URI-encoded, so it holds no "/", and the first "/" ends it: any owner and name text round-trips.
+ */
+export const memberKey = (kind, owner, name) => `${kind}:${encodeURIComponent(owner)}/${name}`;
+
+/** A member key's owner, its owner's item key ("fr:name" or "o:id"), and its name. */
+export function splitMemberKey(key) {
+  const slash = key.indexOf('/');
+  const owner = decodeURIComponent(key.slice(2, slash));
+  return { owner, ownerKey: `${key.startsWith('v:') ? 'fr' : 'o'}:${owner}`, name: key.slice(slash + 1) };
+}
 
 /** Scene types whose steps take `focus`. */
 export const FOCUS_TYPES = Object.keys(TARGETS);

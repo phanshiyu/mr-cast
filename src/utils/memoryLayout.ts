@@ -1,5 +1,6 @@
 import { fitBlock, fitText, type Fit } from '../../shared/textfit.mjs';
 import { isPointer, sceneStates, type SceneState } from '../../shared/state-steps.mjs';
+import { memberKey, splitMemberKey } from '../../shared/targets.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { MemoryScene } from '../types';
 import type { Box, LayoutBoxes, Pt } from './penGeometry';
@@ -32,7 +33,7 @@ const ARC_ROOM = 30;
 const ahead = (from: { x: number; w: number }, to: { x: number }) => to.x >= from.x + from.w;
 
 export interface MemoryRow {
-  /** Its state key, "v:frame/var" or "f:object/field". */
+  /** Its state key, from `memberKey`: "v:frame/var" or "f:object/field". */
   key: string;
   name: Fit;
   /** Top, relative to its card. */
@@ -72,7 +73,7 @@ export interface MemoryLayout {
   room: Fit;
 }
 
-const ownerOf = (key: string) => `${key.startsWith('v:') ? 'fr' : 'o'}:${key.slice(2, key.lastIndexOf('/'))}`;
+const ownerOf = (key: string) => splitMemberKey(key).ownerKey;
 
 /**
  * Each object's column: 0 when no other object points at it, else one past the furthest object that does,
@@ -121,7 +122,7 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
     Math.max(REF_W, ...states.map((s) => (isPointer(s.values[key]) ? REF_W : values.get(String(s.values[key]))!.width + 2 * VALUE_PAD)));
 
   const card = (key: string, title: Fit, record: Record<string, unknown>, kind: 'v' | 'f', owner: string, path: string): MemoryCard => {
-    const rows = Object.keys(record).map((name, i) => ({ key: `${kind}:${owner}/${name}`, name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
+    const rows = Object.keys(record).map((name, i) => ({ key: memberKey(kind, owner, name), name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
     const nameW = Math.max(0, ...rows.map((r) => r.name.width));
     const valueW = Math.max(0, ...rows.map((r) => valueWidth(r.key)));
     const w = Math.max(title.width + 2 * PAD, PAD + nameW + NAME_GAP + valueW + PAD);

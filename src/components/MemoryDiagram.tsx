@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { isPointer, sceneStates } from '../../shared/state-steps.mjs';
+import { splitMemberKey } from '../../shared/targets.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { MemoryScene } from '../types';
 import { HEAD_H, ROW_H, arrowsOf, layoutMemory, memoryBoxes, valueBox, type Arrow, type MemoryCard, type MemoryLayout } from '../utils/memoryLayout';
@@ -181,7 +182,7 @@ export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks,
   const order = new Map(layout.cards.map((c, i) => [c.key, i]));
   const landed = (key: string) => spring({ frame: frame - START - order.get(key)! * CARD_STAGGER, fps, config: { damping: 17, stiffness: 130 } });
   const shown = (key: string) => shownOf(s, key) * landed(key);
-  const ownerOf = (key: string) => `${key.startsWith('v:') ? 'fr' : 'o'}:${key.slice(2, key.lastIndexOf('/'))}`;
+  const ownerOf = (key: string) => splitMemberKey(key).ownerKey;
   const rowEmphasis = (key: string): Emphasis => brighter(focus(key), focus(ownerOf(key)));
   const arrows = drawnArrows(layout, s, shown, ownerOf);
   const cardEmphasis = (c: MemoryCard): Emphasis =>

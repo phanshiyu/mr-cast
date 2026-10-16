@@ -4,7 +4,7 @@
 // Shared by the scenes (which draw each state) and `validate` (which reports every change that names nothing).
 
 import { indexRange } from './steps.mjs';
-import { resolveRef } from './targets.mjs';
+import { memberKey, resolveRef, splitMemberKey } from './targets.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const entries = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(v) : []);
@@ -50,7 +50,7 @@ const MODELS = {
     initial(scene) {
       const owners = [...list(scene.frames).map((f) => [`fr:${f?.name}`, 'v', f?.name, f?.vars, f?.hidden]), ...list(scene.objects).map((o) => [`o:${o?.id}`, 'f', o?.id, o?.fields, o?.hidden])];
       return {
-        values: Object.fromEntries(owners.flatMap(([, kind, owner, record]) => entries(record).map(([name, value]) => [`${kind}:${owner}/${name}`, value]))),
+        values: Object.fromEntries(owners.flatMap(([, kind, owner, record]) => entries(record).map(([name, value]) => [memberKey(kind, owner, name), value]))),
         places: {},
         hidden: Object.fromEntries(owners.flatMap(([key, , , , hidden]) => (hidden === true ? [[key, true]] : []))),
       };
@@ -83,9 +83,8 @@ const copy = (state) => ({ values: { ...state.values }, places: { ...state.place
 function danglingPointers(state) {
   return Object.entries(state.values).flatMap(([key, value]) => {
     if (!isPointer(value)) return [];
-    const path = key.slice(2);
-    const [owner, name] = [path.slice(0, path.lastIndexOf('/')), path.slice(path.lastIndexOf('/') + 1)];
-    const shown = !state.hidden[`${key.startsWith('v:') ? 'fr' : 'o'}:${owner}`];
+    const { owner, ownerKey, name } = splitMemberKey(key);
+    const shown = !state.hidden[ownerKey];
     return shown && state.hidden[`o:${value.ref}`] ? [{ key, ref: `${owner}.${name}`, target: value.ref }] : [];
   });
 }
