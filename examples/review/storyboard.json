@@ -43,7 +43,7 @@
     {
       "type": "files",
       "chapter": "Files",
-      "narration": "Two new modules hold the logic. The routes file adds two endpoints, and one new test file covers the happy path and two refusals.",
+      "narration": "Two new modules hold the logic. The routes file adds two addresses the app can call. One new test file covers the normal reset and two refusals.",
       "notes": {
         "src/reset.js": "create and redeem tokens",
         "src/password.js": "password rules",
@@ -53,7 +53,7 @@
     {
       "type": "sequence",
       "chapter": "Reset flow",
-      "narration": "A reset takes two requests: one asks for a token, the other spends it.",
+      "narration": "A reset takes two requests. The first asks for a token, and the second uses it.",
       "participants": [
         {
           "id": "user",
@@ -133,14 +133,14 @@
         },
         {
           "focus": "4-7",
-          "say": "Then the link posts the token with a new password. The token is checked, the password is set, and the token should be retired."
+          "say": "Then the link sends the token with a new password. The token is checked, the password is set, and the token should be thrown away."
         }
       ]
     },
     {
       "type": "state",
       "chapter": "Token lifecycle",
-      "narration": "A token has three states. It starts issued, and ends either redeemed or expired. Neither end lets it be used again.",
+      "narration": "A reset token has three states. A token starts as issued, and ends either used or expired. Neither end lets the token work again.",
       "initial": "issued",
       "states": [
         {
@@ -185,7 +185,7 @@
           "lines": "13-14",
           "flag": "token-logged",
           "token": "token ${token}",
-          "say": "Then it makes a reset token. I think the next line is risky. It writes the whole token to the log, and anyone who holds that token can change the user's password."
+          "say": "Then the endpoint makes a reset token. I think the logging line is risky. The log gets the whole token, and anyone who holds that token can change the user's password."
         },
         {
           "lines": "15-16",
@@ -205,7 +205,7 @@
         },
         {
           "lines": "8-12",
-          "say": "The token is thirty two random bytes, written out as text. It is stored with its user and the time it runs out."
+          "say": "The token is thirty two random bytes, written out as text. The token is stored with its user and the time it runs out."
         }
       ]
     },
@@ -213,7 +213,7 @@
       "type": "code",
       "chapter": "Redeem a token",
       "hunkId": "h2",
-      "narration": "Redeeming a token sets the new password.",
+      "narration": "Using a token sets the new password.",
       "steps": [
         {
           "lines": "16-17",
@@ -245,7 +245,7 @@
           "lines": "4",
           "flag": "password-name",
           "note": "returns an error, not a yes or no",
-          "say": "A small one. I think the function's name sounds like a yes or no answer, but it gives back the reason a password is refused, or nothing when the password is fine."
+          "say": "A small one. I think the function's name sounds like a yes or no answer. But the function gives back the reason a password is refused, or nothing when the password is fine."
         },
         {
           "lines": "5-8",
@@ -282,7 +282,7 @@
     },
     {
       "type": "review",
-      "narration": "To recap, I flagged one bug, one risk and one nit. Fix the token reuse first: it lets a used reset link change the password again."
+      "narration": "To recap, I flagged one bug, one risk and one small issue. Fix the token reuse first, because a used reset link can change the password again."
     }
   ]
 }

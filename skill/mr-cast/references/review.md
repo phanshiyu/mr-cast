@@ -45,7 +45,7 @@ When nothing looks wrong, write `"findings": []`. The last scene's narration the
 
 Each flag belongs in the code scene that shows its line. Walk that scene in `steps`, and give the step whose lines hold the flagged line `"flag": "<id>"`. The step then draws a pen circle in the severity's colour around its lines, or around its `token`, with the claim as a handwritten note under the severity. Give the step a `note` of up to 40 characters when the claim is longer. Set `mark` to draw another shape, such as `underline`.
 
-Say the flag in that step's `say`, as your opinion, in plain spoken words: "I think this order is a bug. The order is saved before the payment is checked, so a declined card still leaves an order behind." Use words such as "I think", "looks" or "worth checking". Say what goes wrong for a person, not the code's names: "a failed payment still leaves an order behind", not "createOrder persists before chargeCard". The exact names stay on screen in the pen note and the recap. The rest of the scene still explains the code as it is.
+Say the flag in that step's `say`, as your opinion, in plain spoken words that follow [How the voice talks](../SKILL.md#how-the-voice-talks): "I think this order is a bug. The order is saved before the payment is checked, so a declined card still leaves an order behind." Use words such as "I think", "looks" or "worth checking". Say what goes wrong for a person, not the code's names: "a failed payment still leaves an order behind", not "createOrder persists before chargeCard". The exact names stay on screen in the pen note and the recap. The rest of the scene still explains the code as it is.
 
 When no code scene shows the flagged line, add one, or add a step to the scene that shows its hunk.
 

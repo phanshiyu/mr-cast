@@ -219,7 +219,7 @@ export interface CodeStep extends PenMarks {
   /**
    * Review mode: the id of the finding these lines show. The step draws a pen mark in the finding's colour, a
    * circle unless `mark` says otherwise, with `note` or else the finding's claim, under its severity. Say it then
-   * and there as your opinion, e.g. "This looks off: the save is never awaited."
+   * and there as your opinion, in plain words, e.g. "I think this looks off. The order is saved without waiting, so a failed save goes unnoticed."
    */
   flag?: string;
 }
