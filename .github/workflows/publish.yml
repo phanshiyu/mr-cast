@@ -58,5 +58,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > "$RUNNER_TEMP/.npmrc"
-          NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc" npm publish mr-cast.tgz --access public --provenance
+          if ! NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc" npm publish mr-cast.tgz --access public --provenance > "$RUNNER_TEMP/publish.log" 2>&1; then
+            cat "$RUNNER_TEMP/publish.log"
+            # Job logs need auth to read; annotations are public.
+            grep -E 'npm (error|ERR!)' "$RUNNER_TEMP/publish.log" | head -8 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/publish.log"
           echo "::notice::Published ${{ steps.check.outputs.version }}"
