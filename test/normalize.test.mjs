@@ -40,3 +40,12 @@ test('modified: true means a change in a diff and a highlight in an explanation'
   assert.deepEqual(normalizeStoryboard(board, diff).scenes[0].nodes, [{ id: 'a', change: 'modified' }]);
   assert.deepEqual(normalizeStoryboard(board, source).scenes[0].nodes, [{ id: 'a', highlight: true }]);
 });
+
+test('a layer item takes a legacy kind and modified like a graph node', () => {
+  const board = { scenes: [{ type: 'layers', layers: [{ id: 'app', label: 'App' }, { id: 'data', label: 'Data', items: [{ id: 'db', label: 'Orders', kind: 'db', modified: true }] }] }] };
+  assert.deepEqual(normalizeStoryboard(board, diff).scenes[0].layers, [
+    { id: 'app', label: 'App' },
+    { id: 'data', label: 'Data', items: [{ id: 'db', label: 'Orders', change: 'modified', icon: 'database', caption: 'datastore' }] },
+  ]);
+  assert.deepEqual(normalizeStoryboard(board, source).scenes[0].layers[1].items, [{ id: 'db', label: 'Orders', highlight: true, icon: 'database', caption: 'datastore' }]);
+});

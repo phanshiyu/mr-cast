@@ -90,6 +90,7 @@ function normalizeScene(scene, explain, storyboard) {
   const out = steps === scene.steps ? { ...scene } : { ...scene, steps };
   if (scene.type === 'code' && Array.isArray(out.steps)) out.steps = flagSteps(out.steps, storyboard);
   if (scene.type === 'graph') out.nodes = scene.nodes.map((n) => normalizeNode(n, explain));
+  if (scene.type === 'layers') out.layers = scene.layers.map((l) => (l.items ? { ...l, items: l.items.map((n) => normalizeNode(n, explain)) } : l));
   if (scene.type === 'sequence') {
     out.participants = scene.participants.map((n) => normalizeNode(n, explain));
     out.messages = scene.messages.map((m) => normalizeMarks(m, explain));
