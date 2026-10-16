@@ -4,6 +4,7 @@
 import { focusSteps, legacyFocusKeys } from '../../shared/normalize.mjs';
 import { FOCUS_TYPES, focusRefs, refNames, resolveRef, stepTargets } from '../../shared/targets.mjs';
 import { changesState, STATE_TYPES } from '../../shared/state-steps.mjs';
+import { tokenSteps } from '../../shared/layers.mjs';
 import { didYouMean } from './suggest.mjs';
 
 // A diagram walked in more steps than this drags; split the scene.
@@ -67,8 +68,9 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
   });
   const scene = { ...s, steps: focusSteps(s) };
   const lit = stepTargets(scene, hunks).map((keys) => [...keys].sort().join(' '));
+  const token = s.type === 'layers' ? tokenSteps(scene, hunks).positions : [];
   lit.forEach((keys, i) => {
-    if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i])) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
+    if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i]) && token[i] === token[i - 1]) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
   });
   if (s.steps.length > DIAGRAM_STEPS_MAX) warnings.push(`${p}.steps: ${s.steps.length} steps; keep at most ${DIAGRAM_STEPS_MAX} per scene and split the rest into another scene`);
   if ((s.type === 'table' || s.type === 'files') && s.highlight !== undefined) warnings.push(`${p}.highlight: steps replace highlight, so remove it`);

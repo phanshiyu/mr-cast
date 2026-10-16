@@ -594,7 +594,8 @@ export interface LayersScene extends SceneBase {
    * focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
    * A ref is a layer id, an item id or "layer.item", or a path stop index (0-based). A step that focuses
    * a stop moves the token there; it only moves on along its path, so walk the stops in order, and with
-   * `return` or `skip` focus a stop again to bring it back up. Without steps the token walks the whole path
+   * `return` or `skip` focus a stop again to bring it back up; where it turns back at the first stop, focus
+   * that stop twice. Without steps the token walks the whole path
    * while the narration plays.
    */
   steps?: FocusStep[];

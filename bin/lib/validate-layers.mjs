@@ -49,7 +49,8 @@ function checkWalk(s, p, warnings) {
   const last = positions[positions.length - 1] ?? -1;
   if (last < 0) return warnings.push(`${p}.steps: no step focuses a path stop, so the token never moves; focus each stop in order, or leave the path off`);
   const turn = visits.findIndex((v) => v.leg === 'up');
-  if (turn >= 0 && last < turn) warnings.push(`${p}.steps: no step brings the token back up, so its reply never shows; end with a step that focuses the first stop`);
+  const again = visits[turn - 1]?.stop === 0 ? ' again, after the step that brings the token to it' : '';
+  if (turn >= 0 && last < turn) warnings.push(`${p}.steps: no step brings the token back up, so its reply never shows; end with a step that focuses the first stop${again}`);
 }
 
 export function checkLayers(s, p, errors, warnings) {

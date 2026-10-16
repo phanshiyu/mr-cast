@@ -36,17 +36,20 @@ export function layerRoute(scene) {
 /**
  * Where the token is after each step, as an index into the route's visits (-1 before it has set out).
  * A step that focuses stops moves the token to the furthest of them, each at its first visit from where
- * the token is, so it never moves back along the route. `stuck` lists the steps that focus a stop the
- * token can no longer reach.
+ * the token is, so it never moves back along the route. Focusing the stop the token sits on again, where
+ * the route turns back, starts it back up. `stuck` lists the steps that focus a stop the token can no
+ * longer reach.
  */
 export function tokenSteps(scene, hunks) {
   const { visits } = layerRoute(scene);
   const stopKeys = new Set(list(scene?.path?.stops).map((ref) => stopKey(scene, ref)));
   let pos = -1;
+  // Focusing the stop the token sits on, where the route turns back through it, turns the token back.
+  const turnsHere = (at, key) => at >= 0 && visits[at].key === key && visits[at + 1]?.key === key;
   const stuck = [];
   const positions = stepTargets(scene, hunks).map((keys, k) => {
     const stops = keys.filter((key) => stopKeys.has(key));
-    const next = stops.map((key) => visits.findIndex((v, i) => i >= Math.max(pos, 0) && v.key === key));
+    const next = stops.map((key) => (turnsHere(pos, key) ? pos + 1 : visits.findIndex((v, i) => i >= Math.max(pos, 0) && v.key === key)));
     if (next.some((i) => i < 0)) stuck.push(k);
     pos = Math.max(pos, ...next);
     return pos;

@@ -98,3 +98,27 @@ test('validate warns when steps leave the reply unshown or focus a stop the toke
     'scenes[1].steps: no step brings the token back up, so its reply never shows; end with a step that focuses the first stop',
   ]);
 });
+
+test('when the token turns back at the first stop, focusing that stop again brings the reply up', async () => {
+  const atFirst = { label: 'POST /orders', stops: ['limiter', 'v1.orders', 'data'], skip: { at: 'limiter', reply: '429 Too Many Requests' } };
+  const twice = [
+    { focus: 'limiter', say: 'The rate limiter sees the request first.' },
+    { focus: 'limiter', say: 'It is over the limit, so it answers right away.' },
+  ];
+  assert.deepEqual(tokenSteps(stack(atFirst, twice)), { positions: [0, 1], stuck: [] });
+  assert.deepEqual((await check(stack(atFirst, twice))).warnings.filter((w) => w.startsWith('scenes[1]')), []);
+  const once = await check(stack(atFirst, [twice[0]]));
+  assert.deepEqual(once.warnings.filter((w) => w.startsWith('scenes[1]')), [
+    'scenes[1].steps: no step brings the token back up, so its reply never shows; end with a step that focuses the first stop again, after the step that brings the token to it',
+  ]);
+  const oneStop = stack({ stops: ['routes'], return: true, reply: '201 Created' }, [
+    { focus: 'routes', say: 'The route handles the order.' },
+    { focus: 'routes', say: 'And answers that it is created.' },
+  ]);
+  assert.deepEqual(tokenSteps(oneStop), { positions: [0, 1], stuck: [] });
+});
+
+test('focusing the stop the token sits on mid-route keeps it there', () => {
+  const steps = [{ focus: 'http' }, { focus: 'http' }, { focus: 'limiter' }];
+  assert.deepEqual(tokenSteps(stack({ ...skipping, skip: undefined, return: true }, steps)).positions, [0, 0, 1]);
+});
