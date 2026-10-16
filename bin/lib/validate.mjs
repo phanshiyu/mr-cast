@@ -15,6 +15,7 @@ import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { checkArray, checkMemory } from './validate-state.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
+import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 import { aType } from '../../shared/words.mjs';
 
@@ -418,12 +419,13 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', style?: 'simple' }} meta  The mode from meta.json: "explain" (`mr-cast init`)
+ * @param {{ mode?: 'diff' | 'explain', style?: 'simple', plan?: object | null }} meta  The mode from meta.json: "explain" (`mr-cast init`)
  *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply. The style
  *   from the command's flags: "simple" (`--audience new`) is explained line by line in plain words, so steps are short, every changed
- *   line of a shown hunk has a step, and sentences stay short.
+ *   line of a shown hunk has a step, and sentences stay short. The run's plan.json as `readPlan` read it, when it
+ *   has one: each scene's topic must name one of its topics, and each topic's scenes follow the viewer's picks.
  */
-export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = {}) {
+export async function validateStoryboard(raw, hunks, { mode = 'diff', style, plan = null } = {}) {
   // An older `arch` scene is a `graph`: renamed here so every check below sees one name.
   const sb = upgradeTypes(raw);
   const errors = [];
@@ -623,6 +625,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
   });
 
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
+  checkTopics(sb, plan, errors, warnings);
   checkReview(sb, hunks ?? {}, mode, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.

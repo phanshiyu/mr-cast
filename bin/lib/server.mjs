@@ -1,13 +1,18 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { BUILT_FILE, PLAN_FILE, writeChoice } from './plan.mjs';
 import { AUDIO_NAME } from './voice.mjs';
 
 const HOST = '127.0.0.1';
 const PORT_ATTEMPTS = 21;
 const DEBOUNCE_MS = 150;
 const KEEPALIVE_MS = 25_000;
-const DATA_FILES = new Set(['hunks.json', 'storyboard.json', 'meta.json']);
+const DATA_FILES = new Set(['hunks.json', 'storyboard.json', 'meta.json', PLAN_FILE, BUILT_FILE]);
+// A choice is a topic id and two words; anything near this size is not one.
+const BODY_MAX = 4096;
+export const TOKEN_HEADER = 'x-mr-cast-token';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -60,6 +65,38 @@ function safeJoin(root, urlPath) {
   return file === root || file.startsWith(root + path.sep) ? file : null;
 }
 
+function sendJson(res, status, value) {
+  res.writeHead(status, { 'Content-Type': TYPES['.json'], 'Cache-Control': 'no-store' });
+  res.end(JSON.stringify(value));
+}
+
+/**
+ * POST /plan/choice from the plan page. A page on another site can send this request too, so it must carry the
+ * token from the URL mr-cast opened, which other sites cannot read. A JSON content type makes a browser ask
+ * first for a cross-site request, which this server never allows.
+ */
+function postChoice(req, res, { token, dataDir }) {
+  const given = Buffer.from(String(req.headers[TOKEN_HEADER] ?? ''));
+  if (given.length !== token.length || !timingSafeEqual(given, token)) return sendJson(res, 403, { error: 'missing or wrong token; open the URL mr-cast printed' });
+  if (!/^application\/json\b/.test(req.headers['content-type'] ?? '')) return sendJson(res, 415, { error: 'send application/json' });
+  const chunks = [];
+  let size = 0;
+  req.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > BODY_MAX) {
+      sendJson(res, 413, { error: 'request too large' });
+      req.destroy();
+    } else chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (size > BODY_MAX) return;
+    let body;
+    try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return sendJson(res, 400, { error: 'body is not JSON' }); }
+    const { status, error } = writeChoice(dataDir, body);
+    sendJson(res, status, error ? { error } : { ok: true });
+  });
+}
+
 function listen(server, port) {
   return new Promise((resolve, reject) => {
     const onError = (err) => { server.off('listening', onListening); reject(err); };
@@ -74,9 +111,12 @@ function listen(server, port) {
  * Serve the player from `distDir` and live data from `dataDir`.
  * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload.
  * `getVoiceover()` is the voiceover the player should use, or null for silent scenes.
+ * The plan page changes plan.json through POST /plan/choice, with the returned `token` in TOKEN_HEADER.
  */
 export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover }) {
   const root = path.resolve(distDir);
+  const token = randomBytes(16).toString('hex');
+  const tokenBytes = Buffer.from(token);
   const clients = new Set();
   let allowedHosts = new Set();
 
@@ -84,8 +124,12 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
     // Binding to 127.0.0.1 does not stop DNS rebinding: a page on evil.example can resolve
     // its own name to 127.0.0.1 and read responses, but its requests carry the wrong Host.
     if (!allowedHosts.has(req.headers.host?.toLowerCase())) return send(res, 403, 'forbidden host');
-    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
     const { pathname } = new URL(req.url, `http://${HOST}`);
+    if (pathname === '/plan/choice') {
+      if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+      return postChoice(req, res, { token: tokenBytes, dataDir });
+    }
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
 
     if (pathname === '/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
@@ -174,5 +218,5 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
     server.closeAllConnections?.();
   });
 
-  return { url: `http://${HOST}:${bound}`, close };
+  return { url: `http://${HOST}:${bound}`, token, close };
 }
