@@ -141,7 +141,8 @@ Every narration and `say`, in every audience, is one person explaining the chang
 
 - **Plain words.** Say what the code does for the user in everyday words. Name the job, not the mechanism: "counts how many requests each visitor sent this minute", not "increments a Redis counter keyed by IP".
 - **Code names stay on screen.** Never read out an identifier, file path, symbol, operator or status code as written. Say what it is: "the create order function", "the orders table", "too many requests". Say a number such as "four twenty-nine" only when the number itself matters. The screen shows the exact name.
-- **Name the subject.** Open every scene by naming what it is about. Never start with "It", "This" or "That" alone, and use one only when the sentence before named the thing. When in doubt, name it again.
+- **Name the subject.** Open every scene and every step by naming what it is about, never with a bare "It", "This" or "That". Use one only when the sentence before named the thing. When in doubt, name it again. Say what the lines do, not "this line" or "here".
+- **Keep your promises.** When you say "two questions" or "three parts", name each one in order: "The first question is ...". Give a stand-in word its meaning once: "each visitor, meaning each IP address".
 - **One idea per sentence.** Short sentences in the active voice, under about 25 words, with no stacked clauses.
 - **Explain a term once.** The first time a technical term is needed, explain it in a few words, as in "Redis, a shared in-memory store". Otherwise replace it with plain words.
 - **Say why.** Say why each change matters, such as what breaks, what the user sees, or what risk it removes, not only what changed.

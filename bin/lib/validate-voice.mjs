@@ -55,6 +55,8 @@ const JARGON = [
   [/\bhydrat(?:e|es|ed|ion)\b/i, 'what it fills in'],
   [/\bserializ(?:e|es|ed|ation)\b/i, '"turns into text" or "saves"'],
   [/\bPromise\.?\s?all\b/i, '"all at the same time"'],
+  [/\bawait(?:s|ed|ing)?\b/i, '"waits for"'],
+  [/\bstub(?:s|bed)?\b/i, '"a placeholder"'],
 ];
 /** Sentence shapes that explain a term right where it is used: "Redis, the shared store", "a SKU is a product code". */
 const EXPLAINED_AFTER = /^\s*(?:,\s*(?:a|an|the|which|meaning|that is)\b|\s*\(|\s+(?:is|are|means)\s+(?:a|an|the|when|that)\b)/i;
