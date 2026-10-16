@@ -18,10 +18,11 @@ export function stopVoicing() {
 
 /**
  * ensureVoiceover's arguments and result, with its work and its progress events in a child process. Null when
- * stopVoicing stopped it.
+ * stopVoicing stopped it, or had already.
  */
 export function ensureVoiceoverInChild({ onProgress, ...args }) {
   return new Promise((resolve, reject) => {
+    if (stopping) return resolve(null);
     const child = fork(fileURLToPath(import.meta.url), ['--voice-child'], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
     children.add(child);
     child.on('message', (msg) => {
@@ -30,7 +31,8 @@ export function ensureVoiceoverInChild({ onProgress, ...args }) {
       else if (msg.type === 'error') reject(msg.user ? new UserError(msg.message) : new Error(msg.message));
     });
     child.on('error', reject);
-    child.on('exit', (code, signal) => {
+    // 'close', not 'exit': a large result can still be arriving when the child exits.
+    child.on('close', (code, signal) => {
       children.delete(child);
       if (stopping) resolve(null);
       reject(new Error(`the voice process stopped (${signal ?? `exit ${code}`})`));
@@ -40,13 +42,22 @@ export function ensureVoiceoverInChild({ onProgress, ...args }) {
 }
 
 if (process.argv[2] === '--voice-child') {
+  // Ctrl+C reaches the whole process group. The parent stops this child itself, and dies with it if the parent goes.
+  process.on('SIGINT', () => {});
+  const orphaned = () => process.kill(process.pid, 'SIGKILL');
+  process.once('disconnect', orphaned);
   process.once('message', async ({ args }) => {
+    let reply;
     try {
       const voiceover = await ensureVoiceover({ ...args, onProgress: (event) => process.send({ type: 'progress', event }) });
-      process.send({ type: 'done', voiceover });
+      reply = { type: 'done', voiceover };
     } catch (err) {
-      process.send({ type: 'error', message: err.message, user: err instanceof UserError });
+      reply = { type: 'error', message: err.message, user: err instanceof UserError };
     }
-    process.disconnect();
+    // Disconnecting before the send is written drops a large reply.
+    process.send(reply, () => {
+      process.off('disconnect', orphaned);
+      process.disconnect();
+    });
   });
 }
