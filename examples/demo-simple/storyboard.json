@@ -17,7 +17,7 @@
     {
       "type": "graph",
       "chapter": "Where it fits",
-      "narration": "Here is the system. A client calls the orders API. The API asks Redis, a fast shared store, to count the request. The orders service prices and saves the order. Then the API tells the queue.",
+      "narration": "Here is the system. A client calls the orders API. The API asks Redis, a fast shared store, to count the request. The orders service saves the order. Then the API tells the queue.",
       "nodes": [
         {
           "id": "client",
