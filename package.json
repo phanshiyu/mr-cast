@@ -43,36 +43,39 @@
     "demo": "bash scripts/demo.sh",
     "install-skill": "node bin/mr-cast.mjs install-skill",
     "test": "node --test \"test/*.test.mjs\"",
-    "prepack": "npm run typecheck && npm run build"
+    "prepack": "pnpm run typecheck && pnpm run build"
   },
   "engines": {
-    "node": ">=20 <25"
+    "node": ">=22.12"
   },
   "dependencies": {
-    "@huggingface/transformers": "3.8.1",
+    "@huggingface/transformers": "4.3.1",
     "@remotion/bundler": "4.0.535",
     "@remotion/player": "4.0.535",
     "@remotion/renderer": "4.0.535",
-    "esbuild": "0.28.1",
-    "kokoro-js": "1.2.1",
+    "dompurify": "^3.4.17",
+    "esbuild": "0.28.2",
     "lucide-react": "^1.57.0",
-    "mermaid": "11.17.2",
+    "mermaid": "12.2.0",
+    "phonemizer": "1.2.1",
     "prism-react-renderer": "^2.4.1",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "remotion": "4.0.535"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "~5.9.0",
+    "typescript": "~7.0.2",
     "vite": "^8.3.4"
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "packageManager": "pnpm@12.11.2"
 }

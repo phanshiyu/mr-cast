@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Finds a real node >= 20 without relying on the caller's shell setup: `node` may be
+# Finds a real Node >= 22.12 without relying on the caller's shell setup: `node` may be
 # missing from PATH or shadowed by a broken shell function (nvm lazy-load shims).
 set -eo pipefail
 
@@ -11,8 +11,10 @@ while [ -L "$src" ]; do
 done
 DIR="$(cd -P "$(dirname "$src")" && pwd)"
 
-node_major() {
-  [ -n "$1" ] && [ -x "$1" ] && "$1" -p 'process.versions.node.split(".")[0]' 2>/dev/null
+# Node 22.12 is the oldest that Mermaid 12 and the rest of mr-cast's dependencies support.
+node_ok() {
+  [ -n "$1" ] && [ -x "$1" ] &&
+    "$1" -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 12) ? 0 : 1)' >/dev/null 2>&1
 }
 
 # Every node binary we can find, most preferred first.
@@ -32,24 +34,16 @@ node_candidates() {
   echo /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node | tr ' ' '\n'
 }
 
-# Remotion rendering hangs on Node 26, so prefer the 20-24 LTS lines and only fall back to newer ones.
 find_node() {
-  local candidate major fallback=""
+  local candidate
   while IFS= read -r candidate; do
-    major="$(node_major "$candidate")" || continue
-    [ -n "$major" ] || continue
-    if [ "$major" -ge 20 ] && [ "$major" -le 24 ]; then echo "$candidate"; return; fi
-    if [ "$major" -gt 24 ] && [ -z "$fallback" ]; then fallback="$candidate"; fi
+    if node_ok "$candidate"; then echo "$candidate"; return; fi
   done < <(node_candidates)
-  if [ -n "$fallback" ]; then
-    echo "mr-cast: no Node 20-24 found, using $("$fallback" -v); rendering may hang on this version" >&2
-    echo "$fallback"
-  fi
 }
 
 NODE="$(find_node)"
 if [ -z "$NODE" ]; then
-  echo "mr-cast: no node >= 20 found (checked PATH, nvm in ${NVM_DIR:-$HOME/.nvm}, /opt/homebrew/bin, /usr/local/bin). Install Node 20+." >&2
+  echo "mr-cast: no Node 22.12 or newer found (checked PATH, nvm in ${NVM_DIR:-$HOME/.nvm}, /opt/homebrew/bin, /usr/local/bin). Install Node 24 LTS." >&2
   exit 1
 fi
 

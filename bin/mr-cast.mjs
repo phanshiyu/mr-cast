@@ -319,7 +319,7 @@ function ensureDist() {
   if (fs.existsSync(path.join(dist, 'index.html'))) return dist;
   console.error('mr-cast: building the player (first run only)...');
   const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
-  if (!fs.existsSync(vite)) throw new UserError(`player not built and ${rel(vite)} is missing; run \`npm install\` in ${ROOT}`);
+  if (!fs.existsSync(vite)) throw new UserError(`player not built and ${rel(vite)} is missing; run \`pnpm install\` in ${ROOT}`);
   const build = spawnSync(process.execPath, [vite, 'build'], { cwd: ROOT, stdio: ['ignore', 2, 2] });
   if (build.status !== 0 || !fs.existsSync(path.join(dist, 'index.html'))) throw new UserError('player build failed (see output above)');
   return dist;

@@ -16,13 +16,9 @@
 // was goes to <outdir>/failed.png and failed.txt, and the exit code is 1.
 import { execSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
-const WebSocket = createRequire(path.join(REPO, 'package.json'))('ws');
 
 const [url, outDir, ...steps] = process.argv.slice(2);
 if (!url || !outDir) {
@@ -62,10 +58,13 @@ async function connect() {
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   const page = targets.find((t) => t.type === 'page');
-  ws = new WebSocket(page.webSocketDebuggerUrl, { perMessageDeflate: false });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
-  ws.on('message', (raw) => {
-    const msg = JSON.parse(raw);
+  ws = new WebSocket(page.webSocketDebuggerUrl);
+  await new Promise((resolve, reject) => {
+    ws.addEventListener('open', resolve, { once: true });
+    ws.addEventListener('error', reject, { once: true });
+  });
+  ws.addEventListener('message', ({ data }) => {
+    const msg = JSON.parse(data);
     if (msg.id && pending.has(msg.id)) {
       const { resolve, reject, method } = pending.get(msg.id);
       pending.delete(msg.id);

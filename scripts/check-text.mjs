@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Keeps the rule that a scene never cuts its text. Text is fitted only in layout code that `validate` also
 // runs (src/fit/report.ts), and drawn line by line with FitText, so nothing may clip or ellipsize it.
-// Runs with `npm run typecheck`.
+// Runs with `pnpm typecheck`.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

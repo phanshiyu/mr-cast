@@ -27,6 +27,9 @@ function loadMermaid(): Promise<Mermaid> {
       securityLevel: 'strict',
       suppressErrorRendering: true,
       theme: 'base',
+      // Mermaid 12 defaults to the ELK layout and the neo look; keep the layout and flat boxes the scenes were tuned for.
+      layout: 'dagre',
+      look: 'classic',
       fontFamily: fonts.sans,
       gantt: { useWidth: 1000, fontSize: 16, sectionFontSize: 16, barHeight: 34, barGap: 8 },
       themeVariables: {

@@ -35,6 +35,11 @@ async function sourceHash() {
   const hash = createHash('sha256');
   const pkg = JSON.parse(await readFile(path.join(ROOT, 'node_modules/remotion/package.json'), 'utf8'));
   hash.update(pkg.version);
+  // The bundle also holds React, Mermaid, Lucide and the rest, so a dependency bump must rebundle: a release
+  // changes package.json's version, and a clone's lockfile changes with every install.
+  for (const file of ['package.json', 'pnpm-lock.yaml']) {
+    if (existsSync(path.join(ROOT, file))) hash.update(await readFile(path.join(ROOT, file)));
+  }
   for (const dir of ['src', 'shared']) {
     for (const file of await listFiles(path.join(ROOT, dir))) {
       hash.update(path.relative(ROOT, file));

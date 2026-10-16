@@ -9,7 +9,6 @@ unset -f node npm npx nvm _load_nvm 2>/dev/null || true
 HERE="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../../../.." && pwd)"
 MRC="$REPO/bin/mr-cast"
-COMPOSITOR="$REPO/node_modules/@remotion/compositor-darwin-arm64"
 
 die() { echo "verify: $*" >&2; exit 1; }
 
@@ -33,13 +32,19 @@ EOF
 }
 
 pick_node() {
-  local c major
+  local c
   for c in "$(type -P node 2>/dev/null || true)" $(ls -d "${NVM_DIR:-$HOME/.nvm}"/versions/node/v*/bin/node 2>/dev/null | sort -rV); do
     [ -x "$c" ] || continue
-    major="$("$c" -p 'process.versions.node.split(".")[0]' 2>/dev/null)" || continue
-    if [ "$major" -ge 20 ] && [ "$major" -le 24 ]; then echo "$c"; return; fi
+    if "$c" -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 12) ? 0 : 1)' 2>/dev/null; then echo "$c"; return; fi
   done
-  die "no Node 20-24 found (Node 26 hangs Remotion); install one with nvm"
+  die "no Node 22.12 or newer found; install Node 24 with nvm (the checkout's .nvmrc)"
+}
+
+# ffmpeg and ffprobe ship in the compositor package, which pnpm keeps beside @remotion/renderer.
+compositor() {
+  "$(pick_node)" -e 'const { createRequire } = require("node:module"); const path = require("node:path");
+    const renderer = createRequire(path.join(process.argv[1], "package.json")).resolve("@remotion/renderer/package.json");
+    console.log(path.dirname(createRequire(renderer).resolve("@remotion/compositor-darwin-arm64/package.json")))' "$REPO"
 }
 
 run_paths() {
@@ -88,14 +93,16 @@ cmd_doctor() {
   local version
   version="$("$MRC" --version 2>/dev/null || true)"
   echo "info mr-cast: ${version:-none} at $REPO ($(git -C "$REPO" rev-parse --short HEAD 2>/dev/null))"
-  check "launcher runs Node 20-24" "echo '$version' | grep -Eq '\(node 2[0-4]\.'"
+  check "launcher runs Node 22.12 or newer" "echo '$version' | grep -Eq '\(node (22\.(1[2-9]|[2-9][0-9])|2[3-9]|[3-9][0-9])\.'"
   check "player built ($REPO/dist/index.html)" "[ -f '$REPO/dist/index.html' ]"
   check "demo repo on feature/rate-limit ahead of main" "[ \"\$(git -C '$DEMO' symbolic-ref --short HEAD)\" = feature/rate-limit ] && [ \"\$(git -C '$DEMO' rev-list --count main..HEAD)\" = 1 ]"
   check "evidence dir exists ($EV)" "[ -d '$EV' ]"
   local cache="${XDG_CACHE_HOME:-$HOME/.cache}/mr-cast"
   check "Chrome Headless Shell cached (renders and browse need it)" "find '$cache/remotion' -name chrome-headless-shell -type f -perm -u+x | grep -q ."
   check "Kokoro voice model cached (voice, play and render without --no-voice)" "[ -d '$cache/models' ]"
-  check "ffprobe runs" "DYLD_LIBRARY_PATH='$COMPOSITOR' '$COMPOSITOR/ffprobe' -version"
+  local comp
+  comp="$(compositor 2>/dev/null || true)"
+  check "ffprobe runs" "DYLD_LIBRARY_PATH='$comp' '$comp/ffprobe' -version"
   local f pid port
   for f in "$WORK"/play/*.pid; do
     [ -f "$f" ] || continue
@@ -187,12 +194,16 @@ cmd_browse() {
 }
 
 cmd_probe() {
-  DYLD_LIBRARY_PATH="$COMPOSITOR" "$COMPOSITOR/ffprobe" -v error \
+  local comp
+  comp="$(compositor)"
+  DYLD_LIBRARY_PATH="$comp" "$comp/ffprobe" -v error \
     -show_entries format=duration:stream=codec_type,codec_name,width,height,r_frame_rate -of compact "${1:?missing <mp4>}"
 }
 
 cmd_frame() {
-  DYLD_LIBRARY_PATH="$COMPOSITOR" "$COMPOSITOR/ffmpeg" -v error -y -ss "${2:?missing <seconds>}" -i "${1:?missing <mp4>}" -frames:v 1 "${3:?missing <out.png>}"
+  local comp
+  comp="$(compositor)"
+  DYLD_LIBRARY_PATH="$comp" "$comp/ffmpeg" -v error -y -ss "${2:?missing <seconds>}" -i "${1:?missing <mp4>}" -frames:v 1 "${3:?missing <out.png>}"
   echo "$3"
 }
 

@@ -11,8 +11,9 @@
 - `prune-list` lists runs, videos, stills, audio and cache entries with sizes, and supports `--json` and `--older-than`.
 - `prune-delete` deletes exactly the given ids and reports `freed <size>`. An unknown id exits 1.
 - `upgrade-check` prints the available version and the changelog link, and for a clone says it prints steps.
-- `upgrade-clone` prints the `git pull` / `npm install` / `npm run build` / `npm run install-skill` steps.
-- `upgrade-other` tells a copy not installed by `npm install -g` how to install globally, and changes nothing.
+- `upgrade-clone` prints the `git pull` / `pnpm install` / `pnpm build` / `pnpm install-skill` steps.
+- `upgrade-other` tells a copy not installed by `npm install -g` or `pnpm add -g` how to install globally, and changes nothing.
+- `upgrade-global` updates an `npm install -g` or `pnpm add -g` install with the same package manager, then reinstalls the skills from the new copy.
 - `upgrade-offline` fails with `could not look up the latest version on npm`.
 - `update-notice` prints `mr-cast <latest> is available (you have <version>). Run \`mr-cast upgrade\`.` on stderr from a non-clone install.
 - `version` prints `mr-cast <version> (node <version>)`.
@@ -52,6 +53,7 @@ Preconditions:
 - `~/.claude/.mr-cast-install.json` on this machine points at this clone. Running any mr-cast command with the default `CLAUDE_CONFIG_DIR` after a version bump rewrites the user's real skills. Always use the run's config dir.
 - The update notice never shows from a git clone, because `isGitClone` skips it. Prove it from the `git archive` copy only.
 - The update notice uses only the cached result. When the cache is a day old, the command starts a detached background fetch to `MR_CAST_REGISTRY` (default npm). Seed `checkedAt` with the current time so no fetch starts.
-- A real `upgrade` from an `npm install -g` install runs `npm install -g @shiyuphan/mr-cast@latest` and changes the user's global install. This map never drives that path. Report it as not verified unless a disposable npm prefix is set up.
+- A real `upgrade` from an `npm install -g` install runs `npm install -g @shiyuphan/mr-cast@latest` and changes the user's global install, and from a `pnpm add -g` install runs `pnpm add -g @shiyuphan/mr-cast@latest`. Drive it only in a disposable prefix: `T=$(mktemp -d)`, then `pnpm pack`, `npm i -g --prefix $T/npm <tgz>` and run `NPM_CONFIG_PREFIX=$T/npm $T/npm/bin/mr-cast upgrade`, or `PNPM_HOME=$T/pnpm PATH=$T/pnpm/bin:$PATH pnpm add -g <tgz>` and run `mr-cast upgrade` there. Use `mktemp -d`, not the session scratchpad: npm redacts a UUID-like path segment in `npm root -g` output (`/***/`), so a prefix under a scratchpad named by a session id reads as "not installed by npm install -g".
+- pnpm 11 and later install each global package in its own `<pnpm root -g>/<hash>/node_modules`, and an upgrade moves it to a new hash and deletes the old one. `upgrade` finds the new copy before it reinstalls the skills.
 - Prune refuses `cache:remotion` and `cache:models` while a render holds them, with `kept …: in use`. The harness refuses any `cache:` id unless `XDG_CACHE_HOME` is under `$RUN`.
 - `prune` lists only what is inside `.mr-cast` and the cache. Stills and videos written with `--out $EV/...` are never listed, so evidence is safe from prune.

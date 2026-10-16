@@ -17,7 +17,8 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // MR_CAST_REPO points at another checkout, such as an older release, to time its render with its own code.
 const REPO = process.env.MR_CAST_REPO ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -39,7 +40,10 @@ const voicePath = path.join(dataDir, 'voiceover.json');
 const voiceover = !silent && existsSync(voicePath) ? JSON.parse(readFileSync(voicePath, 'utf8')) : null;
 mkdirSync(outDir, { recursive: true });
 
-const COMPOSITOR = path.join(REPO, 'node_modules/@remotion/compositor-darwin-arm64');
+// pnpm keeps the compositor beside @remotion/renderer, not at the top of node_modules.
+const fromRepo = createRequire(path.join(REPO, 'package.json'));
+const fromRenderer = createRequire(fromRepo.resolve('@remotion/renderer/package.json'));
+const COMPOSITOR = path.dirname(fromRenderer.resolve('@remotion/compositor-darwin-arm64/package.json'));
 const env = { ...process.env, DYLD_LIBRARY_PATH: COMPOSITOR };
 const W = 1920;
 /** Frames after the next step starts by which a pen mark has faded (src/components/PenMarks.tsx), plus one. */
@@ -50,7 +54,7 @@ const CROP_H = 920;
 const at = (frame) => ((frame + 0.5) / FPS).toFixed(4);
 const png = (frame, file) =>
   execFileSync(path.join(COMPOSITOR, 'ffmpeg'), ['-v', 'error', '-y', '-ss', at(frame), '-i', mp4, '-frames:v', '1', path.join(outDir, file)], { env });
-const { default: sharp } = await import(path.join(REPO, 'node_modules/sharp/lib/index.js'));
+const { default: sharp } = await import(pathToFileURL(fromRepo.resolve('sharp')).href);
 const grey = (file) => sharp(path.join(outDir, file)).extract({ left: 0, top: 0, width: W, height: CROP_H }).greyscale().raw().toBuffer();
 function changed(a, b) {
   let n = 0;

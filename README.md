@@ -44,7 +44,7 @@ Walkthroughs now live in `.mr-cast/<name>/`, one directory each, whether they sh
 
 ## Install
 
-Requires Node 20 to 24 on macOS or Linux. Remotion rendering hangs on Node 26. The `mr-cast` launcher finds a suitable Node through PATH, nvm, or Homebrew.
+Requires Node 22.12 or newer on macOS or Linux. Node 24 LTS is recommended, and Node 22, 24 and 26 are tested. The `mr-cast` launcher finds a suitable Node through PATH, nvm, or Homebrew.
 
 ```bash
 npm install -g @shiyuphan/mr-cast
@@ -52,14 +52,16 @@ mr-cast install-skill   # installs the mr-cast, mr-cast-prune and mr-cast-upgrad
 mr-cast --version       # prints the mr-cast and Node versions
 ```
 
+npm 11.19 and later skip the install scripts of dependencies and list them as warnings. mr-cast needs none of them, and neither does `pnpm add -g @shiyuphan/mr-cast`.
+
 The skills point at the installed package, so rerun `mr-cast install-skill` after you move it. After an upgrade, the next `mr-cast` command reinstalls them (see [Upgrade](#upgrade)). Each install records what it wrote in `~/.claude/.mr-cast-install.json` and deletes anything an earlier install wrote that this version no longer does. `mr-cast uninstall-skill` removes every skill mr-cast installed, and the record. Both print each file they remove and keep any file whose content mr-cast did not write.
 
-From a clone instead:
+From a clone instead, with [pnpm](https://pnpm.io) (`corepack enable` provides the version in `package.json`):
 
 ```bash
-npm install
-npm run build           # prebuilds the player into dist/
-npm run install-skill
+pnpm install
+pnpm build              # prebuilds the player into dist/
+pnpm install-skill
 ```
 
 ## Upgrade
@@ -71,7 +73,7 @@ mr-cast upgrade           # npm install -g @shiyuphan/mr-cast@latest, then reins
 
 From Claude Code, ask Claude to "upgrade mr-cast". The `mr-cast-upgrade` skill checks the versions, asks before it upgrades, and runs `mr-cast upgrade`. Start a new Claude Code session afterwards so the new skills load.
 
-`mr-cast upgrade` runs npm only when `npm install -g` installed mr-cast. For a clone it prints the steps to update it (`git pull`, `npm install`, `npm run build`, `npm run install-skill`), and for any other install it prints the npm command. If npm cannot write to its global directory, follow [npm's guide to a user-owned prefix](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
+`mr-cast upgrade` updates mr-cast in place only when `npm install -g` or `pnpm add -g` installed it, and uses the same package manager. For a clone it prints the steps to update it (`git pull`, `pnpm install`, `pnpm build`, `pnpm install-skill`), and for any other install it prints the npm command. If npm cannot write to its global directory, follow [npm's guide to a user-owned prefix](https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally).
 
 You can also run `npm install -g @shiyuphan/mr-cast@latest` yourself. The skills record which package installed them and its version. When that package runs as a new version, the next `mr-cast` command reinstalls them and prints `mr-cast: updated Claude Code skills to <version>`. Skills installed from another copy, such as a clone, stay as they are.
 
@@ -319,8 +321,8 @@ A tests scene that is not about a diff's tests can rename its panels with `title
 - `bin/` holds the CLI. `lib/diff.mjs` is the unified diff parser, `lib/server.mjs` serves the player, `lib/render.mjs` wraps the Remotion renderer, and `lib/voice.mjs` generates the voice-over. `lib/runs.mjs` finds a command's run (the current one, `--name` or `--dir`), `lib/settings.mjs` turns a command's flags into its settings and keeps the last choices, `lib/lock.mjs` guards downloads into the shared cache and marks caches in use, and `lib/prune.mjs` lists and deletes artifacts for `prune`.
 - `src/` holds the player. `Walkthrough.tsx` is the Remotion composition, `components/` holds the scenes, and `App.tsx` is the browser shell with chapters and the subtitle bar.
 - `shared/timing.mjs` holds the duration formula that the CLI and the player share: a scene is a sequence of spoken segments, its narration and then each step, each with a lead and a tail scaled by the pace, and each scene type's build time, which the narration waits for. `shared/steps.mjs` lists the steps each scene type speaks, and `shared/targets.mjs` what a step's `focus` can name in each scene type. `shared/normalize.mjs` rewrites older field names once, where a storyboard enters. `shared/voice.mjs` names each clip by its voice, speed and text, and defines the paces. `shared/files.mjs` builds the file list of a `files` scene for both. `shared/pen-marks.mjs` says what a step's pen mark draws on, and `src/components/PenMarks.tsx` draws every scene's marks from the boxes the scene gives it.
-- `shared/textfit.mjs` fits a text to its place: it wraps, shrinks and reports what does not fit, from the widths in `shared/font-metrics.mjs` (made by `node scripts/measure-fonts.mjs`). `shared/markup.mjs` parses inline markup. Each scene fits its text in layout code under `src/utils/`, against the places listed in `src/fit/slots.ts`, and draws it with `src/components/FitText.tsx`; `src/fit/report.ts` runs the same layouts for `validate` (`bin/lib/validate-fit.mjs` bundles it with esbuild). `scripts/check-text.mjs`, part of `npm run typecheck`, fails on text clipping or an ellipsis under `src/`.
+- `shared/textfit.mjs` fits a text to its place: it wraps, shrinks and reports what does not fit, from the widths in `shared/font-metrics.mjs` (made by `node scripts/measure-fonts.mjs`). `shared/markup.mjs` parses inline markup. Each scene fits its text in layout code under `src/utils/`, against the places listed in `src/fit/slots.ts`, and draws it with `src/components/FitText.tsx`; `src/fit/report.ts` runs the same layouts for `validate` (`bin/lib/validate-fit.mjs` bundles it with esbuild). `scripts/check-text.mjs`, part of `pnpm typecheck`, fails on text clipping or an ellipsis under `src/`.
 - `bin/lib/explain.mjs` turns source line ranges into snippets for `snippet`.
 - `skill/mr-cast/` (`SKILL.md` and `references/branch.md` and `references/explanation.md`), `skill/mr-cast-prune/SKILL.md` and `skill/mr-cast-upgrade/SKILL.md` are the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
 
-For development, run `npm run dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set.
+For development, run `pnpm dev`. It serves the player with data from `examples/demo`, or from `MR_CAST_DATA_DIR` when set. `pnpm test` runs the unit tests, and `pnpm typecheck` the type and text checks. CI runs both on every push and pull request, along with the build, `validate` on every example, `pnpm audit`, a still render on Linux, and an install of the packed tarball with npm.

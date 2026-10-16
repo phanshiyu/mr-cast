@@ -8,7 +8,7 @@ Every text a scene draws is fitted to its place by `shared/textfit.mjs`: it wrap
 - `fit-validate` fails with `<path>: "<text>" does not fit its <slot>, even at <n>px; <fix>` for text past its slot's floor, and fails when a table or tests scene does not fit the frame at its smallest font. A file's name or path, a hunk header and a line of code are the source's own, so they shrink with a warning instead.
 - `fit-markup` draws `**bold**`, `` `code` `` chips, `==marked==` highlights and `[words]{good|bad|warn|accent|neutral}` in display text. `validate` fails on unclosed or unknown markup with its column, and warns when more than a third of a text of three or more words is styled. Narration, `say` and pen notes drop markup before the voice, the clip key and the subtitles, with a warning.
 - `fit-metrics` measures with `shared/font-metrics.mjs`, per character, weight and size with kerning, made by `node scripts/measure-fonts.mjs` in Chrome Headless Shell from the bundled font files. In the player a fitted line is drawn within a pixel of its measured width.
-- `fit-lint` (`npm run typecheck` runs `scripts/check-text.mjs`) fails on text clipping or an ellipsis under `src/`, and on a component that fits text itself.
+- `fit-lint` (`pnpm typecheck` runs `scripts/check-text.mjs`) fails on text clipping or an ellipsis under `src/`, and on a component that fits text itself.
 
 ## How to get to it (user POV)
 

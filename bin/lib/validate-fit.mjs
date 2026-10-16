@@ -21,7 +21,7 @@ let loaded;
 async function reportModule() {
   loaded ??= (async () => {
     const { build } = await import('esbuild');
-    const result = await build({ entryPoints: [ENTRY], bundle: true, write: false, format: 'esm', platform: 'node', target: 'node20', logLevel: 'silent' });
+    const result = await build({ entryPoints: [ENTRY], bundle: true, write: false, format: 'esm', platform: 'node', target: 'node22', logLevel: 'silent' });
     const code = result.outputFiles[0].text;
     return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
   })();

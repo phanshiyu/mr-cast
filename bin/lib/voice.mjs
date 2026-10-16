@@ -74,7 +74,7 @@ function loadModel(onProgress) {
     try {
       const { env } = await import('@huggingface/transformers');
       env.cacheDir = modelDir;
-      const { KokoroTTS, TextSplitterStream } = await import('kokoro-js');
+      const { KokoroTTS, TextSplitterStream } = await import('./kokoro/kokoro.js');
       fs.mkdirSync(modelDir, { recursive: true });
       const tts = await withLock(`${modelDir}.lock`, () => {
         if (!fs.existsSync(path.join(modelDir, MODEL_ID, 'onnx', MODEL_FILE))) onProgress?.({ type: 'download', cacheDir: modelDir });

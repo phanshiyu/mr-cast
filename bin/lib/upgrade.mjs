@@ -1,4 +1,4 @@
-// mr-cast upgrade: updates an `npm install -g` install in place and says how to update any other.
+// mr-cast upgrade: updates an `npm install -g` or `pnpm add -g` install in place and says how to update any other.
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,27 +6,39 @@ import { UserError } from './errors.mjs';
 import { skillsInstalledFrom } from './install-skill.mjs';
 import { PACKAGE, compareVersions, fetchLatest, isGitClone, writeCache } from './update.mjs';
 
-const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-const INSTALL_ARGS = ['install', '-g', `${PACKAGE}@latest`];
+const exe = (name) => (process.platform === 'win32' ? `${name}.cmd` : name);
+/** The package managers whose global installs `mr-cast upgrade` can replace, tried in this order. */
+const MANAGERS = [
+  // npm installs a global package at <root -g>/<package>.
+  { name: 'npm', cmd: exe('npm'), install: ['install', '-g', `${PACKAGE}@latest`], owns: (dir, real) => real === fs.realpathSync(path.join(dir, PACKAGE)) },
+  // pnpm 11 and later give each global package its own <root -g>/<hash>/node_modules.
+  { name: 'pnpm', cmd: exe('pnpm'), install: ['add', '-g', `${PACKAGE}@latest`], owns: (dir, real) => real.startsWith(fs.realpathSync(dir) + path.sep) },
+];
+const NPM = MANAGERS[0];
 const RELEASES = 'https://github.com/phanshiyu/mr-cast/blob/main/CHANGELOG.md';
 const EACCES_DOCS = 'https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally';
 
-/** npm's global node_modules, or null when npm is not on PATH. */
-function npmGlobalRoot() {
-  const res = spawnSync(NPM, ['root', '-g'], { encoding: 'utf8' });
+/** The manager's global node_modules, or null when it is not on PATH. */
+function globalRoot(manager) {
+  const res = spawnSync(manager.cmd, ['root', '-g'], { encoding: 'utf8' });
   return res.status === 0 ? res.stdout.trim() : null;
 }
 
+const command = (manager) => `${manager.name} ${manager.install.join(' ')}`;
+
 /**
- * How this copy was installed: `clone` (a git checkout), `global` (by `npm install -g`, so this npm
- * can replace it), or `other` (npx, another package manager, another Node's npm).
+ * How this copy was installed: `clone` (a git checkout), `global` (by `npm install -g` or `pnpm add -g`,
+ * so that manager can replace it), or `other` (npx, another package manager, another Node's npm).
  */
 function installKind(root) {
   if (isGitClone(root)) return { kind: 'clone' };
-  const globalRoot = npmGlobalRoot();
-  try {
-    if (globalRoot && fs.realpathSync(path.join(globalRoot, PACKAGE)) === fs.realpathSync(root)) return { kind: 'global', globalRoot };
-  } catch { /* not installed there */ }
+  const real = fs.realpathSync(root);
+  for (const manager of MANAGERS) {
+    const dir = globalRoot(manager);
+    try {
+      if (dir && manager.owns(dir, real)) return { kind: 'global', manager, globalRoot: dir };
+    } catch { /* not installed there */ }
+  }
   return { kind: 'other' };
 }
 
@@ -44,15 +56,15 @@ const cloneSteps = (root) => [
   `this mr-cast is a git clone; update it with:`,
   `  cd ${root}`,
   '  git pull',
-  '  npm install',
-  '  npm run build',
-  '  npm run install-skill',
+  '  pnpm install',
+  '  pnpm build',
+  '  pnpm install-skill',
 ];
 
-/** Runs npm, passing its output through, and returns its exit code and stderr. */
-function runNpm(args) {
+/** Runs the package manager, passing its output through, and returns its exit code and stderr. */
+function runManager(manager) {
   return new Promise((resolve, reject) => {
-    const child = spawn(NPM, args, { stdio: ['inherit', 'inherit', 'pipe'] });
+    const child = spawn(manager.cmd, manager.install, { stdio: ['inherit', 'inherit', 'pipe'] });
     let stderr = '';
     child.stderr.on('data', (chunk) => {
       process.stderr.write(chunk);
@@ -64,6 +76,19 @@ function runNpm(args) {
 }
 
 const installedVersion = (root) => JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+
+/**
+ * Where the upgrade put the package. npm replaces it in place; pnpm installs it into a new
+ * <root -g>/<hash>/node_modules and deletes the old one, which held this running copy.
+ */
+function upgradedRoot(install, root) {
+  if (fs.existsSync(path.join(root, 'package.json'))) return root;
+  for (const entry of fs.readdirSync(install.globalRoot)) {
+    const candidate = path.join(install.globalRoot, entry, 'node_modules', PACKAGE);
+    if (fs.existsSync(path.join(candidate, 'package.json'))) return candidate;
+  }
+  throw new UserError(`the upgrade succeeded but mr-cast is no longer under ${install.globalRoot}; run \`mr-cast install-skill\``);
+}
 
 export async function upgrade({ root, version, check }) {
   const latest = await latestVersion();
@@ -78,27 +103,28 @@ export async function upgrade({ root, version, check }) {
   }
   if (!newer) return;
   if (install.kind === 'other') {
-    console.log(`this mr-cast was not installed by \`npm install -g\`; to install the latest globally, run:\n  npm ${INSTALL_ARGS.join(' ')}`);
+    console.log(`this mr-cast was not installed by \`npm install -g\`; to install the latest globally, run:\n  ${command(NPM)}`);
     return;
   }
   if (check) {
-    console.log(`\`mr-cast upgrade\` runs: npm ${INSTALL_ARGS.join(' ')}`);
+    console.log(`\`mr-cast upgrade\` runs: ${command(install.manager)}`);
     return;
   }
 
   const skills = skillsInstalledFrom(root);
-  console.log(`running: npm ${INSTALL_ARGS.join(' ')}`);
-  const { code, stderr } = await runNpm(INSTALL_ARGS);
+  console.log(`running: ${command(install.manager)}`);
+  const { code, stderr } = await runManager(install.manager);
   if (code !== 0) {
     if (/\bEACCES\b/.test(stderr)) {
-      throw new UserError(`npm cannot write to ${install.globalRoot}. If you installed mr-cast with sudo, upgrade it the same way. Otherwise give npm a prefix you own (${EACCES_DOCS}) and rerun \`mr-cast upgrade\``);
+      throw new UserError(`${install.manager.name} cannot write to ${install.globalRoot}. If you installed mr-cast with sudo, upgrade it the same way. Otherwise give npm a prefix you own (${EACCES_DOCS}) and rerun \`mr-cast upgrade\``);
     }
-    throw new UserError(`npm ${INSTALL_ARGS.join(' ')} failed (exit ${code}; see its output above)`);
+    throw new UserError(`${command(install.manager)} failed (exit ${code}; see its output above)`);
   }
-  console.log(`upgraded mr-cast ${version} to ${installedVersion(root)}`);
+  const newRoot = upgradedRoot(install, root);
+  console.log(`upgraded mr-cast ${version} to ${installedVersion(newRoot)}`);
   if (!skills) return;
   // This process still runs the old code, so the new version installs its own skills.
-  const launcher = path.join(root, 'bin', 'mr-cast');
+  const launcher = path.join(newRoot, 'bin', 'mr-cast');
   const res = spawnSync(fs.existsSync(launcher) ? launcher : 'mr-cast', ['install-skill'], { stdio: 'inherit' });
   if (res.status !== 0) throw new UserError('the upgrade succeeded but reinstalling the Claude Code skills failed; run `mr-cast install-skill`');
   console.log('start a new Claude Code session to load the updated skills');

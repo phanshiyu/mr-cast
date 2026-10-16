@@ -7,7 +7,7 @@ description: Drive mr-cast (the CLI that turns a git diff or an explanation into
 
 mr-cast is a CLI. A user runs `bin/mr-cast` inside a git repo, writes a storyboard JSON, and gets PNG stills, an MP4, or a live browser player. Three surfaces:
 
-- **CLI** (primary). `bin/mr-cast` is a bash launcher that finds Node 20 to 24 and runs `bin/mr-cast.mjs`. Each walkthrough is a run in `<repo>/.mr-cast/<name>/`. `extract` names it after the branch (`feature-rate-limit` in the demo), `init` after the title, and later commands work on the current run in `.mr-cast/.current`.
+- **CLI** (primary). `bin/mr-cast` is a bash launcher that finds Node 22.12 or newer and runs `bin/mr-cast.mjs`. Each walkthrough is a run in `<repo>/.mr-cast/<name>/`. `extract` names it after the branch (`feature-rate-limit` in the demo), `init` after the title, and later commands work on the current run in `.mr-cast/.current`.
 - **Browser player.** `mr-cast play` serves the built player (`dist/`) and the run's data on `127.0.0.1:4747`, or the next free port.
 - **Installed Claude Code skills.** `install-skill` writes the `mr-cast` skill (with `references/`), `mr-cast-prune` and `mr-cast-upgrade` into `$CLAUDE_CONFIG_DIR` (default `~/.claude`) with a manifest.
 
@@ -19,7 +19,7 @@ Each Bash call starts a fresh shell, so start each one with these two lines. Pic
 
 ```bash
 V=<mr-cast checkout>/.claude/skills/verify/scripts/verify.sh; RUN=<your run dir>
-eval "$($V env $RUN)"   # sets PATH to a real Node 20-24, MR_CAST_NO_UPDATE_CHECK=1, CLAUDE_CONFIG_DIR=$RUN/work/claude, XDG_CONFIG_HOME=$RUN/work/config, and $EV $DEMO $MRC $REPO $V
+eval "$($V env $RUN)"   # sets PATH to a real Node 22.12+, MR_CAST_NO_UPDATE_CHECK=1, CLAUDE_CONFIG_DIR=$RUN/work/claude, XDG_CONFIG_HOME=$RUN/work/config, and $EV $DEMO $MRC $REPO $V
 ```
 
 Use the checkout you are verifying (a worktree verifies its own code), for example `~/projects/mr-cast`.
@@ -34,7 +34,7 @@ It prints `verify: ready run=<run> repo=<run>/work/repo evidence=<run>/evidence`
 
 1. It creates the demo repo with `scripts/demo.sh`. The repo is on branch `feature/rate-limit`, one commit ahead of `main`, with 6 files changed (an add, a modify, a rename, a delete). `extract` on it reproduces `examples/demo/hunks.json` byte for byte, so the storyboards in `examples/demo` and `examples/demo-simple` validate against it.
 2. It creates `$RUN/evidence` and the run's own `CLAUDE_CONFIG_DIR`.
-3. It builds `dist/` with vite if `dist/index.html` is missing.
+3. It builds `dist/` with vite if `dist/index.html` is missing. The checkout needs `pnpm install` first (pnpm is pinned in `package.json`; `corepack enable` provides it).
 
 There is no server to keep alive for the CLI. The player is started per recipe with `play-start` (see Drive).
 
@@ -46,7 +46,7 @@ First use on a fresh machine downloads Chrome Headless Shell (about 580 MB) and 
 $V doctor $RUN
 ```
 
-It is read-only and exits 1 on any `FAIL`. It checks five things: the launcher runs Node 20-24, `dist/index.html` exists, the demo repo is on `feature/rate-limit` one commit ahead of `main`, the evidence dir exists, and Chrome Headless Shell, the voice model and ffprobe are present. It also checks that every player this run started still owns its port. Run it first, and again whenever something looks off.
+It is read-only and exits 1 on any `FAIL`. It checks five things: the launcher runs Node 22.12 or newer, `dist/index.html` exists, the demo repo is on `feature/rate-limit` one commit ahead of `main`, the evidence dir exists, and Chrome Headless Shell, the voice model and ffprobe are present. It also checks that every player this run started still owns its port. Run it first, and again whenever something looks off.
 
 ## Drive
 
@@ -96,8 +96,8 @@ It stops every player this run started (by recorded pid, never by process name),
 - **Runs in parallel.** Each run has its own demo repo and config dir. `play` picks the next free port. Renders share `~/.cache/mr-cast` safely (atomic bundle cache, download locks).
 - **Never touch the user's real state.** `~/.claude/.mr-cast-install.json` points at this clone, so any mr-cast command run without a temp `CLAUDE_CONFIG_DIR` can rewrite `~/.claude` skills when versions differ. `extract`, `init` and any command given `--audience`, `--pace` or `--no-voice` write the user's last choices into `$XDG_CONFIG_HOME/mr-cast`. `verify.sh` always sets `CLAUDE_CONFIG_DIR=$RUN/work/claude` and `XDG_CONFIG_HOME=$RUN/work/config`.
 - **Never prune the real cache.** `~/.cache/mr-cast` holds Chrome and the voice model that renders need. For prune or upgrade tests, prefix the command with `XDG_CACHE_HOME=$RUN/work/xdg`. `verify.sh mrc` refuses `prune cache:*` unless `XDG_CACHE_HOME` is under `$RUN`.
-- **Use only the Node versions the harness picks.** Never call `node` bare in Claude Code's shell, where it is a broken nvm lazy-load function, and never use Homebrew's Node 26, which hangs Remotion renders. `eval "$($V env $RUN)"` fixes both. The launcher `bin/mr-cast` finds Node on its own.
-- **ffmpeg and ffprobe.** They live in `node_modules/@remotion/compositor-darwin-arm64/` and need `DYLD_LIBRARY_PATH` set to that dir. `$V probe` and `$V frame` handle that.
+- **Use only the Node versions the harness picks.** Never call `node` bare in Claude Code's shell, where it is a broken nvm lazy-load function. `eval "$($V env $RUN)"` puts a real Node on PATH. Node 22, 24 (the `.nvmrc` and CI version) and 26 all render; an earlier Node 26 hang no longer reproduces with nvm 26.12 or Homebrew 26.8. The launcher `bin/mr-cast` finds Node on its own.
+- **ffmpeg and ffprobe.** They live in the `@remotion/compositor-darwin-arm64` package, which pnpm keeps under `node_modules/.pnpm/` beside `@remotion/renderer`, and need `DYLD_LIBRARY_PATH` set to that dir. `$V probe`, `$V frame` and `sync-check.mjs` resolve it through `@remotion/renderer`.
 
 ## Timing (measured on this machine, warm cache)
 
