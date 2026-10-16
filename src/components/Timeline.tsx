@@ -7,7 +7,7 @@ import { formatValue } from '../utils/chartLayout';
 import { SPAN_H, STAMP_FONT, layoutTimeline, type PlacedEvent, type PlacedSpan, type TimelineLayout, timelineBoxes } from '../utils/timelineLayout';
 import { staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
-import { focusSpotlight, revealStarts, type Emphasis } from '../utils/spotlight';
+import { focusSpotlight, revealStarts, stepSpring, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -91,27 +91,35 @@ function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, segments: r
   return {
     playX: (frame: number) => interpolate(frame, times, xs, clamp),
     reachedAt,
-    eventAt: (index: number) => {
+    eventAt: (index: number): EventTiming => {
       const reached = reachedAt(scene.events[index]!.at);
-      return stepped ? Math.max(stepFrom[index]!, reached - TRAVEL_FRAMES / 2) : reached;
+      return stepped ? { at: Math.max(stepFrom[index]!, reached - TRAVEL_FRAMES / 2), stepFrom: stepFrom[index]! } : { at: reached };
     },
     last: times[times.length - 1]!,
   };
 }
 
-function eventMotion(frame: number, fps: number, at: number) {
+/** When an event appears, and the start of the step that brings it, if one does: it is at rest when that step settles. */
+interface EventTiming {
+  at: number;
+  stepFrom?: number;
+}
+
+function eventMotion(frame: number, fps: number, { at, stepFrom }: EventTiming) {
+  const motion = (delay: number, config: { damping: number; stiffness: number }) =>
+    stepFrom === undefined ? spring({ frame: frame - at - delay, fps, config }) : stepSpring(frame, fps, at + delay, stepFrom, config);
   return {
-    pop: spring({ frame: frame - at, fps, config: { damping: 12, stiffness: 170 } }),
-    rise: spring({ frame: frame - at - 3, fps, config: { damping: 17, stiffness: 120 } }),
+    pop: motion(0, { damping: 12, stiffness: 170 }),
+    rise: motion(3, { damping: 17, stiffness: 120 }),
     flash: interpolate(frame, [at, at + 6, at + 30], [0, 1, 0], clamp),
   };
 }
 
 /** Stem and axis dot; every stem is drawn before any card, so cards in lower lanes cover the stems that pass behind them. */
-const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; at: number; frame: number }> = ({ placed, axisY, at, frame }) => {
+const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; timing: EventTiming; frame: number }> = ({ placed, axisY, timing, frame }) => {
   const { fps } = useVideoConfig();
   const tone = tones[placed.event.tone ?? 'accent'];
-  const { pop, rise, flash } = eventMotion(frame, fps, at);
+  const { pop, rise, flash } = eventMotion(frame, fps, timing);
   const stemTop = placed.box.y + placed.box.h;
   return (
     <g>
@@ -122,10 +130,10 @@ const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; at: number; fram
   );
 };
 
-const EventCard: React.FC<{ placed: PlacedEvent; at: number; frame: number; emphasis: Emphasis }> = ({ placed, at, frame, emphasis }) => {
+const EventCard: React.FC<{ placed: PlacedEvent; timing: EventTiming; frame: number; emphasis: Emphasis }> = ({ placed, timing, frame, emphasis }) => {
   const { fps } = useVideoConfig();
   const tone = tones[placed.event.tone ?? 'accent'];
-  const { rise, flash } = eventMotion(frame, fps, at);
+  const { rise, flash } = eventMotion(frame, fps, timing);
   const { box } = placed;
   return (
     <div
@@ -254,11 +262,11 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
         ))}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
           {layout.events.map((placed) => (
-            <EventMark key={placed.index} placed={placed} axisY={axisY} at={playhead.eventAt(placed.index)} frame={frame} />
+            <EventMark key={placed.index} placed={placed} axisY={axisY} timing={playhead.eventAt(placed.index)} frame={frame} />
           ))}
         </svg>
         {layout.events.map((placed) => (
-          <EventCard key={placed.index} placed={placed} at={playhead.eventAt(placed.index)} frame={frame} emphasis={emphasisOf(`ev:${placed.index}`)} />
+          <EventCard key={placed.index} placed={placed} timing={playhead.eventAt(placed.index)} frame={frame} emphasis={emphasisOf(`ev:${placed.index}`)} />
         ))}
         <div
           style={{

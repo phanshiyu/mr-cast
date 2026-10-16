@@ -7,6 +7,8 @@ export interface SpokenSegment {
   text: string;
   /** First frame of the segment, counted from the scene's start. A step is lit from here. */
   from: number;
+  /** Frame a step's items are at rest, where its pen mark starts; the voice's frame when there is no mark. */
+  markFrom: number;
   /** Frame its voice and caption start, after the segment's lead. */
   voiceFrom: number;
   durationInFrames: number;
@@ -19,6 +21,8 @@ export interface SpokenSegment {
 export declare const FPS: 30;
 export declare const WORDS_PER_MINUTE: number;
 export declare const SCENE_EXIT_FRAMES: number;
+export declare const STEP_SETTLE_FRAMES: number;
+export declare const PEN_FRAMES: number;
 export declare const BUILD_SECONDS: Record<Scene['type'], number>;
 export declare function buildFrames(type: Scene['type']): number;
 export declare function wordCount(text: string | null | undefined): number;

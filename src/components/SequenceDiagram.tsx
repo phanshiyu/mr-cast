@@ -215,7 +215,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   // Without steps every message draws in before the voice; with them, each step's messages draw with its words.
   const count = layout.messages.length;
   const steps = useMemo(() => messageSteps(scene, count), [scene, count]);
-  const starts = revealStarts(segments, count, steps.lasts, MESSAGES_START, buildFrames('sequence') - MESSAGE_FRAMES, STEP_STAGGER);
+  const starts = revealStarts(segments, count, steps.lasts, MESSAGES_START, buildFrames('sequence') - MESSAGE_FRAMES, STEP_STAGGER, MESSAGE_FRAMES);
   const step = currentStep(segments, frame);
   const litSet = step < 0 ? null : steps.lit[step]!;
   const isLit = (i: number) => litSet !== null && litSet.has(i);
@@ -227,7 +227,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   // A sequence keeps its rows readable: it scales only to fit across, and scrolls when it is taller than the frame.
   const fitsDown = layout.height <= box.height / Math.min(1, box.width / layout.width);
   const scale = fitsDown ? Math.min(1, box.width / layout.width, box.height / layout.height) : Math.min(1, box.width / layout.width);
-  const camera = useMemo(() => sequenceCamera(layout, steps.lit, segments, box.height / scale, fps), [layout, steps.lit, segments, box.height, scale, fps]);
+  const camera = useMemo(() => sequenceCamera(layout, steps.lit, segments, box.height / scale), [layout, steps.lit, segments, box.height, scale]);
   const scroll = camera.scrollAt(frame);
   const stage: Stage = camera.scrolls ? { left: (box.width - layout.width * scale) / 2, top: 0, scale } : centredStage(box, layout, scale);
   const boxes = useMemo(() => sequenceBoxes(layout), [layout]);

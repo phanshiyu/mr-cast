@@ -58,6 +58,32 @@ function changed(a, b) {
   return n / a.length;
 }
 
+/**
+ * Share of pixels above the caption band that differ by more than 40 grey levels between the frame before
+ * the pen starts and the frame before the step's voice, leaving out the mark itself: pixels within INK_REACH
+ * of its ink. Near 0 when the scene had settled before the pen started, so the mark drew on still targets.
+ */
+const INK_REACH = 16;
+async function movedUnderPen(beforeFile, inkedFile) {
+  const rgb = await sharp(path.join(outDir, inkedFile)).extract({ left: 0, top: 0, width: W, height: CROP_H }).removeAlpha().raw().toBuffer();
+  const ink = new Uint32Array((W + 1) * (CROP_H + 1));
+  for (let y = 0; y < CROP_H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = 3 * (y * W + x);
+      const inked = rgb[i] > 190 && rgb[i + 1] > 170 && rgb[i + 2] < 150 ? 1 : 0;
+      ink[(y + 1) * (W + 1) + x + 1] = inked + ink[y * (W + 1) + x + 1] + ink[(y + 1) * (W + 1) + x] - ink[y * (W + 1) + x];
+    }
+  }
+  const near = (x, y) => {
+    const [x0, y0, x1, y1] = [Math.max(0, x - INK_REACH), Math.max(0, y - INK_REACH), Math.min(W, x + INK_REACH + 1), Math.min(CROP_H, y + INK_REACH + 1)];
+    return ink[y1 * (W + 1) + x1] - ink[y0 * (W + 1) + x1] - ink[y1 * (W + 1) + x0] + ink[y0 * (W + 1) + x0] > 0;
+  };
+  const [a, b] = [await grey(beforeFile), await grey(inkedFile)];
+  let n = 0;
+  for (let y = 0; y < CROP_H; y++) for (let x = 0; x < W; x++) if (!near(x, y) && Math.abs(a[y * W + x] - b[y * W + x]) > 40) n++;
+  return n / (W * CROP_H);
+}
+
 const probed = Number(
   execFileSync(path.join(COMPOSITOR, 'ffprobe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4], { env }).toString().trim(),
 );
@@ -74,17 +100,24 @@ for (const [i, scene] of storyboard.scenes.entries()) {
   png(from + settledFrame(duration), `${name}-settled.png`);
   const steps = sceneSteps(scene).length;
   const diff = steps ? null : changed(await grey(`${name}-voice-1.png`), await grey(`${name}-settled.png`));
-  const stepRows = segments.slice(1).map((segment, k) => {
+  const stepRows = [];
+  for (const [k, segment] of segments.slice(1).entries()) stepRows.push(await stepRow(segment, k));
+  async function stepRow(segment, k) {
     png(from + segment.voiceFrom - 1, `${name}-step-${k + 1}-pre.png`);
     png(from + segment.voiceFrom + Math.round(0.6 * FPS), `${name}-step-${k + 1}-say.png`);
     const mark = sceneSteps(scene)[k]?.mark;
+    let moved = '';
     if (mark) {
-      png(from + Math.round((segment.from + segment.voiceFrom) / 2), `${name}-step-${k + 1}-draw.png`);
+      // Releases before 0.15 have no markFrom; their pen started PEN_DELAY frames after the step lit.
+      const pen = segment.markFrom ?? segment.from + 3;
+      png(from + pen - 1, `${name}-step-${k + 1}-pen-1.png`);
+      png(from + Math.round((pen + segment.voiceFrom) / 2), `${name}-step-${k + 1}-draw.png`);
       const next = segments[k + 2];
       png(from + (next ? next.from + MARK_CLEAR : settledFrame(duration)), `${name}-step-${k + 1}-next.png`);
+      moved = ` pen ${seconds(from + pen)} moved ${(100 * (await movedUnderPen(`${name}-step-${k + 1}-pen-1.png`, `${name}-step-${k + 1}-pre.png`))).toFixed(2)}%`;
     }
-    return `step ${k + 1}${mark ? ` (${mark})` : ''} lit ${seconds(from + segment.from)} voice ${seconds(from + segment.voiceFrom)}`;
-  });
+    return `step ${k + 1}${mark ? ` (${mark})` : ''} lit ${seconds(from + segment.from)}${moved} voice ${seconds(from + segment.voiceFrom)}`;
+  }
   rows.push({ scene: name, chapter: scene.chapter ?? '', start: seconds(from), buildEnd: seconds(build), voiceStart: seconds(voice), lead: seconds(voice - build), changed: diff === null ? 'stepped' : `${(diff * 100).toFixed(2)}%`, steps: stepRows.join('; ') });
   from += duration;
 }

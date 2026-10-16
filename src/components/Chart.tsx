@@ -5,7 +5,7 @@ import { buildFrames } from '../../shared/timing.mjs';
 import type { ChartScene } from '../types';
 import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, type ChartLayout, type Direction } from '../utils/chartLayout';
 import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
-import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
+import { brighter, focusSpotlight, stepSpring, type Emphasis } from '../utils/spotlight';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -460,7 +460,8 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
   const noteSteps = point ? [...(targetSteps(scene).get(`l:${point.label}`) ?? []), ...(targetSteps(scene).get(`p:${point.series}/${point.label}`) ?? [])] : [];
   const noteStep = noteSteps.length ? Math.min(...noteSteps) : -1;
   const noteAt = noteStep >= 0 ? stepFroms[noteStep]! : timeline.doneAt - 8;
-  const noteIn = spring({ frame: frame - noteAt, fps, config: { damping: 16, stiffness: 120 } });
+  const noteConfig = { damping: 16, stiffness: 120 };
+  const noteIn = noteStep >= 0 ? stepSpring(frame, fps, noteAt, noteAt, noteConfig) : spring({ frame: frame - noteAt, fps, config: noteConfig });
   const notePulse = interpolate(frame, [noteAt + 4, noteAt + 12, noteAt + 40], [0, 1, 0.35], clamp);
   const note = point && layout.note ? placeNote(layout.note, point, layout, box.width) : null;
   // A bar's note stops above the bar's own value; a line's runs to the ring around its point.

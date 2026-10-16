@@ -34,6 +34,7 @@ import { FitText } from './FitText';
 import { StepDiagram } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
 import type { SpokenSegment } from '../utils/timing';
+import { stepMove } from '../utils/spotlight';
 import { clamp, CODE_TAB_SIZE, codeColumns, colors, contentBox, fonts } from './theme';
 
 const STEP_FADE = 14;
@@ -407,7 +408,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
     stops.push(Math.max(previous, target));
   }
   const scroll = stops.reduce(
-    (acc, stop, k) => (k === 0 ? stop : acc + (stop - stops[k - 1]!) * spring({ frame: frame - stepStarts[k]!, fps, config: { damping: 200 } })),
+    (acc, stop, k) => (k === 0 ? stop : acc + (stop - stops[k - 1]!) * stepMove(frame, stepStarts[k]!)),
     0,
   );
 

@@ -1,8 +1,10 @@
-import { interpolate } from 'remotion';
+import { Easing, interpolate, spring, type SpringConfig } from 'remotion';
 import { targetSteps } from '../../shared/targets.mjs';
+import { STEP_SETTLE_FRAMES } from '../../shared/timing.mjs';
 import type { HunkMap, Scene } from '../types';
 import type { SpokenSegment } from './timing';
 
+/** Frames a step's light takes to fade in; inside STEP_SETTLE_FRAMES, so the pen starts on lit items. */
 const STEP_FADE = 14;
 const DIM_OPACITY = 0.42;
 const VISITED_OPACITY = 0.72;
@@ -70,19 +72,29 @@ export function currentStep(segments: readonly SpokenSegment[], frame: number): 
   return current;
 }
 
+/** How far, 0 to 1, a move that a step starts at `from` has gone, such as a camera's: at rest when the step settles. */
+export const stepMove = (frame: number, from: number): number =>
+  interpolate(frame, [from, from + STEP_SETTLE_FRAMES], [0, 1], { ...clamp, easing: Easing.bezier(0.25, 0.1, 0.25, 1) });
+
+/** A spring for an item that a step starting at `stepFrom` brings in at `at`, squeezed to rest when the step settles. */
+export const stepSpring = (frame: number, fps: number, at: number, stepFrom: number, config: Partial<SpringConfig>): number =>
+  spring({ frame: frame - at, fps, config, durationInFrames: Math.max(1, stepFrom + STEP_SETTLE_FRAMES - at) });
+
 /**
  * When each of `count` ordered items starts to appear. With steps, step k reveals every item up to
- * index `lasts[k]` from its segment's start, `stagger` frames apart, and the last step also brings
- * any items after it. Without steps the items arrive one after another from `from` to `to`, inside
- * the scene's build.
+ * index `lasts[k]` from its segment's start, at most `stagger` frames apart and all drawn, `itemFrames`
+ * after their start, when the step settles; the last step also brings any items after it. Without steps
+ * the items arrive one after another from `from` to `to`, inside the scene's build.
  */
-export function revealStarts(segments: readonly SpokenSegment[], count: number, lasts: readonly number[], from: number, to: number, stagger: number): number[] {
+export function revealStarts(segments: readonly SpokenSegment[], count: number, lasts: readonly number[], from: number, to: number, stagger: number, itemFrames = 0): number[] {
   if (segments.length > 1 && lasts.length) {
     const starts: number[] = [];
     lasts.forEach((last, k) => {
       const at = segments[k + 1]!.from;
       const end = k === lasts.length - 1 ? count - 1 : last;
-      for (let j = 0; starts.length <= end; j++) starts.push(at + j * stagger);
+      const shown = end + 1 - starts.length;
+      const gap = Math.min(stagger, Math.max(0, STEP_SETTLE_FRAMES - itemFrames) / Math.max(1, shown - 1));
+      for (let j = 0; starts.length <= end; j++) starts.push(at + j * gap);
     });
     return starts;
   }

@@ -2,9 +2,11 @@
 //
 // A scene speaks one or more texts in order: its narration, then each step's `say`. Each spoken text
 // is a segment: a lead, the voice, then a tail. The narration's lead lasts until the scene has built,
-// so the voice never names something that is not on screen yet. A step's lead shows or lights its
-// items before the voice names them, and its longer tail leaves time to reread them. The voice lasts as long as its clip, or as long as its words take to
-// read at WORDS_PER_MINUTE without one. The pace scales the reading speed and every pause.
+// so the voice never names something that is not on screen yet. A step's lead first brings its items
+// into view and lights them, within STEP_SETTLE_FRAMES; a step with a pen mark then draws it on the
+// settled items before the voice names them. Its longer tail leaves time to reread them. The voice lasts
+// as long as its clip, or as long as its words take to read at WORDS_PER_MINUTE without one. The pace
+// scales the reading speed and every pause.
 
 import { plainText } from './markup.mjs';
 import { sceneSteps } from './steps.mjs';
@@ -44,6 +46,13 @@ export const BUILD_SECONDS = {
   timeline: 1.5,
   files: 1.5,
 };
+/**
+ * Frames every scene has, from a step's start, to bring the step's items to rest: move its camera, draw
+ * them in and light them. A step's lead never ends sooner, and its pen mark starts here.
+ */
+export const STEP_SETTLE_FRAMES = 15;
+/** Frames a step's pen mark takes to draw, between the settled items and the step's words. */
+export const PEN_FRAMES = 12;
 /** Pause between the end of the build and the narration's voice, at every pace. */
 const BUILD_SETTLE = 0.3;
 
@@ -63,21 +72,24 @@ export function spokenTexts(scene) {
 
 /**
  * The scene's spoken segments, timed from the scene's start. Segment 0 is the narration; segment k is
- * step k - 1, which is lit from `from` while its voice starts at `voiceFrom`.
+ * step k - 1, which is lit from `from`, has its items at rest by `markFrom`, where its pen mark starts,
+ * and starts its voice at `voiceFrom`.
  */
 export function sceneSegments(scene, voiceover) {
   const { speed, pauses } = paceOf(voiceover);
   const pause = (seconds) => Math.round(seconds * pauses * FPS);
   const narrationLead = Math.max(pause(NARRATION_LEAD), buildFrames(scene?.type) + Math.round(BUILD_SETTLE * FPS));
+  const steps = sceneSteps(scene);
   let from = 0;
   return spokenTexts(scene).map((text, i) => {
     const clip = clipFor(voiceover, text);
-    const voiceFrom = from + (i === 0 ? narrationLead : pause(STEP_LEAD));
+    const markFrom = from + (i === 0 ? narrationLead : Math.max(pause(STEP_LEAD), STEP_SETTLE_FRAMES));
+    const voiceFrom = markFrom + (i > 0 && typeof steps[i - 1]?.mark === 'string' ? PEN_FRAMES : 0);
     const speakingFrames = clip ? clip.seconds * FPS : (wordCount(text) / (WORDS_PER_MINUTE * speed)) * 60 * FPS;
     const after = clip
       ? Math.ceil(speakingFrames) + pause(i === 0 ? NARRATION_TAIL : STEP_TAIL)
       : Math.max(MIN_SILENT_SECONDS * FPS, Math.ceil(speakingFrames) + pause(SILENT_TAIL));
-    const segment = { text, from, voiceFrom, durationInFrames: voiceFrom - from + after, speakingFrames, clip };
+    const segment = { text, from, markFrom, voiceFrom, durationInFrames: voiceFrom - from + after, speakingFrames, clip };
     from += segment.durationInFrames;
     return segment;
   });

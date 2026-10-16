@@ -12,8 +12,6 @@ const INK = '#ffe066';
 const PEN = 4.5;
 const NOTE_FONT = 34;
 const HAND = 'mr-cast-hand';
-/** The pen starts this many frames after the step lights, and finishes a frame before its words. */
-const PEN_DELAY = 3;
 /** A mark fades over these frames once the next step starts. */
 const CLEAR_FRAMES = 8;
 
@@ -45,11 +43,14 @@ function noteWidth(text: string): number {
 
 type MarkedStep = (FocusStep | CodeStep) & { mark: NonNullable<FocusStep['mark']> };
 
-/** When a step's mark draws, is complete, and starts to clear. */
+/**
+ * When a step's mark draws, is complete, and starts to clear. The pen starts once the step's items are at
+ * rest (the timing gives every scene STEP_SETTLE_FRAMES to move and draw them) and finishes a frame before
+ * the step's words.
+ */
 function markTiming(segments: readonly SpokenSegment[], k: number) {
   const segment = segments[k + 1]!;
-  const start = segment.from + PEN_DELAY;
-  return { start, done: Math.max(start + 6, segment.voiceFrom - 1), clear: segments[k + 2]?.from ?? Infinity };
+  return { start: segment.markFrom, done: segment.voiceFrom - 1, clear: segments[k + 2]?.from ?? Infinity };
 }
 
 /** The same strokes traced again a pixel or so off, as a pen that goes over its line twice. */
@@ -150,8 +151,9 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
 };
 
 /**
- * Draws each step's pen mark on what the step points at, and its note beside it. A mark draws itself in
- * the moment before the step's words and clears when the next step starts. Scenes give only boxes.
+ * Draws each step's pen mark on what the step points at, and its note beside it. A mark draws itself
+ * between the step's items coming to rest and its words, and clears when the next step starts. Scenes
+ * give only the boxes where the items rest.
  */
 export const PenMarks: React.FC<{ scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: (step: number) => MarkTargets | null }> = ({ scene, hunks, segments, targets }) => {
   const frame = useCurrentFrame();

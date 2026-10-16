@@ -1,4 +1,5 @@
-import { Easing, interpolate, spring } from 'remotion';
+import { Easing, interpolate } from 'remotion';
+import { stepMove } from './spotlight';
 import type { SequenceLayout } from './sequenceLayout';
 import type { SpokenSegment } from './timing';
 
@@ -18,11 +19,12 @@ export interface SequenceCamera {
 /**
  * The camera over a sequence taller than the frame. The participants stay pinned; the messages scroll
  * under them. With steps, each step brings the messages it lights into view, centred when they fit and
- * with the last of them in view when they do not, and the camera eases there as the step starts. Without
+ * with the last of them in view when they do not, and the camera eases there as the step starts, at rest
+ * when the step settles. Without
  * steps, it pans from the first message to the last while the narration speaks. A still shows where the
  * last step leaves it, or the end of the sequence.
  */
-export function sequenceCamera(layout: SequenceLayout, lit: readonly ReadonlySet<number>[], segments: readonly SpokenSegment[], viewH: number, fps: number): SequenceCamera {
+export function sequenceCamera(layout: SequenceLayout, lit: readonly ReadonlySet<number>[], segments: readonly SpokenSegment[], viewH: number): SequenceCamera {
   const maxScroll = Math.max(0, layout.height - viewH);
   if (maxScroll < 0.5) return { viewH, scrolls: false, stops: lit.map(() => 0), scrollAt: () => 0 };
   const band = { top: layout.lifelineTop + MARGIN, height: viewH - layout.lifelineTop - 2 * MARGIN };
@@ -39,7 +41,7 @@ export function sequenceCamera(layout: SequenceLayout, lit: readonly ReadonlySet
   const stepped = segments.length > 1 && stops.length > 0;
   const narration = segments[0]!;
   const scrollAt = stepped
-    ? (frame: number) => stops.reduce((acc, stop, k) => acc + (stop - (k ? stops[k - 1]! : 0)) * spring({ frame: frame - segments[k + 1]!.from, fps, config: { damping: 200 } }), 0)
+    ? (frame: number) => stops.reduce((acc, stop, k) => acc + (stop - (k ? stops[k - 1]! : 0)) * stepMove(frame, segments[k + 1]!.from), 0)
     : (frame: number) => interpolate(frame, [narration.voiceFrom, narration.voiceFrom + Math.max(1, narration.speakingFrames)], [0, maxScroll], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
   return { viewH, scrolls: true, stops: stepped ? stops : lit.map(() => maxScroll), scrollAt };
 }
