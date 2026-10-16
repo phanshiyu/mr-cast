@@ -14,13 +14,15 @@ If a command prints `mr-cast <version> is available`, tell the user once, at the
 
 ## 1. Pick the mode, the source and the output
 
-Pick the mode first, with the first row that matches. The words the user types always beat what is in context.
+After a quick video in this conversation, a short reply such as "save it", "render it", "mp4", "go deeper" or "the whole branch" is about that video: do what [What comes next](#what-comes-next) says for it. "Save it" renders the quick run as it is. It does not start the full flow.
+
+For any other request, pick the mode with the first row that matches. The words the user types always beat what is in context.
 
 | # | The request | The video |
 | --- | --- | --- |
 | 1 | "mp4", "render", "save", "share" | Full mode, as an MP4. Quick words are ignored, because an MP4 is meant to be shared. |
-| 2 | "walkthrough", "full", "whole branch", "the PR", "review it" | Full mode, with the plan page of step 4. A selection makes the topic that holds it `deep` there. |
-| 3 | "quick", "quickly", "just a diagram", "diagram of", "draw this flow", "explain this in a diagram", "sketch", `/mr-cast quick` | [Quick mode](#quick-mode). Its source is the selection if there is one, else your explanation, else the branch. |
+| 2 | "quick", "quickly", "just a diagram", "diagram of", "draw this flow", "explain this in a diagram", "sketch", `/mr-cast quick` | [Quick mode](#quick-mode), even when the request also names the PR or the branch, as in "a quick video of the PR". Its source is the selection if there is one, else your explanation, else the branch. |
+| 3 | "walkthrough", "full", "whole branch", "the PR", "review it" | Full mode, with the plan page of step 4. A selection makes the topic that holds it `deep` there. |
 | 4 | A bare `/mr-cast` with selected or pasted code | [Quick mode](#quick-mode) on those lines. |
 | 5 | "animate that", "what you said" | Your explanation. Quick mode if it fits 3 scenes, else full mode. |
 | 6 | A bare `/mr-cast` with no selection | Full mode, on the source the rules below pick. |
@@ -83,7 +85,7 @@ A quick run skips the intent rule, warns past 3 scenes or about 60 seconds of na
 
 The player opens in under a second and plays at once, muted, with subtitles. The voice is made in the background in about half the narration's length, so about 30 seconds for a minute, and the player then offers "Play with voice (V)". A replay after the end plays with voice. The video ends on a card of next steps. End your reply with: `Playing at <url>. Voice is on the way; press V in the player when it is ready. Say "go deeper" for a full walkthrough of these lines, or "save it" for an MP4.`
 
-**What comes next.**
+### What comes next
 
 - "go deeper": a full video of the same code. Ask only the audience question of step 2, with no outline question. Run `init` with the same `--title` and no `--quick`: the new run starts from the quick video's storyboard, snippets and voice. Then continue from step 4, with the topic that holds these lines suggested as `deep`, and keep the quick video's scenes as that topic's diagrams.
 - "the whole branch": the full flow from step 1, on the branch.
@@ -198,7 +200,7 @@ After the answer, stop the `mr-cast plan` command and read `plan.json`. The page
 
 - Set `"topic": "<id>"` on every scene that shows a topic. Leave it off the intent, tests and review scenes.
 - A topic at `skip` gets no scene. List its hunks in `skipped` with the reason "the viewer chose to skip this topic".
-- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the short overview.
+- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the short overview. List its other hunks in `skipped` with the reason "the viewer chose a brief look at this topic", in those words, since a reviewer's video otherwise warns about every substantial hunk it does not show.
 - A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`.
 - The shared rules below still put every diagram before the first code scene. Keep the topics in plan order within the diagrams, and again within the code.
 

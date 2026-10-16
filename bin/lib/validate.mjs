@@ -207,6 +207,8 @@ const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h
 
 // The reason overview mode gives for code it does not show. A reviewer's video shows that code.
 const DIAGRAM_REASON = /\b(diagrams?|overview)\b/i;
+// The reason for a hunk left out of a topic the viewer chose to see briefly on the plan page.
+const BRIEF_REASON = 'the viewer chose a brief look at this topic';
 
 /**
  * Every hunk a reviewer needs must be shown in a code scene or listed in `skipped` with a reason. Only the
@@ -232,7 +234,7 @@ function checkCoverage(sb, hunks, audience, errors, warnings) {
       skipped.add(entry.hunkId);
       const h = hunks[entry.hunkId];
       if (audience !== 'overview' && isStr(entry.reason) && DIAGRAM_REASON.test(entry.reason) && h.status !== 'source' && !isTestFile(h.file) && h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) {
-        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : 'a reviewer'} shows every substantial hunk; add a code scene for it. Only the team's overview leaves code to the diagrams`);
+        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : 'a reviewer'} shows every substantial hunk; add a code scene for it. Only the team's overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "${BRIEF_REASON}"`);
       }
     }
     if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);
