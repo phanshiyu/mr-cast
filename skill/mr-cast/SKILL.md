@@ -135,13 +135,31 @@ The viewer has not read the diff or your explanation. A good walkthrough lets th
 - Style on-screen text sparingly with inline markup, only the one word or value a sentence is about: `**bold**`, `` `code` `` for an identifier, `==marked==` for a highlighter, and `[words]{tone}` in `good`, `bad`, `warn`, `accent` or `neutral`, as in `"the limit is **20 per minute**"` or `"Redis down: requests [fail]{bad}"`. Bold and code may sit inside a mark or a tone. `validate` fails on unclosed markup and an unknown tone, and warns when most of a text is styled. Narration, `say` and pen notes stay plain.
 - Explain each rule once, completely, in one place. If a behavior spans several files, such as when something retries and when it gives up, explain it fully in one `flow`, `sequence` or `state` scene instead of in pieces across code scenes.
 
-### Narration
+### How the voice talks
 
-- Say behavior outright, with real names and values: "after twenty requests in a minute the limiter answers too many requests". The viewer should never have to read the code to learn what happens. When a scene explains a behavior without showing its code, name the file and function it lives in.
-- Write 15 to 50 words per scene, to be spoken aloud, and at most 35 over a `graph` or `sequence` diagram, where the viewer learns the names the rest of the video uses. A text-to-speech voice reads it, so use short sentences and plain words.
-- Spell out symbols and code the way a person would say them: "the create order function", not `createOrder()`, and "four twenty-nine" or "too many requests", not `429`. Avoid markdown, slashes, arrows, and abbreviations the voice could misread. Markup in spoken text is dropped, so style the words on screen instead.
-- Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds.
-- Let the source set the length. If the user asks for a shorter or longer video, cut or add detail, not coverage. Give each scene a short `chapter` title.
+Every narration and `say`, in every audience, is one person explaining the change to another out loud. The listener hears each sentence once, cannot rewind, and may not be looking at the code. Write what you would say to a colleague at their desk.
+
+- **Plain words.** Say what the code does for the user in everyday words. Name the job, not the mechanism: "counts how many requests each visitor sent this minute", not "increments a Redis counter keyed by IP".
+- **Code names stay on screen.** Never read out an identifier, file path, symbol, operator or status code as written. Say what it is: "the create order function", "the orders table", "too many requests". Say a number such as "four twenty-nine" only when the number itself matters. The screen shows the exact name.
+- **Name the subject.** Open every scene by naming what it is about. Never start with "It", "This" or "That" alone, and use one only when the sentence before named the thing. When in doubt, name it again.
+- **One idea per sentence.** Short sentences in the active voice, under about 25 words, with no stacked clauses.
+- **Explain a term once.** The first time a technical term is needed, explain it in a few words, as in "Redis, a shared in-memory store". Otherwise replace it with plain words.
+- **Say why.** Say why each change matters, such as what breaks, what the user sees, or what risk it removes, not only what changed.
+- **Say something new.** Each scene adds to what the viewer heard before. A diagram of the parts, the order of calls and the data at each step tell three different things, so do not retell the same path in each.
+- Say behavior outright, with real values: "after twenty requests in a minute, the limiter refuses the request". When a scene explains a behavior without showing its code, name the file and function it lives in, in words.
+
+Before and after, from the demo:
+
+| Before | After |
+| --- | --- |
+| "The limiter buckets each IP into a one-minute window, increments a Redis counter, and sets the expiry only on the first hit." | "The rate limiter counts each visitor's requests in the current minute. The count starts again at zero every new minute." |
+| "Past twenty requests it answers 429 with a Retry-After header." | "Past twenty requests, the limiter answers with a too many requests error, and says when to try again." |
+| "They now look up each SKU in parallel, and empty orders are rejected up front." | "Now the orders service asks the pricing module for each item's real price. An order with no items is refused before anything is saved." |
+| "The server mounts the limiter on the orders route." | "The API puts the rate limiter in front of the orders route, the address clients send new orders to." |
+
+`validate` warns about spoken text that reads as code, a bare status code, a sentence over 25 words, a scene that opens on a bare "It" or "This", and a short list of terms to explain or replace. Each warning quotes the phrase and says what to say instead. The voice already reads "e.g.", "5s", "200 ms", an arrow and "v0.14" as words, so write those however you like.
+
+Write 15 to 50 words per scene, and at most 35 over a `graph` or `sequence` diagram, where the viewer learns the names the rest of the video uses. Markup in spoken text is dropped, so style the words on screen instead. Scene length comes from the spoken audio, or from word count without it, so never compute frames or seconds. Let the source set the length. If the user asks for a shorter or longer video, cut or add detail, not coverage. Give each scene a short `chapter` title.
 
 ### Simple mode
 
@@ -153,12 +171,11 @@ Build context first. Read the callers of each function you show, the definitions
 
 Write every `code` scene with `steps`. Walk the lines in order, one line or a small group of up to 3 lines per step. For the branch, put every changed line of the hunk in a step, and `validate` warns about the lines you miss. Spend the time where the code is hard. Put imports in one short step, and fold a closing brace into the step before it. Split a dense line, such as one that builds a key from several values, into two steps. Give the scene a short `narration` that says what the thing is before the steps say what it does, such as "This is the rate limit function. It runs before each request to the orders route."
 
-Write for someone reading subtitles in a second language:
+Write for someone reading subtitles in a second language, on top of [How the voice talks](#how-the-voice-talks):
 
-- Use plain words. Prefer "gets" to "retrieves" and "stops" to "short-circuits".
-- Keep sentences under 18 words, one idea each. `validate` warns about longer ones.
+- Keep sentences under 18 words. `validate` warns about longer ones.
+- Prefer the simplest word: "gets" to "retrieves", "stops" to "short-circuits". Avoid idioms.
 - Name what a thing is before what it does. "Redis is a fast store for small values. The limiter keeps its counters there."
-- Avoid idioms. Avoid jargon, or define it the first time. "A middleware is a function that runs before the route."
 - Say the value and its effect. "Max is twenty, so the twenty first request in a minute is refused."
 - In each step, say what the line does to the data, not how the syntax reads, unless the syntax is the point.
 
