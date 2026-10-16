@@ -34,9 +34,11 @@ Type `/mr-cast`, or ask Claude to "create a video from this merge request". Afte
 - "That", "what you said" or "this explanation" means the explanation Claude just gave.
 - A bare "make a video of this" uses whichever source exists. When the branch has changes and both exist, the first question asks which one. When neither exists, the skill says what it can make and stops.
 
+For a short diagram of one thing, say "quick", "just a diagram" or "explain this flow in a diagram", or highlight code in your editor and type a bare `/mr-cast`. Quick mode asks nothing and plays 1 to 3 scenes, about a minute, in the browser about 20 seconds later. It starts muted with subtitles while the voice is made, then offers "Play with voice (V)". The selection reaches Claude only when Claude Code is connected to the IDE, through `/ide` or the IDE's integrated terminal. The video ends on three next steps: "go deeper" for a full video of the same code, "the whole branch", and "save it" for an MP4.
+
 The skill then asks up to four multiple-choice questions at once:
 
-- Who the video is for: a reviewer or teammate, someone new to the code, or the team in a quick overview.
+- Who the video is for: a reviewer or teammate, someone new to the code, or the team in a short overview.
 - Which areas to go deeper on.
 - The pace: normal, slower, faster, or no voice.
 - For a branch, whether Claude should also flag what looks wrong. The default is no. See [Review mode](#review-mode).
@@ -76,12 +78,12 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | --- | --- |
 | `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the audience and pace you chose last time. The skill picks the video's source from it. |
 | `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Lockfiles and build output are skipped unless you pass `--all-files`. Running it again on the same branch keeps the storyboard and the snippets. |
-| `mr-cast init --title text [--reset]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/` (in the git repository, or the current directory outside one) and prints its path. A slug already in use gets a numbered suffix such as `-2`. Running it again with the same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. |
+| `mr-cast init --title text [--reset] [--quick]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/` (in the git repository, or the current directory outside one) and prints its path. A slug already in use gets a numbered suffix such as `-2`. Running it again with the same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. `--quick` starts a quick video in `.mr-cast/quick-<title-slug>/`, which `validate` lets open without an intent scene and warns past 3 scenes or about 60 seconds of narration. A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Use it for the code of an explanation, or for the callers, types or config a change depends on. Snippets don't count toward hunk coverage, a later `extract` keeps them, and each holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. |
 | `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. Prints the length, estimated at the given `--pace` until the narration is voiced. Exits 1 on errors. |
 | `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It has the title, one line per scene with its type, chapter and contents, the length, the style, the hunk coverage, and how many steps draw a pen mark. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
-| `mr-cast play [--port N] [--no-open]` | Voices the narration, serves the player at `http://127.0.0.1:4747` and opens the browser. The page reloads when `storyboard.json` changes, once any changed narration is voiced. The player's speed control goes from 0.75x to 1.5x. |
+| `mr-cast play [--port N] [--no-open]` | Serves the player at `http://127.0.0.1:4747` at once, opens the browser, and voices the narration in the background. Until the voice is ready the player plays muted with subtitles and shows how many scenes are voiced, then it offers "Play with voice (V)". The page reloads when `storyboard.json` changes, once any changed narration is voiced. The player's speed control goes from 0.75x to 1.5x. |
 | `mr-cast render [--out file.mp4]` | Voices the narration, then renders a 1920x1080, 30 fps MP4 with the voice-over, burned-in subtitles and chapter markers, and prints its path. The file goes in the run's directory, named after the storyboard title, or the run's name, or `walkthrough.mp4`. The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's end state, just before it fades out, to check layout. |
 | `mr-cast prune [id...] [--older-than days] [--json]` | Without ids, lists what can be deleted, with an id, size, age and description for each. With ids from that list, deletes exactly those. See [Pruning](#pruning). |
@@ -187,7 +189,7 @@ The voice settings are flags that apply only to the command they are given to (s
 
 If the model cannot load, for example offline on the first run, `play` and `render` warn and continue without voice, and `mr-cast voice` exits 1.
 
-Browsers block autoplay with sound, so a voiced walkthrough waits for you to press play.
+Browsers block autoplay with sound, so a voiced walkthrough waits for you to press play. A walkthrough `play` is still voicing plays muted with subtitles at once, and never switches the audio in the middle of a play: press V or "Play with voice" when it is ready, or replay it after the end.
 
 The narration is written to be heard once, like one person explaining the change to another. The skill tells Claude to name what code does in plain words and to keep code names on screen. `validate` warns when spoken text reads a code name, a file path or a bare status code aloud, opens a scene with a bare "It" or "This", runs past 25 words in a sentence, or uses a term such as "idempotent" without explaining it. Each warning quotes the phrase and suggests what to say. The voice reads a few written forms as words, so "e.g." becomes "for example", "5s" becomes "5 seconds", "200 ms" becomes "200 milliseconds", an arrow becomes "to" and "v0.14.0" becomes "version 0 point 14 point 0". The subtitles show the same words.
 

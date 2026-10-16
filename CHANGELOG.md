@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.21.0
+
+- **Quick mode.** Say "quick", "just a diagram" or "explain this flow in a diagram", or highlight code in your IDE and type a bare `/mr-cast`, and Claude makes a short diagram video of it with no questions: 1 to 3 scenes, about a minute of narration, in the browser about 20 seconds later. The skill picks the mode from one table of triggers, and says in its first line which mode and source it picked and how to switch. A selection reaches Claude only when Claude Code is connected to the IDE, through `/ide` or the IDE's integrated terminal.
+- **`init --quick`** starts the run in `.mr-cast/quick-<title-slug>/`, so it never overwrites a full run. `validate` lets a quick video open without an intent scene, and warns past 3 scenes or about 60 seconds of narration. Every other check still applies. A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice clips.
+- **`play` opens the player at once.** It used to voice every clip before it served the page: 15 seconds for a 2-scene, 31-second video, and minutes for a long one. The page is now served in about 0.2 seconds, and the voice is made in a child process, which keeps the server answering. Until the voice is ready the player plays muted with subtitles and shows "Voice: 1 of 3 scenes". Then it offers "Play with voice (V)". It never switches the audio in the middle of a play, since voiced scenes are longer and the timeline would move. A replay after the end plays with voice. A walkthrough already voiced waits for a click, as before.
+- **A quick video ends on a card of next steps**: "go deeper", "the whole branch" and "save it", each with a copy button.
+- The overview audience is now "A short overview for the team", so "quick" means quick mode only.
+
 ## 0.20.0
 
 The skill now tells Claude to write each video the way a good teacher explains the change, and in the order a reviewer asks about it. Two research summaries behind it are in `quality/research/`. They draw on worked examples and concreteness fading, Mayer's multimedia principles, refutation of likely misreadings, Google's code review guide, and studies of what reviewers need (Bacchelli and Bird 2013, Tao et al. 2012, Spadini et al. 2019, Baum et al.). No study tested narrated diff videos, so these rules are carried over from nearby fields.

@@ -889,6 +889,8 @@ export interface Voiceover {
   pauses?: number;
   /** Keyed by narrationKey(narration, voice, speed) from shared/voice.mjs. */
   clips: Record<string, VoiceClip>;
+  /** Set by `play` while it still voices some texts in the background; the player reloads as clips arrive. */
+  pending?: boolean;
 }
 
 // ─── Composition props ───────────────────────────────────────────────────────

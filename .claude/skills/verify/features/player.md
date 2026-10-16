@@ -1,6 +1,6 @@
 # Browser player
 
-`mr-cast play` validates the storyboard, voices it unless `--no-voice`, and serves the player on `http://127.0.0.1:4747`, or the next free port up to 20 above it. It opens the browser unless `--no-open`. The page shows the storyboard title, a `Chapters` list with start times, the Remotion player and a subtitle panel. Space plays or pauses, `←`/`→` or `J`/`K` move between chapters. When `storyboard.json` or `hunks.json` changes on disk, the server revalidates, revoices and pushes a reload over SSE (`/events`). The page reloads at the same frame.
+`mr-cast play` validates the storyboard and serves the player at once on `http://127.0.0.1:4747`, or the next free port up to 20 above it. Unless `--no-voice`, it voices the narration in the background (see [quick-mode.md](./quick-mode.md)). It opens the browser unless `--no-open`. The page shows the storyboard title, a `Chapters` list with start times, the Remotion player and a subtitle panel. Space plays or pauses, `←`/`→` or `J`/`K` move between chapters. When `storyboard.json` or `hunks.json` changes on disk, the server revalidates, revoices and pushes a reload over SSE (`/events`). The page reloads at the same frame.
 
 ## Sub-features
 

@@ -174,5 +174,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
     server.closeAllConnections?.();
   });
 
-  return { url: `http://${HOST}:${bound}`, close };
+  // Tells open players that more of the voice-over is ready, without reloading the walkthrough.
+  const voiceProgress = () => broadcast('event: voice\ndata: voice\n\n');
+
+  return { url: `http://${HOST}:${bound}`, close, voiceProgress };
 }

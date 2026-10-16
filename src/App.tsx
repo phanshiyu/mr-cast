@@ -7,11 +7,14 @@ import type { HunkMap, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
 import { Walkthrough } from './Walkthrough';
+import { QuickEndCard, VoicePill } from './QuickParts';
+import { useVoiceChoice } from './useVoiceChoice';
 
 interface Meta {
   base?: string;
   head?: string;
   branch?: string;
+  quick?: boolean;
 }
 
 type LoadState =
@@ -91,9 +94,19 @@ export const App: React.FC = () => {
   }, [reload]);
 
   const ready = state.status === 'ready' ? state : null;
-  const chapters = useMemo(() => (ready ? timeline(ready.walkthrough.storyboard, ready.walkthrough.voiceover) : []), [ready]);
-  const total = ready ? totalDurationInFrames(ready.walkthrough.storyboard, ready.walkthrough.voiceover) : 1;
+  const voice = useVoiceChoice(ready?.walkthrough.storyboard ?? null, ready?.walkthrough.voiceover);
+  // The player mounts once the voice is decided, since whether it autoplays is fixed when it mounts.
+  const shown = useMemo(() => (ready && voice.decided ? { ...ready.walkthrough, voiceover: voice.shown } : null), [ready, voice.decided, voice.shown]);
+  const chapters = useMemo(() => (shown ? timeline(shown.storyboard, shown.voiceover) : []), [shown]);
+  const total = shown ? totalDurationInFrames(shown.storyboard, shown.voiceover) : 1;
   const voiced = chapters.some((c) => c.segments.some((s) => s.clip));
+  const [ended, setEnded] = useState(false);
+  const startVoice = useRef(false);
+  const { status: voiceStatus, turnOn: turnVoiceOn } = voice;
+  const playWithVoice = useCallback(() => {
+    startVoice.current = true;
+    turnVoiceOn();
+  }, [turnVoiceOn]);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -102,14 +115,33 @@ export const App: React.FC = () => {
       player.seekTo(Math.min(resumeFrame.current, total - 1));
       resumeFrame.current = null;
     }
+    if (startVoice.current) {
+      startVoice.current = false;
+      player.unmute();
+      player.seekTo(0);
+      player.play();
+    }
     const onFrame = (e: { detail: { frame: number } }) => setFrame(e.detail.frame);
+    // At the end of a silent play, a voice that is ready comes on for the replay.
+    const onEnded = () => {
+      setEnded(true);
+      if (voiceStatus.kind === 'ready') {
+        turnVoiceOn();
+        player.unmute();
+      }
+    };
+    const onPlay = () => setEnded(false);
     player.addEventListener('frameupdate', onFrame);
     player.addEventListener('seeked', onFrame);
+    player.addEventListener('ended', onEnded);
+    player.addEventListener('play', onPlay);
     return () => {
       player.removeEventListener('frameupdate', onFrame);
       player.removeEventListener('seeked', onFrame);
+      player.removeEventListener('ended', onEnded);
+      player.removeEventListener('play', onPlay);
     };
-  }, [ready, total]);
+  }, [shown, total, voiceStatus.kind, turnVoiceOn]);
 
   const current = activeIndex(chapters, frame);
   const seekChapter = useCallback(
@@ -132,13 +164,16 @@ export const App: React.FC = () => {
       } else if (e.key === 'ArrowRight' || e.key === 'k') {
         e.preventDefault();
         seekChapter(current + 1);
+      } else if ((e.key === 'v' || e.key === 'V') && voiceStatus.kind === 'ready') {
+        e.preventDefault();
+        playWithVoice();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [current, seekChapter]);
+  }, [current, seekChapter, voiceStatus.kind, playWithVoice]);
 
-  if (state.status === 'loading') {
+  if (state.status === 'loading' || (state.status === 'ready' && !shown)) {
     return <div className="flex h-screen items-center justify-center text-sm text-slate-400">Loading walkthrough…</div>;
   }
   if (state.status === 'error') {
@@ -155,7 +190,8 @@ export const App: React.FC = () => {
     );
   }
 
-  const { walkthrough, meta } = state;
+  const { meta } = state;
+  const walkthrough = shown!; // set whenever state is ready, by the check above
   const { storyboard } = walkthrough;
   const active = chapters[current]!;
   const branch = meta?.branch ?? meta?.head;
@@ -168,6 +204,7 @@ export const App: React.FC = () => {
           {storyboard.subtitle ? <p className="mt-1 truncate text-sm text-slate-400">{storyboard.subtitle}</p> : null}
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400">
+          <VoicePill status={voiceStatus} onVoice={playWithVoice} />
           {branch ? (
             <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono">
               <GitBranch size={13} />
@@ -214,7 +251,7 @@ export const App: React.FC = () => {
         </nav>
 
         <main className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
             <Player
               ref={playerRef}
               component={Walkthrough}
@@ -236,6 +273,7 @@ export const App: React.FC = () => {
               acknowledgeRemotionLicense
               style={{ width: '100%', aspectRatio: '16 / 9' }}
             />
+            {meta?.quick && ended ? <QuickEndCard /> : null}
           </div>
           <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
           <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">

@@ -195,7 +195,9 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
       const src = `${AUDIO_DIR}/${key}.wav`;
       writeAtomic(path.join(dataDir, src), encodeWav(samples, sampleRate));
       clips[key] = { src, seconds: roundMs(samples.length / sampleRate), sentences, voice: chosen, speed };
-      onProgress?.({ type: 'clip', text, seconds: clips[key].seconds, done: ++done, total: missing.size });
+      // The clips so far, so a player already open can voice the scenes they cover while the rest are made.
+      const partial = { voice: chosen, speed, pauses, clips: { ...clips } };
+      onProgress?.({ type: 'clip', text, seconds: clips[key].seconds, done: ++done, total: missing.size, voiceover: partial });
     }
   }
 

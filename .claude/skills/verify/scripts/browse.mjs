@@ -3,7 +3,7 @@
 // usage: node browse.mjs <url> <outdir> <step>...
 //   wait:<text>    wait (15s max) until the page text contains <text>, ignoring case (CSS uppercases some labels)
 //   click:<text>   click the first button whose text contains <text>
-//   press:<key>    press a key (ArrowRight, ArrowLeft, Space, j, k), then wait 300ms for the player to re-render
+//   press:<key>    press a key (ArrowRight, ArrowLeft, Space, j, k, v), then wait 300ms for the player to re-render
 //   sleep:<ms>     wait
 //   run:<command>  run a shell command (sh -c) and wait for it, e.g. to edit storyboard.json
 //   shot:<name>    save <outdir>/<name>.png (1920x1080) and <outdir>/<name>.txt (the page's visible text)
@@ -92,6 +92,7 @@ const pageText = () => evaluate('document.body ? document.body.innerText : ""');
 const KEYS = {
   ArrowRight: { code: 'ArrowRight', keyCode: 39 }, ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
   Space: { key: ' ', code: 'Space', keyCode: 32 }, j: { code: 'KeyJ', keyCode: 74 }, k: { code: 'KeyK', keyCode: 75 },
+  v: { code: 'KeyV', keyCode: 86 },
 };
 
 const STEPS = {
