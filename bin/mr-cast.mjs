@@ -320,9 +320,9 @@ function reportVoiceProgress(event) {
 
 /**
  * Voice-over for play and render, in the command's voice and at its pace. A silent command, or one whose
- * voicing fails, has silent scenes timed from word count at that pace.
+ * voicing fails, has silent scenes timed from word count at that pace; `failed` marks the second for the player.
  */
-async function voiceoverFor(dir, storyboard, settings, { onClip, ensure = ensureVoiceover } = {}) {
+async function voiceoverFor(dir, storyboard, settings, { onClip, ensure = ensureVoiceover, markFailed = false } = {}) {
   const silent = () => {
     const { speed, pauses } = settings.pace;
     return speed === 1 && pauses === 1 ? null : { voice: settings.voice, speed, pauses, clips: {} };
@@ -336,7 +336,8 @@ async function voiceoverFor(dir, storyboard, settings, { onClip, ensure = ensure
     return await ensure({ dataDir: dir, storyboard, voice: settings.voice, pace: settings.pace, onProgress });
   } catch (err) {
     console.error(`mr-cast: warning: continuing without voice-over: ${err.message}`);
-    return silent();
+    const { speed, pauses } = settings.pace;
+    return markFailed ? { voice: settings.voice, speed, pauses, clips: {}, failed: true } : silent();
   }
 }
 
@@ -417,20 +418,28 @@ async function play(argv) {
   reportPace(voiceover);
 
   // One voicing at a time, and only for the newest storyboard: an edit made while one runs replaces any still waiting.
-  // The first runs while the player already plays silent, and tells it after each clip so it can show the progress.
+  // Each runs while the player plays silent, and tells it after each clip so it can show the progress.
   let voicing = Promise.resolve();
   let turns = 0;
-  const voiceInTurn = (sb, onClip) => {
+  const voiceInTurn = (sb) => {
     const turn = ++turns;
     voicing = voicing.then(async () => {
       if (turn !== turns) return false;
-      voiceover = await voiceoverFor(dir, sb, settings, { onClip, ensure: ensureVoiceoverInChild });
+      const onClip = (partial) => {
+        if (turn !== turns) return;
+        voiceover = { ...partial, pending: true };
+        server.voiceProgress();
+      };
+      const voiced = await voiceoverFor(dir, sb, settings, { onClip, ensure: ensureVoiceoverInChild, markFailed: true });
+      if (turn !== turns) return false;
+      voiceover = voiced;
       return true;
     });
     return voicing;
   };
 
-  // An edited storyboard reloads at once, with the clips it already has; the player reloads again once it is voiced.
+  // An edited storyboard reloads at once, with the clips it already has and the rest pending, so the player shows
+  // the voice as building; it reloads again once the edit is voiced, or shows that the voice failed.
   const onDataChange = async (file) => {
     if (file === 'meta.json' || file === BUILT_FILE) return;
     let project;
@@ -443,6 +452,12 @@ async function play(argv) {
     console.error(`mr-cast: ${file} changed`);
     for (const line of project.lines) console.error(`  ${line}`);
     if (file !== 'storyboard.json' || project.result.errors.length || settings.silent) return;
+    voiceover = voicedSoFar(dir, project.storyboard, settings);
+    // Already voiced: any voicing still running is for an older storyboard, so its result must not replace this.
+    if (!voiceover.pending) {
+      turns++;
+      return;
+    }
     void voiceInTurn(project.storyboard).then((voiced) => {
       if (voiced) server.reload();
     });
@@ -452,11 +467,9 @@ async function play(argv) {
   console.log(`mr-cast player: ${url}`);
   if (voiceover?.pending) {
     console.error('mr-cast: playing with subtitles, voice on the way');
-    void voiceInTurn(storyboard, (partial) => {
-      voiceover = { ...partial, pending: true };
-      server.voiceProgress();
-    }).then(() => {
-      if (voiceover && !voiceover.pending) console.error(`voice ready: ${voicedScenes(storyboard, voiceover)}`);
+    void voiceInTurn(storyboard).then((voiced) => {
+      if (!voiced) return;
+      if (!voiceover.failed) console.error(`voice ready: ${voicedScenes(storyboard, voiceover)}`);
       server.voiceProgress();
     });
   }

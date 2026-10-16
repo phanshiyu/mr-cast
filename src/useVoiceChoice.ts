@@ -30,7 +30,9 @@ export function useVoiceChoice(storyboard: Storyboard | null, loaded: Voiceover 
   const applied = useRef(0);
 
   useEffect(() => {
-    if (loaded !== undefined) setLatest(loaded);
+    if (loaded === undefined) return;
+    setLatest(loaded);
+    setFailed(Boolean(loaded?.failed));
   }, [loaded]);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function useVoiceChoice(storyboard: Storyboard | null, loaded: Voiceover 
         if (voiceEvents < applied.current) return;
         applied.current = voiceEvents;
         // Voicing ended with nothing voiced: keep the timeline as it is, so the player does not restart.
-        if (!voiceover || (!voiceover.pending && !Object.keys(voiceover.clips).length)) return setFailed(true);
+        if (!voiceover || voiceover.failed || (!voiceover.pending && !Object.keys(voiceover.clips).length)) return setFailed(true);
         setFailed(false);
         setLatest(voiceover);
       }, () => {});

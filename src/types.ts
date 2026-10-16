@@ -941,6 +941,8 @@ export interface Voiceover {
   clips: Record<string, VoiceClip>;
   /** Set by `play` while it still voices some texts in the background; the player reloads as clips arrive. */
   pending?: boolean;
+  /** Set by `play` when voicing failed, so the player says so; the scenes are then timed for reading. */
+  failed?: boolean;
 }
 
 // ─── Composition props ───────────────────────────────────────────────────────
