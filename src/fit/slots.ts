@@ -70,6 +70,7 @@ export const SLOTS = {
   compareCell: { ...LABEL, name: 'compare cell', weight: 500, size: 30, min: 18, lines: 3, lineHeight: 1.3, width: 0, fix: 'shorten the cell, or split the comparison into two scenes' },
   compareCode: { ...MONO, name: 'compare snippet', weight: 400, size: 24, min: 14, lines: 1, lineHeight: 1.45, markup: false, width: 0, fix: 'shorten the snippet\'s longest line, or show the code in a code scene' },
   terminalWindow: { ...SANS, name: 'window title', weight: 500, size: 19, min: 14, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the window title, e.g. "zsh: ~/app"' },
+  terminalPrompt: { ...MONO, name: 'prompt', weight: 700, size: 26, min: 26, lines: 1, lineHeight: 1.5, markup: false, width: 0, fix: 'shorten the prompt, e.g. "$" or "app=#"' },
   terminalCommand: { ...MONO, name: 'command', weight: 500, size: 26, min: 26, lines: 99, lineHeight: 1.5, markup: false, balanced: false, width: 0, fix: 'shorten the command' },
   terminalOutput: { ...MONO, name: 'output line', weight: 400, size: 26, min: 26, lines: 99, lineHeight: 1.5, balanced: false, width: 0, fix: 'shorten the line' },
   arrayLabel: { ...MONO, name: 'array name', weight: 600, size: 26, min: 18, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the array name' },

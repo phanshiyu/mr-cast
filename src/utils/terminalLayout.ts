@@ -19,6 +19,8 @@ const MIN_BODY = 0.5;
 export const EXIT_FONT = 17;
 const EXIT_PAD = 13;
 const EXIT_GAP = 20;
+/** A prompt takes at most this share of the window's width, so the command beside it has room. */
+const PROMPT_SHARE = 0.4;
 
 export interface PlacedOutputLine {
   index: number;
@@ -41,6 +43,8 @@ export interface PlacedEntry {
   index: number;
   entry: TerminalEntry;
   prompt: string;
+  /** The prompt fitted on one row, so `validate` names one too long to leave the command room. */
+  promptFit: Fit;
   /** Room the prompt and the space after it take; a wrapped command's later rows start here too. */
   promptW: number;
   command: PlacedCommand | null;
@@ -85,6 +89,7 @@ function attempt(scene: TerminalScene, width: number, size: number) {
     const top = y;
     const prompt = entry.prompt ?? '$';
     const promptW = measure(`${prompt} `, { family: 'mono', weight: 700, size });
+    const promptFit = fitText(prompt, { ...sized(SLOTS.terminalPrompt, innerW * PROMPT_SHARE), size, min: size }, `entries[${index}].prompt`);
     let textW = 0;
     let command: PlacedCommand | null = null;
     if (entry.command !== undefined) {
@@ -109,13 +114,14 @@ function attempt(scene: TerminalScene, width: number, size: number) {
       const text = `exit ${entry.exit}`;
       const w = measure(text, { family: 'mono', weight: 700, size: EXIT_FONT }) + 2 * EXIT_PAD;
       const last = lines[lines.length - 1];
-      const lastW = last ? last.indent + (last.fit.widths[last.fit.widths.length - 1] ?? 0) : command ? promptW + (command.fit.widths[command.fit.widths.length - 1] ?? 0) : innerW;
-      const own = lastW + EXIT_GAP + w > innerW;
+      // How wide the entry's last row is, or null when it has no rows.
+      const lastW = last ? last.indent + (last.fit.widths[last.fit.widths.length - 1] ?? 0) : command ? promptW + (command.fit.widths[command.fit.widths.length - 1] ?? 0) : null;
+      const own = lastW === null || lastW + EXIT_GAP + w > innerW;
       exit = { text, ok: entry.exit === 0, y: own ? y : y - rowH, w };
       if (own) y += rowH;
       textW = Math.max(textW, own ? w : innerW);
     }
-    const placed = { index, entry, prompt, promptW, command, lines, exit, top, bottom: y, textW };
+    const placed = { index, entry, prompt, promptFit, promptW, command, lines, exit, top, bottom: y, textW };
     y += gap;
     return placed;
   });

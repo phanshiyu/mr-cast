@@ -123,3 +123,17 @@ test('the outline names the sides and the failed commands', () => {
   assert.match(outline, /Redis vs In-process LRU, 4 rows, 3 differ/);
   assert.match(outline, /zsh: ~\/app · 3 entries, 3 commands, 1 failed/);
 });
+
+test('a terminal entry with no command and empty output is rejected, since it draws nothing', async () => {
+  const { errors } = await check({ ...terminal, entries: [{ output: '', exit: 2 }, { command: 'ls', output: '' }] });
+  assert.deepEqual(errors, ['scenes[1].entries[0].output: empty, and the entry has no command, so it draws nothing; give a command or some output, or drop the entry']);
+});
+
+test('a prompt too long to leave the command room is reported, and a usual one fits', async () => {
+  const long = await check({ ...terminal, entries: [{ prompt: `deploy@${'build-'.repeat(12)}:~/app $`, command: 'ls' }] });
+  assert.deepEqual(long.errors, [
+    'scenes[1].entries[0].prompt: "deploy@build-build-build-build-build-build-build-build-build-build-build-build-:~/app $" does not fit its prompt, even at 28px; shorten the prompt, e.g. "$" or "app=#"',
+  ]);
+  const usual = await check({ ...terminal, entries: [{ prompt: 'deploy@build-01:~/projects/app $', command: 'ls' }] });
+  assert.deepEqual(usual.errors, []);
+});

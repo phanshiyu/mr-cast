@@ -17,6 +17,7 @@ export function checkTerminal(s, p, errors, warnings) {
     const q = `${p}.entries[${j}]`;
     if (!entry || typeof entry !== 'object') return errors.push(`${q}: must be an object { command?, output?, prompt?, exit? }`);
     if (entry.command === undefined && entry.output === undefined) errors.push(`${q}: give a command, an output, or both`);
+    else if (entry.command === undefined && entry.output === '') errors.push(`${q}.output: empty, and the entry has no command, so it draws nothing; give a command or some output, or drop the entry`);
     if (entry.command !== undefined) {
       if (typeof entry.command !== 'string' || !entry.command.trim()) errors.push(`${q}.command: must be a non-empty string`);
       else if (entry.command.includes('\n')) errors.push(`${q}.command: one line; put each command in its own entry`);
