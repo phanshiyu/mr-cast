@@ -1,0 +1,91 @@
+{
+  "title": "Layers in four shapes",
+  "scenes": [
+    {
+      "type": "layers",
+      "chapter": "Four layers",
+      "title": "Placing an order",
+      "narration": "A new order starts on the checkout page and goes down through the API and the order service to the database. The answer comes back up the same way.",
+      "layers": [
+        { "id": "ui", "label": "Web app", "caption": "what the shopper sees", "items": [
+          { "id": "cart", "label": "CartPage", "icon": "shopping-cart" },
+          { "id": "checkout", "label": "CheckoutPage", "icon": "credit-card", "caption": "places the order" },
+          { "id": "account", "label": "AccountPage", "icon": "user" }
+        ] },
+        { "id": "api", "label": "API", "caption": "REST over HTTPS", "items": [
+          { "id": "orders-api", "label": "POST /orders", "icon": "route" },
+          { "id": "users-api", "label": "GET /me", "icon": "route" }
+        ] },
+        { "id": "domain", "label": "Domain", "caption": "business rules", "items": [
+          { "id": "order-service", "label": "OrderService", "icon": "package", "caption": "prices and saves" },
+          { "id": "pricing", "label": "Pricing", "icon": "calculator" }
+        ] },
+        { "id": "data", "label": "Data", "caption": "Postgres", "items": [
+          { "id": "orders-table", "label": "orders", "icon": "database", "caption": "table" },
+          { "id": "users-table", "label": "users", "icon": "database", "caption": "table" }
+        ] }
+      ],
+      "path": { "label": "POST /orders", "stops": ["checkout", "orders-api", "order-service", "orders-table"], "return": true, "reply": "201 Created" }
+    },
+    {
+      "type": "layers",
+      "chapter": "Seven layers",
+      "narration": "The network stack has seven layers, and each one wraps the one below it.",
+      "layers": [
+        { "id": "app", "label": "Application", "caption": "what the program says", "items": [
+          { "id": "http", "label": "HTTP", "icon": "globe" }, { "id": "dns", "label": "DNS", "icon": "book-open" }, { "id": "smtp", "label": "SMTP", "icon": "mail" }, { "id": "ssh", "label": "SSH", "icon": "terminal" }, { "id": "ftp", "label": "FTP", "icon": "folder" }
+        ] },
+        { "id": "presentation", "label": "Presentation", "caption": "encoding and encryption", "items": [
+          { "id": "tls", "label": "TLS", "icon": "lock", "badge": "key" }, { "id": "utf8", "label": "UTF-8", "icon": "type" }
+        ] },
+        { "id": "session", "label": "Session", "caption": "keeps a conversation open" },
+        { "id": "transport", "label": "Transport", "caption": "ports and delivery", "items": [
+          { "id": "tcp", "label": "TCP", "icon": "repeat", "caption": "reliable" }, { "id": "udp", "label": "UDP", "icon": "send", "caption": "fast" }
+        ] },
+        { "id": "network", "label": "Network", "caption": "addresses and routing", "items": [
+          { "id": "ip", "label": "IP", "icon": "map-pin" }, { "id": "icmp", "label": "ICMP", "icon": "radar" }
+        ] },
+        { "id": "link", "label": "Data link", "caption": "one hop at a time", "items": [
+          { "id": "ethernet", "label": "Ethernet", "icon": "cable" }, { "id": "wifi", "label": "Wi-Fi", "icon": "wifi" }
+        ] },
+        { "id": "physical", "label": "Physical", "caption": "bits on a wire or in the air", "highlight": true }
+      ],
+      "steps": [
+        { "focus": "app", "say": "The application layer is what programs speak, such as web pages and mail." },
+        { "focus": "presentation.tls", "mark": "arrow", "note": "encryption lives here", "say": "The presentation layer encrypts the conversation." },
+        { "focus": "transport", "mark": "box", "say": "The transport layer decides whether delivery is reliable or fast." },
+        { "focus": "physical", "say": "The physical layer finally turns it all into signals." }
+      ]
+    },
+    {
+      "type": "layers",
+      "chapter": "Three layers",
+      "narration": "A packet goes down three layers on the way out.",
+      "layers": [
+        { "id": "app", "label": "Application", "caption": "the browser asks for a page" },
+        { "id": "transport", "label": "Transport", "caption": "TCP splits it into segments", "change": "modified" },
+        { "id": "network", "label": "Network", "caption": "IP addresses each packet" }
+      ],
+      "path": { "label": "GET /", "stops": ["app", "transport", "network"], "return": true, "reply": "200 OK" },
+      "steps": [
+        { "focus": 0, "say": "The browser asks for the home page." },
+        { "focus": 1, "say": "The transport layer splits the request into segments." },
+        { "focus": 2, "mark": "circle", "note": "leaves the machine", "say": "The network layer addresses each packet and sends it." },
+        { "focus": "app", "say": "The page comes back up the same layers." }
+      ]
+    },
+    {
+      "type": "layers",
+      "chapter": "Middleware chain",
+      "narration": "Each request runs through five steps in order. The page cache answers early when it already has the page.",
+      "layers": [
+        { "id": "log", "label": "Request log", "caption": "notes every request" },
+        { "id": "auth", "label": "Auth", "caption": "checks the session cookie" },
+        { "id": "cache", "label": "Page cache", "caption": "serves a saved copy", "change": "added" },
+        { "id": "render", "label": "Render", "caption": "builds the page" },
+        { "id": "db", "label": "Database", "caption": "reads the products" }
+      ],
+      "path": { "label": "GET /products", "stops": ["log", "auth", "cache", "render", "db"], "skip": { "at": "cache", "reply": "304 Not Modified", "tone": "good" } }
+    }
+  ]
+}

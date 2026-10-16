@@ -228,6 +228,11 @@ function sceneGist(scene, hunks, storyboard) {
       const failed = scene.entries.filter((e) => e.exit !== undefined && e.exit !== 0).length;
       return titled(`${scene.window ? `${scene.window} · ` : ''}${scene.entries.length} ${scene.entries.length === 1 ? 'entry' : 'entries'}, ${plural(commands, 'command')}${failed ? `, ${failed} failed` : ''}`);
     }
+    case 'layers': {
+      const items = scene.layers.reduce((n, l) => n + (l.items?.length ?? 0), 0);
+      const path = scene.path ? `, a path through ${count(scene.path.stops, 'stop')}${scene.path.skip ? `, answered at ${scene.path.skip.at}` : scene.path.return ? ' and back' : ''}` : '';
+      return titled(`${count(scene.layers, 'layer')}${items ? `, ${plural(items, 'item')}` : ''}${path}`);
+    }
     case 'review':
       return titled(formatFindings(storyboard.findings));
     default:

@@ -10,6 +10,7 @@ import { DataTable } from './components/DataTable';
 import { ErDiagram } from './components/ErDiagram';
 import { FileTree } from './components/FileTree';
 import { IntentCard } from './components/IntentCard';
+import { LayerStack } from './components/LayerStack';
 import { MermaidDiagram } from './components/MermaidDiagram';
 import type { SceneProps } from './components/sceneProps';
 import { ReviewRecap } from './components/ReviewRecap';
@@ -20,7 +21,7 @@ import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
 import './fonts';
-import type { CompareScene, TerminalScene, GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { CompareScene, TerminalScene, GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, LayersScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -40,6 +41,7 @@ interface SceneByType {
   review: ReviewScene;
   compare: CompareScene;
   terminal: TerminalScene;
+  layers: LayersScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -59,6 +61,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   review: ReviewRecap,
   compare: Compare,
   terminal: Terminal,
+  layers: LayerStack,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

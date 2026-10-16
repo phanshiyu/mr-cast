@@ -5,6 +5,7 @@ import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
+import { checkLayers } from './validate-layers.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
 import { checkReview } from './validate-review.mjs';
@@ -17,7 +18,7 @@ import { checkTerminal } from './validate-terminal.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'compare', 'terminal'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'compare', 'terminal', 'layers'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -241,7 +242,7 @@ function checkCoverage(sb, hunks, errors, warnings) {
   return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene };
 }
 
-const DIAGRAM_TYPES = ['graph', 'sequence', 'flow', 'er', 'state', 'mermaid'];
+const DIAGRAM_TYPES = ['graph', 'sequence', 'flow', 'er', 'state', 'mermaid', 'layers'];
 // Overview scenes that draw facts or the list of files rather than structure: they belong before the code,
 // but do not show how the pieces fit.
 const OVERVIEW_TYPES = ['table', 'chart', 'timeline', 'files'];
@@ -578,6 +579,10 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
 
       case 'timeline':
         checkTimeline(s, p, errors, warnings);
+        break;
+
+      case 'layers':
+        checkLayers(s, p, errors, warnings);
         break;
 
       case 'files':

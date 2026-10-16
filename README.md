@@ -212,11 +212,12 @@ The narration is written to be heard once, like one person explaining the change
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
 | `compare` | Two sides, such as before and after or two designs, row by row at the same height, so like sits beside like. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text or a short code snippet. With `steps`, rows show as the voice reaches them. |
 | `terminal` | A shell session in a window: each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls, so text never shrinks below a readable size. With `steps`, each step types its entries and the camera follows. |
+| `layers` | Stacked bands, top to bottom in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply; `skip` answers early at one stop, turns the token back there and fades the stops it never reached. |
 | `review` | In [review mode](#review-mode), every flag worst first, with its severity, file and line, and claim, under "Claude's review". |
 
 Each spoken text is a segment: a lead, the voice, and a tail. The narration waits until the scene has drawn in, which takes 1 second, or the scene type's build time plus 0.3 seconds when longer. Most diagrams take 1.5 seconds, so their voice starts at 1.8. Each step's items light up 0.5 seconds before its voice and stay lit 1.2 seconds after it. Without a voice clip, a segment reads at 130 words per minute and holds 1.5 seconds after, 3 seconds at least. The pace scales the reading speed and every pause.
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `compare` and `terminal` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `compare`, `terminal` and `layers` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
 
 ### Steps
 
@@ -234,6 +235,7 @@ Diagrams take `steps` too, so the video can move the viewer's attention as it ex
 | `chart` | A label, a series `"series:after"`, or one value `"after@p99"`. |
 | `timeline` | An event index, an `"a-b"` range of them, or a span `"span:wait"`. The playhead moves to the furthest one. |
 | `files` | A path in the tree. |
+| `layers` | A layer id, an item id or `"layer.item"`, or a path stop index. A step that focuses a stop moves the token there; it only moves on along the path, so focus the first stop again to bring it back up. |
 | `tests` | A case index, a case's name, or a gap `"gap:0"`. |
 | `intent` | A bullet index. |
 | `compare` | A row index, an `"a-b"` range of them, a side `"side:After"` (by title or `"side:0"`), or one cell `"2@After"` (row, then side). A step shows every row up to the last one it focuses. |
@@ -328,6 +330,7 @@ Three marks say three different things, and none stands in for another:
 | table row | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
 | timeline event, span | no | yes | yes |
 | files entry | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
+| layer, layer item | yes, with a badge | yes | yes |
 | tests case | its `status` | no | yes |
 
 Everything that names a change uses the same three words: NEW, CHANGED and REMOVED. A code header says RENAMED for a renamed file and SOURCE for a snippet.

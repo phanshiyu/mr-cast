@@ -45,6 +45,7 @@ export const BUILD_SECONDS = {
   table: 1.5,
   chart: 1.8,
   timeline: 1.5,
+  layers: 1.5,
   files: 1.5,
   review: 1.5,
   compare: 1.8,

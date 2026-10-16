@@ -12,6 +12,7 @@ const STEPS_OF = {
   table: own,
   chart: own,
   timeline: own,
+  layers: own,
   files: own,
   tests: own,
   intent: own,
