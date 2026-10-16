@@ -278,15 +278,15 @@ const TARGETS = {
 };
 
 /**
- * The item key of a memory frame's variable (`kind` "v") or an object's field ("f"). The owner is
- * URI-encoded, so it holds no "/", and the first "/" ends it: any owner and name text round-trips.
+ * The item key of a memory frame's variable (`kind` "v") or an object's field ("f"). The owner's "%" and
+ * "/" are escaped, so the first "/" ends it and any owner and name text round-trips, even malformed UTF-16.
  */
-export const memberKey = (kind, owner, name) => `${kind}:${encodeURIComponent(owner)}/${name}`;
+export const memberKey = (kind, owner, name) => `${kind}:${String(owner).replaceAll('%', '%25').replaceAll('/', '%2F')}/${name}`;
 
 /** A member key's owner, its owner's item key ("fr:name" or "o:id"), and its name. */
 export function splitMemberKey(key) {
   const slash = key.indexOf('/');
-  const owner = decodeURIComponent(key.slice(2, slash));
+  const owner = key.slice(2, slash).replaceAll('%2F', '/').replaceAll('%25', '%');
   return { owner, ownerKey: `${key.startsWith('v:') ? 'fr' : 'o'}:${owner}`, name: key.slice(slash + 1) };
 }
 

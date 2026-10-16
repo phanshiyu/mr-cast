@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.19.0
+
+Five new scene types, chosen from research on how pictures help people understand. A layout should match the shape of the idea (Tversky, Morrison and Betrancourt 2002). Comparisons work best side by side with the differences marked (Gleicher et al. 2011). Program state is easier to follow as frames, objects and arrows that change step by step (Guo 2013, Python Tutor).
+
+- **`compare`.** Two sides, such as before and after, two designs or two stores, row by row at the same height. A row that differs gets an arrow between the sides, and a row that is the same dims behind an `=`. A `verdict` marks the better side green and the worse red. A cell is text or a short code snippet. Steps focus a row, a side (`"side:After"`) or a cell (`"2@After"`).
+- **`terminal`.** A shell session in a window. Each command types out, its output prints line by line, and a non-zero `exit` tints the entry red. Long lines wrap, and a long session scrolls instead of shrinking the text. Steps focus an entry or an output line (`"2:3"`). Use it for repro steps, a migration or a test run.
+- **`layers`.** Stacked bands in their real order, with the parts inside each band. Use it for a layered architecture, a middleware chain or C4 levels. A `path` sends a request token down through its stops and, with `return`, back up with a reply. `skip` answers early at one stop, such as a rate limiter returning 429, and fades the layers the request never reached.
+- **`array`.** A row of cells with named `pointers` above and shaded `ranges` below. Each step can `set` values, `move` a pointer or range, and `show` or `hide` one. Changes animate before the words. Use it for binary search, sliding windows, cursors, ring buffers and off-by-one bugs.
+- **`memory`.** Call frames with their variables, and objects with their fields. A value `{ "ref": "c1" }` draws an arrow to that object, so two arrows into one object show aliasing. Steps can re-point a reference, change a value, or show and hide frames and objects. Names may contain "/", such as a cache keyed by URL path.
+- The skill now says to pick the scene whose shape matches the idea, and lists which scene fits which kind of idea.
+- A pen circle on a narrow item in a dense row, such as one array cell, now hugs the item instead of covering its neighbours.
+- `validate` rejects a state step that lights nothing (one that only hides, or sets nothing, with no `focus`), an empty terminal entry, and a terminal prompt too long to leave room for the command. Messages say "an array scene", not "a array scene".
+
 ## 0.18.1
 
 - **The browser player no longer stops partway through a voiced walkthrough.** A scene with six or more spoken parts, such as a narration and five steps, kept every clip it had played mounted, and Remotion's player allows five audio tags at once, so playback stopped with "Tried to simultaneously mount 6 <Html5Audio /> tags". Each clip now unmounts when its step ends. MP4 renders were not affected.
