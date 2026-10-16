@@ -23,6 +23,10 @@ usage: verify.sh <command> <run-dir> [args]
                                         command, stdout, stderr and exit code to <run>/evidence/<label>.txt
   play-start <run> <label> [--cwd dir] [play args]
                                         start \`mr-cast play --no-open\` in the background; print its URL
+                                        (the full URL, with the write token, is in <run>/work/play/<label>.token-url)
+  plan-start <run> <label> [--cwd dir] [plan args]
+                                        start \`mr-cast plan --no-open\` in the background; print the plan
+                                        page's URL with its write token
   play-stop  <run> [label]              stop the player(s) this run started; copy their logs to evidence
   browse  <run> <label> <url> <step>... drive the player in Chrome Headless Shell (steps: see scripts/browse.mjs)
   probe   <mp4>                         ffprobe duration and streams
@@ -143,7 +147,10 @@ cmd_mrc() {
   return "$code"
 }
 
-cmd_play_start() {
+# serve_start <play|plan> <run> <label> [--cwd dir] [args]: start the server, wait for its URL line, print the URL.
+serve_start() {
+  local sub="$1"
+  shift
   run_paths "$1"
   local label="${2:?missing <label>}"
   shift 2
@@ -152,20 +159,25 @@ cmd_play_start() {
   [ -f "$dir/$label.pid" ] && kill -0 "$(cat "$dir/$label.pid")" 2>/dev/null && die "player $label already runs (pid $(cat "$dir/$label.pid")); play-stop it first"
   local cwd="$DEMO"
   if [ "${1:-}" = "--cwd" ]; then cwd="$(cd "$2" && pwd -P)"; shift 2; fi
-  (cd "$cwd" && exec "$MRC" play --no-open "$@") >"$dir/$label.out" 2>"$dir/$label.err" &
+  (cd "$cwd" && exec "$MRC" "$sub" --no-open "$@") >"$dir/$label.out" 2>"$dir/$label.err" &
   local pid=$!
   echo "$pid" >"$dir/$label.pid"
   local url=""
   for _ in $(seq 1 600); do
-    url="$(sed -n 's/^mr-cast player: //p' "$dir/$label.out" 2>/dev/null)"
+    url="$(sed -nE 's/^mr-cast (player|plan): //p' "$dir/$label.out" 2>/dev/null)"
     [ -n "$url" ] && break
     kill -0 "$pid" 2>/dev/null || { cat "$dir/$label.err" >&2; rm -f "$dir/$label.pid"; die "player $label exited before serving"; }
     sleep 0.2
   done
   [ -n "$url" ] || die "player $label printed no URL in 120s; see $dir/$label.err"
-  echo "$url" >"$dir/$label.url"
-  echo "$url"
+  # The token rides in the fragment; recipes append paths to the bare origin.
+  echo "${url%%/#*}" | sed 's|/plan#.*||' >"$dir/$label.url"
+  echo "$url" >"$dir/$label.token-url"
+  if [ "$sub" = plan ]; then echo "$url"; else cat "$dir/$label.url"; fi
 }
+
+cmd_play_start() { serve_start play "$@"; }
+cmd_plan_start() { serve_start plan "$@"; }
 
 cmd_play_stop() {
   run_paths "$1"
@@ -224,6 +236,7 @@ case "$command" in
   env) cmd_env "$@" ;;
   mrc) cmd_mrc "$@" ;;
   play-start) cmd_play_start "$@" ;;
+  plan-start) cmd_plan_start "$@" ;;
   play-stop) cmd_play_stop "$@" ;;
   browse) cmd_browse "$@" ;;
   probe) cmd_probe "$@" ;;

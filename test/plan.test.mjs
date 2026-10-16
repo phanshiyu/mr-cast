@@ -153,6 +153,6 @@ test('the outline groups scenes under their topic and lists skipped topics', () 
   const p = plan(topic('limit', { title: 'Rate limiter' }), topic('logs', { title: 'Logging', choice: { depth: 'skip', view: 'calls' } }));
   const storyboard = { title: 'Limits', scenes: [intent, sequence('limit')] };
   const out = formatOutline({ storyboard, hunks: {}, coverage: null, seconds: 30, voiced: false, plan: p });
-  assert.deepEqual(out.split('\n').slice(2, 7), ['No topic', '1. intent      low risk · Limit orders', '', 'Rate limiter: brief, who calls whom, in order', '2. sequence    2 participants, 1 message']);
+  assert.deepEqual(out.split('\n').slice(2, 7), ['No topic', '1. intent      low risk · Limit orders', '', 'Rate limiter (brief, who calls whom, in order)', '2. sequence    2 participants, 1 message']);
   assert.match(out, /\nskipped topics: Logging$/);
 });

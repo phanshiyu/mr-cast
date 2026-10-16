@@ -268,11 +268,11 @@ function gistWithSteps(scene, hunks, storyboard) {
   return scene.type === 'flow' ? `${gist}, each spoken` : `${gist} · ${plural(steps, 'step')} spoken${marks}`;
 }
 
-/** "Rate limiter: deep, before vs after", the heading of a topic's scenes in the outline. */
+/** "Rate limiter (deep, before vs after)", the heading of a topic's scenes in the outline. */
 function topicHeading(topic) {
   if (!topic) return 'No topic';
   const { depth, view } = pickOf(topic);
-  return `${topic.title}: ${depth}, ${VIEWS[view].label.toLowerCase()}`;
+  return `${topic.title} (${depth}, ${VIEWS[view].label.toLowerCase()})`;
 }
 
 /**
