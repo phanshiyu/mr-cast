@@ -100,6 +100,26 @@ Then check it.
 
 Fix every error and rerun until it prints `✓ storyboard ok`. Resolve the warnings the reference names too. Treat other warnings as advice.
 
+### Teach the change
+
+Write the video the way a good teacher would explain the change to this viewer. People understand a new idea faster when they first see one concrete case. They learn even more when they see what goes wrong without the change, and when each step comes with its reason. Review guides also say to start with why the change exists and its approach before any line of it.
+
+- **Start from one concrete case.** Pick one real case, with real values, that shows the problem: "a visitor sends a twenty-first request inside one minute, and today it still goes through." The intent says it. Then the diagrams, the code and the tests follow that same case, so the viewer always knows what is happening to it. Use a second case only when the change handles two different ones, and then show the two side by side, as a `compare`.
+- **Problem first, then the approach in one sentence, then the parts.** Before any diagram, the viewer should know what goes wrong today, or what was missing, and the one idea of the fix, such as "count each visitor's requests per minute, and refuse past twenty". Every later scene is a part of that idea.
+- **Show the old behaviour before the new.** When the change fixes or alters behaviour, show the same case before and after: a `compare` row, a `sequence` or `flow` step that names the old result, or for a bug, a `terminal` with the failing test or the repro. Use only output you actually ran or read. Never invent output.
+- **Ask the question, then answer it.** Open each code scene by saying the question it answers, such as "So how does the limiter know it is a new minute?" Then the steps answer it and give the reason: "because the key includes the minute, a new minute starts a new count." Never show code without saying why the viewer is looking at it.
+- **Example first, then the rule.** After the case has gone through, say the general rule and where it stops: "Any client past twenty in a minute is refused, but the count is per server, so two servers allow forty."
+- **Name the likely wrong reading.** When the code invites a mistake, such as a name that suggests the wrong unit or a check that seems to run first but does not, say the wrong reading and why it is wrong. Do this at most once or twice a video.
+- **Say what you skip.** When you leave something out, say so in a few words, such as "the logging changes are routine, so I skip them". The viewer then knows nothing was hidden.
+- **Close the loop.** The last scene's narration ends with what the video showed is proven, and what the viewer should still check. It ties back to the concerns the intent scene listed.
+
+The audience decides the order and the depth.
+
+- **A reviewer** (`familiar`) reads a change with these questions, roughly in order. Why does it exist? Is the approach right? How does it work, and is it correct and complete? What else could it break? Is it tested? Follow that order. The intent gives the why and the concerns. The diagrams show the approach. Code scenes go in order of importance: the main behaviour first, then the code that supports it. Group related hunks together, not file by file. Then show what else it could break, such as callers, a migration, a public API or two requests at once, as their own scene or step. When the diff leaves a caller unchanged that should have changed, say so. The tests come last. Skip background a reviewer of this code already knows, such as what the service is for, and say that you skip it. Never skip a hunk for this reason.
+- **Someone new to this code** (`new`) needs the code as it is today before the change. Name the few terms they will hear before they hear them. Follow the concrete case through every step, line by line, as [Simple mode](#simple-mode) says.
+- **The team** (`overview`) needs the problem, the approach, what changes for users, the risk, how well it is tested, and who should look closer. [Overview mode](#overview-mode) says how.
+- **An explanation** follows the same order: the question or symptom as a concrete case, then the idea, then the parts, then the code.
+
 ### Shared rules
 
 The viewer has not read the diff or your explanation. A good walkthrough lets them understand it from the video alone. Complete coverage of the important details matters more than a short video. When you are unsure whether a detail belongs, include it.

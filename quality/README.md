@@ -34,7 +34,8 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
    `<workdir>/<fixture>/notes/mr-cast/` (the variant skill and its references).
 
 3. Writers. One fresh agent per fixture, cwd `<workdir>/<fixture>/repo`, with the writer prompt below.
-   Run them in parallel. They write `storyboard.json` in the run `extract` starts, `repo/.mr-cast/<branch>/`.
+   Give each writer's shell `export XDG_CONFIG_HOME=<workdir>/<fixture>/config` so its runs do not overwrite the
+   user's remembered choices in `~/.config/mr-cast`. Run them in parallel. They write `storyboard.json` in the run `extract` starts, `repo/.mr-cast/<branch>/`.
 
 4. Collect:
 

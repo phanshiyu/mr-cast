@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0
+
+The skill now tells Claude to write each video the way a good teacher explains the change, and in the order a reviewer asks about it. Two research summaries behind it are in `quality/research/`. They draw on worked examples and concreteness fading, Mayer's multimedia principles, refutation of likely misreadings, Google's code review guide, and studies of what reviewers need (Bacchelli and Bird 2013, Tao et al. 2012, Spadini et al. 2019, Baum et al.). No study tested narrated diff videos, so these rules are carried over from nearby fields.
+
+- **One concrete case runs through the video.** The intent states the problem as one real case with real values. The diagrams, the code and the tests then follow that same case.
+- **Problem, then the approach in one sentence, then the parts.** The old behaviour is shown before the new on the same case, for a bug with the failing test or repro as a `terminal`.
+- **Each code scene opens with the question it answers**, and its steps answer with the reason. After the case, the narration states the general rule and where it stops, names a likely wrong reading when there is one, says what it skips, and ends on what is proven and what to still check.
+- **The audience sets the order.** A reviewer's video follows a reviewer's questions: why, approach, how it works, what else it could break, tests. Code scenes go by importance with related hunks together, not file by file. Someone new gets the code as it is today and the terms before the walk. The team overview gets problem, approach, user impact, risk and test status.
+
 ## 0.19.0
 
 Five new scene types, chosen from research on how pictures help people understand. A layout should match the shape of the idea (Tversky, Morrison and Betrancourt 2002). Comparisons work best side by side with the differences marked (Gleicher et al. 2011). Program state is easier to follow as frames, objects and arrows that change step by step (Guo 2013, Python Tutor).

@@ -31,7 +31,7 @@ List the files and functions your explanation relied on. For each piece of code 
 
 Every code scene's `hunkId` is a snippet id. Leave out `risk` on the intent scene and leave out `skipped`, since there is no change to review. Resolve the `validate` warnings about scene order, diagram count, and focus.
 
-- Plan first: the key points of your explanation, the behaviors behind them ("when X happens, Y happens"), and the code that carries each one.
+- Plan first: the question your explanation answers, shown as one concrete case with real values, the idea in one sentence, the key points, the behaviors behind them ("when X happens, Y happens"), and the code that carries each one. Follow [Teach the change](../SKILL.md#teach-the-change).
 - The `intent` scene's summary states the idea in one sentence. Its bullets are the key points of the explanation, at most four, one short line each. For a bug, they are the symptom, the cause, and the fix or the way to avoid it.
 - Use a `files` scene when where the code lives helps the viewer, such as a feature spread over several modules. List each file as `{ "path": "src/limiter.ts" }` in `files`, since an explanation has no diff to list. Give each a short `notes` entry, and put the scene before the code.
 - Add a `tests` scene only when tests are part of the explanation, such as a bug that no test caught. List each case's name as written in code and what it proves, and put the important untested behaviors in `gaps`.
