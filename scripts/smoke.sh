@@ -15,12 +15,12 @@ mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 export MR_CAST_NO_UPDATE_CHECK=1 CLAUDE_CONFIG_DIR="$OUT/work/claude" XDG_CONFIG_HOME="$OUT/work/config"
 
-fail() { echo "smoke: FAIL $*" >&2; exit 1; }
+fail() { echo "smoke: FAIL $*" | tee -a "$OUT/failure.txt" >&2; exit 1; }
 
 for example in gallery demo; do
   mkdir -p "$OUT/work/$example"
   cp "$ROOT/examples/$example"/*.json "$OUT/work/$example/"
-  "${MRC[@]}" still --dir "$OUT/work/$example" --out "$OUT/stills/$example" > "$OUT/still-$example.txt"
+  "${MRC[@]}" still --dir "$OUT/work/$example" --out "$OUT/stills/$example" > "$OUT/still-$example.txt" 2>&1 || fail "$example: still exited non-zero"
   expected="$(node -p "require('$OUT/work/$example/storyboard.json').scenes.length")"
   got="$(find "$OUT/stills/$example" -name '*.png' -size +10k | wc -l | tr -d ' ')"
   [ "$got" = "$expected" ] || fail "$example: $got of $expected stills"
@@ -50,7 +50,7 @@ for _ in $(seq 1 100); do
   sleep 0.2
 done
 [ -n "$URL" ] || { cat "$OUT/play.txt"; fail "player did not start"; }
-node "$VERIFY/browse.mjs" "$URL/" "$OUT/textscan" wait:Stress click:1.5x textscan:50 > "$OUT/browse.txt"
+node "$VERIFY/browse.mjs" "$URL/" "$OUT/textscan" wait:Stress click:1.5x textscan:50 > "$OUT/browse.txt" 2>&1 || fail "browse exited non-zero"
 node "$VERIFY/text-check.mjs" "$OUT/work/fits/storyboard.json" "$OUT/textscan/textscan.json" | tee "$OUT/text-check.txt"
 grep -q '^text-check: ok' "$OUT/text-check.txt" || fail "text-check found clipped text"
 echo "smoke: ok"

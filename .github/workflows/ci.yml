@@ -101,6 +101,13 @@ jobs:
           key: kokoro-82m-v1.0-q8
       - run: pnpm build
       - run: scripts/smoke.sh "$RUNNER_TEMP/smoke"
+      - name: Show the smoke logs as annotations
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP"/smoke/*.txt "$RUNNER_TEMP"/smoke/textscan/console.txt; do
+            [ -s "$f" ] || continue
+            echo "::error title=$(basename "$f")::$(tail -n 30 "$f" | cut -c1-300 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+          done
       - name: Upload stills and the text scan
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
