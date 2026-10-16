@@ -20,10 +20,17 @@ const REF_HELP = {
   files: 'a path the scene lists',
   tests: 'a case index, a case name, or a gap "gap:0"',
   intent: 'a bullet index',
+  compare: 'a row index, an "a-b" range of them, a side "side:After", or a cell "row@side" such as "2@After"',
+  terminal: 'an entry index, an "a-b" range of them, or an output line "entry:line" such as "2:3"',
 };
 
 /** Items the steps reveal in order, so one no step names appears unnamed beside a neighbour. */
-const REVEALED = { sequence: ['m', 'messages', 'message'], timeline: ['ev', 'events', 'event'] };
+const REVEALED = {
+  sequence: [['m'], 'messages', 'message'],
+  timeline: [['ev'], 'events', 'event'],
+  compare: [['r', 'x'], 'rows', 'row'],
+  terminal: [['en', 'ln'], 'entries', 'entry'],
+};
 
 /** The key a step's focus is written under: `focus`, or the older key its scene type used. */
 function focusKey(step, type) {
@@ -64,9 +71,10 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
   if (revealed) checkRevealed(scene, p, hunks, revealed, warnings);
 }
 
-function checkRevealed(s, p, hunks, [prefix, field, what], warnings) {
+function checkRevealed(s, p, hunks, [prefixes, field, what], warnings) {
   const count = Array.isArray(s[field]) ? s[field].length : 0;
-  const named = new Set(stepTargets(s, hunks).flat().flatMap((key) => (key.startsWith(`${prefix}:`) ? [Number(key.slice(prefix.length + 1))] : [])));
+  // A key names its item by the index after its prefix, as "r:2", or as "x:2/1" for a part of it.
+  const named = new Set(stepTargets(s, hunks).flat().flatMap((key) => (prefixes.some((prefix) => key.startsWith(`${prefix}:`)) ? [parseInt(key.slice(key.indexOf(':') + 1), 10)] : [])));
   const missed = Array.from({ length: count }, (_, n) => n).filter((n) => !named.has(n));
   if (missed.length && named.size) {
     warnings.push(`${p}.steps: no step names ${what}${missed.length === 1 ? '' : 's'} ${missed.join(', ')}, so ${missed.length === 1 ? 'it appears' : 'they appear'} with a neighbouring step unnamed; give every ${what} a step`);

@@ -1,5 +1,6 @@
 // Pure formatting for CLI output. No IO: callers pass data in, get strings back.
 
+import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
@@ -216,6 +217,16 @@ function sceneGist(scene, hunks, storyboard) {
       const tests = files.filter((f) => f.test).length;
       const notes = Object.keys(scene.notes ?? {}).length;
       return titled(`${count(files, 'file')}${lines}${tests ? `, ${plural(tests, 'test')}` : ''}${notes ? `, ${plural(notes, 'note')}` : ''}`);
+    }
+    case 'compare': {
+      const [left, right] = compareTitles(scene);
+      const differ = scene.rows.filter((r) => !compareRowSame(r)).length;
+      return titled(`${left} vs ${right}, ${count(scene.rows, 'row')}, ${differ} differ`);
+    }
+    case 'terminal': {
+      const commands = scene.entries.filter((e) => e.command !== undefined).length;
+      const failed = scene.entries.filter((e) => e.exit !== undefined && e.exit !== 0).length;
+      return titled(`${scene.window ? `${scene.window} · ` : ''}${scene.entries.length} ${scene.entries.length === 1 ? 'entry' : 'entries'}, ${plural(commands, 'command')}${failed ? `, ${failed} failed` : ''}`);
     }
     case 'review':
       return titled(formatFindings(storyboard.findings));

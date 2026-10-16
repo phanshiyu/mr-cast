@@ -12,10 +12,12 @@ import { checkVoice, sentences } from './validate-voice.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
+import { checkCompare } from './validate-compare.mjs';
+import { checkTerminal } from './validate-terminal.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'compare', 'terminal'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -580,6 +582,14 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
 
       case 'files':
         checkFiles(s, p, errors, warnings, hunks ?? {}, mode);
+        break;
+
+      case 'compare':
+        checkCompare(s, p, errors, warnings);
+        break;
+
+      case 'terminal':
+        checkTerminal(s, p, errors, warnings);
         break;
 
       case 'review':

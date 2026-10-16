@@ -569,7 +569,91 @@ export interface FilesScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene;
+/** One side's cell in a compare row: display text, or a short code snippet of a few lines drawn with syntax colours. */
+export type CompareCell = DisplayText | { code: string; lang?: string };
+
+/** Which side of a compare row is better: a green check, a red cross, or an amber warning on that side's cell. */
+export type Verdict = 'good' | 'bad' | 'warn';
+
+export interface CompareSide {
+  /** E.g. "Before", "After", "Option A", "Redis", "Without the cache". */
+  title: string;
+  /** Colour of the side's title and frame. Defaults to neutral for the first side and accent for the second. */
+  tone?: Tone;
+}
+
+export interface CompareRow {
+  /** The aspect the row compares, e.g. "On Redis outage", drawn in a column left of both sides. */
+  label?: DisplayText;
+  /** Exactly two, one per side, left then right. */
+  cells: CompareCell[];
+  /**
+   * true for a row that is the same on both sides: it dims, with "=" between the sides. Defaults to whether
+   * the two cells are equal. A row that differs gets an arrow between the sides, so the change is explicit.
+   */
+  same?: boolean;
+  /** Which side is better on this row, one entry per side, null for no verdict, e.g. ["bad", "good"]. */
+  verdict?: (Verdict | null)[];
+}
+
+/**
+ * Two things side by side, row by row, in the same layout so the eye compares like with like: old and new
+ * behaviour, an API or config shape, two designs, what the user sees before and after. Matching rows sit at
+ * the same height on both sides. The frames and titles draw first, then the rows top to bottom.
+ */
+export interface CompareScene extends SceneBase {
+  type: 'compare';
+  title?: string;
+  /** The two sides, left then right. Defaults to "Before" and "After". */
+  sides?: CompareSide[];
+  /** Up to 6. */
+  rows: CompareRow[];
+  /**
+   * Walk the rows in order, each step with its own words: the frames draw first, then each step's rows show
+   * and light up just before its `say` is spoken. `narration` is then the intro. A ref is a row index
+   * (0-based), an inclusive "a-b" range of them, a side "side:0" or "side:After" (by title), or one cell
+   * "row@side", e.g. "2@After" or "2@1". A step shows every row up to the last one it names, so name them in order.
+   */
+  steps?: FocusStep[];
+}
+
+/** One command and what it printed. Give a `command`, an `output`, or both. */
+export interface TerminalEntry {
+  /** Typed out character by character after the prompt. Shown exactly as written. */
+  command?: string;
+  /**
+   * What it printed, lines separated by "\n". Long lines wrap. Markup colours a line or a word, e.g.
+   * "[FAIL]{bad} src/limit.test.ts" or "[✓ 12 passed]{good}"; write \` and \* for a literal backtick or star.
+   */
+  output?: DisplayText;
+  /** The prompt before the command. Defaults to "$". */
+  prompt?: string;
+  /** The command's exit status, shown at the entry's end: green for 0, and any other value tints the entry red. */
+  exit?: number;
+}
+
+/**
+ * A shell session: commands type out, then their output appears. For repro steps, running a migration, a
+ * failing then passing test run, CLI behaviour before and after, or logs. Text stays a readable size; a
+ * session taller than the frame scrolls, the camera following the steps.
+ */
+export interface TerminalScene extends SceneBase {
+  type: 'terminal';
+  title?: string;
+  /** The window's title bar, e.g. "zsh: ~/app". */
+  window?: string;
+  /** In order. Without steps they play out while the narration speaks. */
+  entries: TerminalEntry[];
+  /**
+   * Walk the session, each step with its own words: each step types the entries up to the last one it names
+   * and lights what it names just before its `say` is spoken. `narration` is then the intro. A ref is an entry
+   * index (0-based), an inclusive "a-b" range of them, or one output line "entry:line", e.g. "2:3" for line 3
+   * (0-based) of entry 2's output. Name the entries in order.
+   */
+  steps?: FocusStep[];
+}
+
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | CompareScene | TerminalScene;
 
 export interface Storyboard {
   title: string;

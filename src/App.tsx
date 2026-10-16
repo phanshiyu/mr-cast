@@ -1,5 +1,5 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { ArrowRightLeft, ChartColumn, ChartGantt, CircleDot, FolderTree, Code2, FlaskConical, Shapes, GitBranch, MessageCircleWarning, Network, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, ChartColumn, ChartGantt, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, FlaskConical, Shapes, GitBranch, MessageCircleWarning, Network, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from './components/theme';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
@@ -21,7 +21,7 @@ type LoadState =
   // identity, and this component re-renders on every frame.
   | { status: 'ready'; walkthrough: WalkthroughProps; meta: Meta | null };
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning };
+const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, compare: Columns2, terminal: SquareTerminal };
 
 class DataError extends Error {
   constructor(readonly file: string, message: string) {

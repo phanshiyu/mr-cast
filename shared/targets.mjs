@@ -3,7 +3,9 @@
 // every item whose key a step's refs resolve to. Keys are internal; refs are what a storyboard writes.
 
 import { sceneFiles } from './files.mjs';
+import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
+import { outputLines } from './terminal.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
@@ -30,6 +32,15 @@ function pairEdges(ref, edges, ids, undirected = () => false) {
 }
 
 const pairName = (e) => `${e?.from}->${e?.to}`;
+
+/** The side a compare ref names, by its index or its title, or null. */
+function compareSide(scene, name) {
+  const text = String(name).trim();
+  if (text === '0' || text === '1') return Number(text);
+  const side = compareTitles(scene).indexOf(text);
+  return side >= 0 ? side : null;
+}
+
 
 /** Per scene type: `resolve(scene, ref, hunks)` gives item keys or null, `names(scene, hunks)` the refs to suggest. */
 const TARGETS = {
@@ -164,6 +175,35 @@ const TARGETS = {
       return named.length ? named : null;
     },
     names: (scene) => [...list(scene.cases).map((c) => c?.name), ...list(scene.gaps).map((_, i) => `gap:${i}`)],
+  },
+  compare: {
+    resolve(scene, ref) {
+      const rows = list(scene.rows).length;
+      const r = indexRange(ref);
+      if (r) return r[1] < rows ? range(r[0], r[1]).map((i) => `r:${i}`) : null;
+      if (typeof ref !== 'string') return null;
+      if (ref.startsWith('side:')) {
+        const side = compareSide(scene, ref.slice(5));
+        return side === null ? null : [`s:${side}`];
+      }
+      const at = ref.indexOf('@');
+      const row = Number(ref.slice(0, at));
+      const side = at > 0 ? compareSide(scene, ref.slice(at + 1)) : null;
+      return side !== null && ref.slice(0, at).trim() !== '' && isIndex(row, rows) ? [`x:${row}/${side}`] : null;
+    },
+    names: (scene) => [`0-${Math.max(0, list(scene.rows).length - 1)}`, ...compareTitles(scene).map((t) => `side:${t}`), `0@${compareTitles(scene)[1]}`],
+  },
+  terminal: {
+    resolve(scene, ref) {
+      const entries = list(scene.entries);
+      const r = indexRange(ref);
+      if (r) return r[1] < entries.length ? range(r[0], r[1]).map((i) => `en:${i}`) : null;
+      const m = typeof ref === 'string' ? /^\s*(\d+)\s*:\s*(\d+)\s*$/.exec(ref) : null;
+      if (!m) return null;
+      const [entry, line] = [Number(m[1]), Number(m[2])];
+      return isIndex(entry, entries.length) && isIndex(line, outputLines(entries[entry]).length) ? [`ln:${entry}/${line}`] : null;
+    },
+    names: (scene) => [`0-${Math.max(0, list(scene.entries).length - 1)}`, ...list(scene.entries).flatMap((e, i) => (outputLines(e).length ? [`${i}:0`] : []))],
   },
   intent: {
     resolve: (scene, ref) => (isIndex(ref, list(scene.bullets).length) ? [`b:${ref}`] : null),

@@ -4,6 +4,7 @@ import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
 import { fitGraph, graphDirection } from '../utils/graphLayout';
 import { layoutChart } from '../utils/chartLayout';
+import { layoutCompare } from '../utils/compareLayout';
 import { layoutCode } from '../utils/codeLayout';
 import { layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
@@ -14,6 +15,7 @@ import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
 import { layoutReview } from '../utils/reviewLayout';
 import { layoutTests } from '../utils/testsLayout';
+import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline } from '../utils/timelineLayout';
 import { shellFits } from './shell';
 
@@ -49,6 +51,14 @@ const SCENE_FITS: SceneFits = {
   review: (scene, storyboard) => {
     const box = contentBox(Boolean(scene.title));
     return layoutReview(storyboard.findings ?? [], box.width, box.height);
+  },
+  compare: (scene) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutCompare(scene, box.width, box.height);
+  },
+  terminal: (scene) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutTerminal(scene, box.width, box.height);
   },
 };
 
