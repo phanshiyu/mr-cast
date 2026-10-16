@@ -6,7 +6,7 @@ import { SLOTS, sized } from './slots';
 /** Room the header keeps for a scene's legend, stats or subject at its right end. */
 const ASIDE_RESERVE = 560;
 const ASIDE_GAP = 32;
-const WITH_ASIDE = new Set<Scene['type']>(['intent', 'graph', 'state', 'table', 'er', 'chart', 'files', 'tests']);
+const WITH_ASIDE = new Set<Scene['type']>(['intent', 'graph', 'state', 'table', 'er', 'chart', 'files', 'tests', 'review']);
 
 export interface ShellFits {
   eyebrow: Fit;

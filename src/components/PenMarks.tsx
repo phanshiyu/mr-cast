@@ -31,6 +31,13 @@ function noteWidth(text: string): number {
   return Math.ceil(text.length * NOTE_FONT * 0.42);
 }
 
+/** A review flag's pen: its severity's colour, and the severity written before its note. */
+export interface Ink {
+  color: string;
+  label: string;
+}
+export type InkOf = (step: FocusStep | CodeStep) => Ink | null;
+
 type MarkedStep = (FocusStep | CodeStep) & { mark: NonNullable<FocusStep['mark']> };
 
 /**
@@ -71,7 +78,7 @@ const Strokes: React.FC<{ sketch: Sketch; progress: (i: number) => number; width
   </>
 );
 
-const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: MarkTargets; frame: number }> = ({
+const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: MarkTargets; frame: number; ink: Ink | null }> = ({
   step,
   k,
   scene,
@@ -79,13 +86,16 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
   segments,
   targets,
   frame,
+  ink,
 }) => {
   const { boxes, area, shift } = targets;
   const target = scene.type === 'code' ? (boxes.get((step as CodeStep).token ? 'token' : 'lines') ?? null) : union(markedKeys(scene, step as FocusStep, hunks).map((key) => boxes.get(key)));
   if (!target) return null;
   const clutter = { target, obstacles: targets.obstacles ?? [...boxes.values()], lines: targets.lines ?? [] };
   const seed = seedOf(`${k}:${step.mark}:${step.note ?? ''}`);
-  const note = plainText(step.note ?? '').trim() || null;
+  const text = plainText(step.note ?? '').trim();
+  const note = ink ? `${ink.label}: ${text}` : text || null;
+  const color = ink?.color ?? INK;
   const noteSize = { width: note ? noteWidth(note) + 8 : 0, height: note ? Math.round(NOTE_FONT * 1.25) : 0 };
   const arrow = step.mark === 'arrow' ? placeArrow(noteSize, clutter, area) : null;
   const sketch = arrow ? arrowSketch(arrow.tail, target, seed, PEN) : sketchMark(step.mark as Exclude<typeof step.mark, 'arrow'>, target, area, seed, PEN);
@@ -110,8 +120,8 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
     <div style={{ position: 'absolute', inset: 0, opacity, transform: shift ? `translate(${shift.x}px, ${shift.y}px)` : undefined }}>
       <svg width={area.width} height={area.height} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
         <Strokes sketch={sketch} progress={progress} width={PEN + 6} color={colors.bg} opacity={0.6} />
-        <Strokes sketch={sketch} progress={progress} width={PEN} color={INK} opacity={1} />
-        <Strokes sketch={trace} progress={progress} width={1.6} color={INK} opacity={0.55} />
+        <Strokes sketch={sketch} progress={progress} width={PEN} color={color} opacity={1} />
+        <Strokes sketch={trace} progress={progress} width={1.6} color={color} opacity={0.55} />
       </svg>
       {note && noteBox && written > 0 ? (
         <div
@@ -128,7 +138,7 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
             fontSize: NOTE_FONT,
             lineHeight: `${noteBox.height}px`,
             whiteSpace: 'nowrap',
-            color: INK,
+            color,
             textShadow: `0 0 3px ${colors.bg}, 0 0 8px ${colors.bg}, 0 0 14px ${colors.bg}`,
             clipPath: `inset(-12px ${(1 - written) * 100}% -12px -12px)`,
           }}
@@ -145,7 +155,13 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
  * between the step's items coming to rest and its words, and clears when the next step starts. Scenes
  * give only the boxes where the items rest.
  */
-export const PenMarks: React.FC<{ scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: (step: number) => MarkTargets | null }> = ({ scene, hunks, segments, targets }) => {
+export const PenMarks: React.FC<{ scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: (step: number) => MarkTargets | null; inkOf?: InkOf }> = ({
+  scene,
+  hunks,
+  segments,
+  targets,
+  inkOf,
+}) => {
   const frame = useCurrentFrame();
   const steps = sceneSteps(scene) as readonly (FocusStep | CodeStep)[];
   const shown = steps.flatMap((step, k) => {
@@ -158,7 +174,7 @@ export const PenMarks: React.FC<{ scene: Scene; hunks: HunkMap; segments: readon
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       {shown.map((k) => {
         const t = targets(k);
-        return t ? <Mark key={k} step={steps[k] as MarkedStep} k={k} scene={scene} hunks={hunks} segments={segments} targets={t} frame={frame} /> : null;
+        return t ? <Mark key={k} step={steps[k] as MarkedStep} k={k} scene={scene} hunks={hunks} segments={segments} targets={t} frame={frame} ink={inkOf?.(steps[k]!) ?? null} /> : null;
       })}
     </div>
   );

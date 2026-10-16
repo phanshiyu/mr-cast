@@ -12,6 +12,7 @@ import { layoutIntent } from '../utils/intentLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
+import { layoutReview } from '../utils/reviewLayout';
 import { layoutTests } from '../utils/testsLayout';
 import { layoutTimeline } from '../utils/timelineLayout';
 import { shellFits } from './shell';
@@ -44,6 +45,10 @@ const SCENE_FITS: SceneFits = {
   files: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
     return layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+  },
+  review: (scene, storyboard) => {
+    const box = contentBox(Boolean(scene.title));
+    return layoutReview(storyboard.findings ?? [], box.width, box.height);
   },
 };
 

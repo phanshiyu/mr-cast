@@ -7,13 +7,14 @@ import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
+import { checkReview } from './validate-review.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -583,6 +584,11 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
         checkFiles(s, p, errors, warnings, hunks ?? {}, mode);
         break;
 
+      case 'review':
+        if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
+        if (s.steps !== undefined) errors.push(`${p}.steps: a review scene takes no steps; its narration recaps the findings, and each was said where its code was shown`);
+        break;
+
       case 'mermaid':
         if (!isStr(s.code)) errors.push(`${p}.code: required string of Mermaid source`);
         else diagrams.push({ p, code: s.code });
@@ -594,6 +600,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
   });
 
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
+  checkReview(sb, hunks ?? {}, mode, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);

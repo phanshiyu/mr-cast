@@ -216,6 +216,12 @@ export interface CodeStep extends PenMarks {
   outcome?: string;
   /** Text that occurs exactly once in the step's lines, e.g. "max: 20", for `mark` to draw on instead of the whole lines. */
   token?: string;
+  /**
+   * Review mode: the id of the finding these lines show. The step draws a pen mark in the finding's colour, a
+   * circle unless `mark` says otherwise, with `note` or else the finding's claim, under its severity. Say it then
+   * and there as your opinion, e.g. "This looks off: the save is never awaited."
+   */
+  flag?: string;
 }
 
 export interface CodeScene extends SceneBase {
@@ -402,6 +408,40 @@ export interface TestsScene extends SceneBase {
   steps?: FocusStep[];
 }
 
+/**
+ * How bad a review finding is: "bug" is wrong today, "risk" breaks under some input or later (a missing check,
+ * an untested risky path, a leaked secret), "nit" is small but worth a fix (a confusing name, a typo).
+ */
+export type Severity = 'bug' | 'risk' | 'nit';
+
+/**
+ * Review mode: one thing in the diff that looks clearly wrong, the kind a reviewer reads and says "wait, that's
+ * wrong". It is your opinion, so it is drawn apart from the explanation: a pen mark in its severity's colour
+ * where a code step `flag`s it, and a row in the review scene. Check it against the code before adding it.
+ */
+export interface Finding {
+  /** Named by a code step's `flag`, e.g. "unawaited-save". */
+  id: string;
+  severity: Severity;
+  /** The file's path as the diff names it. */
+  file: string;
+  /** A new-file line or "a-b" range inside one of the file's hunks. */
+  line: LineRef;
+  /** What looks wrong, in one short line, e.g. "`save()` is never awaited". */
+  claim: DisplayText;
+  /** Why, in one short line: what the code does and an input that breaks it. Written to review.md, not drawn. */
+  evidence: string;
+}
+
+/**
+ * Review mode: a short recap of the storyboard's `findings` at the end of the video, grouped by severity, each
+ * with its file:line and claim, under "Claude's review". Only when there are findings.
+ */
+export interface ReviewScene extends SceneBase {
+  type: 'review';
+  title?: string;
+}
+
 /** A cell's text, or `{ before, after }` for a value this change replaced: the old value is struck through beside the new one. */
 export type TableCell = string | { before: string; after: string };
 
@@ -529,12 +569,17 @@ export interface FilesScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene;
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene;
 
 export interface Storyboard {
   title: string;
   subtitle?: string;
   scenes: Scene[];
+  /**
+   * Review mode only, when the user asked for your review: what looks wrong in the diff. `[]` says you looked and
+   * found nothing. Left out, the video only explains. `validate` writes them to review.md beside the video.
+   */
+  findings?: Finding[];
   /**
    * Hunks deliberately left out of every code scene, each with the reason a reviewer would accept,
    * e.g. "formatting only", "generated lockfile", "renamed import". `validate` warns about every

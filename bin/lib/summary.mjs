@@ -1,6 +1,7 @@
 // Pure formatting for CLI output. No IO: callers pass data in, get strings back.
 
 import { sceneFiles } from '../../shared/files.mjs';
+import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 
 const LINE_WIDTH = 110;
@@ -132,7 +133,7 @@ export function formatValidation({ errors, warnings, coverage }, { storyboard, h
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
   if (errors.length) out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
-  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${style ? ` · ${style} style` : ''}${formatCoverage(coverage)}`);
+  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${style ? ` · ${style} style` : ''}${formatCoverage(coverage)}${isReviewed(storyboard) ? ` · review: ${formatFindings(storyboard.findings)}` : ''}`);
   return out;
 }
 
@@ -154,7 +155,7 @@ const count = (items, word) => plural(Array.isArray(items) ? items.length : 0, w
 const refs = (lines) => lines.map(String).join(', ');
 
 /** What a scene shows, in one line: the code and focus for a code scene, the size of a diagram. */
-function sceneGist(scene, hunks) {
+function sceneGist(scene, hunks, storyboard) {
   const titled = (text) => (scene.title ? `${scene.title} · ${text}` : text);
   switch (scene.type) {
     case 'intent':
@@ -173,6 +174,8 @@ function sceneGist(scene, hunks) {
         const lines = scene.steps.map((st) => (st.lines === undefined ? `old ${st.oldLines}` : String(st.lines)));
         parts.push(`${count(scene.steps, 'step')} (${lines.join(', ')})`);
         if (scene.steps.every((st) => st.label)) parts.push('flow');
+        const flags = scene.steps.filter((st) => st.flag).map((st) => st.flag);
+        if (flags.length) parts.push(`flags ${flags.join(', ')}`);
         return parts.join(' · ');
       }
       if (scene.focusLinesAfter?.length) parts.push(`lines ${refs(scene.focusLinesAfter)}`);
@@ -214,14 +217,22 @@ function sceneGist(scene, hunks) {
       const notes = Object.keys(scene.notes ?? {}).length;
       return titled(`${count(files, 'file')}${lines}${tests ? `, ${plural(tests, 'test')}` : ''}${notes ? `, ${plural(notes, 'note')}` : ''}`);
     }
+    case 'review':
+      return titled(formatFindings(storyboard.findings));
     default:
       return '';
   }
 }
 
+/** "1 bug, 2 nits", or "nothing flagged". */
+export function formatFindings(findings = []) {
+  const counts = SEVERITIES.map((severity) => [severity, findings.filter((f) => f.severity === severity).length]).filter(([, n]) => n);
+  return counts.length ? counts.map(([severity, n]) => plural(n, severity)).join(', ') : 'nothing flagged';
+}
+
 /** A diagram's gist, with its step count when it walks steps, and how many steps draw a pen mark. Code scenes list their steps themselves. */
-function gistWithSteps(scene, hunks) {
-  const gist = sceneGist(scene, hunks);
+function gistWithSteps(scene, hunks, storyboard) {
+  const gist = sceneGist(scene, hunks, storyboard);
   const marked = sceneSteps(scene).filter((step) => step?.mark).length;
   const marks = marked ? `, ${plural(marked, 'mark')}` : '';
   const steps = scene.type === 'code' ? 0 : sceneSteps(scene).length;
@@ -240,12 +251,13 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, st
   scenes.forEach((scene, i) => {
     const chapter = clip(scene.chapter ?? '', chapterWidth).padEnd(chapterWidth);
     const head = `${String(i + 1).padStart(number)}. ${scene.type.padEnd(typeWidth)}  ${chapter}  `;
-    out.push(`${head}${clip(gistWithSteps(scene, hunks), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
+    out.push(`${head}${clip(gistWithSteps(scene, hunks, storyboard), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
   });
   out.push('');
   const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}${pace}`;
   out.push(`${plural(scenes.length, 'scene')} · ${length}${style ? ` · ${style} style` : ''}`);
   const covered = formatCoverage(coverage);
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
+  if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
   return out.join('\n');
 }

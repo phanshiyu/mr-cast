@@ -11,13 +11,14 @@ import { FileTree } from './components/FileTree';
 import { IntentCard } from './components/IntentCard';
 import { MermaidDiagram } from './components/MermaidDiagram';
 import type { SceneProps } from './components/sceneProps';
+import { ReviewRecap } from './components/ReviewRecap';
 import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
 import './fonts';
-import type { GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -34,6 +35,7 @@ interface SceneByType {
   chart: ChartScene;
   timeline: TimelineScene;
   files: FilesScene;
+  review: ReviewScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -50,6 +52,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   chart: Chart,
   timeline: Timeline,
   files: FileTree,
+  review: ReviewRecap,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

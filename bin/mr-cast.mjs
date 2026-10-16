@@ -20,6 +20,7 @@ import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
+import { isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -138,7 +139,21 @@ async function loadProject(dir, settings) {
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
-  return { dir, hunks, storyboard, result, style, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
+  const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, readRunMeta(dir));
+  return { dir, hunks, storyboard, result, style, review, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
+}
+
+/**
+ * review.md, the findings of a reviewed storyboard as file:line bullets, so they can be acted on. A storyboard
+ * without findings has none, so an earlier one is removed. Returns the file written, or null.
+ */
+function writeReview(file, storyboard, meta) {
+  if (!isReviewed(storyboard)) {
+    fs.rmSync(file, { force: true });
+    return null;
+  }
+  fs.writeFileSync(file, reviewMarkdown(storyboard, { branch: meta?.branch, base: meta?.base }));
+  return file;
 }
 
 /** Validate, print problems to stderr, and stop on errors. */
@@ -238,8 +253,11 @@ const RUN_OPTIONS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 async function validate(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const { dir, settings } = runFor(values);
-  const { result, lines } = await loadProject(dir, settings);
-  for (const line of lines) console.log(line);
+  const { result, lines, review } = await loadProject(dir, settings);
+  // The verdict stays the last line.
+  for (const line of lines.slice(0, -1)) console.log(line);
+  if (review) console.log(`wrote ${rel(review)}`);
+  console.log(lines.at(-1));
   if (result.errors.length) process.exit(1);
 }
 
@@ -414,7 +432,11 @@ async function render(argv) {
   const progress = progressReporter('rendering');
   const written = await renderVideo({ hunks, storyboard, voiceover, dataDir: dir, outFile, onProgress: progress.update });
   progress.done();
-  console.log(written ?? outFile);
+  const video = written ?? outFile;
+  // review.md is in the run's directory; a video saved elsewhere gets its own copy beside it.
+  const review = !isReviewed(storyboard) || path.dirname(path.resolve(video)) === path.resolve(dir) ? null : writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir));
+  console.log(video);
+  if (review) console.log(review);
 }
 
 async function still(argv) {

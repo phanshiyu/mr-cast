@@ -1,10 +1,11 @@
 import { FileWarning, Trash2 } from 'lucide-react';
 import type { Token } from 'prism-react-renderer';
-import { useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import type { CodeScene, CodeStep, DiffLine, Hunk } from '../types';
+import type { CodeScene, CodeStep, DiffLine, FocusStep, Hunk } from '../types';
 import { plainCodeColor, tokenColor, tokenizeHunkLines } from '../utils/highlight';
 import { tokenHits } from '../../shared/pen-marks.mjs';
+import { flaggedFinding } from '../../shared/review.mjs';
 import {
   CALLOUT_BELOW_H,
   CALLOUT_GAP,
@@ -28,14 +29,14 @@ import {
 } from '../utils/codeLayout';
 import type { Fit } from '../../shared/textfit.mjs';
 import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
-import { PenMarks } from './PenMarks';
+import { PenMarks, type Ink, type InkOf } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import { FitText } from './FitText';
 import { StepDiagram } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
 import type { SpokenSegment } from '../utils/timing';
 import { stepMove } from '../utils/spotlight';
-import { clamp, CODE_TAB_SIZE, codeColumns, colors, contentBox, fonts } from './theme';
+import { clamp, CODE_TAB_SIZE, codeColumns, colors, contentBox, fonts, severityInk } from './theme';
 
 const STEP_FADE = 14;
 const VISITED_OPACITY = 0.6;
@@ -355,7 +356,7 @@ const Callout: React.FC<{ text: Fit; appear: number; width: number }> = ({ text,
   </div>
 );
 
-const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number; segments: readonly SpokenSegment[] }> = ({ scene, hunk, durationInFrames, segments }) => {
+const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number; segments: readonly SpokenSegment[]; inkOf: InkOf }> = ({ scene, hunk, durationInFrames, segments, inkOf }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const steps = scene.steps?.length ? scene.steps : null;
@@ -591,16 +592,20 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
           </div>
         ) : null}
       </div>
-      <PenMarks scene={scene} hunks={{ [hunk.id]: hunk }} segments={segments} targets={markTargets} />
+      <PenMarks scene={scene} hunks={{ [hunk.id]: hunk }} segments={segments} targets={markTargets} inkOf={inkOf} />
     </div>
   );
 };
 
-export const CodeDiff: React.FC<SceneProps<CodeScene>> = ({ scene, hunks, durationInFrames, segments }) => {
+export const CodeDiff: React.FC<SceneProps<CodeScene>> = ({ scene, hunks, storyboard, durationInFrames, segments }) => {
   const hunk = hunks[scene.hunkId];
+  const inkOf = useCallback((step: CodeStep | FocusStep): Ink | null => {
+    const finding = flaggedFinding(storyboard, step as CodeStep);
+    return finding ? { color: severityInk[finding.severity], label: finding.severity } : null;
+  }, [storyboard]);
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
-      {hunk ? <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} segments={segments} /> : <MissingHunk hunkId={scene.hunkId} />}
+      {hunk ? <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} segments={segments} inkOf={inkOf} /> : <MissingHunk hunkId={scene.hunkId} />}
     </SceneShell>
   );
 };

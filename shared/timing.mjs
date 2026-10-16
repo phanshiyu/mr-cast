@@ -45,6 +45,7 @@ export const BUILD_SECONDS = {
   chart: 1.8,
   timeline: 1.5,
   files: 1.5,
+  review: 1.5,
 };
 /**
  * Frames every scene has, from a step's start, to bring the step's items to rest: move its camera, draw
@@ -84,7 +85,7 @@ export function sceneSegments(scene, voiceover) {
   return spokenTexts(scene).map((text, i) => {
     const clip = clipFor(voiceover, text);
     const markFrom = from + (i === 0 ? narrationLead : Math.max(pause(STEP_LEAD), STEP_SETTLE_FRAMES));
-    const voiceFrom = markFrom + (i > 0 && typeof steps[i - 1]?.mark === 'string' ? PEN_FRAMES : 0);
+    const voiceFrom = markFrom + (i > 0 && (typeof steps[i - 1]?.mark === 'string' || typeof steps[i - 1]?.flag === 'string') ? PEN_FRAMES : 0);
     const speakingFrames = clip ? clip.seconds * FPS : (wordCount(text) / (WORDS_PER_MINUTE * speed)) * 60 * FPS;
     const after = clip
       ? Math.ceil(speakingFrames) + pause(i === 0 ? NARRATION_TAIL : STEP_TAIL)

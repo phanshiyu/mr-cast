@@ -1,6 +1,9 @@
 // Turns a storyboard as written, older field names included, into the shape the scenes draw. It runs once
 // where a storyboard enters: after `validate` in the CLI and after the player fetches storyboard.json.
 
+import { plainText } from './markup.mjs';
+import { FLAG_MARK, flaggedFinding } from './review.mjs';
+
 /** What `kind` meant before nodes had their own icon and caption. */
 const KINDS = {
   service: { icon: 'server', caption: 'service' },
@@ -70,9 +73,18 @@ export function focusSteps(scene) {
   });
 }
 
-function normalizeScene(scene, explain) {
+/** A flagged code step draws its finding's mark: a circle and the claim, unless the step names its own. */
+function flagSteps(steps, storyboard) {
+  return steps.map((step) => {
+    const finding = flaggedFinding(storyboard, step);
+    return finding ? { ...step, mark: step.mark ?? FLAG_MARK, note: step.note ?? plainText(finding.claim) } : step;
+  });
+}
+
+function normalizeScene(scene, explain, storyboard) {
   const steps = focusSteps(scene);
   const out = steps === scene.steps ? { ...scene } : { ...scene, steps };
+  if (scene.type === 'code' && Array.isArray(out.steps)) out.steps = flagSteps(out.steps, storyboard);
   if (scene.type === 'graph') out.nodes = scene.nodes.map((n) => normalizeNode(n, explain));
   if (scene.type === 'sequence') {
     out.participants = scene.participants.map((n) => normalizeNode(n, explain));
@@ -85,5 +97,5 @@ function normalizeScene(scene, explain) {
 export function normalizeStoryboard(storyboard, hunks) {
   const explain = isExplanation(hunks);
   const current = upgradeTypes(storyboard);
-  return { ...current, scenes: current.scenes.map((scene) => normalizeScene(scene, explain)) };
+  return { ...current, scenes: current.scenes.map((scene) => normalizeScene(scene, explain, current)) };
 }

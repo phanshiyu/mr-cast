@@ -1,4 +1,4 @@
-import type { Risk, Scene } from '../types';
+import type { Risk, Scene, Severity } from '../types';
 
 export const colors = {
   bg: '#07080c',
@@ -48,6 +48,14 @@ export const defaultChapter: Record<Scene['type'], string> = {
   chart: 'Chart',
   timeline: 'Timeline',
   files: 'Files',
+  review: "Claude's review",
+};
+
+/** Ink of a review finding's severity: its pen mark, note and recap row. */
+export const severityInk: Record<Severity, string> = {
+  bug: '#ff6b7a',
+  risk: '#ff9f43',
+  nit: '#8fa0ff',
 };
 
 /** The label a scene's header and the player's chapter list show: its own chapter, or one for its type. A graph that branches at a decision is a flowchart. */

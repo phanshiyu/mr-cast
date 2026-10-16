@@ -18,14 +18,15 @@ export function checkPenMarks(s, p, hunks, errors, warnings) {
   s.steps.forEach((step, i) => {
     if (!step || typeof step !== 'object') return;
     const q = `${p}.steps[${i}]`;
-    if (step.mark === undefined) {
+    // A flagged step draws its finding's mark, a circle unless it names another.
+    if (step.mark === undefined && step.flag === undefined) {
       if (step.note !== undefined) errors.push(`${q}.note: needs a mark to sit beside; add "mark": "arrow" to point the note at the step's focus`);
       if (step.token !== undefined) errors.push(`${q}.token: needs a mark to draw on it, such as "mark": "circle"`);
       return;
     }
     marked++;
     if (!code && !FOCUS_TYPES.includes(s.type)) return errors.push(`${q}.mark: a ${s.type} step has no focus to draw on; marks go on code steps and on diagram steps with a focus`);
-    if (!PEN_MARKS.includes(step.mark)) errors.push(`${q}.mark: must be one of ${PEN_MARKS.join(', ')}${typeof step.mark === 'string' ? didYouMean(step.mark, PEN_MARKS) : ''}`);
+    if (step.mark !== undefined && !PEN_MARKS.includes(step.mark)) errors.push(`${q}.mark: must be one of ${PEN_MARKS.join(', ')}${typeof step.mark === 'string' ? didYouMean(step.mark, PEN_MARKS) : ''}`);
     if (step.note !== undefined) {
       if (!isStr(step.note)) errors.push(`${q}.note: must be a non-empty string`);
       else if (step.note.trim().length > NOTE_MAX) errors.push(`${q}.note: ${step.note.trim().length} characters; a note is written on one line, so keep it to ${NOTE_MAX}`);
