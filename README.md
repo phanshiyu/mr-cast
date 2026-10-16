@@ -227,7 +227,7 @@ A scene never cuts its text. Every label, caption, bullet, note, cell and title 
 scenes[2] ("Who calls whom").messages[4].label: "POST /orders/{orderId}/line-items/{lineItemId}/adjustments" does not fit its message label, even at 15px; shorten the label, or split the message in two
 ```
 
-`validate` runs the player's own layout code to decide this, so it and the video always agree. A file's name or path, a hunk header and a line of code are the source's own, so they shrink further with a warning instead. Widths come from `shared/font-metrics.mjs`, measured per character, weight and size in the browser that renders stills and videos.
+`validate` runs the player's own layout code to decide this, so it and the video always agree. A file's name or path, a hunk header and a line of code are the source's own, so they shrink further with a warning instead. Widths come from `shared/font-metrics.mjs`, measured per character, weight and size in the browser that renders stills and videos. Text is drawn in Inter and code in JetBrains Mono, both bundled with mr-cast ([SIL Open Font License](src/assets/inter-OFL.txt), [license](src/assets/jetbrains-mono-OFL.txt)), so a video lays its text out the same on macOS and Linux.
 
 On-screen text takes inline markup, for the one word or value a sentence is about:
 

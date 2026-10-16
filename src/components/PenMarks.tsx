@@ -1,5 +1,5 @@
-import { continueRender, delayRender, interpolate, useCurrentFrame } from 'remotion';
-import caveat from '../assets/caveat-latin-600.woff2';
+import { interpolate, useCurrentFrame } from 'remotion';
+import { FACES } from '../fonts';
 import { plainText } from '../../shared/markup.mjs';
 import { markedKeys } from '../../shared/pen-marks.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
@@ -11,19 +11,9 @@ import { clamp, colors } from './theme';
 const INK = '#ffe066';
 const PEN = 4.5;
 const NOTE_FONT = 34;
-const HAND = 'mr-cast-hand';
+const HAND = FACES.hand;
 /** A mark fades over these frames once the next step starts. */
 const CLEAR_FRAMES = 8;
-
-// Every frame that draws a note must have the handwriting loaded, or its width and its look would differ.
-if (typeof document !== 'undefined' && typeof FontFace !== 'undefined') {
-  const handle = delayRender('Loading the handwriting font for pen marks');
-  new FontFace(HAND, `url(${caveat}) format('woff2')`, { weight: '600' })
-    .load()
-    .then((face) => document.fonts.add(face))
-    .catch((err) => console.warn(`mr-cast: pen marks fall back to a system font: ${err}`))
-    .finally(() => continueRender(handle));
-}
 
 let measurer: CanvasRenderingContext2D | null | undefined;
 /** Width of a note in the handwriting, or an estimate before the font has loaded. */

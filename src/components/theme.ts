@@ -18,9 +18,10 @@ export const colors = {
   delBg: 'rgba(255, 107, 122, 0.13)',
 };
 
+/** The bundled Inter and JetBrains Mono (src/fonts.ts), with system fonts behind them only if a file fails to load. */
 export const fonts = {
-  sans: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
-  mono: '"SF Mono", ui-monospace, Menlo, Monaco, "Cascadia Mono", Consolas, "Liberation Mono", monospace',
+  sans: 'mr-cast-sans, -apple-system, "Segoe UI", Arial, sans-serif',
+  mono: 'mr-cast-mono, ui-monospace, Menlo, Consolas, monospace',
 };
 
 export const riskColors: Record<Risk, string> = {

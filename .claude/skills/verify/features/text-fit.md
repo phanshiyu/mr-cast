@@ -7,7 +7,7 @@ Every text a scene draws is fitted to its place by `shared/textfit.mjs`: it wrap
 - `fit-wrap` wraps and shrinks every display text: card titles and captions, edge and message labels, notes, state and transition labels, table cells and headers, chart labels and annotations, timeline events and spans, file notes, test names, proves and gaps, step labels, callouts, flow actions, the intent card and every scene's chapter and title.
 - `fit-validate` fails with `<path>: "<text>" does not fit its <slot>, even at <n>px; <fix>` for text past its slot's floor, and fails when a table or tests scene does not fit the frame at its smallest font. A file's name or path, a hunk header and a line of code are the source's own, so they shrink with a warning instead.
 - `fit-markup` draws `**bold**`, `` `code` `` chips, `==marked==` highlights and `[words]{good|bad|warn|accent|neutral}` in display text. `validate` fails on unclosed or unknown markup with its column, and warns when more than a third of a text of three or more words is styled. Narration, `say` and pen notes drop markup before the voice, the clip key and the subtitles, with a warning.
-- `fit-metrics` measures with `shared/font-metrics.mjs`, per character, weight and size with kerning, made by `node scripts/measure-fonts.mjs` in Chrome Headless Shell. In the player a fitted line is drawn within a pixel of its measured width.
+- `fit-metrics` measures with `shared/font-metrics.mjs`, per character, weight and size with kerning, made by `node scripts/measure-fonts.mjs` in Chrome Headless Shell from the bundled font files. In the player a fitted line is drawn within a pixel of its measured width.
 - `fit-lint` (`npm run typecheck` runs `scripts/check-text.mjs`) fails on text clipping or an ellipsis under `src/`, and on a component that fits text itself.
 
 ## How to get to it (user POV)
@@ -24,6 +24,6 @@ Preconditions: the baseline in `README.md`. The fixtures use the demo's diff, so
 
 ## Gotchas
 
-- The metrics are measured on macOS, where the render browser draws `-apple-system` as SF Pro. On another system the fonts differ, and a fit can be off by a few pixels.
+- Text is drawn in the bundled Inter and JetBrains Mono (`src/fonts.ts`), which the metrics were measured from, so a fit is the same on macOS and Linux. A render waits for the fonts with `delayRender`, and the player paints only once they have loaded. A character outside the bundled subset (Latin, Latin-1 and Latin Extended-A, punctuation, arrows and a few math signs) falls back to a system font and measures as its base letter.
 - A text exactly at its slot's floor fits; one character more fails. Recheck `over.expected.txt` after changing a slot in `src/fit/slots.ts`.
 - `text-check.mjs` finds a text by its characters with spaces removed, so a text split over lines or uppercased by CSS still counts as seen.

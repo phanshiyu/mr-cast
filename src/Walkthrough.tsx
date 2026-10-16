@@ -16,6 +16,7 @@ import { StateDiagram } from './components/StateDiagram';
 import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
+import './fonts';
 import type { GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
