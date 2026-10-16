@@ -115,15 +115,24 @@ function eventMotion(frame: number, fps: number, { at, stepFrom }: EventTiming) 
   };
 }
 
-/** Stem and axis dot; every stem is drawn before any card, so cards in lower lanes cover the stems that pass behind them. */
+/** Leader and axis dot. The leader grows from the dot up to the card as the card rises. */
 const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; timing: EventTiming; frame: number }> = ({ placed, axisY, timing, frame }) => {
   const { fps } = useVideoConfig();
   const tone = tones[placed.event.tone ?? 'accent'];
   const { pop, rise, flash } = eventMotion(frame, fps, timing);
-  const stemTop = placed.box.y + placed.box.h;
   return (
     <g>
-      <line x1={placed.x} x2={placed.x} y1={axisY} y2={axisY - (axisY - stemTop) * rise} stroke={tone.color} strokeOpacity={0.6} strokeWidth={2} />
+      <polyline
+        points={placed.stem.map((p) => `${p.x},${p.y}`).join(' ')}
+        fill="none"
+        pathLength={1}
+        strokeDasharray="1 1"
+        strokeDashoffset={1 - Math.min(1, Math.max(0, rise))}
+        stroke={tone.color}
+        strokeOpacity={0.6}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
       <circle cx={placed.x} cy={axisY} r={(18 + 14 * flash) * Math.min(1, pop)} fill="none" stroke={tone.color} strokeOpacity={0.5 * flash} strokeWidth={3} />
       <circle cx={placed.x} cy={axisY} r={10 * pop} fill={tone.color} stroke={colors.bg} strokeWidth={3} />
     </g>

@@ -12,14 +12,17 @@ const BOX_PAD_X = 18;
 const BOX_PAD_Y = 12;
 const BOX_MAX_W = 330;
 const BOX_MIN_W = 120;
-const LANE_GAP = 18;
+const BOX_GAP = 14;
 const SIDE_PAD = 40;
-/** Space between the axis and the first lane of event boxes, crossed by each event's stem. */
+/** Space between the axis and the row of event cards, crossed by each event's stem. */
 const STEM_MIN = 34;
+/** The same space when a card had to move off its event, so the leader has room to bend. */
+const STEM_LEAD = 96;
+/** Height of a leader's straight rise from the axis, and of its straight drop into the card. */
+const LEAD_STRAIGHT = 18;
 const TICK_ZONE = 44;
 export const SPAN_H = 44;
 const SPAN_GAP = 14;
-const LANES_MAX = 4;
 
 export interface PlacedEvent {
   event: TimelineEvent;
@@ -29,6 +32,12 @@ export interface PlacedEvent {
   label: Fit;
   detail: Fit | null;
   box: { x: number; y: number; w: number; h: number };
+  /**
+   * The leader from the event's dot on the axis to the bottom of its card, as points from the dot up. Straight
+   * when the card sits over its event. Every bend is at the same two heights and the cards keep the events'
+   * order, so no two leaders cross.
+   */
+  stem: { x: number; y: number }[];
 }
 
 export interface PlacedSpan {
@@ -54,13 +63,65 @@ export interface TimelineLayout {
 /** Room a span keeps inside its bar around its label. */
 const SPAN_PAD = 24;
 
+/** Caps the widest cards at one width, so the row of cards fits in `room`. No card goes under BOX_MIN_W. */
+function capWidths(wanted: number[], room: number): number[] {
+  if (wanted.reduce((a, b) => a + b, 0) <= room) return wanted;
+  const sorted = [...wanted].sort((a, b) => a - b);
+  let cap = BOX_MIN_W;
+  let below = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    const even = (room - below) / (sorted.length - i);
+    if (even <= sorted[i]!) {
+      cap = even;
+      break;
+    }
+    below += sorted[i]!;
+  }
+  return wanted.map((w) => Math.max(BOX_MIN_W, Math.min(w, cap)));
+}
+
+/**
+ * Lays boxes in one row in their given order, `gap` apart and inside 0..width, each as near its wanted left
+ * edge as the others allow. Boxes that would overlap join a cluster, which centers on its boxes' wishes.
+ */
+export function packRow(items: { want: number; w: number }[], gap: number, width: number): number[] {
+  type Cluster = { first: number; last: number; left: number; w: number; wish: number };
+  const clusters: Cluster[] = [];
+  const place = (c: Cluster) => {
+    c.left = Math.max(0, Math.min(width - c.w, c.wish / (c.last - c.first + 1)));
+  };
+  items.forEach((item, i) => {
+    const c: Cluster = { first: i, last: i, left: 0, w: item.w, wish: item.want };
+    place(c);
+    clusters.push(c);
+    for (let prev = clusters[clusters.length - 2]; prev && prev.left + prev.w + gap > clusters[clusters.length - 1]!.left; prev = clusters[clusters.length - 2]) {
+      const next = clusters.pop()!;
+      // Each box wishes for the cluster's left edge to sit at its own wanted left minus its offset in the cluster.
+      const offset = prev.w + gap;
+      prev.wish += next.wish - offset * (next.last - next.first + 1);
+      prev.w += gap + next.w;
+      prev.last = next.last;
+      place(prev);
+    }
+  });
+  const lefts: number[] = [];
+  for (const c of clusters) {
+    let at = c.left;
+    for (let i = c.first; i <= c.last; i++) {
+      lefts.push(at);
+      at += items[i]!.w + gap;
+    }
+  }
+  return lefts;
+}
+
 /** Puts each item in the first lane where it does not overlap the items already there, scanning left to right. */
-function assignLanes<T>(items: T[], range: (item: T) => [number, number], gap: number, maxLanes = Infinity): number[] {
+function assignLanes<T>(items: T[], range: (item: T) => [number, number], gap: number): number[] {
   const ends: number[] = [];
   return items.map((item) => {
     const [a, b] = range(item);
     let lane = ends.findIndex((end) => a >= end + gap);
-    if (lane < 0) lane = ends.length < maxLanes ? ends.length : ends.indexOf(Math.min(...ends));
+    if (lane < 0) lane = ends.length;
     ends[lane] = Math.max(ends[lane] ?? -Infinity, b);
     return lane;
   });
@@ -77,34 +138,35 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   const x = (v: number) => x0 + ((v - lo) / (hi - lo || 1)) * (x1 - x0);
 
   const order = scene.events.map((event, index) => ({ event, index })).sort((a, b) => a.event.at - b.event.at || a.index - b.index);
-  const boxes = order.map(({ event, index }) => {
-    const stamp = formatValue(event.at, scene.unit);
+  const wanted = order.map(({ event }) => {
     const one = (text: string, slot: typeof SLOTS.eventLabel) => fitText(text, sized(slot, Infinity), '').width;
-    const wanted = Math.max(one(event.label, SLOTS.eventLabel), event.detail ? one(event.detail, SLOTS.eventDetail) : 0, measure(stamp, { family: 'mono', weight: 700, size: STAMP_FONT }) * 1.2);
-    const w = Math.max(BOX_MIN_W, Math.min(BOX_MAX_W, wanted + 2 * BOX_PAD_X));
+    const stampW = measure(formatValue(event.at, scene.unit), { family: 'mono', weight: 700, size: STAMP_FONT }) * 1.2;
+    const text = Math.max(one(event.label, SLOTS.eventLabel), event.detail ? one(event.detail, SLOTS.eventDetail) : 0, stampW);
+    return Math.max(BOX_MIN_W, Math.min(BOX_MAX_W, text + 2 * BOX_PAD_X));
+  });
+  const widths = capWidths(wanted, width - BOX_GAP * Math.max(0, order.length - 1));
+  const boxes = order.map(({ event, index }, i) => {
+    const w = widths[i]!;
     const label = fitText(event.label, sized(SLOTS.eventLabel, w - 2 * BOX_PAD_X), `events[${index}].label`);
     const detail = event.detail ? fitText(event.detail, sized(SLOTS.eventDetail, w - 2 * BOX_PAD_X), `events[${index}].detail`) : null;
     const h = 2 * BOX_PAD_Y + STAMP_LINE + label.height + (detail?.height ?? 0);
-    const cx = x(event.at);
-    const left = Math.min(width - w, Math.max(0, cx - w / 2));
-    return { event, index, cx, stamp, label, detail, w, h, left };
+    return { event, index, cx: x(event.at), stamp: formatValue(event.at, scene.unit), label, detail, w, h };
   });
-  const lanes = assignLanes(boxes, (b) => [b.left, b.left + b.w], 14, LANES_MAX);
-  const laneCount = Math.max(0, ...lanes) + 1;
-  const laneH = Array.from({ length: laneCount }, (_, l) => Math.max(...boxes.filter((_, i) => lanes[i] === l).map((b) => b.h)));
-  const eventsH = laneH.reduce((a, b) => a + b + LANE_GAP, 0);
-  const axisY = eventsH + STEM_MIN;
-  // Lane 0 sits nearest the axis; each further lane stacks above it.
-  const laneBottom = (l: number) => axisY - STEM_MIN - laneH.slice(0, l).reduce((a, b) => a + b + LANE_GAP, 0);
-  const events: PlacedEvent[] = boxes.map((b, i) => ({
-    event: b.event,
-    index: b.index,
-    x: b.cx,
-    stamp: b.stamp,
-    label: b.label,
-    detail: b.detail,
-    box: { x: b.left, y: laneBottom(lanes[i]!) - b.h, w: b.w, h: b.h },
-  }));
+  // One row of cards in the events' order, each as near its event as the cards beside it allow.
+  const lefts = packRow(boxes.map((b) => ({ want: b.cx - b.w / 2, w: b.w })), BOX_GAP, width);
+  const anchors = boxes.map((b, i) => Math.min(lefts[i]! + b.w - 2 * BOX_PAD_X, Math.max(lefts[i]! + 2 * BOX_PAD_X, b.cx)));
+  const moved = boxes.some((b, i) => Math.abs(anchors[i]! - b.cx) > 0.5);
+  const stemH = moved ? STEM_LEAD : STEM_MIN;
+  const rowH = Math.max(0, ...boxes.map((b) => b.h));
+  const axisY = rowH + stemH;
+  const cardBottom = axisY - stemH;
+  const events: PlacedEvent[] = boxes.map((b, i) => {
+    const ax = anchors[i]!;
+    const stem = Math.abs(ax - b.cx) <= 0.5
+      ? [{ x: b.cx, y: axisY }, { x: b.cx, y: cardBottom }]
+      : [{ x: b.cx, y: axisY }, { x: b.cx, y: axisY - LEAD_STRAIGHT }, { x: ax, y: cardBottom + LEAD_STRAIGHT }, { x: ax, y: cardBottom }];
+    return { event: b.event, index: b.index, x: b.cx, stamp: b.stamp, label: b.label, detail: b.detail, box: { x: lefts[i]!, y: cardBottom - b.h, w: b.w, h: b.h }, stem };
+  });
 
   const spanOrder = [...spans].sort((a, b) => Math.min(a.from, a.to) - Math.min(b.from, b.to));
   const fitted = spanOrder.map((span) => {
