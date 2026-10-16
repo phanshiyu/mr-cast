@@ -6,8 +6,8 @@ import { checkNodeFields } from './validate-diagram.mjs';
 import { TONES } from './validate-scenes.mjs';
 
 // Fewer than this and there is no order to show; more and each band gets too thin to read.
-const LAYERS_MIN = 2;
-const LAYERS_MAX = 7;
+export const LAYERS_MIN = 2;
+export const LAYERS_MAX = 7;
 const ITEMS_MAX = 5;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;

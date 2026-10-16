@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { LAYERS_MAX, LAYERS_MIN } from '../bin/lib/validate-layers.mjs';
 import { layerRoute, tokenSteps } from '../shared/layers.mjs';
 import { refNames, resolveRef } from '../shared/targets.mjs';
 
@@ -121,4 +123,12 @@ test('when the token turns back at the first stop, focusing that stop again brin
 test('focusing the stop the token sits on mid-route keeps it there', () => {
   const steps = [{ focus: 'http' }, { focus: 'http' }, { focus: 'limiter' }];
   assert.deepEqual(tokenSteps(stack({ ...skipping, skip: undefined, return: true }, steps)).positions, [0, 0, 1]);
+});
+
+test('the skill and the schema give the layer count validate checks', async () => {
+  const range = `${LAYERS_MIN} to ${LAYERS_MAX}`;
+  assert.match(fs.readFileSync(new URL('../skill/mr-cast/SKILL.md', import.meta.url), 'utf8'), new RegExp(`the first to see a request on top, ${range} of them`));
+  assert.match(fs.readFileSync(new URL('../src/types.ts', import.meta.url), 'utf8'), new RegExp(`the first to see a request, on top\\. ${range}\\.`));
+  const two = { type: 'layers', narration: 'The client calls the server.', layers: [{ id: 'client', label: 'Client' }, { id: 'server', label: 'Server' }] };
+  assert.deepEqual((await check(two)).warnings.filter((w) => w.startsWith('scenes[1]')), []);
 });

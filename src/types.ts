@@ -585,7 +585,7 @@ export interface LayerPath {
 export interface LayersScene extends SceneBase {
   type: 'layers';
   title?: string;
-  /** Top to bottom, in their real order: the outermost layer, or the first to see a request, on top. 3 to 7. */
+  /** Top to bottom, in their real order: the outermost layer, or the first to see a request, on top. 2 to 7. */
   layers: Layer[];
   /** A request's way through the stack. */
   path?: LayerPath;
