@@ -98,7 +98,7 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
   const color = ink?.color ?? INK;
   const noteSize = { width: note ? noteWidth(note) + 8 : 0, height: note ? Math.round(NOTE_FONT * 1.25) : 0 };
   const arrow = step.mark === 'arrow' ? placeArrow(noteSize, clutter, area) : null;
-  const sketch = arrow ? arrowSketch(arrow.tail, target, seed, PEN) : sketchMark(step.mark as Exclude<typeof step.mark, 'arrow'>, target, area, seed, PEN);
+  const sketch = arrow ? arrowSketch(arrow.tail, target, seed, PEN) : sketchMark(step.mark as Exclude<typeof step.mark, 'arrow'>, target, area, clutter.obstacles, seed, PEN);
   const noteBox = !note ? null : arrow ? arrow.note : placeNote(step.mark as Exclude<typeof step.mark, 'arrow'>, noteSize, sketch, clutter, area);
 
   const { start, done, clear } = markTiming(segments, k);

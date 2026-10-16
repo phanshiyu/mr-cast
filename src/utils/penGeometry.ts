@@ -150,30 +150,55 @@ function line(a: Pt, b: Pt, n: number, bow: number, waver: number, rand: Random)
   });
 }
 
+/** How far a ring may reach past the gap to an item beside its target, into that item's padding, so its wobble stays short of the text. */
+const NEIGHBOUR_REACH = 4;
+/** The least room a ring leaves beside its target, so the pen never crosses it. */
+const RING_CLEAR = 10;
+/** The smallest share of its size the ring's wobble draws it at. */
+const WOBBLE_LOW = 0.94;
+
+/** The gaps between the target and the nearest boxes level with it on its left and its right. */
+function sideGaps(t: Box, obstacles: readonly Box[]): number {
+  const level = obstacles.filter((o) => overlap(o, t) === 0 && o.y < bottom(t) && bottom(o) > t.y);
+  const left = level.filter((o) => right(o) <= t.x).map((o) => t.x - right(o));
+  const rightGaps = level.filter((o) => o.x >= right(t)).map((o) => o.x - right(t));
+  return Math.min(Infinity, ...left, ...rightGaps);
+}
+
 /**
- * An ellipse around the target that clears its corners, drawn the way a hand rings something: starting
- * at the upper left, a little more than once round, wobbling and spiralling out so the ends overlap.
+ * A ring around the target that clears its corners, drawn the way a hand rings something: starting at
+ * the upper left, a little more than once round, wobbling and spiralling out so the ends overlap. It is
+ * an ellipse where there is room; where items stand close beside the target, as cells in a row, it stays
+ * in the gap between them and squares its shoulders (a superellipse) to still clear the corners.
  */
-function ring(t: Box, area: Box, rand: Random): Stroke {
+function ring(t: Box, area: Box, obstacles: readonly Box[], rand: Random): Stroke {
   const c = center(t);
   const [a, b] = [t.width / 2, t.height / 2];
   const roomY = Math.max(b + 4, Math.min(c.y - area.y, bottom(area) - c.y) - 6);
   const ry = Math.min(roomY, b + clampTo(0.35 * b + 10, 12, 36));
   const clears = a / Math.sqrt(Math.max(0.2, 1 - (b / ry) ** 2));
   const roomX = Math.max(a + 4, Math.min(c.x - area.x, right(area) - c.x) - 6);
-  const rx = Math.min(roomX, Math.max(a + 16, clears));
+  const free = Math.min(roomX, Math.max(a + 16, clears));
+  const rx = Math.max(a + RING_CLEAR, Math.min(free, a + sideGaps(t, obstacles) + NEIGHBOUR_REACH));
+  // The roundest shape that clears the corners, |x/rx|^n + |y/ry|^n <= 1. Hemmed in, it passes close to
+  // them, so it clears them even where the wobble draws it smallest.
+  const low = rx < free ? WOBBLE_LOW : 1;
+  const [cx, cy] = [a / (low * rx), b / (low * ry)];
+  let n = 2;
+  while (n < 8 && cx ** n + cy ** n > 1 + 1e-9) n += 0.1;
   const tilt = jitter(rand, 0.03);
   const start = -2.2 + jitter(rand, 0.25);
   const sweep = 2 * Math.PI + 0.4 + rand() * 0.3;
   const [p1, p2] = [rand() * 6.28, rand() * 6.28];
-  const n = 64;
+  const steps = 64;
+  const bend = (v: number) => Math.sign(v) * Math.abs(v) ** (2 / n);
   return {
-    points: Array.from({ length: n + 1 }, (_, i) => {
-      const k = i / n;
+    points: Array.from({ length: steps + 1 }, (_, i) => {
+      const k = i / steps;
       const th = start + sweep * k;
       const r = 0.97 + 0.07 * k + 0.02 * Math.sin(2 * th + p1) + 0.012 * Math.sin(3 * th + p2);
-      const x = rx * r * Math.cos(th);
-      const y = ry * r * Math.sin(th);
+      const x = rx * r * bend(Math.cos(th));
+      const y = ry * r * bend(Math.sin(th));
       return { x: c.x + x * Math.cos(tilt) - y * Math.sin(tilt), y: c.y + x * Math.sin(tilt) + y * Math.cos(tilt) };
     }),
   };
@@ -196,14 +221,17 @@ function frame(t: Box, rand: Random): Stroke {
   return { points, sharp: true };
 }
 
-/** The strokes of a mark on `target`, kept inside `area` where the target leaves room. Arrows are drawn by `arrowSketch`. */
-export function sketchMark(mark: Exclude<PenMark, 'arrow'>, target: Box, area: Box, seed: number, pen: number): Sketch {
+/**
+ * The strokes of a mark on `target`, kept inside `area` where the target leaves room, and a ring off the
+ * `obstacles` beside it. Arrows are drawn by `arrowSketch`.
+ */
+export function sketchMark(mark: Exclude<PenMark, 'arrow'>, target: Box, area: Box, obstacles: readonly Box[], seed: number, pen: number): Sketch {
   const rand = random(seed);
   const t = target;
   const strokes: Stroke[] = (() => {
     switch (mark) {
       case 'circle':
-        return [ring(t, area, rand)];
+        return [ring(t, area, obstacles, rand)];
       case 'box':
         return [frame(t, rand)];
       case 'underline': {
