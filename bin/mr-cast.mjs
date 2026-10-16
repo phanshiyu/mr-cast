@@ -147,7 +147,7 @@ async function loadProject(dir, settings) {
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
   const meta = readRunMeta(dir);
   const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
-  const result = await validateStoryboard(raw, hunks, { mode, style, plan, quick: mode === 'explain' && meta.quick === true });
+  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, style, plan, quick: mode === 'explain' && meta.quick === true });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));

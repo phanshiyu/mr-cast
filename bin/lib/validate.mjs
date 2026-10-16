@@ -10,6 +10,7 @@ import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkVoice, sentences } from './validate-voice.mjs';
+import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { checkArray, checkMemory } from './validate-state.mjs';
@@ -204,11 +205,15 @@ function checkCodeSteps(scene, hunk, limits, p, errors, warnings) {
 
 const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h.additions}`);
 
+// The reason overview mode gives for code it does not show. A reviewer's video shows that code.
+const DIAGRAM_REASON = /\b(diagrams?|overview)\b/i;
+
 /**
- * Every hunk a reviewer needs must be shown in a code scene or listed in `skipped` with a reason.
+ * Every hunk a reviewer needs must be shown in a code scene or listed in `skipped` with a reason. Only the
+ * team's overview may leave out a substantial hunk because the diagrams cover it.
  * Returns the counts behind validate's summary line.
  */
-function checkCoverage(sb, hunks, errors, warnings) {
+function checkCoverage(sb, hunks, audience, errors, warnings) {
   // A tests scene that links a case to its hunk walks through that hunk as much as a code scene does.
   const shownIds = sb.scenes.flatMap((s) => {
     if (s?.type === 'code') return [s.hunkId];
@@ -223,7 +228,13 @@ function checkCoverage(sb, hunks, errors, warnings) {
     if (!isStr(entry?.hunkId)) errors.push(`${p}.hunkId: required string`);
     else if (!Object.hasOwn(hunks, entry.hunkId)) errors.push(`${p}.hunkId: "${entry.hunkId}" not found in hunks.json`);
     else if (shown.has(entry.hunkId)) warnings.push(`${p}: ${entry.hunkId} is also shown in a scene; remove it from skipped or drop the scene`);
-    else skipped.add(entry.hunkId);
+    else {
+      skipped.add(entry.hunkId);
+      const h = hunks[entry.hunkId];
+      if (audience !== 'overview' && isStr(entry.reason) && DIAGRAM_REASON.test(entry.reason) && h.status !== 'source' && !isTestFile(h.file) && h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) {
+        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : 'a reviewer'} shows every substantial hunk; add a code scene for it. Only the team's overview leaves code to the diagrams`);
+      }
+    }
     if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);
   });
 
@@ -430,16 +441,17 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', style?: 'simple', plan?: object | null, quick?: boolean }} meta  The mode from meta.json: "explain" (`mr-cast init`)
+ * @param {{ mode?: 'diff' | 'explain', audience?: 'familiar' | 'new' | 'overview', style?: 'simple', plan?: object | null, quick?: boolean }} meta  The mode from meta.json: "explain" (`mr-cast init`)
  *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply. The style
  *   from the command's flags: "simple" (`--audience new`) is explained line by line in plain words, so steps are short, every changed
  *   line of a shown hunk has a step, and sentences stay short. The run's plan.json as `readPlan` read it, when it
  *   has one: each scene's topic must name one of its topics, and each topic's scenes follow the viewer's picks.
+ *   `audience` (`--audience`) decides what may be skipped: only the team's overview leaves code to the diagrams.
  *   `quick` (`mr-cast init --quick`, kept in meta.json) is a short diagram of an explanation made in seconds: it
  *   may open without an intent scene, and keeps to QUICK_SCENES_MAX scenes. Every correctness and text-fit check
  *   still applies.
  */
-export async function validateStoryboard(raw, hunks, { mode = 'diff', style, plan = null, quick = false } = {}) {
+export async function validateStoryboard(raw, hunks, { mode = 'diff', audience = 'familiar', style, plan = null, quick = false } = {}) {
   // An older `arch` scene is a `graph`: renamed here so every check below sees one name.
   const sb = upgradeTypes(raw);
   const errors = [];
@@ -647,12 +659,13 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style, pla
   checkStoryShape(sb.scenes, hunks ?? {}, mode, quick, warnings);
   if (quick) checkQuick(sb.scenes, warnings);
   checkVoice(sb, { simple }, warnings);
+  checkSpokenCounts(sb.scenes, warnings);
   if (simple) checkSimpleLineCoverage(sb, hunks ?? {}, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
     return { errors, warnings, coverage: null };
   }
-  const coverage = checkCoverage(sb, hunks ?? {}, errors, warnings);
+  const coverage = checkCoverage(sb, hunks ?? {}, audience, errors, warnings);
   return { errors, warnings, coverage };
 }
 
