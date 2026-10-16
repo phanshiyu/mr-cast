@@ -83,3 +83,38 @@ test('init --quick runs in quick-<slug>, and a full init of the same title start
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test('init --quick needs a title, and a full run that is reset or has snippets is not seeded from the quick one', () => {
+  const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-quick-')));
+  const env = { ...process.env, XDG_CONFIG_HOME: path.join(tmp, 'config'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1' };
+  const cwd = path.join(tmp, 'work');
+  fs.mkdirSync(cwd);
+  const run = (...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8' });
+  const full = path.join(cwd, '.mr-cast', 'limits');
+  const read = (file) => JSON.parse(fs.readFileSync(path.join(full, file), 'utf8'));
+  try {
+    assert.equal(run('init', '--title', 'Limits').status, 0);
+    const untitled = run('init', '--quick');
+    assert.equal(untitled.status, 1);
+    assert.match(untitled.stderr, /init --quick needs --title/);
+    assert.equal(read('meta.json').quick, undefined);
+
+    assert.equal(run('init', '--title', 'Limits', '--quick').status, 0);
+    const quickDir = path.join(cwd, '.mr-cast', 'quick-limits');
+    fs.writeFileSync(path.join(quickDir, 'storyboard.json'), JSON.stringify({ title: 'Limits', scenes: [flowchart()] }));
+    fs.writeFileSync(path.join(quickDir, 'hunks.json'), JSON.stringify({ q1: { id: 'q1' } }));
+
+    fs.writeFileSync(path.join(full, 'hunks.json'), JSON.stringify({ s1: { id: 's1' } }));
+    const kept = run('init', '--title', 'Limits');
+    assert.doesNotMatch(kept.stderr, /started from the quick video/);
+    assert.deepEqual(read('hunks.json'), { s1: { id: 's1' } });
+    assert.equal(fs.existsSync(path.join(full, 'storyboard.json')), false);
+
+    const reset = run('init', '--title', 'Limits', '--reset');
+    assert.doesNotMatch(reset.stderr, /started from the quick video/);
+    assert.deepEqual(read('hunks.json'), {});
+    assert.equal(fs.existsSync(path.join(full, 'storyboard.json')), false);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});

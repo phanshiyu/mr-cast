@@ -53,8 +53,8 @@ Used by the Claude Code skills:
   init --title text [--reset] [--quick]
                     start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
                     it and keeps its storyboard unless --reset; --quick starts a quick video of 1 to 3 scenes
-                    in .mr-cast/quick-<title-slug>, and a later init of the same title without it starts the
-                    full video from the quick one
+                    in .mr-cast/quick-<title-slug> (it needs --title), and a later init of the same title
+                    without it starts an empty full video from the quick one
   snippet <file>:<start>-<end> ...
                     add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
   plan [--port N] [--no-open]
@@ -624,6 +624,8 @@ function quickRunOf(runs, title) {
 function init(argv) {
   const { values } = parseArgs({ args: argv, options: { name: DIR_OPTION.name, ...SETTINGS_OPTIONS, title: { type: 'string' }, reset: { type: 'boolean', default: false }, quick: { type: 'boolean', default: false } } });
   settingsFrom(values); // rejects a bad flag before anything is written
+  // Without a title, init reopens the current run, which may be a full video that --quick must not turn quick.
+  if (values.quick && values.title === undefined) throw new UserError('init --quick needs --title, such as --title "limiter.ts lines 40 to 72"');
   const repo = findRepoRoot();
   if (repo) ensureExcluded(repo);
   const runs = runsRoot();
@@ -632,7 +634,9 @@ function init(argv) {
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
   const previous = readRunMeta(dir) ?? {};
-  const quickSource = values.quick || fs.existsSync(files.storyboard) ? null : quickRunOf(runs, values.title);
+  // A full run starts from its quick video only while it is empty, and not when the user asked to start it over.
+  const empty = !fs.existsSync(files.storyboard) && !Object.keys(fs.existsSync(files.hunks) ? readJson(files.hunks, '') : {}).length;
+  const quickSource = values.quick || values.reset || !empty ? null : quickRunOf(runs, values.title);
   fs.mkdirSync(dir, { recursive: true });
   if (quickSource) {
     for (const file of ['hunks.json', 'storyboard.json', 'voiceover.json', 'audio']) {
