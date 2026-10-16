@@ -1,0 +1,62 @@
+name: Publish
+
+# Publishes to npm after CI passes on main, when package.json holds a version npm does not have yet.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+env:
+  MR_CAST_NO_UPDATE_CHECK: '1'
+
+jobs:
+  publish:
+    name: Publish to npm
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: ./.github/actions/setup
+      - name: Check the token and the version
+        id: check
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if [ -z "$NPM_TOKEN" ]; then
+            echo "::notice::NPM_TOKEN is not set, so nothing was published."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "::notice::$name@$version is already on npm."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Pack
+        if: steps.check.outputs.publish == 'true'
+        run: pnpm pack --out mr-cast.tgz
+      - name: Publish
+        if: steps.check.outputs.publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > "$RUNNER_TEMP/.npmrc"
+          NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc" npm publish mr-cast.tgz --access public --provenance
+          echo "::notice::Published ${{ steps.check.outputs.version }}"
