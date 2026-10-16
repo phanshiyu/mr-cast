@@ -10,7 +10,7 @@ import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill
 import { locateJsonError } from './lib/json.mjs';
 import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
-import { branchRun, currentRun, explanationRun, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
+import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
 import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
@@ -24,6 +24,7 @@ import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
+import { ensureVoiceoverInChild, stopVoicing } from './lib/voice-child.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const { version: VERSION } = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -48,9 +49,11 @@ Used by the Claude Code skills:
   extract [base] [--working]
                     start a walkthrough of the branch's diff in .mr-cast/<branch> and print a hunk index;
                     --working diffs the merge base against uncommitted changes
-  init --title text [--reset]
+  init --title text [--reset] [--quick]
                     start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
-                    it and keeps its storyboard unless --reset
+                    it and keeps its storyboard unless --reset; --quick starts a quick video of 1 to 3 scenes
+                    in .mr-cast/quick-<title-slug>, and a later init of the same title without it starts the
+                    full video from the quick one
   snippet <file>:<start>-<end> ...
                     add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
   plan [--port N] [--no-open]
@@ -59,7 +62,8 @@ Used by the Claude Code skills:
   validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
   play [--port N] [--no-open]
-                    voice the narration and serve the live player (default port 4747)
+                    serve the live player at once (default port 4747) and voice the narration in the
+                    background; the player plays muted with subtitles until it is ready
   render [--out file.mp4]
                     voice the narration and render an MP4 with chapter markers, named after the storyboard title
 
@@ -141,11 +145,13 @@ async function loadProject(dir, settings) {
   const style = styleOf(settings);
   const plan = readPlan(dir);
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
-  const result = await validateStoryboard(raw, hunks, { mode: readRunMeta(dir)?.mode === 'explain' ? 'explain' : 'diff', style, plan });
+  const meta = readRunMeta(dir);
+  const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
+  const result = await validateStoryboard(raw, hunks, { mode, style, plan, quick: mode === 'explain' && meta.quick === true });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
-  const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, readRunMeta(dir));
+  const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
   return { dir, hunks, storyboard, plan, result, style, review, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
@@ -316,14 +322,18 @@ function reportVoiceProgress(event) {
  * Voice-over for play and render, in the command's voice and at its pace. A silent command, or one whose
  * voicing fails, has silent scenes timed from word count at that pace.
  */
-async function voiceoverFor(dir, storyboard, settings) {
+async function voiceoverFor(dir, storyboard, settings, { onClip, ensure = ensureVoiceover } = {}) {
   const silent = () => {
     const { speed, pauses } = settings.pace;
     return speed === 1 && pauses === 1 ? null : { voice: settings.voice, speed, pauses, clips: {} };
   };
   if (settings.silent) return silent();
   try {
-    return await ensureVoiceover({ dataDir: dir, storyboard, voice: settings.voice, pace: settings.pace, onProgress: reportVoiceProgress });
+    const onProgress = (event) => {
+      reportVoiceProgress(event);
+      if (event.type === 'clip') onClip?.(event.voiceover);
+    };
+    return await ensure({ dataDir: dir, storyboard, voice: settings.voice, pace: settings.pace, onProgress });
   } catch (err) {
     console.error(`mr-cast: warning: continuing without voice-over: ${err.message}`);
     return silent();
@@ -377,6 +387,23 @@ function openBrowser(url) {
   } catch { /* no browser; the URL is printed */ }
 }
 
+/**
+ * The voice-over play can serve before voicing anything: the clips already on disk for the storyboard's texts in the
+ * command's voice and at its pace. `pending` marks one that still lacks a clip; the player then plays silent until
+ * the viewer turns the voice on.
+ */
+function voicedSoFar(dir, storyboard, settings) {
+  const { speed, pauses } = settings.pace;
+  const clips = Object.fromEntries(Object.entries(readVoiceover(dir)?.clips ?? {}).filter(([, clip]) => fs.existsSync(path.join(dir, clip.src))));
+  const voiceover = { voice: settings.voice, speed, pauses, clips };
+  const pending = storyboard.scenes.some((scene) => spokenTexts(scene).some((text) => !clipFor(voiceover, text)));
+  return pending ? { ...voiceover, pending: true } : voiceover;
+}
+
+/** "3 of 3 scenes": the scenes whose every spoken text has a clip. */
+const voicedScenes = (storyboard, voiceover) =>
+  `${storyboard.scenes.filter((scene) => spokenTexts(scene).every((text) => clipFor(voiceover, text))).length} of ${plural(storyboard.scenes.length, 'scene')}`;
+
 async function play(argv) {
   const { values } = parseArgs({
     args: argv,
@@ -386,8 +413,18 @@ async function play(argv) {
   const { settings, ...run } = runFor(values);
   const { dir, storyboard } = await loadValidProject(run.dir, settings);
   const distDir = ensureDist();
-  let voiceover = await voiceoverFor(dir, storyboard, settings);
+  let voiceover = settings.silent ? await voiceoverFor(dir, storyboard, settings) : voicedSoFar(dir, storyboard, settings);
   reportPace(voiceover);
+
+  // One voicing at a time. The first runs while the player already plays silent, and tells it after each clip so it
+  // can show the progress. A later one, for an edited storyboard, finishes before the player reloads, as before.
+  let voicing = Promise.resolve();
+  const voiceInTurn = (sb, onClip) => {
+    voicing = voicing.then(async () => {
+      voiceover = await voiceoverFor(dir, sb, settings, { onClip, ensure: ensureVoiceoverInChild });
+    });
+    return voicing;
+  };
 
   const onDataChange = async (file) => {
     if (file === 'meta.json' || file === BUILT_FILE) return;
@@ -396,7 +433,7 @@ async function play(argv) {
       project = await loadProject(dir, settings);
       console.error(`mr-cast: ${file} changed`);
       if (file === 'storyboard.json' && !project.result.errors.length) {
-        voiceover = await voiceoverFor(dir, project.storyboard, settings);
+        await voiceInTurn(project.storyboard);
         project = await loadProject(dir, settings);
       }
     } catch (err) {
@@ -408,11 +445,24 @@ async function play(argv) {
   const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover });
   const url = `${server.url}/#token=${server.token}`;
   console.log(`mr-cast player: ${url}`);
+  if (voiceover?.pending) {
+    console.error('mr-cast: playing with subtitles, voice on the way');
+    void voiceInTurn(storyboard, (partial) => {
+      voiceover = { ...partial, pending: true };
+      server.voiceProgress();
+    }).then(() => {
+      if (voiceover && !voiceover.pending) console.error(`voice ready: ${voicedScenes(storyboard, voiceover)}`);
+      server.voiceProgress();
+    });
+  }
   if (!values['no-open']) openBrowser(url);
 
   // Once Kokoro has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
-  const shutdown = () => server.close();
+  const shutdown = () => {
+    stopVoicing();
+    return server.close();
+  };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
 }
@@ -553,9 +603,20 @@ async function upgradeCommand(argv) {
   await upgrade({ root: ROOT, version: VERSION, check: values.check });
 }
 
+/**
+ * The quick video of `title` that a new full video of it starts from: its storyboard, snippets and voice, so only
+ * the scenes it adds need voicing. Null when there is none.
+ */
+function quickRunOf(runs, title) {
+  if (title === undefined) return null;
+  const dir = path.join(runs, explanationSlug(title, true));
+  const meta = readRunMeta(dir);
+  return meta?.quick === true && meta.title === title && fs.existsSync(path.join(dir, 'storyboard.json')) ? dir : null;
+}
+
 /** Starts or reopens the run of an explanation, which has no diff: its code comes from `snippet`. */
 function init(argv) {
-  const { values } = parseArgs({ args: argv, options: { name: DIR_OPTION.name, ...SETTINGS_OPTIONS, title: { type: 'string' }, reset: { type: 'boolean', default: false } } });
+  const { values } = parseArgs({ args: argv, options: { name: DIR_OPTION.name, ...SETTINGS_OPTIONS, title: { type: 'string' }, reset: { type: 'boolean', default: false }, quick: { type: 'boolean', default: false } } });
   settingsFrom(values); // rejects a bad flag before anything is written
   const repo = findRepoRoot();
   if (repo) ensureExcluded(repo);
@@ -565,12 +626,20 @@ function init(argv) {
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
   const previous = readRunMeta(dir) ?? {};
+  const quickSource = values.quick || fs.existsSync(files.storyboard) ? null : quickRunOf(runs, values.title);
   fs.mkdirSync(dir, { recursive: true });
+  if (quickSource) {
+    for (const file of ['hunks.json', 'storyboard.json', 'voiceover.json', 'audio']) {
+      const from = path.join(quickSource, file);
+      if (fs.existsSync(from)) fs.cpSync(from, path.join(dir, file), { recursive: true });
+    }
+  }
   if (!fs.existsSync(files.hunks)) writeJson(files.hunks, {});
   writeJson(files.meta, {
     mode: 'explain',
     title: values.title ?? previous.title ?? null,
     createdAt: previous.createdAt ?? new Date().toISOString(),
+    ...(values.quick || previous.quick ? { quick: true } : {}),
   });
   writeCurrent(runs, name);
   rememberChoices(values);
@@ -580,7 +649,8 @@ function init(argv) {
   const snippets = Object.keys(readJson(files.hunks, '')).length;
   let kept = null;
   try { kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)'; } catch { /* none yet */ }
-  if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`);
+  if (quickSource) console.error(`note: started from the quick video in ${rel(quickSource)}: its storyboard, ${plural(snippets, 'snippet')} and voice clips; add the scenes the full video needs`);
+  else if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`);
   else if (snippets) console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
   console.error(`next: \`mr-cast snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast validate${settingsArgs(values)}\``);
 }

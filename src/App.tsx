@@ -9,12 +9,15 @@ import type { HunkMap, Plan, Scene, Voiceover, WalkthroughProps } from './types'
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
 import { Walkthrough } from './Walkthrough';
+import { QuickEndCard, VoicePill } from './QuickParts';
+import { useVoiceChoice } from './useVoiceChoice';
 
 interface Meta {
   mode?: 'diff' | 'explain';
   base?: string;
   head?: string;
   branch?: string;
+  quick?: boolean;
 }
 
 /** plan.json as the page can use it, or the problems Claude still has to fix in it. */
@@ -133,10 +136,20 @@ export const App: React.FC = () => {
 
   const ready = state.status === 'ready' ? state : null;
   const walk = ready?.walkthrough ?? null;
-  const shown: Tab = !walk ? 'plan' : !ready?.plan ? 'video' : tab;
-  const chapters = useMemo(() => (walk ? timeline(walk.storyboard, walk.voiceover) : []), [walk]);
-  const total = walk ? totalDurationInFrames(walk.storyboard, walk.voiceover) : 1;
+  const view: Tab = !walk ? 'plan' : !ready?.plan ? 'video' : tab;
+  const voice = useVoiceChoice(walk?.storyboard ?? null, walk?.voiceover);
+  // The player mounts once the voice is decided, since whether it autoplays is fixed when it mounts.
+  const shown = useMemo(() => (walk && voice.decided ? { ...walk, voiceover: voice.shown } : null), [walk, voice.decided, voice.shown]);
+  const chapters = useMemo(() => (shown ? timeline(shown.storyboard, shown.voiceover) : []), [shown]);
+  const total = shown ? totalDurationInFrames(shown.storyboard, shown.voiceover) : 1;
   const voiced = chapters.some((c) => c.segments.some((s) => s.clip));
+  const [ended, setEnded] = useState(false);
+  const startVoice = useRef(false);
+  const { status: voiceStatus, turnOn: turnVoiceOn } = voice;
+  const playWithVoice = useCallback(() => {
+    startVoice.current = true;
+    turnVoiceOn();
+  }, [turnVoiceOn]);
 
   useEffect(() => {
     const player = playerRef.current;
@@ -145,14 +158,33 @@ export const App: React.FC = () => {
       player.seekTo(Math.min(resumeFrame.current, total - 1));
       resumeFrame.current = null;
     }
+    if (startVoice.current) {
+      startVoice.current = false;
+      player.unmute();
+      player.seekTo(0);
+      player.play();
+    }
     const onFrame = (e: { detail: { frame: number } }) => setFrame(e.detail.frame);
+    // At the end of a silent play, a voice that is ready comes on for the replay.
+    const onEnded = () => {
+      setEnded(true);
+      if (voiceStatus.kind === 'ready') {
+        turnVoiceOn();
+        player.unmute();
+      }
+    };
+    const onPlay = () => setEnded(false);
     player.addEventListener('frameupdate', onFrame);
     player.addEventListener('seeked', onFrame);
+    player.addEventListener('ended', onEnded);
+    player.addEventListener('play', onPlay);
     return () => {
       player.removeEventListener('frameupdate', onFrame);
       player.removeEventListener('seeked', onFrame);
+      player.removeEventListener('ended', onEnded);
+      player.removeEventListener('play', onPlay);
     };
-  }, [walk, total]);
+  }, [shown, total, voiceStatus.kind, turnVoiceOn]);
 
   const current = activeIndex(chapters, frame);
   const seekChapter = useCallback(
@@ -170,7 +202,7 @@ export const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (shown !== 'video') return;
+    if (view !== 'video') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey) return;
       if (e.key === ' ') {
@@ -182,13 +214,16 @@ export const App: React.FC = () => {
       } else if (e.key === 'ArrowRight' || e.key === 'k') {
         e.preventDefault();
         seekChapter(current + 1);
+      } else if ((e.key === 'v' || e.key === 'V') && voiceStatus.kind === 'ready') {
+        e.preventDefault();
+        playWithVoice();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [current, seekChapter, shown]);
+  }, [current, seekChapter, view, voiceStatus.kind, playWithVoice]);
 
-  if (state.status === 'loading') {
+  if (state.status === 'loading' || (walk && !shown)) {
     return <div className="flex h-screen items-center justify-center text-sm text-slate-400">Loading walkthrough…</div>;
   }
   if (state.status === 'error') {
@@ -205,35 +240,36 @@ export const App: React.FC = () => {
     );
   }
 
-  const { walkthrough, meta, plan } = state;
+  const { meta, plan } = state;
   const branch = meta?.branch ?? meta?.head;
   const planView = (
     <PlanView
       plan={plan}
       token={token}
-      hasVideo={Boolean(walkthrough)}
-      title={walkthrough?.storyboard.title ?? 'What the video will cover'}
+      hasVideo={Boolean(shown)}
+      title={shown?.storyboard.title ?? 'What the video will cover'}
       branch={branch}
       explanation={meta?.mode === 'explain'}
-      active={shown === 'plan'}
+      active={view === 'plan'}
     />
   );
-  if (!walkthrough) return <Backdrop>{planView}</Backdrop>;
+  if (!shown) return <Backdrop>{planView}</Backdrop>;
 
-  const { storyboard } = walkthrough;
+  const { storyboard } = shown;
   const active = chapters[current]!;
 
   return (
     <Backdrop>
-      {plan ? <Tabs tab={shown} onChange={switchTab} /> : null}
-      {shown === 'plan' ? planView : null}
-      <div className={shown === 'video' ? 'flex flex-1 flex-col' : 'hidden'}>
+      {plan ? <Tabs tab={view} onChange={switchTab} /> : null}
+      {view === 'plan' ? planView : null}
+      <div className={view === 'video' ? 'flex flex-1 flex-col' : 'hidden'}>
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-white/5 px-6 py-5">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-semibold tracking-tight">{storyboard.title}</h1>
             {storyboard.subtitle ? <p className="mt-1 truncate text-sm text-slate-400">{storyboard.subtitle}</p> : null}
           </div>
           <div className="flex items-center gap-3 text-xs text-slate-400">
+            <VoicePill status={voiceStatus} onVoice={playWithVoice} />
             {branch ? (
               <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono">
                 <GitBranch size={13} />
@@ -280,11 +316,11 @@ export const App: React.FC = () => {
           </nav>
 
           <main className="flex min-w-0 flex-1 flex-col gap-4">
-            <div className="overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
               <Player
                 ref={playerRef}
                 component={Walkthrough}
-                inputProps={walkthrough}
+                inputProps={shown}
                 durationInFrames={total}
                 compositionWidth={WIDTH}
                 compositionHeight={HEIGHT}
@@ -302,6 +338,7 @@ export const App: React.FC = () => {
                 acknowledgeRemotionLicense
                 style={{ width: '100%', aspectRatio: '16 / 9' }}
               />
+              {meta?.quick && ended ? <QuickEndCard /> : null}
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
             <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">

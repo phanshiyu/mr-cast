@@ -2,7 +2,7 @@
 
 import { expandLineRefs, focusRanges, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
-import { FPS, sceneDurationInFrames, wordCount } from '../../shared/timing.mjs';
+import { FPS, WORDS_PER_MINUTE, sceneDurationInFrames, spokenTexts, wordCount } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkLayers } from './validate-layers.mjs';
@@ -30,6 +30,8 @@ const TEST_GAPS_MAX = 4;
 const INTENT_BULLETS_MAX = 6;
 // A longer sequence scrolls under its participants; past this many messages it is better told as two.
 const SEQUENCE_MESSAGES_MAX = 24;
+const QUICK_SCENES_MAX = 3;
+const QUICK_NARRATION_SECONDS = 60;
 
 const MAX_LINE_RANGE = 10000;
 // A code scene walks its focus ranges top to bottom; long or many ranges turn it back into a wall of code.
@@ -257,7 +259,7 @@ const NON_LOGIC_LANGUAGES = ['markdown', 'json', 'yaml', 'toml', 'text'];
  * tested. An explanation has no diff, so only the overview-then-diagrams-then-code order applies.
  * Runs on scenes whose type is valid; per-scene errors are reported elsewhere.
  */
-function checkStoryShape(scenes, hunks, mode, warnings) {
+function checkStoryShape(scenes, hunks, mode, quick, warnings) {
   const explain = mode === 'explain';
   // Snippets are unchanged source, so they neither change logic nor count as changed tests.
   const all = Object.values(hunks).filter((h) => h.status !== 'source');
@@ -268,7 +270,8 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
   const firstOf = (pred) => indexed.find(({ s }) => pred(s))?.i ?? -1;
 
   const first = indexed[0];
-  if (first && first.s.type !== 'intent') {
+  // A quick video opens straight on its diagram.
+  if (first && first.s.type !== 'intent' && !quick) {
     const opening = explain ? 'the idea and its key points' : 'the problem and the review concerns';
     warnings.push(`scenes[${first.i}] is ${aType(first.s.type)} scene; open with an intent scene that states ${opening}`);
   }
@@ -315,6 +318,14 @@ function checkStoryShape(scenes, hunks, mode, warnings) {
   } else if (logicFiles.length) {
     warnings.push('the diff changes no tests; add a tests scene with "cases": [] and "gaps" listing the important behaviors this change leaves untested');
   }
+}
+
+/** A quick video: at most QUICK_SCENES_MAX scenes and about a minute of narration, so it is made and watched fast. */
+function checkQuick(scenes, warnings) {
+  if (scenes.length > QUICK_SCENES_MAX) warnings.push(`scenes: ${scenes.length} scenes; a quick video keeps to ${QUICK_SCENES_MAX}, so cut to the diagrams that answer the question`);
+  const words = scenes.flatMap((s) => (s && typeof s === 'object' ? spokenTexts(s) : [])).reduce((n, text) => n + wordCount(text), 0);
+  const seconds = Math.round((words / WORDS_PER_MINUTE) * 60);
+  if (seconds > QUICK_NARRATION_SECONDS) warnings.push(`the narration is ${words} words, about ${seconds} seconds; a quick video keeps to about ${QUICK_NARRATION_SECONDS}, so cut what the diagrams already show`);
 }
 
 /** Checks a non-empty array of items with unique string ids; returns the id set, or null if the array is unusable. */
@@ -419,13 +430,16 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', style?: 'simple', plan?: object | null }} meta  The mode from meta.json: "explain" (`mr-cast init`)
+ * @param {{ mode?: 'diff' | 'explain', style?: 'simple', plan?: object | null, quick?: boolean }} meta  The mode from meta.json: "explain" (`mr-cast init`)
  *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply. The style
  *   from the command's flags: "simple" (`--audience new`) is explained line by line in plain words, so steps are short, every changed
  *   line of a shown hunk has a step, and sentences stay short. The run's plan.json as `readPlan` read it, when it
  *   has one: each scene's topic must name one of its topics, and each topic's scenes follow the viewer's picks.
+ *   `quick` (`mr-cast init --quick`, kept in meta.json) is a short diagram of an explanation made in seconds: it
+ *   may open without an intent scene, and keeps to QUICK_SCENES_MAX scenes. Every correctness and text-fit check
+ *   still applies.
  */
-export async function validateStoryboard(raw, hunks, { mode = 'diff', style, plan = null } = {}) {
+export async function validateStoryboard(raw, hunks, { mode = 'diff', style, plan = null, quick = false } = {}) {
   // An older `arch` scene is a `graph`: renamed here so every check below sees one name.
   const sb = upgradeTypes(raw);
   const errors = [];
@@ -630,7 +644,8 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style, pla
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);
-  checkStoryShape(sb.scenes, hunks ?? {}, mode, warnings);
+  checkStoryShape(sb.scenes, hunks ?? {}, mode, quick, warnings);
+  if (quick) checkQuick(sb.scenes, warnings);
   checkVoice(sb, { simple }, warnings);
   if (simple) checkSimpleLineCoverage(sb, hunks ?? {}, warnings);
   if (mode === 'explain') {

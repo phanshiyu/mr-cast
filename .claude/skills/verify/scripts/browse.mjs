@@ -6,8 +6,8 @@
 //   clickin:<scope>::<text>
 //                  click the first button containing <text> inside the first list item (li) containing <scope>,
 //                  such as one topic row of the plan page
-//   press:<key>    press a key (ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Space, j, k, 1, 2, 3), then wait 300ms
-//                  for the page to re-render
+//   press:<key>    press a key (ArrowRight, ArrowLeft, ArrowUp, ArrowDown, Space, j, k, v, 1, 2, 3), then wait
+//                  300ms for the page to re-render
 //   size:<w>x<h>   resize the viewport, such as size:420x900 for a phone width
 //   fullshot:<name> like shot, but the whole page height, for a page that scrolls
 //   reload         reload the page, then wait 1s for it to load its data
@@ -101,6 +101,7 @@ const KEYS = {
   ArrowUp: { code: 'ArrowUp', keyCode: 38 }, ArrowDown: { code: 'ArrowDown', keyCode: 40 },
   Space: { key: ' ', code: 'Space', keyCode: 32 }, j: { code: 'KeyJ', keyCode: 74 }, k: { code: 'KeyK', keyCode: 75 },
   1: { code: 'Digit1', keyCode: 49 }, 2: { code: 'Digit2', keyCode: 50 }, 3: { code: 'Digit3', keyCode: 51 },
+  v: { code: 'KeyV', keyCode: 86 },
 };
 
 const STEPS = {

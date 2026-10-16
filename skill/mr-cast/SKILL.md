@@ -1,7 +1,7 @@
 ---
 name: mr-cast
-description: Make a narrated, animated video walkthrough of this branch's changes or of something you just explained, played in the browser or saved as an MP4. Use when the user asks for a video, walkthrough, or animation of a branch, diff, pull request, or merge request, or asks to animate, visualize, or make a video of an explanation, such as "animate that", "make a video of this", or "turn that into a video". It can also flag what looks wrong in the branch as it walks through it, when the user asks for your review. Not for a code review or an explanation that does not ask for a video.
-argument-hint: "[mp4] [base-branch | --working | what to focus on]"
+description: Make a narrated, animated video walkthrough of this branch's changes, of something you just explained, or of code the user selected, played in the browser or saved as an MP4. Use when the user asks for a video, walkthrough, or animation of a branch, diff, pull request, or merge request, asks to animate, visualize, or make a video of an explanation, such as "animate that", "make a video of this", or "turn that into a video", or asks for a quick diagram video, such as "explain this flow in a diagram", "just a diagram" or "/mr-cast quick". It can also flag what looks wrong in the branch as it walks through it, when the user asks for your review. Not for a code review or an explanation that does not ask for a video.
+argument-hint: "[quick] [mp4] [base-branch | --working | what to focus on]"
 ---
 
 # mr-cast
@@ -12,7 +12,24 @@ The CLI is `{{MR_CAST}}/bin/mr-cast`. Run every command from the user's reposito
 
 If a command prints `mr-cast <version> is available`, tell the user once, at the end of your reply, that they can ask you to upgrade mr-cast. Do not upgrade unless they ask.
 
-## 1. Pick the source and the output
+## 1. Pick the mode, the source and the output
+
+Pick the mode first, with the first row that matches. The words the user types always beat what is in context.
+
+| # | The request | The video |
+| --- | --- | --- |
+| 1 | "mp4", "render", "save", "share" | Full mode, as an MP4. Quick words are ignored, because an MP4 is meant to be shared. |
+| 2 | "walkthrough", "full", "whole branch", "the PR", "review it" | Full mode, with the plan page of step 4. A selection makes the topic that holds it `deep` there. |
+| 3 | "quick", "quickly", "just a diagram", "diagram of", "draw this flow", "explain this in a diagram", "sketch", `/mr-cast quick` | [Quick mode](#quick-mode). Its source is the selection if there is one, else your explanation, else the branch. |
+| 4 | A bare `/mr-cast` with selected or pasted code | [Quick mode](#quick-mode) on those lines. |
+| 5 | "animate that", "what you said" | Your explanation. Quick mode if it fits 3 scenes, else full mode. |
+| 6 | A bare `/mr-cast` with no selection | Full mode, on the source the rules below pick. |
+
+**Selected code.** When Claude Code is connected to the user's IDE (through `/ide`, or by running in the IDE's integrated terminal), the lines the user highlights reach you with the prompt as context, such as "Selected 14 lines from src/limiter.ts", with the line range. Without that connection no selection arrives, but the user may paste the code instead. Find pasted code's file and lines with a search before you use it. The IDE sends the selection with every prompt while text is highlighted, so it may be one the user forgot. That is why a bare `/mr-cast` with a selection makes the cheap quick video, and says in its first line how to get the branch instead.
+
+Before any work, write one line that names the mode, the source and how to switch, such as `Quick video of limiter.ts lines 40 to 72: how it flows, then the lines. About 45 seconds.` When the branch is live too, add `Want the whole branch instead? Say "the whole branch".` In full mode, say `Full walkthrough of <source>. Say "quick" for a short diagram instead.` Then follow [Quick mode](#quick-mode), or the steps below for full mode.
+
+The rest of this step and steps 2 to 7 are full mode.
 
 ```bash
 {{MR_CAST}}/bin/mr-cast status
@@ -29,11 +46,54 @@ The branch is **live** when `status` shows commits ahead of the base, or changed
 
 The output is an MP4 when the request or the arguments say "mp4", "video file", "render", "save" or "share", as in `/mr-cast mp4` or `/mr-cast mp4 main`. Otherwise it is the browser player, which starts at once and reloads as you edit.
 
+## Quick mode
+
+A short diagram video of one thing, on screen in about 20 seconds: 1 to 3 scenes and about a minute of narration. Quick mode asks no questions, shows no outline and needs no reference file. It never opens the plan page, writes no `plan.json`, and never reviews. Run `{{MR_CAST}}/bin/mr-cast status` once, and pass the pace it shows from last time as `<flags>` (`--pace slower`, `--pace faster` or `--no-voice`) to every command below. Without one, pass nothing.
+
+**Find the code.** For a selection, the code is the selected lines. When the user selected one line, grow it to the function around it and say so in the start line, such as `Quick video of rateLimit() in limiter.ts (you selected line 52).` A selection over 80 lines is too long for one snippet: show the main path and say in your reply what you left out. Use at most 3 lookups (reads, searches or language-server calls) before you write the storyboard, such as the function's callers and what it calls. For your explanation, the code is what you already explained. For the branch, it is the one change `status` lists that matters most: show its new code as snippets, and set `"explainsChange": true` on the storyboard when you mark what the change did.
+
+**Start the run.** Give a short title, such as the file and lines.
+
+```bash
+{{MR_CAST}}/bin/mr-cast init --quick --title "limiter.ts lines 40 to 72" <flags>
+{{MR_CAST}}/bin/mr-cast snippet src/limiter.ts:40-72
+```
+
+The run is `.mr-cast/quick-<title-slug>/`, so it never overwrites a full run. Add the snippet only for a selection, or when the user asked to see code.
+
+**Write the storyboard** (`storyboard.json` in the directory `init` printed, in the schema of step 5), with no intent scene and no recap:
+
+1. The flow of the code, as a `flow`, `sequence`, `state` or a decision `graph`. Walk it in `steps` with real values.
+2. Only when the code has 2 or more callers, or is called from another module: "where this sits", a `graph` of at most 6 nodes with the callers on the left, the code highlighted in the middle, and what it calls on the right. Add the test that covers it as a node, or a `warn` badge "no tests". Callers a language server found are facts. Callers you found by text search are a guess, so give the graph the caption "Found by search" and say "called from at least these places".
+3. For a selection: the lines themselves, a `code` scene on the snippet with at most 6 `steps`.
+
+"Just a diagram" means one scene and no code. Follow [Shared rules](#shared-rules) and [How the voice talks](#how-the-voice-talks).
+
+```bash
+{{MR_CAST}}/bin/mr-cast validate <flags>
+```
+
+A quick run skips the intent rule, warns past 3 scenes or about 60 seconds of narration, and keeps every other check. Fix errors and those two warnings.
+
+**Show it.** Start the player as a background command, and do not wait for the voice:
+
+```bash
+{{MR_CAST}}/bin/mr-cast play <flags>
+```
+
+The player opens in under a second and plays at once, muted, with subtitles. The voice is made in the background in about half the narration's length, so about 30 seconds for a minute, and the player then offers "Play with voice (V)". A replay after the end plays with voice. The video ends on a card of next steps. End your reply with: `Playing at <url>. Voice is on the way; press V in the player when it is ready. Say "go deeper" for a full walkthrough of these lines, or "save it" for an MP4.`
+
+**What comes next.**
+
+- "go deeper": a full video of the same code. Ask only the audience question of step 2, with no outline question. Run `init` with the same `--title` and no `--quick`: the new run starts from the quick video's storyboard, snippets and voice. Then continue from step 4, with the topic that holds these lines suggested as `deep`, and keep the quick video's scenes as that topic's diagrams.
+- "the whole branch": the full flow from step 1, on the branch.
+- "save it": `{{MR_CAST}}/bin/mr-cast render <flags>` on the quick run as it is, with no outline question.
+
 ## 2. Ask what the video is for
 
 Ask with one `AskUserQuestion` call before you start the run. Ask only what the request leaves open:
 
-- The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), or "slowly" (pace). A request for a quick or short video answers the audience with the quick overview. Words such as "focus on the migration" do not answer a question here. They shape your suggested picks in step 4.
+- The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), or "slowly" (pace). A request for a short video, or one for the team, answers the audience with the short overview. Words such as "focus on the migration" do not answer a question here. They shape your suggested picks in step 4.
 - The user asked for your opinion of the branch, with words such as "review it", "with your review", "find issues" or "flag anything that looks wrong". That turns review on (question 4).
 - The user said "just make it", "use the defaults" or "no questions". Skip the call and use the last choices from `status`, else the recommended options. Review stays off unless the words above turned it on.
 
@@ -47,7 +107,7 @@ Every question is multiple choice. Put the recommended option first and end its 
 2. Header "Audience", question "Who is this video for?" `status` names these `familiar`, `new` and `overview`.
    - `familiar`: "A reviewer of this change (Recommended)" for the branch, or "A teammate who knows this code (Recommended)" for an explanation. Description: "Diagrams, then the code behind each point."
    - `new`: "Someone new to this code". Description: "Walks the code one line at a time in plain words, after the code around it. Good for a second-language reader. Longer."
-   - `overview`: "A quick overview for the team". Description: "Diagrams and behavior, with very little code. Usually under 3 minutes."
+   - `overview`: "A short overview for the team". Description: "Diagrams and behavior, with very little code. Usually under 3 minutes."
 3. Header "Pace", question "How should it sound?" `status` names these `normal`, `slower`, `faster` and `silent`.
    - "Normal pace (Recommended)". Description: "About 130 words a minute, with pauses between steps."
    - "Slower". Description: "A slower voice and longer pauses. Good for new readers or a second language."
@@ -107,7 +167,7 @@ Write `plan.json` in the run's directory, beside `hunks.json`:
 ```
 
 - **Topics.** Write 4 to 8 topics. Name each one by what it does, not by its file: "Rate limiter: twenty orders a minute", not "rate-limit.ts". A topic can span several files. Put routine changes, such as renames, formatting or deleted dead code, together in one topic. List the topics in the order the video shows them, the main behaviour first. The opening intent scene, and for the branch the closing tests scene, are always in the video, so they are not topics. The `id` is a short slug, and `summary` says in one line what the topic covers.
-- **Depth.** `depth` is your suggestion. `skip` leaves the topic out. `brief` shows the topic's view and the key lines. `deep` shows the view, then the code line by line. Suggest `deep` for the main behaviour and `brief` for the code that supports it. For the quick overview, suggest `brief` for most topics. For someone new to the code, suggest `deep` for every topic that changes logic.
+- **Depth.** `depth` is your suggestion. `skip` leaves the topic out. `brief` shows the topic's view and the key lines. `deep` shows the view, then the code line by line. Suggest `deep` for the main behaviour and `brief` for the code that supports it. For the short overview, suggest `brief` for most topics. For someone new to the code, suggest `deep` for every topic that changes logic. When the user had code selected as they asked for the full video, suggest `deep` for the topic whose files hold those lines, whatever the audience, and say so in its `why`.
 - **Views.** `views` lists 1 to 3 ways to show the topic, your suggestion first. Offer only views that truly fit the topic, and offer one when two would look almost the same. A choice that changes nothing teaches the user to ignore the choices. `why` says in one line why your suggestion fits. The user reads the label, never the key:
 
 {{PLAN_VIEWS}}
@@ -138,7 +198,7 @@ After the answer, stop the `mr-cast plan` command and read `plan.json`. The page
 
 - Set `"topic": "<id>"` on every scene that shows a topic. Leave it off the intent, tests and review scenes.
 - A topic at `skip` gets no scene. List its hunks in `skipped` with the reason "the viewer chose to skip this topic".
-- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the quick overview.
+- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the short overview.
 - A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`.
 - The shared rules below still put every diagram before the first code scene. Keep the topics in plan order within the diagrams, and again within the code.
 
@@ -299,11 +359,11 @@ Start the player as a background command so it keeps running.
 {{MR_CAST}}/bin/mr-cast play <flags>
 ```
 
-`play` and `render` voice the narration first, in the voice and at the pace their flags give. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. After that, each new or changed scene takes a few seconds to speak. If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
+`play` opens the player at once and voices the narration in the background, in the voice and at the pace its flags give. Until the voice is ready, the player plays silent with subtitles and shows how many scenes are voiced. When the voice is ready, the player shows "Play with voice (V)" and never switches the audio in the middle of a play. A walkthrough voiced before `play` starts waits for a click and plays with its voice. `render` voices everything first. Voicing takes about half the length of the audio, so a minute of narration takes about 30 seconds. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
 
 To change the pace or turn the voice off, change `<flags>` and pass the new flags to every command after that. To pick another voice, add `--voice <name>` to `<flags>`: `af_heart` (default), `af_bella`, `am_michael`, `bf_emma`, or `bm_george`.
 
-`play` prints `mr-cast player: <url>` and opens the browser. Give the user that URL and tell them to click play, since a voiced walkthrough does not autoplay. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
+`play` prints `mr-cast player: <url>` and opens the browser. Give the user that URL. Tell them it starts silent with subtitles while the voice is made, and to press V or click "Play with voice" when that appears. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
 
 With a `plan.json`, the player also has a Plan tab with the same picks. When the user changes a pick there, the row says "Changed, not in the video yet", and the page asks them to say "update the video" in the terminal. Then compare each topic's pick in `plan.json` with `plan-built.json`, rewrite only the scenes of the topics that differ, and run `validate <flags>`. Only those scenes need voicing again.
 

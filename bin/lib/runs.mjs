@@ -174,5 +174,12 @@ export function explanationRun(root, values) {
     const current = readCurrent(root);
     if (current && isExplanationMeta(readRunMeta(path.join(root, current)))) return { dir: path.join(root, current), name: current };
   }
-  return claimName(root, slugify(title) || 'explanation', (meta) => isExplanationMeta(meta) && (meta.title ?? null) === title);
+  const quick = Boolean(values.quick);
+  return claimName(root, explanationSlug(title, quick), (meta) => isExplanationMeta(meta) && (meta.title ?? null) === title && Boolean(meta.quick) === quick);
+}
+
+/** A quick video's run is `quick-<slug>`, so it never takes the name of the full video of the same title. */
+export function explanationSlug(title, quick) {
+  const slug = slugify(title) || 'explanation';
+  return quick ? `quick-${slug}`.slice(0, NAME_MAX).replace(/-+$/, '') : slug;
 }
