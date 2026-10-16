@@ -11,7 +11,7 @@ import { locateJsonError } from './lib/json.mjs';
 import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
 import { branchRun, currentRun, explanationRun, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
-import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsFrom } from './lib/settings.mjs';
+import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { startServer } from './lib/server.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
@@ -58,7 +58,7 @@ Used by the Claude Code skills:
                     voice the narration and render an MP4 with chapter markers, named after the storyboard title
 
   extract and init make their run the current one, and the commands after them work on the current run.
-  extract, init, validate, outline, play and render take these flags. A flag applies to its own command
+  extract, init, validate, outline, voice, play, render and still take these flags. A flag applies to its own command
   only, and a command without it uses the default, so pass the same flags to each command:
       --audience familiar|new|overview   who the video is for; new is the simple style (also --simple)
       --pace slower|normal|faster        the voice's speed and the pauses around it (default normal)
@@ -184,6 +184,8 @@ function extract(argv) {
   const runs = dataDir(root);
   const { dir, name } = branchRun(runs, values, diff.branch);
   const nameArg = values.name ? ` --name ${name}` : '';
+  // The commands it suggests take the same settings flags, which apply to one command only.
+  const runArgs = nameArg + settingsArgs(values);
   const hunks = buildHunkIndex(parsed);
   const files = summarizeFiles(parsed, hunks);
   const hunksPath = path.join(dir, 'hunks.json');
@@ -210,14 +212,14 @@ function extract(argv) {
   if (snippets.length) console.error(`note: kept ${snippets.length} snippet${snippets.length === 1 ? '' : 's'} (${snippets.map((h) => h.id).join(', ')}) from the last extract; rerun \`mr-cast snippet${nameArg}\` on one to reread its lines`);
   if (fs.existsSync(storyboardPath)) {
     const changed = previous ? changedHunkIds(previous, written) : null;
-    if (!changed) console.error(`note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate${nameArg}\``);
-    else if (changed.length) console.error(`note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate${nameArg}\``);
+    if (!changed) console.error(`note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate${runArgs}\``);
+    else if (changed.length) console.error(`note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate${runArgs}\``);
   }
 
   console.log(formatIndex({
     ctx: { branch: diff.branch, base, ahead: diff.ahead, working: values.working, mergeBase: diff.mergeBase, untracked: diff.untracked },
     files, hunks, skipped: diff.skipped, maxLines, style: styleOf(settings),
-    hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath), nameArg,
+    hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath), runArgs,
   }));
 }
 
@@ -303,7 +305,7 @@ async function voice(argv) {
       reportVoiceProgress(event);
     },
   });
-  const clips = Object.keys(voiceover.clips).length;
+  const clips = new Set(storyboard.scenes.flatMap(spokenTexts).flatMap((text) => clipFor(voiceover, text)?.src ?? [])).size;
   console.log(`✓ voiceover · ${clips} clip${clips === 1 ? '' : 's'} (${generated} new)${formatPace(voiceover)} · ${formatDuration(storyboardSeconds(storyboard, voiceover))}`);
 }
 
@@ -493,7 +495,7 @@ function init(argv) {
   try { kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)'; } catch { /* none yet */ }
   if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`);
   else if (snippets) console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
-  console.error(`next: \`mr-cast snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast validate\``);
+  console.error(`next: \`mr-cast snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast validate${settingsArgs(values)}\``);
 }
 
 /** Adds snippets of unchanged source to a run's hunks.json: the code of an explanation, or context beside a diff. */

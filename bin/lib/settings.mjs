@@ -45,6 +45,18 @@ export function settingsFrom(values) {
   };
 }
 
+/** The settings flags `values` gave, as they would be typed again, such as " --audience new --pace slower"; "" for none. */
+export function settingsArgs(values) {
+  const audience = values.simple ? 'new' : values.audience;
+  return [
+    audience && `--audience ${audience}`,
+    values.pace && `--pace ${values.pace}`,
+    values.speed && `--speed ${values.speed}`,
+    values.voice && `--voice ${values.voice}`,
+    values['no-voice'] && '--no-voice',
+  ].filter(Boolean).map((arg) => ` ${arg}`).join('');
+}
+
 const configDir = () => path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'mr-cast');
 export const choicesFile = () => path.join(configDir(), 'last-choices.json');
 

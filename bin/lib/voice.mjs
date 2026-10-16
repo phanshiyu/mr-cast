@@ -55,6 +55,7 @@ export function readVoiceover(dataDir) {
   for (const [key, clip] of Object.entries(raw.clips)) {
     if (!CLIP_SRC.test(clip?.src) || !Number.isFinite(clip.seconds) || clip.seconds <= 0) continue;
     clips[key] = { src: clip.src, seconds: clip.seconds };
+    if (typeof clip.voice === 'string' && isSpeed(clip.speed)) Object.assign(clips[key], { voice: clip.voice, speed: clip.speed });
     if (Array.isArray(clip.sentences) && clip.sentences.every(isSentence)) clips[key].sentences = clip.sentences;
   }
   return { voice: raw.voice, speed: isSpeed(raw.speed) ? raw.speed : 1, pauses: isPauses(raw.pauses) ? raw.pauses : 1, clips };
@@ -155,18 +156,25 @@ function writeAtomic(file, data) {
 
 /**
  * Makes .mr-cast/voiceover.json and audio/*.wav match what the storyboard speaks: generates missing
- * clips in `voice` at `pace`, drops clips no scene uses, and returns the voiceover. The model loads only when
- * a clip is missing. voiceover.json records what its clips were made with; it never chooses the voice or pace.
+ * clips in `voice` at `pace`, drops clips of text no scene speaks any more, and returns the voiceover. The
+ * model loads only when a clip is missing. voiceover.json records what its clips were made with; it never
+ * chooses the voice or pace. Clips of the same text in another voice or at another speed stay, so a command
+ * with other flags, or a player still playing them, finds them there.
  */
 export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace: { speed, pauses }, onProgress }) {
   const previous = readVoiceover(dataDir);
+  const texts = storyboard.scenes.flatMap(spokenTexts);
+  const onDisk = (clip) => fs.existsSync(path.join(dataDir, clip.src));
+  /** Earlier clips of text still spoken, in any voice and at any speed; a clip from before 0.15 was made in the file's. */
   const clips = {};
+  for (const [key, clip] of Object.entries(previous?.clips ?? {})) {
+    const made = { voice: clip.voice ?? previous.voice, speed: clip.speed ?? previous.speed };
+    if (onDisk(clip) && texts.some((text) => narrationKey(text, made.voice, made.speed) === key)) clips[key] = { ...clip, ...made };
+  }
   const missing = new Map();
-  for (const text of storyboard.scenes.flatMap(spokenTexts)) {
+  for (const text of texts) {
     const key = narrationKey(text, chosen, speed);
-    const known = previous?.clips[key];
-    if (known && fs.existsSync(path.join(dataDir, known.src))) clips[key] = known;
-    else missing.set(key, text.trim());
+    if (!clips[key]) missing.set(key, text.trim());
   }
 
   if (missing.size) {
@@ -180,7 +188,7 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
       const { samples, sampleRate, sentences } = await speak(tts, TextSplitterStream, text, chosen, speed);
       const src = `${AUDIO_DIR}/${key}.wav`;
       writeAtomic(path.join(dataDir, src), encodeWav(samples, sampleRate));
-      clips[key] = { src, seconds: roundMs(samples.length / sampleRate), sentences };
+      clips[key] = { src, seconds: roundMs(samples.length / sampleRate), sentences, voice: chosen, speed };
       onProgress?.({ type: 'clip', text, seconds: clips[key].seconds, done: ++done, total: missing.size });
     }
   }

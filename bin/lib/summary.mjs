@@ -60,7 +60,7 @@ function formatFileLine(f) {
  * The compact hunk index printed by `extract`.
  * @param {{ branch, base, ahead, working, mergeBase, untracked: string[] }} ctx
  */
-export function formatIndex({ ctx, files, hunks, skipped, maxLines, style, hunksPath, storyboardPath, nameArg = '' }) {
+export function formatIndex({ ctx, files, hunks, skipped, maxLines, style, hunksPath, storyboardPath, runArgs = '' }) {
   const all = Object.values(hunks);
   const adds = all.reduce((n, h) => n + h.additions, 0);
   const dels = all.reduce((n, h) => n + h.deletions, 0);
@@ -89,7 +89,7 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, style, hunks
   }
   out.push(`line numbers: + is the new-file line (use in steps or focusLinesAfter), - is the old-file line (oldLines or focusLinesBefore)`);
   if (style === 'simple') out.push('style: simple · explain the code line by line in plain words; every changed line of a shown hunk gets a step of at most 3 lines');
-  out.push(`wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${nameArg}\` and \`mr-cast play${nameArg}\``);
+  out.push(`wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${runArgs}\` and \`mr-cast play${runArgs}\``);
   return out.join('\n');
 }
 

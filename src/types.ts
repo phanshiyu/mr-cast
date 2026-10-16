@@ -562,6 +562,9 @@ export interface VoiceClip {
   seconds: number;
   /** When each sentence is spoken, so captions follow the voice through the pauses between sentences. */
   sentences?: VoiceSentence[];
+  /** The voice and speed it was made in; the file keeps clips of other voices and speeds too. */
+  voice?: string;
+  speed?: number;
 }
 
 export interface VoiceSentence {
