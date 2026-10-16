@@ -32,17 +32,14 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: ./.github/actions/setup
-      - name: Check the token and the version
+      # Trusted publishing: npm checks this run's GitHub OIDC identity against the package's trusted
+      # publisher (phanshiyu/mr-cast, publish.yml), so no token is stored. Needs npm 11.5.1 or later.
+      - name: Check the version
         id: check
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           name=$(node -p "require('./package.json').name")
           version=$(node -p "require('./package.json').version")
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "::notice::NPM_TOKEN is not set, so nothing was published."
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-          elif npm view "$name@$version" version >/dev/null 2>&1; then
+          if npm view "$name@$version" version >/dev/null 2>&1; then
             echo "::notice::$name@$version is already on npm."
             echo "publish=false" >> "$GITHUB_OUTPUT"
           else
@@ -54,11 +51,9 @@ jobs:
         run: pnpm pack --out mr-cast.tgz
       - name: Publish
         if: steps.check.outputs.publish == 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > "$RUNNER_TEMP/.npmrc"
-          if ! NPM_CONFIG_USERCONFIG="$RUNNER_TEMP/.npmrc" npm publish mr-cast.tgz --access public --provenance > "$RUNNER_TEMP/publish.log" 2>&1; then
+          npm --version
+          if ! npm publish mr-cast.tgz --access public > "$RUNNER_TEMP/publish.log" 2>&1; then
             cat "$RUNNER_TEMP/publish.log"
             # Job logs need auth to read; annotations are public.
             grep -E 'npm (error|ERR!)' "$RUNNER_TEMP/publish.log" | head -8 | while IFS= read -r line; do echo "::error::$line"; done

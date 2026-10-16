@@ -3,7 +3,7 @@
 ## 0.18.1
 
 - **The browser player no longer stops partway through a voiced walkthrough.** A scene with six or more spoken parts, such as a narration and five steps, kept every clip it had played mounted, and Remotion's player allows five audio tags at once, so playback stopped with "Tried to simultaneously mount 6 <Html5Audio /> tags". Each clip now unmounts when its step ends. MP4 renders were not affected.
-- **CI publishes to npm.** After CI passes on main, the Publish workflow publishes `package.json`'s version when npm does not have it yet, with provenance. It needs the `NPM_TOKEN` secret and skips without it.
+- **CI publishes to npm.** After CI passes on main, the Publish workflow publishes `package.json`'s version when npm does not have it yet. It uses npm trusted publishing, so no token is stored: npm checks the run's GitHub identity, and the release gets a provenance statement.
 
 ## 0.18.0
 
