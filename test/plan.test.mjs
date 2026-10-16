@@ -99,6 +99,18 @@ test('the server refuses a write while plan.json is not valid', () => withServer
   assert.equal(fs.readFileSync(path.join(data, 'plan.json'), 'utf8'), '{ "topics": [');
 }));
 
+test('a write the disk refuses is a 500 with the reason, and the server keeps serving', () => withServer(async ({ data, post }) => {
+  fs.chmodSync(data, 0o555);
+  try {
+    const { status, body } = await post({ topic: 'a', choice: { depth: 'deep', view: 'calls' } });
+    assert.equal(status, 500);
+    assert.match(body.error, /^could not write plan\.json: EACCES/);
+  } finally {
+    fs.chmodSync(data, 0o755);
+  }
+  assert.equal((await post({ topic: 'a', choice: { depth: 'deep', view: 'calls' } })).status, 200);
+}));
+
 test('the built picks are each topic pick', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-plan-'));
   recordBuilt(dir, plan(topic('a'), topic('b', { choice: { depth: 'skip', view: 'compare' } })));

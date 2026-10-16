@@ -92,8 +92,9 @@ function postChoice(req, res, { token, dataDir }) {
     if (size > BODY_MAX) return;
     let body;
     try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return sendJson(res, 400, { error: 'body is not JSON' }); }
-    const { status, error } = writeChoice(dataDir, body);
-    sendJson(res, status, error ? { error } : { ok: true });
+    let result;
+    try { result = writeChoice(dataDir, body); } catch (err) { result = { status: 500, error: `could not write plan.json: ${err.message}` }; }
+    sendJson(res, result.status, result.error ? { error: result.error } : { ok: true });
   });
 }
 

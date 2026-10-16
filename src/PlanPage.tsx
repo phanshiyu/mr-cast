@@ -20,7 +20,7 @@ const depthHint: Record<Depth, string> = {
 /** The picks the current video was built from, by topic id (plan-built.json). */
 export type BuiltPicks = Record<string, TopicPick>;
 
-type Save = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'failed'; body: ChoiceBody };
+type Save = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'failed'; body: ChoiceBody } | { status: 'stale' };
 interface ChoiceBody {
   topic: string;
   choice: TopicPick | null;
@@ -83,8 +83,10 @@ export const PlanPage: React.FC<{
           headers: { 'Content-Type': 'application/json', 'X-Mr-Cast-Token': token ?? '' },
           body: JSON.stringify(body),
         });
-        if (!res.ok) throw new Error(String(res.status));
-        setSave({ status: 'saved' });
+        if (res.ok) return setSave({ status: 'saved' });
+        setLocal(previous.current ?? plan);
+        // The token is new each time mr-cast serves, so a 403 means this tab outlived the server that opened it.
+        setSave(res.status === 403 ? { status: 'stale' } : { status: 'failed', body });
       } catch {
         setLocal(previous.current ?? plan);
         setSave({ status: 'failed', body });
@@ -158,6 +160,11 @@ export const PlanPage: React.FC<{
           <button onClick={() => void send(save.body)} className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20">
             Retry
           </button>
+        </div>
+      ) : null}
+      {save.status === 'stale' ? (
+        <div role="alert" className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100">
+          This tab is from an earlier session. Reopen the link mr-cast printed.
         </div>
       ) : null}
       {!token ? (
