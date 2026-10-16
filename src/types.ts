@@ -539,6 +539,67 @@ export interface TimelineScene extends SceneBase {
   steps?: FocusStep[];
 }
 
+/** A component inside a layer, drawn as a card in its band: a page, a middleware, a service, a table. */
+export type LayerItem = DiagramNode;
+
+/** One horizontal band of a layers scene. */
+export interface Layer extends Marks {
+  /** Unique among every layer and item of the scene. */
+  id: string;
+  label: DisplayText;
+  /** A short line under the label saying what the layer does, e.g. "checks the session". */
+  caption?: DisplayText;
+  /** Components inside the band, left to right. Up to 5. Their ids are unique across the scene. */
+  items?: LayerItem[];
+  /** Colour of the band's edge and badge. */
+  tone?: Tone;
+}
+
+/** The way back from where a request is answered early, e.g. a rate limiter's 429. */
+export interface LayerSkip {
+  /** The stop that answers. The token turns back up there, and the stops after it are drawn as never reached. */
+  at: string;
+  /** What the token says on its way back up, e.g. "429 Too Many Requests". */
+  reply: string;
+  /** Colour of the reply. Defaults to "warn". */
+  tone?: Tone;
+}
+
+/** A request travelling through the stack, drawn as a token that moves from stop to stop. */
+export interface LayerPath {
+  /** What the token says on its way down, e.g. "POST /orders". */
+  label?: string;
+  /**
+   * Where the request goes, in order: layer ids, item ids, or "layer.item". Every stop sits at or below the
+   * one before it, since the screen's order is the real order. List the whole way down even with `skip`.
+   */
+  stops: string[];
+  /** After the last stop the token travels back up through the same stops to the first, carrying `reply`. */
+  return?: boolean;
+  /** What the token says on its way back up with `return`, e.g. "201 Created". */
+  reply?: string;
+  /** The request is answered early at `skip.at` and turns back there; the stops after it are skipped. */
+  skip?: LayerSkip;
+}
+
+export interface LayersScene extends SceneBase {
+  type: 'layers';
+  title?: string;
+  /** Top to bottom, in their real order: the outermost layer, or the first to see a request, on top. 3 to 7. */
+  layers: Layer[];
+  /** A request's way through the stack. */
+  path?: LayerPath;
+  /**
+   * Move the viewer's attention as the voice explains: the stack draws first, then each step lights what it
+   * focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
+   * A ref is a layer id, an item id or "layer.item", or a path stop index (0-based). A step that focuses
+   * a stop moves the token there; it only moves on along its path, so walk the stops in order, and with
+   * `return` or `skip` focus a stop again to bring it back up. Without steps the token walks the whole path
+   * while the narration plays.
+   */
+  steps?: FocusStep[];
+}
+
 export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Repository-relative path. */
   path: string;
@@ -569,7 +630,7 @@ export interface FilesScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene;
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | LayersScene;
 
 export interface Storyboard {
   title: string;

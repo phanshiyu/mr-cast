@@ -217,6 +217,11 @@ function sceneGist(scene, hunks, storyboard) {
       const notes = Object.keys(scene.notes ?? {}).length;
       return titled(`${count(files, 'file')}${lines}${tests ? `, ${plural(tests, 'test')}` : ''}${notes ? `, ${plural(notes, 'note')}` : ''}`);
     }
+    case 'layers': {
+      const items = scene.layers.reduce((n, l) => n + (l.items?.length ?? 0), 0);
+      const path = scene.path ? `, a path through ${count(scene.path.stops, 'stop')}${scene.path.skip ? `, answered at ${scene.path.skip.at}` : scene.path.return ? ' and back' : ''}` : '';
+      return titled(`${count(scene.layers, 'layer')}${items ? `, ${plural(items, 'item')}` : ''}${path}`);
+    }
     case 'review':
       return titled(formatFindings(storyboard.findings));
     default:

@@ -49,6 +49,7 @@ export const defaultChapter: Record<Scene['type'], string> = {
   timeline: 'Timeline',
   files: 'Files',
   review: "Claude's review",
+  layers: 'Layers',
 };
 
 /** Ink of a review finding's severity: its pen mark, note and recap row. */

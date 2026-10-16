@@ -34,6 +34,7 @@ const KINDS = {
   span: { highlight: true, badge: true },
   file: { change: true, badge: true, tone: true },
   testCase: { badge: true, tone: true },
+  layer: { change: true, highlight: true, badge: true, tone: true },
 };
 
 const list = (items, q, kind) => (Array.isArray(items) ? items.flatMap((item, j) => (item && typeof item === 'object' ? [{ q: `${q}[${j}]`, item, kind }] : [])) : []);
@@ -51,8 +52,9 @@ const ITEMS = {
   timeline: (s, p) => [...list(s.events, `${p}.events`, 'event'), ...list(s.spans, `${p}.spans`, 'span')],
   files: (s, p) => list(s.files, `${p}.files`, 'file'),
   tests: (s, p) => list(s.cases, `${p}.cases`, 'testCase'),
+  layers: (s, p) => list(s.layers, `${p}.layers`, 'layer').flatMap((l) => [l, ...list(l.item.items, `${l.q}.items`, 'node')]),
 };
-const DIAGRAMS = ['graph', 'sequence', 'er', 'state'];
+const DIAGRAMS = ['graph', 'sequence', 'er', 'state', 'layers'];
 
 /**
  * The change an item shows, as the renderer will draw it: its own `change`, an older `modified: true` on a

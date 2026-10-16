@@ -210,11 +210,12 @@ The narration is written to be heard once, like one person explaining the change
 | `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
+| `layers` | Stacked bands, top to bottom in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply; `skip` answers early at one stop, turns the token back there and fades the stops it never reached. |
 | `review` | In [review mode](#review-mode), every flag worst first, with its severity, file and line, and claim, under "Claude's review". |
 
 Each spoken text is a segment: a lead, the voice, and a tail. The narration waits until the scene has drawn in, which takes 1 second, or the scene type's build time plus 0.3 seconds when longer. Most diagrams take 1.5 seconds, so their voice starts at 1.8. Each step's items light up 0.5 seconds before its voice and stay lit 1.2 seconds after it. Without a voice clip, a segment reads at 130 words per minute and holds 1.5 seconds after, 3 seconds at least. The pace scales the reading speed and every pause.
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests` and `layers` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
 
 ### Steps
 
@@ -232,6 +233,7 @@ Diagrams take `steps` too, so the video can move the viewer's attention as it ex
 | `chart` | A label, a series `"series:after"`, or one value `"after@p99"`. |
 | `timeline` | An event index, an `"a-b"` range of them, or a span `"span:wait"`. The playhead moves to the furthest one. |
 | `files` | A path in the tree. |
+| `layers` | A layer id, an item id or `"layer.item"`, or a path stop index. A step that focuses a stop moves the token there; it only moves on along the path, so focus the first stop again to bring it back up. |
 | `tests` | A case index, a case's name, or a gap `"gap:0"`. |
 | `intent` | A bullet index. |
 
@@ -324,6 +326,7 @@ Three marks say three different things, and none stands in for another:
 | table row | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
 | timeline event, span | no | yes | yes |
 | files entry | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
+| layer, layer item | yes, with a badge | yes | yes |
 | tests case | its `status` | no | yes |
 
 Everything that names a change uses the same three words: NEW, CHANGED and REMOVED. A code header says RENAMED for a renamed file and SOURCE for a snippet.

@@ -31,6 +31,19 @@ function pairEdges(ref, edges, ids, undirected = () => false) {
 
 const pairName = (e) => `${e?.from}->${e?.to}`;
 
+/** The layer ("l:id") or item ("i:id") a layers scene names by id, or by "layer.item" with ids that may hold dots. */
+function layerPart(scene, ref) {
+  const layers = list(scene.layers);
+  if (layers.some((l) => l?.id === ref)) return [`l:${ref}`];
+  if (layers.some((l) => list(l?.items).some((it) => it?.id === ref))) return [`i:${ref}`];
+  for (let at = ref.indexOf('.'); at > 0; at = ref.indexOf('.', at + 1)) {
+    const layer = layers.find((l) => l?.id === ref.slice(0, at));
+    const item = list(layer?.items).find((it) => it?.id === ref.slice(at + 1));
+    if (item) return [`i:${item.id}`];
+  }
+  return null;
+}
+
 /** Per scene type: `resolve(scene, ref, hunks)` gives item keys or null, `names(scene, hunks)` the refs to suggest. */
 const TARGETS = {
   graph: {
@@ -164,6 +177,17 @@ const TARGETS = {
       return named.length ? named : null;
     },
     names: (scene) => [...list(scene.cases).map((c) => c?.name), ...list(scene.gaps).map((_, i) => `gap:${i}`)],
+  },
+  layers: {
+    resolve(scene, ref) {
+      const stops = list(scene.path?.stops);
+      if (isIndex(ref, stops.length)) return typeof stops[ref] === 'string' ? layerPart(scene, stops[ref]) : null;
+      return typeof ref === 'string' ? layerPart(scene, ref) : null;
+    },
+    names: (scene) => [
+      ...list(scene.layers).map((l) => l?.id),
+      ...list(scene.layers).flatMap((l) => list(l?.items).flatMap((it) => [it?.id, `${l?.id}.${it?.id}`])),
+    ],
   },
   intent: {
     resolve: (scene, ref) => (isIndex(ref, list(scene.bullets).length) ? [`b:${ref}`] : null),

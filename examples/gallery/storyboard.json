@@ -195,6 +195,41 @@
         "A payment that succeeds while the timeout job is cancelling the same order",
         "Orders already in the refunded state when the migration runs"
       ]
+    },
+    {
+      "type": "layers",
+      "chapter": "Rate limiting",
+      "narration": "The API passes every request through a stack of checks, from top to bottom, in the order shown here.",
+      "layers": [
+        {"id": "server", "label": "HTTP server", "caption": "shared middleware", "items": [
+          {"id": "helmet", "label": "helmet", "icon": "shield", "caption": "security headers"},
+          {"id": "cors", "label": "cors", "icon": "globe", "caption": "allowed origins"},
+          {"id": "json", "label": "express.json", "icon": "braces", "caption": "parses the body"}
+        ]},
+        {"id": "auth", "label": "Authentication", "caption": "who is asking", "items": [
+          {"id": "session", "label": "session", "icon": "key-round", "caption": "signed-in user"}
+        ]},
+        {"id": "limits", "label": "Rate limiting", "caption": "**100** a minute per user", "items": [
+          {"id": "limiter", "label": "rateLimit", "icon": "gauge", "caption": "counts in Redis", "change": "added"}
+        ]},
+        {"id": "routes", "label": "Routes", "caption": "matches the address", "items": [
+          {"id": "orders-route", "label": "POST /orders", "icon": "route"}
+        ]},
+        {"id": "handlers", "label": "Handlers", "caption": "the order logic", "items": [
+          {"id": "create-order", "label": "createOrder", "icon": "shopping-cart"}
+        ]},
+        {"id": "data", "label": "Data", "caption": "where orders live", "items": [
+          {"id": "postgres", "label": "Postgres", "icon": "database", "caption": "orders table"}
+        ]}
+      ],
+      "path": {"label": "POST /orders", "stops": ["server", "session", "limiter", "orders-route", "create-order", "postgres"], "skip": {"at": "limiter", "reply": "429 Too Many Requests"}},
+      "steps": [
+        {"focus": "server", "say": "A new order request first passes the server's shared checks, which add security headers and read the body."},
+        {"focus": "session", "say": "The session check finds the signed-in user, so the request goes on."},
+        {"focus": "limiter", "mark": "circle", "note": "new in this change", "say": "Next comes the new rate limiter, which counts how many requests this user sent in the last minute."},
+        {"focus": 0, "say": "Past a hundred requests, the limiter answers too many requests by itself and sends that straight back."},
+        {"focus": ["routes", "handlers", "data"], "say": "So the route, the order logic and the database never see the extra requests at all."}
+      ]
     }
   ]
 }

@@ -9,6 +9,7 @@ import { layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
 import { layoutIntent } from '../utils/intentLayout';
+import { layoutLayers } from '../utils/layersLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
@@ -46,6 +47,7 @@ const SCENE_FITS: SceneFits = {
     const box = contentBox(Boolean(scene.title));
     return layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
   },
+  layers: (scene) => layoutLayers(scene, contentBox(Boolean(scene.title))),
   review: (scene, storyboard) => {
     const box = contentBox(Boolean(scene.title));
     return layoutReview(storyboard.findings ?? [], box.width, box.height);
