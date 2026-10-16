@@ -51,7 +51,7 @@
         { "set": { "main.cur": { "ref": "n3" } }, "say": "Then to the third." },
         { "show": ["frame:append(n4)", "n4"], "say": "A call to append makes a fourth node." },
         { "set": { "n3.next": { "ref": "n1" } }, "focus": "n3.next", "mark": "circle", "note": "should be n4", "say": "The bug links the last node back to the first, which makes a loop." },
-        { "hide": ["frame:append(n4)"], "say": "Append returns, and the fourth node is left with nothing pointing at it." }
+        { "hide": ["frame:append(n4)"], "focus": "n4", "say": "Append returns, and the fourth node is left with nothing pointing at it." }
       ]
     }
   ]

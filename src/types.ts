@@ -609,7 +609,7 @@ export type StateValue = DisplayText | number;
  * sees it settle before the step's words: a changed value slides out and the new one in, briefly lit; a moved
  * pointer slides to its cell. The scene shows its initial state during `narration`, and at each step that
  * state with every change of the steps up to and including it applied in order.
- * A step without `focus` focuses what it changes.
+ * A step without `focus` focuses what it sets, moves or shows; a step that only hides needs a `focus`.
  */
 export interface StateStep extends Omit<FocusStep, 'focus'> {
   focus?: FocusStep['focus'];

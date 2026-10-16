@@ -14,7 +14,7 @@ const search = {
   steps: [
     { show: ['ptr:mid'], say: 'The middle is three.' },
     { move: { lo: 2, window: '2-3' }, set: { 1: 'x' }, say: 'The low end moves right.' },
-    { hide: ['range:window'], say: 'The window is gone.' },
+    { hide: ['range:window'], focus: 'ptr:mid', say: 'The window is gone.' },
   ],
 };
 
@@ -70,7 +70,7 @@ test('a reference to an object that is hidden then is an error at the step that 
 
 test('a step without focus focuses what it changes', () => {
   const sb = normalizeStoryboard({ title: 't', scenes: [search, cart] }, {});
-  assert.deepEqual(sb.scenes[0].steps.map((s) => s.focus), [['ptr:mid'], ['1', 'ptr:lo', 'range:window'], []]);
+  assert.deepEqual(sb.scenes[0].steps.map((s) => s.focus), [['ptr:mid'], ['1', 'ptr:lo', 'range:window'], 'ptr:mid']);
   assert.deepEqual(sb.scenes[1].steps.map((s) => s.focus), [['checkout.order', 'l2'], ['c1.items', 'l1.0']]);
 });
 
@@ -135,4 +135,16 @@ test('a variable, field or frame whose name holds "/" keeps its owner and name a
   const r = await validateStoryboard({ title: 't', scenes: [shown] }, {}, { mode: 'explain' });
   assert.deepEqual(r.errors, []);
   assert.deepEqual(r.warnings.filter((w) => w.includes('could not check')), []);
+});
+
+test('validate requires a focus on a step that only hides, or whose changes are empty', async () => {
+  const hideOnly = { ...search, steps: [{ hide: ['range:window'], say: 'The window is gone.' }] };
+  assert.deepEqual(await errorsOf(hideOnly), [
+    'scenes[0].steps[0].focus: required, a cell index, an "a-b" range of cells, a pointer "ptr:name", or a range "range:name", or an array of them, since this step only hides, and what it hides cannot be lit, so it lights nothing',
+  ]);
+  const empty = { ...cart, steps: [{ set: {}, say: 'Nothing moves.' }] };
+  assert.deepEqual(await errorsOf(empty), [
+    'scenes[0].steps[0].focus: required, a frame "frame:name", a variable "frame.var", an object id, or a field "object.field", or an array of them, since this step changes nothing, so it lights nothing',
+  ]);
+  assert.deepEqual(await errorsOf({ ...hideOnly, steps: [{ hide: ['range:window'], focus: 'ptr:lo', say: 'The window is gone.' }] }), []);
 });

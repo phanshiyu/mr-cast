@@ -3,7 +3,7 @@
 
 import { focusSteps, legacyFocusKeys } from '../../shared/normalize.mjs';
 import { FOCUS_TYPES, focusRefs, refNames, resolveRef, stepTargets } from '../../shared/targets.mjs';
-import { changesState, STATE_TYPES } from '../../shared/state-steps.mjs';
+import { changedRefs, changesState, STATE_TYPES } from '../../shared/state-steps.mjs';
 import { tokenSteps } from '../../shared/layers.mjs';
 import { didYouMean } from './suggest.mjs';
 
@@ -56,7 +56,11 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     if (legacy.length > 1) return errors.push(`${q}: set one of ${legacy.join(' or ')}, or use focus`);
     const key = focusKey(step, s.type);
     const value = step[key];
-    if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) return;
+    if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) {
+      if (changedRefs(s, step).length) return;
+      const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : 'changes nothing';
+      return errors.push(`${q}.focus: required, ${REF_HELP[s.type]}, or an array of them, since this step ${what}, so it lights nothing`);
+    }
     if (value === undefined) return errors.push(`${q}.focus: required, ${REF_HELP[s.type]}, or an array of them${STATE_TYPES.includes(s.type) ? ', unless the step changes something, which it then focuses' : ''}`);
     const refs = focusRefs(value);
     if (refs.length === 0) return errors.push(`${q}.${key}: an empty array lights nothing; name at least one ${REF_HELP[s.type]}`);
