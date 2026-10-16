@@ -190,7 +190,7 @@ export async function phonemize(text, language = "a", norm = true) {
     .replace(/kəkˈoːɹoʊ/g, "kˈoʊkəɹoʊ")
     .replace(/kəkˈɔːɹəʊ/g, "kˈəʊkəɹəʊ")
     // mr-cast: espeak reads Redis as "ri-deez"; it is said "red-iss"
-    .replace(/ɹᵻdˈ?iz(?=[\s;:,.!?"«»]|$)/g, "ɹˈɛdɪs")
+    .replace(/(?<=^|[\s;:,.!?"«»])(?:ɹᵻdˈ?iz|ɹˌiːdˈɪs(?=ᵻz))/g, "ɹˈɛdɪs")
     .replace(/ʲ/g, "j")
     .replace(/r/g, "ɹ")
     .replace(/x/g, "k")

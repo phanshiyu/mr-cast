@@ -3,7 +3,8 @@
 // term nobody explained. Each warning quotes the phrase and says what to say instead.
 
 import { sceneSteps } from '../../shared/steps.mjs';
-import { spokenTexts, wordCount } from '../../shared/timing.mjs';
+import { plainText } from '../../shared/markup.mjs';
+import { wordCount } from '../../shared/timing.mjs';
 
 const SENTENCE_MAX = 25;
 
@@ -24,8 +25,8 @@ const STATUSES = {
   410: 'gone', 413: 'too large', 415: 'unsupported media type', 422: 'unprocessable', 429: 'too many requests', 500: 'server error',
   502: 'bad gateway', 503: 'unavailable', 504: 'gateway timeout',
 };
-/** A word after the number that makes it a count or an amount, not a status: "500 orders", "200 milliseconds". */
-const COUNTED = /^(?:[a-z]+s|ms|kb|mb|gb|percent|times|lines?|rows?|words?|minutes?|seconds?|hours?|days?|users?|people|items?|bytes?|requests?)$/i;
+/** Words right before a number that make it a response the code sends: "answers 429", "gets a 201". */
+const RESPONDS = /\b(?:answers?|answered|returns?|returned|responds?|responded|replies|replied|sends?|sent|gets?|got|with|status|code)(?:\s+(?:a|an|the|back|with))*\s+$/i;
 /** A word near the number that explains it as a status. */
 const STATUS_WORDS = /\b(?:status|code|response|error|ok|created|accepted|no content|moved|redirect|not modified|bad request|unauthori[sz]ed|forbidden|not found|not allowed|conflict|too large|unsupported|unprocessable|too many requests|server error|bad gateway|unavailable|timeout|timed out)\b/i;
 
@@ -55,7 +56,7 @@ const JARGON = [
   [/\bhydrat(?:e|es|ed|ion)\b/i, 'what it fills in'],
   [/\bserializ(?:e|es|ed|ation)\b/i, '"turns into text" or "saves"'],
   [/\bPromise\.?\s?all\b/i, '"all at the same time"'],
-  [/\bawait(?:s|ed|ing)?\b/i, '"waits for"'],
+  [/\bawaited\b/i, '"waited for"'],
   [/\bstub(?:s|bed)?\b/i, '"a placeholder"'],
 ];
 /** Sentence shapes that explain a term right where it is used: "Redis, the shared store", "a SKU is a product code". */
@@ -68,15 +69,15 @@ const explainsNext = (next, term) => typeof next === 'string' && new RegExp(`^(?
 const PHRASE_RULES = [
   { find: /\b(?:GET|POST|PUT|PATCH|DELETE)\s+\/[\w/:{}.-]*/g, say: () => 'what the request does, such as "a request to create an order"' },
   { find: /(?<![\w/])\/[a-z][\w-]*(?:\/[\w:{}.-]+)*/g, say: (m) => `the route by what it is for, such as "the ${words(m)} route"` },
-  { find: /\b[\w-]+(?:\/[\w.-]+){2,}/g, say: (m) => `the file by what it holds, such as "the ${words(m.split('/').pop().replace(/\.\w+$/, ''))} file"` },
+  { find: /\b[\w-]+(?:\/[\w.-]+){2,}/g, skip: (m) => !/\.[a-z]+$|_|^(?:src|lib|app|bin|tests?|packages|components|api|config|scripts|docs)\//.test(m), say: (m) => `the file by what it holds, such as "the ${words(m.split('/').pop().replace(/\.\w+$/, ''))} file"` },
   { find: /\b[\w-]+\.(?:tsx?|jsx?|mjs|cjs|py|rb|go|rs|java|kt|swift|json|ya?ml|toml|sql|sh|css|html|md|env|lock)\b/g, say: (m) => `the file by what it holds, such as "the ${words(m.replace(/\.\w+$/, ''))} file"` },
   { find: /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/g, say: (m) => `the setting by what it does, such as "the ${words(m)} setting"` },
   { find: /\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b/g, say: (m) => `"${words(m)}", or what it is` },
   { find: /\b[a-z]+[A-Z][a-zA-Z0-9]*\b/g, say: (m) => `"the ${words(m)} function" or what it does` },
   { find: /\b[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+\b/g, say: (m) => `"the ${words(m)}" or what it is` },
-  { find: /\b[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+(?:\(\))?/g, skip: (m) => /^(?:e\.g|i\.e|etc|vs)$/i.test(m) || /^[a-z]{2,}\.(?:com|org|io|dev|net)$/.test(m), say: (m) => `"${words(m.replace(/\(\)$/, ''))}", or what it is` },
+  { find: /\b[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+(?:\(\))?/g, skip: (m) => /^(?:e\.g|i\.e|etc|vs)$/i.test(m) || /^(?:[A-Za-z]\.)+[A-Za-z]$/.test(m) || /^[a-z]{2,}\.(?:com|org|io|dev|net)$/.test(m), say: (m) => `"${words(m.replace(/\(\)$/, ''))}", or what it is` },
   { find: /\w+::\w+/g, say: (m) => `"${words(m)}", or what it is` },
-  { find: /\b\w+\(\)|=>|===?|!==?|&&|\|\||\+\+|\+=|<=|>=/g, say: () => 'the operation in words, such as "is the same as", "and", or "calls"' },
+  { find: /\b\w+\(\)|=>|===?|!==?|&&|\|\||(?<!\bC)\+\+|\+=|<=|>=/g, say: () => 'the operation in words, such as "is the same as", "and", or "calls"' },
 ];
 
 /**
@@ -94,8 +95,7 @@ function checkStatusCodes(sentence, at, warnings) {
   for (const m of sentence.matchAll(/\b([1-5]\d\d)\b/g)) {
     const meaning = STATUSES[m[1]];
     if (!meaning) continue;
-    const next = sentence.slice(m.index + m[0].length).match(/^\s+([A-Za-z]+)/)?.[1];
-    if (next && COUNTED.test(next)) continue;
+    if (!RESPONDS.test(sentence.slice(0, m.index))) continue;
     const near = sentence.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40);
     if (STATUS_WORDS.test(near)) continue;
     warnings.push(`${at}: "${m[1]}" is a bare status code; say what it means, "${meaning}", and the number only if it matters`);
@@ -113,7 +113,9 @@ export function checkVoice(storyboard, { simple = false } = {}, warnings) {
     const p = `scenes[${i}]`;
     const paths = [`${p}.narration`, ...sceneSteps(scene).map((_, j) => `${p}.steps[${j}].say`)];
     let first = true;
-    spokenTexts(scene).forEach((text, k) => {
+    // The author's own words, without markup, so each warning quotes text that is in the storyboard.
+    [scene.narration, ...sceneSteps(scene).map((step) => step?.say)].forEach((raw, k) => {
+      const text = typeof raw === 'string' ? plainText(raw) : raw;
       if (typeof text !== 'string' || !text.trim()) return;
       const at = paths[k];
       const all = sentences(text);

@@ -18,6 +18,13 @@ test('the voice reads written shorthand as words', () => {
   assert.equal(speechText('In the 90s, i.e. long ago.'), 'In the 90s, that is, long ago.');
 });
 
+test('the voice leaves counts, decades, routes, addresses and spacing as written', () => {
+  for (const text of ['100s of requests', 'the 90s and mid-90s', 'two 747s', 'GET /v1/orders', 'IP 192.168.1.1', 'a <-> b', 'Two  spaces.  Here']) {
+    assert.equal(speechText(text), text);
+  }
+  assert.equal(speechText('A --> B, as in e.g.'), 'A to B, as in for example');
+});
+
 test('spoken text drops markup, then says shorthand in words', () => {
   assert.deepEqual(spokenTexts({ type: 'graph', narration: 'Waits **5s**, e.g. now.' }), ['Waits 5 seconds, for example, now.']);
 });
@@ -42,7 +49,8 @@ test('a scene opening on a bare pronoun or a long sentence is warned', async () 
 test('plain speech passes: product names, explained terms, counts, and a status said with its meaning', async () => {
   assert.deepEqual(await voiceWarnings(
     'This is the rate limit function. Redis, a shared in-memory store, keeps one count per visitor on Node.js.',
-    'The page loads 200 orders at a time. The server answers 429, too many requests.',
+    'The page loads 200 orders at a time. The limit is 200 per minute. On line 201, the function returns early. The server answers 429, too many requests.',
+    'The steps are create, read and update, written in C++. The U.S. team awaits approval.',
     'Line ten returns a middleware. A middleware is a function that runs before the route.',
   ), []);
 });
