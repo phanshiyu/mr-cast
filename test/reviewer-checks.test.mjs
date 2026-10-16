@@ -66,6 +66,10 @@ test('a count of new or existing tests is checked against the cases with that st
   assert.deepEqual(ofScenes(await warningsOf(scene), 'scenes[0].narration: says'), []);
   const wrong = { ...scene, narration: 'Three new tests prove the fix.' };
   assert.deepEqual(ofScenes(await warningsOf(wrong), 'scenes[0].narration: says'), ['scenes[0].narration: says "Three new tests", but the scene lists 2 added; say the number on screen']);
+  const oneExisting = { ...scene, narration: 'Two new tests prove the fix, and one existing test covers paging.', cases: [...cases(2, 'existing'), ...cases(2, 'added')] };
+  assert.deepEqual(ofScenes(await warningsOf(oneExisting), 'scenes[0].narration: says'), ['scenes[0].narration: says "one existing test", but the scene lists 2 existing; say the number on screen']);
+  const oneNew = { ...scene, narration: 'One new test proves the fix.' };
+  assert.deepEqual(ofScenes(await warningsOf(oneNew), 'scenes[0].narration: says'), ['scenes[0].narration: says "One new test", but the scene lists 2 added; say the number on screen']);
 });
 
 test('a step that counts tests is checked against the cases it lights', async () => {

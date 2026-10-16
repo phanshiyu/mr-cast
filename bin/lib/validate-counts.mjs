@@ -1,7 +1,7 @@
 // Counts the voice says that the screen contradicts: "seven tests" over a list of nine cases, or "three things to
 // check" over two bullets. Only a count right before the noun is read, so "the second of four tests" is never
 // guessed at. Of the plain counts in one text only the largest is taken as the total, so "Nine tests cover it; one
-// test checks the reset" is read as nine, and "one" is never checked. Each warning names both numbers.
+// test checks the reset" is read as nine, and a bare "one" is never checked; "one new test" is. Each warning names both numbers.
 
 import { plainText } from '../../shared/markup.mjs';
 import { indexRange, sceneSteps } from '../../shared/steps.mjs';
@@ -17,11 +17,11 @@ const BULLETS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(?:main|key|big)\\s+)?(?:th
 
 const QUALIFIED = { new: 'added', added: 'added', existing: 'existing', changed: 'changed', removed: 'removed' };
 
-/** The counts in `text` to check: each qualified one ("two new tests"), and the largest plain one, but never one. */
+/** The counts in `text` to check: each qualified one ("two new tests"), and the largest plain one, but never a bare one. */
 function counts(text, pattern) {
   const found = [...plainText(text).matchAll(pattern)]
     .map((m) => ({ phrase: m[0], said: countOf(m[1]), qualifier: m[2]?.toLowerCase() }))
-    .filter((c) => c.said !== 1);
+    .filter((c) => c.qualifier || c.said !== 1);
   const plain = found.filter((c) => !c.qualifier);
   const total = plain.reduce((max, c) => (max && max.said >= c.said ? max : c), null);
   return found.filter((c) => c.qualifier || c === total);
