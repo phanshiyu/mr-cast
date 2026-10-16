@@ -195,6 +195,49 @@
         "A payment that succeeds while the timeout job is cancelling the same order",
         "Orders already in the refunded state when the migration runs"
       ]
+    },
+    {
+      "type": "compare",
+      "chapter": "Before and after",
+      "title": "An order, before and after",
+      "narration": "Here is the same order, side by side, under the old rules and the new ones.",
+      "rows": [
+        {"label": "New order starts as", "cells": ["`paid`", "`pending`"]},
+        {"label": "Card declined", "cells": ["Order fails, and the customer starts over", "Retried three times, and the order stays open"], "verdict": ["bad", "good"]},
+        {"label": "Never paid", "cells": ["Stays open forever", "Cancelled automatically after **24 hours**"], "verdict": ["bad", "good"]},
+        {"label": "Stored order", "cells": [
+          {"code": "{\n  \"status\": \"paid\",\n  \"refundedAt\": null\n}", "lang": "json"},
+          {"code": "{\n  \"status\": \"pending\",\n  \"expiresAt\": \"+24h\"\n}", "lang": "json"}
+        ]},
+        {"label": "Shipping", "cells": ["Ships once paid", "Ships once paid"]}
+      ],
+      "steps": [
+        {"focus": 0, "say": "A new order used to start as paid. Now a new order starts as pending, until the money arrives."},
+        {"focus": 1, "say": "When a card is declined, the old flow gave up at once. The new flow retries three times."},
+        {"focus": "2@After", "mark": "circle", "note": "new timeout", "say": "An order nobody pays for is now cancelled after a day, instead of staying open forever."},
+        {"focus": 3, "say": "The stored order drops the refund date and gains an expiry time."},
+        {"focus": 4, "say": "Shipping does not change. A paid order ships just as before."}
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "Running the migration",
+      "title": "Migrating the orders table",
+      "window": "zsh: ~/shop",
+      "narration": "Running the migration on a copy of production shows why the old refunds matter.",
+      "entries": [
+        {"command": "pnpm db:migrate", "output": "Applying 20261001_order_pending.sql\n[error]{bad} 12 orders still have status refunded\nrefunded is no longer a valid order status", "exit": 1},
+        {"command": "psql shop -c \"update orders set status = 'cancelled' where status = 'refunded'\"", "output": "UPDATE 12", "exit": 0},
+        {"command": "pnpm db:migrate", "output": "Applying 20261001_order_pending.sql\n[done]{good} orders.status now defaults to pending", "exit": 0},
+        {"command": "pnpm test test/orders", "output": " [PASS]{good} creates new orders as pending\n [PASS]{good} pay moves a pending order to paid\n [PASS]{good} a failed charge keeps the order pending\n [PASS]{good} cancels orders unpaid after 24 hours\n\nTests  **4 passed** (4)", "exit": 0}
+      ],
+      "steps": [
+        {"focus": 0, "say": "The first run of the migration fails."},
+        {"focus": "0:1", "mark": "underline", "note": "old refunds block it", "say": "Twelve orders are still marked refunded, a status the new schema no longer allows."},
+        {"focus": 1, "say": "The fix is to mark those twelve orders as cancelled first."},
+        {"focus": 2, "say": "The second run of the migration succeeds, and new orders now default to pending."},
+        {"focus": 3, "say": "The order tests pass against the migrated table, all four of them."}
+      ]
     }
   ]
 }

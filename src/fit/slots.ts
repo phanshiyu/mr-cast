@@ -62,4 +62,11 @@ export const SLOTS = {
   fileNote: { ...SANS, name: 'file note', weight: 400, size: 24, min: 16, lines: 1, lineHeight: 1.15, width: 0, fix: 'shorten the note to a few words' },
   decision: { ...LABEL, name: 'decision', weight: 650, size: 24, min: 15, lines: 3, lineHeight: 1.15, width: 0, fix: 'ask a shorter question, e.g. "Cache hit?", and put the detail in the narration' },
   terminal: { ...LABEL, name: 'start or end', weight: 650, size: 26, min: 16, lines: 2, lineHeight: 1.15, width: 0, fix: 'shorten it to a few words, e.g. "Order placed"' },
+  sideTitle: { ...SANS, name: 'side title', weight: 800, size: 22, min: 15, lines: 1, lineHeight: 1.2, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the side title, e.g. "Before" or "Redis"' },
+  compareLabel: { ...LABEL, name: 'row label', weight: 650, size: 26, min: 16, lines: 3, lineHeight: 1.25, width: 0, fix: 'shorten the row label to the aspect it compares, e.g. "On Redis outage"' },
+  compareCell: { ...LABEL, name: 'compare cell', weight: 500, size: 30, min: 18, lines: 3, lineHeight: 1.3, width: 0, fix: 'shorten the cell, or split the comparison into two scenes' },
+  compareCode: { ...MONO, name: 'compare snippet', weight: 400, size: 24, min: 14, lines: 1, lineHeight: 1.45, markup: false, width: 0, fix: 'shorten the snippet\'s longest line, or show the code in a code scene' },
+  terminalWindow: { ...SANS, name: 'window title', weight: 500, size: 19, min: 14, lines: 1, lineHeight: 1.2, markup: false, width: 0, fix: 'shorten the window title, e.g. "zsh: ~/app"' },
+  terminalCommand: { ...MONO, name: 'command', weight: 500, size: 26, min: 26, lines: 99, lineHeight: 1.5, markup: false, balanced: false, width: 0, fix: 'shorten the command' },
+  terminalOutput: { ...MONO, name: 'output line', weight: 400, size: 26, min: 26, lines: 99, lineHeight: 1.5, balanced: false, width: 0, fix: 'shorten the line' },
 } satisfies Record<string, Slot>;

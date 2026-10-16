@@ -210,17 +210,19 @@ The narration is written to be heard once, like one person explaining the change
 | `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
+| `compare` | Two sides, such as before and after or two designs, row by row at the same height, so like sits beside like. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text or a short code snippet. With `steps`, rows show as the voice reaches them. |
+| `terminal` | A shell session in a window: each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls, so text never shrinks below a readable size. With `steps`, each step types its entries and the camera follows. |
 | `review` | In [review mode](#review-mode), every flag worst first, with its severity, file and line, and claim, under "Claude's review". |
 
 Each spoken text is a segment: a lead, the voice, and a tail. The narration waits until the scene has drawn in, which takes 1 second, or the scene type's build time plus 0.3 seconds when longer. Most diagrams take 1.5 seconds, so their voice starts at 1.8. Each step's items light up 0.5 seconds before its voice and stay lit 1.2 seconds after it. Without a voice clip, a segment reads at 130 words per minute and holds 1.5 seconds after, 3 seconds at least. The pace scales the reading speed and every pause.
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid` and `tests` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `compare` and `terminal` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
 
 ### Steps
 
 A code scene can walk its hunk in `steps` instead of `focusLinesAfter` and `flow`. Each step names its `lines` (or `oldLines` for removed code) and what to `say` while they are highlighted, and lasts as long as that takes, so the highlight follows the voice. The scene's `narration` becomes the intro, spoken while the diff morphs in. Removed lines stay on screen until the last step about them, then collapse. A `label` on every step draws the step diagram beside the code. Write steps top to bottom, at most 8 per scene, or 6 with labels.
 
-Diagrams take `steps` too, so the video can move the viewer's attention as it explains. Each step names what to light in `focus`, one ref or a list, and what to `say`. The whole diagram draws first. Then, half a second before each step's words, its focus lights up, earlier steps' items stay softly visible, and the rest dims. To walk a path, focus a node, then the edge leaving it, then the next node. A sequence and a timeline also reveal their messages or events as the steps reach them.
+Diagrams take `steps` too, so the video can move the viewer's attention as it explains. Each step names what to light in `focus`, one ref or a list, and what to `say`. The whole diagram draws first. Then, half a second before each step's words, its focus lights up, earlier steps' items stay softly visible, and the rest dims. To walk a path, focus a node, then the edge leaving it, then the next node. A sequence, a timeline, a compare and a terminal also reveal their messages, events, rows or entries as the steps reach them.
 
 | Scene | A `focus` ref is |
 | --- | --- |
@@ -234,6 +236,8 @@ Diagrams take `steps` too, so the video can move the viewer's attention as it ex
 | `files` | A path in the tree. |
 | `tests` | A case index, a case's name, or a gap `"gap:0"`. |
 | `intent` | A bullet index. |
+| `compare` | A row index, an `"a-b"` range of them, a side `"side:After"` (by title or `"side:0"`), or one cell `"2@After"` (row, then side). A step shows every row up to the last one it focuses. |
+| `terminal` | An entry index, an `"a-b"` range of them, or one output line `"2:3"` (entry, then line, from 0). A step types every entry up to the last one it focuses, and scrolls back to an earlier one. |
 
 A `flow` scene gives each of its own steps a `say` instead, and a step becomes current just before its words. Without steps, a diagram is fully drawn before the narration starts. `validate` checks every ref and suggests the closest name when one matches nothing.
 

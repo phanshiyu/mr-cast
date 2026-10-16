@@ -3,6 +3,7 @@ import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
 import { GraphDiagram } from './components/GraphDiagram';
 import { Captions } from './components/Captions';
 import { Chart } from './components/Chart';
+import { Compare } from './components/Compare';
 import { CodeDiff } from './components/CodeDiff';
 import { DataFlow } from './components/DataFlow';
 import { DataTable } from './components/DataTable';
@@ -14,11 +15,12 @@ import type { SceneProps } from './components/sceneProps';
 import { ReviewRecap } from './components/ReviewRecap';
 import { SequenceDiagram } from './components/SequenceDiagram';
 import { StateDiagram } from './components/StateDiagram';
+import { Terminal } from './components/Terminal';
 import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
 import './fonts';
-import type { GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { CompareScene, TerminalScene, GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -36,6 +38,8 @@ interface SceneByType {
   timeline: TimelineScene;
   files: FilesScene;
   review: ReviewScene;
+  compare: CompareScene;
+  terminal: TerminalScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -53,6 +57,8 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   timeline: Timeline,
   files: FileTree,
   review: ReviewRecap,
+  compare: Compare,
+  terminal: Terminal,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

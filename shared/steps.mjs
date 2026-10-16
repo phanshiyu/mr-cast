@@ -15,6 +15,8 @@ const STEPS_OF = {
   files: own,
   tests: own,
   intent: own,
+  compare: own,
+  terminal: own,
   flow: (scene) => (Array.isArray(scene.steps) && scene.steps.some((step) => step?.say !== undefined) ? scene.steps : undefined),
 };
 
