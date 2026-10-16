@@ -65,3 +65,26 @@ test('a row of boxes packs to its wishes, moving only the boxes that collide, an
   assert.deepEqual(packRow([{ want: -20, w: 50 }, { want: -20, w: 50 }], 10, 1000), [0, 60]);
   assert.deepEqual(packRow([{ want: 980, w: 50 }], 10, 1000), [950]);
 });
+
+test('fourteen events, too many cards for one row, put every other card below the axis with no overlap or crossing', () => {
+  const scene = { ...backoff, events: Array.from({ length: 14 }, (_, i) => ({ at: i * 10, label: `Retry number ${i + 1}`, detail: 'waits again' })) };
+  const { events, axisY, height } = layoutTimeline(scene, WIDTH);
+  assert.equal(events.length, 14);
+  const pairs = events.flatMap((a, i) => events.slice(i + 1).filter((b) => overlaps(a.box, b.box)).map((b) => `${a.event.label} and ${b.event.label}`));
+  assert.deepEqual(pairs, []);
+  for (const e of events) assert.ok(e.box.x >= 0 && e.box.x + e.box.w <= WIDTH && e.box.y >= 0 && e.box.y + e.box.h <= height, `${e.event.label} stays on the stage`);
+  assert.deepEqual(events.map((e) => (e.box.y < axisY ? 'above' : 'below')), Array.from({ length: 14 }, (_, i) => (i % 2 ? 'below' : 'above')));
+  for (const e of events) {
+    const last = e.stem.at(-1);
+    assert.deepEqual([e.stem[0].x, e.stem[0].y], [e.x, axisY], `${e.event.label} starts at its dot`);
+    assert.equal(last.y, e.box.y < axisY ? e.box.y + e.box.h : e.box.y, `${e.event.label} ends at its card`);
+  }
+  const segments = (e) => e.stem.slice(1).map((p, i) => [e.stem[i], p]);
+  const crossings = events.flatMap((a, i) =>
+    events.slice(i + 1).flatMap((b) => (segments(a).some(([p1, p2]) => segments(b).some(([q1, q2]) => cross(p1, p2, q1, q2))) ? [`${a.event.label} and ${b.event.label}`] : [])),
+  );
+  assert.deepEqual(crossings, []);
+  // A leader never runs through another card.
+  const through = events.flatMap((a) => events.filter((b) => b !== a && segments(a).some(([p, q]) => overlaps({ x: Math.min(p.x, q.x), y: Math.min(p.y, q.y), w: Math.abs(q.x - p.x) || 0.1, h: Math.abs(q.y - p.y) || 0.1 }, b.box))).map((b) => `${a.event.label} through ${b.event.label}`));
+  assert.deepEqual(through, []);
+});

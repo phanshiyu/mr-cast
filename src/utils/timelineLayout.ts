@@ -33,9 +33,9 @@ export interface PlacedEvent {
   detail: Fit | null;
   box: { x: number; y: number; w: number; h: number };
   /**
-   * The leader from the event's dot on the axis to the bottom of its card, as points from the dot up. Straight
-   * when the card sits over its event. Every bend is at the same two heights and the cards keep the events'
-   * order, so no two leaders cross.
+   * The leader from the event's dot on the axis to its card, as points from the dot: up to the bottom of a card
+   * above the axis, down to the top of one below it. Straight when the card sits over its event. Every bend in
+   * a row is at the same two heights and the cards keep the events' order, so no two leaders cross.
    */
   stem: { x: number; y: number }[];
 }
@@ -144,28 +144,43 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
     const text = Math.max(one(event.label, SLOTS.eventLabel), event.detail ? one(event.detail, SLOTS.eventDetail) : 0, stampW);
     return Math.max(BOX_MIN_W, Math.min(BOX_MAX_W, text + 2 * BOX_PAD_X));
   });
-  const widths = capWidths(wanted, width - BOX_GAP * Math.max(0, order.length - 1));
-  const boxes = order.map(({ event, index }, i) => {
-    const w = widths[i]!;
-    const label = fitText(event.label, sized(SLOTS.eventLabel, w - 2 * BOX_PAD_X), `events[${index}].label`);
-    const detail = event.detail ? fitText(event.detail, sized(SLOTS.eventDetail, w - 2 * BOX_PAD_X), `events[${index}].detail`) : null;
-    const h = 2 * BOX_PAD_Y + STAMP_LINE + label.height + (detail?.height ?? 0);
-    return { event, index, cx: x(event.at), stamp: formatValue(event.at, scene.unit), label, detail, w, h };
+  // One row of cards above the axis while their narrowest widths fit; else every other event's card goes below it.
+  const fitsOneRow = order.length * BOX_MIN_W + BOX_GAP * (order.length - 1) <= width;
+  const rows = fitsOneRow ? [order.map((_, i) => i)] : [0, 1].map((r) => order.flatMap((_, i) => (i % 2 === r ? [i] : [])));
+  const boxes = order.map(({ event, index }) => ({ event, index, cx: x(event.at), stamp: formatValue(event.at, scene.unit) }));
+  const rowLayouts = rows.map((members) => {
+    const widths = capWidths(members.map((i) => wanted[i]!), width - BOX_GAP * Math.max(0, members.length - 1));
+    const cards = members.map((i, k) => {
+      const { event, index } = boxes[i]!;
+      const w = widths[k]!;
+      const label = fitText(event.label, sized(SLOTS.eventLabel, w - 2 * BOX_PAD_X), `events[${index}].label`);
+      const detail = event.detail ? fitText(event.detail, sized(SLOTS.eventDetail, w - 2 * BOX_PAD_X), `events[${index}].detail`) : null;
+      return { i, w, label, detail, h: 2 * BOX_PAD_Y + STAMP_LINE + label.height + (detail?.height ?? 0) };
+    });
+    // The cards in the events' order, each as near its event as the cards beside it allow.
+    const lefts = packRow(cards.map((c) => ({ want: boxes[c.i]!.cx - c.w / 2, w: c.w })), BOX_GAP, width);
+    const anchors = cards.map((c, k) => Math.min(lefts[k]! + c.w - 2 * BOX_PAD_X, Math.max(lefts[k]! + 2 * BOX_PAD_X, boxes[c.i]!.cx)));
+    const moved = cards.some((c, k) => Math.abs(anchors[k]! - boxes[c.i]!.cx) > 0.5);
+    return { cards, lefts, anchors, stemH: moved ? STEM_LEAD : STEM_MIN, rowH: Math.max(0, ...cards.map((c) => c.h)) };
   });
-  // One row of cards in the events' order, each as near its event as the cards beside it allow.
-  const lefts = packRow(boxes.map((b) => ({ want: b.cx - b.w / 2, w: b.w })), BOX_GAP, width);
-  const anchors = boxes.map((b, i) => Math.min(lefts[i]! + b.w - 2 * BOX_PAD_X, Math.max(lefts[i]! + 2 * BOX_PAD_X, b.cx)));
-  const moved = boxes.some((b, i) => Math.abs(anchors[i]! - b.cx) > 0.5);
-  const stemH = moved ? STEM_LEAD : STEM_MIN;
-  const rowH = Math.max(0, ...boxes.map((b) => b.h));
-  const axisY = rowH + stemH;
-  const cardBottom = axisY - stemH;
-  const events: PlacedEvent[] = boxes.map((b, i) => {
-    const ax = anchors[i]!;
-    const stem = Math.abs(ax - b.cx) <= 0.5
-      ? [{ x: b.cx, y: axisY }, { x: b.cx, y: cardBottom }]
-      : [{ x: b.cx, y: axisY }, { x: b.cx, y: axisY - LEAD_STRAIGHT }, { x: ax, y: cardBottom + LEAD_STRAIGHT }, { x: ax, y: cardBottom }];
-    return { event: b.event, index: b.index, x: b.cx, stamp: b.stamp, label: b.label, detail: b.detail, box: { x: lefts[i]!, y: cardBottom - b.h, w: b.w, h: b.h }, stem };
+  const [above, below] = rowLayouts as [(typeof rowLayouts)[number], (typeof rowLayouts)[number] | undefined];
+  const axisY = above.rowH + above.stemH;
+  // A row below the axis hangs under the tick labels, its leaders bending in the same way, mirrored.
+  const belowTop = axisY + TICK_ZONE + (below?.stemH ?? 0);
+  const events: PlacedEvent[] = [];
+  rowLayouts.forEach((row, r) => {
+    const up = r === 0;
+    const edge = up ? axisY - row.stemH : belowTop;
+    const lead = up ? -LEAD_STRAIGHT : LEAD_STRAIGHT;
+    row.cards.forEach((c, k) => {
+      const b = boxes[c.i]!;
+      const ax = row.anchors[k]!;
+      const stem = Math.abs(ax - b.cx) <= 0.5
+        ? [{ x: b.cx, y: axisY }, { x: b.cx, y: edge }]
+        : [{ x: b.cx, y: axisY }, { x: b.cx, y: axisY + lead }, { x: ax, y: edge - lead }, { x: ax, y: edge }];
+      const box = { x: row.lefts[k]!, y: up ? edge - c.h : edge, w: c.w, h: c.h };
+      events[c.i] = { event: b.event, index: b.index, x: b.cx, stamp: b.stamp, label: c.label, detail: c.detail, box, stem };
+    });
   });
 
   const spanOrder = [...spans].sort((a, b) => Math.min(a.from, a.to) - Math.min(b.from, b.to));
@@ -182,7 +197,7 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   });
   // Spans that only touch, like consecutive waits, share a lane and read as one bar in segments.
   const spanLanes = assignLanes(fitted, (f) => [f.a, f.reach], -0.5);
-  const spansTop = axisY + TICK_ZONE;
+  const spansTop = below ? belowTop + below.rowH + SPAN_GAP * 2 : axisY + TICK_ZONE;
   const placedSpans: PlacedSpan[] = fitted.map((f, i) => ({ span: f.span, x0: f.a, x1: f.b, y: spansTop + spanLanes[i]! * (SPAN_H + SPAN_GAP), label: f.label, inside: f.inside }));
   const spanLaneCount = spans.length ? Math.max(...spanLanes) + 1 : 0;
   const height = spansTop + spanLaneCount * (SPAN_H + SPAN_GAP);
