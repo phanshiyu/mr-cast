@@ -80,7 +80,14 @@ export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, sho
           ? null
           : segments.map((segment, k) =>
               segment.clip ? (
-                <Sequence key={k} from={segment.voiceFrom} layout="none" name={`voice-over ${k + 1}`}>
+                // Ends with its segment, so a scene mounts one clip at a time; the Player shares only 5 audio tags.
+                <Sequence
+                  key={k}
+                  from={segment.voiceFrom}
+                  durationInFrames={segment.from + segment.durationInFrames - segment.voiceFrom}
+                  layout="none"
+                  name={`voice-over ${k + 1}`}
+                >
                   <Html5Audio src={audioBaseUrl + segment.clip.src} />
                 </Sequence>
               ) : null,

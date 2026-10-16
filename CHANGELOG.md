@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.1
+
+- **The browser player no longer stops partway through a voiced walkthrough.** A scene with six or more spoken parts, such as a narration and five steps, kept every clip it had played mounted, and Remotion's player allows five audio tags at once, so playback stopped with "Tried to simultaneously mount 6 <Html5Audio /> tags". Each clip now unmounts when its step ends. MP4 renders were not affected.
+- **CI publishes to npm.** After CI passes on main, the Publish workflow publishes `package.json`'s version when npm does not have it yet, with provenance. It needs the `NPM_TOKEN` secret and skips without it.
+
 ## 0.18.0
 
 - **A voice-over you can follow by ear.** The skill has one section, How the voice talks, for every audience: say what the code does in plain words, keep code names on screen, name each scene's subject, one idea per sentence, explain a needed term once, say why it matters, and say something new in each scene. It shows four before-and-after pairs from the demo. In a blind comparison, three listeners who heard only the voice-over each preferred the new demo narration, rating it 8.3 out of 10 on average against 5.7, with 3 stumbling phrases instead of 8.
