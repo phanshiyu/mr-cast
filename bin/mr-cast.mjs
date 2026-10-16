@@ -52,8 +52,8 @@ Used by the Claude Code skills:
   init --title text [--reset] [--quick]
                     start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
                     it and keeps its storyboard unless --reset; --quick starts a quick video of 1 to 3 scenes
-                    in .mr-cast/quick-<title-slug> (it needs --title), and a later init of the same title
-                    without it starts an empty full video from the quick one
+                    in .mr-cast/quick-<title-slug> (it needs --title); a full video with no storyboard yet
+                    starts from the quick one's scenes
   snippet <file>:<start>-<end> ...
                     add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
   plan [--port N] [--no-open]
@@ -642,6 +642,8 @@ function init(argv) {
   if (repo) ensureExcluded(repo);
   const runs = runsRoot();
   const { dir, name } = explanationRun(runs, values);
+  const existing = readRunMeta(dir);
+  if (values.quick && existing && !existing.quick) throw new UserError(`.mr-cast/${name} holds a full video, which --quick would not make quick; pass another --name, or leave --name out`);
   const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 

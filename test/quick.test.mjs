@@ -84,7 +84,7 @@ test('init --quick runs in quick-<slug>, and a full init of the same title start
   }
 });
 
-test('init --quick needs a title, and a full run that is reset or has snippets is not seeded from the quick one', () => {
+test('init --quick needs a title and never names a full run, and a full run that is reset or has snippets is not seeded from the quick one', () => {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-quick-')));
   const env = { ...process.env, XDG_CONFIG_HOME: path.join(tmp, 'config'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1' };
   const cwd = path.join(tmp, 'work');
@@ -97,6 +97,10 @@ test('init --quick needs a title, and a full run that is reset or has snippets i
     const untitled = run('init', '--quick');
     assert.equal(untitled.status, 1);
     assert.match(untitled.stderr, /init --quick needs --title/);
+    assert.equal(read('meta.json').quick, undefined);
+    const named = run('init', '--name', 'limits', '--title', 'Limits', '--quick');
+    assert.equal(named.status, 1);
+    assert.match(named.stderr, /\.mr-cast\/limits holds a full video, which --quick would not make quick; pass another --name, or leave --name out/);
     assert.equal(read('meta.json').quick, undefined);
 
     assert.equal(run('init', '--title', 'Limits', '--quick').status, 0);
