@@ -213,11 +213,13 @@ The narration is written to be heard once, like one person explaining the change
 | `compare` | Two sides, such as before and after or two designs, row by row at the same height, so like sits beside like. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text or a short code snippet. With `steps`, rows show as the voice reaches them. |
 | `terminal` | A shell session in a window: each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls, so text never shrinks below a readable size. With `steps`, each step types its entries and the camera follows. |
 | `layers` | Stacked bands, top to bottom in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply; `skip` answers early at one stop, turns the token back there and fades the stops it never reached. |
+| `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them. Each step can `set` cell values, `move` a pointer or range, and `show` or `hide` one, at its start: a changed value slides out and the new one in, briefly lit, and a pointer slides to its cell. |
+| `memory` | Call frames with their variables on the left and objects with their fields on the right. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
 | `review` | In [review mode](#review-mode), every flag worst first, with its severity, file and line, and claim, under "Claude's review". |
 
 Each spoken text is a segment: a lead, the voice, and a tail. The narration waits until the scene has drawn in, which takes 1 second, or the scene type's build time plus 0.3 seconds when longer. Most diagrams take 1.5 seconds, so their voice starts at 1.8. Each step's items light up 0.5 seconds before its voice and stay lit 1.2 seconds after it. Without a voice clip, a segment reads at 130 words per minute and holds 1.5 seconds after, 3 seconds at least. The pace scales the reading speed and every pause.
 
-`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `compare`, `terminal` and `layers` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
+`examples/demo/` has a complete storyboard, and `scripts/demo.sh <dir>` creates the git repository it describes. `examples/demo-simple/` tells the same change in the simple style. `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `compare`, `terminal`, `layers`, `array` and `memory` scenes and a flowchart. `examples/people/` explains how a support ticket gets resolved, with no code at all.
 
 ### Steps
 
@@ -237,6 +239,8 @@ Diagrams take `steps` too, so the video can move the viewer's attention as it ex
 | `files` | A path in the tree. |
 | `layers` | A layer id, an item id or `"layer.item"`, or a path stop index. A step that focuses a stop moves the token there; it only moves on along the path, so focus the first stop again to bring it back up. |
 | `tests` | A case index, a case's name, or a gap `"gap:0"`. |
+| `array` | A cell index, an `"a-b"` range of cells, a pointer `"ptr:lo"`, or a range `"range:window"`. A step that changes something and has no `focus` focuses what it changes. |
+| `memory` | A frame `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. A step that changes something and has no `focus` focuses what it changes. |
 | `intent` | A bullet index. |
 | `compare` | A row index, an `"a-b"` range of them, a side `"side:After"` (by title or `"side:0"`), or one cell `"2@After"` (row, then side). A step shows every row up to the last one it focuses. |
 | `terminal` | An entry index, an `"a-b"` range of them, or one output line `"2:3"` (entry, then line, from 0). A step types every entry up to the last one it focuses, and scrolls back to an earlier one. |

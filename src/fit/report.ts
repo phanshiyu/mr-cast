@@ -3,6 +3,7 @@ import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
 import { contentBox } from '../components/theme';
 import { fitGraph, graphDirection } from '../utils/graphLayout';
+import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutCompare } from '../utils/compareLayout';
 import { layoutCode } from '../utils/codeLayout';
@@ -11,6 +12,7 @@ import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
 import { layoutIntent } from '../utils/intentLayout';
 import { layoutLayers } from '../utils/layersLayout';
+import { layoutMemory } from '../utils/memoryLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
@@ -50,6 +52,8 @@ const SCENE_FITS: SceneFits = {
     return layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
   },
   layers: (scene) => layoutLayers(scene, contentBox(Boolean(scene.title))),
+  array: (scene) => layoutArray(scene, contentBox(Boolean(scene.title))),
+  memory: (scene) => layoutMemory(scene, contentBox(Boolean(scene.title))),
   review: (scene, storyboard) => {
     const box = contentBox(Boolean(scene.title));
     return layoutReview(storyboard.findings ?? [], box.width, box.height);

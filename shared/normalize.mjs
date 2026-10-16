@@ -3,6 +3,7 @@
 
 import { plainText } from './markup.mjs';
 import { FLAG_MARK, flaggedFinding } from './review.mjs';
+import { STATE_TYPES, changedRefs } from './state-steps.mjs';
 
 /** What `kind` meant before nodes had their own icon and caption. */
 const KINDS = {
@@ -60,8 +61,11 @@ function normalizeNode(raw, explain) {
   return defined({ ...node, icon: node.icon ?? legacy?.icon, caption: node.caption ?? legacy?.caption });
 }
 
-/** A scene's steps with each older focus key renamed to `focus`. */
+/** A scene's steps with each older focus key renamed to `focus`, and a step that changes state and names no focus focusing what it changes. */
 export function focusSteps(scene) {
+  if (STATE_TYPES.includes(scene.type) && Array.isArray(scene.steps)) {
+    return scene.steps.map((step) => (step && typeof step === 'object' && step.focus === undefined ? { ...step, focus: changedRefs(scene, step) } : step));
+  }
   const keys = legacyFocusKeys(scene.type);
   if (!Array.isArray(scene.steps) || !keys.length) return scene.steps;
   return scene.steps.map((step) => {

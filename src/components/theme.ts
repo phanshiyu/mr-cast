@@ -52,6 +52,8 @@ export const defaultChapter: Record<Scene['type'], string> = {
   compare: 'Compare',
   terminal: 'Terminal',
   layers: 'Layers',
+  array: 'Step by step',
+  memory: 'Memory',
 };
 
 /** Ink of a review finding's severity: its pen mark, note and recap row. */

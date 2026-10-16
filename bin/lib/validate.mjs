@@ -12,13 +12,14 @@ import { checkReview } from './validate-review.mjs';
 import { checkVoice, sentences } from './validate-voice.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
+import { checkArray, checkMemory } from './validate-state.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'compare', 'terminal', 'layers'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'compare', 'terminal', 'layers', 'array', 'memory'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -242,7 +243,7 @@ function checkCoverage(sb, hunks, errors, warnings) {
   return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene };
 }
 
-const DIAGRAM_TYPES = ['graph', 'sequence', 'flow', 'er', 'state', 'mermaid', 'layers'];
+const DIAGRAM_TYPES = ['graph', 'sequence', 'flow', 'er', 'state', 'mermaid', 'layers', 'array', 'memory'];
 // Overview scenes that draw facts or the list of files rather than structure: they belong before the code,
 // but do not show how the pieces fit.
 const OVERVIEW_TYPES = ['table', 'chart', 'timeline', 'files'];
@@ -595,6 +596,14 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
 
       case 'terminal':
         checkTerminal(s, p, errors, warnings);
+        break;
+
+      case 'array':
+        checkArray(s, p, errors, warnings);
+        break;
+
+      case 'memory':
+        checkMemory(s, p, errors, warnings);
         break;
 
       case 'review':

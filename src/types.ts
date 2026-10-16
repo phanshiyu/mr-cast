@@ -600,6 +600,122 @@ export interface LayersScene extends SceneBase {
   steps?: FocusStep[];
 }
 
+/** A value an `array` cell, a `memory` variable or a field holds, drawn as display text. */
+export type StateValue = DisplayText | number;
+
+/**
+ * What a step of an `array` or `memory` scene changes. Each change lands at the step's start, so the viewer
+ * sees it settle before the step's words: a changed value slides out and the new one in, briefly lit; a moved
+ * pointer slides to its cell. The scene shows its initial state during `narration`, and at each step that
+ * state with every change of the steps up to and including it applied in order.
+ * A step without `focus` focuses what it changes.
+ */
+export interface StateStep extends Omit<FocusStep, 'focus'> {
+  focus?: FocusStep['focus'];
+  /** Items to show from this step on, by focus ref, such as "ptr:mid" or an object id. */
+  show?: string[];
+  /** Items to hide from this step on, such as a frame that returned ("frame:helper"). */
+  hide?: string[];
+}
+
+export interface ArrayPointer {
+  /** A short name such as "lo", "hi", "mid", "head" or "cursor", drawn above its cell with an arrow. Pointers on one cell stack. */
+  name: string;
+  /** Cell index it points at; -1 or the array's length point just past either end, as a loop that ran off it. */
+  at: number;
+  tone?: Tone;
+  /** Not drawn until a step shows it ("show": ["ptr:mid"]). */
+  hidden?: boolean;
+}
+
+export interface ArrayRange {
+  /** What the span is, such as "window", "page 2" or "seen", drawn on a shaded band under the cells. */
+  name: string;
+  /** First and last cell index it covers, inclusive. */
+  from: number;
+  to: number;
+  tone?: Tone;
+  hidden?: boolean;
+}
+
+export interface ArrayStep extends StateStep {
+  /** New cell values by cell index, e.g. { "3": 42 }. */
+  set?: Record<string, StateValue>;
+  /** New places: a pointer's name to a cell index, e.g. { "lo": 4 }, and a range's name to "a-b", e.g. { "window": "2-5" }. */
+  move?: Record<string, number | string>;
+}
+
+/**
+ * A row of cells with their indexes under them, for an algorithm or a buffer walked step by step: binary
+ * search, a sliding window, a pagination cursor, a ring buffer, a queue, an off-by-one bug.
+ */
+export interface ArrayScene extends SceneBase {
+  type: 'array';
+  title?: string;
+  /** The array's name, such as "nums" or "buffer", drawn above it. */
+  label?: string;
+  /** Each cell's value, left to right. Up to 16. An empty string draws an empty cell. */
+  values: StateValue[];
+  /** Named markers on cells. Up to 4. Pointer and range names are all different. */
+  pointers?: ArrayPointer[];
+  /** Shaded spans of cells. Up to 3. */
+  ranges?: ArrayRange[];
+  /**
+   * Walk the algorithm: each step changes what it `set`s, `move`s, `show`s and `hide`s at its start, then
+   * lights its focus while its `say` is spoken. `narration` is the intro over the initial state.
+   * A ref is a cell index, an "a-b" range of cells, a pointer "ptr:lo", or a range "range:window".
+   */
+  steps?: ArrayStep[];
+}
+
+/** A memory value: display text, a number, or `{ "ref": "<object id>" }`, drawn as an arrow to that object. */
+export type MemoryValue = StateValue | { ref: string };
+
+export interface MemoryFrame {
+  /** The function's name, e.g. "main" or "add_item". Different for every frame; a recursive call reads "fact(2)". */
+  name: string;
+  /** Its local variables in order, name to value, e.g. { "cart": { "ref": "c1" }, "total": 0 }. */
+  vars: Record<string, MemoryValue>;
+  /** Not drawn until a step shows it ("show": ["frame:add_item"]), as a call. */
+  hidden?: boolean;
+}
+
+export interface MemoryObject {
+  /** Named by refs and steps, e.g. "c1". Different from every frame name. */
+  id: string;
+  /** What it is, e.g. "list", "dict", "Cart", drawn as its header. Defaults to the id. */
+  type?: string;
+  /** Its fields or items in order, name to value; a list's are "0", "1", ... */
+  fields: Record<string, MemoryValue>;
+  /** Not drawn until a step shows it, as an object created then. */
+  hidden?: boolean;
+}
+
+export interface MemoryStep extends StateStep {
+  /** New values by "frame.var" or "object.field", e.g. { "main.total": 3, "add_item.items": { "ref": "l2" } }. */
+  set?: Record<string, MemoryValue>;
+}
+
+/**
+ * A program's memory: call frames with their local variables on the left, objects on the right. A variable
+ * or field that holds a `{ "ref": id }` draws an arrow to that object, so two arrows into one object show
+ * aliasing. For mutation and aliasing bugs, references versus copies, closures, what a handler holds.
+ */
+export interface MemoryScene extends SceneBase {
+  type: 'memory';
+  title?: string;
+  /** Call frames, outermost first. Up to 4. */
+  frames: MemoryFrame[];
+  /** Up to 6. List every object a step creates too, `hidden` until then. */
+  objects: MemoryObject[];
+  /**
+   * Walk the program: each step changes what it `set`s, `show`s and `hide`s at its start, then lights its
+   * focus while its `say` is spoken. Setting a reference re-routes its arrow. `narration` is the intro.
+   * A ref is a frame "frame:main", a variable "main.cart", an object id, or a field "c1.items".
+   */
+  steps?: MemoryStep[];
+}
+
 export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Repository-relative path. */
   path: string;
@@ -714,7 +830,7 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | CompareScene | TerminalScene | LayersScene;
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene;
 
 export interface Storyboard {
   title: string;

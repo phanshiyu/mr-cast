@@ -3,6 +3,7 @@
 
 import { focusSteps, legacyFocusKeys } from '../../shared/normalize.mjs';
 import { FOCUS_TYPES, focusRefs, refNames, resolveRef, stepTargets } from '../../shared/targets.mjs';
+import { changesState, STATE_TYPES } from '../../shared/state-steps.mjs';
 import { didYouMean } from './suggest.mjs';
 
 // A diagram walked in more steps than this drags; split the scene.
@@ -23,6 +24,8 @@ const REF_HELP = {
   intent: 'a bullet index',
   compare: 'a row index, an "a-b" range of them, a side "side:After", or a cell "row@side" such as "2@After"',
   terminal: 'an entry index, an "a-b" range of them, or an output line "entry:line" such as "2:3"',
+  array: 'a cell index, an "a-b" range of cells, a pointer "ptr:name", or a range "range:name"',
+  memory: 'a frame "frame:name", a variable "frame.var", an object id, or a field "object.field"',
 };
 
 /** Items the steps reveal in order, so one no step names appears unnamed beside a neighbour. */
@@ -52,7 +55,8 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     if (legacy.length > 1) return errors.push(`${q}: set one of ${legacy.join(' or ')}, or use focus`);
     const key = focusKey(step, s.type);
     const value = step[key];
-    if (value === undefined) return errors.push(`${q}.focus: required, ${REF_HELP[s.type]}, or an array of them`);
+    if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) return;
+    if (value === undefined) return errors.push(`${q}.focus: required, ${REF_HELP[s.type]}, or an array of them${STATE_TYPES.includes(s.type) ? ', unless the step changes something, which it then focuses' : ''}`);
     const refs = focusRefs(value);
     if (refs.length === 0) return errors.push(`${q}.${key}: an empty array lights nothing; name at least one ${REF_HELP[s.type]}`);
     refs.forEach((ref, k) => {
@@ -64,7 +68,7 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
   const scene = { ...s, steps: focusSteps(s) };
   const lit = stepTargets(scene, hunks).map((keys) => [...keys].sort().join(' '));
   lit.forEach((keys, i) => {
-    if (i > 0 && keys && keys === lit[i - 1]) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
+    if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i])) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
   });
   if (s.steps.length > DIAGRAM_STEPS_MAX) warnings.push(`${p}.steps: ${s.steps.length} steps; keep at most ${DIAGRAM_STEPS_MAX} per scene and split the rest into another scene`);
   if ((s.type === 'table' || s.type === 'files') && s.highlight !== undefined) warnings.push(`${p}.highlight: steps replace highlight, so remove it`);

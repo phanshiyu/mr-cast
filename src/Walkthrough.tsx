@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
+import { ArrayDiagram } from './components/ArrayDiagram';
 import { GraphDiagram } from './components/GraphDiagram';
+import { MemoryDiagram } from './components/MemoryDiagram';
 import { Captions } from './components/Captions';
 import { Chart } from './components/Chart';
 import { Compare } from './components/Compare';
@@ -21,7 +23,7 @@ import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
 import { colors, fonts } from './components/theme';
 import './fonts';
-import type { CompareScene, TerminalScene, GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, LayersScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { ArrayScene, MemoryScene, CompareScene, TerminalScene, GraphScene, ChartScene, CodeScene, ErScene, FilesScene, FlowScene, IntentScene, LayersScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -42,6 +44,8 @@ interface SceneByType {
   compare: CompareScene;
   terminal: TerminalScene;
   layers: LayersScene;
+  array: ArrayScene;
+  memory: MemoryScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -62,6 +66,8 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   compare: Compare,
   terminal: Terminal,
   layers: LayerStack,
+  array: ArrayDiagram,
+  memory: MemoryDiagram,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {
