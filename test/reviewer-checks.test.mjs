@@ -47,6 +47,20 @@ test('narration that counts the tests differently from the cases on screen is wa
   assert.deepEqual(ofScenes(await warningsOf(testsScene({ cases: cases(9), narration: 'Nine tests cover the retry decisions.' })), 'scenes[0].narration: says'), []);
 });
 
+test('only the largest plain count in a text is the total, and one is never checked', async () => {
+  const subjects = testsScene({ cases: cases(9), narration: 'Nine tests cover it; one test checks the reset, and two tests check the limit.' });
+  assert.deepEqual(ofScenes(await warningsOf(subjects), 'scenes[0].narration: says'), []);
+  const wrong = testsScene({ cases: cases(9), narration: 'Seven tests cover it; one test checks the reset.' });
+  assert.deepEqual(ofScenes(await warningsOf(wrong), 'scenes[0].narration: says'), ['scenes[0].narration: says "Seven tests", but the scene lists 9; say the number on screen']);
+});
+
+test('a step that is not an object is left to the step checks, not counted', async () => {
+  const warnings = await warningsOf(testsScene({ cases: cases(2), narration: 'Two tests cover it.', steps: [null, 3] }));
+  assert.deepEqual(ofScenes(warnings, 'scenes[0].steps[0].say'), []);
+  const intentWarnings = await warningsOf({ ...intent, steps: [null] });
+  assert.deepEqual(ofScenes(intentWarnings, 'scenes[0].steps[0].say'), []);
+});
+
 test('a count of new or existing tests is checked against the cases with that status', async () => {
   const scene = testsScene({ cases: [...cases(1, 'existing'), ...cases(2, 'added')], narration: 'Two new tests prove the fix, and one existing test covers paging.' });
   assert.deepEqual(ofScenes(await warningsOf(scene), 'scenes[0].narration: says'), []);

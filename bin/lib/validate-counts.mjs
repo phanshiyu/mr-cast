@@ -1,6 +1,7 @@
 // Counts the voice says that the screen contradicts: "seven tests" over a list of nine cases, or "three things to
 // check" over two bullets. Only a count right before the noun is read, so "the second of four tests" is never
-// guessed at. Each warning names both numbers.
+// guessed at. Of the plain counts in one text only the largest is taken as the total, so "Nine tests cover it; one
+// test checks the reset" is read as nine, and "one" is never checked. Each warning names both numbers.
 
 import { plainText } from '../../shared/markup.mjs';
 import { indexRange, sceneSteps } from '../../shared/steps.mjs';
@@ -16,9 +17,17 @@ const BULLETS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(?:main|key|big)\\s+)?(?:th
 
 const QUALIFIED = { new: 'added', added: 'added', existing: 'existing', changed: 'changed', removed: 'removed' };
 
-function* counts(text, pattern) {
-  for (const m of plainText(text).matchAll(pattern)) yield { phrase: m[0], said: countOf(m[1]), qualifier: m[2]?.toLowerCase() };
+/** The counts in `text` to check: each qualified one ("two new tests"), and the largest plain one, but never one. */
+function counts(text, pattern) {
+  const found = [...plainText(text).matchAll(pattern)]
+    .map((m) => ({ phrase: m[0], said: countOf(m[1]), qualifier: m[2]?.toLowerCase() }))
+    .filter((c) => c.said !== 1);
+  const plain = found.filter((c) => !c.qualifier);
+  const total = plain.reduce((max, c) => (max && max.said >= c.said ? max : c), null);
+  return found.filter((c) => c.qualifier || c === total);
 }
+
+const isStep = (step) => step !== null && typeof step === 'object';
 
 /** The item indexes a step lights, from its numeric refs and "a-b" ranges. */
 const focusedItems = (step) =>
@@ -48,6 +57,7 @@ function checkTests(scene, p, warnings) {
     if (!ok.includes(said)) warnings.push(`${p}.narration: says "${phrase}", but the scene lists ${shown}; say the number on screen`);
   }
   sceneSteps(scene).forEach((step, j) => {
+    if (!isStep(step)) return;
     const lit = focusedItems(step).filter((k) => k < cases.length).map((k) => cases[k]);
     if (!lit.length) return;
     for (const { phrase, said, qualifier } of counts(step.say ?? '', TESTS_COUNT)) {
@@ -58,7 +68,7 @@ function checkTests(scene, p, warnings) {
 }
 
 function checkIntent(scene, p, warnings) {
-  const texts = [['narration', scene.narration ?? ''], ...sceneSteps(scene).map((step, j) => [`steps[${j}].say`, step.say ?? ''])];
+  const texts = [['narration', scene.narration ?? ''], ...sceneSteps(scene).map((step, j) => [`steps[${j}].say`, (isStep(step) && step.say) || ''])];
   for (const [where, text] of texts) {
     for (const { phrase, said } of counts(text, BULLETS_COUNT)) {
       if (said !== scene.bullets.length) warnings.push(`${p}.${where}: says "${phrase}", but the scene has ${scene.bullets.length} bullets; say the number on screen`);
