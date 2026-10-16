@@ -9,6 +9,7 @@
 // scales the reading speed and every pause.
 
 import { plainText } from './markup.mjs';
+import { speechText } from './speech.mjs';
 import { sceneSteps } from './steps.mjs';
 import { clipFor, paceOf } from './voice.mjs';
 
@@ -66,9 +67,12 @@ export function wordCount(text) {
   return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
 }
 
-/** The texts a scene speaks, in order: its narration, then each step's `say`, without markup, which is only drawn. */
+/**
+ * The texts a scene speaks, in order: its narration, then each step's `say`, without markup, which is only drawn,
+ * and with the written forms the voice misreads in words.
+ */
 export function spokenTexts(scene) {
-  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)].map((text) => (typeof text === 'string' ? plainText(text) : text));
+  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)].map((text) => (typeof text === 'string' ? speechText(plainText(text)) : text));
 }
 
 /**

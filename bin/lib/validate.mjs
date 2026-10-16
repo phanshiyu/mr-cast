@@ -8,6 +8,7 @@ import { checkFocusSteps } from './validate-focus.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
 import { checkReview } from './validate-review.mjs';
+import { checkVoice, sentences } from './validate-voice.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
@@ -364,9 +365,6 @@ async function checkMermaid(diagrams, errors, warnings) {
 const DIAGRAM_WORDS_LIMITED = ['graph', 'sequence'];
 const DIAGRAM_WORDS_MAX = 35;
 
-/** Sentences of a spoken text, split at a full stop, question mark or exclamation mark followed by a space. */
-const sentences = (text) => String(text ?? '').split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
-
 const excerpt = (text) => (text.length > 50 ? `${text.slice(0, 47)}...` : text);
 
 /** Simple style: every spoken text of the scene in short sentences, for a viewer reading in a second language. */
@@ -605,6 +603,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', style } = 
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);
   checkStoryShape(sb.scenes, hunks ?? {}, mode, warnings);
+  checkVoice(sb, { simple }, warnings);
   if (simple) checkSimpleLineCoverage(sb, hunks ?? {}, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');

@@ -189,6 +189,8 @@ export async function phonemize(text, language = "a", norm = true) {
     // https://en.wiktionary.org/wiki/kokoro#English
     .replace(/kəkˈoːɹoʊ/g, "kˈoʊkəɹoʊ")
     .replace(/kəkˈɔːɹəʊ/g, "kˈəʊkəɹəʊ")
+    // mr-cast: espeak reads Redis as "ri-deez"; it is said "red-iss"
+    .replace(/ɹᵻdˈ?iz(?=[\s;:,.!?"«»]|$)/g, "ɹˈɛdɪs")
     .replace(/ʲ/g, "j")
     .replace(/r/g, "ɹ")
     .replace(/x/g, "k")
