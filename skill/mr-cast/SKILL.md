@@ -79,7 +79,7 @@ The scene types, each with an example: [array](references/scenes/array.md), [cha
 
 Longer explanations with real numbers, each `{{MR_CAST}}/examples/<path>/storyboard.json`:
 
-- `algorithms/quicksort`: a partition on an `array` with pointers, `set` and ranges, the Java in a `code` scene, an `svg` recursion tree, a cost `table`.
+- `algorithms/quicksort`: a partition on an `array` with pointers, `set` and ranges, the Java in a `code` scene, an `svg` of how deep the splits go, a cost `table`.
 - `algorithms/binary-search`: pointers closing on a value, ruled-out halves dimmed with `tint`, the midpoint formula in a `callout`, a `chart` of steps by size.
 - `algorithms/merge-sort`: several `arrays` splitting and zipping back with a pointer on each, and a `chart`.
 - `algorithms/dijkstra`: a `graph` and the tracker `table` beside it, changing in the same step with `set` and `tint`.

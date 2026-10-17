@@ -9,7 +9,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | Scene | Shows |
 | --- | --- |
 | `intent` | A summary, an optional risk badge, bullets and diff stats. |
-| `graph` | Nodes and edges laid out left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons), or flowchart shapes. With `steps`, the voice walks the graph node by node and edge by edge, and steps can show nodes and edges that start `hidden`, `set` a node's badge, and `tint` nodes, edges and groups. A `table` beside the graph changes in the same steps. |
+| `graph` | Nodes and edges laid out left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons), or flowchart shapes. With `steps`, the voice walks the graph node by node and edge by edge, and steps can show nodes and edges that start `hidden`, `set` a node's badge, and `tint` nodes, edges and groups. A `table` beside the graph changes in the same steps. An edge that skips over nodes in a line takes a lane of its own beside them. |
 | `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. |
 | `flow` | A step-by-step trace with the payload at each step. With a `say` on each step, the current step follows the voice. |
 | `sequence` | Participants with lifelines, and call, return and async messages in order. With `steps`, messages draw in as the voice reaches them. A sequence taller than the frame scrolls under its pinned participants, and each step moves the camera to its messages. |
@@ -18,19 +18,19 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph or pie, among others) as a static themed SVG, for diagrams the other scenes don't cover. |
 | `tests` | Each test case with its status and the behavior it proves, then a "Not tested" panel of important behaviors no test covers. With no cases, it says the change has no tests. |
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. A changed cell shows its old value struck through beside the new one. Steps can show rows that start `hidden`, `set` cells and `tint` rows and cells. |
-| `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`. `annotation` calls out one point. |
+| `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`, unless `badges` is `false`. A value under 10,000 prints with the digits it was written with. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. Cards of events close in time move apart, and a bent leader joins each card to its dot, so no card covers another. |
 | `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
 | `compare` | Two sides, such as before and after or two designs, row by row at the same height. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text or a short code snippet. With `steps`, rows show as the voice reaches them. |
 | `terminal` | A shell session in a window. Each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls. With `steps`, each step types its entries and the camera follows. |
 | `layers` | Stacked bands in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply. `skip` answers early at one stop, turns the token back there, and fades the stops it never reached. |
 | `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them; with `arrays`, several rows that share one cell size, each with its label at its left; with `cells: "hex"`, a hex grid. Each step can `set` cell values, `move` a pointer or range, `show` or `hide` one, and `tint` cells. A changed value slides out and the new one slides in, briefly lit. |
-| `memory` | Call frames with their variables on the left and objects with their fields on the right. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
+| `memory` | Call frames with their variables on the left and objects with their fields on the right. Variables and fields keep the order written. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object; an arrow that is not into the next column runs through the gaps and under the cards, never behind one. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
 | `svg` | A drawing in SVG markup: a map, a tiling, a geometric figure, points on a plane. Steps light, `tint`, `show`, `hide` and rewrite its elements by id. `validate` cuts nothing silently: it fails on anything that is not a drawing element or attribute. |
 | `review` | In [review mode](#review-findings), every finding, worst first, with its severity, file, line and claim, under "Claude's review". |
 | `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. |
 
-The stepped scenes (`array`, `memory`, `graph`, `table` and `svg`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state.
+The stepped scenes (`array`, `memory`, `graph`, `table` and `svg`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
 
 A `tests` scene that is not about a diff's tests can rename its panels with `titles`, for example `{ "subject": "Checked", "proves": "Shows", "gaps": "Open questions", "none": "Nothing checks this yet" }`.
 
@@ -40,7 +40,9 @@ Each storyboard under `examples/` passes `mr-cast validate`, and CI checks it.
 
 - `examples/demo/` is a rate limit change. `scripts/demo.sh <dir>` creates the git repository it describes.
 - `examples/demo-simple/` tells the same change line by line.
-- `examples/primitives/<type>/` holds a short demo of each scene type. The [scene gallery](gallery.md) shows a still of each, with its storyboard and its video.
+- `examples/primitives/<type>/` holds a short demo of each scene type.
+- `examples/algorithms/`, `examples/architecture/` and `examples/explain/` hold eleven worked explanations with real numbers: quicksort, binary search, merge sort, Dijkstra, hash tables, YouTube, React, OAuth, H3, Bitcoin and GPT. Each has a `generate.mjs` that computes its numbers and writes its storyboard; run it with `node`.
+- The [gallery](gallery.md) shows a still of each worked example and each scene type, with its storyboard and its video.
 - `examples/gallery/` shows the `files`, `state`, `table`, `chart`, `timeline`, `mermaid`, `tests`, `compare`, `terminal`, `layers`, `array` and `memory` scenes, and a flowchart.
 - `examples/people/` explains how a support ticket gets resolved, with no code at all.
 - `examples/preread/` is a pre-read of a rate limit change, with a `plan.json`.
@@ -62,7 +64,7 @@ A diagram's steps each name what to light in `focus`, one ref or a list, and wha
 
 | Scene | A `focus` ref is |
 | --- | --- |
-| `graph` | A node id, an edge `"from->to"` (or `"a-b"` for either direction), a group `"group:Support team"`, or an edge index; with a `table`, a row `"row:A"` (by index or first cell) or a cell `"Distance@A"`. A step that changes something and has no `focus` focuses what it changes. |
+| `graph` | A node id, an edge `"from->to"` (or `"a-b"` for either direction), a group `"group:Support team"`, or an edge index; with a `table`, a row `"row:A"` (by index or first cell), a column `"col:Distance"` or a cell `"Distance@A"`. A bare number that is both an edge index and a row index fails `validate`; name the edge or the row. A step that changes something and has no `focus` focuses what it changes. |
 | `sequence` | A message index, an `"a-b"` range of them, or a participant id. A step draws every message up to the last one it focuses. |
 | `er` | An entity id, a field `"orders.status"`, a relation `"users->orders"`, or a relation index. |
 | `state` | A state id, a transition `"pending->paid"`, a transition's exact label such as `"pay"`, or a transition index. |
@@ -118,7 +120,7 @@ A scene never cuts its text. Every label, caption, bullet, note, cell and title 
 scenes[2] ("Who calls whom").messages[4].label: "POST /orders/{orderId}/line-items/{lineItemId}/adjustments" does not fit its message label, even at 15px; shorten the label, or split the message in two
 ```
 
-`validate` runs the player's own layout code, so it and the video agree. File paths, hunk headers and lines of code are the source's own text, so they shrink further with a warning instead. Text is drawn in Inter and code in JetBrains Mono, both bundled ([Inter license](../src/assets/inter-OFL.txt), [JetBrains Mono license](../src/assets/jetbrains-mono-OFL.txt)). Widths come from tables measured from those font files, so a video lays out the same on macOS and Linux. Pen notes use the bundled Caveat font ([Caveat license](../src/assets/caveat-OFL.txt)).
+`validate` runs the player's own layout code, so it and the video agree. A diagram that is scaled down to fit, such as a long graph, a state machine or an er diagram, warns when the scale draws its text under 15 px. File paths, hunk headers and lines of code are the source's own text, so they shrink further with a warning instead. Text is drawn in Inter and code in JetBrains Mono, both bundled ([Inter license](../src/assets/inter-OFL.txt), [JetBrains Mono license](../src/assets/jetbrains-mono-OFL.txt)). Widths come from tables measured from those font files, so a video lays out the same on macOS and Linux. Pen notes use the bundled Caveat font ([Caveat license](../src/assets/caveat-OFL.txt)).
 
 On-screen text takes inline markup for the one word or value a sentence is about:
 
