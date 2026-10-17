@@ -40,7 +40,7 @@ const BIN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin',
 
 test('init --quick runs in quick-<slug>, and a full init of the same title starts from it', () => {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-quick-')));
-  const env = { ...process.env, XDG_CONFIG_HOME: path.join(tmp, 'config'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1' };
+  const env = { ...process.env, XDG_CONFIG_HOME: path.join(tmp, 'config'), XDG_CACHE_HOME: path.join(tmp, 'cache'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1' };
   const cwd = path.join(tmp, 'work');
   fs.mkdirSync(cwd);
   const run = (...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8' });
@@ -49,7 +49,7 @@ test('init --quick runs in quick-<slug>, and a full init of the same title start
   try {
     const quick = run('init', '--title', 'How the limiter decides', '--quick');
     assert.equal(quick.stdout.trim(), runDir('quick-how-the-limiter-decides'));
-    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(runDir('quick-how-the-limiter-decides'), 'meta.json'), 'utf8'))), ['mode', 'title', 'createdAt', 'quick']);
+    assert.deepEqual(Object.keys(JSON.parse(fs.readFileSync(path.join(runDir('quick-how-the-limiter-decides'), 'meta.json'), 'utf8'))), ['mode', 'title', 'createdAt', 'quick', 'audience']);
     fs.writeFileSync(path.join(runDir('quick-how-the-limiter-decides'), 'storyboard.json'), JSON.stringify(storyboard));
     const validated = run('validate');
     assert.equal(validated.status, 0, validated.stderr);
