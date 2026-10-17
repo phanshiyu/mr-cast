@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0
+
+- **Pruning is decided by the CLI, not by Claude.** `mr-cast prune` takes selectors: ids, `--kind video,stills`, `--all`, `--older-than <days>` with any of them, and `--except <id>`. A busy artifact is never picked and is reported, and a walkthrough picked with its parts counts their bytes once. `--dry-run` prints what would be removed and the bytes, and removes nothing, also with `--json`. `prune --choices --json` builds the menu the skill shows, each option with the exact command that deletes it. The prune skill now runs that command as given, checks a free-text answer with `--dry-run` before deleting, and deletes only through `mr-cast prune`.
+
 ## 0.22.0
 
 A new audience for the reviewer who will read the code right after the video. The pre-read shows no code. Its diagrams build the model with the real names and values, and it ends on the order in which to read the code, with what to check at each place. In a small test with AI reviewers allowed one `git diff --stat` and two file reads, those given a pre-read answered 79% of the questions about the change, against 61% with no video and 83% with the usual reviewer's video, and looked at fewer scenes (3.7 against 8.8). With the whole repo to read, no video did as well as either, because the test diffs fit in one `git diff`. Six reviews per arm is a small sample, so read it as a direction rather than a measurement.

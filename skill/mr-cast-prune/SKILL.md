@@ -5,58 +5,56 @@ description: Free disk space used by mr-cast, letting the user pick what goes, s
 
 # mr-cast prune
 
-Show the user what mr-cast has stored, let them choose what to delete, and delete exactly that. Never delete anything the user did not pick.
+Show the user what mr-cast can delete, let them choose, and delete exactly that. The CLI decides what each choice deletes. You never pick files yourself.
+
+Delete only through `{{MR_CAST}}/bin/mr-cast prune`. Never delete with `rm`, `find -delete`, `unlink` or any other command or tool, even for one file, even when `prune` refuses. If `prune` cannot do what the user asks, tell the user and stop.
 
 The CLI is `{{MR_CAST}}/bin/mr-cast`. Run it from the user's repository, because walkthroughs live in its `.mr-cast/` directory. Outside a git repository it looks in the current directory's `.mr-cast/`. The shared cache in `~/.cache/mr-cast` is listed from anywhere. The wrapper finds a working Node itself, so call it directly rather than through `node`.
 
-## 1. List the artifacts
+## 1. Get the menu
 
 ```bash
-{{MR_CAST}}/bin/mr-cast prune --json
+{{MR_CAST}}/bin/mr-cast prune --choices --json
 ```
 
-If the user asked only for old things, add `--older-than <days>`, such as `--older-than 30`. Pass the same option again in step 3.
+The output has `groups` and `inUse`. Each group has a `name` and up to 4 `options`. Each option has a `label`, a `description` (its size and what deleting it means), a `command` (the exact arguments to pass to the CLI), and the `ids` it deletes.
 
-The output has `reclaimableBytes` and an `artifacts` array. Each artifact has these fields:
-
-- `id`: what to pass to `prune` to delete it.
-- `kind`: `run` (a walkthrough of a branch), `explain` (a walkthrough of an explanation), `video` (a rendered MP4), `stills` (PNG stills), `audio` (voice-over clips), or `cache` (a shared download).
-- `parent`: for a `video`, `stills` or `audio` artifact, the id of the walkthrough that contains it. Deleting the walkthrough deletes its parts too.
-- `bytes`, `modified` (ISO time of the newest file inside), `path`, `detail` (what it is, with the storyboard title for walkthroughs).
-- `busy`: why it cannot be deleted right now, such as a render using the cache, or `null`.
-
-If `artifacts` is empty, tell the user there is nothing to prune and stop.
+If `groups` is empty, tell the user there is nothing to prune and stop. Each entry of `inUse` is busy, such as the Chrome cache while a render runs. Name it as in use and say it can be pruned once the render finishes.
 
 ## 2. Ask what to delete
 
-Show the user a short summary grouped as below, with sizes in MB or GB and ages in days. Name each walkthrough by its storyboard title. Leave out groups that are empty.
-
-- **Rendered videos.** `video` artifacts. The walkthrough stays, so `render` can make the video again.
-- **Stills and voice clips.** `stills` and `audio` artifacts. `still` and `voice` regenerate them, and voice clips take a few seconds per scene to speak again.
-- **Walkthroughs.** `run` and `explain` artifacts, which delete the storyboard and everything inside. Point out the ones not modified in 30 days or more.
-- **Cache.** `cache:remotion` is the Chrome Headless Shell, which the next render downloads again (its size in `bytes`). `cache:models` is the Kokoro voice model, which the next voice-over downloads again. `cache:bundle` is the player bundle, which the next render rebuilds in seconds. The age of a cache entry is when it was downloaded, not when it was last used.
-
-Mark each busy artifact as in use and leave it out of the choices.
-
-Then ask with the AskUserQuestion tool, with `multiSelect: true`. Each question takes at most 4 options, so use up to 4 questions, one per group above that has artifacts. Make each option one choice the user is likely to want, with the total size in its description, for example:
-
-- "All rendered videos" (every `video` id).
-- "Walkthroughs older than 30 days" (every `run` and `explain` id with `modified` at least 30 days ago).
-- "Chrome cache" (`cache:remotion`), described as "588 MB; the next render downloads it again".
-- One walkthrough or video by its title, when a group has few enough items to list each one.
-
-The user can also answer with their own text, such as ids or "everything except the rate limit walkthrough". Map that answer to ids from the listing. If the answer is unclear, ask again rather than guessing.
+Ask with the AskUserQuestion tool, with `multiSelect: true`, one question per group, in the order given. Use the group's `name` as the header, and each option's `label` and `description` exactly as given. Do not add, merge or reword options.
 
 If the user picks nothing, delete nothing, say so, and stop.
 
-## 3. Delete the chosen artifacts
+## 3. Delete the chosen options
 
-Before you run the command, tell the user in one line which ids you will delete and how much space that frees. Then pass exactly those ids.
+For each chosen option, run its `command` as given, after the CLI path. For example, the command `["prune", "--kind", "video"]` runs as:
 
 ```bash
-{{MR_CAST}}/bin/mr-cast prune <id> <id> ...
+{{MR_CAST}}/bin/mr-cast prune --kind video
 ```
 
-The command deletes only ids from a fresh listing. It rejects an unknown id or an artifact in use, and then deletes nothing. If it rejects one, list again with step 1, tell the user what changed, and ask again.
+Do not add, drop or change any argument.
 
-It prints one `removed <id>` line per artifact and `freed <size>` at the end. A part inside a chosen walkthrough prints as `removed <id> (with <walkthrough id>)`. A `kept <id>` line means a render started using that cache after the listing; tell the user to prune it after the render finishes. Report what was removed and the space freed.
+## 4. A free-text answer
+
+The user can answer in their own words, such as "everything except the rate limit walkthrough" or "videos older than a week". Build one `prune` command from these selectors, which combine:
+
+- `<id> ...`: artifacts by id, from the `ids` of the menu or `{{MR_CAST}}/bin/mr-cast prune --json`.
+- `--kind <kinds>`: every artifact of these kinds, comma-separated: `run` and `explain` (walkthroughs), `video`, `stills`, `audio` (voice clips), `cache`.
+- `--all`: everything.
+- `--older-than <days>`: only what has not changed in that many days.
+- `--except <id>`: keep this artifact. Repeat it for more. Keeping a walkthrough keeps its videos, stills and clips too.
+
+Run it with `--dry-run` first:
+
+```bash
+{{MR_CAST}}/bin/mr-cast prune --all --except run:rate-limit --dry-run
+```
+
+Show the user its output as printed, and ask them to confirm. If they confirm, run the same command without `--dry-run`. If they do not, delete nothing. If the answer is unclear, or no selector expresses it, ask again rather than guessing.
+
+## 5. Report
+
+`prune` prints one `removed <id>` line per artifact and `freed <size>` at the end. A part inside a chosen walkthrough prints as `removed <id> (with <walkthrough id>)`. An `in use, not removed` line names a busy artifact it left alone. It rejects an unknown id, or a busy one named by id, and then deletes nothing. In that case run step 1 again, tell the user what changed, and ask again. A `kept <id>` line means a render started using that cache after the listing. Tell the user to prune it after the render finishes. Report what was removed and the space freed.
