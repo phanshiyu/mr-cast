@@ -279,7 +279,7 @@ export function walkStates(scene) {
       for (const ref of refsOf(field)) {
         const key = oneKey(scene, ref, model.show.prefixes);
         const unclear = ambiguousIndex(scene, ref);
-        if (unclear) problem(field, String(ref), unclear);
+        if (unclear) problem(field, ref, unclear);
         else if (!key) problem(field, ref, `names no ${model.show.what}; ${field} takes ${model.show.help(scene)}`, showNames(scene, model));
         else if (field === 'show') delete next.hidden[key];
         else next.hidden[key] = true;

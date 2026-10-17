@@ -66,8 +66,11 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
   }
 }
 
+/** A size to one decimal, rounded down so a size under the minimum never prints as the minimum: 14.96 is "14.9". */
+export const tenths = (px) => (Math.floor(px * 10) / 10).toFixed(1);
+
 /**
- * "unreadable: the graph is scaled to 0.52, so it draws its card title at 11 px (22 px unscaled), ..." when the
+ * "unreadable: the graph is scaled to 0.52, so it draws its card title at 11.4 px (22 px unscaled), ..." when the
  * scale puts a text under both the readable size and its slot's own smallest size. Null when every text
  * reads, or when the part already fails to fit at its smallest size, which the fit check reports.
  */
@@ -79,7 +82,7 @@ function unreadable({ name, scale, fits }) {
     if ((largest.get(f.slot) ?? 0) < f.size) largest.set(f.slot, f.size);
   }
   if (!largest.size) return null;
-  const parts = [...largest].sort((a, b) => b[1] - a[1]).map(([slot, size]) => `${slot} at ${Math.floor(size * scale)} px (${size} px unscaled)`);
+  const parts = [...largest].sort((a, b) => b[1] - a[1]).map(([slot, size]) => `${slot} at ${tenths(size * scale)} px (${size} px unscaled)`);
   return `unreadable: the ${name} is scaled to ${scale.toFixed(2)}, so it draws its ${parts.join(', ')}, under the ${READABLE_PX} px readable minimum`;
 }
 

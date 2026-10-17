@@ -171,3 +171,12 @@ test('a later tint key wins over an earlier one it overlaps, a key such as "3" i
   ]);
   assert.deepEqual((await validateStoryboard(storyboard, {}, { mode: 'explain' })).errors, []);
 });
+
+test("a number in a step's show or hide that names nothing prints as a number, not as an index", async () => {
+  const { errors } = await validateStoryboard({ title: 't', scenes: [{ ...search, steps: [{ show: [9], say: 'Nine.' }, { hide: [0, 7], focus: 'ptr:lo', say: 'Zero and seven.' }] }] }, {}, { mode: 'explain' });
+  assert.deepEqual(errors, [
+    'scenes[0].steps[0].show: 9 names no pointer or range; show takes a pointer "ptr:name" or a range "range:name"; it can be "ptr:lo", "ptr:hi", "ptr:mid", "range:window"',
+    'scenes[0].steps[1].hide: 0 names no pointer or range; hide takes a pointer "ptr:name" or a range "range:name"; it can be "ptr:lo", "ptr:hi", "ptr:mid", "range:window"',
+    'scenes[0].steps[1].hide: 7 names no pointer or range; hide takes a pointer "ptr:name" or a range "range:name"; it can be "ptr:lo", "ptr:hi", "ptr:mid", "range:window"',
+  ]);
+});

@@ -205,8 +205,10 @@ export function checkMemory(s, p, errors, warnings) {
 /** Every step's changes, walked in order from the initial state, as the scene draws them. */
 export function checkStateSteps(s, p, errors, warnings) {
   for (const pr of walkStates(s).problems) {
-    const at = pr.step < 0 ? `${p}.${pr.field}` : `${p}.steps[${pr.step}].${pr.field}${pr.ref ? `[${JSON.stringify(pr.ref)}]` : ''}`;
-    const subject = pr.step < 0 && pr.ref ? `${pr.ref} ` : '';
+    // A key of a step's record reads as ["key"]; a scene-level ref, or a number in a step's list, leads the message.
+    const keyed = pr.step >= 0 && typeof pr.ref === 'string' && pr.ref !== '';
+    const at = pr.step < 0 ? `${p}.${pr.field}` : `${p}.steps[${pr.step}].${pr.field}${keyed ? `[${JSON.stringify(pr.ref)}]` : ''}`;
+    const subject = !keyed && pr.ref !== '' && pr.ref !== undefined ? `${pr.ref} ` : '';
     const close = pr.ref ? didYouMean(pr.ref, pr.names) : '';
     const hint = close || (pr.names.length && pr.names.length <= NAMES_LISTED ? `; it can be ${quoted(pr.names)}` : '');
     (pr.level === 'warning' ? warnings : errors).push(`${at}: ${subject}${pr.message}${hint}`);

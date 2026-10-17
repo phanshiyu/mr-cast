@@ -16,7 +16,7 @@ export interface StateProblem {
   /** The step's index, or -1 for the initial state. */
   step: number;
   field: 'set' | 'move' | 'show' | 'hide' | 'objects' | 'tint' | 'callout';
-  ref: string;
+  ref: string | number;
   message: string;
   names: string[];
   level: 'error' | 'warning';
