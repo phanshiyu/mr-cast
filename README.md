@@ -166,7 +166,7 @@ A full video starts as an article that teaches on its own: "explain quicksort" g
 - ...
 ```
 
-`mr-cast article` fails on a missing part, a section without an id, a question without its answer or takeaway, and words about the medium such as "scene" or "on screen" outside code, and prints the takeaways. `mr-cast article --reader` prints it without the answers, for the reader test. With a `plan.json`, each topic you kept is the section of that id. Each scene names the section it adapts in `section`, or through its `topic`. `validate` fails on an unknown section and warns about a section no scene adapts, unless the storyboard's `textOnly` lists it with a reason, and about scenes out of the article's order. `render --out` writes the article beside the MP4.
+`mr-cast article` fails on a missing part, a section without an id, or a question without its answer or takeaway, warns about phrases about the medium such as "the next scene" or "on screen" outside code, and prints the takeaways. `mr-cast article --reader` prints it without the answers, for the reader test. With a `plan.json`, each topic you kept is the section of that id. Each scene names the section it adapts in `section`, or through its `topic`. `validate` fails on an unknown section and warns about a section no scene adapts, unless the storyboard's `textOnly` lists it with a reason, and about scenes out of the article's order. `render --out` writes the article beside the MP4.
 
 ## Explanations
 

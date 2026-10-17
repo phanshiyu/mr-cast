@@ -18,11 +18,27 @@ const RESERVED = { takeaways: 'Takeaways', questions: 'Questions', 'left out': '
 const TAKEAWAYS = { min: 2, max: 4 };
 const CLAIM_WORDS_MIN = 4;
 const ID = /^[a-z0-9][a-z0-9-]*$/;
-// Words about the medium. The article is the content alone, so it reads the same as a page, a talk or a video.
-const MEDIUM_WORDS = /\b(scenes?|slides?|storyboards?|primitives?|narrat\w*|viewers?|on[- ]screen|this video|the video|animat\w*)\b/i;
+// Phrases about the medium. The article is the content alone, so it reads the same as a page, a talk or a video.
+// Only phrases that can mean nothing else: "scene graph", "primitives", "the window slides" or "CSS animation" are
+// ordinary words of an article about code.
+const MEDIUM_WORDS = /\b(?:this video|the video|on[- ]screen|the viewers?|storyboards?|narration|(?:this|the next|the previous) (?:scene|slide))\b/i;
 
-/** Prose with code spans and fenced blocks blanked out, so a code name such as `scene` is not read as a word. */
-const prose = (text) => text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
+/** A line with its code spans blanked out, so a code name such as `scene` is not read as a word. */
+const prose = (line) => line.replace(/`[^`\n]*`/g, '');
+
+/** For each line, whether it is part of a fenced code block, its fences included. */
+function fenced(lines) {
+  let open = null;
+  return lines.map((line) => {
+    const fence = line.match(/^ {0,3}(`{3,}|~{3,})/)?.[1];
+    if (open === null) {
+      if (fence) open = fence;
+      return Boolean(fence);
+    }
+    if (fence && fence[0] === open[0] && fence.length >= open.length && !line.trim().slice(fence.length)) open = null;
+    return true;
+  });
+}
 
 /**
  * The article parsed, with its problems. `sections` are the teaching sections in order, each
@@ -35,11 +51,15 @@ export function parseArticle(text) {
   const title = lines.find((l) => l.trim())?.match(/^# (.+)/)?.[1]?.trim() ?? null;
   if (!title) errors.push('article.md: the first line must be the title, as "# How quicksort sorts a list"');
 
+  const code = fenced(lines);
   const parts = [];
   lines.forEach((line, i) => {
-    const m = line.match(/^## (.+?)\s*$/);
-    if (m) parts.push({ heading: m[1], line: i + 1, body: [] });
-    else if (parts.length) parts.at(-1).body.push(line);
+    const m = !code[i] && line.match(/^## (.+?)\s*$/);
+    if (m) parts.push({ heading: m[1], line: i + 1, body: [], code: [] });
+    else if (parts.length) {
+      parts.at(-1).body.push(line);
+      parts.at(-1).code.push(code[i]);
+    }
   });
 
   const sections = [];
@@ -49,17 +69,20 @@ export function parseArticle(text) {
     const id = part.heading.match(/\{#([^}]*)\}$/);
     const name = part.heading.replace(/\s*\{#[^}]*\}$/, '').trim();
     const key = name.toLowerCase();
+    if (Object.hasOwn(RESERVED, key)) {
+      reserved[key] = part;
+      continue;
+    }
     if (!id) {
-      if (Object.hasOwn(RESERVED, key)) reserved[key] = part;
-      else errors.push(`${at}: "## ${name}" has no id; end the heading with one, as "## ${name} {#${slug(name)}}"`);
+      errors.push(`${at}: "## ${name}" has no id; end the heading with one, as "## ${name} {#${slug(name)}}"`);
       continue;
     }
     if (!ID.test(id[1])) errors.push(`${at}: id "${id[1]}" must be lowercase letters, digits and dashes`);
     else if (sections.some((s) => s.id === id[1])) errors.push(`${at}: id "${id[1]}" is already used by another section`);
     if (name.split(/\s+/).length < CLAIM_WORDS_MIN) warnings.push(`${at}: "${name}" is a label; state the section's claim as a sentence, such as "Each partition puts the pivot in its final place"`);
-    const body = part.body.join('\n');
-    if (!body.trim()) errors.push(`${at}: section "${id[1]}" is empty`);
-    sections.push({ id: id[1], title: name, line: part.line, words: prose(body).split(/\s+/).filter(Boolean).length });
+    if (!part.body.join('').trim()) errors.push(`${at}: section "${id[1]}" is empty`);
+    const words = part.body.filter((_, j) => !part.code[j]).map(prose).join('\n').split(/\s+/).filter(Boolean).length;
+    sections.push({ id: id[1], title: name, line: part.line, words });
   }
   if (!sections.length && title) errors.push('article.md: no teaching section; write each idea as "## <its claim> {#id}" followed by its text');
 
@@ -78,10 +101,13 @@ export function parseArticle(text) {
   if (reserved['left out'] && !reserved['left out'].body.join('').trim()) errors.push(`article.md:${reserved['left out'].line}: Left out is empty; list what you left out and why, or write "- Nothing."`);
 
   lines.forEach((line, i) => {
-    const m = prose(line).match(MEDIUM_WORDS);
-    if (m) errors.push(`article.md:${i + 1}: "${m[0]}" is about the medium; the article teaches the idea alone, so write it as you would for a page`);
+    const m = !code[i] && prose(line).match(MEDIUM_WORDS);
+    if (m) warnings.push(`article.md:${i + 1}: "${m[0]}" is about the medium; the article teaches the idea alone, so write it as you would for a page (a code name in backticks, such as \`scene\`, is fine)`);
   });
-  return { title, takeaways, sections, questions, errors, warnings };
+  const q = reserved.questions;
+  const next = q && parts[parts.indexOf(q) + 1];
+  const questionLines = q ? { from: q.line - 1, to: next ? next.line - 1 : lines.length } : null;
+  return { title, takeaways, sections, questions, questionLines, errors, warnings };
 }
 
 const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').split('-').slice(0, 3).join('-');
@@ -112,7 +138,9 @@ function parseQuestions(part, takeawayCount, errors) {
 
 /** The article a reader test sees: everything but the questions' answers, with the questions alone at the end. */
 export function readerText(text, article) {
-  const body = text.replace(/^## Questions\s*\n[\s\S]*?(?=^## |(?![\s\S]))/m, '').trimEnd();
+  const lines = text.split('\n');
+  const { from, to } = article.questionLines ?? { from: lines.length, to: lines.length };
+  const body = [...lines.slice(0, from), ...lines.slice(to)].join('\n').trimEnd();
   return `${body}\n\n## Questions\n\n${article.questions.map((q, i) => `${i + 1}. ${q.question}`).join('\n')}\n`;
 }
 

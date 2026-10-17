@@ -16,10 +16,16 @@ intermediate artifact).
   `## <the claim, as a sentence> {#id}` per idea, in teaching order; `## Questions`, each `1. question` followed by
   indented `Answer:` and `Takeaway: <n>` lines; and `## Left out`.
 - With a `plan.json`, each topic kept on the plan page is the section whose id is the topic's id, in plan order.
-- `mr-cast article` checks it: a missing part, a section without an id, a question without its answer or takeaway, a
-  takeaway with no question, and words about the medium (scene, slide, storyboard, primitive, narration, viewer, on
-  screen, the video, animation) outside code are errors; a heading of fewer than four words and a plan topic with no
-  section warn. It prints the takeaways for the user. `--reader` prints the article with the answers removed.
+- `mr-cast article` checks it: a missing part, a section without an id, a question without its answer or takeaway, and
+  a takeaway with no question are errors; a heading of fewer than four words, a plan topic with no section, and a
+  phrase about the medium outside code warn. The phrases are only those that cannot mean anything else: this video,
+  the video, on screen, the viewer, storyboard, narration, and this, the next or the previous scene or slide. Fenced
+  blocks and code spans are code, and a `## ` line inside a fence is not a heading. It prints the takeaways for the
+  user. `--reader` prints the article with the answers removed.
+  As built, the first version failed on single words (scene, slide, primitive, narrat*, viewer, animat*); review
+  showed they hit ordinary words of articles about code, such as "scene graph", "synchronization primitives", "the
+  window slides right", "image viewer", "narrative" and "CSS animation", so the list was narrowed and made a warning,
+  which `validate` never copies into its errors.
 - A scene names the section it adapts with `section`, or by its `topic` when the topic is the section. `validate`
   fails on an unknown section, and warns about a section no scene adapts (unless the storyboard lists it in `textOnly`
   with a reason), about a scene that adapts none, and about scenes out of the article's order. The order is checked
@@ -34,7 +40,8 @@ Good:
 
 Bad:
 - Adding an idea in the adaptation is not caught: a scene can name a section and say more than it.
-- The medium-word list can hit a real word, such as an app's "viewer"; the error names it, and code spans are exempt.
+- The medium phrases still miss most talk about the medium ("as shown here", "in the diagram below"), and can hit a
+  real phrase, such as an app's "the viewer"; it is a warning that names the phrase, and code spans are exempt.
 
 ## Alternatives considered
 

@@ -66,4 +66,4 @@ For an explanation, the article is your explanation, written out with its exampl
 {{MR_CAST}}/bin/mr-cast article <flags>
 ```
 
-It fails on a missing part, a section without an id, a question without its answer or takeaway, and words about the medium, and warns about a heading that is a label and a section the plan expects. Fix what it names and run it again. It ends by printing the takeaways.
+It fails on a missing part, a section without an id, and a question without its answer or takeaway. It warns about a heading that is a label, a section the plan expects, and phrases about the medium, such as "the video" or "the next scene"; a code name in backticks is fine. Fix what it names and run it again. It ends by printing the takeaways.

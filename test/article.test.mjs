@@ -63,9 +63,28 @@ test('the article names what is missing or malformed, with the fix', () => {
   ]);
 });
 
-test('words about the medium are rejected, but not inside code', () => {
-  const a = parseArticle(ARTICLE.replace('already sorted.', 'already sorted, as the next scene shows. The `scene` field is code.'));
-  assert.deepEqual(a.errors, ['article.md:14: "scene" is about the medium; the article teaches the idea alone, so write it as you would for a page']);
+const MEDIUM = (phrase, line) => `article.md:${line}: "${phrase}" is about the medium; the article teaches the idea alone, so write it as you would for a page (a code name in backticks, such as \`scene\`, is fine)`;
+const withText = (text) => parseArticle(ARTICLE.replace('already sorted.', `already sorted.\n\n${text}`));
+
+test('phrases about the medium warn, but not inside code', () => {
+  const a = withText('As the next scene shows, the viewer sees it on screen. The `scene` field is code.');
+  assert.deepEqual([a.errors, a.warnings], [[], [MEDIUM('the next scene', 16)]]);
+  const lines = ['This video sorts it.', 'The storyboard says so.', 'The narration says so.', 'The video ends.', 'On-screen it moves.', 'The viewers watch.'];
+  assert.deepEqual(withText(lines.join('\n')).warnings, [MEDIUM('This video', 16), MEDIUM('storyboard', 17), MEDIUM('narration', 18), MEDIUM('The video', 19), MEDIUM('On-screen', 20), MEDIUM('The viewers', 21)]);
+});
+
+test('ordinary words of an article about code are not about the medium', () => {
+  const text = 'Primitive values are copied. Synchronization primitives guard it. The window slides right. The image viewer opens it. The narrative holds. A CSS animation runs. The scene graph is a tree.';
+  const a = withText(text);
+  assert.deepEqual([a.errors, a.warnings], [[], []]);
+});
+
+test('a fenced block is code across its lines, and a ## line inside it is no heading', () => {
+  const block = ['```text', 'the video shows this scene', '## Questions', '```', '', '~~~~', 'on screen', '~~~', '## Not a heading', '~~~~', ''].join('\n');
+  const a = withText(block);
+  assert.deepEqual([a.errors, a.warnings], [[], []]);
+  assert.deepEqual(a.sections.map((s) => [s.id, s.words]), [['partition', 28], ['recurse', 17]], 'code is not counted as words');
+  assert.equal(a.questions.length, 2);
 });
 
 test('a heading that is a label rather than a claim warns', () => {
@@ -78,6 +97,16 @@ test('the reader sees the questions without their answers', () => {
   assert.ok(text.includes('## Left out'));
   assert.equal(text.includes('Answer:'), false);
   assert.ok(text.endsWith('## Questions\n\n1. Where is 3 after the first partition of [7, 2, 9, 4, 3]?\n2. Why is 3 never moved again?\n'));
+});
+
+test('the reader sees no answer whatever the case of the Questions heading, or an id on it', () => {
+  for (const heading of ['## questions', '## QUESTIONS {#questions}']) {
+    const article = ARTICLE.replace('## Questions', heading);
+    const text = readerText(article, parseArticle(article));
+    assert.equal(text.includes('Answer:'), false, heading);
+    assert.equal(text.includes(heading), false, heading);
+    assert.ok(text.includes('## Left out\n\n- How to pick the pivot'), heading);
+  }
 });
 
 test('the article keeps a section per kept topic of the plan, in its order', () => {
