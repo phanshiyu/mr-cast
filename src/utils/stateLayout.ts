@@ -535,3 +535,6 @@ export function stateBoxes(layout: StateLayout): LayoutBoxes {
   ]);
   return { boxes, obstacles: [...layout.states.map(card), ...layout.transitions.flatMap((r) => (r.label ? [transition(r)] : []))] };
 }
+
+/** The scale a state diagram draws at in `box`: as large as fits, up to 1.25. */
+export const stateScale = (layout: StateLayout, box: { width: number; height: number }): number => Math.min(box.width / layout.width, box.height / layout.height, 1.25);

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { layerOf, layerRoute, tokenSteps } from '../../shared/layers.mjs';
 import type { HunkMap, LayersScene } from '../types';
-import { BAND_GAP, CAPTION_GAP, DOT_R, PAD_X, PILL_GAP, PILL_H, PILL_PAD_X, layersBoxes, layoutLayers, tokenPoint, type LayersLayout, type PlacedLayer } from '../utils/layersLayout';
+import { BAND_GAP, CAPTION_GAP, DOT_R, PAD_X, PILL_GAP, PILL_H, PILL_PAD_X, layersBoxes, layersScale, layoutLayers, tokenPoint, type LayersLayout, type PlacedLayer } from '../utils/layersLayout';
 import { centredStage, staged } from '../utils/penGeometry';
 import { asBrightAs, brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
@@ -123,7 +123,7 @@ export const LayerStack: React.FC<SceneProps<LayersScene>> = ({ scene, hunks, du
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutLayers(scene, box), [scene, box.width, box.height]);
-  const scale = Math.min(1, box.height / layout.height);
+  const scale = layersScale(layout, box);
   const stage = centredStage(box, layout, scale);
   const marks = useMemo(() => staged(layersBoxes(layout), stage, box), [layout, stage.left, stage.top, scale, box.width, box.height]);
   const route = useMemo(() => layerRoute(scene), [scene]);

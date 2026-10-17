@@ -185,3 +185,6 @@ export function layersBoxes(layout: LayersLayout): LayoutBoxes {
   return { boxes: layout.boxes, obstacles: [...labels, ...cards, ...rail] };
 }
 
+
+/** The scale a layer stack draws at in `box`: shrunk only to fit its height. */
+export const layersScale = (layout: LayersLayout, box: { width: number; height: number }): number => Math.min(1, box.height / layout.height);

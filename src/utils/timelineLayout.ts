@@ -228,3 +228,6 @@ export function timelineBoxes(layout: TimelineLayout): LayoutBoxes {
   const axis = { x: 0, y: layout.axisY - 26, width: layout.width, height: 70 };
   return { boxes, obstacles: [...boxes.values(), ...labels, axis] };
 }
+
+/** The scale a timeline draws at in `box`: shrunk only to fit its height. */
+export const timelineScale = (layout: TimelineLayout, box: { width: number; height: number }): number => Math.min(1, box.height / layout.height);

@@ -538,3 +538,6 @@ export function erBoxes(layout: ErLayout): LayoutBoxes {
   const obstacles = [...layout.entities.map(card), ...layout.relations.flatMap((r) => (r.relation.label ? [relation(r)] : []))];
   return { boxes, obstacles, lines: layout.relations.flatMap((r) => r.points) };
 }
+
+/** The scale an er diagram draws at in `box`: as large as fits, up to 1.3. */
+export const erScale = (layout: ErLayout, box: { width: number; height: number }): number => Math.min(box.width / layout.width, box.height / layout.height, 1.3);
