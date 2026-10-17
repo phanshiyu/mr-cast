@@ -95,6 +95,18 @@ test('a dotfile, an editor backup or a merge leftover in a skill folder is not i
   assert.deepEqual(manifestOf(dir).files, EXPECTED);
 });
 
+test('a template from before 0.24 gets the whole storyboard schema in place of {{STORYBOARD_TYPES}}', () => {
+  const copy = fs.mkdtempSync(path.join(tmp, 'root-'));
+  for (const f of ['package.json', 'src', 'skill']) fs.cpSync(path.join(root, f), path.join(copy, f), { recursive: true });
+  const template = path.join(copy, 'skill/mr-cast/SKILL.md');
+  fs.writeFileSync(template, `${fs.readFileSync(template, 'utf8')}\n## Schema\n\n\`\`\`ts\n{{STORYBOARD_TYPES}}\n\`\`\`\n`);
+  const dir = freshDir();
+  installSkill(copy, dir);
+  const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
+  assert.equal(skill.includes('{{STORYBOARD_TYPES}}'), false);
+  assert.ok(skill.includes('interface ArrayScene extends SceneBase {') && skill.includes('interface TopicPick {'));
+});
+
 test('reinstall removes a file the manifest recorded that this version no longer writes', () => {
   const dir = freshDir();
   installSkill(root, dir);

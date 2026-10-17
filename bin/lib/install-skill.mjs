@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { VIEWS } from '../../shared/views.mjs';
+import { formatSchema } from './schema.mjs';
 
 const MANIFEST = '.mr-cast-install.json';
 /** What versions before the manifest installed, relative to the Claude config dir. */
@@ -107,7 +108,9 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
   const fill = (template) => fs
     .readFileSync(template, 'utf8')
     .replaceAll('{{MR_CAST}}', () => root)
-    .replace('{{PLAN_VIEWS}}', viewsTable);
+    .replace('{{PLAN_VIEWS}}', viewsTable)
+    // Templates before 0.24 carried the whole schema; quality/variant.sh still installs them for comparison.
+    .replace('{{STORYBOARD_TYPES}}', () => formatSchema(root, 'all'));
 
   // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
   const source = (rel) => (rel === 'mr-cast/SKILL.md' && process.env.MR_CAST_SKILL_TEMPLATE) || path.join(root, 'skill', rel);

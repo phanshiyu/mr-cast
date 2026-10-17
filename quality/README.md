@@ -18,7 +18,8 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
 
 ## One run, end to end
 
-1. Variant. Build a skill variant from a SKILL.md template (placeholders `{{MR_CAST}}`, `{{PLAN_VIEWS}}`):
+1. Variant. Build a skill variant from a SKILL.md template (placeholders `{{MR_CAST}}`, `{{PLAN_VIEWS}}`, and
+   `{{STORYBOARD_TYPES}}`, which a template from before 0.24 carries and install fills with `mr-cast schema all`):
 
        quality/variant.sh skill/mr-cast/SKILL.md /path/to/variants/current
        quality/variant.sh /path/to/other/SKILL.md /path/to/variants/other
