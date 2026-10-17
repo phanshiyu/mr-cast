@@ -107,6 +107,16 @@ test('a template from before 0.24 gets the whole storyboard schema in place of {
   assert.ok(skill.includes('interface ArrayScene extends SceneBase {') && skill.includes('interface TopicPick {'));
 });
 
+test('a reference that names no CLI is marked on its first line, with no install path in what is pasted', () => {
+  const dir = freshDir();
+  installSkill(root, dir);
+  const file = path.join(dir, 'skills/mr-cast/references/reader-test.md');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.equal(text, `<!-- written by mr-cast install-skill -->\n${fs.readFileSync(path.join(root, 'skill/mr-cast/references/reader-test.md'), 'utf8')}`);
+  assert.equal(text.includes(root) || text.includes('/bin/mr-cast'), false);
+  assert.ok(uninstallSkill(dir).removed.includes(file));
+});
+
 test('reinstall removes a file the manifest recorded that this version no longer writes', () => {
   const dir = freshDir();
   installSkill(root, dir);

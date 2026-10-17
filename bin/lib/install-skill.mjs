@@ -21,8 +21,13 @@ const LEGACY = [
   'commands/mr-cast-render.md',
   'commands/mr-cast-explain-render.md',
 ];
-/** Text every file mr-cast writes contains: the CLI path (skills) or the path of its skill (older commands). */
-const MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md', '/skills/mr-cast-'];
+/**
+ * The line install-skill puts first in a file that names none of MARKERS. It names no path, because a reference
+ * such as reader-test.md is pasted whole into a subagent's prompt.
+ */
+const MARK = '<!-- written by mr-cast install-skill -->';
+/** Text every file mr-cast writes contains: the CLI path (skills), the path of its skill (older commands), or MARK. */
+const MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md', '/skills/mr-cast-', MARK];
 
 const defaultClaudeDir = () => process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
 
@@ -115,7 +120,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
   // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
   const source = (rel) => (rel === 'mr-cast/SKILL.md' && process.env.MR_CAST_SKILL_TEMPLATE) || path.join(root, 'skill', rel);
   // A file is removed later only if it shows mr-cast wrote it, so one that never names the CLI gets a line that does.
-  const marked = (text) => (MARKERS.some((m) => text.includes(m)) ? text : `${text}\n<!-- installed by ${root}/bin/mr-cast install-skill -->\n`);
+  const marked = (text) => (MARKERS.some((m) => text.includes(m)) ? text : `${MARK}\n${text}`);
   const targets = skillFiles(root).map((rel) => [path.join(claudeDir, 'skills', rel), marked(fill(source(rel)))]);
   const files = targets.map(([file]) => path.relative(claudeDir, file).split(path.sep).join('/'));
   const stale = removeStale(claudeDir, new Set(files));
