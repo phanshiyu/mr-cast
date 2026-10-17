@@ -28,12 +28,6 @@
           "badge": "∞"
         },
         {
-          "id": "spacer",
-          "label": "spacer",
-          "shape": "terminal",
-          "hidden": true
-        },
-        {
           "id": "C",
           "label": "C",
           "shape": "terminal",
@@ -81,11 +75,6 @@
           "from": "C",
           "to": "E",
           "label": "1"
-        },
-        {
-          "from": "A",
-          "to": "spacer",
-          "hidden": true
         }
       ],
       "table": {
@@ -222,12 +211,6 @@
           "badge": "∞"
         },
         {
-          "id": "spacer",
-          "label": "spacer",
-          "shape": "terminal",
-          "hidden": true
-        },
-        {
           "id": "C",
           "label": "C",
           "shape": "terminal",
@@ -275,11 +258,6 @@
           "from": "C",
           "to": "E",
           "label": "1"
-        },
-        {
-          "from": "A",
-          "to": "spacer",
-          "hidden": true
         }
       ],
       "table": {
@@ -412,12 +390,6 @@
           "badge": "2"
         },
         {
-          "id": "spacer",
-          "label": "spacer",
-          "shape": "terminal",
-          "hidden": true
-        },
-        {
           "id": "C",
           "label": "C",
           "shape": "terminal",
@@ -465,11 +437,6 @@
           "from": "C",
           "to": "E",
           "label": "1"
-        },
-        {
-          "from": "A",
-          "to": "spacer",
-          "hidden": true
         }
       ],
       "table": {
@@ -591,12 +558,6 @@
           "badge": "2"
         },
         {
-          "id": "spacer",
-          "label": "spacer",
-          "shape": "terminal",
-          "hidden": true
-        },
-        {
           "id": "C",
           "label": "C",
           "shape": "terminal",
@@ -644,11 +605,6 @@
           "from": "C",
           "to": "E",
           "label": "1"
-        },
-        {
-          "from": "A",
-          "to": "spacer",
-          "hidden": true
         }
       ],
       "table": {
