@@ -16,10 +16,11 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onChapter: (chapter: 
     try {
       await navigator.clipboard.writeText(`${readingChecklist(order)}\n`);
       setCopied('copied');
+      setTimeout(() => setCopied('idle'), 2000);
     } catch {
+      // A browser that refuses the clipboard gets the checklist to copy by hand; it stays until the next copy.
       setCopied('failed');
     }
-    setTimeout(() => setCopied('idle'), 2000);
   };
   return (
     <section aria-label="Reading order" className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
@@ -33,9 +34,22 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onChapter: (chapter: 
           className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200 hover:bg-white/10"
         >
           {copied === 'copied' ? <Check size={13} /> : <Copy size={13} />}
-          {copied === 'copied' ? 'Copied' : copied === 'failed' ? 'Copy failed' : 'Copy as checklist'}
+          {copied === 'copied' ? 'Copied' : 'Copy as checklist'}
         </button>
       </div>
+      {copied === 'failed' ? (
+        <div className="mb-3">
+          <p className="mb-1 text-xs text-amber-200">The browser blocked the clipboard. Copy the checklist from here:</p>
+          <textarea
+            readOnly
+            autoFocus
+            onFocus={(e) => e.currentTarget.select()}
+            value={`${readingChecklist(order)}\n`}
+            rows={6}
+            className="w-full rounded-lg border border-white/10 bg-black/30 p-2 font-mono text-xs text-slate-200"
+          />
+        </div>
+      ) : null}
       {order.groups.map((group, g) => (
         <div key={g} className="mb-3 last:mb-0">
           {group.title ? <div className="mb-1.5 text-xs font-medium text-slate-500">{plainText(group.title)}</div> : null}

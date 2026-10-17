@@ -1,0 +1,7 @@
+{
+  "topics": [
+    { "id": "rate-limiter", "title": "Rate limiter: twenty orders a minute", "summary": "Counts each visitor's order requests per minute and refuses the twenty-first.", "files": ["src/api/rate-limit.ts", "src/api/server.ts"], "depth": "deep", "views": ["data", "parts"], "why": "The twenty-first request is the case to trace.", "seconds": { "brief": 40, "deep": 90 } },
+    { "id": "real-prices", "title": "Orders use real prices", "summary": "Each item asks the pricing module for its price; an empty order is refused.", "files": ["src/services/orders.ts"], "depth": "brief", "views": ["compare", "calls"], "seconds": { "brief": 35, "deep": 80 } },
+    { "id": "order-events", "title": "Announce each new order", "summary": "The route publishes order.created after the insert.", "files": ["src/queue/events.ts", "src/api/server.ts"], "depth": "brief", "views": ["calls"], "seconds": { "brief": 30, "deep": 70 } }
+  ]
+}

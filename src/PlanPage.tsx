@@ -200,6 +200,7 @@ export const PlanPage: React.FC<{
             onChoose={(change) => choose(topic, change)}
             onReset={() => void send({ topic: topic.id, choice: null })}
             hints={preread ? prereadHint : depthHint}
+            showHint={preread}
           />
         ))}
       </ol>
@@ -243,9 +244,11 @@ interface TopicRowProps {
   onReset: () => void;
   ref: React.Ref<HTMLLIElement>;
   hints: Record<Depth, string>;
+  /** Says what the picked depth means under its control, for a pre-read, whose depths mean something new. */
+  showHint: boolean;
 }
 
-const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, editable, onFocusRow, onChoose, onReset, ref, hints }) => {
+const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, editable, onFocusRow, onChoose, onReset, ref, hints, showHint }) => {
   const pick = pickOf(topic);
   const suggested = suggestionOf(topic);
   const changed = !samePick(pick, suggested);
@@ -264,7 +267,10 @@ const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, edita
           <p className="mt-0.5 text-sm text-slate-300">{topic.summary}</p>
           {topic.files.length ? <p className="mt-1 font-mono text-xs text-slate-500">{formatFiles(topic.files)}</p> : null}
         </div>
-        <DepthControl value={pick.depth} suggested={suggested.depth} disabled={!editable} hints={hints} onChange={(depth) => onChoose({ depth })} />
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <DepthControl value={pick.depth} suggested={suggested.depth} disabled={!editable} hints={hints} onChange={(depth) => onChoose({ depth })} />
+          {showHint ? <p className="max-w-64 text-right text-xs text-slate-400">{hints[pick.depth]}</p> : null}
+        </div>
       </div>
 
       {skipped ? null : <ViewPicker topic={topic} value={pick.view} disabled={!editable} onChange={(view) => onChoose({ view })} />}

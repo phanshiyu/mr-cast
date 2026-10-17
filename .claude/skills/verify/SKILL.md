@@ -71,6 +71,7 @@ Fixtures:
 - **`.claude/skills/verify/fixtures/sequence-20.json`.** Two 20-message sequences, one walked in steps with a pen mark and one without steps; use it with `examples/demo/hunks.json`.
 - **`.claude/skills/verify/fixtures/state-scenes.json`.** A 16-cell binary search with three pointers meeting on one cell and a range that shrinks then hides, a ring buffer whose tail runs past the end, and a linked list in memory with a call frame that comes and goes and a reference back to the first node; use it with a `hunks.json` of `{}` (see `features/diagrams.md`).
 - **`.claude/skills/verify/fixtures/plan/{plan,storyboard}.json`.** A five-topic plan of the demo diff (one deep, three brief, one skipped, one with a single view) and the demo storyboard with each scene tagged by topic; use them after `extract` (see `features/plan.md`).
+- **`examples/preread/storyboard.json` and `.claude/skills/verify/fixtures/preread/plan.json`.** The demo diff as a pre-read, with every hunk in the reading order, and a three-topic plan with no code view; use them after `extract` with `--audience preread` on every command (see `features/preread.md`).
 - **`examples/review/storyboard.json`.** A reviewed walkthrough of the repository `scripts/review-demo.sh <dir>` creates (branch `feature/password-reset`, a planted bug, risk and nit). Use it after `extract` in that repository (see `features/review-mode.md`).
 - **`.claude/skills/verify/fixtures/explain-storyboard.json`.** An explanation of `src/api/rate-limit.ts` (snippet `s1` = lines 1-20).
 
