@@ -3,7 +3,8 @@ name: Publish
 # Publishes to npm after CI passes on main, when package.json holds a version npm does not have yet, then renders
 # every example across six runners and attaches the MP4s to the GitHub release for that version
 # (docs/adr/0021-example-videos-as-release-assets.md, docs/adr/0022-shard-the-example-renders.md).
-# Started by hand, it also re-renders the examples for the version in package.json.
+# Started by hand, it also re-renders the examples for the version in package.json. A run that finds the version's
+# release still a draft, such as "Re-run all jobs" after a shard failed, renders and attaches the videos again.
 on:
   workflow_run:
     workflows: [CI]
@@ -14,10 +15,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: publish
-  cancel-in-progress: false
-
 env:
   MR_CAST_NO_UPDATE_CHECK: '1'
 
@@ -27,6 +24,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # Only the npm publish is serialized, so a version bump never waits behind an earlier version's renders.
+    concurrency:
+      group: publish
+      cancel-in-progress: false
     # Must match the environment in the package's trusted publisher on npmjs.com.
     environment: prod
     permissions:
@@ -73,38 +74,55 @@ jobs:
   release:
     name: Open the release as a draft
     needs: publish
-    if: needs.publish.outputs.published == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    concurrency:
+      group: release-v${{ needs.publish.outputs.version }}
+      cancel-in-progress: false
     permissions:
       contents: write
+    outputs:
+      render: ${{ steps.draft.outputs.render }}
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       TAG: v${{ needs.publish.outputs.version }}
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-    # A new release stays a draft until every shard has attached its videos, so the latest/download links never
-    # point at a release without them.
+      PUBLISHED: ${{ needs.publish.outputs.published }}
+      DISPATCHED: ${{ github.event_name == 'workflow_dispatch' }}
+    # A new release stays a draft until every shard's videos are attached, so the latest/download links never
+    # point at a release without them. A draft left by a failed run is finished by the next run of this version.
     steps:
-      - run: |
-          if ! gh release view "$TAG" > /dev/null 2>&1; then
-            gh release create "$TAG" --draft --target "$SHA" --title "$TAG" --notes "See [CHANGELOG.md](https://github.com/$GH_REPO/blob/$TAG/CHANGELOG.md)."
+      - id: draft
+        run: |
+          draft=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo none)
+          if [ "$PUBLISHED" = true ] || [ "$DISPATCHED" = true ]; then
+            if [ "$draft" = none ]; then
+              gh release create "$TAG" --draft --target "$SHA" --title "$TAG" --notes "See [CHANGELOG.md](https://github.com/$GH_REPO/blob/$TAG/CHANGELOG.md)."
+            fi
+            echo "render=true" >> "$GITHUB_OUTPUT"
+          elif [ "$draft" = true ]; then
+            echo "::notice::$TAG is still a draft, so this run renders its videos and publishes it"
+            echo "render=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "render=false" >> "$GITHUB_OUTPUT"
           fi
 
-  media:
+  render:
     name: Render examples, shard ${{ matrix.shard }} of 6
     needs: [publish, release]
+    if: needs.release.outputs.render == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # Installs, builds and renders the repository's code, so it holds no write access; the upload job attaches its videos.
     permissions:
-      contents: write
+      contents: read
     strategy:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4, 5, 6]
     env:
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-      TAG: v${{ needs.publish.outputs.version }}
       SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -126,19 +144,23 @@ jobs:
           key: kokoro-82m-v1.0-q8
       - run: pnpm build
       - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "${{ matrix.shard }}/6"
-      - name: Attach the videos to the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release upload "$TAG" "$RUNNER_TEMP"/media/*.mp4 --clobber
-          echo "::notice::Shard ${{ matrix.shard }} attached $(ls "$RUNNER_TEMP"/media/*.mp4 | wc -l) videos to $TAG"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: media-${{ matrix.shard }}
+          path: ${{ runner.temp }}/media/*.mp4
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 3
 
-  undraft:
-    name: Publish the release
-    needs: [publish, media]
+  upload:
+    name: Attach the videos and publish the release
+    needs: [publish, render]
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
+    concurrency:
+      group: release-v${{ needs.publish.outputs.version }}
+      cancel-in-progress: false
+    # Runs no code from the repository: it downloads the six shards' videos and hands them to gh.
     permissions:
       contents: write
     env:
@@ -146,7 +168,22 @@ jobs:
       GH_REPO: ${{ github.repository }}
       TAG: v${{ needs.publish.outputs.version }}
     steps:
-      - run: |
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: media-*
+          path: ${{ runner.temp }}/media
+      - name: Attach the videos to the release
+        run: |
+          for shard in 1 2 3 4 5 6; do
+            if ! ls "$RUNNER_TEMP/media/media-$shard/"*.mp4 > /dev/null 2>&1; then
+              echo "::error::Shard $shard has no videos, so $TAG stays a draft; re-run all jobs"
+              exit 1
+            fi
+          done
+          gh release upload "$TAG" "$RUNNER_TEMP"/media/media-*/*.mp4 --clobber
+          echo "::notice::Attached $(ls "$RUNNER_TEMP"/media/media-*/*.mp4 | wc -l) videos to $TAG"
+      - name: Publish the release
+        run: |
           if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true ]; then
             gh release edit "$TAG" --draft=false --latest
           fi

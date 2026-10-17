@@ -1,6 +1,6 @@
 # 22. Render the examples on six runners, and keep the release a draft until all finish
 
-- Status: Accepted
+- Status: Accepted; amended 2026-10-18 (see Amendment: recovery, a read-only render, and its own concurrency)
 - Date: 2026-10-18
 - Supersedes: parts of 0021 (the single `media` job, and when the release is created and published)
 
@@ -39,3 +39,40 @@ gallery linked videos as `<type>.mp4` while the script names them `primitives-<t
 - **Shard by index** (every sixth example). Simpler, but the long examples (Bitcoin, GPT, H3, OAuth, React) clustered
   on two runners in sorted order.
 - **One job per example.** 38 runners each paying the setup cost, for a stage only a few minutes shorter.
+
+## Amendment: recovery, a read-only render, and its own concurrency
+
+- Date: 2026-10-18
+- Supersedes: in the Decision above, each shard uploading its own videos and the `undraft` job; and the workflow-wide
+  `publish` concurrency group
+
+Review of the first version of this workflow found three problems:
+
+- **"Re-run all jobs" after a failed shard left the release a draft and the run green.** On the rerun the version
+  was already on npm, so `publish` reported nothing published, and `release`, the shards and `undraft` were skipped.
+- **The render job held `contents: write`** while it installed dependencies, built the player and ran the
+  repository's render script, so any code in that path could write to the repository.
+- **One `publish` concurrency group covered the whole workflow**, so a version bump waited behind the previous
+  version's hour of renders before npm saw it.
+
+Decision:
+
+- **A run renders when it published the version, was started by hand, or finds the version's release still a
+  draft.** The `release` job, which can see drafts, decides and passes `render` to the later jobs. "Re-run all
+  jobs", the next push to `main`, or a run started by hand therefore finishes a draft that a failed run left.
+- **Rendering and publishing are split by permission.** The six `render` shards run with `contents: read` and
+  upload their MP4s as workflow artifacts, `media-1` to `media-6`. One `upload` job, with `contents: write` and no
+  checkout, downloads them, fails while any shard has none, attaches them with `gh release upload --clobber`, and
+  publishes the draft as the latest.
+- **Concurrency is per job.** `publish` alone is in the `publish` group. `release` and `upload` share a
+  `release-v<version>` group, so two runs for one version never attach or publish at once, and renders hold no
+  group at all.
+
+Consequences:
+
+- A failed shard now attaches no videos at all, where before the draft held the other shards' videos. The draft is
+  never published, so the links keep serving the previous release either way.
+- Recovery is "Re-run all jobs" on the failed run. "Re-run failed jobs" reruns the failed shard and the upload job;
+  if the upload job finds a shard without videos, it fails and says to re-run all jobs.
+- The videos pass through workflow artifacts kept for three days, which costs one download of about the size of
+  the release's assets.

@@ -29,4 +29,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0019](0019-tools-not-opinions.md) | Tools, not opinions: the skill and `validate` give the model tools and leave the teaching to it | Accepted |
 | [0020](0020-stepped-scene-additions-and-svg.md) | Callout, tint, growing diagrams, several arrays, changing tables, and an svg scene | Accepted |
 | [0021](0021-example-videos-as-release-assets.md) | Example videos are rendered in CI and attached to the GitHub release; stills are committed | Accepted; the single job superseded by 0022 |
-| [0022](0022-shard-the-example-renders.md) | Render the examples on six runners from their meta.json flags, and keep the release a draft until all finish | Accepted |
+| [0022](0022-shard-the-example-renders.md) | Render the examples on six runners from their meta.json flags, and keep the release a draft until all finish | Accepted; amended: a draft is finished by a rerun, renders run read-only |
