@@ -32,7 +32,7 @@ export interface Hunk {
 export type HunkMap = Record<string, Hunk>;
 
 // ─── storyboard.json (written by the LLM) ────────────────────────────────────
-// bin/lib/install-skill.mjs copies this block into the skill, from the Risk declaration up to the next section.
+// `mr-cast schema` (bin/lib/schema.mjs) prints this block, from the Risk declaration up to the next section, a type at a time.
 
 export type Risk = 'low' | 'medium' | 'high';
 
@@ -83,6 +83,12 @@ interface SceneBase {
    * against the pick in the storyboard's `plan`. Leave it off scenes about the whole video, such as the intent.
    */
   topic?: string;
+  /**
+   * The id of the article.md section this scene adapts, from its `## <claim> {#id}` heading. Leave it off when the
+   * scene's `topic` is the section's id, and off the intent, files, review and reading scenes. `validate` warns about
+   * a section no scene adapts and about scenes out of the article's order.
+   */
+  section?: string;
   /** In an explanation, this scene explains a change, so its `change` marks are meant (see Storyboard.explainsChange). */
   explainsChange?: boolean;
   /**
@@ -910,6 +916,16 @@ export interface Storyboard {
    * built from, so the plan page marks every topic whose pick differs.
    */
   plan?: Record<string, TopicPick>;
+  /**
+   * Article sections that stay in article.md alone, each with the reason, such as an aside that adds no idea the
+   * video needs. Every other section must have a scene that adapts it.
+   */
+  textOnly?: TextOnlySection[];
+}
+
+export interface TextOnlySection {
+  section: string;
+  reason: string;
 }
 
 export interface SkippedHunk {

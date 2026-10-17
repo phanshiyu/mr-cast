@@ -18,6 +18,7 @@ import { checkArray, checkMemory } from './validate-state.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
+import { checkSections } from './article.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 import { checkPreread } from './validate-preread.mjs';
 import { aType } from '../../shared/words.mjs';
@@ -467,7 +468,7 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
  *   may open without an intent scene, and keeps to QUICK_SCENES_MAX scenes. Every correctness and text-fit check
  *   still applies.
  */
-export async function validateStoryboard(raw, hunks, { mode = 'diff', audience = 'familiar', style, plan = null, quick = false } = {}) {
+export async function validateStoryboard(raw, hunks, { mode = 'diff', audience = 'familiar', style, plan = null, quick = false, article = null } = {}) {
   // An older `arch` scene is a `graph`: renamed here so every check below sees one name.
   const sb = upgradeTypes(raw);
   const errors = [];
@@ -676,6 +677,10 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
   const listed = checkPreread(sb, hunks ?? {}, { preread, mode }, errors, warnings);
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   checkTopics(sb, plan, errors, warnings, { preread });
+  if (article) {
+    for (const e of article.errors) errors.push(e);
+    checkSections(sb, article, errors, warnings);
+  }
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
