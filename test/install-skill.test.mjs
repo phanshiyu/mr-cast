@@ -14,6 +14,7 @@ const EXPECTED = [
   'skills/mr-cast/SKILL.md',
   'skills/mr-cast/references/branch.md',
   'skills/mr-cast/references/explanation.md',
+  'skills/mr-cast/references/highlight-audit.md',
   'skills/mr-cast/references/review.md',
   'skills/mr-cast-primitives/SKILL.md',
   ...['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'intent', 'layers', 'memory', 'mermaid', 'reading', 'review', 'sequence', 'state', 'table', 'terminal', 'tests', 'timeline'].map((t) => `skills/mr-cast-primitives/primitives/${t}.md`),

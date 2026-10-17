@@ -5,6 +5,7 @@ import { isTestFile } from '../../shared/test-files.mjs';
 import { FPS, WORDS_PER_MINUTE, sceneDurationInFrames, spokenTexts, wordCount } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
+import { checkHighlight } from './highlight.mjs';
 import { checkLayers } from './validate-layers.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkPenMarks } from './validate-pen-marks.mjs';
@@ -664,6 +665,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
         break;
     }
     checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
+    if (!errors.length) checkHighlight(s, p, hunks ?? {}, warnings);
     checkPenMarks(s, p, hunks ?? {}, errors, warnings);
     checkSpokenMarkup(s, p, warnings);
   });

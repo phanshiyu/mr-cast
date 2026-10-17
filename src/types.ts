@@ -688,7 +688,7 @@ export interface ArrayRange {
 }
 
 export interface ArrayStep extends StateStep {
-  /** New cell values by cell index, e.g. { "3": 42 }. */
+  /** New cell values by cell index, e.g. { "3": 42 }. They land before the words, so compare a pair in the step before its swap. */
   set?: Record<string, StateValue>;
   /** New places: a pointer's name to a cell index, e.g. { "lo": 4 }, and a range's name to "a-b", e.g. { "window": "2-5" }. */
   move?: Record<string, number | string>;
