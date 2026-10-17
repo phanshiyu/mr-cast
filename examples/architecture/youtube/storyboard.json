@@ -244,12 +244,6 @@
       "narration": "A 4K file is far too big for a phone on a weak signal. So workers make several smaller versions of it.",
       "nodes": [
         {
-          "id": "queue",
-          "label": "Kafka topic",
-          "icon": "list-ordered",
-          "caption": "video_uploaded"
-        },
-        {
           "id": "worker",
           "label": "Transcoding worker",
           "icon": "cpu",
@@ -300,11 +294,6 @@
       ],
       "edges": [
         {
-          "from": "queue",
-          "to": "worker",
-          "label": "next job"
-        },
-        {
           "from": "worker",
           "to": "r1080",
           "hidden": true
@@ -352,11 +341,7 @@
       ],
       "steps": [
         {
-          "focus": [
-            "queue",
-            "queue->worker",
-            "worker"
-          ],
+          "focus": "worker",
           "say": "A free worker takes the next job off the queue."
         },
         {

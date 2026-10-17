@@ -231,7 +231,6 @@ const storyboard = {
       title: 'One file in, many versions out',
       narration: 'A 4K file is far too big for a phone on a weak signal. So workers make several smaller versions of it.',
       nodes: [
-        { id: 'queue', label: 'Kafka topic', icon: 'list-ordered', caption: 'video_uploaded' },
         { id: 'worker', label: 'Transcoding worker', icon: 'cpu', caption: 'runs a task graph' },
         { id: 'r1080', label: '1080p', shape: 'step', caption: 'H.264, 5 Mbit/s', hidden: true },
         { id: 'r720', label: '720p', shape: 'step', caption: 'H.264, 2.8 Mbit/s', hidden: true },
@@ -241,13 +240,12 @@ const storyboard = {
         { id: 'manifest', label: 'master.m3u8', icon: 'file-text', caption: 'the manifest', hidden: true },
       ],
       edges: [
-        { from: 'queue', to: 'worker', label: 'next job' },
         ...ladder.map((r) => ({ from: 'worker', to: `r${r.name.replace('p', '')}`, hidden: true })),
         ...ladder.map((r) => ({ from: `r${r.name.replace('p', '')}`, to: 'cut', hidden: true })),
         { from: 'cut', to: 'manifest', hidden: true },
       ],
       steps: [
-        { focus: ['queue', 'queue->worker', 'worker'], say: 'A free worker takes the next job off the queue.' },
+        { focus: 'worker', say: 'A free worker takes the next job off the queue.' },
         {
           show: ['r1080', 'r720', 'r480', 'r360', 'worker->r1080', 'worker->r720', 'worker->r480', 'worker->r360'],
           focus: ['r1080', 'r720', 'r480', 'r360'],

@@ -637,15 +637,9 @@
         },
         {
           "id": "unemb",
-          "label": "Unembedding",
+          "label": "Scores to chances",
           "shape": "step",
-          "caption": "50,257 scores"
-        },
-        {
-          "id": "soft",
-          "label": "Softmax",
-          "shape": "step",
-          "caption": "chances, then a pick"
+          "caption": "50,257 scores, then a pick"
         }
       ],
       "edges": [
@@ -663,20 +657,10 @@
         },
         {
           "from": "mlp",
-          "to": "att",
-          "label": "again",
-          "style": "dashed"
-        },
-        {
-          "from": "mlp",
           "to": "unemb"
         },
         {
           "from": "unemb",
-          "to": "soft"
-        },
-        {
-          "from": "soft",
           "to": "tok",
           "label": "add the pick, run again",
           "style": "dashed",
@@ -700,18 +684,15 @@
           "say": "Attention and the MLP take turns, ninety six times in GPT-3."
         },
         {
-          "focus": [
-            "unemb",
-            "soft"
-          ],
+          "focus": "unemb",
           "say": "Then the last list becomes scores, the scores become chances, and one token gets picked."
         },
         {
           "show": [
-            "soft->tok"
+            "unemb->tok"
           ],
           "focus": [
-            "soft->tok"
+            "unemb->tok"
           ],
           "say": "The pick joins the text, and it all runs again."
         },
@@ -721,7 +702,6 @@
             "emb": "dim",
             "mlp": "dim",
             "unemb": "dim",
-            "soft": "dim",
             "att": "accent"
           },
           "focus": "att",
