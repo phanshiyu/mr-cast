@@ -577,6 +577,8 @@ export interface ChartScene extends SceneBase {
   labels: string[];
   /** Up to 4. With exactly two, each label gets a badge with the change from the first to the second, e.g. "−42%". */
   series: ChartSeries[];
+  /** `false` hides the change badges of a two-series chart. Default true. */
+  badges?: boolean;
   /** Which direction is an improvement, so the change badges read green or red. Without it they stay neutral. */
   better?: 'lower' | 'higher';
   /** Calls out one point: the value at label `at` of series `series` (a series name, default the last series). */

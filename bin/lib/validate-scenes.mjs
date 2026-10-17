@@ -68,6 +68,7 @@ export function checkChart(s, p, errors, warnings) {
   for (const k of ['title', 'unit']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
   if (!CHART_KINDS.includes(s.kind)) errors.push(`${p}.kind: must be one of ${CHART_KINDS.join(', ')}`);
   if (s.better !== undefined && !['lower', 'higher'].includes(s.better)) errors.push(`${p}.better: must be "lower" or "higher"`);
+  if (s.badges !== undefined && typeof s.badges !== 'boolean') errors.push(`${p}.badges: must be true or false`);
   if (!Array.isArray(s.labels) || s.labels.length === 0 || !s.labels.every(isStr)) return errors.push(`${p}.labels: required non-empty array of strings, one per x position`);
   const n = s.labels.length;
   if (new Set(s.labels).size !== n) errors.push(`${p}.labels: each label must be different`);

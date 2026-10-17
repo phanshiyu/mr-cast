@@ -28,7 +28,7 @@ A bar or line chart of real numbers, with a change badge on each label when ther
 
 ## Schema and validate notes
 
-`kind` is `bar` or `line`. A `focus` is a label, `"series:after"`, or `"after@p99"`. `annotation` calls out one point. `{{MR_CAST}}/bin/mr-cast validate` fails on a series whose length differs from the labels and a negative bar, and warns past 12 labels or 4 series, and past 24 bars, where a bar is too thin for its value.
+`kind` is `bar` or `line`. A value below 10,000 prints with the digits it is written with (`3.125`, `0.0243`); a bigger one is compacted to three significant digits (`12.3k`, `3.4M`). `"badges": false` hides the change badges of a two-series chart. A `focus` is a label, `"series:after"`, or `"after@p99"`. `annotation` calls out one point. `{{MR_CAST}}/bin/mr-cast validate` fails on a series whose length differs from the labels and a negative bar, and warns past 12 labels or 4 series, and past 24 bars, where a bar is too thin for its value.
 
 `{{MR_CAST}}/bin/mr-cast schema chart` prints its fields.
 
