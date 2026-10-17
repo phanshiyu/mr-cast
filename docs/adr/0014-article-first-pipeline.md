@@ -1,6 +1,6 @@
 # 14. Article first: write a teaching article, test it with a reader, then adapt it
 
-- Status: Proposed
+- Status: Accepted (as built in 0.24.0; see As built)
 - Date: 2026-10-17
 
 ## Context
@@ -39,3 +39,23 @@ Bad:
 
 - Outline to storyboard, as Code2Video does: supported, but medium-aware from the start.
 - Writer self-critique loops: rejected on Huang et al. and the self-bias studies.
+
+## As built (0.24.0)
+
+- The article's shape and the section checks are ADR 17. The plan page stays before the article: each kept topic is
+  one section, so the article respects the user's picks.
+- The reader test is one fresh Sonnet subagent per round with the article minus its answers. Instead of a second run
+  without the article, each answer must quote the sentence it came from or say `not in the article`, which blocks
+  outside knowledge more cheaply. The writer marks answers against its own key; it never critiques the prose.
+- A named concept ("explain quicksort in a video") now makes a full video, so it gets its article. "Animate that"
+  still makes a quick video when it fits in three scenes.
+- Quick mode writes no article. Measured on 2 topics (binary search, exponential backoff), one writer each: a quick
+  run that first wrote a few paragraphs took 25 and 30 s against 25 and 32 s without, and its video scored 6 of 8
+  against 5.5 of 8 on the blind quiz. No difference either way at that size, so quick mode keeps its one job.
+- Eval, old skill (0.23.0) against new, Sonnet writers, one blind Sonnet reader per video graded against fixed keys
+  (small n: 7 videos per arm on 4 explanation topics, 1 per arm on 2 fixture branches). Explanations: 31.5 of 35
+  (old) against 30.5 of 35 (new), at the ceiling; the new videos were shorter, 4:17 on average against 6:12.
+  Branches: 12.5 of 14 against 11.5 of 14, with videos of 3:31 and 6:02 against 7:10 and 8:04. Articles read alone by
+  two readers each: 61.5 of 70 on explanations, and 19 of 28 on branches, where every miss was a "where is it" or
+  "which files" question; the article reference now asks a branch's article to name files and functions. One rerun of the invoice branch after that change: both readers of its article scored 6 of 7, with
+  the file and location questions right.
