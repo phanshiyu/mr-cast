@@ -69,12 +69,12 @@ export function readRunMeta(dir) {
 }
 
 /**
- * Records in meta.json the audience a command on the run was given, so the skill's hook validates the run as
- * its commands do. A run without meta.json, such as a --dir from mr-cast 0.11, is left as it is.
+ * Records in meta.json the audience the latest command on the run ran with, so the skill's hook validates the run
+ * as its commands do. A run without meta.json, such as a --dir from mr-cast 0.11, is left as it is.
  */
 export function recordAudience(dir, audience) {
   const meta = readRunMeta(dir);
-  if (!audience || !meta || meta.audience === audience) return;
+  if (!meta || meta.audience === audience) return;
   fs.writeFileSync(path.join(dir, 'meta.json'), `${JSON.stringify({ ...meta, audience }, null, 2)}\n`);
 }
 

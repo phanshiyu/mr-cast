@@ -40,7 +40,7 @@ Several runs can render at once, in one repository or in several, and they share
 
 ## Settings flags
 
-`extract`, `init`, `plan`, `validate`, `outline`, `voice`, `play`, `render` and `still` take these flags. A command without a flag uses the default, so pass the same flags to each command of a walkthrough.
+`extract`, `init`, `plan`, `validate`, `outline`, `steps`, `voice`, `play`, `render` and `still` take these flags. A command without a flag uses the default, so pass the same flags to each command of a walkthrough.
 
 | Flag | What it does |
 | --- | --- |
@@ -50,7 +50,9 @@ Several runs can render at once, in one repository or in several, and they share
 | `--voice name` | The Kokoro voice. The default is `af_heart`. |
 | `--no-voice` | A silent walkthrough, with subtitles timed for reading. |
 
-`--audience` also accepts `familiar`, `new` and `overview`, and every command accepts `--simple`, so skills from before 0.25 keep working. All four make the plain video, the same as no flag. Any other `--audience` value is an error.
+`--audience` also accepts `familiar`, `new` and `overview`, and these commands also accept `--simple`, so skills from before 0.25 keep working. All four make the plain video, the same as no flag. Any other `--audience` value is an error.
+
+Each of these commands records the audience it ran with in the run's `meta.json`, the plain video when no flag names one. The skill's hook validates `storyboard.json` with that audience, so it checks the run as its latest command did.
 
 mr-cast remembers your last pace in `~/.config/mr-cast/last-choices.json`, or under `$XDG_CONFIG_HOME` when that is set. `mr-cast status` prints it.
 

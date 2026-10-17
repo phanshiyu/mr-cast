@@ -37,7 +37,10 @@ how long, which scene to pick, or how to phrase. Opinions go.
 - **Audiences.** `--audience preread` stays, since a pre-read is a feature the user asks for by name: no code on screen,
   and the reading order with `reading.md`. `familiar`, `new` and `overview` only changed advice, so they are gone. The
   flag still accepts them, and `--simple`, from skills an open session loaded before the upgrade, and ignores them.
-  The last audience is no longer remembered; the last pace is.
+  The last audience is no longer remembered; the last pace is. Each command that takes the settings flags records in
+  meta.json the audience it ran with, the plain video when no flag names one, so the hook checks a run as its latest
+  command did. Before 0.25, a command with no flag kept the audience already recorded, so a run that was once a
+  pre-read stayed one for the hook while `validate` passed the same storyboard as a plain video.
 - **Errors** are what would not render or names something that does not exist. Opinion errors go: a focus range over 15
   lines, 12 or more changed lines with no focus, a tests scene with no cases and no gaps, findings with no review scene,
   a finding over 50 lines, and `risk` required on a branch's intent.
@@ -93,7 +96,8 @@ evidence over 240 characters, and the review scene not last; and every article w
   (the article's shape). ADR 5 keeps quick mode as a separate run, without the scene and length warnings. ADR 8 keeps
   the pre-read's no-code rule and its reading order, without the advice on labels, `from` and items. ADR 9 keeps the
   linter; its audit subagent is removed. ADR 15 keeps the schema out of the skill and checks in the CLI; its references
-  per step and per mode are removed. ADR 18 keeps the hook for `storyboard.json`; its `article.md` part is removed.
+  per step and per mode are removed. ADR 18 keeps the hook for `storyboard.json`; its `article.md` part is removed, and the audience it reads is the one
+  the run's latest command ran with, not the last one given.
 
 ## Alternatives considered
 

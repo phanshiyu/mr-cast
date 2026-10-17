@@ -16,7 +16,7 @@ const PREREAD_ERROR = 'a pre-read puts no code on screen';
 
 function setup() {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-hook-')));
-  const env = { XDG_CONFIG_HOME: path.join(tmp, 'config'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude') };
+  const env = { XDG_CONFIG_HOME: path.join(tmp, 'config'), XDG_CACHE_HOME: path.join(tmp, 'cache'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude') };
   const repo = path.join(tmp, 'work');
   fs.mkdirSync(repo);
   const run = (args, input) => spawnSync(process.execPath, [CLI, ...args], { cwd: repo, input, encoding: 'utf8', env: { ...process.env, ...env, MR_CAST_NO_UPDATE_CHECK: '1' } });
@@ -40,7 +40,7 @@ test('the hook validates with the audience the run was given, never the last one
     fs.mkdirSync(path.dirname(choices), { recursive: true });
     fs.writeFileSync(choices, JSON.stringify({ audience: 'preread' }));
     const quick = start(['--quick', '--title', 'Quicksort'], 'quick-quicksort');
-    assert.equal(meta(quick).audience, undefined);
+    assert.equal(meta(quick).audience, 'familiar');
     assert.deepEqual([hook(quick).status, hook(quick).stderr], [0, '']);
 
     const full = start(['--title', 'Quicksort'], 'quicksort');
@@ -54,6 +54,52 @@ test('the hook validates with the audience the run was given, never the last one
     assert.equal(run(['outline', '--audience', 'familiar']).status, 0);
     assert.equal(meta(full).audience, 'familiar');
     assert.deepEqual([hook(full).status, hook(full).stderr], [0, '']);
+  } finally {
+    done();
+  }
+});
+
+test('a run started again with no --audience is a plain video, though it was a pre-read before', () => {
+  const { tmp, run, hook, done } = setup();
+  try {
+    const repo = path.join(tmp, 'work');
+    const git = (...args) => assert.equal(spawnSync('git', args, { cwd: repo, encoding: 'utf8' }).status, 0);
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.email', 'test@example.com');
+    git('config', 'user.name', 'Test');
+    fs.writeFileSync(path.join(repo, 'qs.ts'), 'a\n');
+    git('add', '.');
+    git('commit', '-qm', 'base');
+    git('checkout', '-qb', 'quicksort');
+    fs.writeFileSync(path.join(repo, 'qs.ts'), 'a\nb\n');
+    git('commit', '-qam', 'change');
+
+    assert.equal(run(['extract', 'main', '--audience', 'preread']).status, 0);
+    const dir = path.join(repo, '.mr-cast', 'quicksort');
+    assert.equal(meta(dir).audience, 'preread');
+    fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify({ ...CODE_ONLY, scenes: [{ ...CODE_ONLY.scenes[0], hunkId: 'h1' }] }));
+    assert.equal(hook(dir).status, 2);
+
+    assert.equal(run(['extract', 'main']).status, 0);
+    assert.equal(meta(dir).audience, 'familiar');
+    assert.deepEqual([hook(dir).status, hook(dir).stderr], [0, '']);
+
+    assert.equal(run(['validate', '--audience', 'preread']).status, 1);
+    assert.equal(run(['outline']).status, 0);
+    assert.equal(meta(dir).audience, 'familiar');
+  } finally {
+    done();
+  }
+});
+
+test('init with no --audience starts a plain video, though the run was a pre-read before', () => {
+  const { start, run, hook, done } = setup();
+  try {
+    const dir = start(['--title', 'Quicksort', '--audience', 'preread'], 'quicksort');
+    assert.equal(hook(dir).status, 2);
+    assert.equal(run(['init', '--title', 'Quicksort']).status, 0);
+    assert.equal(meta(dir).audience, 'familiar');
+    assert.deepEqual([hook(dir).status, hook(dir).stderr], [0, '']);
   } finally {
     done();
   }

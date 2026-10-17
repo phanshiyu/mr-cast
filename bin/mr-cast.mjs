@@ -11,7 +11,7 @@ import { locateJsonError } from './lib/json.mjs';
 import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { KINDS, formatBytes, formatChoices, formatListing, listArtifacts, listingJson, olderThan, pruneArtifacts, pruneChoices, removalPlan, select } from './lib/prune.mjs';
 import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, recordAudience, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
-import { SETTINGS_OPTIONS, givenAudience, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
+import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { createServing } from './lib/serving.mjs';
@@ -268,14 +268,15 @@ function extract(argv) {
 
   const written = { ...hunks, ...Object.fromEntries(snippets.map((h) => [h.id, h])) };
   fs.mkdirSync(dir, { recursive: true });
-  const audience = givenAudience(values) ?? readRunMeta(dir)?.audience;
+  // The audience of the run's latest start, for the hook; a plain video when no flag names one.
+  const { audience } = settingsFrom(values);
   writeJson(hunksPath, written);
   writeJson(path.join(dir, 'meta.json'), {
     mode: 'diff', base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
     head: 'HEAD', headSha: diff.headSha, branch: diff.branch,
     working: values.working, generatedAt: new Date().toISOString(),
     files, skipped: diff.skipped,
-    ...(audience && { audience }),
+    audience,
   });
   writeCurrent(runs, name);
   rememberChoices(values);
@@ -303,7 +304,7 @@ function runFor(values) {
   const settings = settingsFrom(values);
   rememberChoices(values);
   const run = currentRun(values);
-  recordAudience(run.dir, givenAudience(values));
+  recordAudience(run.dir, settings.audience);
   return { ...run, settings };
 }
 
@@ -779,13 +780,13 @@ function init(argv) {
     }
   }
   if (!fs.existsSync(files.hunks)) writeJson(files.hunks, {});
-  const audience = givenAudience(values) ?? previous.audience;
+  const { audience } = settingsFrom(values);
   writeJson(files.meta, {
     mode: 'explain',
     title: values.title ?? previous.title ?? null,
     createdAt: previous.createdAt ?? new Date().toISOString(),
     ...(values.quick || previous.quick ? { quick: true } : {}),
-    ...(audience && { audience }),
+    audience,
   });
   writeCurrent(runs, name);
   rememberChoices(values);

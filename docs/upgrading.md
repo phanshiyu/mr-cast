@@ -11,6 +11,7 @@ Storyboards from older versions keep working. Steps from 0.10 that named `messag
 - The article stage is gone. `mr-cast article` is an unknown command, the hook checks only `storyboard.json`, and `render --out` copies no article beside the MP4. A storyboard that still has `section` or `textOnly` validates, and mr-cast ignores both fields.
 - `validate` no longer warns about the order of scenes, coverage of hunks and tests, the voice, or word and step counts. A `tests` scene can have no cases, a review needs no `review` scene, and the intent's `risk` is optional.
 - `--audience familiar`, `new`, `overview` and `--simple` are accepted and ignored. Only `--audience preread` changes the video. `mr-cast status` shows the last pace and no longer shows an audience.
+- A command with no `--audience preread` makes the plain video, and records that in the run's `meta.json` for the hook. Before, `extract`, `init` and the other commands kept a pre-read's audience when given no flag, so the hook rejected code scenes in a run that was once a pre-read.
 
 Start a new Claude Code session after the upgrade. A session that is already open keeps the 0.24 skill, which writes an article first.
 
