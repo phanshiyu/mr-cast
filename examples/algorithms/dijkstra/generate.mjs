@@ -9,13 +9,11 @@ const st = { d: { S: 0, A: Infinity, B: Infinity, C: Infinity, E: Infinity }, pr
 const show = (x) => (x === Infinity ? INF : String(x));
 
 const snapshot = () => ({
-  // The layout ranks this graph as one column, S B A C E. A spacer that never shows sits in C's row, left of C, so
-  // the three roads that skip a row each get their own lane instead of sharing one.
-  nodes: [...NODES.slice(0, 3), 'spacer', ...NODES.slice(3)].map((id) => (id === 'spacer' ? { id, label: 'spacer', shape: 'terminal', hidden: true } : { id, label: id, shape: 'terminal', badge: show(st.d[id]) })),
+  nodes: NODES.map((id) => ({ id, label: id, shape: 'terminal', badge: show(st.d[id]) })),
   table: { columns: ['Node', 'Distance', 'Previous', 'Visited'], rows: NODES.map((n) => ({ cells: [n, show(st.d[n]), st.prev[n] ?? '–', st.done.has(n) ? 'Yes' : 'No'] })) },
   tint: { ...st.tint },
 });
-const edges = [...Object.entries(W).map(([k, w]) => { const [from, to] = k.split('->'); return { from, to, label: String(w) }; }), { from: 'A', to: 'spacer', hidden: true }];
+const edges = [...Object.entries(W).map(([k, w]) => { const [from, to] = k.split('->'); return { from, to, label: String(w) }; })];
 
 /** Settle u: the unvisited node with the smallest distance, which the simulation checks. */
 const settle = (u) => {
