@@ -56,6 +56,9 @@ export const clamp ={ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as c
 const HEADER_EYEBROW = 26 + 36;
 const HEADER_TITLE = 70;
 
+/** Size of SceneShell's content box for a scene, whose header is as tall as a title when a callout sits in it. */
+export const sceneBox = (scene: { title?: string }, callout: boolean) => contentBox(Boolean(scene.title) || callout);
+
 /** Size of SceneShell's content box, so scenes can lay out without measuring the DOM. */
 export function contentBox(hasTitle: boolean) {
   return {

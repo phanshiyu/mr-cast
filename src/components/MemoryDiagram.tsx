@@ -12,7 +12,9 @@ import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox } from './theme';
+import { hasCallout } from '../fit/callout';
+import { HeaderCallout } from './HeaderCallout';
+import { clamp, colors, sceneBox } from './theme';
 
 const START = 6;
 /** Frames between cards landing, frames first, then objects. */
@@ -171,7 +173,7 @@ const Line: React.FC<{ d: Styled }> = ({ d }) => (
 export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const box = contentBox(Boolean(scene.title));
+  const box = sceneBox(scene, hasCallout(scene));
   const layout = useMemo(() => layoutMemory(scene, box), [scene, box.width, box.height]);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = centredStage(box, layout, layout.scale);
@@ -204,7 +206,7 @@ export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks,
   const panelIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
       <div style={{ position: 'absolute', left: stage.left, top: stage.top, width: layout.width, height: layout.height, transform: `scale(${layout.scale})`, transformOrigin: 'top left' }}>
         {layout.panels.frames ? <FitText fit={layout.panels.frames} style={{ position: 'absolute', left: 4, top: 4, color: colors.faint, opacity: panelIn }} /> : null}
         {layout.panels.objects ? <FitText fit={layout.panels.objects} style={{ position: 'absolute', left: layout.panels.objectsX + 4, top: 4, color: colors.faint, opacity: panelIn }} /> : null}

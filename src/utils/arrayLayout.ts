@@ -14,6 +14,8 @@ const SPLIT_GAP = 34;
 /** Room a value keeps inside its cell, each side. */
 const CELL_PAD = 10;
 const LABEL_H = 50;
+/** Between a label left of its array and the array's first cell. */
+const LABEL_GAP = 28;
 export const CHIP_H = 38;
 const CHIP_GAP = 6;
 export const ARROW_LEN = 30;
@@ -40,6 +42,7 @@ export interface PlacedRow {
   /** Left edge of its first slot, in the layout. */
   x: number;
   label: Fit | null;
+  labelX: number;
   labelY: number;
   cellsY: number;
   indexY: number;
@@ -117,6 +120,9 @@ export function layoutArray(scene: ArrayScene, box: { width: number; height: num
     const label = hex ? undefined : multi ? a.label : scene.label;
     return { a, k, ghosts, cuts, slots, stack, label };
   });
+  const labels = shape.map((r) => (r.label ? fitText(r.label, sized(SLOTS.arrayLabel, multi ? box.width / 4 : box.width), multi ? `arrays[${r.k}].label` : 'label') : null));
+  /** Room left of the cells for the labels of several arrays. */
+  const labelRoom = multi ? Math.max(0, ...labels.map((l) => (l ? l.width + LABEL_GAP : 0))) : 0;
   const widest = Math.max(...shape.map((r) => (hex ? r.a.values.length + 0.5 : r.slots)));
   const cutRoom = Math.max(...shape.map((r) => (r.cuts.at(-1) ?? 0) * SPLIT_GAP));
 
@@ -125,25 +131,32 @@ export function layoutArray(scene: ArrayScene, box: { width: number; height: num
     const cellH = hex ? Math.round(slotW * HEX_H) - 6 : Math.max(Math.min(76, Math.round(cellW * 0.9)), Math.min(124, Math.round(cellW * 0.72)));
     let y = 0;
     const rows: PlacedRow[] = shape.map((r, n) => {
-      const label = r.label ? fitText(r.label, sized(SLOTS.arrayLabel, box.width), multi ? `arrays[${r.k}].label` : 'label') : null;
+      const label = labels[n]!;
       const top = hex ? n * Math.round(slotW * HEX_H * HEX_PITCH) : y;
-      const cellsY = top + (label ? LABEL_H : 0) + (r.stack ? r.stack * (CHIP_H + CHIP_GAP) - CHIP_GAP + ARROW_LEN : 0) + (hex ? 0 : 8);
+      const cellsY = top + (label && !multi ? LABEL_H : 0) + (r.stack ? r.stack * (CHIP_H + CHIP_GAP) - CHIP_GAP + ARROW_LEN : 0) + (hex ? 0 : 8);
       const indexY = cellsY + cellH + 8;
       const below = (indexes ? indexY + INDEX_H : cellsY + cellH) + rangesOn(r.a.name).length * (BAND_H + BAND_GAP);
       if (!hex) y = below + ROW_GAP;
       const width = hex ? (r.a.values.length + (n % 2) * 0.5) * slotW : r.slots * slotW - CELL_GAP + (r.cuts.at(-1) ?? 0) * SPLIT_GAP;
-      return { name: r.a.name, key: rowKey(r.a.name), count: r.a.values.length, cutsBefore: r.cuts, ghosts: r.ghosts, x: 0, label, labelY: top, cellsY, indexY, hexRow: n, width };
+      // With several arrays a label stands left of its cells, centred on them, so the rows stack tighter.
+      const labelY = multi && label ? Math.round(cellsY + (cellH - label.height) / 2) : top;
+      return { name: r.a.name, key: rowKey(r.a.name), count: r.a.values.length, cutsBefore: r.cuts, ghosts: r.ghosts, x: 0, label, labelX: 0, labelY, cellsY, indexY, hexRow: n, width };
     });
     const height = hex ? (rows.at(-1)?.cellsY ?? 0) + cellH : y - ROW_GAP;
     return { cellW, cellH, rows, height };
   };
-  let slotW = Math.min(CELL_MAX_W, Math.floor((box.width - cutRoom) / widest));
+  let slotW = Math.min(CELL_MAX_W, Math.floor((box.width - cutRoom - 2 * labelRoom) / widest));
   let placed = place(slotW);
   while (placed.height > box.height && slotW > CELL_MIN_W) placed = place(--slotW);
   const { cellW, cellH, rows, height } = placed;
-  const width = hex ? Math.max(...rows.map((r) => r.width)) : Math.max(...rows.map((r) => r.width));
-  // Arrays are centred one by one; a hex grid's rows keep one left edge, so they interlock.
-  for (const row of rows) row.x = hex ? 0 : Math.round((width - row.width) / 2);
+  // Arrays are centred one by one, clear of the labels on both sides so the cells stay centred in the frame;
+  // a hex grid's rows keep one left edge, so they interlock.
+  const cellsW = Math.max(...rows.map((r) => r.width));
+  const width = cellsW + 2 * labelRoom;
+  for (const row of rows) {
+    row.x = hex ? labelRoom : labelRoom + Math.round((cellsW - row.width) / 2);
+    row.labelX = multi && row.label ? row.x - LABEL_GAP + CELL_GAP - row.label.width : row.x;
+  }
   const cells = new Map(rows.flatMap((row) => Array.from({ length: row.count }, (_, i) => [cellKey(row.name, i), { row, index: i }] as const)));
 
   // One size for every value the scene ever shows, so a value that changes keeps its size.

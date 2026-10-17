@@ -699,10 +699,10 @@ export type StateValue = DisplayText | number;
  */
 export interface StateStep extends Omit<FocusStep, 'focus'> {
   focus?: FocusStep['focus'];
-  /** Items to show from this step on, by focus ref, such as "ptr:mid" or an object id. */
-  show?: string[];
+  /** Items to show from this step on, by focus ref, such as "ptr:mid", an object id, or a table row index. */
+  show?: (string | number)[];
   /** Items to hide from this step on, such as a frame that returned ("frame:helper"). */
-  hide?: string[];
+  hide?: (string | number)[];
   /** The scene's callout from this step on, e.g. "mid = 0 + ⌊(15 − 0) / 2⌋ = 7"; "" takes it away. */
   callout?: DisplayText;
 }

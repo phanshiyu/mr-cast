@@ -6,6 +6,7 @@ import { CARD_METRICS, type CardSize, type CardText } from '../utils/nodeText';
 import { FitText } from './FitText';
 import { colors } from './theme';
 import { tones } from './tones';
+import { dimOpacity, mainTone, tintFill, type TintMix } from '../utils/tint';
 
 export type { CardSize } from '../utils/nodeText';
 
@@ -29,7 +30,10 @@ export const NodeCard: React.FC<{
   emphasis?: Emphasis;
   /** Its title and caption as the layout fitted them. */
   text: CardText;
-}> = ({ node, x, y, width, height, size, appear, emphasis = NO_EMPHASIS, text }) => {
+  /** The colour a step keeps on it: a fill and border in a tone, or faded as ruled out. */
+  tint?: TintMix;
+}> = ({ node, x, y, width, height, size, appear, emphasis = NO_EMPHASIS, text, tint }) => {
+  const tinted = tint ? mainTone(tint) : null;
   const m = CARD_METRICS[size];
   const Icon = lucideIcon(node.icon);
   const mark = nodeMark(node);
@@ -64,15 +68,17 @@ export const NodeCard: React.FC<{
         padding: `0 ${m.pad}px`,
         borderRadius: m.radius,
         background,
-        border: `2px ${removed ? 'dashed' : 'solid'} ${removed ? `${colors.del}cc` : mark?.color ?? colors.borderStrong}`,
+        border: `2px ${removed ? 'dashed' : 'solid'} ${removed ? `${colors.del}cc` : tinted ? tones[tinted].color : mark?.color ?? colors.borderStrong}`,
         boxShadow: glow + lit,
-        opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity,
+        opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity * (tint ? dimOpacity(tint) : 1),
         transform: `translateY(${(1 - appear) * (size === 'large' ? 20 : 18)}px) scale(${(0.92 + 0.08 * appear) * (1 + 0.03 * emphasis.glow)})`,
       }}
     >
+      {tint?.tones.map((t, i) => (t.amount > 0 ? <div key={`t${i}`} style={{ position: 'absolute', inset: 0, borderRadius: m.radius - 2, background: tintFill(tones[t.tone].color), opacity: t.amount }} /> : null))}
       {Icon ? (
         <div
           style={{
+            position: 'relative',
             width: m.icon,
             height: m.icon,
             borderRadius: m.iconRadius,
@@ -87,7 +93,7 @@ export const NodeCard: React.FC<{
           <Icon size={Math.round(m.icon * (size === 'large' ? 0.536 : 0.55))} strokeWidth={2} />
         </div>
       ) : null}
-      <div style={{ minWidth: 0, flex: 1 }}>
+      <div style={{ position: 'relative', minWidth: 0, flex: 1 }}>
         <FitText
           fit={text.title}
           style={{

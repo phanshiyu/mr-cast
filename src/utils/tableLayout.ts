@@ -123,11 +123,19 @@ function fitCell(text: string, mono: boolean, first: boolean, width: number, fon
 /** Room an inline change takes besides its two values: the gaps around the arrow, and the arrow. */
 const INLINE_ARROW = (font: number) => 2 * 0.4 * font + 0.85 * font;
 
-function attempt(columns: readonly string[], rows: readonly TableRow[], width: number, font: number, maxLines = 2) {
+/** How a state's rows are laid out: the rows every state draws, for column widths, and each row's own change mark. */
+interface Sizing {
+  every: readonly TableRow[];
+  changes: readonly PlacedRow['change'][] | null;
+  /** Prefix for the paths of this state's cells, such as "steps[2]: " for a state a step made. */
+  at: string;
+}
+
+function attempt(columns: readonly string[], rows: readonly TableRow[], width: number, font: number, maxLines = 2, sizing: Sizing = { every: rows, changes: null, at: '' }) {
   const lineHeight = Math.round(font * LINE_HEIGHT);
   const pad = Math.round(font * 0.5);
   const textW = width - 2 * PAD_X - MARKER_W - (columns.length - 1) * COL_GAP - rowBadgeRoom(rows, ROW_BADGE);
-  const widths = columnWidths(columns, rows, textW, font);
+  const widths = columnWidths(columns, sizing.every, textW, font);
   const cols: TableLayout['cols'] = [];
   let x = PAD_X + MARKER_W;
   for (const w of widths) {
@@ -141,7 +149,7 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
     const cells = columns.map((_, i): PlacedCell => {
       const cell = row.cells[i] ?? '';
       const mono = cellMono(cell);
-      const path = `rows[${r}].cells[${i}]`;
+      const path = `${sizing.at}rows[${r}].cells[${i}]`;
       const first = i === 0;
       if (typeof cell === 'string') {
         const text = fitCell(cell.trim(), mono, first, widths[i]!, font, maxLines, path);
@@ -157,7 +165,7 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
     });
     const lines = Math.max(...cells.map((c) => (c.kind === 'text' ? c.text.lines.length : c.inline ? 1 : c.before.lines.length + c.after.lines.length)));
     const h = lines * lineHeight + 2 * pad;
-    const out = { row, change: rowChange(row), cells, y, h };
+    const out = { row, change: sizing.changes ? sizing.changes[r]! : rowChange(row), cells, y, h };
     y += h + ROW_GAP;
     return out;
   });
@@ -171,16 +179,31 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
  * failing that, the smallest font laid out wider and scaled down, which `validate` reports.
  */
 export function layoutTable(columns: readonly string[], rows: readonly TableRow[], width: number, height: number): TableLayout {
+  return layoutTableStates(columns, [rows], width, height)[0]!;
+}
+
+/**
+ * Places a table whose cells steps change, once per state, so every state draws at one font with the same
+ * columns: the widths come from every value any state shows, and the font is the largest at which every
+ * state fits. Each row keeps the change mark of its first state, so a value a step strikes is no diff.
+ * `base` starts the path of each cell, such as "table." for the table beside a graph.
+ */
+export function layoutTableStates(columns: readonly string[], states: readonly (readonly TableRow[])[], width: number, height: number, base = ''): TableLayout[] {
+  const every = states.flat();
+  const changes = states[0]!.map(rowChange);
+  const at = (k: number, font: number, lines: number, w = width) => attempt(columns, states[k]!, w, font, lines, { every, changes, at: k ? `steps[${k - 1}]: ${base}` : base });
+  const all = (font: number, lines: number, w = width) => states.map((_, k) => at(k, font, lines, w));
   for (let font = MAX_FONT; font >= MIN_FONT; font--) {
-    const result = attempt(columns, rows, width, font);
-    if (result.height <= height && !result.truncated) return result;
+    const result = all(font, 2);
+    if (result.every((r) => r.height <= height && !r.truncated)) return result;
   }
   // At the smallest font a cell may take a third line; a table that still overflows draws smaller and is reported.
-  const last = attempt(columns, rows, width, MIN_FONT, 3);
+  const last = all(MIN_FONT, 3);
   const fix = 'shorten the cells, or split the table into two scenes';
-  if (last.height <= height) return last;
-  const scale = height / last.height;
-  return { ...attempt(columns, rows, width / scale, MIN_FONT, 3), scale, room: fitBlock('rows', 'table', false, fix) };
+  const tallest = Math.max(...last.map((r) => r.height));
+  if (tallest <= height) return last;
+  const scale = height / tallest;
+  return all(MIN_FONT, 3, width / scale).map((r) => ({ ...r, scale, room: fitBlock('rows', 'table', false, fix) }));
 }
 
 /** The width and lines of a cell's text as the table scene draws it. */
@@ -209,4 +232,9 @@ export function tableBoxes(layout: TableLayout): LayoutBoxes {
   });
   const obstacles = [{ x: 0, y: 0, width: layout.width, height: HEADER_H }, ...[...boxes].flatMap(([key, b]) => (key.startsWith('x:') ? [b] : []))];
   return { boxes, obstacles };
+}
+
+/** A table's rows as each state shows them: every cell's value in that state ("x:row/col"), hidden rows kept in place. */
+export function stateRows(columns: readonly string[], rows: readonly TableRow[], states: readonly { values: Record<string, unknown> }[]): TableRow[][] {
+  return states.map((state) => rows.map((row, r) => ({ ...row, cells: columns.map((_, c) => (state.values[`x:${r}/${c}`] as TableCell | undefined) ?? row.cells[c] ?? '') }) as TableRow));
 }

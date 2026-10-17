@@ -5,6 +5,8 @@ import { FitText } from './FitText';
 import { badgesOf, CornerBadges, EMPHASIS } from './marks';
 import { nodeMark } from './NodeCard';
 import { colors } from './theme';
+import { tones } from './tones';
+import { dimOpacity, mainTone, tintFill, type TintMix } from '../utils/tint';
 
 const NO_EMPHASIS: Emphasis = { opacity: 1, bar: 0, glow: 0 };
 
@@ -42,10 +44,14 @@ export const ShapeNode: React.FC<{
   appear: number;
   emphasis?: Emphasis;
   text: CardText;
-}> = ({ node, shape, x, y, width, height, appear, emphasis = NO_EMPHASIS, text }) => {
+  /** The colour a step keeps on it: a fill and border in a tone, or faded as ruled out. */
+  tint?: TintMix;
+}> = ({ node, shape, x, y, width, height, appear, emphasis = NO_EMPHASIS, text, tint }) => {
   const mark = nodeMark(node);
   const removed = node.change === 'removed';
-  const stroke = removed ? `${colors.del}cc` : emphasis.glow > 0 ? colors.accent : mark?.color ?? colors.borderStrong;
+  const tinted = tint ? mainTone(tint) : null;
+  const stroke = removed ? `${colors.del}cc` : emphasis.glow > 0 ? colors.accent : tinted ? tones[tinted].color : mark?.color ?? colors.borderStrong;
+  const fills = (tint?.tones ?? []).filter((t) => t.amount > 0);
   const strokeWidth = 2 + 2 * emphasis.glow;
   const words = (
     <div style={{ position: 'relative', textAlign: 'center' }}>
@@ -65,7 +71,7 @@ export const ShapeNode: React.FC<{
         top: y,
         width,
         height,
-        opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity,
+        opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity * (tint ? dimOpacity(tint) : 1),
         transform: `translateY(${(1 - appear) * 20}px) scale(${(0.92 + 0.08 * appear) * (1 + 0.03 * emphasis.glow)})`,
       }}
     >
@@ -79,6 +85,9 @@ export const ShapeNode: React.FC<{
             strokeDasharray={removed ? '9 7' : undefined}
             strokeLinejoin="round"
           />
+          {fills.map((t, i) => (
+            <polygon key={i} points={`${width / 2},1 ${width - 1},${height / 2} ${width / 2},${height - 1} 1,${height / 2}`} fill={tintFill(tones[t.tone].color)} opacity={t.amount} />
+          ))}
         </svg>
       ) : (
         <div
@@ -93,6 +102,9 @@ export const ShapeNode: React.FC<{
           }}
         />
       )}
+      {shape !== 'decision'
+        ? fills.map((t, i) => <div key={i} style={{ position: 'absolute', inset: 0, borderRadius: shape === 'terminal' ? height / 2 : 14, background: tintFill(tones[t.tone].color), opacity: t.amount }} />)
+        : null}
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{words}</div>
       <CornerBadges badges={badgesOf(node)} size={16} top={shape === 'decision' ? height * 0.12 - 16 : -16} right={shape === 'decision' ? width * 0.22 : 18} />
     </div>

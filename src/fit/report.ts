@@ -1,8 +1,9 @@
 import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
-import { contentBox } from '../components/theme';
-import { fitGraph, graphDirection } from '../utils/graphLayout';
+import { contentBox, sceneBox } from '../components/theme';
+import { calloutFits, hasCallout } from './callout';
+import { fitGraph, graphAreas, graphDirection } from '../utils/graphLayout';
 import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutCompare } from '../utils/compareLayout';
@@ -15,7 +16,8 @@ import { layoutLayers } from '../utils/layersLayout';
 import { layoutMemory } from '../utils/memoryLayout';
 import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
-import { layoutTable } from '../utils/tableLayout';
+import { layoutTableStates, stateRows } from '../utils/tableLayout';
+import { sceneStates } from '../../shared/state-steps.mjs';
 import { layoutReview } from '../utils/reviewLayout';
 import { layoutReading } from '../utils/readingLayout';
 import { readingOrder } from '../../shared/reading.mjs';
@@ -30,7 +32,11 @@ type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, st
 
 const SCENE_FITS: SceneFits = {
   intent: (scene, storyboard) => layoutIntent(scene, storyboard),
-  graph: (scene) => fitGraph(scene.nodes, scene.edges, graphDirection(scene), contentBox(false)),
+  graph: (scene) => {
+    const { full, graphBox, tableW } = graphAreas(scene);
+    const table = scene.table ? layoutTableStates(scene.table.columns, stateRows(scene.table.columns, scene.table.rows, sceneStates(scene)), tableW, full.height, 'table.') : null;
+    return [fitGraph(scene.nodes, scene.edges, graphDirection(scene), graphBox), table];
+  },
   code: (scene, _storyboard, hunks) => (hunks[scene.hunkId] ? layoutCode(scene, hunks[scene.hunkId]!) : null),
   flow: (scene) => layoutFlow(scene),
   sequence: (scene) => layoutSequence(scene.participants, scene.messages, contentBox(Boolean(scene.title))),
@@ -42,8 +48,8 @@ const SCENE_FITS: SceneFits = {
     return layoutTests(scene, box.width, box.height);
   },
   table: (scene) => {
-    const box = contentBox(Boolean(scene.title));
-    return layoutTable(scene.columns, scene.rows, box.width, box.height);
+    const box = sceneBox(scene, hasCallout(scene));
+    return layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, sceneStates(scene)), box.width, box.height);
   },
   chart: (scene) => {
     const box = contentBox(Boolean(scene.title));
@@ -55,8 +61,8 @@ const SCENE_FITS: SceneFits = {
     return layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
   },
   layers: (scene) => layoutLayers(scene, contentBox(Boolean(scene.title))),
-  array: (scene) => layoutArray(scene, contentBox(Boolean(scene.title))),
-  memory: (scene) => layoutMemory(scene, contentBox(Boolean(scene.title))),
+  array: (scene) => layoutArray(scene, sceneBox(scene, hasCallout(scene))),
+  memory: (scene) => layoutMemory(scene, sceneBox(scene, hasCallout(scene))),
   review: (scene, storyboard) => {
     const box = contentBox(Boolean(scene.title));
     return layoutReview(storyboard.findings ?? [], box.width, box.height);
@@ -98,7 +104,7 @@ export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
   return storyboard.scenes.map((scene, i) => {
     const out: Fit[] = [];
     const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap) => unknown;
-    collect([shellFits(scene), sourceFit(scene, hunks), fits(scene, storyboard, hunks)], out, new Set());
+    collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks)], out, new Set());
     return { scene: i, fits: out };
   });
 }

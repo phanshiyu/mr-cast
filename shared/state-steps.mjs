@@ -223,7 +223,7 @@ export function walkStates(scene) {
     const refsOf = (field) => {
       const value = step?.[field];
       if (value === undefined) return [];
-      if (Array.isArray(value) && value.every((r) => typeof r === 'string')) return value;
+      if (Array.isArray(value) && value.every((r) => typeof r === 'string' || Number.isInteger(r))) return value;
       problem(field, '', `must be an array of refs: ${model.show.help(scene)}`);
       return [];
     };
@@ -294,10 +294,12 @@ export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'c
 
 /**
  * The refs a step changes, as focus refs: what it sets, the pointers and ranges it moves, what it shows
- * and what it tints. A step without `focus` focuses these.
+ * and what it tints a tone. A step without `focus` focuses these, or what it dims when it changes nothing else.
  */
 export function changedRefs(scene, step) {
   const moved = Object.keys(step?.move ?? {}).map((name) => (list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
-  const tinted = Object.entries(step?.tint && typeof step.tint === 'object' ? step.tint : {}).flatMap(([ref, tint]) => (tint === 'clear' ? [] : [ref]));
-  return [...new Set([...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...tinted])];
+  const tints = Object.entries(step?.tint && typeof step.tint === 'object' ? step.tint : {});
+  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
+  // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
+  return [...new Set(refs.length ? refs : tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : [])))];
 }

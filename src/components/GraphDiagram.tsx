@@ -1,10 +1,17 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
+import { shownOf, stateFrame, type StateFrame } from '../utils/stateTrack';
+import { layoutTableStates, stateRows, tableBoxes } from '../utils/tableLayout';
+import { dimOpacity, mainTone, tintMix } from '../utils/tint';
+import { TableView } from './DataTable';
+import { HeaderCallout } from './HeaderCallout';
+import { tones } from './tones';
 import type { GraphEdge, GraphNode, GraphScene, Change } from '../types';
-import { GROUP_NAME, LABEL_PAD, graphBoxes, fitGraph, graphDirection, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
+import { GROUP_NAME, LABEL_PAD, graphAreas, graphBoxes, fitGraph, graphDirection, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
 import { ShapeNode } from './ShapeNode';
-import { centredStage, staged } from '../utils/penGeometry';
+import { centredStage, staged, type MarkTargets } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { ChangeLegend } from './ChangeLegend';
 import { changeTone, EMPHASIS } from './marks';
@@ -13,7 +20,7 @@ import { NodeCard } from './NodeCard';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, contentBox } from './theme';
+import { clamp, colors } from './theme';
 
 const NODE_START = 8;
 const NODES_END = 20;
@@ -22,7 +29,7 @@ const EDGE_LABEL_END = 16;
 const MUTED = 'rgba(170,178,200,0.55)';
 
 /** Arrowhead colours, one marker each: plain, highlighted, and one per change. */
-const MARKERS = { muted: 'rgba(170,178,200,0.8)', emphasis: EMPHASIS.color, accent: colors.accent, added: colors.add, removed: colors.del } as const;
+const MARKERS = { muted: 'rgba(170,178,200,0.8)', emphasis: EMPHASIS.color, accent: colors.accent, added: colors.add, removed: colors.del, good: tones.good.color, bad: tones.bad.color, warn: tones.warn.color, neutral: tones.neutral.color } as const;
 type MarkerTone = keyof typeof MARKERS;
 
 const isHighlighted = (n: GraphNode | undefined) => Boolean(n?.highlight && !n.change);
@@ -40,7 +47,7 @@ function edgeTone(edge: GraphEdge, nodes: ReadonlyMap<string, GraphNode>): { str
 /** An edge's style: its own, else moving dashes for a forward edge, except in a flowchart, whose arrows are still. */
 const edgeStyle = (edge: GraphEdge, flowchart: boolean) => edge.style ?? ((edge.direction ?? 'forward') === 'forward' && !flowchart ? 'flow' : 'solid');
 
-const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone: ReturnType<typeof edgeTone>; emphasis: Emphasis; flowchart: boolean }> = ({ routed, draw, frame, tone, emphasis, flowchart }) => {
+const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone: ReturnType<typeof edgeTone>; emphasis: Emphasis; flowchart: boolean; fade: number }> = ({ routed, draw, frame, tone, emphasis, flowchart, fade }) => {
   const { edge } = routed;
   const direction = edge.direction ?? 'forward';
   const style = edgeStyle(edge, flowchart);
@@ -53,7 +60,7 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
   };
   const id = `graph-reveal-${routed.index}`;
   return (
-    <g opacity={draw > 0 ? emphasis.opacity * (removed ? 0.78 : 1) : 0}>
+    <g opacity={draw > 0 ? emphasis.opacity * fade * (removed ? 0.78 : 1) : 0}>
       {emphasis.glow > 0 || (edge.change && !removed) || edge.highlight ? (
         <path
           d={routed.d}
@@ -102,10 +109,10 @@ const EdgePath: React.FC<{ routed: RoutedEdge; draw: number; frame: number; tone
   );
 };
 
-const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: GraphEdge; appear: number; emphasis: Emphasis }> = ({ label, edge, appear, emphasis }) => {
+const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: GraphEdge; appear: number; emphasis: Emphasis; tinted: string | null }> = ({ label, edge, appear, emphasis, tinted }) => {
   const { change } = edge;
   const highlight = edge.highlight && !change;
-  const color = change ? changeTone[change].color : highlight ? EMPHASIS.color : colors.muted;
+  const color = change ? changeTone[change].color : tinted ?? (highlight ? EMPHASIS.color : colors.muted);
   return (
     <div
       style={{
@@ -117,7 +124,7 @@ const EdgeLabel: React.FC<{ label: NonNullable<RoutedEdge['label']>; edge: Graph
         padding: `${LABEL_PAD.y}px ${LABEL_PAD.x}px`,
         borderRadius: 10,
         background: '#0d0f16',
-        border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || highlight ? `${color}99` : colors.borderStrong}`,
+        border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || highlight || tinted ? `${color}99` : colors.borderStrong}`,
         boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : highlight ? `0 0 18px ${EMPHASIS.glow}` : undefined,
         color: emphasis.glow > 0 && !change ? colors.text : color,
         textDecoration: change === 'removed' ? 'line-through' : 'none',
@@ -158,13 +165,41 @@ function legendChanges(scene: GraphScene): Set<Change> {
   return new Set([...scene.nodes, ...scene.edges].flatMap((x) => (x.change ? [x.change] : [])));
 }
 
+/** A node as a state shows it: the badge the steps have set on it, or none. */
+const asShown = (node: GraphNode, state: SceneState): GraphNode => {
+  const badge = state.values[`b:${node.id}`];
+  return badge === undefined || badge === (node.badge ?? '') ? node : { ...node, badge: badge === '' ? undefined : String(badge) };
+};
+
+/** An edge's colour: a tone a step keeps on it, over its own change or highlight. */
+function tintedTone(base: ReturnType<typeof edgeTone>, s: StateFrame, key: string): ReturnType<typeof edgeTone> {
+  const tone = mainTone(tintMix(s, key));
+  return tone && tone !== 'accent' ? { stroke: tones[tone].color, marker: tone } : tone === 'accent' ? { stroke: colors.accent, marker: 'accent' } : base;
+}
+
+/** Two sets of mark targets in one content box, such as a graph's and its table's. */
+const merged = (a: MarkTargets, b: MarkTargets | null): MarkTargets =>
+  b ? { boxes: new Map([...a.boxes, ...b.boxes]), obstacles: [...(a.obstacles ?? a.boxes.values()), ...(b.obstacles ?? b.boxes.values())], lines: [...(a.lines ?? []), ...(b.lines ?? [])], area: a.area } : a;
+
 export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { layout, scale } = useMemo(() => fitGraph(scene.nodes, scene.edges, graphDirection(scene), contentBox(false)), [scene]);
+  const { full, graphBox, tableW } = graphAreas(scene);
+  const states = useMemo(() => sceneStates(scene), [scene]);
+  // Room for a badge is kept on every node any state gives one, so a badge a step sets never lands on a mark.
+  const sized = useMemo(() => scene.nodes.map((n) => states.reduce((node, state) => (node.badge ? node : asShown(n, state)), n)), [scene.nodes, states]);
+  const { layout, scale } = useMemo(() => fitGraph(sized, scene.edges, graphDirection(scene), graphBox), [scene, sized, graphBox.width, graphBox.height]);
+  const tables = useMemo(() => (scene.table ? layoutTableStates(scene.table.columns, stateRows(scene.table.columns, scene.table.rows, states), tableW, full.height, 'table.') : null), [scene.table, states, tableW, full.height]);
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
   const flowchart = scene.nodes.some((n) => shapeOf(n) === 'decision');
-  const marks = useMemo(() => staged(graphBoxes(layout), centredStage(contentBox(false), layout, scale), contentBox(false)), [layout, scale]);
+  const graphStage = centredStage(graphBox, layout, scale);
+  const tableTop = tables ? Math.max(0, (full.height - Math.max(...tables.map((t) => t.height * t.scale))) / 2) : 0;
+  const tableLeft = full.width - tableW;
+  const marks = useMemo(() => {
+    const graph = staged(graphBoxes(layout), graphStage, full);
+    return states.slice(1).map((_, k) => merged(graph, tables ? staged(tableBoxes(tables[k + 1]!), { left: tableLeft, top: tableTop, scale: tables[k + 1]!.scale }, full) : null));
+  }, [layout, scale, tables, states]);
+  const s = stateFrame(states, segments, frame);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.
   const layerStagger = Math.min(6, (NODES_END - NODE_START) / Math.max(1, layout.layerCount - 1));
@@ -175,10 +210,20 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
     const own = node.group ? brighter(emphasisOf(`n:${node.id}`), emphasisOf(`g:${node.group}`)) : emphasisOf(`n:${node.id}`);
     return asBrightAs(own, scene.edges.flatMap((e, i) => (e.from === node.id || e.to === node.id ? [emphasisOf(`e:${i}`)] : [])));
   };
+  /** How shown an edge is: its own show and hide, and never more than either end. */
+  const edgeShown = (e: GraphEdge, i: number) => Math.min(shownOf(s, `e:${i}`), shownOf(s, `n:${e.from}`), shownOf(s, `n:${e.to}`));
+  /** A table row lights with its own focus, or any of its cells'. */
+  const cellEmphasis = (row: number, col: number) => emphasisOf(`x:${row}/${col}`);
+  const rowEmphasis = (row: number): Emphasis => {
+    const own = emphasisOf(`r:${row}`);
+    return { ...own, opacity: Math.max(own.opacity, ...(scene.table?.columns ?? []).map((_, col) => cellEmphasis(row, col).opacity)) };
+  };
+  const tableNow = tables?.[states.indexOf(s.now)];
+  const tableBefore = tables?.[states.indexOf(s.before)];
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={changes.size ? <ChangeLegend used={changes} /> : undefined}>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<>{changes.size ? <ChangeLegend used={changes} /> : null}<HeaderCallout scene={scene} s={s} /></>}>
+      <div style={{ position: 'absolute', left: 0, top: 0, width: graphBox.width, height: graphBox.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           {layout.groups.map((group) => (
             <GroupBox
@@ -196,46 +241,74 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
                 </marker>
               ))}
             </defs>
-            {layout.edges.map((routed, i) => (
-              <EdgePath
-                key={i}
-                routed={routed}
-                frame={frame}
-                tone={edgeTone(routed.edge, nodes)}
-                flowchart={flowchart}
-                emphasis={emphasisOf(`e:${routed.index}`)}
-                draw={interpolate(frame, [edgeAt(i), edgeAt(i) + EDGE_DRAW], [0, 1], clamp)}
-              />
-            ))}
+            {layout.edges.map((routed, i) => {
+              const key = `e:${routed.index}`;
+              const shown = edgeShown(routed.edge, routed.index);
+              const built = interpolate(frame, [edgeAt(i), edgeAt(i) + EDGE_DRAW], [0, 1], clamp);
+              return (
+                <EdgePath
+                  key={i}
+                  routed={routed}
+                  frame={frame}
+                  tone={tintedTone(edgeTone(routed.edge, nodes), s, key)}
+                  flowchart={flowchart}
+                  emphasis={emphasisOf(key)}
+                  draw={Math.min(built, shown)}
+                  fade={dimOpacity(tintMix(s, key))}
+                />
+              );
+            })}
           </svg>
           {layout.nodes.map((placed) => {
             const shape = shapeOf(placed.node);
+            const node = asShown(nodes.get(placed.node.id)!, s.t < 0.5 ? s.before : s.now);
+            const key = `n:${node.id}`;
             const common = {
-              node: placed.node,
+              node,
               x: placed.box.x,
               y: placed.box.y,
               width: placed.box.width,
               height: placed.box.height,
-              text: layout.texts.get(placed.node.id)!,
-              emphasis: nodeEmphasis(placed.node),
-              appear: spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } }),
+              text: layout.texts.get(node.id)!,
+              emphasis: nodeEmphasis(node),
+              appear: spring({ frame: frame - NODE_START - placed.layer * layerStagger, fps, config: { damping: 16, stiffness: 110 } }) * shownOf(s, key),
+              tint: tintMix(s, key),
             };
-            return shape === 'card' ? <NodeCard key={placed.node.id} {...common} size="large" /> : <ShapeNode key={placed.node.id} {...common} shape={shape} />;
+            return shape === 'card' ? <NodeCard key={node.id} {...common} size="large" /> : <ShapeNode key={node.id} {...common} shape={shape} />;
           })}
-          {layout.edges.map((routed, i) =>
-            routed.label ? (
+          {layout.edges.map((routed, i) => {
+            if (!routed.label) return null;
+            const key = `e:${routed.index}`;
+            const tone = mainTone(tintMix(s, key));
+            return (
               <EdgeLabel
                 key={i}
                 label={routed.label}
                 edge={routed.edge}
-                emphasis={emphasisOf(`e:${routed.index}`)}
-                appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp)}
+                emphasis={emphasisOf(key)}
+                tinted={tone ? tones[tone].color : null}
+                appear={interpolate(frame, [edgeAt(i) + EDGE_DRAW - 4, edgeAt(i) + EDGE_LABEL_END], [0, 1], clamp) * edgeShown(routed.edge, routed.index) * dimOpacity(tintMix(s, key))}
               />
-            ) : null,
-          )}
+            );
+          })}
         </div>
       </div>
-      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
+      {tableNow && tableBefore ? (
+        <TableView
+          layout={tableNow}
+          before={tableBefore}
+          s={s}
+          left={tableLeft}
+          top={tableTop}
+          frame={frame}
+          headerIn={interpolate(frame, [NODES_END, NODES_END + 10], [0, 1], clamp)}
+          rowAt={(i) => NODES_END + 4 + i * 3}
+          rowEmphasis={rowEmphasis}
+          cellEmphasis={cellEmphasis}
+          headerGlow={() => 0}
+        />
+      ) : null}
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />
     </SceneShell>
   );
 };
