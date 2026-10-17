@@ -9,6 +9,8 @@ export interface ReadingEntry {
   hunkId: string;
   /** "src/limiter.ts:12-30". */
   where: string;
+  /** The lines of routine hunks of the same file that ride on this item, such as "1-6", so the file is never also on a skim line. */
+  also: string[];
   check: string;
   routine: boolean;
   /** 1-based among the non-routine items; null for a routine one. */
@@ -29,14 +31,16 @@ export interface ReadingGroup {
 export interface ReadingOrder {
   items: ReadingEntry[];
   readFirst: ReadingEntry[];
-  /** The items to read, in runs by topic. */
+  /** The items to read by topic: each topic once, in the order the reading order first reaches it. */
   groups: ReadingGroup[];
-  /** The routine items, one group per topic. */
+  /** The routine items not riding on an item of their file, one group per topic. */
   skim: ReadingGroup[];
 }
 
 export declare function readingScene(storyboard: Storyboard): ReadingScene | undefined;
-export declare function hunkLocation(hunk: Hunk): string;
+export declare function hunkSpan(hunk: Hunk): { file: string; side: 'newLine' | 'oldLine'; range: [number, number] | null };
+export declare function hunkLocation(hunk: Hunk, lines?: string | number): string;
+export declare function alsoText(item: ReadingEntry): string;
 export declare function readingOrder(storyboard: Storyboard, hunks: HunkMap, plan?: Plan | null): ReadingOrder | null;
 export declare function flagText(finding: Finding, line?: (text: string) => string): string;
 export declare function readingChecklist(order: ReadingOrder): string;

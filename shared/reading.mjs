@@ -4,6 +4,7 @@
 
 import { parseMarkup, plainText } from './markup.mjs';
 import { sceneChapter } from './chapters.mjs';
+import { lineSpan } from './review.mjs';
 
 /** Items the closing scene lists under "Read first"; the rest of the order is in reading.md. */
 export const READ_FIRST_MAX = 6;
@@ -23,14 +24,29 @@ const C0 = /[\u0000-\u001f\u007f]/g;
 /** The scene that holds the reading order, or undefined. */
 export const readingScene = (storyboard) => storyboard?.scenes?.find((s) => s?.type === 'reading');
 
-/** "src/limiter.ts:12-30": the lines of the file a hunk covers, new-file lines unless it only removes. */
-export function hunkLocation(hunk) {
+/**
+ * The side and lines of the file a hunk covers: new-file lines unless it only removes, as `{ file, side, range }`;
+ * `range` is null for a hunk with no numbered lines.
+ */
+export function hunkSpan(hunk) {
   const side = hunk.lines.some((l) => l.newLine !== null) ? 'newLine' : 'oldLine';
   const numbers = hunk.lines.map((l) => l[side]).filter((n) => n !== null);
-  if (!numbers.length) return hunk.file.replace(C0, '');
-  const [a, b] = [Math.min(...numbers), Math.max(...numbers)];
   const file = (side === 'oldLine' ? hunk.oldFile ?? hunk.file : hunk.file).replace(C0, '');
-  return `${file}:${a === b ? a : `${a}-${b}`}${side === 'oldLine' ? ' (removed)' : ''}`;
+  return { file, side, range: numbers.length ? [Math.min(...numbers), Math.max(...numbers)] : null };
+}
+
+const spanText = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
+
+/**
+ * "src/limiter.ts:12-30": the lines of the file a hunk covers, or the lines a reading item's `lines` names when
+ * they lie inside them (`validate` reports any that do not).
+ */
+export function hunkLocation(hunk, lines) {
+  const { file, side, range } = hunkSpan(hunk);
+  if (!range) return file;
+  const own = lineSpan(lines);
+  const shown = own && own[0] >= range[0] && own[1] <= range[1] ? own : range;
+  return `${file}:${spanText(shown)}${side === 'oldLine' ? ' (removed)' : ''}`;
 }
 
 /**
@@ -47,25 +63,25 @@ function explainer(storyboard, hunkId) {
 }
 
 /**
- * Runs of `items` in a row that share a topic, as `{ title, items }`; `title` is null when no item has a topic.
- * Runs keep the reading order, so a topic the order comes back to gets a second run.
+ * `items` grouped by topic, as `{ title, items }`: each topic once, in the order the reading order first reaches
+ * it, with its items in their order. `title` is null when no item has a topic.
  */
-function runsByTopic(items) {
+function byTopic(items) {
   const titled = items.some((i) => i.topic !== null);
-  const runs = [];
+  const groups = new Map();
   for (const item of items) {
     const title = titled ? item.topic ?? 'Other changes' : null;
-    const last = runs.at(-1);
-    if (last && last.title === title) last.items.push(item);
-    else runs.push({ title, items: [item] });
+    if (!groups.has(title)) groups.set(title, []);
+    groups.get(title).push(item);
   }
-  return runs;
+  return [...groups].map(([title, list]) => ({ title, items: list }));
 }
 
 /**
  * The reading order, resolved against hunks.json: each item's place, number (routine items have none), the
  * chapter that explains it, the plan topic of that chapter and the finding it carries. `groups` are the items to
- * read in runs by topic; `skim` holds the routine items, one entry per topic. `plan` (plan.json) names the topics;
+ * read by topic, each topic once; `skim` holds the routine items not riding on an item of their file, one entry per
+ * topic. `plan` (plan.json) names the topics;
  * without one there are no topic headings. Items whose hunk is unknown are left out; `validate` reports them.
  */
 export function readingOrder(storyboard, hunks, plan = null) {
@@ -78,7 +94,8 @@ export function readingOrder(storyboard, hunks, plan = null) {
     const by = explainer(storyboard, item.hunkId);
     return {
       hunkId: item.hunkId,
-      where: hunkLocation(hunks[item.hunkId]),
+      where: hunkLocation(hunks[item.hunkId], item.lines),
+      also: [],
       check: typeof item.check === 'string' ? item.check : '',
       routine: item.routine === true,
       number: item.routine === true ? null : ++n,
@@ -88,14 +105,19 @@ export function readingOrder(storyboard, hunks, plan = null) {
     };
   });
   const readFirst = items.filter((i) => !i.routine);
-  const skim = [];
-  for (const run of runsByTopic(items.filter((i) => i.routine))) {
-    const same = skim.find((g) => g.title === run.title);
-    if (same) same.items.push(...run.items);
-    else skim.push(run);
+  // A routine hunk of a file the reader already reads rides on that file's item, so no file is on both lists.
+  const skimmed = [];
+  for (const item of items.filter((i) => i.routine)) {
+    const file = hunkSpan(hunks[item.hunkId]).file;
+    const host = readFirst.find((r) => hunkSpan(hunks[r.hunkId]).file === file);
+    if (host) host.also.push(...[item.where.slice(file.length + 1)].filter(Boolean));
+    else skimmed.push(item);
   }
-  return { items, readFirst, groups: runsByTopic(readFirst), skim };
+  return { items, readFirst, groups: byTopic(readFirst), skim: byTopic(skimmed) };
 }
+
+/** ", also 1-6": the routine lines of the item's file that ride on it, or nothing. */
+export const alsoText = (item) => (item.also.length ? `, also ${item.also.join(', ')}` : '');
 
 /** "Claude: likely bug, the count is per server". */
 export const flagText = (finding, line = oneLine) => `Claude: ${FLAG_WORDS[finding.severity] ?? finding.severity}, ${line(finding.claim)}`;
@@ -103,7 +125,7 @@ export const flagText = (finding, line = oneLine) => `Claude: ${FLAG_WORDS[findi
 /** One item as a terminal line: its number, place and check, and the finding it carries. */
 function itemLine(item) {
   const flag = item.finding ? ` (${flagText(item.finding)})` : '';
-  return `${item.number}. ${item.where}  ${oneLine(item.check)}${flag}`;
+  return `${item.number}. ${item.where}${alsoText(item)}  ${oneLine(item.check)}${flag}`;
 }
 
 /** "`src/a.ts:3-4`", or "`src/a.ts:3-4` (removed)": the place as Markdown code. */
@@ -112,10 +134,10 @@ const mdWhere = (where) => where.replace(/^(.*?)( \(removed\))?$/, '`$1`$2');
 /** One item as a Markdown checklist entry. */
 function itemMarkdown(item) {
   const flag = item.finding ? ` (${flagText(item.finding, mdLine)})` : '';
-  return `- [ ] ${item.number}. ${mdWhere(item.where)}: ${mdLine(item.check)}${flag}`;
+  return `- [ ] ${item.number}. ${mdWhere(item.where)}${alsoText(item)}: ${mdLine(item.check)}${flag}`;
 }
 
-/** The reading order as a Markdown checklist: the items to read in runs by topic, then one "skim" line per topic. */
+/** The reading order as a Markdown checklist: the items to read by topic, then one "skim" line per topic. */
 export function readingChecklist(order) {
   const out = [];
   for (const group of order.groups) {
@@ -139,7 +161,7 @@ export function readingMarkdown(storyboard, order, { branch, base } = {}) {
 /** The reading order as terminal lines, `1. src/limiter.ts:12-30  check`, which Claude Code makes clickable. */
 export function readingLines(order) {
   const lines = order.readFirst.map((item) => `  ${itemLine(item)}`);
-  const routine = order.items.filter((i) => i.routine);
+  const routine = order.skim.flatMap((g) => g.items);
   if (routine.length) lines.push(`  skim: ${routine.map((i) => i.where).join(', ')}`);
   return lines;
 }

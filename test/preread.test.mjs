@@ -354,3 +354,70 @@ test('the reading scene counts the items to read past the first six apart from t
   assert.equal(moreText({ moreToRead: 0, routine: 1 }), '+1 routine');
   assert.equal(moreText({ moreToRead: 1, routine: 0 }), '+1 more to read');
 });
+
+test('a reading item points at the lines that matter with "lines", inside its hunk', async () => {
+  // A new file's hunk is the whole file: 60 lines of the worker.
+  const big = { ...hunks, h4: hunk('h4', 'src/worker.ts', ['export function runOnce(db) {', ...filler(59, 'step')], 1) };
+  const scenes = (items) => [intent, graph(['h1', 'h2']), { ...graph(['h4'], '`runOnce`'), chapter: 'The worker' }, tests, reading(items)];
+  const check = (items) => validateStoryboard({ title: 'Rate limit', scenes: scenes(items) }, big, { audience: 'preread' });
+  const whole = await check([...both, { hunkId: 'h4', check: 'a claimed row is never reclaimed' }]);
+  assert.deepEqual(matching(whole.warnings, /lines that matter/), ['scenes[4].items[2]: h4 covers src/worker.ts:1-60 (60 lines); set "lines": "a-b" to the lines that matter, so the reader is not sent to the whole hunk']);
+  const bad = await check([{ ...both[0], lines: '5-14' }, { ...both[1], lines: 'top' }, { hunkId: 'h4', check: 'x', lines: '20-28' }]);
+  assert.deepEqual(matching(bad.errors, /\.lines/), [
+    'scenes[4].items[0].lines: 5-14 is outside h1, which covers src/limiter.ts:12-31; name lines inside it',
+    'scenes[4].items[1].lines: must be "a-b" or a line number, such as "40-49"',
+  ]);
+  assert.deepEqual(matching(bad.warnings, /lines that matter/), []);
+
+  const sb = { title: 'Rate limit', scenes: scenes([{ ...both[0], lines: 14 }, { hunkId: 'h4', check: 'a claimed row is never reclaimed', lines: '20-28' }]) };
+  const order = readingOrder(sb, big);
+  assert.deepEqual(readingLines(order), [
+    '  1. src/limiter.ts:14  the key resets on a new minute; check the off-by-one',
+    '  2. src/worker.ts:20-28  a claimed row is never reclaimed',
+  ]);
+  assert.equal(readingChecklist(order).split('\n')[1], '- [ ] 2. `src/worker.ts:20-28`: a claimed row is never reclaimed');
+  assert.equal(layoutReading(order, sb.scenes[4].items, 1712, 760).rows[1].where.lines.flat().map((r) => r.text).join(''), 'src/worker.ts:20-28');
+});
+
+test('the reading order lists each topic once, and a file to read is never also on a skim line', () => {
+  // h5 is the import line of server.ts, routine; h2 is the route in server.ts, read first.
+  const more = { ...hunks, h5: hunk('h5', 'src/server.ts', ["import { rateLimit } from './limiter';"], 2) };
+  const sb = {
+    title: 'Rate limit',
+    scenes: [intent, { ...graph(['h1', 'h3']), topic: 'limiter' }, { ...graph(['h2']), chapter: 'The route', topic: 'route' }, tests,
+      reading([both[0], both[1], { hunkId: 'h3', check: 'the window is 60 seconds' }, { hunkId: 'h5', routine: true }])],
+  };
+  const order = readingOrder(sb, more, { topics: [{ id: 'limiter', title: 'The limiter' }, { id: 'route', title: 'The route' }] });
+  assert.equal(readingChecklist(order), [
+    '### The limiter',
+    '',
+    '- [ ] 1. `src/limiter.ts:12-31`: the key resets on a new minute; check the off-by-one',
+    '- [ ] 3. `src/config.ts:3-4`: the window is 60 seconds',
+    '',
+    '### The route',
+    '',
+    '- [ ] 2. `src/server.ts:40-55`, also 2: the limiter runs before the order is saved',
+  ].join('\n'));
+  assert.deepEqual(readingLines(order).slice(1), ['  2. src/server.ts:40-55, also 2  the limiter runs before the order is saved', '  3. src/config.ts:3-4  the window is 60 seconds']);
+  assert.equal(moreText(layoutReading(order, sb.scenes[4].items, 1712, 760)), '');
+});
+
+test('the code check reads diagram labels, not the reading checks or a terminal', async () => {
+  const seq = {
+    type: 'sequence', chapter: 'One request', narration: 'The limiter counts in Redis.', from: ['h1'],
+    participants: [{ id: 'l', label: '`checkLimit`' }, { id: 'r', label: 'Redis' }],
+    messages: [{ from: 'l', to: 'r', label: 'first hit only: `pexpire(key, 60)`' }],
+  };
+  const terminal = { type: 'terminal', chapter: 'Run it', narration: 'The tests pass.', lines: [{ kind: 'command', text: 'pnpm build && pnpm test' }] };
+  const items = [{ hunkId: 'h1', check: '`>=` on (created_at, id); `pexpire(key, 60)` takes ms' }, both[1]];
+  const { warnings } = await validate([intent, graph(['h2']), seq, terminal, tests, reading(items)]);
+  assert.deepEqual(matching(warnings, /never expressions/), [
+    'scenes[2].messages[0].label: "first hit only: `pexpire(key, 60)`" is a call with arguments, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
+  ]);
+});
+
+test('"check this at item N" names an item whose hunk the scene cites in from', async () => {
+  const g = (from, narration) => ({ ...graph(from), narration });
+  const { warnings } = await validate([intent, g(['h1'], 'The limiter counts per server; check this at item 1.'), { ...g(['h2'], 'The route mounts it; see item 1.'), chapter: 'The route' }, tests, reading(both)]);
+  assert.deepEqual(matching(warnings, /says "item/), ['scenes[2].narration: says "item 1", which is h1, but this scene\'s "from" does not cite it; name the item of a hunk the scene explains, or add h1 to "from"']);
+});

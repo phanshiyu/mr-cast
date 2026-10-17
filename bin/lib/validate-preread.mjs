@@ -3,12 +3,14 @@
 // the reading order's job: every substantial hunk is in it or in `skipped`. A terminal session is not source
 // code, so it stays allowed; a code scene and a code cell in a compare do not.
 
-import { CHECK_MAX, READ_FIRST_MAX } from '../../shared/reading.mjs';
+import { CHECK_MAX, READ_FIRST_MAX, hunkSpan } from '../../shared/reading.mjs';
 import { plainText } from '../../shared/markup.mjs';
 import { sceneChapter } from '../../shared/chapters.mjs';
 import { findingLocation, lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
 
+/** A reading item over more lines than this, with no `lines`, sends the reader to a whole file. */
+export const ITEM_LINES_MAX = 40;
 /** More hunks than this behind one picture and the picture explains none of them well. */
 export const FROM_MAX = 3;
 
@@ -42,6 +44,12 @@ const CODE_SHAPES = [
   [/\b[A-Za-z_$][\w$.]*\((?!s\)|es\))\s*[\w$'"`[{-]/, 'a call with arguments'],
   [/[\w$]\([^()]*\)\s*;\s*[A-Za-z_$]|[\w$];[A-Za-z_$]/, 'statements'],
 ];
+
+/**
+ * Scenes whose text may write code: a code scene (refused in a pre-read anyway), a terminal session, and the
+ * reading scene, whose checks are the bridge to the code and name its operators ("`>=` on (created_at, id)").
+ */
+const NO_CODE_CHECK = new Set(['code', 'terminal', 'reading']);
 
 /** What `text`, with its markup, writes as code, such as "an object literal", or null when it only names things. */
 export function codeShape(text) {
@@ -102,8 +110,24 @@ function checkItems(s, p, hunks, findings, errors, warnings) {
     else if (item.routine !== true && !isStr(item.check)) errors.push(`${q}.check: required, what to verify there in under ${CHECK_MAX} characters; set "routine": true for a change to skim`);
     else if (isStr(item.check) && plainText(item.check).trim().length > CHECK_MAX) warnings.push(`${q}.check: ${plainText(item.check).trim().length} characters; say what to verify in under ${CHECK_MAX}`);
     if (item.flag !== undefined) checkFlag(item, q, hunks, findings, errors);
+    if (isStr(item.hunkId) && Object.hasOwn(hunks, item.hunkId)) checkLines(item, q, hunks[item.hunkId], errors, warnings);
   });
   if (readFirst > READ_FIRST_MAX) warnings.push(`${p}.items: ${readFirst} items to read first; the scene shows ${READ_FIRST_MAX}, so mark the wiring and config "routine": true, and reading.md lists the rest`);
+}
+
+/** `lines` lies inside the hunk's own lines; a long item to read without it points at a whole file. */
+function checkLines(item, q, hunk, errors, warnings) {
+  const { file, range } = hunkSpan(hunk);
+  if (!range) return;
+  const where = `${file}:${range[0]}-${range[1]}`;
+  if (item.lines === undefined) {
+    const size = range[1] - range[0] + 1;
+    if (item.routine !== true && size > ITEM_LINES_MAX) warnings.push(`${q}: ${item.hunkId} covers ${where} (${size} lines); set "lines": "a-b" to the lines that matter, so the reader is not sent to the whole hunk`);
+    return;
+  }
+  const own = lineSpan(item.lines);
+  if (!own) return errors.push(`${q}.lines: must be "a-b" or a line number, such as "${range[0]}-${Math.min(range[1], range[0] + 9)}"`);
+  if (own[0] < range[0] || own[1] > range[1]) errors.push(`${q}.lines: ${item.lines} is outside ${item.hunkId}, which covers ${where}; name lines inside it`);
 }
 
 function checkFlag(item, q, hunks, findings, errors) {
@@ -135,8 +159,13 @@ function checkExplainers(sb, warnings) {
   });
 }
 
-/** The narration's "item 4" names a numbered item of the reading order. */
-function checkItemRefs(sb, count, warnings) {
+/**
+ * The narration's "item 4" names a numbered item of the reading order, and outside the reading scene one whose
+ * hunk the scene cites in `from`: "check this at item 4" sends the viewer to the code this picture is about.
+ */
+function checkItemRefs(sb, items, warnings) {
+  const numbered = items.filter((it) => it?.routine !== true);
+  const count = numbered.length;
   sb.scenes.forEach((s, i) => {
     if (!s || typeof s !== 'object') return;
     const texts = [[`scenes[${i}].narration`, s.narration], ...(Array.isArray(s.steps) ? s.steps.map((st, j) => [`scenes[${i}].steps[${j}].say`, st?.say]) : [])];
@@ -144,6 +173,9 @@ function checkItemRefs(sb, count, warnings) {
       for (const m of String(text ?? '').matchAll(/\bitem (\d+)\b/gi)) {
         const n = Number(m[1]);
         if (n < 1 || n > count) warnings.push(`${path}: says "${m[0]}", but the reading order numbers ${count} items to read; name one of 1 to ${count}`);
+        else if (s.type !== 'reading' && !(Array.isArray(s.from) && s.from.includes(numbered[n - 1]?.hunkId))) {
+          warnings.push(`${path}: says "${m[0]}", which is ${numbered[n - 1]?.hunkId}, but this scene's "from" does not cite it; name the item of a hunk the scene explains, or add ${numbered[n - 1]?.hunkId} to "from"`);
+        }
       }
     }
   });
@@ -176,7 +208,7 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
         if (step?.flag !== undefined) errors.push(`${p}.steps[${j}].flag: a pre-read carries its findings on the reading order; flag it on the reading item of its hunk`);
       });
     }
-    if (preread && s.type !== 'code') {
+    if (preread && !NO_CODE_CHECK.has(s.type)) {
       for (const [path, text] of sceneLabels(s, p)) {
         const shape = codeShape(text);
         if (shape) warnings.push(`${path}: "${text}" is ${shape}, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values`);
@@ -198,7 +230,6 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
     const flagged = new Set(readings.flatMap((i) => (Array.isArray(sb.scenes[i].items) ? sb.scenes[i].items.map((it) => it?.flag) : [])));
     for (const id of findings.keys()) if (!flagged.has(id)) warnings.push(`findings: "${id}" is flagged on no reading item; set "flag": "${id}" on the item of its hunk, so the reader meets it there`);
   }
-  const count = readings.length && Array.isArray(sb.scenes[readings[0]].items) ? sb.scenes[readings[0]].items.filter((it) => it?.routine !== true).length : 0;
-  if (readings.length) checkItemRefs(sb, count, warnings);
+  if (readings.length) checkItemRefs(sb, Array.isArray(sb.scenes[readings[0]].items) ? sb.scenes[readings[0]].items : [], warnings);
   return listed;
 }

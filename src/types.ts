@@ -462,6 +462,11 @@ export interface ReviewScene extends SceneBase {
 export interface ReadingItem {
   hunkId: string;
   /**
+   * The lines that matter, "a-b" (or one line number), inside the hunk's own lines: reading.md, the terminal and
+   * the scene point there instead of at the whole hunk. A new file's hunk is the whole file, so give it `lines`.
+   */
+  lines?: string | number;
+  /**
    * What to verify there, in under 80 characters, with the real names and values, e.g. "the key resets on a
    * new minute; check the off-by-one". Required unless `routine`.
    */

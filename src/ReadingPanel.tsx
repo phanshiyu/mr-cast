@@ -1,7 +1,7 @@
 import { Check, Copy, ListChecks } from 'lucide-react';
 import { useState } from 'react';
 import { plainText } from '../shared/markup.mjs';
-import { flagText, readingChecklist, type ReadingOrder } from '../shared/reading.mjs';
+import { alsoText, flagText, readingChecklist, type ReadingOrder } from '../shared/reading.mjs';
 import { severityInk } from './components/theme';
 
 type Copied = 'idle' | 'copied' | 'failed';
@@ -58,7 +58,7 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
               <li key={item.hunkId} className="flex gap-3 text-sm">
                 <span className="w-5 shrink-0 text-right font-mono text-slate-500">{item.number}.</span>
                 <div className="min-w-0">
-                  <span className="font-mono text-slate-200">{item.where}</span>
+                  <span className="font-mono text-slate-200">{item.where}{alsoText(item)}</span>
                   <span className="text-slate-300"> {plainText(item.check)}</span>
                   {item.finding ? (
                     <div className="text-xs" style={{ color: severityInk[item.finding.severity] }}>

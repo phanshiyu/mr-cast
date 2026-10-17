@@ -1,4 +1,4 @@
-import { READ_FIRST_MAX, flagText, type ReadingEntry, type ReadingOrder } from '../../shared/reading.mjs';
+import { READ_FIRST_MAX, alsoText, flagText, type ReadingEntry, type ReadingOrder } from '../../shared/reading.mjs';
 import { fitBlock, fitTextAt, measure, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 
@@ -33,7 +33,7 @@ export interface ReadingLayout {
   checkW: number;
   /** Items to read past READ_FIRST_MAX, so not on screen. */
   moreToRead: number;
-  /** Routine items, never on screen. */
+  /** Routine items on reading.md's skim lines, never on screen. */
   routine: number;
   height: number;
   room: Fit;
@@ -52,14 +52,14 @@ function attempt(shown: readonly ReadingEntry[], index: (item: ReadingEntry) => 
   const flagFont = Math.round(font * 0.76);
   const pad = Math.round(font * 0.5);
   const whereX = ROW_PAD_X + NUMBER_W + COL_GAP;
-  const widest = Math.max(0, ...shown.map((i) => measure(i.where, { family: 'mono', weight: SLOTS.findingWhere.weight, size: whereFont })));
+  const widest = Math.max(0, ...shown.map((i) => measure(`${i.where}${alsoText(i)}`, { family: 'mono', weight: SLOTS.findingWhere.weight, size: whereFont })));
   const whereW = Math.ceil(Math.min(widest, (width - whereX) * WHERE_SHARE));
   const checkX = whereX + whereW + COL_GAP;
   const checkW = width - checkX - ROW_PAD_X;
   let y = HEAD_H;
   const rows = shown.map((item) => {
     const k = `items[${index(item)}]`;
-    const where = fitTextAt(item.where, sized(SLOTS.findingWhere, whereW), `${k}.hunkId`, whereFont);
+    const where = fitTextAt(`${item.where}${alsoText(item)}`, sized(SLOTS.findingWhere, whereW), `${k}.hunkId`, whereFont);
     const explained = item.explainedIn ? fitTextAt(`Explained in: ${item.explainedIn.chapter}`, sized(SLOTS.readingNote, whereW), `${k}.hunkId`, noteFont) : null;
     const check = fitTextAt(item.check, sized(SLOTS.readingCheck, checkW), `${k}.check`, font);
     const flag = item.finding ? fitTextAt(flagText(item.finding), sized(SLOTS.readingFlag, checkW), `${k}.flag`, flagFont) : null;
@@ -81,7 +81,7 @@ function attempt(shown: readonly ReadingEntry[], index: (item: ReadingEntry) => 
 export function layoutReading(order: ReadingOrder, items: readonly { hunkId: string }[], width: number, height: number): ReadingLayout {
   const shown = order.readFirst.slice(0, READ_FIRST_MAX);
   const moreToRead = order.readFirst.length - shown.length;
-  const routine = order.items.length - order.readFirst.length;
+  const routine = order.skim.reduce((n, g) => n + g.items.length, 0);
   const room = height - (moreToRead || routine ? MORE_H : 0);
   const index = (item: ReadingEntry) => items.findIndex((i) => i.hunkId === item.hunkId);
   const fits = (l: Omit<ReadingLayout, 'moreToRead' | 'routine' | 'room'>) => l.height <= room && l.rows.every((r) => r.check.fits && (r.flag?.fits ?? true) && (r.explained?.fits ?? true));
