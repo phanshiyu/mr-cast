@@ -20,6 +20,9 @@ import { parseMarkup } from './markup.mjs';
 
 const INDEX = new Map([...MEASURED_CHARS].map((c, i) => [c, i]));
 
+/** Text drawn smaller than this on screen, in px, is hard to read in a video. */
+export const READABLE_PX = 15;
+
 /** A code chip is drawn this much smaller than the text around it, with this much padding each side (em). */
 export const CODE_SCALE = 0.9;
 export const CODE_PAD = 0.22;
