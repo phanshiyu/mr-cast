@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.22.0
+
+- **Pre-read: no code on screen, then the order to read it in.** A new audience, "A reviewer who will read the code next" (`--audience preread`), makes a video to watch before you review a merge request yourself. Say "pre-read", "before I review", "no code on screen" or "without code" to get it, even with "quick". The diagrams carry the real names, files and values, and the video ends on a reading order: each hunk to read, main behaviour first, with what to check there. The order is written to `reading.md` as a checklist, printed by `outline` as clickable `path:line` lines, and shown in the player in a Reading order panel that stays after the video ends, with "Copy as checklist" for the merge request.
+- **`from` ties a diagram to the code it explains.** A scene's `from` names up to 3 hunk ids, shown as "In the code: limiter.ts, server.ts" above the diagram and as "Explained in" on the reading item. `validate` warns when nothing on screen names a cited hunk's file or identifiers, and fails on an unknown id.
+- **The `reading` scene** lists the first 6 items to read with their file and lines from `hunks.json`, and counts the routine rest. In a pre-read, `validate` counts the reading order as the coverage: it warns about every substantial hunk in neither the order nor `skipped`, about a missing reading scene, about narration that says "item 7" when the order has 5, and still about a substantial hunk skipped because the diagrams cover it. It fails on a code scene, a code cell in a compare, and a review scene.
+- **Review findings sit on reading items** in a pre-read, as "Claude: likely bug, the count is per server" in the severity's colour. `review.md` is still written.
+- **The plan page words its depths for a pre-read.** No topic may offer the code view, Brief is "The picture and its key fact." and Deep is "Trace one real case through it, with the actual limits, keys and order." A Deep topic gets a second diagram, and `validate` warns when it has one.
+
 ## 0.21.0
 
 Two ways to make a video now sit side by side. A full video lets you pick what it covers on a plan page before Claude writes it. A quick video skips every question and the plan page, and is on screen in about 20 seconds. Both play at once while the voice is made.

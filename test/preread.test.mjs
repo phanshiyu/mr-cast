@@ -150,6 +150,18 @@ test('a pre-read plan offers no code view, and a deep topic adds a second diagra
 });
 
 test('the reading order resolves file and lines from hunks.json, numbers the items to read, and collapses routine ones', () => {
+  // Without a plan there are no topics, so the checklist has no headings.
+  const plain = { title: 'Rate limit', scenes: [intent, graph(['h1', 'h2']), tests, reading([both[0], { hunkId: 'h3', routine: true }, both[1]])] };
+  assert.equal(readingMarkdown(plain, readingOrder(plain, hunks)).split('\n').slice(4).join('\n'), [
+    '- [ ] 1. src/limiter.ts:12-31: the key resets on a new minute; check the off-by-one',
+    '- [ ] 2. src/server.ts:40-55: the limiter runs before the order is saved',
+    '',
+    '### Skim',
+    '',
+    '- [ ] src/config.ts:3-4',
+    '',
+  ].join('\n'));
+
   const finding = { id: 'per-server', severity: 'bug', file: 'src/limiter.ts', line: 14, claim: 'the count is **per server**', evidence: '' };
   const sb = {
     title: 'Rate limit',
@@ -158,10 +170,10 @@ test('the reading order resolves file and lines from hunks.json, numbers the ite
       reading([{ ...both[0], flag: 'per-server' }, { hunkId: 'h3', routine: true }, both[1]])],
   };
   const order = readingOrder(sb, hunks, { topics: [{ id: 'limiter', title: 'Rate limiter: twenty a minute' }] });
-  assert.deepEqual(order.items.map((i) => [i.number, i.where, i.explainedIn, i.group]), [
+  assert.deepEqual(order.items.map((i) => [i.number, i.where, i.explainedIn, i.topic]), [
     [1, 'src/limiter.ts:12-31', 'The limiter', 'Rate limiter: twenty a minute'],
     [null, 'src/config.ts:3-4', 'The limiter', 'Rate limiter: twenty a minute'],
-    [2, 'src/server.ts:40-55', 'The route', 'The route'],
+    [2, 'src/server.ts:40-55', 'The route', null],
   ]);
   assert.deepEqual(readingLines(order), [
     '  1. src/limiter.ts:12-31  the key resets on a new minute; check the off-by-one (Claude: likely bug, the count is per server)',
@@ -176,11 +188,14 @@ test('the reading order resolves file and lines from hunks.json, numbers the ite
     '### Rate limiter: twenty a minute',
     '',
     '- [ ] 1. src/limiter.ts:12-31: the key resets on a new minute; check the off-by-one (Claude: likely bug, the count is per server)',
-    '- [ ] skim: src/config.ts:3-4',
     '',
-    '### The route',
+    '### Other changes',
     '',
     '- [ ] 2. src/server.ts:40-55: the limiter runs before the order is saved',
+    '',
+    '### Skim',
+    '',
+    '- [ ] Rate limiter: twenty a minute: src/config.ts:3-4',
     '',
   ].join('\n'));
 });

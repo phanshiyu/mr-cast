@@ -14,15 +14,25 @@ export interface ReadingEntry {
   /** 1-based among the non-routine items; null for a routine one. */
   number: number | null;
   finding: Finding | null;
-  /** The chapter of the first scene that cites the hunk in `from`. */
+  /** The chapter of the scene that cites the hunk in `from` with the fewest hunks. */
   explainedIn: string | null;
-  group: string;
+  /** The plan topic of the scene that explains it, or null. */
+  topic: string | null;
+}
+
+export interface ReadingGroup {
+  /** A plan topic's title; null when no item has a topic. */
+  title: string | null;
+  items: ReadingEntry[];
 }
 
 export interface ReadingOrder {
   items: ReadingEntry[];
-  groups: { title: string; items: ReadingEntry[] }[];
   readFirst: ReadingEntry[];
+  /** The items to read, in runs by topic. */
+  groups: ReadingGroup[];
+  /** The routine items, one group per topic. */
+  skim: ReadingGroup[];
 }
 
 export declare function readingScene(storyboard: Storyboard): ReadingScene | undefined;

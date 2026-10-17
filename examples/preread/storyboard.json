@@ -1,0 +1,274 @@
+{
+  "title": "Rate limiting for the orders API",
+  "subtitle": "A pre-read: the ideas first, then the order to read the code in",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Why this change",
+      "narration": "A visitor can send hundreds of order requests a minute today, and every one goes through. This change caps each visitor at twenty a minute. It also prices orders with real prices, and announces each new order.",
+      "summary": "Cap each visitor at **20 order requests a minute**, price orders for real, and announce each new order.",
+      "risk": "medium",
+      "bullets": [
+        "A Redis outage now **fails every order request**, because the limiter has no fallback",
+        "`publish` runs after the insert, so a queue outage errors on a saved order",
+        "No tests cover the limiter, the pricing lookup, or the new event"
+      ]
+    },
+    {
+      "type": "graph",
+      "chapter": "Where it fits",
+      "narration": "The new rate limiter sits in front of the orders route, and keeps its counts in Redis. The limiter and the event queue are new.",
+      "from": [
+        "h2",
+        "h3",
+        "h5"
+      ],
+      "nodes": [
+        {
+          "id": "client",
+          "label": "Client",
+          "icon": "monitor",
+          "caption": "customer"
+        },
+        {
+          "id": "server",
+          "label": "`server.ts`",
+          "icon": "server",
+          "caption": "orders route",
+          "change": "modified"
+        },
+        {
+          "id": "limiter",
+          "label": "`rateLimit`",
+          "icon": "shield",
+          "caption": "rate-limit.ts",
+          "change": "added",
+          "highlight": true
+        },
+        {
+          "id": "redis",
+          "label": "Redis",
+          "icon": "database",
+          "caption": "datastore"
+        },
+        {
+          "id": "orders",
+          "label": "`createOrder`",
+          "icon": "server",
+          "caption": "orders.ts",
+          "change": "modified"
+        },
+        {
+          "id": "queue",
+          "label": "`publish`",
+          "icon": "layers",
+          "caption": "events.ts",
+          "change": "added"
+        }
+      ],
+      "edges": [
+        {
+          "from": "client",
+          "to": "server",
+          "label": "POST /orders"
+        },
+        {
+          "from": "server",
+          "to": "limiter",
+          "label": "every request"
+        },
+        {
+          "from": "limiter",
+          "to": "redis",
+          "label": "count per IP"
+        },
+        {
+          "from": "server",
+          "to": "orders"
+        },
+        {
+          "from": "server",
+          "to": "queue",
+          "label": "order.created"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "server->limiter",
+            "limiter"
+          ],
+          "say": "Every order request reaches the rate limiter first."
+        },
+        {
+          "focus": [
+            "limiter->redis",
+            "redis"
+          ],
+          "say": "The limiter keeps each visitor's count in Redis, a shared store, so every server sees the same count.",
+          "mark": "arrow",
+          "note": "no fallback"
+        },
+        {
+          "focus": [
+            "server->queue",
+            "queue"
+          ],
+          "say": "After the order is saved, the route announces it to the event queue."
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "The twenty-first request",
+      "title": "One visitor, one minute",
+      "narration": "Follow one visitor who sends a twenty-first order request inside one minute.",
+      "from": [
+        "h2"
+      ],
+      "steps": [
+        {
+          "actor": "rateLimit",
+          "action": "Builds the key from the IP and the minute",
+          "payload": "rl:10.0.0.7:29384112",
+          "say": "The rate limiter names the count after the visitor's address and the current minute. A new minute gives a new name, so the count starts again."
+        },
+        {
+          "actor": "Redis",
+          "action": "Adds one to the count; the first hit expires after 60 s",
+          "payload": "rl:10.0.0.7:29384112 → 21",
+          "say": "Redis adds one to the count. Only the first request of the minute sets the count to expire after sixty seconds."
+        },
+        {
+          "actor": "rateLimit",
+          "action": "21 is over max 20: refuse",
+          "payload": "429 { \"error\": \"rate_limited\" }, Retry-After: 60",
+          "tone": "bad",
+          "say": "Twenty-one is over the limit of twenty. The limiter refuses with a too many requests error and says to retry in sixty seconds."
+        },
+        {
+          "actor": "server.ts",
+          "action": "Requests 1 to 20 go on to createOrder",
+          "say": "The first twenty requests go on to the orders service. Redis holds the count for every server, so the expiry decides when it resets; check this at item 1."
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "Real prices",
+      "narration": "The orders service changes how it prices an order.",
+      "from": [
+        "h6"
+      ],
+      "sides": [
+        {
+          "title": "Before"
+        },
+        {
+          "title": "After"
+        }
+      ],
+      "rows": [
+        {
+          "label": "Item price",
+          "cells": [
+            "Every item costs **10**",
+            "Each item asks `priceFor` for its price"
+          ],
+          "verdict": [
+            "bad",
+            "good"
+          ]
+        },
+        {
+          "label": "Lookups",
+          "cells": [
+            "None",
+            "All items at once, in parallel"
+          ]
+        },
+        {
+          "label": "Empty order",
+          "cells": [
+            "Saved with a total of 0",
+            "Refused with **empty order**, before saving"
+          ],
+          "verdict": [
+            "bad",
+            "good"
+          ]
+        },
+        {
+          "label": "Status",
+          "cells": [
+            "Not set",
+            "Saved with status **pending**"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Before, every item was priced at ten. Now the orders service asks the pricing module for each item's real price."
+        },
+        {
+          "focus": 1,
+          "say": "The service asks for all the prices at the same time."
+        },
+        {
+          "focus": 2,
+          "say": "An order with no items is now refused before anything is saved."
+        },
+        {
+          "focus": 3,
+          "say": "A new order is saved with the status pending."
+        }
+      ]
+    },
+    {
+      "type": "tests",
+      "chapter": "What is tested",
+      "title": "Test coverage",
+      "subject": "rateLimit, createOrder and the orders route",
+      "narration": "This change adds no tests. Nothing checks the twenty-first request, a Redis or queue outage, or an empty order.",
+      "cases": [],
+      "gaps": [
+        "The 21st request in a minute from one IP gets 429 with Retry-After",
+        "When Redis is down the limiter throws, so every order request [fails]{bad}",
+        "When the queue is down after the insert, the client gets an error for a saved order",
+        "Empty orders are refused and totals use prices from `priceFor`"
+      ]
+    },
+    {
+      "type": "reading",
+      "chapter": "Now read the code",
+      "narration": "Read the rate limiter first, because every order passes through it. Then read where the server puts it in front of the orders route, and the new pricing. The rest is routine.",
+      "items": [
+        {
+          "hunkId": "h2",
+          "check": "the key holds the minute; check expiry is set only on the first hit"
+        },
+        {
+          "hunkId": "h3",
+          "check": "the limiter wraps /orders only; `publish` is awaited after the insert"
+        },
+        {
+          "hunkId": "h6",
+          "check": "an empty order is refused before `priceFor` runs"
+        },
+        {
+          "hunkId": "h5",
+          "routine": true
+        },
+        {
+          "hunkId": "h1",
+          "routine": true
+        },
+        {
+          "hunkId": "h4",
+          "routine": true
+        }
+      ]
+    }
+  ]
+}

@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const examples = path.join(ROOT, 'examples');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-examples-'));
+// The settings flags an example is written for; the rest are for the default audience.
+const FLAGS = { preread: ['--audience', 'preread'] };
 let failed = 0;
 try {
   for (const name of fs.readdirSync(examples).sort()) {
@@ -18,7 +20,7 @@ try {
     const dir = path.join(work, name);
     fs.mkdirSync(dir);
     for (const file of fs.readdirSync(source).filter((f) => f.endsWith('.json'))) fs.copyFileSync(path.join(source, file), path.join(dir, file));
-    const res = spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), 'validate', '--dir', dir], {
+    const res = spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), 'validate', '--dir', dir, ...(FLAGS[name] ?? [])], {
       encoding: 'utf8',
       env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(work, 'config'), CLAUDE_CONFIG_DIR: path.join(work, 'claude') },
     });

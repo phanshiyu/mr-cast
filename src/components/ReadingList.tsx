@@ -16,8 +16,8 @@ const Row: React.FC<{ row: PlacedItem; layout: ReadingLayout; at: number }> = ({
   const { fps } = useVideoConfig();
   const land = spring({ frame: frame - at, fps, config: { damping: 17, stiffness: 120 } });
   const ink = row.item.finding ? severityInk[row.item.finding.severity] : colors.accent;
-  const pad = (row.h - Math.max(1, row.check.lines.length) * layout.lineHeight - (row.flag ? 6 + row.flag.lines.length * row.flag.lineHeight : 0)) / 2;
-  const leftPad = (row.h - row.where.lineHeight - (row.explained ? row.explained.lineHeight + 4 : 0)) / 2;
+  const pad = (row.h - Math.max(1, row.check.lines.length) * layout.lineHeight - (row.flag ? 6 + row.flag.height : 0)) / 2;
+  const leftPad = (row.h - row.where.height - (row.explained ? row.explained.height + 4 : 0)) / 2;
   return (
     <div
       style={{
@@ -55,12 +55,12 @@ const Row: React.FC<{ row: PlacedItem; layout: ReadingLayout; at: number }> = ({
         {row.item.number}
       </div>
       <div style={{ position: 'absolute', left: layout.whereX, width: layout.whereW, top: leftPad }}>
-        <FitText fit={row.where} style={{ display: 'block', lineHeight: `${row.where.lineHeight}px`, color: colors.text }} />
-        {row.explained ? <FitText fit={row.explained} style={{ display: 'block', marginTop: 4, lineHeight: `${row.explained.lineHeight}px`, color: colors.muted }} /> : null}
+        <FitText fit={row.where} style={{ color: colors.text }} />
+        {row.explained ? <FitText fit={row.explained} style={{ marginTop: 4, color: colors.muted }} /> : null}
       </div>
       <div style={{ position: 'absolute', left: layout.checkX, width: layout.checkW, top: pad }}>
-        <FitText fit={row.check} style={{ display: 'block', lineHeight: `${layout.lineHeight}px`, color: colors.text }} />
-        {row.flag ? <FitText fit={row.flag} style={{ display: 'block', marginTop: 6, lineHeight: `${row.flag.lineHeight}px`, color: ink }} /> : null}
+        <FitText fit={row.check} style={{ lineHeight: `${layout.lineHeight}px`, color: colors.text }} />
+        {row.flag ? <FitText fit={row.flag} style={{ marginTop: 6, color: ink }} /> : null}
       </div>
     </div>
   );

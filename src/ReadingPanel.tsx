@@ -36,11 +36,11 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onChapter: (chapter: 
           {copied === 'copied' ? 'Copied' : copied === 'failed' ? 'Copy failed' : 'Copy as checklist'}
         </button>
       </div>
-      {order.groups.map((group) => (
-        <div key={group.title} className="mb-3 last:mb-0">
-          <div className="mb-1.5 text-xs font-medium text-slate-500">{plainText(group.title)}</div>
+      {order.groups.map((group, g) => (
+        <div key={g} className="mb-3 last:mb-0">
+          {group.title ? <div className="mb-1.5 text-xs font-medium text-slate-500">{plainText(group.title)}</div> : null}
           <ol className="flex flex-col gap-1.5">
-            {group.items.filter((item) => !item.routine).map((item) => (
+            {group.items.map((item) => (
               <li key={item.hunkId} className="flex gap-3 text-sm">
                 <span className="w-5 shrink-0 text-right font-mono text-slate-500">{item.number}.</span>
                 <div className="min-w-0">
@@ -60,13 +60,17 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onChapter: (chapter: 
               </li>
             ))}
           </ol>
-          {group.items.some((item) => item.routine) ? (
-            <div className="mt-1.5 pl-8 text-xs text-slate-500">
-              Skim: <span className="font-mono">{group.items.filter((item) => item.routine).map((item) => item.where).join(', ')}</span>
-            </div>
-          ) : null}
         </div>
       ))}
+      {order.skim.length ? (
+        <div className="mt-3 border-t border-white/5 pt-3 text-xs text-slate-500">
+          {order.skim.map((group, g) => (
+            <div key={g}>
+              Skim{group.title ? ` (${plainText(group.title)})` : ''}: <span className="font-mono">{group.items.map((item) => item.where).join(', ')}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 };

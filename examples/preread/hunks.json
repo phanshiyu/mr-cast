@@ -1,0 +1,512 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "docs.md",
+    "oldFile": "README.md",
+    "status": "renamed",
+    "language": "markdown",
+    "header": "POST /orders creates an order.",
+    "startLine": 7,
+    "oldStartLine": 7,
+    "endLine": 12,
+    "additions": 2,
+    "deletions": 0,
+    "beforeCode": "    npm install\n    npm start\n\nThe server listens on port 3000.",
+    "afterCode": "    npm install\n    npm start\n\nThe server listens on port 3000.\n\nRequests are limited to 20 per minute per IP.",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 7,
+        "text": "    npm install"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 8,
+        "text": "    npm start"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 9,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 10,
+        "text": "The server listens on port 3000."
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "Requests are limited to 20 per minute per IP."
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "src/api/rate-limit.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 20,
+    "additions": 20,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import type { Request, Response, NextFunction } from 'express';\nimport { redis } from '../db/redis';\n\nexport interface RateLimitOptions {\n  windowMs: number;\n  max: number;\n}\n\nexport function rateLimit({ windowMs, max }: RateLimitOptions) {\n  return async (req: Request, res: Response, next: NextFunction) => {\n    const key = `rl:${req.ip}:${Math.floor(Date.now() / windowMs)}`;\n    const count = await redis.incr(key);\n    if (count === 1) await redis.pexpire(key, windowMs);\n    if (count > max) {\n      res.setHeader('Retry-After', Math.ceil(windowMs / 1000));\n      return res.status(429).json({ error: 'rate_limited' });\n    }\n    next();\n  };\n}",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import type { Request, Response, NextFunction } from 'express';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "import { redis } from '../db/redis';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "export interface RateLimitOptions {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  windowMs: number;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  max: number;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "}"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "export function rateLimit({ windowMs, max }: RateLimitOptions) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  return async (req: Request, res: Response, next: NextFunction) => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "    const key = `rl:${req.ip}:${Math.floor(Date.now() / windowMs)}`;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "    const count = await redis.incr(key);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "    if (count === 1) await redis.pexpire(key, windowMs);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "    if (count > max) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "      res.setHeader('Retry-After', Math.ceil(windowMs / 1000));"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "      return res.status(429).json({ error: 'rate_limited' });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "    }"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "    next();"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "  };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "}"
+      }
+    ]
+  },
+  "h3": {
+    "id": "h3",
+    "file": "src/api/server.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 16,
+    "additions": 4,
+    "deletions": 0,
+    "beforeCode": "import express from 'express';\nimport { createOrder } from '../services/orders';\n\nconst app = express();\napp.use(express.json());\n\napp.post('/orders', async (req, res) => {\n  const order = await createOrder(req.body);\n  res.status(201).json(order);\n});\n\napp.listen(3000);",
+    "afterCode": "import express from 'express';\nimport { createOrder } from '../services/orders';\nimport { rateLimit } from './rate-limit';\nimport { publish } from '../queue/events';\n\nconst app = express();\napp.use(express.json());\napp.use('/orders', rateLimit({ windowMs: 60_000, max: 20 }));\n\napp.post('/orders', async (req, res) => {\n  const order = await createOrder(req.body);\n  await publish('order.created', { orderId: order.id, total: order.total });\n  res.status(201).json(order);\n});\n\napp.listen(3000);",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import express from 'express';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "import { createOrder } from '../services/orders';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "import { rateLimit } from './rate-limit';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "import { publish } from '../queue/events';"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 5,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 6,
+        "text": "const app = express();"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 7,
+        "text": "app.use(express.json());"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "app.use('/orders', rateLimit({ windowMs: 60_000, max: 20 }));"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 9,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 10,
+        "text": "app.post('/orders', async (req, res) => {"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 11,
+        "text": "  const order = await createOrder(req.body);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  await publish('order.created', { orderId: order.id, total: order.total });"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 13,
+        "text": "  res.status(201).json(order);"
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 14,
+        "text": "});"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 15,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 12,
+        "newLine": 16,
+        "text": "app.listen(3000);"
+      }
+    ]
+  },
+  "h4": {
+    "id": "h4",
+    "file": "src/legacy-throttle.ts",
+    "oldFile": null,
+    "status": "deleted",
+    "language": "typescript",
+    "header": "",
+    "startLine": 0,
+    "oldStartLine": 1,
+    "endLine": 0,
+    "additions": 0,
+    "deletions": 6,
+    "beforeCode": "// Old in-memory throttle, unused since the gateway was introduced.\nconst hits = new Map<string, number>();\nexport function throttle(key: string) {\n  hits.set(key, (hits.get(key) ?? 0) + 1);\n  return hits.get(key)! < 100;\n}",
+    "afterCode": "",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "// Old in-memory throttle, unused since the gateway was introduced."
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "const hits = new Map<string, number>();"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "export function throttle(key: string) {"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  hits.set(key, (hits.get(key) ?? 0) + 1);"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "  return hits.get(key)! < 100;"
+      },
+      {
+        "type": "del",
+        "oldLine": 6,
+        "newLine": null,
+        "text": "}"
+      }
+    ]
+  },
+  "h5": {
+    "id": "h5",
+    "file": "src/queue/events.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 3,
+    "additions": 3,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "export async function publish(topic: string, payload: Record<string, unknown>) {\n  console.log(`[queue] ${topic}`, JSON.stringify(payload));\n}",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "export async function publish(topic: string, payload: Record<string, unknown>) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "  console.log(`[queue] ${topic}`, JSON.stringify(payload));"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "}"
+      }
+    ]
+  },
+  "h6": {
+    "id": "h6",
+    "file": "src/services/orders.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 15,
+    "additions": 5,
+    "deletions": 2,
+    "beforeCode": "import { db } from '../db/client';\n\nexport interface OrderInput {\n  userId: string;\n  items: { sku: string; qty: number }[];\n}\n\nexport async function createOrder(input: OrderInput) {\n  const total = input.items.reduce((sum, i) => sum + i.qty * 10, 0);\n  const order = await db.insert('orders', { ...input, total });\n  return order;\n}",
+    "afterCode": "import { db } from '../db/client';\nimport { priceFor } from './pricing';\n\nexport interface OrderInput {\n  userId: string;\n  items: { sku: string; qty: number }[];\n}\n\nexport async function createOrder(input: OrderInput) {\n  if (input.items.length === 0) throw new Error('empty order');\n  const prices = await Promise.all(input.items.map((i) => priceFor(i.sku)));\n  const total = input.items.reduce((sum, i, idx) => sum + i.qty * prices[idx], 0);\n  const order = await db.insert('orders', { ...input, total, status: 'pending' });\n  return order;\n}",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { db } from '../db/client';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "import { priceFor } from './pricing';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 3,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 4,
+        "text": "export interface OrderInput {"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 5,
+        "text": "  userId: string;"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 6,
+        "text": "  items: { sku: string; qty: number }[];"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 7,
+        "text": "}"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 8,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 9,
+        "text": "export async function createOrder(input: OrderInput) {"
+      },
+      {
+        "type": "del",
+        "oldLine": 9,
+        "newLine": null,
+        "text": "  const total = input.items.reduce((sum, i) => sum + i.qty * 10, 0);"
+      },
+      {
+        "type": "del",
+        "oldLine": 10,
+        "newLine": null,
+        "text": "  const order = await db.insert('orders', { ...input, total });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  if (input.items.length === 0) throw new Error('empty order');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  const prices = await Promise.all(input.items.map((i) => priceFor(i.sku)));"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  const total = input.items.reduce((sum, i, idx) => sum + i.qty * prices[idx], 0);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  const order = await db.insert('orders', { ...input, total, status: 'pending' });"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 14,
+        "text": "  return order;"
+      },
+      {
+        "type": "context",
+        "oldLine": 12,
+        "newLine": 15,
+        "text": "}"
+      }
+    ]
+  }
+}

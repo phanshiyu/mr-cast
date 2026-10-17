@@ -21,11 +21,12 @@ For any other request, pick the mode with the first row that matches. The words 
 | # | The request | The video |
 | --- | --- | --- |
 | 1 | "mp4", "render", "save", "share" | Full mode, as an MP4. Quick words are ignored, because an MP4 is meant to be shared. |
-| 2 | "quick", "quickly", "just a diagram", "diagram of", "draw this flow", "explain this in a diagram", "sketch", `/mr-cast quick` | [Quick mode](#quick-mode), even when the request also names the PR or the branch, as in "a quick video of the PR". Its source is the selection if there is one, else your explanation, else the branch. |
-| 3 | "walkthrough", "full", "whole branch", "the PR", "review it" | Full mode, with the plan page of step 4. A selection makes the topic that holds it `deep` there. |
-| 4 | A bare `/mr-cast` with selected or pasted code | [Quick mode](#quick-mode) on those lines. |
-| 5 | "animate that", "what you said" | Your explanation. Quick mode if it fits 3 scenes, else full mode. |
-| 6 | A bare `/mr-cast` with no selection | Full mode, on the source the rules below pick. |
+| 2 | "pre-read", "before I review", "no code on screen", "without code" | Full mode, with the audience `preread` of step 2, even when the request also says "quick". See [Pre-read mode](#pre-read-mode). |
+| 3 | "quick", "quickly", "just a diagram", "diagram of", "draw this flow", "explain this in a diagram", "sketch", `/mr-cast quick` | [Quick mode](#quick-mode), even when the request also names the PR or the branch, as in "a quick video of the PR". Its source is the selection if there is one, else your explanation, else the branch. |
+| 4 | "walkthrough", "full", "whole branch", "the PR", "review it" | Full mode, with the plan page of step 4. A selection makes the topic that holds it `deep` there. |
+| 5 | A bare `/mr-cast` with selected or pasted code | [Quick mode](#quick-mode) on those lines. |
+| 6 | "animate that", "what you said" | Your explanation. Quick mode if it fits 3 scenes, else full mode. |
+| 7 | A bare `/mr-cast` with no selection | Full mode, on the source the rules below pick. |
 
 **Selected code.** When Claude Code is connected to the user's IDE (through `/ide`, or by running in the IDE's integrated terminal), the lines the user highlights reach you with the prompt as context, such as "Selected 14 lines from src/limiter.ts", with the line range. Without that connection no selection arrives, but the user may paste the code instead. Find pasted code's file and lines with a search before you use it. The IDE sends the selection with every prompt while text is highlighted, so it may be one the user forgot. That is why a bare `/mr-cast` with a selection makes the cheap quick video, and says in its first line how to get the branch instead.
 
@@ -95,7 +96,7 @@ The player opens in under a second and plays at once, muted, with subtitles. The
 
 Ask with one `AskUserQuestion` call before you start the run. Ask only what the request leaves open:
 
-- The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), or "slowly" (pace). A request for a short video, or one for the team, answers the audience with the short overview. Words such as "focus on the migration" do not answer a question here. They shape your suggested picks in step 4.
+- The user already answered a question with words such as "a simple video" or "explain like I'm new to this" (audience), or "slowly" (pace). A request for a short video, or one for the team, answers the audience with the short overview. "Pre-read", "before I review", "no code on screen" or "without code" answer it with `preread`. Words such as "focus on the migration" do not answer a question here. They shape your suggested picks in step 4.
 - The user asked for your opinion of the branch, with words such as "review it", "with your review", "find issues" or "flag anything that looks wrong". That turns review on (question 4).
 - The user said "just make it", "use the defaults" or "no questions". Skip the call and use the last choices from `status`, else the recommended options. Review stays off unless the words above turned it on.
 
@@ -106,10 +107,11 @@ Every question is multiple choice. Put the recommended option first and end its 
 1. Only when both sources are live: header "Video of", question "What should the video show?"
    - "Changes on <branch> (<n> files) (Recommended)". Description: the commits and files from `status`.
    - "Your explanation of <topic>". Description: the explanation in one line.
-2. Header "Audience", question "Who is this video for?" `status` names these `familiar`, `new` and `overview`.
+2. Header "Audience", question "Who is this video for?" `status` names these `familiar`, `new`, `overview` and `preread`.
    - `familiar`: "A reviewer of this change (Recommended)" for the branch, or "A teammate who knows this code (Recommended)" for an explanation. Description: "Diagrams, then the code behind each point."
    - `new`: "Someone new to this code". Description: "Walks the code one line at a time in plain words, after the code around it. Good for a second-language reader. Longer."
    - `overview`: "A short overview for the team". Description: "Diagrams and behavior, with very little code. Usually under 3 minutes."
+   - `preread`: "A reviewer who will read the code next". Description: "Diagrams only. Ends with a reading order to follow in your editor." Offer it only when the branch is live.
 3. Header "Pace", question "How should it sound?" `status` names these `normal`, `slower`, `faster` and `silent`.
    - "Normal pace (Recommended)". Description: "About 130 words a minute, with pauses between steps."
    - "Slower". Description: "A slower voice and longer pauses. Good for new readers or a second language."
@@ -125,7 +127,7 @@ Every question is multiple choice. Put the recommended option first and end its 
 
 The answers become the flags, written `<flags>` in every command below:
 
-- Audience: `--audience familiar`, `--audience new` or `--audience overview`.
+- Audience: `--audience familiar`, `--audience new`, `--audience overview` or `--audience preread`.
 - Pace: `--pace normal`, `--pace slower` or `--pace faster`, or `--no-voice` for "No voice, subtitles only".
 
 For example, `<flags>` is `--audience new --pace slower`. Pass `<flags>` to every `extract`, `init`, `validate`, `outline`, `play`, `render` and `still` command. A flag applies to its own command only, and the run does not keep it. A command without the flags checks and times the video for a familiar audience at the normal pace, and voices it.
@@ -169,12 +171,12 @@ Write `plan.json` in the run's directory, beside `hunks.json`:
 ```
 
 - **Topics.** Write 4 to 8 topics. Name each one by what it does, not by its file: "Rate limiter: twenty orders a minute", not "rate-limit.ts". A topic can span several files. Put routine changes, such as renames, formatting or deleted dead code, together in one topic. List the topics in the order the video shows them, the main behaviour first. The opening intent scene, and for the branch the closing tests scene, are always in the video, so they are not topics. The `id` is a short slug, and `summary` says in one line what the topic covers.
-- **Depth.** `depth` is your suggestion. `skip` leaves the topic out. `brief` shows the topic's view and the key lines. `deep` shows the view, then the code line by line. Suggest `deep` for the main behaviour and `brief` for the code that supports it. For the short overview, suggest `brief` for most topics. For someone new to the code, suggest `deep` for every topic that changes logic. When the user had code selected as they asked for the full video, suggest `deep` for the topic whose files hold those lines, whatever the audience, and say so in its `why`.
+- **Depth.** `depth` is your suggestion. `skip` leaves the topic out. `brief` shows the topic's view and the key lines. `deep` shows the view, then the code line by line. Suggest `deep` for the main behaviour and `brief` for the code that supports it. For the short overview, suggest `brief` for most topics. In a pre-read, `brief` is the topic's picture and its key fact, and `deep` adds one more diagram, a `flow`, `array` or `table` that traces the concrete case with the actual limits, keys and order. For someone new to the code, suggest `deep` for every topic that changes logic. When the user had code selected as they asked for the full video, suggest `deep` for the topic whose files hold those lines, whatever the audience, and say so in its `why`.
 - **Views.** `views` lists 1 to 3 ways to show the topic, your suggestion first. Offer only views that truly fit the topic, and offer one when two would look almost the same. A choice that changes nothing teaches the user to ignore the choices. `why` says in one line why your suggestion fits. The user reads the label, never the key:
 
 {{PLAN_VIEWS}}
 
-`decisions` is a `graph` drawn as a flowchart. `code` shows only code scenes.
+`decisions` is a `graph` drawn as a flowchart. `code` shows only code scenes. In a pre-read, never offer `code`: give every topic views that draw it, and `plan` rejects a topic that offers `code`.
 - **Seconds.** `seconds` is about how long the topic takes at each depth, such as 30 to 50 for `brief` and 80 to 150 for `deep`. The page adds them up to show the user the length of the video.
 
 ### Open the plan page
@@ -201,8 +203,8 @@ After the answer, stop the `mr-cast plan` command and read `plan.json`. The page
 - Set `"topic": "<id>"` on every scene that shows a topic. Leave it off the intent, tests and review scenes.
 - Copy your picks into the storyboard's `plan`: for each topic, the pick you wrote its scenes from, `"plan": { "<id>": { "depth": "brief", "view": "calls" } }`. Update an entry whenever you rebuild that topic.
 - A topic at `skip` gets no scene. List its hunks in `skipped` with the reason "the viewer chose to skip this topic".
-- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code` or the audience is the short overview. List its other hunks in `skipped` with the reason "the viewer chose a brief look at this topic", in those words, since a reviewer's video otherwise warns about every substantial hunk it does not show.
-- A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`.
+- A topic at `brief` gets one scene of its view, and one code scene on its key lines. Leave the code scene out when the view is `code`, or the audience is the short overview or a pre-read. List its other hunks in `skipped` with the reason "the viewer chose a brief look at this topic", in those words, since a reviewer's video otherwise warns about every substantial hunk it does not show.
+- A topic at `deep` gets one scene of its view, then its code line by line, in code scenes with `steps`. In a pre-read it gets its view and a second diagram that traces the concrete case instead, and no code.
 - The shared rules below still put every diagram before the first code scene. Keep the topics in plan order within the diagrams, and again within the code.
 
 `validate` reports a scene or a `plan` entry whose topic is not in `plan.json`. It warns about a topic missing from `plan`, a pick in `plan.json` that changed since you wrote `plan`, a topic kept with no scene, a skipped topic that still has scenes, and a topic none of whose scenes draws its view. When the storyboard is valid, `validate` saves your `plan` in `plan-built.json`, and `outline` groups the scenes by topic.
@@ -240,6 +242,7 @@ The audience decides the order and the depth.
 
 - **A reviewer** (`familiar`) reads a change with these questions, roughly in order. Why does it exist? Is the approach right? How does it work, and is it correct and complete? What else could it break? Is it tested? Follow that order. The intent gives the why and the concerns. The diagrams show the approach. Code scenes go in order of importance: the main behaviour first, then the code that supports it. Group related hunks together, not file by file. Then show what else it could break, such as callers, a migration, a public API or two requests at once, as their own scene or step. When the diff leaves a caller unchanged that should have changed, say so. The tests come last. Skip background a reviewer of this code already knows, such as what the service is for, and say that you skip it. Never skip a hunk for this reason.
 - **Someone new to this code** (`new`) needs the code as it is today before the change. Name the few terms they will hear before they hear them. Follow the concrete case through every step, line by line, as [Simple mode](#simple-mode) says.
+- **A reviewer who reads the code next** (`preread`) follows the reviewer's order with no code on screen, then gets the order in which to read it. [Pre-read mode](#pre-read-mode) says how.
 - **The team** (`overview`) needs the problem, the approach, what changes for users, the risk, how well it is tested, and who should look closer. [Overview mode](#overview-mode) says how.
 - **An explanation** follows the same order: the question or symptom as a concrete case, then the idea, then the parts, then the code.
 
@@ -338,6 +341,20 @@ Use overview mode when the audience is `overview`. The viewer wants to know what
 - Say behavior in the diagram narration, with real values, instead of in code scenes.
 - Aim for under 3 minutes.
 
+### Pre-read mode
+
+Use pre-read mode when the audience is `preread`. The viewer will review the code right after the video, so the video builds the model in their head and hands them the code in order. It follows the reviewer's order of [Teach the change](#teach-the-change), with these changes:
+
+- **No code on screen.** No `code` scene, and no code cell in a `compare`. `validate` rejects both. Identifiers and file names may appear on screen; expressions and code lines may not. Label each diagram with the real identifiers and file names, such as `` `checkLimit` `` and `` `limiter.ts` ``, so the viewer can map the picture onto the code. Put the facts a code line would show, such as limits, keys, conditions and order, into the labels and the narration with their real values.
+- **`from` on each diagram.** Give each diagram scene that explains changed code `"from": ["h1", "h3"]`, the ids of at most 3 hunks it explains. The scene then shows a quiet "In the code: limiter.ts, server.ts" line, and the reading order says which chapter explains each hunk. `validate` warns when a cited hunk's file name, or one of its identifiers written as code writes them (`checkLimit`, `MAX_REQUESTS`, `retry_count`), appears nowhere in the scene's labels or narration. Plain words such as `limit` do not count.
+- **Explain what the reader needs to read the code.** The video does not have to cover every hunk. The reading order does.
+- **The tests stay.** Keep the `tests` scene, with no test code.
+- **End on a `reading` scene**, after the tests. Its `items` are the order to read the code in, main behaviour first, with related hunks together, as the code scenes of a reviewer's video would go. Each item is `{ "hunkId": "h1", "check": "the key resets on a new minute; check the off-by-one" }`: `check` says what to verify there, in under 80 characters, with the real values. Mark wiring, renames and config `"routine": true`, with no `check`; they go on one "skim" line. The file and lines come from `hunks.json`, so never type them. Every substantial hunk must be an item or in `skipped`, and `validate` warns about each one that is neither. The scene shows the first 6 items to read under "Read first" and counts the rest. Narrate only the first three and why they come first.
+- **Point at the item.** For a claim the video cannot show, such as an off-by-one or a missing await, say "check this at item 2" in the narration, with the item's number in the reading order. `validate` warns about a number the order does not have.
+- **Review mode.** Flag each finding on the item of its hunk with `"flag": "<finding id>"`. The item shows it in its severity's colour, such as "Claude: likely bug, the count is per server". A pre-read has no `review` scene: the reading scene is the one closing list, and `review.md` still lists the findings.
+
+`validate` writes `reading.md` in the run's directory, a checklist of the reading order grouped by topic, and `outline` prints it as `1. src/limiter.ts:12-30  check` lines. The player shows the same list in a Reading order panel beside the video, with "Copy as checklist" for the merge request.
+
 ## 6. Check the plan with the user
 
 ```bash
@@ -373,5 +390,7 @@ With a `plan.json`, the player also has a Plan tab with the same picks. When the
 For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead of `play` (add `--out <path>` to choose the location). It takes minutes, so give it a long timeout or run it in the background. It writes the MP4 into the run's directory, named after the storyboard title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, with a chapter marker for each chapter title, and prints its path. Give the user that path. The first render downloads a headless Chrome and takes a few minutes. Renders of different runs can run at the same time.
 
 To check how scenes look without a browser, run `{{MR_CAST}}/bin/mr-cast still [sceneIndex...] <flags>` and read the PNGs it prints. Do this when a scene has long text, many nodes, or a large hunk or snippet.
+
+In a pre-read, end your reply with the reading order as `outline` prints it, one `path:line  check` line per item, so the user can click each one to open it in the editor, and give the path of `reading.md`.
 
 When review is on, `validate` writes the findings to `review.md` in the run's directory and prints its path, and `render --out` writes a copy beside the MP4. In your final reply, list every finding as `severity file:line claim`, one per line, and give the path of `review.md`. With no findings, say that nothing looked wrong.

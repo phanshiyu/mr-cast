@@ -38,7 +38,7 @@ For a short diagram of one thing, say "quick", "just a diagram" or "explain this
 
 For a full video, the skill asks up to three multiple-choice questions at once:
 
-- Who the video is for: a reviewer or teammate, someone new to the code, or the team in a short overview.
+- Who the video is for: a reviewer or teammate, someone new to the code, the team in a short overview, or a reviewer who will read the code next. See [Pre-read](#pre-read).
 - The pace: normal, slower, faster, or no voice.
 - For a branch, whether Claude should also flag what looks wrong. The default is no. See [Review mode](#review-mode).
 
@@ -105,7 +105,7 @@ These settings are flags on `extract`, `init`, `validate`, `outline`, `voice`, `
 
 | Setting | What it does |
 | --- | --- |
-| `--audience familiar\|new\|overview` | Who the video is for: someone who knows the code (the default), someone new to it, or the team in a short overview. `new` is the [simple style](#simple-style), and `--simple` means the same. |
+| `--audience familiar\|new\|overview\|preread` | Who the video is for: someone who knows the code (the default), someone new to it, the team in a short overview, or a reviewer who reads the code next. `new` is the [simple style](#simple-style), and `--simple` means the same. `preread` is the [pre-read](#pre-read). |
 | `--pace slower\|normal\|faster` | How fast the voice speaks and how long it pauses. The default is `normal`. See [Voice](#voice). |
 | `--speed x` | The voice's speed alone, from 0.5 to 2. It overrides the speed `--pace` sets. |
 | `--voice name` | The Kokoro voice. The default is `af_heart`. |
@@ -154,6 +154,17 @@ The simple style is for a viewer who is new to the code, reads English as a seco
 - Sentences stay short. It warns about a sentence over 18 words, and about a scene whose sentences average more than 12.
 
 The skill uses this style when you say the video is for someone new to the code, or when your request asks for it. `examples/demo-simple/` is the demo change told this way.
+
+## Pre-read
+
+A pre-read is for the reviewer who will read the code after the video. Say "pre-read", "before I review", "no code on screen" or "without code", or pick "A reviewer who will read the code next" as the audience, and pass `--audience preread` to each command. The video builds the model with diagrams only and ends on the order in which to read the code, so the review that follows takes less effort. It is not the short overview: it covers the whole change, and only the presentation differs.
+
+- No code on screen. `validate` fails on a `code` scene, a code cell in a `compare` and a `review` scene. Labels use the real identifiers and file names, such as `checkLimit` and `limiter.ts`, and the facts a code line would show go into the labels and narration with their real values.
+- Each diagram names the hunks it explains in `"from": ["h1", "h3"]`, at most 3. The scene shows them as a quiet "In the code: limiter.ts, server.ts" line. `validate` warns when a cited hunk's file name or one of its code-style identifiers (`checkLimit`, `MAX_REQUESTS`) appears nowhere in the scene's text.
+- The closing `reading` scene lists the hunks in reading order, each with what to check there, such as "the key resets on a new minute; check the off-by-one". The file and lines come from `hunks.json`. Wiring and config are marked `"routine": true` and collapse to one "skim" line. The scene shows the first 6 under "Read first" and counts the rest. `validate` warns about every substantial hunk that is in neither the reading order nor `skipped`.
+- `validate` writes `reading.md` beside the storyboard: a `- [ ] 1. src/limiter.ts:12-30: check` checklist grouped by topic, to paste into the merge request. `outline` prints the same order as `path:line` lines, which Claude Code makes clickable, and the player shows it in a Reading order panel with "Copy as checklist".
+- In review mode each finding sits on the reading item of its hunk, in its severity's colour. There is no separate review scene. `review.md` is still written.
+- On the plan page, no topic offers "Just the code". Brief is the topic's picture and its key fact. Deep adds a second diagram that traces one real case with the actual limits, keys and order.
 
 ## Review mode
 
