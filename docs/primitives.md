@@ -334,3 +334,19 @@ These were checked and hold: BS's four comparisons (mid 7, 11, 9, 10); MS mergin
 ## What was built
 
 The user picked P1 to P5 with option A, and P6 as an `svg` scene. All of them shipped in 0.26.0; ADR 0020 records the decision, and `examples/primitives/` holds a demo of each scene type.
+
+All eleven blueprints were then built as worked examples under `examples/algorithms/`, `examples/architecture/` and `examples/explain/`, each with a `generate.mjs` that computes its numbers and writes the storyboard. The facts above are fixed in them: binary search's chart gives the most looks, 5 for 16 items; YouTube keeps `.ts` chunks with H.264; OAuth uses the RFC 7636 verifier and its real challenge; and Bitcoin's three blocks were mined for 30 zero bits. Libraries the numbers came from, h3-js and js-tiktoken, left their results in a committed `facts.json`, so a generator runs with plain `node`.
+
+Building them found eleven problems in the scenes, all fixed in 0.26.0:
+
+- A graph ranked into one line drew every edge that skips a node on one shared lane; each now takes its own lane, and Dijkstra lost the hidden spacer node it used to get around this.
+- A graph or other diagram scaled to fit could draw its text under the readable size without a warning; `validate` now warns, with the scale and the sizes.
+- A bare number beside a graph's table meant an edge even when a row had the same index; that now fails `validate`, and a part that starts hidden and no step shows warns.
+- `col:Header` did not work on the table beside a graph; it does, as on a table scene.
+- A memory object's fields named like numbers jumped ahead of the others; fields keep the order written.
+- Memory arrows between objects that point at each other ran behind cards and shared one lane; they now route through the gaps.
+- Chart values rounded to three digits, and two series always drew change badges; values below 10,000 show as written, and `badges: false` turns the badges off.
+- A table set `O(n²)` in mono but not `O(n log n)`, and upper-cased a header like `e^z`; math is plain text, and a formula header keeps its case.
+- An array's dashed slot past the end stayed after the pointer left; it shows only while a pointer stands there.
+- The voice read `v87` as "version 87"; only a dotted version such as `v2.1` reads as a version.
+- A header callout squeezed a long title; the callout takes only its text's width, and the title wraps to a second line.
