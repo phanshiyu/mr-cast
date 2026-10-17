@@ -1,6 +1,6 @@
 # 14. Article first: write a teaching article, test it with a reader, then adapt it
 
-- Status: Accepted (as built in 0.24.0; see As built)
+- Status: Superseded by 0019 (the article stage is removed)
 - Date: 2026-10-17
 
 ## Context

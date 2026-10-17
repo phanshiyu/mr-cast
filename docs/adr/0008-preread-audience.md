@@ -1,6 +1,6 @@
 # 8. A pre-read audience: no code on screen, then the order to read it in
 
-- Status: Accepted
+- Status: Accepted; its advice on labels, `from` and reading items superseded by 0019
 - Date: 2026-10-17
 
 ## Context

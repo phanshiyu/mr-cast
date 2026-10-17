@@ -1,6 +1,6 @@
 # 15. Restructure the skill: schema out, branches into references, checks into the CLI
 
-- Status: Accepted (as built in 0.24.0; see As built)
+- Status: Accepted (as built in 0.24.0; see As built); its references per step and per mode superseded by 0019
 - Date: 2026-10-17
 
 ## Context

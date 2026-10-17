@@ -1,6 +1,6 @@
 # 17. The article's shape: claim headings with ids, questions with answers, and scenes that name their section
 
-- Status: Accepted
+- Status: Superseded by 0019 (the article stage is removed)
 - Date: 2026-10-17
 
 ## Context

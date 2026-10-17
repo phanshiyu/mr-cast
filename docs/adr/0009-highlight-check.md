@@ -1,6 +1,6 @@
 # 9. The lit part matches the words: a linter plus one fresh audit subagent
 
-- Status: Accepted
+- Status: Accepted; the audit subagent superseded by 0019, the linter kept
 - Date: 2026-10-17
 
 ## Context

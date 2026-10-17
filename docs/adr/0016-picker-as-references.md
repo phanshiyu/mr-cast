@@ -1,6 +1,6 @@
 # 16. The primitive picker lives in the mr-cast skill's references, not in a skill of its own
 
-- Status: Accepted
+- Status: Superseded by 0019 (the picker is removed)
 - Date: 2026-10-17
 - Supersedes: 0010 (where the picker lives; its index and one file per scene stay)
 

@@ -1,6 +1,6 @@
 # 18. A PostToolUse hook in the skill runs the checks after every write
 
-- Status: Accepted
+- Status: Accepted; its `article.md` part superseded by 0019
 - Date: 2026-10-17 (as built: the run's audience and `--read-only`, corrected after review the same release)
 
 ## Context

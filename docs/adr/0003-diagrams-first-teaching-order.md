@@ -1,6 +1,6 @@
 # 3. Diagrams before code, top-down, in a teaching arc and the reviewer's order
 
-- Status: Accepted
+- Status: Superseded by 0019
 - Date: 2026-10-16
 
 ## Context
