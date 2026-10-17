@@ -26,6 +26,16 @@ mr-cast is a command-line tool and a Claude Code skill. Ask Claude for a video o
 
 Two scenes from [`examples/demo`](examples/demo), a walkthrough of a rate limit change ([watch the video](https://github.com/phanshiyu/mr-cast/releases/latest/download/demo.mp4)). A video moves through diagrams and code while the voice explains it, and lights each part as the voice reaches it.
 
+Worked examples explain an idea with real numbers, such as Dijkstra's shortest path, React's two trees and how a GPT picks the next word:
+
+<p align="center">
+  <img src="docs/assets/examples/algorithms-dijkstra.png" width="32%" alt="Dijkstra's shortest path: a graph of five places with the cheapest route lit, beside a tracker table whose distances change as shortcuts are found.">
+  <img src="docs/assets/examples/architecture-react.png" width="32%" alt="React's two trees: a memory diagram where the root points at one of two trees, each pointing at the other as its alternate.">
+  <img src="docs/assets/examples/explain-gpt.png" width="32%" alt="How a GPT picks the next word: a table of six candidate tokens with their scores, e to the score, and their chances.">
+</p>
+
+The [gallery](docs/gallery.md) has each example's still, storyboard and video, and a short demo of every scene type.
+
 ## Install
 
 You need Node 22.12 or newer on macOS or Linux, and [Claude Code](https://code.claude.com).
@@ -61,7 +71,7 @@ After Claude explains something, ask it to "animate that" to get a video of the 
 - [Use mr-cast from Claude Code](docs/guide.md): sources, quick videos, MP4s, pre-reads, review mode, cleanup and upgrades.
 - [Command reference](docs/cli.md): every `mr-cast` command, runs, flags, the voice and pruning.
 - [Storyboard reference](docs/storyboard.md): scene types, steps, pen marks, on-screen text and marks.
-- [Scene gallery](docs/gallery.md): a still, a storyboard and a video of every scene type.
+- [Gallery](docs/gallery.md): a still, a storyboard and a video of each worked example and every scene type.
 - [Upgrade notes](docs/upgrading.md): what changed for storyboards and skills from older versions.
 - [Design decisions](docs/adr/README.md): the architecture decision records.
 - [Changelog](CHANGELOG.md).
