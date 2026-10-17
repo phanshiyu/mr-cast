@@ -28,7 +28,7 @@ Call frames with their variables on the left, objects on the right, and an arrow
 
 ## Schema and validate notes
 
-A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name.
+A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name, and warns on a frame or object that starts `hidden` and no step shows.
 
 `{{MR_CAST}}/bin/mr-cast schema memory` prints its fields.
 

@@ -184,7 +184,7 @@ function tableItems(table, state, what) {
   const rows = list(table.rows).map((r, i) => ({ i, cells: list(r?.cells).map((c, k) => value(i, k, c)) })).filter(({ i }) => !state?.hidden[`r:${i}`]);
   return [
     ...rows.map(({ i, cells }) => ({ key: `r:${i}`, label: `${what}row ${i} ${cells.map(cell).join(' | ')}`, terms: [], parts: columns.map((_, c) => `x:${i}/${c}`) })),
-    ...(what ? [] : columns.map((c, k) => ({ key: `c:${k}`, label: `column ${c}`, terms: [text(c)], parts: rows.map(({ i }) => `x:${i}/${k}`) }))),
+    ...columns.map((c, k) => ({ key: `c:${k}`, label: `${what}column ${c}`, terms: [text(c)], parts: rows.map(({ i }) => `x:${i}/${k}`) })),
     ...rows.flatMap(({ i, cells }) => cells.map((c, k) => ({ key: `x:${i}/${k}`, label: `${what}${columns[k]} of row ${i} = ${cell(c)}`, terms: c && typeof c === 'object' ? [text(c.before), text(c.after)] : [text(c)] }))),
   ];
 }

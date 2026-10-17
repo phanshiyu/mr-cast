@@ -2,7 +2,7 @@
 // can name per scene type lives in shared/targets.mjs, which the scenes use to light it.
 
 import { focusSteps, legacyFocusKeys } from '../../shared/normalize.mjs';
-import { FOCUS_TYPES, focusRefs, refNames, resolveRef, stepTargets } from '../../shared/targets.mjs';
+import { ambiguousIndex, FOCUS_TYPES, focusRefs, refNames, resolveRef, stepTargets } from '../../shared/targets.mjs';
 import { changedRefs, changesState, STATE_TYPES } from '../../shared/state-steps.mjs';
 import { tokenSteps } from '../../shared/layers.mjs';
 import { didYouMean } from './suggest.mjs';
@@ -10,7 +10,7 @@ import { didYouMean } from './suggest.mjs';
 
 /** What a scene type's refs look like, for the error when a ref names nothing. */
 const REF_HELP = {
-  graph: (s) => `a node id, an edge "from->to" or "a-b", a group "group:Name", or an edge index${s.table ? ', or a table row "row:A" or cell "Header@row"' : ''}`,
+  graph: (s) => `a node id, an edge "from->to" or "a-b", a group "group:Name", or an edge index${s.table ? ', or a table row "row:A", column "col:Header" or cell "Header@row"' : ''}`,
   sequence: 'a message index, an "a-b" range of them, or a participant id',
   er: 'an entity id, a field "entity.field", a relation "from->to", or a relation index',
   state: 'a state id, a transition "from->to", a transition label, or a transition index',
@@ -69,7 +69,9 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     refs.forEach((ref, k) => {
       const at = Array.isArray(value) ? `${q}.${key}[${k}]` : `${q}.${key}`;
       if (typeof ref !== 'string' && typeof ref !== 'number') return errors.push(`${at}: must be a string or a number: ${refHelp(s)}`);
-      if (!resolveRef(s, ref, hunks)) errors.push(`${at}: ${JSON.stringify(ref)} names nothing in this scene, where a ref is ${refHelp(s)}${typeof ref === 'string' ? didYouMean(ref, names) : ''}`);
+      const unclear = ambiguousIndex(s, ref);
+      if (unclear) errors.push(`${at}: ${JSON.stringify(ref)} ${unclear}`);
+      else if (!resolveRef(s, ref, hunks)) errors.push(`${at}: ${JSON.stringify(ref)} names nothing in this scene, where a ref is ${refHelp(s)}${typeof ref === 'string' ? didYouMean(ref, names) : ''}`);
     });
   });
   const scene = { ...s, steps: focusSteps(s) };

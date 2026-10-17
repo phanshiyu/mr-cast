@@ -5,7 +5,7 @@
 
 import { arrayRows, cellKey, markerRow, rowKey } from './arrays.mjs';
 import { indexRange } from './steps.mjs';
-import { memberKey, resolveRef, splitMemberKey } from './targets.mjs';
+import { ambiguousIndex, memberKey, resolveRef, splitMemberKey } from './targets.mjs';
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
 
@@ -222,6 +222,11 @@ export function walkStates(scene) {
     if (!model.tint) return problem('tint', '', `${aType(scene.type)} scene takes no tint`);
     if (!record || typeof record !== 'object' || Array.isArray(record)) return problem('tint', '', `must be an object of ref to colour, e.g. { "3": "good" }; a colour is one of ${TINTS.join(', ')}`);
     for (const [ref, tint] of Object.entries(record)) {
+      const unclear = ambiguousIndex(scene, ref);
+      if (unclear) {
+        problem('tint', ref, unclear);
+        continue;
+      }
       const keys = resolveRef(scene, ref);
       const named = keys?.length && keys.every((k) => model.tint.prefixes.some((p) => k.startsWith(p))) ? keys.flatMap((k) => model.tint.expand(scene, k)) : null;
       if (!named) problem('tint', ref, `names no ${model.tint.what}; a tint key is ${model.tint.help(scene)}`, refNamesOf(scene, model.tint.prefixes));
@@ -272,7 +277,9 @@ export function walkStates(scene) {
     for (const field of ['show', 'hide']) {
       for (const ref of refsOf(field)) {
         const key = oneKey(scene, ref, model.show.prefixes);
-        if (!key) problem(field, ref, `names no ${model.show.what}; ${field} takes ${model.show.help(scene)}`, showNames(scene, model));
+        const unclear = ambiguousIndex(scene, ref);
+        if (unclear) problem(field, String(ref), unclear);
+        else if (!key) problem(field, ref, `names no ${model.show.what}; ${field} takes ${model.show.help(scene)}`, showNames(scene, model));
         else if (field === 'show') delete next.hidden[key];
         else next.hidden[key] = true;
       }
@@ -287,7 +294,27 @@ export function walkStates(scene) {
     states.push(next);
     state = next;
   });
+  for (const key of Object.keys(states[0].hidden)) {
+    if (states.every((st) => st.hidden[key])) problems.push({ step: -1, field: hiddenField(scene, key), ref: '', message: 'starts hidden and no step shows it, so it is never drawn', names: [], level: 'warning' });
+  }
   return { states, problems };
+}
+
+/** Where the storyboard starts the item `key` hidden, such as "nodes[2].hidden". */
+function hiddenField(scene, key) {
+  const [kind, name] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+  const at = (field, items, match) => `${field}[${list(items).findIndex(match)}].hidden`;
+  return {
+    n: () => at('nodes', scene.nodes, (n) => n?.id === name),
+    e: () => `edges[${name}].hidden`,
+    r: () => `${scene.type === 'graph' ? 'table.' : ''}rows[${name}].hidden`,
+    ptr: () => at('pointers', scene.pointers, (m) => m?.name === name),
+    rg: () => at('ranges', scene.ranges, (m) => m?.name === name),
+    a: () => at('arrays', scene.arrays, (a) => a?.name === name),
+    fr: () => at('frames', scene.frames, (f) => f?.name === name),
+    o: () => at('objects', scene.objects, (o) => o?.id === name),
+    s: () => `hidden[${list(scene.hidden).indexOf(name)}]`,
+  }[kind]();
 }
 
 const setNames = (scene, model) => refNamesOf(scene, model.set.prefixes);
