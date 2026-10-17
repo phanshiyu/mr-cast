@@ -3,6 +3,7 @@
 ## 0.23.0
 
 - **Pruning is decided by the CLI, not by Claude.** `mr-cast prune` takes selectors: ids, `--kind video,stills`, `--all`, `--older-than <days>` with any of them, and `--except <id>`. A busy artifact is never picked and is reported, and a walkthrough picked with its parts counts their bytes once. `--dry-run` prints what would be removed and the bytes, and removes nothing, also with `--json`. `prune --choices --json` builds the menu the skill shows, each option with the exact command that deletes it. The prune skill now runs that command as given, checks a free-text answer with `--dry-run` before deleting, and deletes only through `mr-cast prune`.
+- **`play` opens the page once the voice is ready.** A silent video left you wondering where the voice was, so `play` now voices first and opens the browser after. The terminal shows one line, "Voicing 1 of 2 scenes... (--no-voice skips the voice)", and the URL at once, and a page opened from that URL early says "Making the voice-over..." instead of playing. A 2-scene, 43-second quick video opens in about 16 seconds on a first run, and in under half a second once its clips are cached. If the voice fails, the page opens anyway and plays silent with "Voice failed, see the terminal", and the terminal says so. An edit to the storyboard keeps the open page playing its current version, with its voice and a small "Updating..." note, until the edit is voiced, then reloads it once at the same place. The muted play, the "Voice: 1 of 3 scenes" pill and "Play with voice (V)" are gone.
 
 ## 0.22.0
 
