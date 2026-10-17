@@ -7,6 +7,7 @@ import { arrayRows, cellKey, markerRow, rowKey } from './arrays.mjs';
 import { indexRange } from './steps.mjs';
 import { memberKey, resolveRef, splitMemberKey } from './targets.mjs';
 import { aType } from './words.mjs';
+import { svgOf, textOf } from './svg.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const entries = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(v) : []);
@@ -125,6 +126,27 @@ const MODELS = {
     checkValue(value, scene, key) {
       if (key.startsWith('b:')) return isText(value) ? null : 'is a badge, which must be text or a number ("" takes it off)';
       return typeof value === 'string' || isChange(value) ? null : 'must be text, or { "before": "4", "after": "3" } to strike the old value beside the new';
+    },
+    move: null,
+    moveNames: () => [],
+  },
+  svg: {
+    initial(scene) {
+      const { ids } = svgOf(scene.svg);
+      return {
+        values: Object.fromEntries([...ids].flatMap(([id, node]) => (node?.tag === 'text' ? [[`s:${id}`, textOf(node)]] : []))),
+        places: {},
+        hidden: Object.fromEntries(list(scene.hidden).flatMap((id) => (ids.has(id) ? [[`s:${id}`, true]] : []))),
+      };
+    },
+    // A step can rewrite a <text> element; the initial state holds each one's own text.
+    set: { prefixes: ['s:'], what: '<text> element', help: () => 'the id of a <text> element' },
+    show: { prefixes: ['s:'], what: 'element', help: () => 'an element id' },
+    tint: { prefixes: ['s:'], what: 'element', help: () => 'an element id', expand: (_scene, key) => [key] },
+    callout: true,
+    checkValue(value, scene, key) {
+      if (svgOf(scene.svg).ids.get(key.slice(2))?.tag !== 'text') return 'names an element that is not <text>; only text can be set';
+      return typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? null : 'must be text';
     },
     move: null,
     moveNames: () => [],
@@ -282,6 +304,7 @@ function refNamesOf(scene, prefixes) {
     ...list(scene.objects).flatMap((o) => entries(o?.fields).map(([k]) => `${o?.id}.${k}`)),
     ...(Array.isArray(scene.arrays) ? scene.arrays.map((a) => `array:${a?.name}`) : []),
     ...(scene.type === 'graph' ? list(scene.nodes).map((n) => n?.id) : []),
+    ...(scene.type === 'svg' ? svgOf(scene.svg).ids.keys() : []),
   ];
   return names.filter((ref) => oneKey(scene, ref, prefixes));
 }

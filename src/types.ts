@@ -850,6 +850,52 @@ export interface MemoryScene extends SceneBase {
   steps?: MemoryStep[];
 }
 
+export interface SvgStep extends StateStep {
+  /** New text for `<text>` elements by id, e.g. { "total": "312" }. */
+  set?: Record<string, string>;
+  /** Elements to colour from this step on, by id, e.g. { "ring1": "good" }. A group's tint colours every shape in it. */
+  tint?: Record<string, Tint>;
+}
+
+/**
+ * A drawing in SVG markup that the steps light, colour, show and hide by element id: a map, a tiling, a
+ * geometric figure, points on a plane, anything with no scene of its own.
+ *
+ * The drawing keeps `svg`, `g`, `defs`, `title`, `desc`, `rect`, `circle`, `ellipse`, `line`, `polyline`,
+ * `polygon`, `path`, `text`, `tspan`, `marker`, `linearGradient`, `radialGradient`, `stop`, `clipPath` and `use`,
+ * with their drawing attributes. `validate` fails on anything else (script, foreignObject, image, style
+ * elements and attributes, event handlers), on a `url()` or `href` that points outside the drawing, and on
+ * markup that does not parse. The viewBox is scaled to fill the stage and centred.
+ *
+ * Colours: `var(--name)` in any attribute is a palette colour (--text, --muted, --faint, --bg, --surface,
+ * --border, --accent, --good, --bad, --warn, --neutral). A class `tone-good` (or accent, bad, warn, neutral)
+ * gives a shape that tone's border and a soft fill of it, and text that tone's colour; `fill-good` and
+ * `stroke-good` set one of them solid. With no fill or stroke of its own or from a group, a rect, circle,
+ * ellipse or polygon draws in --surface with a --border edge, a line, polyline or path draws as a --muted line
+ * with no fill, and text draws in --text. Text draws in the player's sans font, or its mono with
+ * font-family="mono". A lit element glows and the rest dim; a tint gives a shape the tone's border and soft
+ * fill, and text the tone's colour; "dim" fades it.
+ */
+export interface SvgScene extends SceneBase {
+  type: 'svg';
+  title?: string;
+  /** The markup: one `<svg viewBox="...">` element. Elements that steps name carry an `id`. */
+  svg: string;
+  /** Words a step's `say` may name an element by, by id, e.g. { "car": "the car" }; an element's id and its text name it too. */
+  labels?: Record<string, string>;
+  /** Ids of elements not drawn until a step shows them. */
+  hidden?: string[];
+  /** Elements coloured from the start, by id. Steps change them with `tint`. */
+  tint?: Record<string, Tint>;
+  /** A boxed line in the top right, such as a formula. Steps replace it with `callout`. */
+  callout?: DisplayText;
+  /**
+   * Each step changes what it `set`s, `show`s, `hide`s and `tint`s at its start, then lights its focus while
+   * its `say` is spoken. A ref is an element id; a lit group lights everything in it.
+   */
+  steps?: SvgStep[];
+}
+
 export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Repository-relative path. */
   path: string;
@@ -964,7 +1010,7 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene;
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene;
 
 export interface Storyboard {
   title: string;

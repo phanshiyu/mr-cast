@@ -76,6 +76,8 @@ const SCENE_FITS: SceneFits = {
     const box = contentBox(Boolean(scene.title));
     return layoutCompare(scene, box.width, box.height);
   },
+  // A drawing's text is checked against its viewBox in bin/lib/validate-svg.mjs; nothing here wraps it.
+  svg: () => null,
   terminal: (scene) => {
     const box = contentBox(Boolean(scene.title));
     return layoutTerminal(scene, box.width, box.height);

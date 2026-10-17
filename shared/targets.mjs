@@ -4,6 +4,7 @@
 
 import { arrayRows, cellKey } from './arrays.mjs';
 import { plainText } from './markup.mjs';
+import { svgIds } from './svg.mjs';
 import { sceneFiles } from './files.mjs';
 import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
@@ -317,6 +318,10 @@ const TARGETS = {
       ...list(scene.objects).map((o) => o?.id),
       ...list(scene.objects).flatMap((o) => Object.keys(o?.fields ?? {}).map((k) => `${o?.id}.${k}`)),
     ],
+  },
+  svg: {
+    resolve: (scene, ref) => (typeof ref === 'string' && svgIds(scene.svg).includes(ref) ? [`s:${ref}`] : null),
+    names: (scene) => svgIds(scene.svg),
   },
   intent: {
     resolve: (scene, ref) => (isIndex(ref, list(scene.bullets).length) ? [`b:${ref}`] : null),

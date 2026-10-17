@@ -14,6 +14,7 @@ import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
 import { checkArray, checkGraphState, checkMemory } from './validate-state.mjs';
+import { checkSvg } from './validate-svg.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
@@ -22,7 +23,7 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -410,6 +411,10 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, 
 
       case 'memory':
         checkMemory(s, p, errors, warnings);
+        break;
+
+      case 'svg':
+        checkSvg(s, p, errors, warnings);
         break;
 
       case 'reading':

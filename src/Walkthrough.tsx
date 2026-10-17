@@ -13,6 +13,7 @@ import { GraphDiagram } from './components/GraphDiagram';
 import { IntentCard } from './components/IntentCard';
 import { LayerStack } from './components/LayerStack';
 import { MemoryDiagram } from './components/MemoryDiagram';
+import { SvgDiagram } from './components/SvgDiagram';
 import { MermaidDiagram } from './components/MermaidDiagram';
 import { ReadingList } from './components/ReadingList';
 import { ReviewRecap } from './components/ReviewRecap';
@@ -26,7 +27,7 @@ import { SAFE, colors, fonts } from './components/theme';
 import { FitText } from './components/FitText';
 import { sourceFit } from './fit/source';
 import './fonts';
-import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, IntentScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
+import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, IntentScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, SvgScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -50,6 +51,7 @@ interface SceneByType {
   layers: LayersScene;
   array: ArrayScene;
   memory: MemoryScene;
+  svg: SvgScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -73,6 +75,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   layers: LayerStack,
   array: ArrayDiagram,
   memory: MemoryDiagram,
+  svg: SvgDiagram,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {

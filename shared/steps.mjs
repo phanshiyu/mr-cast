@@ -20,6 +20,7 @@ const STEPS_OF = {
   terminal: own,
   array: own,
   memory: own,
+  svg: own,
   flow: (scene) => (Array.isArray(scene.steps) && scene.steps.some((step) => step?.say !== undefined) ? scene.steps : undefined),
 };
 

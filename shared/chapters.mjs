@@ -22,6 +22,7 @@ export const DEFAULT_CHAPTERS = {
   layers: 'Layers',
   array: 'Step by step',
   memory: 'Memory',
+  svg: 'Drawing',
 };
 
 export function sceneChapter(scene) {
