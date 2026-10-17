@@ -35,4 +35,4 @@ A `focus` is a message index, an `"a-b"` range of messages, or a participant id;
 
 `{{MR_CAST}}/bin/mr-cast schema sequence` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/sequence/storyboard.json`.
+A whole demo: `{{MR_CAST}}/examples/primitives/sequence/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/oauth/storyboard.json` (scene 5, the redirect and the code).

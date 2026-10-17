@@ -32,4 +32,4 @@ Variables and fields are drawn in the order written, a name such as `"2"` includ
 
 `{{MR_CAST}}/bin/mr-cast schema memory` prints its fields.
 
-`callout` is a boxed line at the right of the header, such as the line of code that runs; a step's `callout` replaces it from that step on, and `""` removes it. The callout box is as wide as its longest text; beside it, a title too long for one line wraps onto a second. A whole demo: `{{MR_CAST}}/examples/primitives/memory/storyboard.json`.
+`callout` is a boxed line at the right of the header, such as the line of code that runs; a step's `callout` replaces it from that step on, and `""` removes it. The callout box is as wide as its longest text; beside it, a title too long for one line wraps onto a second. A whole demo: `{{MR_CAST}}/examples/primitives/memory/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 9, two trees pointing at each other); `{{MR_CAST}}/examples/algorithms/hash-table/storyboard.json` (scene 3, chained buckets).

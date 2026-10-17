@@ -25,4 +25,4 @@ Each step names its `lines` (or `oldLines` for removed code) and its `say`; with
 
 `{{MR_CAST}}/bin/mr-cast schema code` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/code/storyboard.json`.
+A whole demo: `{{MR_CAST}}/examples/primitives/code/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/algorithms/quicksort/storyboard.json` (scene 3, the partition in Java).

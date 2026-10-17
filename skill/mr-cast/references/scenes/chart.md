@@ -32,4 +32,4 @@ A bar or line chart of real numbers, with a change badge on each label when ther
 
 `{{MR_CAST}}/bin/mr-cast schema chart` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/chart/storyboard.json`.
+A whole demo: `{{MR_CAST}}/examples/primitives/chart/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/algorithms/binary-search/storyboard.json` (scene 5, steps by list size); `{{MR_CAST}}/examples/explain/gpt/storyboard.json` (scene 8, one set of scores at three temperatures).
