@@ -51,6 +51,7 @@ test('an unflagged finding is warned about, and a flag says whatever its words s
   const unflagged = await warningsOf(board({ scenes: [code({}), { type: 'review', narration: 'Recap.' }] }));
   assert.ok(unflagged.includes('findings: "reuse" (src/reset.js:2) is flagged on no code step, so the video draws it only in the review scene; set "flag": "reuse" on a step that shows its line to mark it there'));
   assert.deepEqual(await warningsOf(board({ scenes: [code({ flag: 'reuse', say: 'The delete uses the user id.' }), { type: 'review', narration: 'Recap.' }] })), []);
+  assert.ok((await warningsOf(board({ scenes: [code({})] }))).includes('findings: "reuse" (src/reset.js:2) is flagged on no code step, so it is drawn nowhere in the video, only in review.md; set "flag": "reuse" on a step that shows its line to mark it there'));
 });
 
 test('a flagged step draws a circle with the claim unless it names its own mark and note', () => {

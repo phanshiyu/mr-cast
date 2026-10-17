@@ -67,8 +67,9 @@ function checkFlags(sb, hunks, byId, errors, warnings) {
       }
     });
   });
+  const drawn = sb.scenes.some((s) => s?.type === 'review') ? 'the video draws it only in the review scene' : 'it is drawn nowhere in the video, only in review.md';
   for (const [id, f] of byId) {
-    if (!flagged.has(id)) warnings.push(`findings: "${id}" (${findingLocation(f)}) is flagged on no code step, so the video draws it only in the review scene; set "flag": "${id}" on a step that shows its line to mark it there`);
+    if (!flagged.has(id)) warnings.push(`findings: "${id}" (${findingLocation(f)}) is flagged on no code step, so ${drawn}; set "flag": "${id}" on a step that shows its line to mark it there`);
   }
 }
 
