@@ -6,11 +6,11 @@ Call frames with their variables on the left, objects on the right, and an arrow
 
 - The idea is about references and copies: "the order kept the cart's own list, so editing the cart changed the order".
 - Two arrows into one box show sharing at a glance, and setting a reference re-routes its arrow, so a fix is seen.
-- The point is a map that points into a list, as in an LRU cache.
 
 ## Adds load when
 
 - It is one list and its indexes. Use [array](array.md).
+- It is a data structure's shape, such as a hash map that points into a linked list. Every pointer is an arrow, and the arrows cross. Use a [graph](graph.md) with the list nodes in a group.
 - The data changes shape as it passes between functions. Use [flow](flow.md).
 - More than 4 frames or 6 objects.
 
