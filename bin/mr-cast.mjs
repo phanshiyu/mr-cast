@@ -36,7 +36,7 @@ const USAGE = `usage: mr-cast <command> [options]
 In Claude Code, type /mr-cast or ask for "a video of this branch" or "animate that". The skill runs the
 commands under "Used by the Claude Code skills" for you.
 
-  install-skill     install the mr-cast, mr-cast-prune and mr-cast-upgrade skills into ~/.claude
+  install-skill     install the mr-cast skills into ~/.claude
                     (or $CLAUDE_CONFIG_DIR), and remove what earlier versions installed there
   uninstall-skill   remove every skill mr-cast installed
   upgrade [--check] update mr-cast from npm, then its skills; --check only reports the versions

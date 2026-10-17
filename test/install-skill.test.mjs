@@ -15,6 +15,8 @@ const EXPECTED = [
   'skills/mr-cast/references/branch.md',
   'skills/mr-cast/references/explanation.md',
   'skills/mr-cast/references/review.md',
+  'skills/mr-cast-primitives/SKILL.md',
+  ...['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'intent', 'layers', 'memory', 'mermaid', 'reading', 'review', 'sequence', 'state', 'table', 'terminal', 'tests', 'timeline'].map((t) => `skills/mr-cast-primitives/primitives/${t}.md`),
   'skills/mr-cast-prune/SKILL.md',
   'skills/mr-cast-upgrade/SKILL.md',
 ];
@@ -51,6 +53,28 @@ test('installed skills point at this package and carry the storyboard schema', (
   assert.ok(skill.includes('| `compare` | Before vs after | `compare` |'), 'the plan views table is filled from shared/views.mjs');
   assert.equal(skillsInstalledFrom(root, dir), true);
   assert.equal(skillsInstalledFrom(root, freshDir()), false);
+});
+
+test('the primitives index and its leaves are installed with the CLI path filled in, and the main skill points at it', () => {
+  const dir = freshDir();
+  installSkill(root, dir);
+  const index = fs.readFileSync(path.join(dir, 'skills/mr-cast-primitives/SKILL.md'), 'utf8');
+  assert.match(index, /^---\nname: mr-cast-primitives\n[\s\S]*\nuser-invocable: false\n---\n/);
+  const leaf = fs.readFileSync(path.join(dir, 'skills/mr-cast-primitives/primitives/array.md'), 'utf8');
+  assert.equal(leaf.includes('{{MR_CAST}}'), false);
+  assert.ok(leaf.includes(`${root}/bin/mr-cast validate`));
+  const main = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
+  assert.ok(main.includes('Unsure which primitive? Read the [mr-cast-primitives index](../mr-cast-primitives/SKILL.md)'));
+  assert.ok(fs.existsSync(path.join(dir, 'skills/mr-cast', '../mr-cast-primitives/SKILL.md')), 'the link from the main skill resolves');
+});
+
+test('a dotfile in a skill folder is not installed', () => {
+  const copy = fs.mkdtempSync(path.join(tmp, 'root-'));
+  for (const f of ['package.json', 'src', 'skill']) fs.cpSync(path.join(root, f), path.join(copy, f), { recursive: true });
+  fs.writeFileSync(path.join(copy, 'skill/mr-cast-primitives/.DS_Store'), 'x');
+  const dir = freshDir();
+  installSkill(copy, dir);
+  assert.deepEqual(manifestOf(dir).files, EXPECTED);
 });
 
 test('reinstall removes a file the manifest recorded that this version no longer writes', () => {
