@@ -56,12 +56,19 @@ function measure(p) {
   return { bytes, modified };
 }
 
+/** When `p` was last changed, or 0 when it is gone. */
+const mtimeOf = (p) => {
+  try { return fs.lstatSync(p).mtimeMs; } catch { return 0; }
+};
+
 function artifact({ id, kind, parent = null, at, remove, label, detail, busy = null, lock = null }) {
   const sizes = remove.map(measure);
+  // With no file inside, an artifact is as old as its directory, not as old as 1970.
+  const newest = Math.max(0, ...sizes.map((s) => s.modified));
   return {
     id, kind, parent, path: at, label, detail, busy, remove, lock,
     bytes: sizes.reduce((n, s) => n + s.bytes, 0),
-    modified: Math.max(0, ...sizes.map((s) => s.modified)),
+    modified: newest || mtimeOf(at),
   };
 }
 

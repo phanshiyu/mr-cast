@@ -79,6 +79,14 @@ test('deleting a part leaves its walkthrough as old as its newest file, not its 
   assert.deepEqual(ids(select(list(), selector({ kinds: ['run', 'explain'], olderThanDays: 30 }), { now: Date.now() }).chosen), ['run:rate-limit']);
 });
 
+test('an empty walkthrough directory is as old as the directory, not as old as 1970', () => {
+  const { data, list } = fixture();
+  fs.mkdirSync(path.join(data, 'empty'));
+  const empty = list().find((a) => a.path === path.join(data, 'empty'));
+  assert.ok(empty, 'listed');
+  assert.ok(Date.now() - empty.modified < DAY, `modified ${new Date(empty.modified).toISOString()}`);
+});
+
 test('--except keeps a walkthrough with its parts, and keeps the walkthrough holding an excepted part', () => {
   const { list } = fixture();
   assert.deepEqual(ids(select(list(), selector({ all: true, except: ['run:rate-limit'] }), { now: NOW }).chosen), ['run:retry', 'video:retry/retry-backoff.mp4', 'cache:bundle', 'cache:models']);
