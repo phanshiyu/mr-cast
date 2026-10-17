@@ -27,6 +27,8 @@ const MAX_SCALE = 1.3;
 const PAD = 40;
 const LOOP_LIFT = 90;
 const LANE_MARGIN = 14;
+/** Least room between a skip edge's lane and the edge of the graph. */
+const LANE_EDGE = 8;
 /** Room around a group's nodes inside its box, and the strip its name sits in. */
 export const GROUP_PAD = 26;
 export const GROUP_HEAD = 44;
@@ -102,16 +104,17 @@ interface Axes {
   uPad: number;
   /** Characters per label line: left to right a label sits in a column gap, top to bottom in a row gap, where width is free. */
   labelChars: number;
-  /** A label's extent along u, from its width and height. */
+  /** A label's extent along u and along v, from its width and height. */
   labelU: (box: { width: number; height: number }) => number;
+  labelV: (box: { width: number; height: number }) => number;
   xy: (u: number, v: number) => Pt;
 }
 
 /** Top to bottom the frame is short for its layers, so the layers keep less margin there. */
 function axesFor(direction: GraphDirection, nodeW: number, cellH: number): Axes {
   return direction === 'LR'
-    ? { V: cellH, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, xy: (u, v) => ({ x: u, y: v }) }
-    : { V: nodeW, uGap: 48, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, xy: (u, v) => ({ x: v, y: u }) };
+    ? { V: cellH, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, labelV: (b) => b.height, xy: (u, v) => ({ x: u, y: v }) }
+    : { V: nodeW, uGap: 48, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, labelV: (b) => b.width, xy: (u, v) => ({ x: v, y: u }) };
 }
 
 export interface Pt {
@@ -325,35 +328,50 @@ function tAtU(u0: number, u3: number, u: number): number {
   return (lo + hi) / 2;
 }
 
+/** How many lanes out from the nodes a skip edge may go on either side before it gives up and shares. */
+const LANE_RANKS = 5;
+
 /**
- * Edges that skip layers would run underneath the nodes in between; route those through a lane just
- * before or after the in-between nodes along v instead. Points here are (u, v) in `x` and `y`.
+ * Edges that skip layers would run underneath the nodes in between; each such edge routes along v through
+ * a lane just before or after those nodes instead. A lane holds one edge over any stretch of u, so where
+ * two edges' runs overlap the second takes the lane on the other side, then one `step` further out, and so
+ * on, never a lane that crosses a node. Returns a lane v per edge, or null for an edge that runs clear.
+ * Points here are (u, v) in `x` and `y`.
  */
-function skipLane(axes: Axes, a: Placed, b: Placed, all: readonly Placed[]): number | null {
+function skipLanes(axes: Axes, pairs: readonly [Placed, Placed][], all: readonly Placed[], step: number): (number | null)[] {
   const { V, vGap } = axes;
-  const between = all.filter((n) => n.layer > a.layer && n.layer < b.layer);
-  if (!between.length) return null;
-  const v0 = a.v + V / 2;
-  const v1 = b.v + V / 2;
-  const blocked = between.some((n) => {
-    const t = (n.u + n.uSize / 2 - (a.u + a.uSize)) / (b.u - (a.u + a.uSize));
-    const v = v0 + (v1 - v0) * t;
-    return v > n.v - LANE_MARGIN && v < n.v + V + LANE_MARGIN;
+  const taken: { v: number; u0: number; u1: number }[] = [];
+  return pairs.map(([a, b]) => {
+    const between = all.filter((n) => n.layer > a.layer && n.layer < b.layer);
+    if (!between.length) return null;
+    const [u0, u1] = [a.u + a.uSize, b.u];
+    const v0 = a.v + V / 2;
+    const v1 = b.v + V / 2;
+    const blocked = between.some((n) => {
+      const t = (n.u + n.uSize / 2 - u0) / (u1 - u0);
+      const v = v0 + (v1 - v0) * t;
+      return v > n.v - LANE_MARGIN && v < n.v + V + LANE_MARGIN;
+    });
+    if (!blocked) return null;
+    const before = Math.min(...between.map((n) => n.v)) - vGap / 2;
+    const after = Math.max(...between.map((n) => n.v + V)) + vGap / 2;
+    const mid = (v0 + v1) / 2;
+    const sides: [number, number][] = Math.abs(mid - before) <= Math.abs(mid - after) ? [[before, -1], [after, 1]] : [[after, 1], [before, -1]];
+    const crossesNode = (v: number) => all.some((n) => n.u < u1 && n.u + n.uSize > u0 && v > n.v - LANE_MARGIN && v < n.v + V + LANE_MARGIN);
+    const sharesLane = (v: number) => taken.some((t) => Math.abs(t.v - v) < 1 && t.u0 < u1 && u0 < t.u1);
+    const candidates = Array.from({ length: LANE_RANKS }, (_, k) => sides.map(([v, out]) => v + out * k * step)).flat();
+    const v = candidates.find((c) => !crossesNode(c) && !sharesLane(c)) ?? sides[0]![0];
+    taken.push({ v, u0, u1 });
+    return v;
   });
-  if (!blocked) return null;
-  const before = Math.min(...between.map((n) => n.v)) - vGap / 2;
-  const after = Math.max(...between.map((n) => n.v + V)) + vGap / 2;
-  const mid = (v0 + v1) / 2;
-  return Math.abs(mid - before) <= Math.abs(mid - after) ? before : after;
 }
 
-/** `labelU` is where along u a label between neighbouring layers sits best. */
-function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: readonly Placed[], labelU: number): Curve {
+/** `lane` is the v a skipping edge runs along, or null to run straight; `labelU` is where along u a label between neighbouring layers sits best. */
+function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: readonly Placed[], lane: number | null, labelU: number): Curve {
   const { V, xy } = axes;
   if (b.layer > a.layer) {
     const p0 = { x: a.u + a.uSize - a.iu, y: a.v + V / 2 };
     const p3 = { x: b.u + b.iu, y: b.v + V / 2 };
-    const lane = skipLane(axes, a, b, all);
     if (lane !== null) {
       const g0 = gaps[a.layer]! / 2;
       const g1 = gaps[b.layer - 1]! / 2;
@@ -545,6 +563,19 @@ function layoutPass(
       });
     });
   });
+  const all = [...placed.values()];
+
+  // Lanes are a label's extent apart, so stacked lanes' labels never touch, and the graph grows along v to hold the outermost.
+  const ends = valid.map((e): [Placed, Placed] => [placed.get(e.from)!, placed.get(e.to)!]);
+  const skipping = valid.flatMap((e, i) => (ends[i]![1].layer > ends[i]![0].layer + 1 && sizes.has(e) ? [axes.labelV(sizes.get(e)!)] : []));
+  const isLane = (v: number | null): v is number => v !== null;
+  const raw = skipLanes(axes, ends, all, Math.max(vGap / 2, ...skipping) + 2 * LABEL_CLEAR);
+  const shift = Math.max(0, LANE_EDGE - Math.min(...raw.filter(isLane)));
+  const lanes = raw.map((v) => (v === null ? null : v + shift));
+  const laneVs = lanes.filter(isLane);
+  for (const p of all) p.v += shift;
+  for (const band of bands) band.v0 += shift;
+  cursor += shift;
 
   const groups = named.map((band): PlacedGroup => {
     const { first, last } = band;
@@ -558,7 +589,6 @@ function layoutPass(
     return { name: band.name!, ...box, layer: first, nameAt: direction === 'TB' && enterBefore ? 'right' : 'left', label };
   });
 
-  const all = [...placed.values()];
   /** A node's shape in layout units. */
   const shapeBox = (p: Placed) => {
     const size = xy(p.uSize - 2 * p.iu, V - 2 * p.iv);
@@ -569,9 +599,9 @@ function layoutPass(
     ...groups.flatMap(groupObstacles),
   ];
   const crowded = new Map<number, number>();
-  const curves = valid.map((e) => {
-    const [a, b] = [placed.get(e.from)!, placed.get(e.to)!];
-    return route(axes, gaps, a, b, all, labelU(Math.min(a.layer, b.layer)));
+  const curves = valid.map((_, i) => {
+    const [a, b] = ends[i]!;
+    return route(axes, gaps, a, b, all, lanes[i]!, labelU(Math.min(a.layer, b.layer)));
   });
   const others = (i: number) => curves.flatMap((c, j) => (j === i ? [] : c.points));
   // Labels with the fewest clear spots go first, so a label that could sit anywhere along its edge
@@ -595,7 +625,7 @@ function layoutPass(
 
   const hasSameLayer = valid.some((e) => layer(e.to) === layer(e.from));
   const uSize = uOf(layerCount - 1) + uSizes[layerCount - 1]! + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
-  const vSize = cursor + PAD;
+  const vSize = Math.max(cursor + PAD, Math.max(...laneVs) + LANE_EDGE);
   const size = xy(uSize, vSize);
   const layout = {
     nodes: nodes.map((n) => {
