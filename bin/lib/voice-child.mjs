@@ -18,13 +18,15 @@ export function stopVoicing() {
 
 /**
  * ensureVoiceover's arguments and result, with its work and its progress events in a child process. Null when
- * stopVoicing stopped it, or had already.
+ * `signal` aborted it or stopVoicing stopped it, or had already.
  */
-export function ensureVoiceoverInChild({ onProgress, ...args }) {
+export function ensureVoiceoverInChild({ onProgress, signal, ...args }) {
   return new Promise((resolve, reject) => {
-    if (stopping) return resolve(null);
+    if (stopping || signal?.aborted) return resolve(null);
     const child = fork(fileURLToPath(import.meta.url), ['--voice-child'], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
     children.add(child);
+    const abort = () => child.kill('SIGKILL');
+    signal?.addEventListener('abort', abort, { once: true });
     child.on('message', (msg) => {
       if (msg.type === 'progress') onProgress?.(msg.event);
       else if (msg.type === 'done') resolve(msg.voiceover);
@@ -32,10 +34,11 @@ export function ensureVoiceoverInChild({ onProgress, ...args }) {
     });
     child.on('error', reject);
     // 'close', not 'exit': a large result can still be arriving when the child exits.
-    child.on('close', (code, signal) => {
+    child.on('close', (code, killedBy) => {
       children.delete(child);
-      if (stopping) resolve(null);
-      reject(new Error(`the voice process stopped (${signal ?? `exit ${code}`})`));
+      signal?.removeEventListener('abort', abort);
+      if (stopping || signal?.aborted) resolve(null);
+      reject(new Error(`the voice process stopped (${killedBy ?? `exit ${code}`})`));
     });
     child.send({ type: 'start', args });
   });

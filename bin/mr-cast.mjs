@@ -432,7 +432,10 @@ const voicedCount = (storyboard, voiceover) => {
   return `${done} of ${plural(total, 'line')}`;
 };
 
-/** One terminal line that says how far the voicing is, rewritten in place on a terminal. */
+/**
+ * One terminal line that says how far the voicing is, rewritten in place on a terminal. `log` prints a line above it,
+ * so other output does not land in the middle of it.
+ */
 function voicingLine(storyboard, voiced) {
   const tty = process.stderr.isTTY;
   const text = (voiceover) => `Voicing ${voicedCount(storyboard, voiceover)}... (--no-voice skips the voice)`;
@@ -449,16 +452,20 @@ function voicingLine(storyboard, voiced) {
     if (open) process.stderr.write('\n');
     open = false;
   };
+  const log = (print) => {
+    end();
+    print();
+    const again = last;
+    last = '';
+    show(again);
+  };
   show(text(voiced));
   return {
     onProgress(event) {
       if (event.type === 'clip') return show(text(event.voiceover));
-      end();
-      reportVoiceProgress(event);
-      const again = last;
-      last = '';
-      show(again);
+      log(() => reportVoiceProgress(event));
     },
+    log: (msg) => log(() => console.error(msg)),
     end,
   };
 }
@@ -479,14 +486,22 @@ async function play(argv) {
   const distDir = ensureDist();
 
   let server = null;
+  let stopped = false;
+  // The voicing line on screen, which the other output of play prints above.
+  let line = null;
+  const log = (msg) => (line ? line.log(msg) : console.error(msg));
   const serving = await createServing({
     raw,
     storyboard,
     now: (sb) => voiceNow(dir, sb, settings),
-    voice: async (sb, voiced) => {
-      const line = voicingLine(sb, voiced);
-      const ensure = (args) => ensureVoiceoverInChild(args).finally(line.end);
-      const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: line.onProgress, ensure, markFailed: true });
+    voice: async (sb, voiced, signal) => {
+      const own = voicingLine(sb, voiced);
+      line = own;
+      const ensure = (args) => ensureVoiceoverInChild({ ...args, signal }).finally(() => {
+        own.end();
+        if (line === own) line = null;
+      });
+      const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: own.onProgress, ensure, markFailed: true });
       if (voiceover?.failed) console.error('mr-cast: voicing failed; the player plays silent with subtitles');
       else if (voiceover) console.error(`voice ready: ${voicedCount(sb, voiceover)}`);
       return voiceover;
@@ -494,26 +509,26 @@ async function play(argv) {
     reload: () => server?.reload(),
   });
 
+  // An edit still being voiced reloads the page once it is voiced, with every change made meanwhile: the server asks
+  // serving.holding() after each batch.
   const onDataChange = async (file) => {
-    // An edit still being voiced reloads the page once it is voiced, with every change made meanwhile.
-    const unchanged = serving.holding() ? 'hold' : undefined;
-    if (file === 'meta.json' || file === BUILT_FILE) return unchanged;
+    if (file === 'meta.json' || file === BUILT_FILE) return;
     let project;
     try {
       project = await loadProject(dir, settings);
     } catch (err) {
-      console.error(`mr-cast: ${file} changed · ${err.message}`);
-      return unchanged;
+      log(`mr-cast: ${file} changed · ${err.message}`);
+      return;
     }
-    console.error(`mr-cast: ${file} changed`);
-    for (const line of project.lines) console.error(`  ${line}`);
-    if (file !== 'storyboard.json' || project.result.errors.length) return unchanged;
-    return serving.edit(project.raw, project.storyboard);
+    log(`mr-cast: ${file} changed`);
+    for (const l of project.lines) log(`  ${l}`);
+    if (file !== 'storyboard.json' || project.result.errors.length) return;
+    await serving.edit(project.raw, project.storyboard);
   };
 
   reportPace(serving.voiceover());
   server = await startServer({
-    distDir, dataDir: dir, port, onDataChange, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard, audience: settings.audience,
+    distDir, dataDir: dir, port, onDataChange, holding: serving.holding, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard, audience: settings.audience,
   });
   const url = `${server.url}/#token=${server.token}`;
   console.log(`mr-cast player: ${url}`);
@@ -521,6 +536,7 @@ async function play(argv) {
   // Once Kokoro has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
   const shutdown = () => {
+    stopped = true;
     stopVoicing();
     return server.close();
   };
@@ -529,7 +545,7 @@ async function play(argv) {
 
   serving.start();
   await serving.ready;
-  if (!values['no-open']) openBrowser(url);
+  if (!stopped && !values['no-open']) openBrowser(url);
 }
 
 /** plan.json's problems as lines, and a summary line when it has no errors. */

@@ -110,8 +110,8 @@ function listen(server, port) {
 
 /**
  * Serve the player from `distDir` and live data from `dataDir`.
- * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload. When it
- * returns 'hold' for any file of the batch, clients are told only that an update is coming, and the caller reloads
+ * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload. When
+ * `holding()` is true once the batch is done, clients are told only that an update is coming, and the caller reloads
  * them later with `reload()`.
  * `getVoiceover()` is the voiceover the player should use, or null for silent scenes. `getStoryboard()`, when given,
  * is the storyboard served in place of the file on disk, so the caller can keep it paired with its voiceover.
@@ -119,7 +119,7 @@ function listen(server, port) {
  * --audience, served as settings.json so the plan page can word its depths for a pre-read.
  * The plan page changes plan.json through POST /plan/choice, with the returned `token` in TOKEN_HEADER.
  */
-export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover, getStoryboard, audience = 'familiar' }) {
+export async function startServer({ distDir, dataDir, port, onDataChange, holding, getVoiceover, getStoryboard, audience = 'familiar' }) {
   const root = path.resolve(distDir);
   const token = randomBytes(16).toString('hex');
   const tokenBytes = Buffer.from(token);
@@ -206,15 +206,15 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
       const changed = [...pending];
       pending.clear();
       handling = handling.then(async () => {
-        let hold = false;
         for (const f of changed) {
           try {
-            if (await onDataChange?.(f) === 'hold') hold = true;
+            await onDataChange?.(f);
           } catch (err) {
             console.error(`mr-cast: ${f} changed · ${err.message}`);
           }
         }
-        broadcast(hold ? 'event: updating\ndata: updating\n\n' : 'event: change\ndata: change\n\n');
+        // Asked only now: a voicing can finish, or be superseded, while the batch is handled.
+        broadcast(holding?.() ? 'event: updating\ndata: updating\n\n' : 'event: change\ndata: change\n\n');
       });
     }, DEBOUNCE_MS);
   });

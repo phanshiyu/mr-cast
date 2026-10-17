@@ -28,6 +28,13 @@ test('a voice-over of 600 clips, far past one IPC write, comes back whole from t
   assert.equal(Object.keys(voiceover.clips).length, 600);
 });
 
+test('an aborted voicing stops its child and returns null', async () => {
+  const ctl = new AbortController();
+  const voicing = ensureVoiceoverInChild({ ...voicedRun(600), signal: ctl.signal });
+  ctl.abort();
+  assert.equal(await voicing, null);
+});
+
 test('after stopVoicing, a later voicing starts no child and returns null', async () => {
   stopVoicing();
   const started = Date.now();
