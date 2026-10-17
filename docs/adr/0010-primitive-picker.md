@@ -1,6 +1,6 @@
 # 10. A primitive picker: one hidden skill, an index by kind of idea, one file per scene
 
-- Status: Accepted
+- Status: Superseded by 0016 (the picker's place); its index and scene files stay
 - Date: 2026-10-17
 
 ## Context

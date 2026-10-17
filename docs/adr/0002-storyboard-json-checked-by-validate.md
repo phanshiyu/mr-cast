@@ -1,6 +1,6 @@
 # 2. The storyboard is JSON written by the agent and checked by `mr-cast validate`
 
-- Status: Accepted
+- Status: Accepted; how the skill gets the schema is superseded by 0015 (`mr-cast schema`)
 - Date: 2026-10-15
 
 ## Context

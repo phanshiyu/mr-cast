@@ -1,6 +1,6 @@
 # 15. Restructure the skill: schema out, branches into references, checks into the CLI
 
-- Status: Proposed
+- Status: Accepted (as built in 0.24.0; see As built)
 - Date: 2026-10-17
 
 ## Context
@@ -37,3 +37,19 @@ Bad:
 
 - Trim prose in place: does not fix the schema's size or its middle position in the file.
 - `context: fork` for the whole skill: the explanation source needs the conversation, which a fork does not see.
+
+## As built (0.24.0)
+
+- The schema is a command, `mr-cast schema [type]`, which prints a scene's doc-commented type and every type it uses
+  from `src/types.ts`; `install-skill` no longer fills a schema into SKILL.md. Generated leaves were not needed.
+- SKILL.md holds the seven steps, the mode table and the commands, about 3,400 tokens, so all of it survives a
+  compaction. Every reference is linked from it with its step or condition: questions, plan, article, reader-test,
+  adapt (the scene picker), voice, one per audience, quick, branch, explanation, review, highlight-audit, and
+  `scenes/<type>.md` (ADR 16).
+- Duplicated rules and prose that restated `validate` were cut; the four contradictions in skills.md were fixed (a
+  follow-up "save it" is row 0 of the mode table; the reading scene is required for the branch and optional for an
+  explanation; the bare "It" rule points at `validate`; "include it" applies only to the reviewer and the new reader).
+- The PostToolUse hook is built (ADR 18). Tests fail when the installed SKILL.md passes 500 lines or about 5,000 tokens,
+  when a reference is not linked from SKILL.md or a link does not resolve, and when `schema` misses a type.
+- Not done: question payloads from `status`, a scaffold that writes skip reasons from plan picks, and a trigger test
+  set for the description.
