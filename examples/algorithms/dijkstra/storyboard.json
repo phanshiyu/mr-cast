@@ -1,0 +1,810 @@
+{
+  "title": "Dijkstra's shortest path",
+  "subtitle": "Pick the cheapest place, then look for shortcuts",
+  "scenes": [
+    {
+      "type": "graph",
+      "layout": "TB",
+      "chapter": "The map",
+      "narration": "Say you want the cheapest way to get from S to E. Each arrow is a one way road, and its number is what that road costs.",
+      "callout": "cheapest S → E?",
+      "nodes": [
+        {
+          "id": "S",
+          "label": "S",
+          "shape": "terminal",
+          "badge": "0"
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "spacer",
+          "label": "spacer",
+          "shape": "terminal",
+          "hidden": true
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "shape": "terminal",
+          "badge": "∞"
+        }
+      ],
+      "edges": [
+        {
+          "from": "S",
+          "to": "A",
+          "label": "4"
+        },
+        {
+          "from": "S",
+          "to": "B",
+          "label": "2"
+        },
+        {
+          "from": "B",
+          "to": "A",
+          "label": "1"
+        },
+        {
+          "from": "B",
+          "to": "C",
+          "label": "5"
+        },
+        {
+          "from": "A",
+          "to": "C",
+          "label": "2"
+        },
+        {
+          "from": "A",
+          "to": "E",
+          "label": "6"
+        },
+        {
+          "from": "C",
+          "to": "E",
+          "label": "1"
+        },
+        {
+          "from": "A",
+          "to": "spacer",
+          "hidden": true
+        }
+      ],
+      "table": {
+        "columns": [
+          "Node",
+          "Distance",
+          "Previous",
+          "Visited"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "S",
+              "0",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "A",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "B",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "C",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "E",
+              "∞",
+              "–",
+              "No"
+            ]
+          }
+        ]
+      },
+      "steps": [
+        {
+          "focus": [
+            "S",
+            "E"
+          ],
+          "say": "S is where we start, and E is where we want to end up."
+        },
+        {
+          "focus": [
+            "S->A",
+            "A->E"
+          ],
+          "say": "One way is S to A, then A to E. That costs four plus six, which is ten.",
+          "callout": "S → A → E: 4 + 6 = 10"
+        },
+        {
+          "focus": [
+            "S->B",
+            "B->C",
+            "C->E"
+          ],
+          "say": "Another is S to B, B to C, then C to E. That costs two plus five plus one, which is eight.",
+          "callout": "S → B → C → E: 2 + 5 + 1 = 8"
+        },
+        {
+          "focus": [
+            "S",
+            "A",
+            "B",
+            "C",
+            "E"
+          ],
+          "say": "Checking every route works on five places. On a real road map with millions of crossings, there are far too many routes to try.",
+          "callout": ""
+        },
+        {
+          "focus": [
+            "Distance@S",
+            "Distance@A",
+            "Distance@B",
+            "Distance@C",
+            "Distance@E",
+            "Previous@S",
+            "Previous@A",
+            "Previous@B",
+            "Previous@C",
+            "Previous@E",
+            "Visited@S",
+            "Visited@A",
+            "Visited@B",
+            "Visited@C",
+            "Visited@E"
+          ],
+          "say": "Dijkstra's method keeps a table instead. For each place it notes the cheapest cost found so far, the place you came from, and whether that cost is settled."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "layout": "TB",
+      "chapter": "The first pick",
+      "narration": "Start S at zero, since it costs nothing to stay put. Every other place starts at infinity, because we have no route to it yet.",
+      "callout": "pick the smallest unvisited",
+      "nodes": [
+        {
+          "id": "S",
+          "label": "S",
+          "shape": "terminal",
+          "badge": "0"
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "spacer",
+          "label": "spacer",
+          "shape": "terminal",
+          "hidden": true
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "shape": "terminal",
+          "badge": "∞"
+        }
+      ],
+      "edges": [
+        {
+          "from": "S",
+          "to": "A",
+          "label": "4"
+        },
+        {
+          "from": "S",
+          "to": "B",
+          "label": "2"
+        },
+        {
+          "from": "B",
+          "to": "A",
+          "label": "1"
+        },
+        {
+          "from": "B",
+          "to": "C",
+          "label": "5"
+        },
+        {
+          "from": "A",
+          "to": "C",
+          "label": "2"
+        },
+        {
+          "from": "A",
+          "to": "E",
+          "label": "6"
+        },
+        {
+          "from": "C",
+          "to": "E",
+          "label": "1"
+        },
+        {
+          "from": "A",
+          "to": "spacer",
+          "hidden": true
+        }
+      ],
+      "table": {
+        "columns": [
+          "Node",
+          "Distance",
+          "Previous",
+          "Visited"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "S",
+              "0",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "A",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "B",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "C",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "E",
+              "∞",
+              "–",
+              "No"
+            ]
+          }
+        ]
+      },
+      "steps": [
+        {
+          "tint": {
+            "S": "warn"
+          },
+          "set": {
+            "Visited@S": "Yes"
+          },
+          "focus": [
+            "S",
+            "row:S"
+          ],
+          "say": "S is the smallest, so we visit it first, and its zero is final."
+        },
+        {
+          "set": {
+            "A": "4",
+            "Distance@A": "4",
+            "Previous@A": "S"
+          },
+          "callout": "0 + 4 = 4",
+          "say": "From S, the road to A costs four. So A drops from infinity to four, and we note that it came from S."
+        },
+        {
+          "set": {
+            "B": "2",
+            "Distance@B": "2",
+            "Previous@B": "S"
+          },
+          "callout": "0 + 2 = 2",
+          "say": "The road to B costs two. So B is two, also from S."
+        },
+        {
+          "focus": [
+            "row:A",
+            "row:B",
+            "row:C",
+            "row:E"
+          ],
+          "callout": "unvisited: A 4, B 2, C ∞, E ∞",
+          "say": "Now the greedy rule. Of the places not yet visited, pick the one with the smallest cost."
+        },
+        {
+          "tint": {
+            "B": "warn"
+          },
+          "set": {
+            "Visited@B": "Yes"
+          },
+          "callout": "[B = 2 is final]{good}",
+          "say": "That is B, at two. No road costs less than nothing, so no other way can reach B for less than two. Its cost is settled."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "layout": "TB",
+      "chapter": "Finding a shortcut",
+      "narration": "Now we look at the roads leaving B.",
+      "callout": "if d(u) + w(u, v) < d(v), then d(v) = d(u) + w(u, v)",
+      "nodes": [
+        {
+          "id": "S",
+          "label": "S",
+          "shape": "terminal",
+          "badge": "0"
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "shape": "terminal",
+          "badge": "4"
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "shape": "terminal",
+          "badge": "2"
+        },
+        {
+          "id": "spacer",
+          "label": "spacer",
+          "shape": "terminal",
+          "hidden": true
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "shape": "terminal",
+          "badge": "∞"
+        }
+      ],
+      "edges": [
+        {
+          "from": "S",
+          "to": "A",
+          "label": "4"
+        },
+        {
+          "from": "S",
+          "to": "B",
+          "label": "2"
+        },
+        {
+          "from": "B",
+          "to": "A",
+          "label": "1"
+        },
+        {
+          "from": "B",
+          "to": "C",
+          "label": "5"
+        },
+        {
+          "from": "A",
+          "to": "C",
+          "label": "2"
+        },
+        {
+          "from": "A",
+          "to": "E",
+          "label": "6"
+        },
+        {
+          "from": "C",
+          "to": "E",
+          "label": "1"
+        },
+        {
+          "from": "A",
+          "to": "spacer",
+          "hidden": true
+        }
+      ],
+      "table": {
+        "columns": [
+          "Node",
+          "Distance",
+          "Previous",
+          "Visited"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "S",
+              "0",
+              "–",
+              "Yes"
+            ]
+          },
+          {
+            "cells": [
+              "A",
+              "4",
+              "S",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "B",
+              "2",
+              "S",
+              "Yes"
+            ]
+          },
+          {
+            "cells": [
+              "C",
+              "∞",
+              "–",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "E",
+              "∞",
+              "–",
+              "No"
+            ]
+          }
+        ]
+      },
+      "tint": {
+        "S": "warn",
+        "B": "warn"
+      },
+      "steps": [
+        {
+          "focus": [
+            "B->A",
+            "Distance@A"
+          ],
+          "say": "We already know a way to A that costs four, straight from S."
+        },
+        {
+          "set": {
+            "A": "3",
+            "Distance@A": {
+              "before": "4",
+              "after": "3"
+            },
+            "Previous@A": "B"
+          },
+          "callout": "[2 + 1 = 3 < 4]{good}",
+          "say": "But going S to B, then B to A, costs two plus one, which is three. Three is less than four."
+        },
+        {
+          "focus": [
+            "row:A",
+            "A"
+          ],
+          "callout": "if d(u) + w(u, v) < d(v), then d(v) = d(u) + w(u, v)",
+          "say": "So we cross out four, write three, and note that A now comes from B. This is called relaxing a road. We found a shortcut, so we replace the old guess."
+        },
+        {
+          "set": {
+            "C": "7",
+            "Distance@C": "7",
+            "Previous@C": "B"
+          },
+          "callout": "2 + 5 = 7 < ∞",
+          "say": "The road from B to C costs five, so C becomes seven, by way of B."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "layout": "TB",
+      "chapter": "Reaching E",
+      "narration": "We keep repeating the same two moves: pick the cheapest unvisited place, then relax the roads leaving it.",
+      "callout": "unvisited: A 3, C 7, E ∞",
+      "nodes": [
+        {
+          "id": "S",
+          "label": "S",
+          "shape": "terminal",
+          "badge": "0"
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "shape": "terminal",
+          "badge": "3"
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "shape": "terminal",
+          "badge": "2"
+        },
+        {
+          "id": "spacer",
+          "label": "spacer",
+          "shape": "terminal",
+          "hidden": true
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "shape": "terminal",
+          "badge": "7"
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "shape": "terminal",
+          "badge": "∞"
+        }
+      ],
+      "edges": [
+        {
+          "from": "S",
+          "to": "A",
+          "label": "4"
+        },
+        {
+          "from": "S",
+          "to": "B",
+          "label": "2"
+        },
+        {
+          "from": "B",
+          "to": "A",
+          "label": "1"
+        },
+        {
+          "from": "B",
+          "to": "C",
+          "label": "5"
+        },
+        {
+          "from": "A",
+          "to": "C",
+          "label": "2"
+        },
+        {
+          "from": "A",
+          "to": "E",
+          "label": "6"
+        },
+        {
+          "from": "C",
+          "to": "E",
+          "label": "1"
+        },
+        {
+          "from": "A",
+          "to": "spacer",
+          "hidden": true
+        }
+      ],
+      "table": {
+        "columns": [
+          "Node",
+          "Distance",
+          "Previous",
+          "Visited"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "S",
+              "0",
+              "–",
+              "Yes"
+            ]
+          },
+          {
+            "cells": [
+              "A",
+              "3",
+              "B",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "B",
+              "2",
+              "S",
+              "Yes"
+            ]
+          },
+          {
+            "cells": [
+              "C",
+              "7",
+              "B",
+              "No"
+            ]
+          },
+          {
+            "cells": [
+              "E",
+              "∞",
+              "–",
+              "No"
+            ]
+          }
+        ]
+      },
+      "tint": {
+        "S": "warn",
+        "B": "warn"
+      },
+      "steps": [
+        {
+          "tint": {
+            "A": "warn"
+          },
+          "set": {
+            "Visited@A": "Yes"
+          },
+          "callout": "[A = 3 is final]{good}",
+          "say": "A is cheapest at three, so we visit it."
+        },
+        {
+          "set": {
+            "C": "5",
+            "Distance@C": {
+              "before": "7",
+              "after": "5"
+            },
+            "Previous@C": "A"
+          },
+          "callout": "[3 + 2 = 5 < 7]{good}",
+          "say": "Through A, C costs three plus two, which is five. That beats seven."
+        },
+        {
+          "set": {
+            "E": "9",
+            "Distance@E": "9",
+            "Previous@E": "A"
+          },
+          "callout": "3 + 6 = 9 < ∞",
+          "say": "And E costs three plus six, which is nine."
+        },
+        {
+          "tint": {
+            "C": "warn"
+          },
+          "set": {
+            "Visited@C": "Yes"
+          },
+          "callout": "unvisited: C 5, E 9",
+          "say": "C is next, at five."
+        },
+        {
+          "set": {
+            "E": "6",
+            "Distance@E": {
+              "before": "9",
+              "after": "6"
+            },
+            "Previous@E": "C"
+          },
+          "callout": "[5 + 1 = 6 < 9]{good}",
+          "say": "Through C, E costs five plus one, which is six. Six beats nine."
+        },
+        {
+          "tint": {
+            "E": "warn"
+          },
+          "set": {
+            "Visited@E": "Yes"
+          },
+          "callout": "[E = 6 is final]{good}",
+          "say": "Now E is the cheapest place left, so its cost of six is settled, and we can stop."
+        },
+        {
+          "tint": {
+            "C->E": "good",
+            "A->C": "good",
+            "B->A": "good",
+            "S->B": "good"
+          },
+          "focus": [
+            "C->E",
+            "A->C",
+            "B->A",
+            "S->B",
+            "Previous@A",
+            "Previous@B",
+            "Previous@C",
+            "Previous@E"
+          ],
+          "callout": "E ← C ← A ← B ← S",
+          "say": "To read the route, follow the previous column backward. E came from C, C from A, A from B, and B from S."
+        },
+        {
+          "focus": [
+            "S",
+            "B",
+            "A",
+            "C",
+            "E",
+            "C->E",
+            "A->C",
+            "B->A",
+            "S->B"
+          ],
+          "callout": "[S → B → A → C → E costs 6]{good}",
+          "say": "Turn that around, and the cheapest route is S, B, A, C, E, for a total of six."
+        }
+      ]
+    }
+  ]
+}
