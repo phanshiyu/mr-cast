@@ -20,6 +20,7 @@ import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnipp
 import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
+import { formatSteps } from './lib/highlight.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
@@ -84,6 +85,9 @@ More commands and options:
   voice             voice the narration into the run's audio/ without playing it
   still [sceneIndex...] [--out dir]
                     render PNG stills of scenes (0-based; default all, into the run's stills/)
+  steps [sceneIndex...]
+                    print each step's words beside what it lights and what it changes, with the
+                    highlight warnings, for checking that the lit part matches the words
   --speed x         the voice's speed alone, from 0.5 to 2; overrides the speed --pace sets
   --name slug       extract and init: name the run yourself; later commands: use that run instead of the current one
   --dir path        any command after extract or init: use any data directory, such as .mr-cast or
@@ -618,6 +622,23 @@ async function still(argv) {
   for (const f of files) console.log(path.resolve(f));
 }
 
+async function steps(argv) {
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: RUN_OPTIONS });
+  const run = runFor(values);
+  // Only errors stop it: the highlight warnings print beside their steps, and the rest are validate's to show.
+  const { hunks, storyboard, result, lines } = await loadProject(run.dir, run.settings);
+  if (result.errors.length) {
+    for (const line of lines) console.error(line);
+    process.exit(1);
+  }
+  const scenes = positionals.map((p) => {
+    const n = Number(p);
+    if (!Number.isInteger(n) || n < 0 || n >= storyboard.scenes.length) throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${storyboard.scenes.length - 1}`);
+    return n;
+  });
+  console.log(formatSteps(storyboard, hunks, scenes) || 'no scene has steps');
+}
+
 async function outline(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const run = runFor(values);
@@ -741,7 +762,7 @@ function snippet(argv) {
 }
 
 /** 0.11's `explain <command>`, kept for skills an open session loaded before an upgrade: init, or any command on the current run. */
-const EXPLAIN_COMMANDS = { init, snippet, validate, outline, voice, play, render, still };
+const EXPLAIN_COMMANDS = { init, snippet, validate, outline, voice, play, render, still, steps };
 
 async function explain([sub, ...rest]) {
   const run = EXPLAIN_COMMANDS[sub];
@@ -801,7 +822,7 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { status, extract, init, snippet, plan, validate, outline, voice, play, render, still, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
+const COMMANDS = { status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);
