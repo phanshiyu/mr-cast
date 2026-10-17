@@ -43,8 +43,9 @@ Pick the mode with the first row that matches. The words the user types beat wha
 | 4 | "quick", "quickly", "just a diagram", "diagram of", "draw this flow", "explain this in a diagram", "sketch", `/mr-cast quick` | Quick mode, even when the request also names the PR or the branch. |
 | 5 | "walkthrough", "full", "whole branch", "the PR", "review it" | Full mode. A selection makes the topic that holds it `deep`. |
 | 6 | A bare `/mr-cast` with selected or pasted code | Quick mode on those lines. |
-| 7 | "animate that", "what you said", or a concept such as "explain quicksort in a video" | An explanation. Quick mode if it fits 3 scenes and the user asked for nothing longer, else full mode. |
-| 8 | A bare `/mr-cast` with no selection | Full mode, on the source the rules below pick. |
+| 7 | A concept to explain, such as "explain quicksort in a video" | Full mode on the explanation: the article is the explanation. |
+| 8 | "animate that", "what you said" | Your explanation. Quick mode if it fits 3 scenes, else full mode. |
+| 9 | A bare `/mr-cast` with no selection | Full mode, on the source the rules below pick. |
 
 **Selected code.** When Claude Code is connected to the user's IDE, the lines the user highlights arrive with the prompt, such as "Selected 14 lines from src/limiter.ts". The IDE sends them with every prompt while text is highlighted, so a selection may be one the user forgot: that is why a bare `/mr-cast` with a selection makes the cheap quick video. Find pasted code's file and lines with a search before you use it.
 
