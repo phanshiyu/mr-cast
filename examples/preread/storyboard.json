@@ -259,6 +259,7 @@
       "items": [
         {
           "hunkId": "h2",
+          "lines": "11-17",
           "check": "the key holds the minute; check expiry is set only on the first hit"
         },
         {
