@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0
+
+- **`play` opens the page once the voice is ready.** A silent video left you wondering where the voice was, so `play` now voices first and opens the browser after. The terminal shows one line, "Voicing 1 of 2 scenes... (--no-voice skips the voice)", and the URL at once, and a page opened from that URL early says "Making the voice-over..." instead of playing. A 2-scene, 43-second quick video opens in about 16 seconds on a first run, and in under half a second once its clips are cached. If the voice fails, the page opens anyway and plays silent with "Voice failed, see the terminal", and the terminal says so. An edit to the storyboard keeps the open page playing its current version, with its voice and a small "Updating..." note, until the edit is voiced, then reloads it once at the same place. The muted play, the "Voice: 1 of 3 scenes" pill and "Play with voice (V)" are gone.
+
 ## 0.22.0
 
 A new audience for the reviewer who will read the code right after the video. The pre-read shows no code. Its diagrams build the model with the real names and values, and it ends on the order in which to read the code, with what to check at each place. In a small test with AI reviewers allowed one `git diff --stat` and two file reads, those given a pre-read answered 79% of the questions about the change, against 61% with no video and 83% with the usual reviewer's video, and looked at fewer scenes (3.7 against 8.8). With the whole repo to read, no video did as well as either, because the test diffs fit in one `git diff`. Six reviews per arm is a small sample, so read it as a direction rather than a measurement.

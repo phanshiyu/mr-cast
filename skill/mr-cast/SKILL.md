@@ -78,13 +78,13 @@ The run is `.mr-cast/quick-<title-slug>/`, so it never overwrites a full run. Ad
 
 A quick run skips the intent rule, warns past 3 scenes or about 60 seconds of narration, and keeps every other check. Fix errors and those two warnings.
 
-**Show it.** Start the player as a background command, and do not wait for the voice:
+**Show it.** Start the player as a background command, and do not wait for it:
 
 ```bash
 {{MR_CAST}}/bin/mr-cast play <flags>
 ```
 
-The player opens in under a second and plays at once, muted, with subtitles. The voice is made in the background in about half the narration's length, so about 30 seconds for a minute, and the player then offers "Play with voice (V)". A replay after the end plays with voice. The video ends on a card of next steps. End your reply with: `Playing at <url>. Voice is on the way; press V in the player when it is ready. Say "go deeper" for a full walkthrough of these lines, or "save it" for an MP4.`
+`play` prints the URL at once, voices the narration, then opens the browser: the page opens once the voice is ready, about 16 seconds for a 2-scene video, or at once when its clips are cached. The video ends on a card of next steps. End your reply with: `The player opens at <url> once the voice is ready, in about 15 seconds. Say "go deeper" for a full walkthrough of these lines, or "save it" for an MP4.`
 
 ### What comes next
 
@@ -383,11 +383,11 @@ Start the player as a background command so it keeps running.
 {{MR_CAST}}/bin/mr-cast play <flags>
 ```
 
-`play` opens the player at once and voices the narration in the background, in the voice and at the pace its flags give. Until the voice is ready, the player plays silent with subtitles and shows how many scenes are voiced. When the voice is ready, the player shows "Play with voice (V)" and never switches the audio in the middle of a play. A walkthrough voiced before `play` starts waits for a click and plays with its voice. `render` voices everything first. Voicing takes about half the length of the audio, so a minute of narration takes about 30 seconds. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
+`play` voices the narration in the voice and at the pace its flags give, then opens the player, which waits for a click and plays with its voice. `render` voices everything first too. Voicing takes about a third of the length of the audio, so a minute of narration takes about 20 seconds, and clips already made are reused. The first run downloads a voice model of about 90 MB into `~/.cache/mr-cast`, which takes a minute. If the voice model cannot load, the command prints a warning and continues without voice. Tell the user if that happens.
 
 To change the pace or turn the voice off, change `<flags>` and pass the new flags to every command after that. To pick another voice, add `--voice <name>` to `<flags>`: `af_heart` (default), `af_bella`, `am_michael`, `bf_emma`, or `bm_george`.
 
-`play` prints `mr-cast player: <url>` and opens the browser. Give the user that URL. Tell them it starts silent with subtitles while the voice is made, and to press V or click "Play with voice" when that appears. The player has a speed control from 0.75x to 1.5x, and reloads when `storyboard.json` changes, after it voices any changed narration. End your reply with: "Say 'save it as an MP4' when you want a file to share."
+`play` prints `mr-cast player: <url>` at once and opens the browser once the voice is ready. Give the user that URL, and tell them the page opens once the voice is ready, in about a third of the narration's length. If `play` prints that voicing failed, tell the user the player plays silent with subtitles and why. The player has a speed control from 0.75x to 1.5x. When `storyboard.json` changes, it keeps playing and shows "Updating..." until the changed narration is voiced, then reloads once. End your reply with: "Say 'save it as an MP4' when you want a file to share."
 
 With a `plan.json`, the player also has a Plan tab with the same picks. When the user changes a pick there, the row says "Changed, not in the video yet", and the page asks them to say "update the video" in the terminal. Then run `validate <flags>`: it names each topic whose pick changed. Rewrite only the scenes of those topics, update their entries in the storyboard's `plan`, and run `validate <flags>` again. Only those scenes need voicing again.
 

@@ -64,8 +64,8 @@ Used by the Claude Code skills:
   validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
   play [--port N] [--no-open]
-                    serve the live player at once (default port 4747) and voice the narration in the
-                    background; the player plays muted with subtitles until it is ready
+                    serve the live player (default port 4747), voice the narration, then open the browser;
+                    the URL is printed at once, and its page waits for the voice
   render [--out file.mp4]
                     voice the narration and render an MP4 with chapter markers, named after the storyboard title
 
@@ -347,17 +347,13 @@ function reportVoiceProgress(event) {
  * Voice-over for play and render, in the command's voice and at its pace. A silent command, or one whose
  * voicing fails, has silent scenes timed from word count at that pace; `failed` marks the second for the player.
  */
-async function voiceoverFor(dir, storyboard, settings, { onClip, ensure = ensureVoiceover, markFailed = false } = {}) {
+async function voiceoverFor(dir, storyboard, settings, { onProgress = reportVoiceProgress, ensure = ensureVoiceover, markFailed = false } = {}) {
   const silent = () => {
     const { speed, pauses } = settings.pace;
     return speed === 1 && pauses === 1 ? null : { voice: settings.voice, speed, pauses, clips: {} };
   };
   if (settings.silent) return silent();
   try {
-    const onProgress = (event) => {
-      reportVoiceProgress(event);
-      if (event.type === 'clip') onClip?.(event.voiceover);
-    };
     return await ensure({ dataDir: dir, storyboard, voice: settings.voice, pace: settings.pace, onProgress });
   } catch (err) {
     console.error(`mr-cast: warning: continuing without voice-over: ${err.message}`);
@@ -432,20 +428,31 @@ const voicedScenes = (storyboard, voiceover) =>
 /** One terminal line that says how far the voicing is, rewritten in place on a terminal. */
 function voicingLine(storyboard, voiced) {
   const tty = process.stderr.isTTY;
+  const text = (voiceover) => `Voicing ${voicedScenes(storyboard, voiceover)}... (--no-voice skips the voice)`;
   let last = '';
+  let open = false;
   const show = (line) => {
     if (line === last) return;
     last = line;
-    if (tty) process.stderr.write(`\r\x1b[K${line}`);
-    else console.error(line);
+    if (!tty) return console.error(line);
+    process.stderr.write(`\r\x1b[K${line}`);
+    open = true;
   };
-  show(`Voicing ${voicedScenes(storyboard, voiced)}... (--no-voice skips the voice)`);
+  const end = () => {
+    if (open) process.stderr.write('\n');
+    open = false;
+  };
+  show(text(voiced));
   return {
     onProgress(event) {
-      if (event.type === 'clip') show(`Voicing ${voicedScenes(storyboard, event.voiceover)}... (--no-voice skips the voice)`);
-      else reportVoiceProgress(event);
+      if (event.type === 'clip') return show(text(event.voiceover));
+      end();
+      reportVoiceProgress(event);
+      const again = last;
+      last = '';
+      show(again);
     },
-    done() { if (tty) process.stderr.write('\n'); },
+    end,
   };
 }
 
@@ -471,8 +478,8 @@ async function play(argv) {
     now: (sb) => voiceNow(dir, sb, settings),
     voice: async (sb, voiced) => {
       const line = voicingLine(sb, voiced);
-      const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: line.onProgress, ensure: ensureVoiceoverInChild, markFailed: true });
-      line.done();
+      const ensure = (args) => ensureVoiceoverInChild(args).finally(line.end);
+      const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: line.onProgress, ensure, markFailed: true });
       if (voiceover?.failed) console.error('mr-cast: voicing failed; the player plays silent with subtitles');
       else if (voiceover) console.error(`voice ready: ${voicedScenes(sb, voiceover)}`);
       return voiceover;
