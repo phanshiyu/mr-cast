@@ -63,7 +63,7 @@ const Row: React.FC<{ row: PlacedFinding; layout: ReviewLayout; at: number }> = 
       </div>
       <FitText
         fit={row.where}
-        style={{ position: 'absolute', left: layout.whereX, width: layout.claimX - layout.whereX - COL_GAP, top: centred(1, row.where.lineHeight), lineHeight: `${row.where.lineHeight}px`, color: colors.muted }}
+        style={{ position: 'absolute', left: layout.whereX, width: layout.claimX - layout.whereX - COL_GAP, top: (row.h - row.where.height) / 2, color: colors.muted }}
       />
       <FitText
         fit={row.claim}
