@@ -10,7 +10,7 @@ mr-cast needs Node 22.12 or newer on macOS or Linux. CI tests Node 22, 24 and 26
 
 ```bash
 npm install -g @shiyuphan/mr-cast
-mr-cast install-skill   # installs the mr-cast, mr-cast-primitives, mr-cast-prune and mr-cast-upgrade skills
+mr-cast install-skill   # installs the mr-cast, mr-cast-prune and mr-cast-upgrade skills
 mr-cast --version       # prints the mr-cast and Node versions
 ```
 
@@ -51,7 +51,9 @@ Next, Claude reads the change and opens the plan page in your browser. It lists 
 
 The length estimate at the top follows your picks, and every change saves at once. Use the mouse, or the keys: up and down move between topics, 1, 2 and 3 pick Skip, Brief and Deep, and left and right change how it is shown. Then go back to the terminal and press Enter on the question Claude is waiting with. Answer "Use your picks" to skip the page, or type a change such as "add the migration as its own topic", and the page reloads with it. Claude skips the page when you said "just make it" or "no questions", and when the change has two topics or fewer.
 
-Claude writes the storyboard from your picks, validates it, and opens the browser player, which reloads as Claude edits. The player has a Plan tab with the same picks. A pick you change there is marked "Changed, not in the video yet". Say "update the video", and Claude rewrites only those topics. For a file to share, say "mp4", "video file", "render", "save" or "share", or type `/mr-cast mp4` (`/mr-cast mp4 main` for another base). Before rendering, Claude shows the outline and asks once whether to render it, make it shorter or longer, or change something. The MP4 is named after the walkthrough's title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, and has a chapter marker for each chapter.
+Claude then writes a short teaching article from your picks, `article.md` in the run's directory: the takeaways, one section per idea traced through one running example, questions with answers, and what it left out. A second Claude reads only the article, without the answers, and answers its questions; Claude revises the article where that reader went wrong, at most twice. You see the takeaways in a few lines. Say "just the article" or "no video" to stop there. See [The article](#the-article).
+
+Claude adapts the article into the storyboard, validates it, and opens the browser player, which reloads as Claude edits. The player has a Plan tab with the same picks. A pick you change there is marked "Changed, not in the video yet". Say "update the video", and Claude rewrites only those topics. For a file to share, say "mp4", "video file", "render", "save" or "share", or type `/mr-cast mp4` (`/mr-cast mp4 main` for another base). Before rendering, Claude shows the outline and asks once whether to render it, make it shorter or longer, or change something. The MP4 is named after the walkthrough's title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`, and has a chapter marker for each chapter.
 
 For a walkthrough that explains the code line by line in plain words, ask for it "like I'm new to this", "line by line", "ELI5" or "for a non-native speaker", or answer that the video is for someone new to the code. Claude then reads the callers, types, tests and config around the change, shows the important ones first, and voices each line or small group of lines while it is highlighted. See [Simple style](#simple-style).
 
@@ -87,6 +89,8 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast init --title text [--reset] [--quick]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/` (in the git repository, or the current directory outside one) and prints its path. A slug already in use gets a numbered suffix such as `-2`. Running it again with the same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. `--quick` starts a quick video in `.mr-cast/quick-<title-slug>/`, which `validate` lets open without an intent scene and warns past 3 scenes or about 60 seconds of narration. `--quick` needs `--title`. A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice, unless the full video already has a storyboard or snippets, or `--reset` is given. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Use it for the code of an explanation, or for the callers, types or config a change depends on. Snippets don't count toward hunk coverage, a later `extract` keeps them, and each holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. |
 | `mr-cast plan [--port N] [--no-open]` | Checks the run's `plan.json`, the topics Claude cut the change into, then serves the plan page at `http://127.0.0.1:4747/plan` and opens the browser. The page saves each pick into `plan.json`, and reloads when Claude edits it. See [The plan](#the-plan). |
+| `mr-cast article [--reader]` | Checks the run's `article.md` and prints its takeaways. `--reader` prints it without the answers to its questions. See [The article](#the-article). |
+| `mr-cast schema [type]` | Prints the storyboard's TypeScript schema from `src/types.ts`: with a scene type such as `array`, that scene and every type it uses; alone, the storyboard and what every scene shares; `all` for everything. |
 | `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against the simple style's rules when the audience is `new`. With a `plan.json`, it also checks each scene's `topic` and the storyboard's `plan` against your picks, and records that `plan` in `plan-built.json`. Prints the length, estimated at the given `--pace` until the narration is voiced. Exits 1 on errors. |
 | `mr-cast outline` | Prints a short plan of a valid storyboard to show a person before rendering. It has the title, one line per scene with its type, chapter and contents, the length, the style, the hunk coverage, and how many steps draw a pen mark. With a `plan.json`, the scenes are grouped by topic, and skipped topics are listed. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
@@ -143,6 +147,26 @@ To delete, pick with selectors, which combine. Ids pick those artifacts, `--kind
 The page writes your pick as the topic's `choice`, `{ "depth": "deep", "view": "compare" }`, and nothing else. It sends each pick to the local server, which listens on 127.0.0.1 only. Every write needs the random token in the URL mr-cast opened, so another web page cannot change your plan. The server accepts only a `choice` for a known topic with a depth and view that topic offers, and writes `plan.json` by renaming a complete file into place. Opened without the token, the page is read-only.
 
 Each scene of the storyboard names its topic in `topic`. `validate` fails on a topic that is not in the plan, and warns when a topic you kept has no scene, when a topic you skipped still has scenes, and when a scene does not draw the view you picked.
+
+## The article
+
+A full video starts as an article that teaches on its own: "explain quicksort" gives an article you can learn quicksort from. It is written with no thought of the screen, then adapted. Its shape is fixed so `mr-cast article` can check it:
+
+```markdown
+# How quicksort sorts a list
+## Takeaways
+1. ...
+## A partition puts the pivot in its final place {#partition}
+...
+## Questions
+1. After the first partition of [7, 2, 9, 4, 3], which values are left of 3?
+   Answer: only 2.
+   Takeaway: 1
+## Left out
+- ...
+```
+
+`mr-cast article` fails on a missing part, a section without an id, a question without its answer or takeaway, and words about the medium such as "scene" or "on screen" outside code, and prints the takeaways. `mr-cast article --reader` prints it without the answers, for the reader test. With a `plan.json`, each topic you kept is the section of that id. Each scene names the section it adapts in `section`, or through its `topic`. `validate` fails on an unknown section and warns about a section no scene adapts, unless the storyboard's `textOnly` lists it with a reason, and about scenes out of the article's order. `render --out` writes the article beside the MP4.
 
 ## Explanations
 
@@ -230,7 +254,7 @@ The narration is written to be heard once, like one person explaining the change
 
 `src/types.ts` defines the schema. A storyboard has a title and a list of scenes, and each scene has `narration`.
 
-To choose a scene for an idea, Claude reads the `mr-cast-primitives` skill. Its index takes the idea as an article states it, such as "each pass bubbles the largest remaining value to the end", and names the scene that explains it with the least load, why, and when the runner-up wins. One file per scene says when it lowers load, when it adds load, and the mistakes that add it back, with an example that `validate` passes in the tests.
+To choose a scene for an idea, Claude reads the picker in the skill's `references/adapt.md`. Its index takes the idea as the article states it, such as "each pass bubbles the largest remaining value to the end", and names the scene that explains it with the least load, why, and when the runner-up wins. One file per scene says when it lowers load, when it adds load, and the mistakes that add it back, with an example that `validate` passes in the tests.
 
 | Scene | Shows |
 | --- | --- |
