@@ -37,12 +37,15 @@ const CACHES = [
   { name: 'models', label: 'Voice model', detail: 'Kokoro voice model; the next voice-over downloads it again (about 90 MB)', lock: true },
 ];
 
-/** Total size and newest mtime under `p`, without following symlinks. */
+/**
+ * Total size and newest file mtime under `p`, without following symlinks. A directory's own mtime is left out:
+ * deleting a video from a run bumps it, and the run would stop counting as old.
+ */
 function measure(p) {
   let stat;
   try { stat = fs.lstatSync(p); } catch { return { bytes: 0, modified: 0 }; }
   let bytes = stat.isDirectory() ? 0 : stat.size;
-  let modified = stat.mtimeMs;
+  let modified = stat.isDirectory() ? 0 : stat.mtimeMs;
   if (stat.isDirectory()) {
     for (const name of fs.readdirSync(p)) {
       const inner = measure(path.join(p, name));

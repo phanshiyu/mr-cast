@@ -72,6 +72,13 @@ test('--kind picks every artifact of its kinds, and --older-than narrows it', ()
   assert.deepEqual(ids(select(list(), selector({ kinds: ['stills', 'audio'] }), { now: NOW }).chosen), ['stills:rate-limit', 'audio:rate-limit']);
 });
 
+test('deleting a part leaves its walkthrough as old as its newest file, not its directory', () => {
+  const { list, run } = fixture();
+  const result = run('prune', 'video:rate-limit/rate-limiter.mp4');
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(ids(select(list(), selector({ kinds: ['run', 'explain'], olderThanDays: 30 }), { now: Date.now() }).chosen), ['run:rate-limit']);
+});
+
 test('--except keeps a walkthrough with its parts, and keeps the walkthrough holding an excepted part', () => {
   const { list } = fixture();
   assert.deepEqual(ids(select(list(), selector({ all: true, except: ['run:rate-limit'] }), { now: NOW }).chosen), ['run:retry', 'video:retry/retry-backoff.mp4', 'cache:bundle', 'cache:models']);
