@@ -1,7 +1,7 @@
-// Installs every skill under skill/ (mr-cast, mr-cast-primitives, mr-cast-prune and mr-cast-upgrade) into the
-// Claude config dir, pointing at this install, and records them in a manifest so the next install or uninstall-skill removes whatever this
-// version wrote that the next one no longer does. The storyboard schema is copied from src/types.ts, and the
-// plan's views from shared/views.mjs, so the skill cannot drift from the player.
+// Installs every skill under skill/ (mr-cast, mr-cast-prune and mr-cast-upgrade) into the Claude config dir,
+// pointing at this install, and records them in a manifest so the next install or uninstall-skill removes whatever
+// this version wrote that the next one no longer does. The plan's views are copied from shared/views.mjs, so the
+// skill cannot drift from the player; the storyboard schema comes from `mr-cast schema`.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -24,14 +24,6 @@ const LEGACY = [
 const MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md', '/skills/mr-cast-'];
 
 const defaultClaudeDir = () => process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
-
-function storyboardTypes(root) {
-  const types = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
-  const start = types.search(/^export type Risk =/m);
-  const end = types.indexOf('// ─── ', start);
-  if (start < 0 || end < 0) throw new Error('src/types.ts: storyboard section markers not found');
-  return types.slice(start, end).replace(/^export /gm, '').trim();
-}
 
 /** The plan's views as a Markdown table: the key plan.json names, what the user reads, and the scenes that draw it. */
 const viewsTable = () => [
@@ -112,16 +104,16 @@ function writeManifest(claudeDir, root, files) {
 }
 
 export function installSkill(root, claudeDir = defaultClaudeDir()) {
-  const schema = storyboardTypes(root);
   const fill = (template) => fs
     .readFileSync(template, 'utf8')
     .replaceAll('{{MR_CAST}}', () => root)
-    .replace('{{STORYBOARD_TYPES}}', () => schema)
     .replace('{{PLAN_VIEWS}}', viewsTable);
 
   // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
   const source = (rel) => (rel === 'mr-cast/SKILL.md' && process.env.MR_CAST_SKILL_TEMPLATE) || path.join(root, 'skill', rel);
-  const targets = skillFiles(root).map((rel) => [path.join(claudeDir, 'skills', rel), fill(source(rel))]);
+  // A file is removed later only if it shows mr-cast wrote it, so one that never names the CLI gets a line that does.
+  const marked = (text) => (MARKERS.some((m) => text.includes(m)) ? text : `${text}\n<!-- installed by ${root}/bin/mr-cast install-skill -->\n`);
+  const targets = skillFiles(root).map((rel) => [path.join(claudeDir, 'skills', rel), marked(fill(source(rel)))]);
   const files = targets.map(([file]) => path.relative(claudeDir, file).split(path.sep).join('/'));
   const stale = removeStale(claudeDir, new Set(files));
   for (const [file, content] of targets) {

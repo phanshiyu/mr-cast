@@ -44,3 +44,5 @@ Two sides in one layout, row by row. Rows that differ get an arrow between the s
 ## Schema and validate notes
 
 A `focus` is a row index, an `"a-b"` range, `"side:After"`, or a cell `"2@After"`. A cell is text or `{ "code": "...", "lang": "ts" }`. Name the sides in `sides` when they are not Before and After. `{{MR_CAST}}/bin/mr-cast validate` fails on a row without exactly two cells and on two sides with one title, and warns past 6 rows, on a code cell over 6 lines, and on a row no step names.
+
+`{{MR_CAST}}/bin/mr-cast schema compare` prints its fields.

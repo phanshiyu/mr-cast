@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install a SKILL.md template (with {{MR_CAST}} / {{STORYBOARD_TYPES}} placeholders) the way
+# Install a SKILL.md template (with {{MR_CAST}} / {{PLAN_VIEWS}} placeholders) the way
 # `mr-cast install-skill` would, into <out-dir>, leaving ~/.claude untouched.
 # Usage: quality/variant.sh <skill-md-source> <out-dir>
 # Result: <out-dir>/skills/mr-cast/SKILL.md, with the references next to it

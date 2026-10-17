@@ -31,3 +31,5 @@ A static Mermaid diagram, for a shape no other primitive draws.
 ## Schema and validate notes
 
 `code` holds the Mermaid source. `{{MR_CAST}}/bin/mr-cast validate` parses it and fails on invalid Mermaid. Run `{{MR_CAST}}/bin/mr-cast still <sceneIndex>` to see that it fits.
+
+`{{MR_CAST}}/bin/mr-cast schema mermaid` prints its fields.

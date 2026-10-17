@@ -38,3 +38,5 @@ A recap of what looks wrong, grouped by severity, each with its file and line.
 ## Schema and validate notes
 
 The scene takes no `steps`. The storyboard's `findings` hold each finding's `id`, `severity`, `file`, `line`, `claim` and `evidence`, and a code step's `flag` names one. `{{MR_CAST}}/bin/mr-cast validate` fails on a finding with no evidence, a flag on a step that does not show its line, and findings with no review scene.
+
+`{{MR_CAST}}/bin/mr-cast schema review` prints its fields.

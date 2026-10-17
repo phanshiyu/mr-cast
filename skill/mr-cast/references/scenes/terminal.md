@@ -41,3 +41,5 @@ A shell window where commands type out and their output appears, a failing exit 
 ## Schema and validate notes
 
 A `focus` is an entry index, an `"a-b"` range, or one output line `"entry:line"`. Each entry has a one-line `command`, its `output`, and an `exit`. `{{MR_CAST}}/bin/mr-cast validate` fails on a multi-line command and an entry with neither command nor output, and warns on output over 30 lines and more than 3 entries with no steps.
+
+`{{MR_CAST}}/bin/mr-cast schema terminal` prints its fields.

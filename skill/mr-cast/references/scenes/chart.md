@@ -45,3 +45,5 @@ A bar or line chart of real numbers, with a change badge on each label when ther
 ## Schema and validate notes
 
 `kind` is `bar` for categories and `line` for a trend. A `focus` is a label, `"series:after"`, or `"after@p99"`. `annotation` calls out one point. `{{MR_CAST}}/bin/mr-cast validate` fails on a series whose length differs from the labels and a negative bar, and warns past 12 labels or 4 series.
+
+`{{MR_CAST}}/bin/mr-cast schema chart` prints its fields.

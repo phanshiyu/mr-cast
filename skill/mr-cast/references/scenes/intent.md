@@ -39,3 +39,5 @@ The opening card: a one-line summary, the risk, and up to 6 bullets.
 ## Schema and validate notes
 
 A `focus` is a bullet index. `{{MR_CAST}}/bin/mr-cast validate` fails on more than 6 bullets or a missing `summary`, and warns on a spoken count that disagrees with the bullets.
+
+`{{MR_CAST}}/bin/mr-cast schema intent` prints its fields.

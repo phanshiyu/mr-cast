@@ -1,6 +1,6 @@
 # An explanation
 
-The video retells an explanation you gave in this conversation, such as how a subsystem works, why a bug happens, or how a design fits together. It is not a new investigation. Open files again only to get exact line numbers for the code you show.
+The video explains something: an explanation you gave in this conversation, such as how a subsystem works or why a bug happens, or a concept the user named, such as quicksort. The article holds the explanation; open files only to get facts and line numbers right.
 
 ## Start the run
 
@@ -8,7 +8,7 @@ The video retells an explanation you gave in this conversation, such as how a su
 {{MR_CAST}}/bin/mr-cast init --title "How the rate limiter works" <flags>
 ```
 
-- Give a short title for what you explained. The run's directory is `.mr-cast/<title-slug>/` in the git repository, or in the current directory outside one. `init` prints it.
+- Give a short title for what you explain. The run's directory is `.mr-cast/<title-slug>/` in the git repository, or in the current directory outside one. `init` prints it.
 - `<flags>` are the flags from step 2: `--audience`, and `--pace` or `--no-voice`.
 - Running `init` again with the same title reopens the run and keeps its storyboard and snippets. Add `--reset` to start it over. A different title starts a new run.
 
@@ -29,12 +29,13 @@ List the files and functions your explanation relied on. For each piece of code 
 
 ## What the video must cover
 
-Every code scene's `hunkId` is a snippet id. Leave out `risk` on the intent scene and leave out `skipped`, since there is no change to review. Resolve the `validate` warnings about scene order, diagram count, and focus.
+Every code scene's `hunkId` is a snippet id. Leave out `risk` on the intent scene and leave out `skipped`, since there is no change to review.
 
-With `--audience preread`, the user reads the code themselves after the video, so show no code scenes. Add the snippets of the code to read, and cite them in each diagram's `from`. A closing `reading` scene of those snippets, in the order to read them, is optional for an explanation.
+- The `intent` scene's summary states the idea in one sentence, from the article's takeaways. Its bullets are the takeaways, at most four, one short line each. For a bug, they are the symptom, the cause, and the fix or the way to avoid it.
+- Use a `files` scene when where the code lives helps, such as a feature spread over several modules. List each file as `{ "path": "src/limiter.ts" }` in `files` with a short `notes` entry, before the code.
+- Add a `tests` scene only when tests are part of the explanation, such as a bug that no test caught.
+- An explanation of an idea with no code, such as an algorithm, needs no snippet: draw it, and trace the article's example in steps.
 
-- Plan first: the question your explanation answers, shown as one concrete case with real values, the idea in one sentence, the key points, the behaviors behind them ("when X happens, Y happens"), and the code that carries each one. Follow [Teach the change](../SKILL.md#teach-the-change).
-- The `intent` scene's summary states the idea in one sentence. Its bullets are the key points of the explanation, at most four, one short line each. For a bug, they are the symptom, the cause, and the fix or the way to avoid it.
-- Use a `files` scene when where the code lives helps the viewer, such as a feature spread over several modules. List each file as `{ "path": "src/limiter.ts" }` in `files`, since an explanation has no diff to list. Give each a short `notes` entry, and put the scene before the code.
-- Add a `tests` scene only when tests are part of the explanation, such as a bug that no test caught. List each case's name as written in code and what it proves, and put the important untested behaviors in `gaps`.
-- The narration is the explanation itself, spoken. Cover every point a viewer needs, and cut only what is genuinely trivial.
+With `--audience preread`, show no code scenes. Add the snippets of the code to read, and cite them in each diagram's `from`.
+
+The shipped example `{{MR_CAST}}/examples/people/storyboard.json` shows an explanation's shape; copy its shape, not its content.

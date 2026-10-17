@@ -49,3 +49,5 @@ Events at their real times on one axis, with spans for waits and windows, and a 
 ## Schema and validate notes
 
 A `focus` is an event index, an `"a-b"` range, or `"span:label"`. `unit` is one of `ms`, `s`, `min`, `h` and `d`. `{{MR_CAST}}/bin/mr-cast validate` fails on events out of order of `at` with steps and a span that ends before it starts, and warns past 8 events or 4 spans.
+
+`{{MR_CAST}}/bin/mr-cast schema timeline` prints its fields.

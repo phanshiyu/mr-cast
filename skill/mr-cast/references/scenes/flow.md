@@ -39,3 +39,5 @@ A row of stages, each an actor and what it does, with the data as it looks after
 ## Schema and validate notes
 
 A flow takes no `focus`. Each stage is `{ actor, action, payload?, icon?, say? }`, and either every stage has a `say` or none does. `payload` is a string, so stringify JSON yourself. `{{MR_CAST}}/bin/mr-cast validate` fails on a `say` on only some stages and a payload that is not a string, and warns past 8 stages.
+
+`{{MR_CAST}}/bin/mr-cast schema flow` prints its fields.

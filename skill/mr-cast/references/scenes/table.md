@@ -46,3 +46,5 @@ Rows and columns of facts, with a changed value drawn as the old one struck thro
 ## Schema and validate notes
 
 A `focus` is a row index, a column `"col:Header"`, or a cell `"Header@row"`. Each row has one cell per column. Rows marked `added` or `removed` hold plain text. `{{MR_CAST}}/bin/mr-cast validate` fails on a row whose cells do not match the columns, and warns past 10 rows or 6 columns.
+
+`{{MR_CAST}}/bin/mr-cast schema table` prints its fields.

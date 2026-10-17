@@ -45,3 +45,5 @@ A row of cells with their indexes, named pointers above and shaded ranges below.
 ## Schema and validate notes
 
 `set` gives cells new values (`{ "3": 42 }`), `move` puts a pointer or range in a new place (`{ "lo": 4, "window": "2-5" }`), and `show` and `hide` bring one in or out (`["ptr:mid"]`). A step without `focus` lights what it changes. A `focus` is a cell index, an `"a-b"` range, `"ptr:lo"` or `"range:window"`. `{{MR_CAST}}/bin/mr-cast validate` fails on a pointer outside -1 to the length, a `move` or `show` of something that does not exist, and a step that only hides with no `focus`. It warns past 16 cells, 4 pointers or 3 ranges, on a `set` that leaves a cell as it was, on a value or index the words name that the step leaves dark, and on a swap that no step lit before it. `{{MR_CAST}}/bin/mr-cast steps` prints each step's words beside the cells it lights.
+
+`{{MR_CAST}}/bin/mr-cast schema array` prints its fields.

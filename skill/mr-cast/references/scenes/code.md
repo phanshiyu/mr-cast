@@ -39,4 +39,6 @@ The lines of one hunk or snippet, the rest dimmed, walked a range at a time, wit
 
 ## Schema and validate notes
 
-Each step names its `lines` (or `oldLines` for removed code), its `say`, and a `label` for the step diagram, with an `outcome` where it branches. Reference the code by `hunkId`. Never paste code. `{{MR_CAST}}/bin/mr-cast validate` fails on lines outside the hunk, overlapping or out-of-order steps, labels on only some steps, and 12 or more changed lines with no focus, and warns on a range over 8 lines or more than 8 steps.
+Each step names its `lines` (or `oldLines` for removed code), its `say`, and a `label` for the step diagram, with an `outcome` where it branches. The scene's `narration` is then the intro before the first step. Reference the code by `hunkId`. Never paste code. Without steps, `focusLinesAfter` (and `focusLinesBefore` for removed code) take the printed line numbers as numbers or `"start-end"` strings, each string its own range, at most 3 ranges a scene; `flow` adds one labelled step per range, in the same order, for lines that branch or retry, and stays off declarations and config. `calloutText` is about the code on screen. A pen `token` is text that occurs once on the step's lines, such as `"max: 20"`. `{{MR_CAST}}/bin/mr-cast validate` fails on lines outside the hunk, overlapping or out-of-order steps, labels on only some steps, and 12 or more changed lines with no focus, and warns on a range over 8 lines or more than 8 steps.
+
+`{{MR_CAST}}/bin/mr-cast schema code` prints its fields.

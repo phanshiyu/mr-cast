@@ -10,14 +10,12 @@ process.env.CLAUDE_CONFIG_DIR = path.join(tmp, 'never-used');
 const { installSkill, refreshSkills, skillsInstalledFrom, uninstallSkill } = await import('../bin/lib/install-skill.mjs');
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
+const SCENES = ['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'intent', 'layers', 'memory', 'mermaid', 'reading', 'review', 'sequence', 'state', 'table', 'terminal', 'tests', 'timeline'];
 const EXPECTED = [
   'skills/mr-cast/SKILL.md',
-  'skills/mr-cast/references/branch.md',
-  'skills/mr-cast/references/explanation.md',
-  'skills/mr-cast/references/highlight-audit.md',
-  'skills/mr-cast/references/review.md',
-  'skills/mr-cast-primitives/SKILL.md',
-  ...['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'intent', 'layers', 'memory', 'mermaid', 'reading', 'review', 'sequence', 'state', 'table', 'terminal', 'tests', 'timeline'].map((t) => `skills/mr-cast-primitives/primitives/${t}.md`),
+  ...['adapt', 'article', 'audience-new', 'audience-overview', 'audience-preread', 'branch', 'explanation', 'highlight-audit', 'plan', 'questions', 'quick', 'reader-test', 'review'].map((r) => `skills/mr-cast/references/${r}.md`),
+  ...SCENES.map((t) => `skills/mr-cast/references/scenes/${t}.md`),
+  'skills/mr-cast/references/voice.md',
   'skills/mr-cast-prune/SKILL.md',
   'skills/mr-cast-upgrade/SKILL.md',
 ];
@@ -44,35 +42,52 @@ test('install writes the skills and a manifest listing exactly those files', () 
   assert.deepEqual(result.removed, []);
 });
 
-test('installed skills point at this package and carry the storyboard schema', () => {
+test('installed skills point at this package, with the plan views filled in', () => {
   const dir = freshDir();
   installSkill(root, dir);
-  const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
-  assert.equal(skill.includes('{{MR_CAST}}'), false);
-  assert.equal(skill.includes('{{STORYBOARD_TYPES}}'), false);
-  assert.equal(skill.includes('{{PLAN_VIEWS}}'), false);
-  assert.ok(skill.includes('| `compare` | Before vs after | `compare` |'), 'the plan views table is filled from shared/views.mjs');
+  const plan = fs.readFileSync(path.join(dir, 'skills/mr-cast/references/plan.md'), 'utf8');
+  assert.ok(plan.includes('| `compare` | Before vs after | `compare` |'), 'the plan views table is filled from shared/views.mjs');
+  for (const file of EXPECTED) assert.equal(/\{\{[A-Z_]+\}\}/.test(fs.readFileSync(path.join(dir, file), 'utf8')), false, `${file} has an unfilled placeholder`);
   assert.equal(skillsInstalledFrom(root, dir), true);
   assert.equal(skillsInstalledFrom(root, freshDir()), false);
 });
 
-test('the primitives index and its leaves are installed with the CLI path filled in, and the main skill points at it', () => {
+// Claude Code keeps the first 5,000 tokens of a skill after compaction, and Anthropic's guidance is under 500 lines.
+// At about 4 characters a token, the whole installed SKILL.md then fits in the part that survives.
+test('the installed mr-cast SKILL.md stays under 500 lines and about 5,000 tokens', () => {
   const dir = freshDir();
   installSkill(root, dir);
-  const index = fs.readFileSync(path.join(dir, 'skills/mr-cast-primitives/SKILL.md'), 'utf8');
-  assert.match(index, /^---\nname: mr-cast-primitives\n[\s\S]*\nuser-invocable: false\n---\n/);
-  const leaf = fs.readFileSync(path.join(dir, 'skills/mr-cast-primitives/primitives/array.md'), 'utf8');
-  assert.equal(leaf.includes('{{MR_CAST}}'), false);
-  assert.ok(leaf.includes(`${root}/bin/mr-cast validate`));
-  const main = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
-  assert.ok(main.includes('Unsure which primitive? Read the [mr-cast-primitives index](../mr-cast-primitives/SKILL.md)'));
-  assert.ok(fs.existsSync(path.join(dir, 'skills/mr-cast', '../mr-cast-primitives/SKILL.md')), 'the link from the main skill resolves');
+  const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
+  const lines = skill.split('\n').length;
+  const tokens = Math.round(skill.replaceAll(root, '').length / 4);
+  assert.ok(lines < 500, `${lines} lines`);
+  assert.ok(tokens <= 5000, `about ${tokens} tokens; move detail into a reference`);
+});
+
+test('SKILL.md links every reference and every link resolves', () => {
+  const dir = freshDir();
+  installSkill(root, dir);
+  const skillDir = path.join(dir, 'skills/mr-cast');
+  const links = (file) => [...fs.readFileSync(file, 'utf8').matchAll(/\]\(([^)#\s]+\.md)(#[^)]*)?\)/g)].map((m) => path.resolve(path.dirname(file), m[1]));
+  const fromSkill = new Set(links(path.join(skillDir, 'SKILL.md')));
+  const refs = EXPECTED.filter((f) => f.startsWith('skills/mr-cast/references/')).map((f) => path.join(dir, f));
+  assert.deepEqual(refs.filter((f) => !fromSkill.has(f)).map((f) => path.relative(skillDir, f)), []);
+  for (const file of [path.join(skillDir, 'SKILL.md'), ...refs]) {
+    for (const target of links(file)) assert.ok(fs.existsSync(target), `${path.relative(skillDir, file)} links ${path.relative(skillDir, target)}, which does not exist`);
+  }
+});
+
+test('the skill hook runs this install\'s mr-cast after a write', () => {
+  const dir = freshDir();
+  installSkill(root, dir);
+  const front = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8').split('\n---\n')[0];
+  assert.ok(front.includes(`hooks:\n  PostToolUse:\n    - matcher: "Write|Edit"\n      hooks:\n        - type: command\n          command: "'${root}/bin/mr-cast' hook"`));
 });
 
 test('a dotfile, an editor backup or a merge leftover in a skill folder is not installed', () => {
   const copy = fs.mkdtempSync(path.join(tmp, 'root-'));
   for (const f of ['package.json', 'src', 'skill']) fs.cpSync(path.join(root, f), path.join(copy, f), { recursive: true });
-  fs.writeFileSync(path.join(copy, 'skill/mr-cast-primitives/.DS_Store'), 'x');
+  fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/scenes/.DS_Store'), 'x');
   fs.writeFileSync(path.join(copy, 'skill/mr-cast/SKILL.md~'), 'x');
   fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/branch.md.orig'), 'x');
   const dir = freshDir();

@@ -44,3 +44,5 @@ Each test beside what it proves in plain words, and the gaps nothing tests liste
 ## Schema and validate notes
 
 A `focus` is a case index, a case name, or `"gap:0"`. Each case has its `name` as written in code and what it `proves`. `{{MR_CAST}}/bin/mr-cast validate` fails on no cases and no gaps, and warns past 10 cases or 4 gaps and on a spoken count that disagrees.
+
+`{{MR_CAST}}/bin/mr-cast schema tests` prints its fields.

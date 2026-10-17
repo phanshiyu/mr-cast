@@ -52,3 +52,5 @@ The statuses a thing can be in and the moves between them, with the start marked
 ## Schema and validate notes
 
 A `focus` is a state id, a transition `"from->to"`, its exact label, or a transition index. A state id lights the state, not the arrows into it. `{{MR_CAST}}/bin/mr-cast validate` fails on an unknown `initial` or transition end, and warns past 10 states.
+
+`{{MR_CAST}}/bin/mr-cast schema state` prints its fields.

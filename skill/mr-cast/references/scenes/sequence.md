@@ -52,3 +52,5 @@ Participants across the top and messages down the page in time order: calls, rep
 ## Schema and validate notes
 
 A `focus` is a message index, an `"a-b"` range of messages, or a participant id. Messages take `kind` `call`, `return` or `async`, and `from` equal to `to` for a self-call. `{{MR_CAST}}/bin/mr-cast validate` fails on an unknown participant and a label that does not fit, and warns past 6 participants or 24 messages, on a message no step names, and on narration over 35 words.
+
+`{{MR_CAST}}/bin/mr-cast schema sequence` prints its fields.

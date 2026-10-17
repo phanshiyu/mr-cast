@@ -50,4 +50,6 @@ Cards and the lines between them, laid out automatically. With `decision`, `term
 
 ## Schema and validate notes
 
-A `focus` is a node id, an edge `"a->b"` (`"a-b"` either way), `"group:Name"` or an edge index. Cards take a Lucide `icon` and a `caption`. Decision, terminal and step shapes take no icon. `layout` is `LR` or `TB`, and a graph with a decision lays out top to bottom by itself. `{{MR_CAST}}/bin/mr-cast validate` fails on an unknown node in an edge or an unknown icon, and warns past 12 nodes, on an unlabelled decision edge, and on narration over 35 words.
+A `focus` is a node id, an edge `"a->b"` (`"a-b"` either way), `"group:Name"` or an edge index. Cards take a Lucide `icon` and a `caption`. Decision, terminal and step shapes take no icon. `layout` is `LR` or `TB` (top to bottom, for a hierarchy or a hand-off). An edge's `direction` is `both` for a two-way link or `none` for a plain one, and its `style` is `solid` when nothing moves or `dashed` for a weak or indirect link. A graph with a decision lays out top to bottom by itself. `{{MR_CAST}}/bin/mr-cast validate` fails on an unknown node in an edge or an unknown icon, and warns past 12 nodes, on an unlabelled decision edge, and on narration over 35 words.
+
+`{{MR_CAST}}/bin/mr-cast schema graph` prints its fields.

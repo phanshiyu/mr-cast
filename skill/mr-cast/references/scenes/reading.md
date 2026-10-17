@@ -32,3 +32,5 @@ The order in which to read the code, each item with its file, lines and what to 
 ## Schema and validate notes
 
 Each item names a `hunkId`, optional `lines` inside it, and a `check` unless it is `routine`. The scene takes no `steps`. `{{MR_CAST}}/bin/mr-cast validate` fails on a hunk listed twice and a missing check, and warns on an item over 40 lines with no `lines`.
+
+`{{MR_CAST}}/bin/mr-cast schema reading` prints its fields.
