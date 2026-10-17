@@ -1,6 +1,6 @@
 # Quick mode and the voice before the page
 
-`mr-cast init --quick` starts a short diagram video in `.mr-cast/quick-<title-slug>/`. `validate` lets it open without an intent scene and warns past 3 scenes or about 60 seconds of narration. `play` serves the player and prints its URL at once, voices in a child process with one progress line on stderr (`Voicing <k> of <n> scenes... (--no-voice skips the voice)`), then opens the browser. A page opened before that shows `Making the voice-over...`. A quick run ends on a card of next steps.
+`mr-cast init --quick` starts a short diagram video in `.mr-cast/quick-<title-slug>/`. `validate` lets it open without an intent scene and warns past 3 scenes or about 60 seconds of narration. `play` serves the player and prints its URL at once, voices in a child process with one progress line on stderr (`Voicing <k> of <n> lines... (--no-voice skips the voice)`), then opens the browser. A page opened before that shows `Making the voice-over...`. A quick run ends on a card of next steps.
 
 ## Sub-features
 
@@ -23,7 +23,7 @@ Preconditions: launched `$RUN`, Kokoro cached (doctor). A 2-scene storyboard wit
 
 - **Start.** `$V mrc $RUN quick-init -- init --quick --title "Rate limiter quick"` prints `.../.mr-cast/quick-rate-limiter-quick`. Copy `$RUN/work/quick.json` there as `storyboard.json`.
 - **Validate.** `$V mrc $RUN quick-validate -- validate` prints `✓ storyboard ok` and no `intent scene` warning.
-- **Voice first.** `rm -rf $DEMO/.mr-cast/quick-rate-limiter-quick/audio $DEMO/.mr-cast/quick-rate-limiter-quick/voiceover.json`, then `URL=$($V play-start $RUN quick)`. `curl $URL/data/voiceover.json` shows `"pending":true` at first, and `$RUN/work/play/quick.err` counts `Voicing 0 of 2 scenes...` up to `voice ready: 2 of 2 scenes`.
+- **Voice first.** `rm -rf $DEMO/.mr-cast/quick-rate-limiter-quick/audio $DEMO/.mr-cast/quick-rate-limiter-quick/voiceover.json`, then `URL=$($V play-start $RUN quick)`. `curl $URL/data/voiceover.json` shows `"pending":true` at first, and `$RUN/work/play/quick.err` counts `Voicing 0 of 5 lines...` up to `voice ready: 5 of 5 lines`.
 - **Wait, voice, end card.** `$V browse $RUN quick-voice "$URL/" "wait:Making the voice-over" shot:waiting sleep:10000 "wait:Play with voice-over" shot:voiced sleep:2000 press:Space press:k sleep:17000 shot:end`. `waiting` shows no player, `voiced` reads `0:00 / 0:43` (voiced) under the `Play with voice-over` poster, and `end` shows `go deeper`.
 - **Edit while open.** With the player above running and voiced, write a copy of the storyboard whose second scene has a new `chapter` and `narration` to `$RUN/work/edited.json`, then `$V browse $RUN edit "$URL/" "wait:Play with voice-over" sleep:2000 press:Space sleep:2000 "run:cp $RUN/work/edited.json $DEMO/.mr-cast/quick-rate-limiter-quick/storyboard.json" wait:Updating shot:updating "wait:<new chapter>" shot:reloaded`. `updating` shows `Updating…`, the old chapter name and the time still advancing; `reloaded` shows the new chapter at about the same time, about 3 s after the edit.
 - **Failed voice.** `URL=$($V play-start $RUN failed --voice zz_bogus)`, then `$V browse $RUN failed "$URL/" "wait:Voice failed" sleep:2000 shot:failed`. The page plays silent at the reading length (`/ 0:53`).

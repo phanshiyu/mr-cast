@@ -26,7 +26,7 @@ import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
-import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
+import { ensureVoiceover, readVoiceover, voicedLines } from './lib/voice.mjs';
 import { ensureVoiceoverInChild, stopVoicing } from './lib/voice-child.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -426,14 +426,16 @@ async function voiceNow(dir, storyboard, settings) {
   return { voiceover, wait: storyboard.scenes.some((scene) => spokenTexts(scene).some((text) => !clipFor(voiceover, text))) };
 }
 
-/** "3 of 3 scenes": the scenes whose every spoken text has a clip. */
-const voicedScenes = (storyboard, voiceover) =>
-  `${storyboard.scenes.filter((scene) => spokenTexts(scene).every((text) => clipFor(voiceover, text))).length} of ${plural(storyboard.scenes.length, 'scene')}`;
+/** "4 of 17 lines": the spoken lines that have a clip. */
+const voicedCount = (storyboard, voiceover) => {
+  const { done, total } = voicedLines(storyboard, voiceover);
+  return `${done} of ${plural(total, 'line')}`;
+};
 
 /** One terminal line that says how far the voicing is, rewritten in place on a terminal. */
 function voicingLine(storyboard, voiced) {
   const tty = process.stderr.isTTY;
-  const text = (voiceover) => `Voicing ${voicedScenes(storyboard, voiceover)}... (--no-voice skips the voice)`;
+  const text = (voiceover) => `Voicing ${voicedCount(storyboard, voiceover)}... (--no-voice skips the voice)`;
   let last = '';
   let open = false;
   const show = (line) => {
@@ -486,7 +488,7 @@ async function play(argv) {
       const ensure = (args) => ensureVoiceoverInChild(args).finally(line.end);
       const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: line.onProgress, ensure, markFailed: true });
       if (voiceover?.failed) console.error('mr-cast: voicing failed; the player plays silent with subtitles');
-      else if (voiceover) console.error(`voice ready: ${voicedScenes(sb, voiceover)}`);
+      else if (voiceover) console.error(`voice ready: ${voicedCount(sb, voiceover)}`);
       return voiceover;
     },
     reload: () => server?.reload(),

@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spokenTexts, wordCount } from '../../shared/timing.mjs';
-import { PACES, narrationKey } from '../../shared/voice.mjs';
+import { PACES, clipFor, narrationKey } from '../../shared/voice.mjs';
 import { cacheDir } from './cache.mjs';
 import { UserError } from './errors.mjs';
 import { withLock } from './lock.mjs';
@@ -41,6 +41,12 @@ export function parsePace({ pace, speed }) {
 }
 
 const isSentence = (s) => Number.isInteger(s?.words) && s.words >= 0 && Number.isFinite(s.start) && Number.isFinite(s.end) && s.end >= s.start;
+
+/** How far voicing has come, in spoken lines: each distinct narration or `say` is one clip. */
+export function voicedLines(storyboard, voiceover) {
+  const texts = [...new Set(storyboard.scenes.flatMap(spokenTexts).filter((text) => typeof text === 'string' && text.trim()))];
+  return { done: texts.filter((text) => clipFor(voiceover, text)).length, total: texts.length };
+}
 
 /** voiceover.json as written by ensureVoiceover, or null when it is missing or malformed. */
 export function readVoiceover(dataDir) {
