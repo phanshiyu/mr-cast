@@ -1,0 +1,16 @@
+name: Feature request
+description: A new scene type, command or option, or a change to how videos look.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to show or do
+      description: The idea, change or task you could not make a video of, or the step that is missing.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would help
+      description: A scene, field, command or flag that would solve it, if you have one in mind.
