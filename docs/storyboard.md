@@ -8,7 +8,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 
 | Scene | Shows |
 | --- | --- |
-| `intent` | A summary, a risk badge, bullets and diff stats. |
+| `intent` | A summary, an optional risk badge, bullets and diff stats. |
 | `graph` | Nodes and edges laid out left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons), or flowchart shapes. With `steps`, the voice walks the graph node by node and edge by edge. |
 | `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. |
 | `flow` | A step-by-step trace with the payload at each step. With a `say` on each step, the current step follows the voice. |
@@ -26,7 +26,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `layers` | Stacked bands in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply. `skip` answers early at one stop, turns the token back there, and fades the stops it never reached. |
 | `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them. Each step can `set` cell values, `move` a pointer or range, and `show` or `hide` one. A changed value slides out and the new one slides in, briefly lit. |
 | `memory` | Call frames with their variables on the left and objects with their fields on the right. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
-| `review` | In [review mode](#review-findings), every finding worst first, with its severity, file, line and claim, under "Claude's review". |
+| `review` | In [review mode](#review-findings), every finding, worst first, with its severity, file, line and claim, under "Claude's review". |
 | `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. |
 
 A `tests` scene that is not about a diff's tests can rename its panels with `titles`, for example `{ "subject": "Checked", "proves": "Shows", "gaps": "Open questions", "none": "Nothing checks this yet" }`.
@@ -182,15 +182,15 @@ In review mode, the storyboard holds Claude's flags in `findings`. Each finding 
   "evidence": "delete(row.userId) removes nothing, so the same token works twice" }
 ```
 
-A code step shows a finding with `"flag": "<id>"`. It draws a circle in the severity's colour (red, orange or blue) with the claim as the note, unless the step names its own `mark` or `note`. A `review` scene at the end recaps every finding, worst first.
+A code step shows a finding with `"flag": "<id>"`. It draws a circle in the severity's colour (red, orange or blue) with the claim as the note, unless the step names its own `mark` or `note`. A `review` scene lists every finding, worst first. It is optional, and it can go anywhere in the storyboard. `validate` fails on a `review` scene when `findings` is empty.
 
-`validate` checks that each finding's file and line are in the diff, that its severity is valid, and that it has evidence. It checks that each `flag` names a finding and sits on the step whose lines hold the finding's line. It writes `review.md` into the run's directory, with each finding as a `file:line` bullet and its evidence.
+`validate` checks that each finding's file and line are in the diff, that its severity is valid, and that it has a claim and evidence. It checks that each `flag` names a finding and sits on the step whose lines hold the finding's line. It warns about a finding that no step flags. An explanation has no diff, so `validate` fails on `findings` there. It writes `review.md` into the run's directory, with each finding as a `file:line` bullet and its evidence.
 
 ## Pre-read
 
 Pass `--audience preread` to each command for a pre-read. A pre-read shows no code, so it has no `code` scene and no code cell in a `compare`.
 
-- Each diagram names the hunks it explains in `"from": ["h1", "h3"]`, at most 3. The scene shows them as a quiet "In the code: limiter.ts, server.ts" line.
-- The closing `reading` scene lists hunks in reading order in `items`. Each item has a `hunkId`, and a `check`: what to verify there, such as "the key resets on a new minute; check the off-by-one". The file and lines come from `hunks.json`. `"lines": "40-58"` points an item at the lines that matter inside its hunk. Wiring and config are marked `"routine": true` and collapse to one "skim" line. The scene shows the first 6 items under "Read first" and counts the rest.
+- A diagram can name the hunks it explains in `"from": ["h1", "h3"]`. The scene shows them as a quiet "In the code: limiter.ts, server.ts" line.
+- A `reading` scene lists hunks in reading order in `items`. A storyboard has at most one, and it can go anywhere. Each item has a `hunkId`, and a `check`: what to verify there, such as "the key resets on a new minute; check the off-by-one". The file and lines come from `hunks.json`. `"lines": "40-58"` points an item at the lines that matter inside its hunk. An item marked `"routine": true`, such as wiring or config, needs no `check`. It stays off the screen, and `reading.md` and the player list it on one "skim" line. The scene shows the first 6 items under "Read first" and counts the rest.
 - `validate` writes `reading.md` beside the storyboard: a ``- [ ] 1. `src/limiter.ts:12-30`: check`` checklist to paste into the merge request. `outline` prints the same order as `path:line` lines. The player shows it in a **Reading order** panel, where each item's "Explained in" seeks the video to the scene that explains it.
-- In review mode, each finding sits on the reading item of the hunk that holds its line, in its severity's colour, and the pre-read has no `review` scene. `validate` still writes `review.md`.
+- In review mode, a reading item takes `"flag": "<id>"` for the finding in its hunk, shown in the severity's colour. A pre-read has no `review` scene, and its code steps take no `flag`. `validate` still writes `review.md`.

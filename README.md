@@ -15,7 +15,7 @@
   <a href="package.json"><img src="https://img.shields.io/node/v/@shiyuphan/mr-cast" alt="Node version"></a>
 </p>
 
-mr-cast is a command-line tool and a Claude Code skill. Ask Claude for a video of your branch, or of something it just explained. Claude writes a storyboard, and mr-cast plays it as a narrated video in your browser or renders it to an MP4. The voice and the render run on your machine, with no cloud service.
+mr-cast is a command-line tool and a Claude Code skill. Ask Claude for a video of your branch, or of something it just explained. Claude decides what the video covers and how to show it, and writes a storyboard. mr-cast gives Claude the scene types, a voice and a validator, and plays the storyboard as a narrated video in your browser or renders it to an MP4. The voice and the render run on your machine, with no cloud service.
 
 ## What it looks like
 

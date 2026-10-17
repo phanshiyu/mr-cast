@@ -10,7 +10,7 @@ Run the commands from inside the repository the video is about. Output goes to `
 | --- | --- |
 | `mr-cast install-skill` | Installs the `mr-cast`, `mr-cast-prune` and `mr-cast-upgrade` skills into `~/.claude`, or `$CLAUDE_CONFIG_DIR`, and removes what earlier versions installed there. |
 | `mr-cast uninstall-skill` | Removes every skill mr-cast installed. |
-| `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the audience and pace you chose last time. The skill picks the video's source from it. |
+| `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the pace you chose last time. The skill picks the video's source from it. |
 | `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Running it again on the same branch keeps the storyboard and the snippets. |
 | `mr-cast init --title text [--reset] [--quick]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/`, in the git repository or in the current directory outside one, and prints its path. A slug already in use gets a numbered suffix such as `-2`. The same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. `--quick` starts a quick video of 1 to 3 scenes in `.mr-cast/quick-<title-slug>/`, and needs `--title`. A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice, unless the full video already has a storyboard or snippets, or `--reset` is given. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Each snippet holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. A later `extract` keeps the snippets. |
@@ -44,13 +44,15 @@ Several runs can render at once, in one repository or in several, and they share
 
 | Flag | What it does |
 | --- | --- |
-| `--audience preread` | Makes a [pre-read](storyboard.md#pre-read): no code on screen, and a reading order at the end. |
+| `--audience preread` | Makes a [pre-read](storyboard.md#pre-read): no code on screen, and the reading order in `reading.md`. |
 | `--pace slower\|normal\|faster` | The voice's speed and the pauses around it. The default is `normal`. |
 | `--speed x` | The voice's speed alone, from 0.5 to 2. It overrides the speed that `--pace` sets. |
 | `--voice name` | The Kokoro voice. The default is `af_heart`. |
 | `--no-voice` | A silent walkthrough, with subtitles timed for reading. |
 
-mr-cast remembers your last audience and pace in `~/.config/mr-cast/last-choices.json`, or under `$XDG_CONFIG_HOME` when that is set, so the skill can offer them first next time. `mr-cast status` prints them.
+`--audience` also accepts `familiar`, `new` and `overview`, and every command accepts `--simple`, so skills from before 0.25 keep working. All four make the plain video, the same as no flag. Any other `--audience` value is an error.
+
+mr-cast remembers your last pace in `~/.config/mr-cast/last-choices.json`, or under `$XDG_CONFIG_HOME` when that is set. `mr-cast status` prints it.
 
 ## The voice
 
@@ -74,7 +76,7 @@ When `storyboard.json` changes, the page keeps playing its version and shows "Up
 
 ## Render
 
-`mr-cast render` writes the MP4 in the run's directory. It names the file after the storyboard title, or else the run's name, or else `walkthrough.mp4`. `--out file.mp4` writes it somewhere else. In review mode, `render --out` also writes `review.md` beside the MP4, named after it.
+`mr-cast render` writes the MP4 in the run's directory. It names the file after the storyboard title, or else the run's name, or else `walkthrough.mp4`. `--out file.mp4` writes it somewhere else. When the run has a `review.md` or a `reading.md`, `render --out` also writes a copy of each beside the MP4, named after it, such as `demo.review.md` and `demo.reading.md`.
 
 The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`.
 
@@ -84,7 +86,7 @@ The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion
 
 The page writes your pick as the topic's `choice`, such as `{ "depth": "deep", "view": "compare" }`, and nothing else. The server accepts only a `choice` for a known topic, with a depth and a view that the topic offers. It writes `plan.json` by renaming a complete file into place.
 
-Each scene names its topic in `topic`. `validate` fails on a topic that is not in the plan.
+Each scene names its topic in `topic`, and the storyboard records the picks it was written from in `plan`. `validate` fails on a topic that is not in the plan. It warns about a topic whose scenes do not draw its picked view, and about a pick that changed in `plan.json` since the storyboard was written.
 
 ## Prune
 

@@ -24,7 +24,7 @@ Type `/mr-cast`, or ask Claude in your own words. The skill picks what the video
 
 - A base branch, `--working`, "this branch", "PR", "MR" or "diff" means the branch's changes.
 - "That", "what you said" or "this explanation" means the explanation Claude just gave.
-- A bare "make a video of this" uses whichever source exists.
+- A bare "make a video of this" uses whichever source exists. When both exist, Claude asks which one you mean.
 
 A branch video starts from `mr-cast extract`, which diffs the branch against its base. An explanation starts from `mr-cast init`, and its code scenes show snippets of real source files instead of diff hunks. Run Claude Code from the repository the video is about.
 
@@ -52,7 +52,7 @@ The MP4 is 1920x1080 at 30 fps, with the voice, burned-in subtitles and a chapte
 
 A pre-read is for a reviewer who reads the code after the video. Say "pre-read", "before I review", "no code on screen" or "without code".
 
-The video shows no code. It explains the change with diagrams that use the real identifiers and file names, and ends on a `reading` scene: the order in which to read the hunks, each with what to check there. `mr-cast validate` writes the same order to `reading.md` beside the storyboard, as a checklist you can paste into the merge request. The player shows it in a **Reading order** panel with **Copy as checklist**.
+The video shows no code. It explains the change with diagrams that use the real identifiers and file names, and lists in a `reading` scene the order in which to read the hunks, each with what to check there. `mr-cast validate` writes the same order to `reading.md` beside the storyboard, as a checklist you can paste into the merge request. The player shows it in a **Reading order** panel with **Copy as checklist**.
 
 See [the pre-read fields](storyboard.md#pre-read) in the storyboard reference.
 
@@ -60,7 +60,7 @@ See [the pre-read fields](storyboard.md#pre-read) in the storyboard reference.
 
 By default the video explains the change and gives no verdict. To have Claude also flag what looks wrong, say "review it", "with your review", "find issues" or "flag anything that looks wrong". Review mode needs a branch, because an explanation has no diff to review.
 
-Each flag has a severity: `bug` (wrong today, with an input that breaks it), `risk` (breaks under some input or later, or leaks something), or `nit` (small but worth a fix). A pen circle in the severity's colour rings the line where the walkthrough reaches it, and a last scene recaps every flag, worst first. `validate` writes the flags to `review.md` in the run's directory, and `render --out` writes a copy beside the MP4.
+Each flag has a severity: `bug` (wrong today, with an input that breaks it), `risk` (breaks under some input or later, or leaks something), or `nit` (small but worth a fix). A pen circle in the severity's colour rings the line where the walkthrough reaches it. A `review` scene, when Claude adds one, lists every flag, worst first. `validate` writes the flags to `review.md` in the run's directory, and `render --out` writes a copy beside the MP4. In a pre-read, each flag sits on its item in the reading order instead.
 
 `examples/review/` is a password reset change with a planted bug, risk and nit. `scripts/review-demo.sh <dir>` creates its git repository.
 
