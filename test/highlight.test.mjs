@@ -50,6 +50,14 @@ test('numbers that count or name something else do not warn, though the scene ho
   assert.deepEqual(warnings, []);
 });
 
+test('a spelled number is read whole, so "twenty three" names 23 and not 20', async () => {
+  const scene = (say) => ({ type: 'array', narration: 'Sorted limits.', values: [5, 20, 23, 200, 205], steps: [{ focus: 2, say }] });
+  assert.deepEqual(await highlightWarnings(scene('The middle cell holds twenty three.')), []);
+  assert.deepEqual(await highlightWarnings(scene('Twenty-three is not two hundred and five.')), [
+    'scenes[0].steps[0]: says "205" (cell 4 = 205), which is not lit; it lights cell 2 = 23. Focus what the words name, or say only what is lit',
+  ]);
+});
+
 test('a pointer or range named by its words counts as lit when the cell under it is', async () => {
   const warnings = await highlightWarnings({
     type: 'array',

@@ -216,7 +216,8 @@ function codeViews(scene, hunks) {
 
 // ─── Words that name an item ───
 
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
 /** Words after a number that keep it a value ("five and one", "four is bigger"); any other word makes it a count ("two passes"). */
 const VALUE_FOLLOWERS = new Set('and or is are was were than to with swap swaps swapped trade trades stay stays stayed move moves moved sit sits go goes went become becomes land lands into in on at so but then now from by against versus vs before after first last still also already itself'.split(' '));
 /** Words before a number that make it the name of something else ("pass two", "step three"). */
@@ -231,14 +232,44 @@ const NEGATIONS = new Set('never not no nor without skips skipped bypasses'.spli
 /** Words never worth matching alone: a name made only of these is skipped. */
 const STOP = new Set('a an the of to in on at by for and or is are be it this that its with from as not no yes if then so'.split(' '));
 
-/** Lowercase words of a text, with number words as digits. */
+/** Lowercase words of a text. */
 const words = (s) => String(s).toLowerCase().match(/[a-z0-9]+(?:[.'][a-z0-9]+)*/g) ?? [];
-function tokens(s) {
-  return words(s).map((w) => {
-    const n = NUMBER_WORDS.indexOf(w);
-    return n >= 0 ? String(n) : w;
-  });
+
+/** The number a run of number words starting at `i` spells ("twenty three", "two hundred and five"), and its length. */
+function spelled(ws, i) {
+  const below100 = (j) => {
+    const t = TENS.indexOf(ws[j]);
+    if (t >= 2) {
+      const u = NUMBER_WORDS.indexOf(ws[j + 1]);
+      return u >= 1 && u <= 9 ? [t * 10 + u, 2] : [t * 10, 1];
+    }
+    const n = NUMBER_WORDS.indexOf(ws[j]);
+    return n >= 0 ? [n, 1] : null;
+  };
+  const head = ws[i] === 'a' && ws[i + 1] === 'hundred' ? [1, 1] : below100(i);
+  if (!head) return null;
+  let [value, used] = head;
+  if (ws[i + used] === 'hundred' && value >= 1 && value <= 9) {
+    value *= 100;
+    used++;
+    const rest = below100(i + used + (ws[i + used] === 'and' ? 1 : 0));
+    if (rest && rest[0] >= 1) [value, used] = [value + rest[0], used + (ws[i + used] === 'and' ? 1 : 0) + rest[1]];
+  }
+  return [value, used];
 }
+
+/** A text's words with each spelled number as its digits, beside the first word it was spelled with. */
+function wordsAndTokens(s) {
+  const ws = words(s);
+  const out = [];
+  for (let i = 0; i < ws.length; ) {
+    const n = spelled(ws, i);
+    out.push([n ? String(n[0]) : ws[i], ws[i]]);
+    i += n ? n[1] : 1;
+  }
+  return out;
+}
+const tokens = (s) => wordsAndTokens(s).map(([t]) => t);
 
 const isNumber = (w) => /^\d+(\.\d+)?$/.test(w);
 
@@ -260,8 +291,9 @@ function namedIn(say, items) {
   ]);
   const found = [];
   for (const sentence of String(say).split(/(?<=[.!?;])\s+/)) {
-    const said = tokens(sentence);
-    const raw = words(sentence);
+    const pairs = wordsAndTokens(sentence);
+    const said = pairs.map(([t]) => t);
+    const raw = pairs.map(([, w]) => w);
     // A label in a sentence that denies it ("the orders service is never reached") is named on purpose while dark.
     const denied = said.some((w) => NEGATIONS.has(w));
     for (let i = 0; i < said.length; ) {
