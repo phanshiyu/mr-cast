@@ -392,14 +392,17 @@ test('the reading order lists each topic once, and a file to read is never also 
     '### The limiter',
     '',
     '- [ ] 1. `src/limiter.ts:12-31`: the key resets on a new minute; check the off-by-one',
-    '- [ ] 3. `src/config.ts:3-4`: the window is 60 seconds',
+    '- [ ] 2. `src/config.ts:3-4`: the window is 60 seconds',
     '',
     '### The route',
     '',
-    '- [ ] 2. `src/server.ts:40-55`, also 2: the limiter runs before the order is saved',
+    '- [ ] 3. `src/server.ts:40-55`, also 2: the limiter runs before the order is saved',
   ].join('\n'));
-  assert.deepEqual(readingLines(order).slice(1), ['  2. src/server.ts:40-55, also 2  the limiter runs before the order is saved', '  3. src/config.ts:3-4  the window is 60 seconds']);
-  assert.equal(moreText(layoutReading(order, sb.scenes[4].items, 1712, 760)), '');
+  assert.deepEqual(readingLines(order).slice(1), ['  2. src/config.ts:3-4  the window is 60 seconds', '  3. src/server.ts:40-55, also 2  the limiter runs before the order is saved']);
+  // The scene has no plan, yet numbers and shows the items as reading.md does.
+  const layout = layoutReading(readingOrder(sb, more), sb.scenes[4].items, 1712, 760);
+  assert.deepEqual(layout.rows.map((r) => [r.item.number, r.item.hunkId]), [[1, 'h1'], [2, 'h3'], [3, 'h2']]);
+  assert.equal(moreText(layout), '');
 });
 
 test('the code check reads diagram labels, not the reading checks or a terminal', async () => {

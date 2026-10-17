@@ -13,12 +13,14 @@ export interface ReadingEntry {
   also: string[];
   check: string;
   routine: boolean;
-  /** 1-based among the non-routine items; null for a routine one. */
+  /** 1-based in `readFirst`, the items to read grouped by topic; null for a routine one. */
   number: number | null;
   finding: Finding | null;
   /** The scene that cites the hunk in `from` with the fewest hunks: its chapter, and its index to seek to. */
   explainedIn: { chapter: string; scene: number } | null;
-  /** The plan topic of the scene that explains it, or null. */
+  /** The topic id of the scene that explains it, which groups the items, or null. */
+  topicId: string | null;
+  /** The plan's title for that topic, or null. */
   topic: string | null;
 }
 
@@ -30,6 +32,7 @@ export interface ReadingGroup {
 
 export interface ReadingOrder {
   items: ReadingEntry[];
+  /** The items to read, grouped by topic, in their numbered order. */
   readFirst: ReadingEntry[];
   /** The items to read by topic: each topic once, in the order the reading order first reaches it. */
   groups: ReadingGroup[];

@@ -63,48 +63,52 @@ function explainer(storyboard, hunkId) {
 }
 
 /**
- * `items` grouped by topic, as `{ title, items }`: each topic once, in the order the reading order first reaches
- * it, with its items in their order. `title` is null when no item has a topic.
+ * `items` grouped by the topic of the scene that explains each, as `{ title, items }`: each topic once, in the
+ * order the items first reach it, with its items in their order. Grouping needs only the scenes' topic ids, so the
+ * scene, which has no plan, numbers the items as reading.md does. `title` is the plan's title for the topic,
+ * "Other changes" for items with none, and null for every group when no item has a title.
  */
 function byTopic(items) {
   const titled = items.some((i) => i.topic !== null);
   const groups = new Map();
   for (const item of items) {
-    const title = titled ? item.topic ?? 'Other changes' : null;
-    if (!groups.has(title)) groups.set(title, []);
-    groups.get(title).push(item);
+    if (!groups.has(item.topicId)) groups.set(item.topicId, { title: titled ? item.topic ?? 'Other changes' : null, items: [] });
+    groups.get(item.topicId).items.push(item);
   }
-  return [...groups].map(([title, list]) => ({ title, items: list }));
+  return [...groups.values()];
 }
 
 /**
  * The reading order, resolved against hunks.json: each item's place, number (routine items have none), the
  * chapter that explains it, the plan topic of that chapter and the finding it carries. `groups` are the items to
- * read by topic, each topic once; `skim` holds the routine items not riding on an item of their file, one entry per
- * topic. `plan` (plan.json) names the topics;
+ * read by topic, each topic once, and `readFirst` is them in that order, numbered 1, 2, 3; `skim` holds the
+ * routine items not riding on an item of their file, one entry per topic. `plan` (plan.json) titles the topics;
  * without one there are no topic headings. Items whose hunk is unknown are left out; `validate` reports them.
  */
 export function readingOrder(storyboard, hunks, plan = null) {
   const scene = readingScene(storyboard);
   if (!scene || !Array.isArray(scene.items)) return null;
   const findings = new Map((Array.isArray(storyboard.findings) ? storyboard.findings : []).map((f) => [f?.id, f]));
-  const topics = new Map((plan?.topics ?? []).map((t) => [t.id, t.title]));
-  let n = 0;
+  const titles = new Map((plan?.topics ?? []).map((t) => [t.id, t.title]));
   const items = scene.items.filter((item) => item && Object.hasOwn(hunks, item.hunkId)).map((item) => {
     const by = explainer(storyboard, item.hunkId);
+    const topicId = typeof by?.scene.topic === 'string' ? by.scene.topic : null;
     return {
       hunkId: item.hunkId,
       where: hunkLocation(hunks[item.hunkId], item.lines),
       also: [],
       check: typeof item.check === 'string' ? item.check : '',
       routine: item.routine === true,
-      number: item.routine === true ? null : ++n,
+      number: null,
       finding: typeof item.flag === 'string' ? findings.get(item.flag) ?? null : null,
       explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
-      topic: (by?.scene.topic && topics.get(by.scene.topic)) ?? null,
+      topicId,
+      topic: titles.get(topicId) ?? null,
     };
   });
-  const readFirst = items.filter((i) => !i.routine);
+  const groups = byTopic(items.filter((i) => !i.routine));
+  const readFirst = groups.flatMap((g) => g.items);
+  readFirst.forEach((item, i) => { item.number = i + 1; });
   // A routine hunk of a file the reader already reads rides on that file's item, so no file is on both lists.
   const skimmed = [];
   for (const item of items.filter((i) => i.routine)) {
@@ -113,7 +117,7 @@ export function readingOrder(storyboard, hunks, plan = null) {
     if (host) host.also.push(...[item.where.slice(file.length + 1)].filter(Boolean));
     else skimmed.push(item);
   }
-  return { items, readFirst, groups: byTopic(readFirst), skim: byTopic(skimmed) };
+  return { items, readFirst, groups, skim: byTopic(skimmed) };
 }
 
 /** ", also 1-6": the routine lines of the item's file that ride on it, or nothing. */

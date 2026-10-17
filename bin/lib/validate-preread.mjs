@@ -3,7 +3,7 @@
 // the reading order's job: every substantial hunk is in it or in `skipped`. A terminal session is not source
 // code, so it stays allowed; a code scene and a code cell in a compare do not.
 
-import { CHECK_MAX, READ_FIRST_MAX, hunkSpan } from '../../shared/reading.mjs';
+import { CHECK_MAX, READ_FIRST_MAX, hunkSpan, readingOrder } from '../../shared/reading.mjs';
 import { plainText } from '../../shared/markup.mjs';
 import { sceneChapter } from '../../shared/chapters.mjs';
 import { findingLocation, lineSpan } from '../../shared/review.mjs';
@@ -160,11 +160,11 @@ function checkExplainers(sb, warnings) {
 }
 
 /**
- * The narration's "item 4" names a numbered item of the reading order, and outside the reading scene one whose
+ * The narration's "item 4" names a numbered item of the reading order, as grouped by topic, and outside the reading scene one whose
  * hunk the scene cites in `from`: "check this at item 4" sends the viewer to the code this picture is about.
  */
-function checkItemRefs(sb, items, warnings) {
-  const numbered = items.filter((it) => it?.routine !== true);
+function checkItemRefs(sb, hunks, warnings) {
+  const numbered = readingOrder(sb, hunks)?.readFirst ?? [];
   const count = numbered.length;
   sb.scenes.forEach((s, i) => {
     if (!s || typeof s !== 'object') return;
@@ -230,6 +230,6 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
     const flagged = new Set(readings.flatMap((i) => (Array.isArray(sb.scenes[i].items) ? sb.scenes[i].items.map((it) => it?.flag) : [])));
     for (const id of findings.keys()) if (!flagged.has(id)) warnings.push(`findings: "${id}" is flagged on no reading item; set "flag": "${id}" on the item of its hunk, so the reader meets it there`);
   }
-  if (readings.length) checkItemRefs(sb, Array.isArray(sb.scenes[readings[0]].items) ? sb.scenes[readings[0]].items : [], warnings);
+  if (readings.length) checkItemRefs(sb, hunks, warnings);
   return listed;
 }
