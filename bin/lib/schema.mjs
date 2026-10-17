@@ -6,15 +6,17 @@ import path from 'node:path';
 import { UserError } from './errors.mjs';
 
 /**
- * The storyboard section of src/types.ts as declarations by name, in source order. Each holds its text, with
- * its doc comment and without `export`, and the names of the other declarations it mentions.
+ * The declarations of src/types.ts by name, in source order. Each holds its text, with its doc comment and without
+ * `export`, the names of the other declarations it mentions, and whether it is in the storyboard section. A type
+ * outside the section that one inside uses, such as plan.json's TopicPick, is printed with it.
  */
 export function readSchema(root) {
   const source = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
   const start = source.search(/^export type Risk =/m);
   const end = source.indexOf('// ─── ', start);
   if (start < 0 || end < 0) throw new Error('src/types.ts: storyboard section markers not found');
-  const lines = source.slice(start, end).split('\n');
+  const lines = source.split('\n');
+  const [first, last] = [start, end].map((at) => source.slice(0, at).split('\n').length - 1);
   const decls = new Map();
   let doc = [];
   for (let i = 0; i < lines.length; i++) {
@@ -28,16 +30,19 @@ export function readSchema(root) {
     }
     const body = [line];
     if (line.match(/^(?:export )?interface /)) while (!lines[i].startsWith('}')) body.push(lines[++i]);
-    decls.set(head[1], { name: head[1], text: [...doc, ...body].join('\n').replace(/^export /m, '') });
+    decls.set(head[1], { name: head[1], text: [...doc, ...body].join('\n').replace(/^export /m, ''), storyboard: i >= first && i < last });
     doc = [];
   }
   const names = [...decls.keys()];
   for (const d of decls.values()) {
-    const words = new Set(d.text.replace(/\/\*\*[\s\S]*?\*\//g, '').match(/\b[A-Z]\w*\b/g));
+    const words = new Set(code(d.text).match(/\b[A-Z]\w*\b/g));
     d.uses = names.filter((n) => n !== d.name && words.has(n));
   }
   return decls;
 }
+
+/** A declaration's text without its comments and string literals, which name no type. */
+const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '').replace(/'[^'\n]*'/g, "''");
 
 /** The scene types by their `type` literal, such as array → ArrayScene. */
 export function sceneTypes(decls) {
@@ -66,7 +71,7 @@ export function formatSchema(root, what) {
   const decls = readSchema(root);
   const scenes = sceneTypes(decls);
   const show = (names) => names.map((n) => decls.get(n).text).join('\n\n');
-  if (what === 'all') return show([...decls.keys()]);
+  if (what === 'all') return show(closure(decls, [...decls.values()].filter((d) => d.storyboard).map((d) => d.name)));
   if (what === undefined) {
     const root = closure(decls, ['Storyboard', 'SceneBase']).filter((n) => n !== 'Scene');
     return `${show(root)}\n\n// Scene is one of these. \`mr-cast schema <type>\` prints a scene's fields: ${[...scenes.keys()].join(', ')}.`;
