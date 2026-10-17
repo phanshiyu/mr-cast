@@ -56,6 +56,7 @@ export const SLOTS = {
   sourceLine: { ...MONO, name: 'in the code line', weight: 500, size: 20, min: 14, lines: 1, lineHeight: 1.2, markup: false, severity: 'warning', width: 0, fix: 'cite fewer hunks in from' },
   panelTitle: { ...SANS, name: 'panel title', weight: 800, size: 20, min: 13, lines: 1, lineHeight: 1.2, letterSpacing: 2.5, upper: true, width: 0, fix: 'shorten the title' },
   emptyTitle: { ...SANS, name: 'no-tests title', weight: 800, size: 54, min: 36, lines: 1, lineHeight: 1.2, letterSpacing: -1, width: 0, fix: 'shorten the title' },
+  chartValue: { ...MONO, name: 'space beside the value on its left', weight: 700, size: 21, min: 17, lines: 1, lineHeight: 1.25, markup: false, severity: 'warning', width: 0, fix: 'the two values run into each other; round the values, shorten the unit, or use fewer labels or series' },
   chartLabel: { ...LABEL, name: 'chart label', weight: 600, size: 22, min: 15, lines: 2, lineHeight: 1.3, width: 0, fix: 'shorten the label, or use fewer labels' },
   annotation: { ...LABEL, name: 'annotation', weight: 500, size: 23, min: 17, lines: 2, lineHeight: 31 / 23, width: 0, fix: 'shorten the annotation to the one thing the point shows' },
   legend: { ...SANS, name: 'series name', weight: 400, size: 21, min: 15, lines: 1, lineHeight: 1.2, width: 0, fix: 'shorten the series name, e.g. "before" and "after"' },

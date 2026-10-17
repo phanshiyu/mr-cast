@@ -1,5 +1,5 @@
 import type { ChartScene } from '../types';
-import { fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
+import { fitText, fitTextAt, measure, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 
 const MINUS = '−';
@@ -10,7 +10,11 @@ function trimmed(v: number, digits: number): string {
   return Number(v.toPrecision(digits)).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
-/** "1,250 ms", "3.125 s", "0.0243%", "3.4M req/s": a value below 10,000 as written, thousands grouped; bigger ones compacted to three significant digits. */
+/**
+ * "1,250 ms", "3.125 s", "0.0243%", "0.6667", "3.4M req/s": a value below 10,000 to four significant digits, so
+ * a value written with four or fewer prints as written and an unrounded float does not run on; thousands grouped.
+ * Bigger values are compacted to three significant digits.
+ */
 export function formatValue(v: number, unit: string | undefined): string {
   const abs = Math.abs(v);
   const sign = v < 0 ? MINUS : '';
@@ -18,8 +22,7 @@ export function formatValue(v: number, unit: string | undefined): string {
   if (abs >= 1e9) text = `${trimmed(abs / 1e9, 3)}B`;
   else if (abs >= 1e6) text = `${trimmed(abs / 1e6, 3)}M`;
   else if (abs >= 1e4) text = `${trimmed(abs / 1e3, 3)}k`;
-  // 15 significant digits keeps every digit a storyboard writes and drops float noise such as 0.30000000000000004.
-  else text = abs.toLocaleString('en-US', { maximumSignificantDigits: 15 });
+  else text = abs.toLocaleString('en-US', { maximumSignificantDigits: 4 });
   if (!unit) return sign + text;
   return sign + text + (TIGHT_UNITS.has(unit) ? '' : ' ') + unit;
 }
@@ -55,6 +58,12 @@ export function delta(a: number, b: number, better: ChartScene['better']): { tex
   return { text, direction: improved ? 'good' : 'bad' };
 }
 
+/** A value label's size: smaller over a narrow bar. */
+export const VALUE_FONT = 21;
+const NARROW_VALUE_FONT = 17;
+/** Least room between two value labels side by side, in px. */
+const VALUE_GAP = 6;
+
 /** Widest a series name runs in the legend, and the annotation's note. */
 const LEGEND_NAME_W = 240;
 const NOTE_MAX_W = 620;
@@ -85,9 +94,57 @@ export interface ChartLayout {
   xLabels: Fit[];
   legend: Fit[];
   note: Fit | null;
+  /** Each value label beside one drawn before it at the same height, fitted into the room it leaves. */
+  valueFits: Fit[];
+}
+
+/** A value label: its text centred on `x`, `top` its top edge, above its bar or point, or below the lower of two lines. */
+export interface ValueLabel {
+  series: number;
+  label: number;
+  text: string;
+  x: number;
+  y: number;
+  top: number;
+  size: number;
+  below: boolean;
+}
+
+/** The value labels a chart draws: every bar's, and a line's at each point, or at its last point past two series or eight labels. */
+export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueFits'>): ValueLabel[] {
+  const k = scene.series.length;
+  const size = scene.kind === 'bar' && layout.barW < 64 ? NARROW_VALUE_FONT : VALUE_FONT;
+  const labelEvery = k <= 2 && scene.labels.length <= 8;
+  return scene.series.flatMap((series, s) =>
+    series.values.flatMap((v, i) => {
+      if (scene.kind === 'line' && !labelEvery && i !== series.values.length - 1) return [];
+      const below = scene.kind === 'line' && k === 2 && scene.series.some((o, j) => j !== s && o.values[i]! > v);
+      const x = scene.kind === 'bar' ? barX(layout, layout.xs[i]!, s, k) + layout.barW / 2 : layout.xs[i]!;
+      const y = layout.y(v);
+      return [{ series: s, label: i, text: formatValue(v, scene.unit), x, y, top: below ? y + 14 : y - 14 - size * 1.25, size, below }];
+    }),
+  );
+}
+
+/** Each value label's fit in the room the labels left of it leave at its height, so two that run into each other warn. */
+function valueFits(labels: ValueLabel[]): Fit[] {
+  const widths = labels.map((l) => measure(l.text, { family: 'mono', weight: SLOTS.chartValue.weight, size: l.size }));
+  return labels.flatMap((l, a) => {
+    const rooms = labels.flatMap((o, b) => {
+      const sameHeight = o.top < l.top + l.size * 1.25 && l.top < o.top + o.size * 1.25;
+      return b !== a && o.x < l.x && sameHeight ? [2 * (l.x - o.x - widths[b]! / 2 - VALUE_GAP)] : [];
+    });
+    if (!rooms.length) return [];
+    return [fitTextAt(l.text, sized(SLOTS.chartValue, Math.max(0, Math.min(...rooms))), `series[${l.series}].values[${l.label}]`, l.size)];
+  });
 }
 
 export function layoutChart(scene: ChartScene, width: number, height: number): ChartLayout {
+  const layout = placeChart(scene, width, height);
+  return { ...layout, valueFits: valueFits(valueLabels(scene, layout)) };
+}
+
+function placeChart(scene: ChartScene, width: number, height: number): Omit<ChartLayout, 'valueFits'> {
   const values = scene.series.flatMap((s) => s.values);
   const ticks = niceTicks(Math.min(...values), Math.max(...values));
   const lo = ticks[0]!;
@@ -126,7 +183,7 @@ export function layoutChart(scene: ChartScene, width: number, height: number): C
 }
 
 /** Left edge of series `s`'s bar in a slot centred on `cx`. */
-export function barX(layout: ChartLayout, cx: number, s: number, seriesCount: number): number {
+export function barX(layout: Pick<ChartLayout, 'barW' | 'barGap'>, cx: number, s: number, seriesCount: number): number {
   const group = seriesCount * layout.barW + (seriesCount - 1) * layout.barGap;
   return cx - group / 2 + s * (layout.barW + layout.barGap);
 }

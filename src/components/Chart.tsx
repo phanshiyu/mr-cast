@@ -3,7 +3,7 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ChartScene } from '../types';
-import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, type ChartLayout, type Direction } from '../utils/chartLayout';
+import { ANNOTATION_BAND, barX, delta, formatValue, layoutChart, VALUE_FONT, valueLabels, type ChartLayout, type Direction, type ValueLabel as Value } from '../utils/chartLayout';
 import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
 import { brighter, focusSpotlight, stepSpring, type Emphasis } from '../utils/spotlight';
 import { PenMarks } from './PenMarks';
@@ -15,7 +15,6 @@ import { clamp, colors, contentBox, fonts } from './theme';
 import { seriesTone, tones } from './tones';
 
 const START = 10;
-const VALUE_FONT = 21;
 const BADGE_H = 34;
 const directionTone: Record<Direction, { color: string; bg: string }> = { good: tones.good, bad: tones.bad, neutral: tones.accent };
 
@@ -146,12 +145,12 @@ const XLabels: React.FC<{ layout: ChartLayout; appear: number; emphasisOf: (i: n
   </>
 );
 
-const ValueLabel: React.FC<{ x: number; y: number; text: string; color: string; appear: number; below?: boolean; size: number }> = ({ x, y, text, color, appear, below, size }) => (
+const ValueLabel: React.FC<{ value: Value; color: string; appear: number }> = ({ value: { x, top, text, below, size }, color, appear }) => (
   <div
     style={{
       position: 'absolute',
       left: x,
-      top: below ? y + 14 : y - 14 - size * 1.25,
+      top,
       transform: `translateX(-50%) translateY(${(1 - appear) * (below ? -8 : 8)}px)`,
       fontFamily: fonts.mono,
       fontSize: size,
@@ -209,7 +208,7 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
   const { fps } = useVideoConfig();
   const k = scene.series.length;
   const base = layout.y(0);
-  const size = layout.barW < 64 ? 17 : VALUE_FONT;
+  const values = new Map(valueLabels(scene, layout).map((v) => [`${v.series}-${v.label}`, v]));
   return (
     <>
       {scene.labels.map((_, i) =>
@@ -239,7 +238,7 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; ba
                   boxShadow: `0 0 28px ${tone.color}33, inset 0 1px 0 rgba(255,255,255,0.25)${ring}${focusRing}`,
                 }}
               />
-              <ValueLabel x={x + layout.barW / 2} y={top} text={formatValue(value, scene.unit)} color={s === k - 1 ? colors.text : '#b9c0d0'} appear={label} size={size} />
+              <ValueLabel value={values.get(`${s}-${i}`)!} color={s === k - 1 ? colors.text : '#b9c0d0'} appear={label} />
             </div>
           );
         }),
@@ -259,7 +258,6 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
 }) => {
   const { x0, x1, y1 } = layout.plot;
   const k = scene.series.length;
-  const labelEvery = k <= 2 && scene.labels.length <= 8;
   return (
     <>
       <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
@@ -306,26 +304,11 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
           }),
         )}
       </svg>
-      {scene.series.map((series, s) =>
-        series.values.map((v, i) => {
-          if (!labelEvery && i !== series.values.length - 1) return null;
-          const at = drawAt(s) + drawFrames * ((layout.xs[i]! - layout.xs[0]!) / Math.max(1, x1 - x0)) + 4;
-          const others = scene.series.filter((_, o) => o !== s).map((o) => o.values[i]!);
-          const below = k === 2 && others.some((o) => o > v);
-          return (
-            <ValueLabel
-              key={`${s}-${i}`}
-              x={layout.xs[i]!}
-              y={layout.y(v)}
-              text={formatValue(v, scene.unit)}
-              color={s === k - 1 ? colors.text : '#b9c0d0'}
-              appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * valueOf(s, i).opacity}
-              below={below}
-              size={VALUE_FONT}
-            />
-          );
-        }),
-      )}
+      {valueLabels(scene, layout).map((value) => {
+        const { series: s, label: i } = value;
+        const at = drawAt(s) + drawFrames * ((layout.xs[i]! - layout.xs[0]!) / Math.max(1, x1 - x0)) + 4;
+        return <ValueLabel key={`${s}-${i}`} value={value} color={s === k - 1 ? colors.text : '#b9c0d0'} appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * valueOf(s, i).opacity} />;
+      })}
     </>
   );
 };
