@@ -30,7 +30,7 @@ The viewer is a reviewer who has not read the diff. They should understand the c
 Resolve these `validate` warnings, because each one marks a gap a reviewer would notice:
 
 - A hunk is not shown or tests are not walked through. Add a code scene for the hunk, link it from a `tests` scene case, or add a `skipped` entry with a reason.
-- A substantial hunk is skipped because the diagrams cover it. Only the team's overview may do that. For a reviewer or someone new to the code, add a code scene for it. The one exception is a non-key hunk of a topic the viewer chose `brief` on the plan page, skipped with the reason "the viewer chose a brief look at this topic".
+- A substantial hunk is skipped because the diagrams cover it. Only the team's overview may do that. For a reviewer or someone new to the code, add a code scene for it. The one exception is a non-key hunk of a topic the viewer chose `brief` on the plan page, skipped with the reason "the viewer chose a brief look at this topic". A pre-read has no such exception.
 - The narration says a count the screen does not show, such as "seven tests" over nine cases, or "three things to check" over two bullets. Say the number on screen.
 - The scenes are out of top-down order, a diagram comes after code, a change to several files has no diagram, or many code scenes rest on too few diagrams. Move or add scenes as the warning says.
 - The storyboard has no `tests` scene.
@@ -48,6 +48,6 @@ Write the storyboard this way:
 - When the change has no tests, still add a `tests` scene, with `cases: []` and the untested behaviors in `gaps`. The video then says plainly that the change ships without tests.
 - Even a small change needs an overview, a diagram, its code, and its tests. A large one can run several minutes. List each deliberate omission in `skipped` with its reason.
 
-In a pre-read (`--audience preread`), the video has no code scenes, as [Pre-read mode](../SKILL.md#pre-read-mode) says. Draw each substantive hunk in a diagram that cites it in `from`, or leave it to the reading order. The `reading` scene takes the code scenes' place in the coverage check: put every substantive hunk in its `items`, the routine ones with `"routine": true`, or in `skipped` with a reason. The rule against skipping a substantial hunk because the diagrams cover it still applies.
+In a pre-read (`--audience preread`), the video has no code scenes, as [Pre-read mode](../SKILL.md#pre-read-mode) says. Draw each substantive hunk in a diagram that cites it in `from`, or leave it to the reading order. The `reading` scene takes the code scenes' place in the coverage check: put every substantive hunk in its `items`, the routine ones with `"routine": true`, or in `skipped` with a reason. The rule against skipping a substantial hunk because the diagrams cover it still applies. So does the plan: a `brief` or `skip` topic changes only the video, and its hunks still go in the reading order, never in `skipped` with the reason "the viewer chose a brief look at this topic" or "the viewer chose to skip this topic".
 
 In overview mode, list the substantive hunks you do not show in `skipped` with the reason "covered by the diagrams in this overview". Show no test code, and list test hunks in `skipped` with the reason "the tests scene covers them".
