@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
+import { sceneStates } from '../../shared/state-steps.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import { shownOf, stateFrame, type StateFrame } from '../utils/stateTrack';
 import { layoutTableStates, stateRows, tableBoxes } from '../utils/tableLayout';
@@ -9,7 +9,7 @@ import { TableView } from './DataTable';
 import { HeaderCallout } from './HeaderCallout';
 import { tones } from './tones';
 import type { GraphEdge, GraphNode, GraphScene, Change } from '../types';
-import { GROUP_NAME, LABEL_PAD, graphAreas, graphBoxes, fitGraph, graphDirection, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
+import { GROUP_NAME, LABEL_PAD, asShown, graphAreas, graphBoxes, fitSceneGraph, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
 import { ShapeNode } from './ShapeNode';
 import { centredStage, staged, type MarkTargets } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
@@ -165,12 +165,6 @@ function legendChanges(scene: GraphScene): Set<Change> {
   return new Set([...scene.nodes, ...scene.edges].flatMap((x) => (x.change ? [x.change] : [])));
 }
 
-/** A node as a state shows it: the badge the steps have set on it, or none. */
-const asShown = (node: GraphNode, state: SceneState): GraphNode => {
-  const badge = state.values[`b:${node.id}`];
-  return badge === undefined || badge === (node.badge ?? '') ? node : { ...node, badge: badge === '' ? undefined : String(badge) };
-};
-
 /** An edge's colour: a tone a step keeps on it, over its own change or highlight. */
 function tintedTone(base: ReturnType<typeof edgeTone>, s: StateFrame, key: string): ReturnType<typeof edgeTone> {
   const tone = mainTone(tintMix(s, key));
@@ -186,9 +180,7 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
   const { fps } = useVideoConfig();
   const { full, graphBox, tableW } = graphAreas(scene);
   const states = useMemo(() => sceneStates(scene), [scene]);
-  // Room for a badge is kept on every node any state gives one, so a badge a step sets never lands on a mark.
-  const sized = useMemo(() => scene.nodes.map((n) => states.reduce((node, state) => (node.badge ? node : asShown(n, state)), n)), [scene.nodes, states]);
-  const { layout, scale } = useMemo(() => fitGraph(sized, scene.edges, graphDirection(scene), graphBox), [scene, sized, graphBox.width, graphBox.height]);
+  const { layout, scale } = useMemo(() => fitSceneGraph(scene, states, graphBox), [scene, states, graphBox.width, graphBox.height]);
   const tables = useMemo(() => (scene.table ? layoutTableStates(scene.table.columns, stateRows(scene.table.columns, scene.table.rows, states), tableW, full.height, 'table.') : null), [scene.table, states, tableW, full.height]);
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
   const flowchart = scene.nodes.some((n) => shapeOf(n) === 'decision');

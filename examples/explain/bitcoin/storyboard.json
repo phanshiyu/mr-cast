@@ -230,7 +230,7 @@
     {
       "type": "graph",
       "chapter": "Ledger dollars",
-      "layout": "LR",
+      "layout": "TB",
       "narration": "Signatures stop fake lines, but not debt. Charlie could run up a huge bill and vanish. So add a rule: everyone starts with a hundred, and a line counts only if the list shows the payer has the money.",
       "nodes": [
         {

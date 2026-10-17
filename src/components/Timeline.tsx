@@ -4,7 +4,7 @@ import { stepTargets } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { TimelineScene } from '../types';
 import { formatValue } from '../utils/chartLayout';
-import { SPAN_H, STAMP_FONT, layoutTimeline, type PlacedEvent, type PlacedSpan, type TimelineLayout, timelineBoxes } from '../utils/timelineLayout';
+import { SPAN_H, STAMP_FONT, layoutTimeline, timelineScale, type PlacedEvent, type PlacedSpan, type TimelineLayout, timelineBoxes } from '../utils/timelineLayout';
 import { staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, revealStarts, stepSpring, type Emphasis } from '../utils/spotlight';
@@ -227,7 +227,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
   const box = contentBox(Boolean(scene.title));
   const layout = useMemo(() => layoutTimeline(scene, box.width), [scene, box.width]);
   const playhead = useMemo(() => buildPlayhead(scene, layout, segments), [scene, layout, segments]);
-  const scale = Math.min(1, box.height / layout.height);
+  const scale = timelineScale(layout, box);
   const stage = { left: (box.width - layout.width * scale) / 2, top: Math.max(0, box.height - layout.height * scale) * 0.4, scale };
   const marks = useMemo(() => staged(timelineBoxes(layout), stage, box), [layout, stage.left, stage.top, scale, box.width, box.height]);
   const playX = playhead.playX(frame);

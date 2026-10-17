@@ -1,3 +1,4 @@
+import type { SceneState } from '../../shared/state-steps.mjs';
 import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { GraphEdge, GraphNode, GraphScene, NodeShape } from '../types';
@@ -639,6 +640,18 @@ export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[
     if (scale > best.scale * 1.005 || (font > best.titleFont && scale >= best.scale * 0.995)) best = { layout, scale, titleFont: Math.max(font, best.titleFont) };
   }
   return { layout: best.layout, scale: best.scale };
+}
+
+/** A node as a state shows it: the badge the steps have set on it, or none. */
+export const asShown = (node: GraphNode, state: SceneState): GraphNode => {
+  const badge = state.values[`b:${node.id}`];
+  return badge === undefined || badge === (node.badge ?? '') ? node : { ...node, badge: badge === '' ? undefined : String(badge) };
+};
+
+/** A graph scene's layout and scale in `box`, keeping room for a badge on every node any state gives one, so a badge a step sets never lands on a mark. */
+export function fitSceneGraph(scene: GraphScene, states: readonly SceneState[], box: { width: number; height: number }): { layout: GraphLayout; scale: number } {
+  const sized = scene.nodes.map((n) => states.reduce((node, state) => (node.badge ? node : asShown(n, state)), n));
+  return fitGraph(sized, scene.edges, graphDirection(scene), box);
 }
 
 /**

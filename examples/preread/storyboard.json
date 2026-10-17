@@ -28,6 +28,7 @@
       "type": "graph",
       "topic": "rate-limiter",
       "chapter": "Where it fits",
+      "layout": "TB",
       "narration": "The new rate limiter sits in front of the orders route, and keeps its counts in Redis. The limiter and the event queue are new.",
       "from": [
         "h2",

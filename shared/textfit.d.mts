@@ -72,6 +72,7 @@ export interface Fit {
   severity?: 'warning';
 }
 
+export declare const READABLE_PX: number;
 export declare const CODE_SCALE: number;
 export declare const CODE_PAD: number;
 export declare function boldWeight(weight: number): number;

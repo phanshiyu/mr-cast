@@ -17,6 +17,7 @@
     {
       "type": "graph",
       "chapter": "Where it fits",
+      "layout": "TB",
       "narration": "Here are the parts involved. The new piece is a rate limiter, which caps how many requests one visitor can send.",
       "nodes": [
         {

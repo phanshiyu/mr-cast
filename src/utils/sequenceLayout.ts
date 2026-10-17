@@ -329,3 +329,9 @@ export function sequenceBoxes(layout: SequenceLayout): LayoutBoxes {
   ]);
   return { boxes, obstacles: [...boxes.values()] };
 }
+
+/** The scale a sequence draws at in `box`. It keeps its rows readable: it scales only to fit across, and scrolls when it is taller than the frame. */
+export function sequenceScale(layout: SequenceLayout, box: { width: number; height: number }): number {
+  const across = Math.min(1, box.width / layout.width);
+  return layout.height <= box.height / across ? Math.min(across, box.height / layout.height) : across;
+}

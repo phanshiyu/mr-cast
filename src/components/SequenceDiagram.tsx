@@ -10,7 +10,7 @@ import {
   layoutSequence,
   type PlacedMessage,
   type Pt,
-  type SequenceLayout, sequenceBoxes } from '../utils/sequenceLayout';
+  type SequenceLayout, sequenceBoxes, sequenceScale } from '../utils/sequenceLayout';
 import { centredStage, staged, type MarkTargets, type Stage } from '../utils/penGeometry';
 import { sequenceCamera } from '../utils/sequenceCamera';
 import { markedKeys } from '../../shared/pen-marks.mjs';
@@ -224,9 +224,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const front = revealFront(layout, starts, DRAW_FRAMES, frame);
   const lifeline = interpolate(frame, [LIFELINE_START, LIFELINE_START + LIFELINE_FRAMES], [0, 1], clamp);
   const headerStagger = Math.min(5, (HEADERS_END - HEADER_START) / Math.max(1, layout.participants.length - 1));
-  // A sequence keeps its rows readable: it scales only to fit across, and scrolls when it is taller than the frame.
-  const fitsDown = layout.height <= box.height / Math.min(1, box.width / layout.width);
-  const scale = fitsDown ? Math.min(1, box.width / layout.width, box.height / layout.height) : Math.min(1, box.width / layout.width);
+  const scale = sequenceScale(layout, box);
   const camera = useMemo(() => sequenceCamera(layout, steps.lit, segments, box.height / scale), [layout, steps.lit, segments, box.height, scale]);
   const scroll = camera.scrollAt(frame);
   const stage: Stage = camera.scrolls ? { left: (box.width - layout.width * scale) / 2, top: 0, scale } : centredStage(box, layout, scale);

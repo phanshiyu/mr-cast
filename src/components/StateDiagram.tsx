@@ -12,6 +12,7 @@ import {
   type RoutedTransition,
   type StateLayout,
   stateBoxes,
+  stateScale,
 } from '../utils/stateLayout';
 import { centredStage, staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
@@ -219,7 +220,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, hunks, d
   const timeline = useMemo(() => buildTimeline(scene, layout, segments), [scene, layout, segments]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = contentBox(Boolean(scene.title));
-  const scale = Math.min(box.width / layout.width, box.height / layout.height, 1.25);
+  const scale = stateScale(layout, box);
   const marks = useMemo(() => staged(stateBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
   const draws = layout.transitions.map((_, i) =>
     interpolate(frame, [timeline.transitionAt(i), timeline.transitionAt(i) + TRANSITION_FRAMES], [0, 1], clamp),
