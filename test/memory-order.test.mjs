@@ -6,7 +6,7 @@ import { walkStates } from '../shared/state-steps.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
 
 const bundled = await build({ entryPoints: [new URL('../src/utils/memoryLayout.ts', import.meta.url).pathname], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
-const { layoutMemory } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const { layoutMemory, memoryBoxes } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 
 const BOX = { width: 1712, height: 700 };
 
@@ -42,4 +42,37 @@ test('memory fields written as [name, value] pairs are checked like an object', 
   scene.objects[0].fields.pop();
   const again = await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
   assert.deepEqual(again.errors, ['scenes[0].objects[0].fields: "2" is named twice; every field name is different']);
+});
+
+const fiberText = `{
+  "title": "t",
+  "scenes": [{
+    "type": "memory",
+    "narration": "Each fiber points at its first child, its next sibling and its parent.",
+    "frames": [{ "name": "workLoop", "vars": { "root": { "ref": "app" }, "next": { "ref": "header" }, "wip": { "ref": "item" } } }],
+    "objects": [
+      { "id": "app", "type": "App", "fields": { "child": { "ref": "header" }, "sibling": "null", "return": "null" } },
+      { "id": "header", "type": "Header", "fields": { "child": "null", "sibling": { "ref": "list" }, "return": { "ref": "app" } } },
+      { "id": "list", "type": "List", "fields": { "child": { "ref": "item" }, "sibling": { "ref": "footer" }, "return": { "ref": "app" } } },
+      { "id": "item", "type": "Item", "fields": { "child": "null", "sibling": "null", "return": { "ref": "list" } } },
+      { "id": "footer", "type": "Footer", "fields": { "child": "null", "sibling": "null", "return": { "ref": "app" } } }
+    ]
+  }]
+}`;
+
+test('memory arrows between objects that point at each other never pass behind a card', () => {
+  const [scene] = parseStoryboard(fiberText).scenes;
+  const layout = layoutMemory(scene, BOX);
+  const [state] = walkStates(scene).states;
+  const pointers = Object.keys(state.values).filter((key) => typeof state.values[key] === 'object');
+  const inside = (p, c) => p.x > c.x + 2 && p.x < c.x + c.w - 2 && p.y > c.y + 2 && p.y < c.y + c.h - 2;
+  const behind = pointers.flatMap((key) => {
+    // One arrow at a time: the state with every other reference shown as text.
+    const alone = { ...state, values: Object.fromEntries(Object.entries(state.values).map(([k, v]) => [k, k === key ? v : 'null'])) };
+    const source = layout.row.get(key).card;
+    const { lines } = memoryBoxes(layout, alone);
+    return layout.cards.filter((c) => c !== source && lines.some((p) => inside(p, c))).map((c) => `${key} behind ${c.key}`);
+  });
+  assert.equal(pointers.length, 11);
+  assert.deepEqual(behind, []);
 });

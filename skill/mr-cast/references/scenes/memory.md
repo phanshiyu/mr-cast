@@ -28,7 +28,7 @@ Call frames with their variables on the left, objects on the right, and an arrow
 
 ## Schema and validate notes
 
-Variables and fields are drawn in the order written, a name such as `"2"` included. A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name.
+Variables and fields are drawn in the order written, a name such as `"2"` included. Objects stand in columns by what points at them, up to 3. An arrow into the next column runs straight; any other, back or within a column or past one, runs through the gaps between the columns and under the cards, so none passes behind a card. A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name.
 
 `{{MR_CAST}}/bin/mr-cast schema memory` prints its fields.
 

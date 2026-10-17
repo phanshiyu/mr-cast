@@ -28,8 +28,11 @@ const LIT = 'rgba(242,244,248,';
 const hex = (alpha: number) => Math.round(Math.max(0, Math.min(1, alpha)) * 255).toString(16).padStart(2, '0');
 const shadows = (...parts: string[]) => parts.filter(Boolean).join(', ') || 'none';
 const mix = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-const mixArrow = (a: Arrow, b: Arrow, t: number): Arrow => ({ from: mix(a.from, b.from, t), c1: mix(a.c1, b.c1, t), c2: mix(a.c2, b.c2, t), to: mix(a.to, b.to, t) });
-const pathOf = ({ from, c1, c2, to }: Arrow) => `M ${from.x} ${from.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${to.x} ${to.y}`;
+const mixArrow = (a: Arrow, b: Arrow, t: number): Arrow => ({ points: a.points.map((p, i) => mix(p, b.points[i]!, t)) });
+const pathOf = ({ points: [start, ...rest] }: Arrow) => {
+  const curves = Array.from({ length: rest.length / 3 }, (_, i) => `C ${rest.slice(3 * i, 3 * i + 3).map((p) => `${p.x} ${p.y}`).join(', ')}`);
+  return `M ${start!.x} ${start!.y} ${curves.join(' ')}`;
+};
 
 /** A text value in its box, sliding by `shift` (a share of the box's height). */
 const Text: React.FC<{ fit: Fit; opacity: number; shift: number }> = ({ fit, opacity, shift }) =>
@@ -228,7 +231,7 @@ export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks,
         <svg style={svgStyle} width={layout.width} height={layout.height}>
           {drawn.map((d) => {
             const source = layout.row.get(d.key)!.card;
-            const { c2, to } = d.arrow;
+            const [c2, to] = d.arrow.points.slice(-2) as [Pt, Pt];
             const angle = Math.atan2(to.y - c2.y, to.x - c2.x);
             const head = (side: number) => `${to.x - 14 * Math.cos(angle + side * 0.45)} ${to.y - 14 * Math.sin(angle + side * 0.45)}`;
             const clip = `memory-stub-${d.key.replace(/[^A-Za-z0-9]/g, (c) => c.charCodeAt(0).toString(16))}`;
