@@ -111,7 +111,7 @@ assert(bal.Alice === 140 && bal.Bob === 140 && bal.Charlie === 0 && bal.David ==
 scenes.push({
   type: 'graph',
   chapter: 'Ledger dollars',
-  layout: 'LR',
+  layout: 'TB',
   narration: 'Signatures stop fake lines, but not debt. Charlie could run up a huge bill and vanish. So add a rule: everyone starts with a hundred, and a line counts only if the list shows the payer has the money.',
   nodes: Object.keys(bal).map((id) => ({ id, label: id, icon: 'user', badge: '100' })),
   edges: pays.map(([from, to, amt]) => ({ from, to, label: String(amt), hidden: true })),
