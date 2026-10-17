@@ -1,5 +1,5 @@
-// Installs the mr-cast, mr-cast-prune and mr-cast-upgrade skills into the Claude config dir, pointing at
-// this install, and records them in a manifest so the next install or uninstall-skill removes whatever this
+// Installs every skill under skill/ (mr-cast, mr-cast-primitives, mr-cast-prune and mr-cast-upgrade) into the
+// Claude config dir, pointing at this install, and records them in a manifest so the next install or uninstall-skill removes whatever this
 // version wrote that the next one no longer does. The storyboard schema is copied from src/types.ts, and the
 // plan's views from shared/views.mjs, so the skill cannot drift from the player.
 import fs from 'node:fs';
@@ -39,6 +39,23 @@ const viewsTable = () => [
   '| --- | --- | --- |',
   ...Object.entries(VIEWS).map(([key, view]) => `| \`${key}\` | ${view.label} | ${view.scenes.map((t) => `\`${t}\``).join(', ')} |`),
 ].join('\n');
+
+/** Sorts by skill, each skill's SKILL.md first and then its other files by path. */
+const installOrder = (f) => {
+  const [skill, ...rest] = f.split('/');
+  return [skill, rest.join('/') === 'SKILL.md' ? '' : rest.join('/')];
+};
+const byInstallOrder = (a, b) => {
+  const [x, y] = [installOrder(a), installOrder(b)];
+  return x[0] === y[0] ? (x[1] < y[1] ? -1 : 1) : x[0] < y[0] ? -1 : 1;
+};
+
+/** Every file of every skill under skill/, as "<skill>/<path>", leaving out dotfiles such as .DS_Store. */
+const skillFiles = (root) => fs
+  .readdirSync(path.join(root, 'skill'), { recursive: true })
+  .map((f) => f.split(path.sep).join('/'))
+  .filter((f) => f.includes('/') && !/(^|\/)\./.test(f) && fs.statSync(path.join(root, 'skill', f)).isFile())
+  .sort(byInstallOrder);
 
 const fromMrCast = (file) => {
   try {
@@ -99,16 +116,9 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
     .replace('{{STORYBOARD_TYPES}}', () => schema)
     .replace('{{PLAN_VIEWS}}', viewsTable);
 
-  const skill = (name, file = 'SKILL.md') => [path.join(claudeDir, 'skills', name, file), fill(path.join(root, 'skill', name, file))];
-  const targets = [
-    // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
-    [path.join(claudeDir, 'skills/mr-cast/SKILL.md'), fill(process.env.MR_CAST_SKILL_TEMPLATE ?? path.join(root, 'skill/mr-cast/SKILL.md'))],
-    skill('mr-cast', 'references/branch.md'),
-    skill('mr-cast', 'references/explanation.md'),
-    skill('mr-cast', 'references/review.md'),
-    skill('mr-cast-prune'),
-    skill('mr-cast-upgrade'),
-  ];
+  // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
+  const source = (rel) => (rel === 'mr-cast/SKILL.md' && process.env.MR_CAST_SKILL_TEMPLATE) || path.join(root, 'skill', rel);
+  const targets = skillFiles(root).map((rel) => [path.join(claudeDir, 'skills', rel), fill(source(rel))]);
   const files = targets.map(([file]) => path.relative(claudeDir, file).split(path.sep).join('/'));
   const stale = removeStale(claudeDir, new Set(files));
   for (const [file, content] of targets) {
