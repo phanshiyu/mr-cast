@@ -1,0 +1,734 @@
+{
+  "title": "How a GPT picks the next word",
+  "subtitle": "From text to tokens to chances, one token at a time",
+  "scenes": [
+    {
+      "type": "chart",
+      "kind": "bar",
+      "chapter": "One job",
+      "title": "What comes next?",
+      "narration": "A GPT does one job. You give it some text, and it guesses what comes next. Here the text is: Once upon a time, in a land of math, there lived a.",
+      "unit": "%",
+      "labels": [
+        "creature",
+        "wizard",
+        "king",
+        "dragon",
+        "girl",
+        "every other token"
+      ],
+      "series": [
+        {
+          "name": "chance",
+          "values": [
+            42,
+            18,
+            12,
+            8,
+            5,
+            15
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": "creature",
+          "say": "It doesn't give one answer. It gives a chance for every possible next piece of text. Creature gets forty two percent."
+        },
+        {
+          "focus": [
+            "wizard",
+            "king"
+          ],
+          "say": "Wizard and king get less. These numbers are made up, but the shape is the real thing."
+        },
+        {
+          "focus": "every other token",
+          "say": "Every other piece of text it knows shares what is left."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "One job",
+      "title": "One piece at a time",
+      "narration": "The model doesn't see words. It sees pieces called tokens. This sentence is fourteen of them.",
+      "arrays": [
+        {
+          "name": "a",
+          "label": "tokens 1 to 7",
+          "values": [
+            "Once",
+            "·upon",
+            "·a",
+            "·time",
+            ",",
+            "·in",
+            "·a"
+          ]
+        },
+        {
+          "name": "b",
+          "label": "tokens 8 to 16",
+          "values": [
+            "·land",
+            "·of",
+            "·math",
+            ",",
+            "·there",
+            "·lived",
+            "·a",
+            "",
+            ""
+          ]
+        }
+      ],
+      "indexes": false,
+      "callout": "`·` marks a space at the start of a token",
+      "steps": [
+        {
+          "focus": [
+            "array:a",
+            "b[0-6]"
+          ],
+          "say": "Most common words are one token each, and the space in front of a word rides along with it."
+        },
+        {
+          "set": {
+            "b[7]": "·creature"
+          },
+          "tint": {
+            "b[7]": "good"
+          },
+          "callout": "pick one by its chance: `·creature`",
+          "say": "The model picks one next token by its chance, say creature, and adds it to the end."
+        },
+        {
+          "set": {
+            "b[8]": "?"
+          },
+          "tint": {
+            "b[8]": "warn"
+          },
+          "callout": "run again on all 15 tokens",
+          "say": "Then it runs again on the longer text to guess the token after that. Over and over, token after token. That's how a whole story comes out."
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "Inside the model",
+      "title": "From text to chances",
+      "narration": "Here is the whole trip from text to chances, in six stops.",
+      "steps": [
+        {
+          "actor": "Tokenizer",
+          "action": "cuts text into tokens",
+          "payload": "\"tokenization\" → token | ization",
+          "icon": "scissors",
+          "say": "First the text is cut into tokens. A rare word gets split into smaller pieces."
+        },
+        {
+          "actor": "Embedding",
+          "action": "looks up a list of numbers per token",
+          "payload": "king → [0.12, −0.83, 0.40, …]",
+          "icon": "table",
+          "say": "Each token is swapped for a long list of numbers that stands for its meaning. The model looks it up in a big table."
+        },
+        {
+          "actor": "Attention",
+          "action": "lets tokens share meaning",
+          "payload": "machine learning model ≠ fashion model",
+          "icon": "arrow-left-right",
+          "tone": "accent",
+          "say": "Then the tokens talk to each other. The word model means something different after machine learning than after fashion."
+        },
+        {
+          "actor": "MLP",
+          "action": "works on each token on its own",
+          "payload": "every token, in parallel",
+          "icon": "cpu",
+          "tone": "accent",
+          "say": "Next, each token's numbers go through the same set of questions, all at once. These two stops take turns, again and again."
+        },
+        {
+          "actor": "Unembedding",
+          "action": "scores every token it knows",
+          "payload": "50,257 scores",
+          "icon": "list-ordered",
+          "say": "At the end, the last token's numbers are turned into a score for every token the model knows."
+        },
+        {
+          "actor": "Softmax",
+          "action": "turns scores into chances",
+          "payload": "creature 42%, wizard 18%, …",
+          "icon": "percent",
+          "tone": "good",
+          "say": "And one last step turns those scores into chances that add up to one hundred percent."
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "Inside the model",
+      "title": "Written rules or learned numbers",
+      "narration": "A normal program follows rules a person wrote. A model like this has almost no hand written rules. It's mostly numbers that were tuned.",
+      "sides": [
+        {
+          "title": "A program you write"
+        },
+        {
+          "title": "A trained model"
+        }
+      ],
+      "rows": [
+        {
+          "label": "Who decides what it does",
+          "cells": [
+            "A programmer writes rules",
+            "Training tunes numbers, called weights"
+          ]
+        },
+        {
+          "label": "A tiny example",
+          "cells": [
+            {
+              "code": "if (word === \"king\")\n  return \"queen\";",
+              "lang": "js"
+            },
+            {
+              "code": "y = m * x + b\n// m and b are learned",
+              "lang": "js"
+            }
+          ]
+        },
+        {
+          "label": "How big",
+          "cells": [
+            "Rules you can read",
+            "175 billion weights in GPT-3"
+          ]
+        },
+        {
+          "label": "What changes each run",
+          "cells": [
+            "The input",
+            "Only your text: the weights stay fixed"
+          ]
+        },
+        {
+          "label": "The work inside",
+          "cells": [
+            "Branches and loops",
+            "Weights times your text, as big grids of numbers"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "In a program, a person writes the rules. In a model, training nudges numbers called weights until the guesses get good."
+        },
+        {
+          "focus": 1,
+          "say": "Think of a line, y equals m x plus b. Training finds good values for m and b."
+        },
+        {
+          "focus": 2,
+          "say": "Now scale that up. GPT-3 has a hundred and seventy five billion of those numbers."
+        },
+        {
+          "focus": 3,
+          "say": "Once training is done, the weights stay fixed. Only your text changes from run to run."
+        },
+        {
+          "focus": 4,
+          "say": "And almost all the work is multiplying grids of weights by your text's numbers. Graphics chips are very good at that."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Meaning as a place",
+      "title": "Words as points",
+      "narration": "Each token's list of numbers is a point in a huge space. GPT-3 uses 12,288 numbers per token. Here is a flat sketch of the idea.",
+      "svg": "<svg viewBox=\"0 0 1200 610\"><defs><marker id=\"head-accent\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--accent)\"/></marker><marker id=\"head-good\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--good)\"/></marker><marker id=\"head-warn\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--warn)\"/></marker></defs><g stroke=\"var(--border)\" stroke-width=\"2\"><line x1=\"40\" y1=\"590\" x2=\"1180\" y2=\"590\"/><line x1=\"40\" y1=\"590\" x2=\"40\" y2=\"30\"/></g><g id=\"tall\" class=\"tone-neutral\"><g id=\"w-tower\" class=\"tone-neutral\"><circle cx=\"190\" cy=\"130\" r=\"9\"/><text x=\"190.0\" y=\"110.0\" font-size=\"24\" text-anchor=\"middle\">tower</text></g><g id=\"w-skyscraper\" class=\"tone-neutral\"><circle cx=\"110\" cy=\"200\" r=\"9\"/><text x=\"110.0\" y=\"180.0\" font-size=\"24\" text-anchor=\"middle\">skyscraper</text></g><g id=\"w-spire\" class=\"tone-neutral\"><circle cx=\"290\" cy=\"90\" r=\"9\"/><text x=\"290.0\" y=\"70.0\" font-size=\"24\" text-anchor=\"middle\">spire</text></g><g id=\"w-lighthouse\" class=\"tone-neutral\"><circle cx=\"280\" cy=\"215\" r=\"9\"/><text x=\"280.0\" y=\"195.0\" font-size=\"24\" text-anchor=\"middle\">lighthouse</text></g></g><g id=\"royal\"><g id=\"w-man\" class=\"tone-accent\"><circle cx=\"470\" cy=\"330\" r=\"9\"/><text x=\"470.0\" y=\"310.0\" font-size=\"24\" text-anchor=\"middle\">man</text></g><g id=\"w-woman\" class=\"tone-accent\"><circle cx=\"610\" cy=\"250\" r=\"9\"/><text x=\"610.0\" y=\"230.0\" font-size=\"24\" text-anchor=\"middle\">woman</text></g><g id=\"w-king\" class=\"tone-accent\"><circle cx=\"520\" cy=\"470\" r=\"9\"/><text x=\"520.0\" y=\"450.0\" font-size=\"24\" text-anchor=\"middle\">king</text></g><g id=\"w-queen\" class=\"tone-accent\"><circle cx=\"660\" cy=\"390\" r=\"9\"/><text x=\"660.0\" y=\"370.0\" font-size=\"24\" text-anchor=\"middle\">queen</text></g></g><g id=\"food\"><g id=\"w-Japan\" class=\"tone-good\"><circle cx=\"860\" cy=\"110\" r=\"9\"/><text x=\"860.0\" y=\"90.0\" font-size=\"24\" text-anchor=\"middle\">Japan</text></g><g id=\"w-Germany\" class=\"tone-good\"><circle cx=\"1050\" cy=\"160\" r=\"9\"/><text x=\"1050.0\" y=\"140.0\" font-size=\"24\" text-anchor=\"middle\">Germany</text></g><g id=\"w-sushi\" class=\"tone-good\"><circle cx=\"870\" cy=\"290\" r=\"9\"/><text x=\"870.0\" y=\"270.0\" font-size=\"24\" text-anchor=\"middle\">sushi</text></g><g id=\"w-bratwurst\" class=\"tone-good\"><circle cx=\"1060\" cy=\"340\" r=\"9\"/><text x=\"1060.0\" y=\"320.0\" font-size=\"24\" text-anchor=\"middle\">bratwurst</text></g></g><g id=\"plurals\"><g id=\"w-cat\" class=\"tone-warn\"><circle cx=\"140\" cy=\"420\" r=\"9\"/><text x=\"140.0\" y=\"400.0\" font-size=\"24\" text-anchor=\"middle\">cat</text></g><g id=\"w-cats\" class=\"tone-warn\"><circle cx=\"260\" cy=\"470\" r=\"9\"/><text x=\"260.0\" y=\"450.0\" font-size=\"24\" text-anchor=\"middle\">cats</text></g><g id=\"w-dog\" class=\"tone-warn\"><circle cx=\"120\" cy=\"500\" r=\"9\"/><text x=\"120.0\" y=\"480.0\" font-size=\"24\" text-anchor=\"middle\">dog</text></g><g id=\"w-dogs\" class=\"tone-warn\"><circle cx=\"240\" cy=\"550\" r=\"9\"/><text x=\"240.0\" y=\"530.0\" font-size=\"24\" text-anchor=\"middle\">dogs</text></g></g><g id=\"gender\"><line id=\"a-mw\" x1=\"482.2\" y1=\"323.1\" x2=\"596.1\" y2=\"257.9\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\"/><line id=\"a-kq\" x1=\"532.2\" y1=\"463.1\" x2=\"646.1\" y2=\"397.9\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\" stroke-dasharray=\"10 7\"/></g><g id=\"country\"><line id=\"a-jg\" x1=\"873.5\" y1=\"113.6\" x2=\"1034.5\" y2=\"155.9\" stroke=\"var(--good)\" stroke-width=\"4\" marker-end=\"url(#head-good)\"/><line id=\"a-sb\" x1=\"883.5\" y1=\"293.6\" x2=\"1044.5\" y2=\"335.9\" stroke=\"var(--good)\" stroke-width=\"4\" marker-end=\"url(#head-good)\" stroke-dasharray=\"10 7\"/></g><g id=\"plural\"><line id=\"a-cc\" x1=\"152.9\" y1=\"425.4\" x2=\"245.2\" y2=\"463.8\" stroke=\"var(--warn)\" stroke-width=\"4\" marker-end=\"url(#head-warn)\"/><line id=\"a-dd\" x1=\"132.9\" y1=\"505.4\" x2=\"225.2\" y2=\"543.8\" stroke=\"var(--warn)\" stroke-width=\"4\" marker-end=\"url(#head-warn)\" stroke-dasharray=\"10 7\"/></g><text x=\"1180.0\" y=\"30.0\" font-size=\"22\" text-anchor=\"end\" fill=\"var(--muted)\">a flat sketch of a 12,288-number space</text></svg>",
+      "labels": {
+        "tall": "tall buildings",
+        "royal": "man woman king queen",
+        "food": "sushi bratwurst Japan Germany",
+        "plurals": "plural",
+        "gender": "direction",
+        "country": "direction",
+        "plural": "direction"
+      },
+      "hidden": [
+        "gender",
+        "country",
+        "plural"
+      ],
+      "steps": [
+        {
+          "focus": [
+            "tall"
+          ],
+          "say": "Words with close meanings end up close together. Near tower you find skyscraper, spire and lighthouse."
+        },
+        {
+          "show": [
+            "gender"
+          ],
+          "focus": [
+            "gender",
+            "royal"
+          ],
+          "callout": "king + (woman − man) ≈ queen",
+          "say": "Directions mean something too. The step from man to woman is about the same as the step from king to queen."
+        },
+        {
+          "show": [
+            "country"
+          ],
+          "focus": [
+            "country",
+            "food"
+          ],
+          "callout": "sushi + (Germany − Japan) ≈ bratwurst",
+          "say": "Take sushi, add the step from Japan to Germany, and you land near bratwurst."
+        },
+        {
+          "show": [
+            "plural"
+          ],
+          "focus": [
+            "plural",
+            "plurals"
+          ],
+          "callout": "a · b is big when a and b point the same way",
+          "say": "There's even a direction for plural. Multiply two lists number by number and add it all up, and the total tells you how much they point the same way."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Meaning as a place",
+      "title": "Context soaks in",
+      "narration": "At first, a token's numbers only mean the word itself. As they pass through the layers, they soak up the text around them. Take the word king in a play by Shakespeare.",
+      "columns": [
+        "Where",
+        "What the numbers for \"king\" hold"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Before layer 1",
+            "the word king"
+          ]
+        },
+        {
+          "cells": [
+            "A few layers in",
+            "a king of Scotland"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Deeper",
+            "a king of Scotland who took the throne by murder"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "After layer 96",
+            "all that, plus: in old, poetic English"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Before the first layer, king just means king."
+        },
+        {
+          "show": [
+            1
+          ],
+          "say": "A few layers in, it has picked up that this king rules Scotland."
+        },
+        {
+          "show": [
+            2
+          ],
+          "say": "Deeper still, it holds the story: he got the crown by murder."
+        },
+        {
+          "show": [
+            3
+          ],
+          "callout": "GPT-3: 96 layers",
+          "say": "By the last of GPT-3's ninety six layers, it even knows the style is old poetry. This is a rough picture, not what the numbers literally say."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Meaning as a place",
+      "title": "GPT-3 by the numbers",
+      "narration": "Here are a few of GPT-3's real sizes.",
+      "columns": [
+        "What",
+        "Size"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Numbers per token",
+            "12,288"
+          ]
+        },
+        {
+          "cells": [
+            "Tokens it can see at once",
+            "2,048"
+          ]
+        },
+        {
+          "cells": [
+            "Tokens it knows",
+            "50,257"
+          ]
+        },
+        {
+          "cells": [
+            "Weights in the lookup table",
+            "617,558,016"
+          ]
+        },
+        {
+          "cells": [
+            "Weights in all",
+            "about 175 billion"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Every token is a list of twelve thousand two hundred and eighty eight numbers."
+        },
+        {
+          "focus": 1,
+          "callout": "2,048 × 12,288 = 25,165,824 numbers",
+          "say": "It can look at two thousand and forty eight tokens at once. Anything earlier falls out of view."
+        },
+        {
+          "focus": [
+            2,
+            3
+          ],
+          "callout": "50,257 × 12,288 = 617,558,016",
+          "say": "The lookup table has one row for each of the fifty thousand two hundred and fifty seven tokens it knows. That alone is over six hundred million weights."
+        },
+        {
+          "focus": 4,
+          "say": "All in, about a hundred and seventy five billion."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Scores to chances",
+      "title": "Softmax on six scores",
+      "narration": "Say the text is: Harry Potter's least favourite teacher, Professor. The model scores every possible next token. Here are six of those scores, and we'll pretend they're all there is.",
+      "columns": [
+        "Next token",
+        "Score z",
+        "e^z",
+        "Chance"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "`·Snape`",
+            "4.2",
+            "",
+            ""
+          ]
+        },
+        {
+          "cells": [
+            "`·Um`",
+            "3.4",
+            "",
+            ""
+          ]
+        },
+        {
+          "cells": [
+            "`·Qu`",
+            "2.9",
+            "",
+            ""
+          ]
+        },
+        {
+          "cells": [
+            "`·Lock`",
+            "2.1",
+            "",
+            ""
+          ]
+        },
+        {
+          "cells": [
+            "`·McG`",
+            "1.6",
+            "",
+            ""
+          ]
+        },
+        {
+          "cells": [
+            "`·banana`",
+            "−3.0",
+            "",
+            ""
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": "col:Score z",
+          "say": "Scores can be any size, even below zero. Banana gets minus three."
+        },
+        {
+          "set": {
+            "e^z@0": "66.69",
+            "e^z@1": "29.96",
+            "e^z@2": "18.17",
+            "e^z@3": "8.17",
+            "e^z@4": "4.95",
+            "e^z@5": "0.05"
+          },
+          "callout": "e^4.2 = 66.69, e^−3 = 0.05",
+          "say": "Raise e to each score. Now every number is above zero, and big scores pull far ahead."
+        },
+        {
+          "set": {
+            "Chance@0": "52.1%",
+            "Chance@1": "23.4%",
+            "Chance@2": "14.2%",
+            "Chance@3": "6.4%",
+            "Chance@4": "3.9%",
+            "Chance@5": "0.04%"
+          },
+          "callout": "66.69 ÷ 127.99 = 52.1%",
+          "say": "Divide each by the total, 127.99. Now they add up to one hundred percent. Snape gets 52 percent."
+        },
+        {
+          "focus": 1,
+          "tint": {
+            "1": "warn"
+          },
+          "say": "Notice the second row is only the start of Umbridge. The model picks one token at a time, so the rest of her name would come on the next turns."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "kind": "bar",
+      "chapter": "Scores to chances",
+      "title": "Temperature",
+      "narration": "There's a dial called temperature. Each score is divided by it before softmax. Here are the same six scores at three settings.",
+      "unit": "%",
+      "labels": [
+        "·Snape",
+        "·Um",
+        "·Qu",
+        "·Lock",
+        "·McG",
+        "·banana"
+      ],
+      "series": [
+        {
+          "name": "T = 0.2",
+          "values": [
+            98.1,
+            1.8,
+            0.1,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "name": "T = 1",
+          "values": [
+            52.1,
+            23.4,
+            14.2,
+            6.4,
+            3.9,
+            0
+          ]
+        },
+        {
+          "name": "T = 2",
+          "values": [
+            35.2,
+            23.6,
+            18.4,
+            12.3,
+            9.6,
+            1
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": "series:T = 0.2",
+          "say": "Turn it down near zero, and the top token takes almost everything. Snape gets 98 percent. The text is safe and repetitive."
+        },
+        {
+          "focus": "series:T = 1",
+          "say": "At one, you get the plain softmax from before. Writing is fluent and still varied."
+        },
+        {
+          "focus": "series:T = 2",
+          "say": "Turn it up to two, and the chances flatten out. Snape drops to 35 percent. Push it much higher, and odd picks like banana start to get chosen, and the text turns to nonsense."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "chapter": "The whole map",
+      "title": "Everything in one picture",
+      "narration": "Here is the whole map once more.",
+      "layout": "TB",
+      "nodes": [
+        {
+          "id": "tok",
+          "label": "Tokens",
+          "shape": "step",
+          "caption": "text cut into pieces"
+        },
+        {
+          "id": "emb",
+          "label": "Embedding",
+          "shape": "step",
+          "caption": "a list of numbers each"
+        },
+        {
+          "id": "att",
+          "label": "Attention",
+          "shape": "step",
+          "caption": "tokens share meaning",
+          "group": "96 layers"
+        },
+        {
+          "id": "mlp",
+          "label": "MLP",
+          "shape": "step",
+          "caption": "each token alone",
+          "group": "96 layers"
+        },
+        {
+          "id": "unemb",
+          "label": "Unembedding",
+          "shape": "step",
+          "caption": "50,257 scores"
+        },
+        {
+          "id": "soft",
+          "label": "Softmax",
+          "shape": "step",
+          "caption": "chances, then a pick"
+        }
+      ],
+      "edges": [
+        {
+          "from": "tok",
+          "to": "emb"
+        },
+        {
+          "from": "emb",
+          "to": "att"
+        },
+        {
+          "from": "att",
+          "to": "mlp"
+        },
+        {
+          "from": "mlp",
+          "to": "att",
+          "label": "again",
+          "style": "dashed"
+        },
+        {
+          "from": "mlp",
+          "to": "unemb"
+        },
+        {
+          "from": "unemb",
+          "to": "soft"
+        },
+        {
+          "from": "soft",
+          "to": "tok",
+          "label": "add the pick, run again",
+          "style": "dashed",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "tok",
+            "emb"
+          ],
+          "say": "Text becomes tokens, and each token becomes a list of numbers."
+        },
+        {
+          "focus": [
+            "group:96 layers",
+            "att",
+            "mlp"
+          ],
+          "say": "Attention and the MLP take turns, ninety six times in GPT-3."
+        },
+        {
+          "focus": [
+            "unemb",
+            "soft"
+          ],
+          "say": "Then the last list becomes scores, the scores become chances, and one token gets picked."
+        },
+        {
+          "show": [
+            "soft->tok"
+          ],
+          "focus": [
+            "soft->tok"
+          ],
+          "say": "The pick joins the text, and it all runs again."
+        },
+        {
+          "tint": {
+            "tok": "dim",
+            "emb": "dim",
+            "mlp": "dim",
+            "unemb": "dim",
+            "soft": "dim",
+            "att": "accent"
+          },
+          "focus": "att",
+          "callout": "next: queries, keys, values and many heads",
+          "say": "The part that does the most clever work is attention. How tokens ask each other questions is a story for another video."
+        }
+      ]
+    }
+  ]
+}
