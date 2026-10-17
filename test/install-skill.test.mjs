@@ -69,10 +69,12 @@ test('the primitives index and its leaves are installed with the CLI path filled
   assert.ok(fs.existsSync(path.join(dir, 'skills/mr-cast', '../mr-cast-primitives/SKILL.md')), 'the link from the main skill resolves');
 });
 
-test('a dotfile in a skill folder is not installed', () => {
+test('a dotfile, an editor backup or a merge leftover in a skill folder is not installed', () => {
   const copy = fs.mkdtempSync(path.join(tmp, 'root-'));
   for (const f of ['package.json', 'src', 'skill']) fs.cpSync(path.join(root, f), path.join(copy, f), { recursive: true });
   fs.writeFileSync(path.join(copy, 'skill/mr-cast-primitives/.DS_Store'), 'x');
+  fs.writeFileSync(path.join(copy, 'skill/mr-cast/SKILL.md~'), 'x');
+  fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/branch.md.orig'), 'x');
   const dir = freshDir();
   installSkill(copy, dir);
   assert.deepEqual(manifestOf(dir).files, EXPECTED);

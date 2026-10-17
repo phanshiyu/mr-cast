@@ -50,11 +50,14 @@ const byInstallOrder = (a, b) => {
   return x[0] === y[0] ? (x[1] < y[1] ? -1 : 1) : x[0] < y[0] ? -1 : 1;
 };
 
-/** Every file of every skill under skill/, as "<skill>/<path>", leaving out dotfiles such as .DS_Store. */
+/**
+ * Every Markdown file of every skill under skill/, as "<skill>/<path>": the skills are only Markdown, so an editor's
+ * backup (SKILL.md~), a merge leftover (.orig) or a dotfile such as .DS_Store is never installed.
+ */
 const skillFiles = (root) => fs
   .readdirSync(path.join(root, 'skill'), { recursive: true })
   .map((f) => f.split(path.sep).join('/'))
-  .filter((f) => f.includes('/') && !/(^|\/)\./.test(f) && fs.statSync(path.join(root, 'skill', f)).isFile())
+  .filter((f) => f.includes('/') && f.endsWith('.md') && !/(^|\/)\./.test(f) && fs.statSync(path.join(root, 'skill', f)).isFile())
   .sort(byInstallOrder);
 
 const fromMrCast = (file) => {
