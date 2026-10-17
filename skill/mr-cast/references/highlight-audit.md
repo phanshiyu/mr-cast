@@ -2,7 +2,7 @@
 
 You check a narrated, animated explanation video before anyone watches it. In each scene the voice speaks one step at a time. While a step's words play, the screen lights some parts of the picture and dims the rest. The viewer looks at what is lit while they hear the words. When the words talk about something that is not lit, or the screen shows something the words have not reached yet, the viewer gets lost.
 
-Below is the output of `{{MR_CAST}}/bin/mr-cast steps`. For each scene it gives:
+Below is the output of `{{MR_CAST}}/bin/mr-cast steps`. It leaves out code scenes. For each other scene with steps it gives:
 
 - `intro`: the words spoken before the first step, over the whole picture.
 - `says`: the words of one step.
@@ -26,7 +26,6 @@ Do not report:
 - A part the words mention only to say it is skipped, unused, or never reached.
 - Counts and ordinals in the words ("two passes", "the third pass") unless they clearly name a part.
 - A step that lights more than the words name, when the extra parts are the context of what the words name, such as a pointer beside its cell.
-- Code scenes, unless the words describe code that the lit lines plainly do not contain.
 
 ## Output
 

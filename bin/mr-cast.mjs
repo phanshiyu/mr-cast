@@ -89,7 +89,7 @@ More commands and options:
                     render PNG stills of scenes (0-based; default all, into the run's stills/)
   steps [sceneIndex...]
                     print each step's words beside what it lights and what it changes, with the
-                    highlight warnings, for checking that the lit part matches the words
+                    highlight warnings, for checking that the lit part matches the words; code scenes are left out
   --speed x         the voice's speed alone, from 0.5 to 2; overrides the speed --pace sets
   --name slug       extract and init: name the run yourself; later commands: use that run instead of the current one
   --dir path        any command after extract or init: use any data directory, such as .mr-cast or
@@ -671,7 +671,7 @@ async function steps(argv) {
     if (!Number.isInteger(n) || n < 0 || n >= storyboard.scenes.length) throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${storyboard.scenes.length - 1}`);
     return n;
   });
-  console.log(formatSteps(storyboard, hunks, scenes) || 'no scene has steps');
+  console.log(formatSteps(storyboard, hunks, scenes) || 'no scene other than code has steps');
 }
 
 async function outline(argv) {

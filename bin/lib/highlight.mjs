@@ -8,7 +8,6 @@ import { focusSteps } from '../../shared/normalize.mjs';
 import { STATE_TYPES, isPointer, sceneStates } from '../../shared/state-steps.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { splitMemberKey, stepTargets } from '../../shared/targets.mjs';
-import { stepLines } from '../../shared/focus.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { compareTitles } from '../../shared/compare.mjs';
 import { outputLines } from '../../shared/terminal.mjs';
@@ -187,7 +186,6 @@ function changesOf(scene, before, after) {
 export function stepViews(scene, hunks) {
   const steps = sceneSteps(scene);
   if (!steps.length) return [];
-  if (scene.type === 'code') return codeViews(scene, hunks);
   if (scene.type === 'flow') {
     return steps.map((step, k) => ({ say: text(step?.say), lit: [`step ${k} ${step?.actor}: ${text(step?.action)}`], changes: [], items: [], litKeys: new Set() }));
   }
@@ -206,15 +204,6 @@ export function stepViews(scene, hunks) {
       items,
       litKeys,
     };
-  });
-}
-
-function codeViews(scene, hunks) {
-  const hunk = hunks?.[scene.hunkId];
-  return sceneSteps(scene).map((step) => {
-    const lines = hunk ? stepLines(hunk, step).map((i) => hunk.lines[i]) : [];
-    const lit = lines.map((l) => `L${l.newLine ?? l.oldLine}${l.type === 'add' ? ' +' : l.type === 'del' ? ' -' : ''} ${l.text.trim()}`);
-    return { say: text(step?.say), lit: step?.label ? [`label "${text(step.label)}"`, ...lit] : lit, changes: [], items: [], litKeys: new Set() };
   });
 }
 
@@ -386,11 +375,12 @@ function checkSwaps(scene, p, views, hunks, warnings) {
 /**
  * The `mr-cast steps` text: per stepped scene, its narration, then each step's words beside what is lit and
  * what changes on screen as it starts, with the highlight warnings for that scene. `scenes` picks scene indexes.
+ * Code scenes are left out: their steps light the lines they name, which the audit has nothing to check against.
  */
 export function formatSteps(storyboard, hunks, scenes) {
   const out = [];
   list(storyboard?.scenes).forEach((scene, i) => {
-    if (scenes?.length && !scenes.includes(i)) return;
+    if (scene?.type === 'code' || (scenes?.length && !scenes.includes(i))) return;
     const views = stepViews(scene, hunks);
     if (!views.length) return;
     const title = scene.title ?? scene.chapter;

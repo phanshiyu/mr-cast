@@ -206,3 +206,9 @@ test('an error in another scene does not hide this scene\'s highlight warnings',
     'scenes[1].steps[0]: says "4" (cell 2 = 4), which is not lit; it lights cell 0 = 5. Focus what the words name, or say only what is lit',
   ]);
 });
+
+test('steps leaves out code scenes, which the audit does not check', () => {
+  const code = { type: 'code', hunkId: 'h1', narration: 'The limiter.', steps: [{ lines: [1, 1], say: 'It counts.' }] };
+  const hunks = { h1: { file: 'a.ts', lines: [{ type: 'add', newLine: 1, text: 'count++' }] } };
+  assert.equal(formatSteps({ scenes: [code] }, hunks), '');
+});
