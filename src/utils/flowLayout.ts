@@ -1,4 +1,4 @@
-import { fitLines, fitText, type Fit } from '../../shared/textfit.mjs';
+import { fitBlock, fitLines, fitText, type Fit } from '../../shared/textfit.mjs';
 import { contentBox } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
 import type { FlowScene, FlowStep } from '../types';
@@ -9,6 +9,9 @@ export const STRIP_H = 76;
 const STRIP_GAP = 20;
 /** The step's number badge and its gap, left of the actor and action. */
 const BADGE = 48 + 22;
+/** A row's height around its text: the badge, and the gap above the chip, the chip's padding and the gap below it. */
+const BADGE_H = 48;
+const ROW_PAD = 2 + 2 * 3 + 6;
 const CHIP_PAD = 24;
 const CHIP_ICON = 19 + 8;
 /** Padding inside the step card around a payload, and around a headline. */
@@ -35,6 +38,8 @@ export interface FlowLayout {
   cardH: number;
   /** Each step's actor, and its action as drawn when it is the current step and when it is not. */
   rows: { actor: Fit; action: Fit; idle: Fit }[];
+  /** Whether every row is tall enough for its actor and action, so no row runs into the next. */
+  room: Fit;
   /** Each step's actor in the strip above the card, current or next. */
   strip: Fit[];
   cards: StepCard[];
@@ -55,15 +60,18 @@ export function layoutFlow(scene: FlowScene): FlowLayout {
   const panelW = box.width - LIST_W - COLUMN_GAP;
   const cardH = box.height - STRIP_H - STRIP_GAP;
   const textW = LIST_W - BADGE;
+  const rows = scene.steps.map((step, i) => ({
+    actor: fitText(step.actor, sized(SLOTS.flowActor, textW - CHIP_PAD - (step.icon ? CHIP_ICON : 0)), `steps[${i}].actor`),
+    action: fitText(step.action, { ...sized(SLOTS.flowAction, textW), lines: stepH >= 150 ? 2 : 1 }, `steps[${i}].action`),
+    idle: fitText(step.action, { ...sized(SLOTS.flowAction, textW), size: 27, weight: 500, lines: stepH >= 150 ? 2 : 1 }, `steps[${i}].action`),
+  }));
+  const rowH = Math.max(0, ...rows.map((r) => Math.max(BADGE_H, ROW_PAD + r.actor.height + Math.max(r.action.height, r.idle.height))));
   return {
     stepH,
     panelW,
     cardH,
-    rows: scene.steps.map((step, i) => ({
-      actor: fitText(step.actor, sized(SLOTS.flowActor, textW - CHIP_PAD - (step.icon ? CHIP_ICON : 0)), `steps[${i}].actor`),
-      action: fitText(step.action, { ...sized(SLOTS.flowAction, textW), lines: stepH >= 150 ? 2 : 1 }, `steps[${i}].action`),
-      idle: fitText(step.action, { ...sized(SLOTS.flowAction, textW), size: 27, weight: 500, lines: stepH >= 150 ? 2 : 1 }, `steps[${i}].action`),
-    })),
+    rows,
+    room: fitBlock('steps', 'step list', rowH <= stepH + 0.5, `each step needs ${Math.ceil(rowH)}px and has ${Math.floor(stepH)}px, so the rows overlap; use fewer steps, or split them across two flow scenes`),
     strip: scene.steps.map((step, i) => fitText(step.actor, sized(SLOTS.flowStrip, panelW * STRIP_SHARE), `steps[${i}].actor`)),
     cards: scene.steps.map((step, i) => card(step, panelW, cardH, `steps[${i}].action`)),
     intro: card({ action: scene.title ?? `${scene.steps.length} steps` }, panelW, cardH, scene.title ? 'title' : ''),
