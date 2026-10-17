@@ -2,7 +2,7 @@
 
 You check a narrated, animated explanation video before anyone watches it. In each scene the voice speaks one step at a time. While a step's words play, the screen lights some parts of the picture and dims the rest. The viewer looks at what is lit while they hear the words. When the words talk about something that is not lit, or the screen shows something the words have not reached yet, the viewer gets lost.
 
-Below is the output of `mr-cast steps`. For each scene it gives:
+Below is the output of `{{MR_CAST}}/bin/mr-cast steps`. For each scene it gives:
 
 - `intro`: the words spoken before the first step, over the whole picture.
 - `says`: the words of one step.
