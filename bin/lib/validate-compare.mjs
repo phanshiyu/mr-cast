@@ -17,7 +17,7 @@ function checkCell(cell, q, errors, warnings) {
   }
   if (cell.lang !== undefined && typeof cell.lang !== 'string') errors.push(`${q}.lang: must be a string, e.g. "ts" or "json"`);
   const lines = cell.code.split('\n').length;
-  if (lines > CODE_LINES_MAX) warnings.push(`${q}.code: ${lines} lines; a compare cell shows a few, so keep the ${CODE_LINES_MAX} that differ and show the rest in a code scene`);
+  if (lines > CODE_LINES_MAX) warnings.push(`${q}.code: ${lines} lines; a compare cell shows ${CODE_LINES_MAX}`);
 }
 
 export function checkCompare(s, p, errors, warnings) {
@@ -48,7 +48,5 @@ export function checkCompare(s, p, errors, warnings) {
       });
     }
   });
-  if (s.rows.length > COMPARE_ROWS_MAX) warnings.push(`${p}.rows: ${s.rows.length} rows; more than ${COMPARE_ROWS_MAX} get cramped, so keep the rows that differ or split the comparison into two scenes`);
-  const labelled = s.rows.filter((row) => isStr(row?.label)).length;
-  if (labelled > 0 && labelled < s.rows.length) warnings.push(`${p}.rows: ${labelled} of ${s.rows.length} rows have a label; label every row or none, so the viewer knows what each row compares`);
+  if (s.rows.length > COMPARE_ROWS_MAX) warnings.push(`${p}.rows: ${s.rows.length} rows; more than ${COMPARE_ROWS_MAX} get cramped`);
 }

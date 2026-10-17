@@ -7,14 +7,8 @@ import { TONES } from './validate-scenes.mjs';
 
 const CHANGES = ['added', 'removed', 'modified'];
 const BADGE_MAX = 14;
-/** Past this share of a diagram's items carrying change marks, the marks stop telling the viewer what changed. */
-const MARKED_SHARE_MAX = 0.6;
-/** A diagram this small can be mostly changed and still be truthful, such as a new service and its one edge. */
-const MARKED_MIN_ITEMS = 4;
 /** Shorter names, such as "id", match nearly any line, so they prove nothing either way. */
 const NAME_MIN = 3;
-/** Words a viewer reads as a change, and the `change` each means. */
-const CHANGE_WORDS = { new: 'added', added: 'added', changed: 'modified', modified: 'modified', removed: 'removed', deleted: 'removed' };
 
 /**
  * What each kind of item may carry. `names` gives the words the diff should contain where the item is
@@ -68,7 +62,7 @@ function shownChange({ item, kind }, explain) {
   return undefined;
 }
 
-function checkShape({ q, item, kind }, errors, warnings, explain) {
+function checkShape({ q, item, kind }, errors) {
   const can = KINDS[kind];
   if (can.change && item.change !== undefined && !CHANGES.includes(item.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
   if (can.highlight && item.highlight !== undefined && typeof item.highlight !== 'boolean') errors.push(`${q}.highlight: must be true or false`);
@@ -76,11 +70,7 @@ function checkShape({ q, item, kind }, errors, warnings, explain) {
   if (kind === 'message' && item.modified !== undefined && typeof item.modified !== 'boolean') errors.push(`${q}.modified: must be a boolean; prefer change or highlight`);
   if (!can.badge || item.badge === undefined) return;
   if (typeof item.badge !== 'string' || !item.badge.trim()) return errors.push(`${q}.badge: must be a short non-empty string`);
-  if (item.badge.trim().length > BADGE_MAX) errors.push(`${q}.badge: ${item.badge.trim().length} characters; keep a badge to ${BADGE_MAX} or fewer, a word or two`);
-  const means = CHANGE_WORDS[item.badge.trim().toLowerCase()];
-  if (!means) return;
-  if (explain) warnings.push(`${q}.badge: "${item.badge}" reads as a change, and an explanation has no diff; pick a word for what it is, such as "key", "hot path" or "new in v2"`);
-  else warnings.push(`${q}.badge: "${item.badge}" repeats a change word; write "change": "${means}" if the diff ${means === 'modified' ? 'changes' : means === 'added' ? 'adds' : 'removes'} it, so it is drawn and checked as a change`);
+  if (item.badge.trim().length > BADGE_MAX) errors.push(`${q}.badge: ${item.badge.trim().length} characters; a badge holds ${BADGE_MAX}`);
 }
 
 /** Normalised for matching names to code: "created_at", "createdAt" and "Created at" all read "createdat". */
@@ -135,7 +125,7 @@ export function checkMarks(sb, hunks, mode, errors, warnings) {
   sb.scenes.forEach((s, i) => {
     if (!s || typeof s !== 'object') return;
     const items = ITEMS[s.type]?.(s, `scenes[${i}]`) ?? [];
-    for (const entry of items) checkShape(entry, errors, warnings, explain);
+    for (const entry of items) checkShape(entry, errors);
     const marked = items.filter((e) => shownChange(e, explain));
     if (explain) {
       if (marked.length && sb.explainsChange !== true && s.explainsChange !== true) {
@@ -144,11 +134,6 @@ export function checkMarks(sb, hunks, mode, errors, warnings) {
         );
       }
       return;
-    }
-    if (DIAGRAMS.includes(s.type) && items.length >= MARKED_MIN_ITEMS && marked.length / items.length > MARKED_SHARE_MAX) {
-      warnings.push(
-        `scenes[${i}]: ${marked.length} of ${items.length} items carry change marks, so the marks stop showing what changed; mark only what the diff changes and point at the rest with highlight or focus steps (if the whole ${s.type} is new, say so in the narration and leave the marks off)`,
-      );
     }
     for (const entry of items) checkAgainstDiff(entry, changed, warnings);
     if (s.type === 'files') checkFileChanges(s, `scenes[${i}]`, hunks, warnings);

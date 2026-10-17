@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
-import { LAYERS_MAX, LAYERS_MIN } from '../bin/lib/validate-layers.mjs';
+import { LAYERS_MAX } from '../bin/lib/validate-layers.mjs';
 import { layerRoute, tokenSteps } from '../shared/layers.mjs';
 import { refNames, resolveRef } from '../shared/targets.mjs';
 
@@ -126,8 +126,7 @@ test('focusing the stop the token sits on mid-route keeps it there', () => {
 });
 
 test('the schema gives the layer count validate checks', async () => {
-  const range = `${LAYERS_MIN} to ${LAYERS_MAX}`;
-  assert.match(fs.readFileSync(new URL('../src/types.ts', import.meta.url), 'utf8'), new RegExp(`the first to see a request, on top\\. ${range}\\.`));
+  assert.match(fs.readFileSync(new URL('../src/types.ts', import.meta.url), 'utf8'), new RegExp(`the first to see a request, on top\\. Up to ${LAYERS_MAX}\\.`));
   const two = { type: 'layers', narration: 'The client calls the server.', layers: [{ id: 'client', label: 'Client' }, { id: 'server', label: 'Server' }] };
   assert.deepEqual((await check(two)).warnings.filter((w) => w.startsWith('scenes[1]')), []);
 });

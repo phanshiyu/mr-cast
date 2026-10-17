@@ -6,16 +6,12 @@ import { FOCUS_TYPES } from '../../shared/targets.mjs';
 import { didYouMean } from './suggest.mjs';
 import { aType } from '../../shared/words.mjs';
 
-// Past this many marked steps a scene reads as scribbled over, and no mark stands out.
-const MARKED_STEPS_MAX = 2;
-
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
 export function checkPenMarks(s, p, hunks, errors, warnings) {
   if (!Array.isArray(s.steps)) return;
   const code = s.type === 'code';
   const hunk = code && typeof s.hunkId === 'string' && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;
-  let marked = 0;
   s.steps.forEach((step, i) => {
     if (!step || typeof step !== 'object') return;
     const q = `${p}.steps[${i}]`;
@@ -25,7 +21,6 @@ export function checkPenMarks(s, p, hunks, errors, warnings) {
       if (step.token !== undefined) errors.push(`${q}.token: needs a mark to draw on it, such as "mark": "circle"`);
       return;
     }
-    marked++;
     if (!code && !FOCUS_TYPES.includes(s.type)) return errors.push(`${q}.mark: ${aType(s.type)} step has no focus to draw on; marks go on code steps and on diagram steps with a focus`);
     if (step.mark !== undefined && !PEN_MARKS.includes(step.mark)) errors.push(`${q}.mark: must be one of ${PEN_MARKS.join(', ')}${typeof step.mark === 'string' ? didYouMean(step.mark, PEN_MARKS) : ''}`);
     if (step.note !== undefined) {
@@ -41,5 +36,4 @@ export function checkPenMarks(s, p, hunks, errors, warnings) {
     if (hits === 0) errors.push(`${q}.token: ${JSON.stringify(step.token)} is not on ${lines}; copy it exactly from the code, spaces included`);
     else if (hits > 1) errors.push(`${q}.token: ${JSON.stringify(step.token)} occurs ${hits} times on ${lines}; lengthen it until it names one place`);
   });
-  if (marked > MARKED_STEPS_MAX) warnings.push(`${p}.steps: ${marked} steps carry a mark; marks lose their force when most steps have one, so keep at most ${MARKED_STEPS_MAX} per scene for the one thing each sentence is about`);
 }

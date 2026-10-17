@@ -23,7 +23,6 @@ import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { formatSteps } from './lib/highlight.mjs';
 import { formatSchema } from './lib/schema.mjs';
-import { ARTICLE_FILE, checkArticlePlan, readArticle, readerText } from './lib/article.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
@@ -51,7 +50,7 @@ commands under "Used by the Claude Code skills" for you.
   help [--all]      this message; --all adds every command and option
 
 Used by the Claude Code skills:
-  status            the branch's changes against its base, uncommitted files, and the last audience and pace
+  status            the branch's changes against its base, uncommitted files, and the last pace
   extract [base] [--working]
                     start a walkthrough of the branch's diff in .mr-cast/<branch> and print a hunk index;
                     --working diffs the merge base against uncommitted changes
@@ -67,8 +66,6 @@ Used by the Claude Code skills:
                     and view; the picks are written back into plan.json
   schema [type|all] print the storyboard's TypeScript schema: with a scene type, such as array, that scene's
                     fields and every type they use; with none, the storyboard and what every scene shares
-  article [--reader] check the run's article.md and print its takeaways; --reader prints it without the
-                    answers to its questions, for the reader test
   validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
   play [--port N] [--no-open]
@@ -80,9 +77,7 @@ Used by the Claude Code skills:
   extract and init make their run the current one, and the commands after them work on the current run.
   extract, init, plan, validate, outline, voice, play, render and still take these flags. A flag applies to its own command
   only, and a command without it uses the default, so pass the same flags to each command:
-      --audience familiar|new|overview|preread
-                                         who the video is for; new is the simple style (also --simple);
-                                         preread shows no code and ends on a reading order
+      --audience preread                 a pre-read: no code on screen, ending on the order to read the code in
       --pace slower|normal|faster        the voice's speed and the pauses around it (default normal)
       --voice name                       the Kokoro voice (default af_heart)
       --no-voice                         silent, with subtitles timed for reading`;
@@ -140,9 +135,6 @@ const DIR_OPTION = { dir: { type: 'string' }, name: { type: 'string' } };
 
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
-/** "simple" for the audience new to the code, whose storyboard validate checks harder. */
-const styleOf = (settings) => (settings.audience === 'new' ? 'simple' : undefined);
-
 /**
  * The voiceover that times a command: voiceover.json's clips in the command's voice and at its pace. Clips
  * voiced in another voice or at another speed match nothing, so their texts are estimated until they are
@@ -159,22 +151,17 @@ function timingVoiceover(dir, settings) {
 async function loadProject(dir, settings, { write = true } = {}) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
   const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
-  const style = styleOf(settings);
   const plan = readPlan(dir, { preread: settings.audience === 'preread' });
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
   const meta = readRunMeta(dir);
   const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
-  const quick = mode === 'explain' && meta.quick === true;
-  const article = readArticle(dir);
-  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, style, plan, quick, article });
-  if (article && plan?.plan && !plan.errors.length) checkArticlePlan(article, plan.plan, result.warnings);
-  if (!article && !quick) result.warnings.push(`${ARTICLE_FILE}: the run has none; write the article first, then adapt it (mr-cast skill, step 5)`);
+  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, plan });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length || !write ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
   const reading = result.errors.length || !write ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
-  return { dir, hunks, raw, storyboard, plan, result, style, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
+  return { dir, hunks, raw, storyboard, plan, result, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds }) };
 }
 
 /** Whether `file` is absent or a file mr-cast wrote under `heading`, so mr-cast may replace or remove it. */
@@ -249,7 +236,7 @@ function extract(argv) {
   if (positionals.length > 1) throw new UserError(`extract takes at most one base, got: ${positionals.join(' ')}`);
   const context = intOption(values.context, 'context', 0);
   const maxLines = intOption(values['max-lines'], 'max-lines', 1);
-  const settings = settingsFrom(values);
+  settingsFrom(values); // rejects a bad flag before anything is written
 
   const root = repoRoot();
   ensureExcluded(root);
@@ -303,14 +290,14 @@ function extract(argv) {
 
   console.log(formatIndex({
     ctx: { branch: diff.branch, base, ahead: diff.ahead, working: values.working, mergeBase: diff.mergeBase, untracked: diff.untracked },
-    files, hunks, skipped: diff.skipped, maxLines, style: styleOf(settings),
+    files, hunks, skipped: diff.skipped, maxLines,
     hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath), runArgs,
   }));
 }
 
 /**
- * The run a command after extract or init works on, and the settings its flags ask for. The audience and pace
- * they choose are remembered for the user's next video, and the audience in the run's meta.json for the hook.
+ * The run a command after extract or init works on, and the settings its flags ask for. The pace they choose is
+ * remembered for the user's next video, and the audience in the run's meta.json for the hook.
  */
 function runFor(values) {
   const settings = settingsFrom(values);
@@ -653,12 +640,9 @@ async function render(argv) {
   const elsewhere = path.dirname(path.resolve(video)) !== path.resolve(dir);
   const review = elsewhere ? writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir)) : null;
   const reading = elsewhere ? writeReading(video.replace(/\.[^./]+$/, '.reading.md'), storyboard, hunks, planFile?.plan, readRunMeta(dir), run.settings) : null;
-  const article = elsewhere && fs.existsSync(path.join(dir, ARTICLE_FILE)) ? video.replace(/\.[^./]+$/, '.article.md') : null;
-  if (article) fs.copyFileSync(path.join(dir, ARTICLE_FILE), article);
   console.log(video);
   if (review) console.log(review);
   if (reading) console.log(reading);
-  if (article) console.log(article);
 }
 
 async function still(argv) {
@@ -699,34 +683,16 @@ async function steps(argv) {
 async function outline(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const run = runFor(values);
-  const { dir, hunks, storyboard, result, style, plan: planFile } = await loadValidProject(run.dir, run.settings);
+  const { dir, hunks, storyboard, result, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = timingVoiceover(dir, run.settings);
   const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
-  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, style, pace: formatPace(voiceover), plan: planFile?.plan }));
-}
-
-/** Checks the run's article.md, or with --reader prints it as the reader test sees it: without the answers. */
-function articleCommand(argv) {
-  const { values } = parseArgs({ args: argv, options: { reader: { type: 'boolean', default: false }, ...RUN_OPTIONS } });
-  const { dir } = runFor(values);
-  const article = readArticle(dir);
-  if (!article) throw new UserError(`${rel(path.join(dir, ARTICLE_FILE))} not found; write the article first`);
-  const plan = readPlan(dir);
-  if (plan?.plan && !plan.errors.length) checkArticlePlan(article, plan.plan, article.warnings);
-  for (const e of article.errors) console.error(`error: ${e}`);
-  if (article.errors.length) process.exit(1);
-  if (values.reader) return console.log(readerText(article.text, article));
-  for (const w of article.warnings) console.log(`warning: ${w}`);
-  const words = article.sections.reduce((n, s) => n + s.words, 0);
-  console.log(`Takeaways of "${article.title}":`);
-  article.takeaways.forEach((t, i) => console.log(`${i + 1}. ${t}`));
-  console.log(`✓ article ok: ${plural(article.sections.length, 'section')} (${article.sections.map((s) => s.id).join(', ')}), ${plural(article.questions.length, 'question')}, ${words} words`);
+  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, pace: formatPace(voiceover), plan: planFile?.plan }));
 }
 
 /**
- * A Claude Code PostToolUse hook (the mr-cast skill's frontmatter): after a write to a run's storyboard.json or
- * article.md, it checks the file and exits 2 with the errors, which Claude sees. Other files pass at once. It
+ * A Claude Code PostToolUse hook (the mr-cast skill's frontmatter): after a write to a run's storyboard.json, it
+ * checks the file and exits 2 with the errors, which Claude sees. Other files pass at once. It
  * validates with the audience the run's commands were last given (meta.json), and writes nothing.
  */
 function hook() {
@@ -736,15 +702,15 @@ function hook() {
   } catch {
     return;
   }
-  const command = { 'storyboard.json': 'validate', [ARTICLE_FILE]: 'article' }[path.basename(file ?? '')];
-  const dir = command && path.dirname(file);
-  if (!command || path.basename(path.dirname(dir)) !== '.mr-cast' || !readRunMeta(dir)) return;
+  if (path.basename(file ?? '') !== 'storyboard.json') return;
+  const dir = path.dirname(file);
+  if (path.basename(path.dirname(dir)) !== '.mr-cast' || !readRunMeta(dir)) return;
   const { audience } = readRunMeta(dir);
-  const flags = command === 'validate' ? ['--read-only', ...(audience ? ['--audience', audience] : [])] : [];
-  const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), command, '--dir', dir, ...flags], { encoding: 'utf8', env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' } });
+  const flags = ['--read-only', ...(audience ? ['--audience', audience] : [])];
+  const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'validate', '--dir', dir, ...flags], { encoding: 'utf8', env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' } });
   if (run.status === 0) return;
   const lines = `${run.stdout}\n${run.stderr}`.split('\n').filter((l) => /^(error|✗|mr-cast:|hint:)/.test(l.trim()));
-  console.error(`mr-cast ${command}${flags.length ? ` ${flags.join(' ')}` : ''} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`);
+  console.error(`mr-cast validate ${flags.join(' ')} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`);
   process.exit(2);
 }
 
@@ -901,8 +867,7 @@ function status(argv) {
     out.push(`working tree: ${parts.length ? parts.join(', ') : 'clean'}`, ...fileLines(s.working));
   }
   const last = lastChoices();
-  const chosen = [last.audience && `audience ${last.audience}`, last.pace && `pace ${last.pace}`].filter(Boolean);
-  out.push(`last choices: ${chosen.length ? chosen.join(' · ') : 'none yet'}`);
+  out.push(`last pace: ${last.pace ?? 'none yet'}`);
   console.log(out.join('\n'));
 }
 
@@ -962,7 +927,7 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { hook, article: articleCommand, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
+const COMMANDS = { hook, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);

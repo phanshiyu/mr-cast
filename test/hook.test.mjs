@@ -51,8 +51,8 @@ test('the hook validates with the audience the run was given, never the last one
     assert.match(blocked.stderr, /^mr-cast validate --read-only --audience preread on /);
     assert.ok(blocked.stderr.includes(PREREAD_ERROR), blocked.stderr);
 
-    assert.equal(run(['outline', '--simple']).status, 0);
-    assert.equal(meta(full).audience, 'new');
+    assert.equal(run(['outline', '--audience', 'familiar']).status, 0);
+    assert.equal(meta(full).audience, 'familiar');
     assert.deepEqual([hook(full).status, hook(full).stderr], [0, '']);
   } finally {
     done();
@@ -62,7 +62,7 @@ test('the hook validates with the audience the run was given, never the last one
 test('the hook\'s validate writes and removes nothing, where validate keeps review.md and reading.md in step', () => {
   const { run, start, hook, choices, done } = setup();
   try {
-    const dir = start(['--title', 'Quicksort', '--audience', 'familiar'], 'quicksort');
+    const dir = start(['--title', 'Quicksort', '--audience', 'familiar', '--pace', 'slower'], 'quicksort');
     const own = { 'review.md': `${REVIEW_HEADING}Quicksort\n`, 'reading.md': `${READING_HEADING}Quicksort\n` };
     for (const [file, text] of Object.entries(own)) fs.writeFileSync(path.join(dir, file), text);
     const snapshot = () => [fs.readdirSync(dir).sort(), fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'), fs.readFileSync(choices, 'utf8')];

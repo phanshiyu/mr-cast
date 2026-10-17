@@ -44,59 +44,34 @@ test('a pre-read refuses a code scene, a code cell in a compare, and a review sc
   const review = { type: 'review', narration: 'One thing looked wrong.' };
   const { errors } = await validate([intent, graph(['h1', 'h2']), compare, code, tests, review, reading(both)], { findings: [] });
   assert.deepEqual(matching(errors, /pre-read/), [
-    'scenes[2].rows[0].cells[1]: a code snippet, and a pre-read puts no code on screen; write what the code does as text, with the real names and values',
-    'scenes[3] is a code scene, and a pre-read puts no code on screen; draw what the code does as a diagram, name its hunk in that scene\'s "from", and list it in the reading order',
+    'scenes[2].rows[0].cells[1]: a code snippet, and a pre-read puts no code on screen; use a text cell',
+    'scenes[3] is a code scene, and a pre-read puts no code on screen; cite the hunk in a diagram\'s "from" or list it in the reading order',
     'scenes[5]: a pre-read ends on the reading order, which carries the findings; remove the review scene and flag each finding on its reading item',
   ]);
   const reviewer = await validate([intent, graph(), compare, code, tests], { skipped: [{ hunkId: 'h2', reason: 'routine mount' }] }, 'familiar');
   assert.deepEqual(matching(reviewer.errors, /pre-read/), []);
 });
 
-test('a pre-read covers the diff with its reading order, not with from', async () => {
+test('a pre-read counts the hunks its reading order lists, and says when it has no reading scene', async () => {
   const listed = await validate([intent, graph(['h1', 'h2']), tests, reading(both)]);
-  assert.deepEqual(listed.errors, []);
-  assert.deepEqual(matching(listed.warnings, /reading order|is not shown/), []);
+  assert.deepEqual([listed.errors, listed.warnings], [[], []]);
   assert.equal(listed.coverage.shown, 2);
 
   const citedOnly = await validate([intent, graph(['h1', 'h2']), tests, reading(both.slice(0, 1))]);
-  assert.deepEqual(matching(citedOnly.warnings, /is not in the reading order/), [
-    'h2 src/server.ts (+16) is not in the reading order; add it to the reading scene\'s items ("routine": true for a change to skim), or list it in skipped with a reason',
-  ]);
+  assert.deepEqual([citedOnly.warnings, citedOnly.coverage.shown], [[], 1]);
 
   const none = await validate([intent, graph(['h1', 'h2']), tests]);
-  assert.deepEqual(matching(none.warnings, /reading scene, the order/), [
-    'a pre-read ends on a reading scene, the order in which to read the code with what to check at each hunk; add one { "type": "reading", "items": [...] } last',
-  ]);
+  assert.deepEqual(none.warnings, ['a pre-read with no reading scene has no reading order, so no reading.md is written; add { "type": "reading", "items": [...] }']);
 });
-
-test('a pre-read still may not skip a substantial hunk because the diagrams cover it', async () => {
-  const { warnings } = await validate([intent, graph(['h1']), tests, reading(both.slice(0, 1))], { skipped: [{ hunkId: 'h2', reason: 'covered by the diagrams' }] });
-  assert.deepEqual(matching(warnings, /^skipped\[/), [
-    'skipped[0]: h2 src/server.ts (+16) is skipped as "covered by the diagrams", but a video for a reviewer who reads the code next shows every substantial hunk; add it to the reading scene\'s items ("routine": true for a change to skim). Only the team\'s overview leaves code to the diagrams',
-  ]);
-});
-
-test('from names known hunks, at most three, and something on screen that names each one', async () => {
+test('from names known hunks, and does nothing outside a pre-read', async () => {
   const unknown = await validate([intent, graph(['h1', 'h9']), tests, reading(both)]);
   assert.deepEqual(matching(unknown.errors, /from/), ['scenes[1].from[1]: "h9" not found in hunks.json']);
-
-  const many = await validate([intent, graph(['h1', 'h2', 'h3', 'h1']), tests, reading(both)]);
-  assert.deepEqual(matching(many.warnings, /hunks; one picture/), ['scenes[1].from: 4 hunks; one picture explains at most 3, so cite the ones it is about and draw the rest in their own scene']);
-
-  // The graph names `checkLimit` (h1) and `server.ts` (h2), but nothing from config.ts (h3).
-  const unnamed = await validate([intent, graph(['h1', 'h2', 'h3']), tests, reading(both)]);
-  assert.deepEqual(matching(unnamed.warnings, /nothing on screen/), [
-    'scenes[1].from[2]: nothing on screen names h3; label the part it explains with its file or identifier, such as `config.ts`, `MAX_REQUESTS`, so the viewer finds it in the code',
-  ]);
-  // A plain word from the code (`count`) is not a name to look for; the identifier is.
-  const plain = await validate([intent, graph(['h1'], 'count'), tests, reading(both)]);
-  assert.equal(matching(plain.warnings, /nothing on screen names h1/).length, 1);
+  assert.deepEqual((await validate([intent, graph(['h1', 'h2', 'h3', 'h1'], 'count'), tests, reading(both)])).warnings, []);
 
   const reviewer = await validate([intent, graph(['h1']), tests], {}, 'familiar');
-  assert.deepEqual(matching(reviewer.warnings, /^scenes\[1\]\.from/), ['scenes[1].from: only a pre-read (--audience preread) reads "from"; show the code in a code scene instead']);
+  assert.deepEqual(matching(reviewer.warnings, /^scenes\[1\]\.from/), ['scenes[1].from: only a pre-read (--audience preread) reads "from", so it does nothing here']);
 });
-
-test('reading items name real hunks once, each with a short check unless routine', async () => {
+test('reading items name real hunks once, each with a check unless routine', async () => {
   const items = [
     { hunkId: 'h1', check: 'the key resets on a new minute; check the off-by-one at the boundary of every window' },
     { hunkId: 'h2' },
@@ -106,16 +81,15 @@ test('reading items name real hunks once, each with a short check unless routine
   ];
   const { errors, warnings } = await validate([intent, graph(['h1', 'h2']), tests, reading(items)]);
   assert.deepEqual(matching(errors, /items/), [
-    'scenes[3].items[1].check: required, what to verify there in under 80 characters; set "routine": true for a change to skim',
+    'scenes[3].items[1].check: required, what to verify there; set "routine": true for a change to skim',
     'scenes[3].items[2].hunkId: h1 is already items[0]; list each hunk once',
     'scenes[3].items[3].hunkId: "h7" not found in hunks.json',
   ]);
-  assert.deepEqual(matching(warnings, /items\[0\]\.check/), ['scenes[3].items[0].check: 84 characters; say what to verify in under 80']);
+  assert.deepEqual(matching(warnings, /items\[0\]\.check/), []);
 });
 
-test('the reading scene comes last, and the narration names only items it numbers', async () => {
-  const early = await validate([intent, reading(both), graph(['h1', 'h2']), tests]);
-  assert.deepEqual(matching(early.warnings, /put it last/), ['scenes[1]: the reading scene hands the code to the viewer, so put it last, after the tests']);
+test('the reading scene may go anywhere, and the narration names only items it numbers', async () => {
+  assert.deepEqual((await validate([intent, reading(both), graph(['h1', 'h2']), tests])).warnings, []);
   const g = { ...graph(['h1', 'h2']), narration: 'The limiter counts per server; check this at item 3.' };
   const { warnings } = await validate([intent, g, tests, reading([...both, { hunkId: 'h3', routine: true }])]);
   assert.deepEqual(matching(warnings, /item 3/), ['scenes[1].narration: says "item 3", but the reading order numbers 2 items to read; name one of 1 to 2']);
@@ -135,7 +109,7 @@ test('a pre-read flags its findings on reading items of the same file', async ()
   assert.deepEqual(matching(unflagged.errors, /review scene/), []);
 });
 
-test('a pre-read plan offers no code view, and a deep topic adds a second diagram', async () => {
+test('a pre-read plan offers no code view, and a deep topic may be one diagram', async () => {
   const topic = (views) => ({ id: 'limiter', title: 'Rate limiter', summary: 'Counts requests.', files: [], depth: 'deep', views, seconds: { brief: 30, deep: 90 } });
   assert.deepEqual(checkPlan({ topics: [topic(['parts', 'code'])] }, { preread: true }).errors, [
     'topics[0].views: a pre-read puts no code on screen, so drop "code" and offer the views that draw the topic, such as "data" or "decisions"',
@@ -146,7 +120,7 @@ test('a pre-read plan offers no code view, and a deep topic adds a second diagra
   const plan = { plan: p, ...checkPlan(p, { preread: true }) };
   const scenes = [intent, { ...graph(['h1', 'h2']), topic: 'limiter' }, tests, reading(both)];
   const one = await validateStoryboard({ title: 'Rate limit', scenes, plan: { limiter: { depth: 'deep', view: 'parts' } } }, hunks, { audience: 'preread', plan });
-  assert.deepEqual(matching(one.warnings, /chose deep/), ['topic "limiter": the viewer chose deep, which in a pre-read traces one real case through a second diagram; add a flow, array or table that walks it with the actual limits, keys and order']);
+  assert.deepEqual(matching(one.warnings, /chose deep/), []);
   const flow = { type: 'flow', topic: 'limiter', narration: 'One visitor sends a twenty-first order.', steps: [{ actor: '`checkLimit`', action: 'count 21 of 20', say: 'The count passes twenty.' }, { actor: '`server.ts`', action: 'answer 429', say: 'The server refuses the order.' }] };
   const two = await validateStoryboard({ title: 'Rate limit', scenes: [intent, scenes[1], flow, tests, reading(both)], plan: { limiter: { depth: 'deep', view: 'parts' } } }, hunks, { audience: 'preread', plan });
   assert.deepEqual(matching(two.warnings, /chose deep|chose to see it as/), []);
@@ -244,26 +218,12 @@ test('the server tells the plan page the audience it was started for', async () 
   }
 });
 
-test('in a pre-read the plan depth changes only the video, so a brief or skipped topic keeps its hunks in the reading order', async () => {
-  const skipped = (reason) => [{ hunkId: 'h2', reason }];
-  const brief = await validate([intent, graph(['h1']), tests, reading(both.slice(0, 1))], { skipped: skipped('the viewer chose a brief look at this topic') });
-  assert.deepEqual(matching(brief.warnings, /^skipped\[/), [
-    'skipped[0]: h2 src/server.ts (+16) is skipped as "the viewer chose a brief look at this topic", so it is not in the reading order; in a pre-read the plan\'s depth changes only the video, and the reviewer still reads the code, so add it to the reading scene\'s items ("routine": true for a change to skim)',
-  ]);
-  const skip = await validate([intent, graph(['h1']), tests, reading(both.slice(0, 1))], { skipped: skipped('the viewer chose to skip this topic') });
-  assert.equal(matching(skip.warnings, /skipped as "the viewer chose to skip this topic", so it is not in the reading order/).length, 1);
-  // A small hunk may still be skipped, and a reviewer's video still skips a brief topic's hunks.
-  const small = await validate([intent, graph(['h1', 'h2']), tests, reading(both)], { skipped: [{ hunkId: 'h3', reason: 'the viewer chose a brief look at this topic' }] });
-  assert.deepEqual(matching(small.warnings, /^skipped\[/), []);
-  const reviewer = await validate([intent, graph(), tests], { skipped: skipped('the viewer chose a brief look at this topic') }, 'familiar');
-  assert.deepEqual(matching(reviewer.warnings, /^skipped\[/), []);
-
+test('a skipped topic whose scenes still show it is reported, in a pre-read too', async () => {
   const topic = { id: 'route', title: 'The route', summary: 'Mounts it.', files: [], depth: 'skip', views: ['parts'], seconds: { brief: 30, deep: 60 } };
   const plan = { plan: { topics: [topic] }, ...checkPlan({ topics: [topic] }, { preread: true }) };
   const shown = await validateStoryboard({ title: 'Rate limit', scenes: [intent, { ...graph(['h1', 'h2']), topic: 'route' }, tests, reading(both)], plan: { route: { depth: 'skip', view: 'parts' } } }, hunks, { audience: 'preread', plan });
-  assert.deepEqual(matching(shown.warnings, /chose to skip it/), ['topic "route": the viewer chose to skip it, but scenes[1] show it; remove them and add its hunks to the reading order, since the reviewer still reads them']);
+  assert.deepEqual(matching(shown.warnings, /chose to skip it/), ['topic "route": the viewer chose to skip it, but scenes[1] show it']);
 });
-
 test('a pre-read flags findings only on reading items, on a line of the item\'s hunk', async () => {
   const finding = (line) => ({ id: 'per-server', severity: 'bug', file: 'src/limiter.ts', line, claim: 'the count is per server', evidence: 'two servers each allow twenty, so forty pass' });
   const flow = { type: 'flow', narration: 'One order.', from: ['h1'], steps: [{ actor: '`checkLimit`', action: 'count 21 of 20', say: 'I think this count is per server.', flag: 'per-server' }] };
@@ -303,45 +263,11 @@ test('a reading scene or from outside a pre-read asks for --audience preread', a
   const { warnings } = await validate([intent, graph(['h1', 'h2']), tests, reading(both)], {}, 'familiar');
   assert.deepEqual(matching(warnings, /pre-read/), [
     'this storyboard is a pre-read; pass --audience preread',
-    'scenes[1].from: only a pre-read (--audience preread) reads "from"; show the code in a code scene instead',
+    'scenes[1].from: only a pre-read (--audience preread) reads "from", so it does nothing here',
     'scenes[3]: only a pre-read has a reading scene; pass --audience preread, or remove it',
   ]);
   const plain = await validate([intent, graph(), tests], { skipped: [{ hunkId: 'h1', reason: 'formatting only' }, { hunkId: 'h2', reason: 'formatting only' }] }, 'familiar');
   assert.deepEqual(matching(plain.warnings, /pre-read/), []);
-});
-
-test('a pre-read warns about a label that writes code, and allows names and plain words', async () => {
-  const flow = (payloads) => ({
-    type: 'flow', chapter: 'One delivery', narration: 'The worker claims a row, and `claimDue(row, now)` is fine to say.', from: ['h1'],
-    steps: payloads.map((payload, i) => ({ actor: '`checkLimit`', action: 'POST with a 10 s timeout', payload, say: `Step ${i}, where a && b is spoken, not shown.` })),
-  });
-  const wrote = await validate([intent, graph(['h1', 'h2']), flow([
-    "{ status: 'pending', next_attempt_at: now + 10 s }",
-    'rows.filter(r => r.due)',
-    'attempts === 8',
-    'ok && signed',
-    'claimDue(row, now)',
-    'lock(); send()',
-  ]), tests, reading(both)]);
-  assert.deepEqual(matching(wrote.warnings, /never expressions/), [
-    `scenes[2].steps[0].payload: "{ status: 'pending', next_attempt_at: now + 10 s }" is an object literal, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values`,
-    'scenes[2].steps[1].payload: "rows.filter(r => r.due)" is an arrow function, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
-    'scenes[2].steps[2].payload: "attempts === 8" is a comparison, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
-    'scenes[2].steps[3].payload: "ok && signed" is a boolean expression, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
-    'scenes[2].steps[4].payload: "claimDue(row, now)" is a call with arguments, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
-    'scenes[2].steps[5].payload: "lock(); send()" is statements, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
-  ]);
-  const named = await validate([intent, graph(['h1', 'h2']), flow(['`claimDue`', 'limiter.ts', 'status pending, next try in 10 s', 'retries (up to 8); then dead', '{ status }', 'item(s)']), tests, reading(both)]);
-  assert.deepEqual(matching(named.warnings, /never expressions/), []);
-  const reviewer = await validate([intent, { ...graph(), nodes: [{ id: 'a', label: 'a && b' }, { id: 'b', label: 'b' }], edges: [{ from: 'a', to: 'b' }] }, tests], { skipped: [{ hunkId: 'h1', reason: 'formatting only' }, { hunkId: 'h2', reason: 'formatting only' }] }, 'familiar');
-  assert.deepEqual(matching(reviewer.warnings, /never expressions/), []);
-});
-
-test('the from check counts labels, not narration or a step\'s words', async () => {
-  // h3 is config.ts with MAX_REQUESTS; the narration and the step say both, but no label does.
-  const g = { ...graph(['h1', 'h3']), narration: 'It reads `MAX_REQUESTS` from `config.ts`.', steps: [{ focus: 'limiter', say: 'Here `MAX_REQUESTS` is twenty.' }] };
-  const { warnings } = await validate([intent, g, tests, reading([...both, { hunkId: 'h3', routine: true }])]);
-  assert.equal(matching(warnings, /nothing on screen names h3/).length, 1);
 });
 
 test('the reading scene counts the items to read past the first six apart from the routine ones', () => {
@@ -361,7 +287,7 @@ test('a reading item points at the lines that matter with "lines", inside its hu
   const scenes = (items) => [intent, graph(['h1', 'h2']), { ...graph(['h4'], '`runOnce`'), chapter: 'The worker' }, tests, reading(items)];
   const check = (items) => validateStoryboard({ title: 'Rate limit', scenes: scenes(items) }, big, { audience: 'preread' });
   const whole = await check([...both, { hunkId: 'h4', check: 'a claimed row is never reclaimed' }]);
-  assert.deepEqual(matching(whole.warnings, /lines that matter/), ['scenes[4].items[2]: h4 covers src/worker.ts:1-60 (60 lines); set "lines": "a-b" to the lines that matter, so the reader is not sent to the whole hunk']);
+  assert.deepEqual(whole.warnings, []);
   const bad = await check([{ ...both[0], lines: '5-14' }, { ...both[1], lines: 'top' }, { hunkId: 'h4', check: 'x', lines: '20-28' }]);
   assert.deepEqual(matching(bad.errors, /\.lines/), [
     'scenes[4].items[0].lines: 5-14 is outside h1, which covers src/limiter.ts:12-31; name lines inside it',
@@ -405,22 +331,8 @@ test('the reading order lists each topic once, and a file to read is never also 
   assert.equal(moreText(layout), '');
 });
 
-test('the code check reads diagram labels, not the reading checks or a terminal', async () => {
-  const seq = {
-    type: 'sequence', chapter: 'One request', narration: 'The limiter counts in Redis.', from: ['h1'],
-    participants: [{ id: 'l', label: '`checkLimit`' }, { id: 'r', label: 'Redis' }],
-    messages: [{ from: 'l', to: 'r', label: 'first hit only: `pexpire(key, 60)`' }],
-  };
-  const terminal = { type: 'terminal', chapter: 'Run it', narration: 'The tests pass.', lines: [{ kind: 'command', text: 'pnpm build && pnpm test' }] };
-  const items = [{ hunkId: 'h1', check: '`>=` on (created_at, id); `pexpire(key, 60)` takes ms' }, both[1]];
-  const { warnings } = await validate([intent, graph(['h2']), seq, terminal, tests, reading(items)]);
-  assert.deepEqual(matching(warnings, /never expressions/), [
-    'scenes[2].messages[0].label: "first hit only: `pexpire(key, 60)`" is a call with arguments, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
-  ]);
-});
-
-test('"check this at item N" names an item whose hunk the scene cites in from', async () => {
+test('"check this at item N" may name any item of the reading order', async () => {
   const g = (from, narration) => ({ ...graph(from), narration });
   const { warnings } = await validate([intent, g(['h1'], 'The limiter counts per server; check this at item 1.'), { ...g(['h2'], 'The route mounts it; see item 1.'), chapter: 'The route' }, tests, reading(both)]);
-  assert.deepEqual(matching(warnings, /says "item/), ['scenes[2].narration: says "item 1", which is h1, but this scene\'s "from" does not cite it; name the item of a hunk the scene explains, or add h1 to "from"']);
+  assert.deepEqual(matching(warnings, /says "item/), []);
 });

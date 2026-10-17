@@ -211,7 +211,7 @@ test('a missing, skipped or wrongly drawn topic is warned about', async () => {
     'scenes[1] is a sequence scene in "orders", which the viewer chose to see as "Before vs after"; draw it as a compare scene, or move this scene to another topic',
     'topic "limit": the viewer chose brief, and no scene has "topic": "limit"; add its scenes, or tag the scenes that show it',
     'topic "orders": the viewer chose to see it as "Before vs after", and none of its scenes is a compare scene; add one',
-    'topic "logs": the viewer chose to skip it, but scenes[2] show it; remove them and list its hunks in skipped with the reason "the viewer chose to skip this topic"',
+    'topic "logs": the viewer chose to skip it, but scenes[2] show it',
   ]);
 });
 

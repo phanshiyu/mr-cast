@@ -5,8 +5,7 @@ import { layerOf, layerRoute, stopKey, tokenSteps } from '../../shared/layers.mj
 import { checkNodeFields } from './validate-diagram.mjs';
 import { TONES } from './validate-scenes.mjs';
 
-// Fewer than this and there is no order to show; more and each band gets too thin to read.
-export const LAYERS_MIN = 2;
+// More layers than this and each band gets too thin to read.
 export const LAYERS_MAX = 7;
 const ITEMS_MAX = 5;
 
@@ -77,10 +76,9 @@ export function checkLayers(s, p, errors, warnings) {
       claim(item.id, r);
       checkNodeFields(item, r, errors, warnings);
     });
-    if (layer.items.length > ITEMS_MAX) warnings.push(`${q}.items: ${layer.items.length} items; a band holds ${ITEMS_MAX} at a readable size, so keep the ones the narration names`);
+    if (layer.items.length > ITEMS_MAX) warnings.push(`${q}.items: ${layer.items.length} items; a band holds ${ITEMS_MAX} at a readable size`);
   });
-  if (s.layers.length < LAYERS_MIN) warnings.push(`${p}.layers: one layer has no order to show; use a graph scene for parts side by side`);
-  if (s.layers.length > LAYERS_MAX) warnings.push(`${p}.layers: ${s.layers.length} layers; more than ${LAYERS_MAX} get too thin to read, so merge some or split the stack into two scenes`);
+  if (s.layers.length > LAYERS_MAX) warnings.push(`${p}.layers: ${s.layers.length} layers; more than ${LAYERS_MAX} get too thin to read`);
   if (errors.length > before) return;
   if (s.path !== undefined) checkPath(s, p, errors, warnings);
   if (errors.length === before && s.path !== undefined && Array.isArray(s.steps) && s.steps.length) checkWalk(s, p, warnings);

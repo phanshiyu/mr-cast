@@ -6,8 +6,6 @@ import { VIEWS, isView } from './views.mjs';
 export const DEPTHS = ['skip', 'brief', 'deep'];
 const TOPIC_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VIEWS_MAX = 3;
-// More rows than this turn picking into a chore.
-export const TOPICS_COMFORTABLE = 8;
 // The opening intent and the closing tests scene, which every video has whatever the picks.
 export const FIXED_SECONDS = 40;
 
@@ -67,7 +65,6 @@ export function checkPlan(plan, { preread = false } = {}) {
       if (problem) errors.push(`${p}.choice: ${problem}`);
     }
   });
-  if (plan.topics.length > TOPICS_COMFORTABLE) warnings.push(`topics: ${plan.topics.length} topics; aim for 4 to ${TOPICS_COMFORTABLE}, each named by what it does, and merge the small ones`);
   return { errors, warnings };
 }
 

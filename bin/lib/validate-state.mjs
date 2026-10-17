@@ -7,11 +7,6 @@ import { didYouMean } from './suggest.mjs';
 import { TONES } from './validate-scenes.mjs';
 
 const ARRAY_CELLS_MAX = 16;
-const ARRAY_POINTERS_MAX = 4;
-const ARRAY_RANGES_MAX = 3;
-const MEMORY_FRAMES_MAX = 4;
-const MEMORY_OBJECTS_MAX = 6;
-const MEMORY_ROWS_MAX = 6;
 /** A hint lists every ref a change could name when there are no more than this. */
 const NAMES_LISTED = 12;
 
@@ -39,7 +34,7 @@ export function checkArray(s, p, errors, warnings) {
     if (!isText(v)) errors.push(`${p}.values[${j}]: must be text or a number`);
   });
   const n = s.values.length;
-  if (n > ARRAY_CELLS_MAX) warnings.push(`${p}.values: ${n} cells; past ${ARRAY_CELLS_MAX} each gets too narrow to read, so show the part the steps walk`);
+  if (n > ARRAY_CELLS_MAX) warnings.push(`${p}.values: ${n} cells; past ${ARRAY_CELLS_MAX} each gets too narrow to read`);
   const names = new Set();
   if (s.pointers !== undefined) {
     if (!Array.isArray(s.pointers)) errors.push(`${p}.pointers: must be an array of { name, at, tone?, hidden? }`);
@@ -51,7 +46,6 @@ export function checkArray(s, p, errors, warnings) {
         if (!Number.isInteger(ptr.at) || ptr.at < -1 || ptr.at > n) errors.push(`${q}.at: must be a cell index from 0 to ${n - 1}, or -1 or ${n} just past either end`);
         checkTone(ptr, q, errors);
       });
-      if (s.pointers.length > ARRAY_POINTERS_MAX) warnings.push(`${p}.pointers: ${s.pointers.length} pointers; keep the ${ARRAY_POINTERS_MAX} the steps move`);
     }
   }
   if (s.ranges !== undefined) {
@@ -65,7 +59,6 @@ export function checkArray(s, p, errors, warnings) {
         if (!ok(r.from) || !ok(r.to) || r.from > r.to) errors.push(`${q}: from and to are its first and last cell, from 0 to ${n - 1}, with from <= to`);
         checkTone(r, q, errors);
       });
-      if (s.ranges.length > ARRAY_RANGES_MAX) warnings.push(`${p}.ranges: ${s.ranges.length} ranges; keep the ${ARRAY_RANGES_MAX} the narration names`);
     }
   }
   checkStateSteps(s, p, errors, warnings);
@@ -81,7 +74,6 @@ function checkValues(record, q, kind, ids, errors, warnings) {
     if (!isPointer(value) || Object.keys(value).length !== 1) errors.push(`${at}: must be text, a number, or { "ref": "<object id>" }`);
     else if (!ids.has(value.ref)) errors.push(`${at}: points at "${value.ref}", which is no object; objects are ${quoted([...ids])}${didYouMean(value.ref, [...ids])}`);
   }
-  if (Object.keys(record).length > MEMORY_ROWS_MAX) warnings.push(`${q}: ${Object.keys(record).length} ${kind}s; show the ${MEMORY_ROWS_MAX} the narration names`);
 }
 
 export function checkMemory(s, p, errors, warnings) {
@@ -118,8 +110,6 @@ export function checkMemory(s, p, errors, warnings) {
     checkValues(o.fields, `${q}.fields`, 'field', ids, errors, warnings);
     if (o.hidden !== undefined && typeof o.hidden !== 'boolean') errors.push(`${q}.hidden: must be true or false`);
   });
-  if (frames.length > MEMORY_FRAMES_MAX) warnings.push(`${p}.frames: ${frames.length} frames; keep the ${MEMORY_FRAMES_MAX} the story needs`);
-  if (objects.length > MEMORY_OBJECTS_MAX) warnings.push(`${p}.objects: ${objects.length} objects; keep the ${MEMORY_OBJECTS_MAX} the story needs`);
   if (errors.length) return;
   checkStateSteps(s, p, errors, warnings);
 }

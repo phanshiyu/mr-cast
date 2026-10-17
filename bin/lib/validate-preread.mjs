@@ -1,99 +1,27 @@
-// The pre-read (`--audience preread`): a reviewer's video with no code on screen, which ends on the order in
-// which to read the code. The diagrams build the model; the `reading` scene hands the code over. Coverage is
-// the reading order's job: every substantial hunk is in it or in `skipped`. A terminal session is not source
-// code, so it stays allowed; a code scene and a code cell in a compare do not.
+// The pre-read (`--audience preread`): a video with no code on screen, which ends on the order in which to read
+// the code. A terminal session is not source code, so it stays allowed; a code scene and a code cell in a compare
+// do not.
 
-import { CHECK_MAX, READ_FIRST_MAX, hunkSpan, readingOrder } from '../../shared/reading.mjs';
-import { plainText } from '../../shared/markup.mjs';
+import { READ_FIRST_MAX, hunkSpan, readingOrder } from '../../shared/reading.mjs';
 import { sceneChapter } from '../../shared/chapters.mjs';
 import { findingLocation, lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
 
-/** A reading item over more lines than this, with no `lines`, sends the reader to a whole file. */
-export const ITEM_LINES_MAX = 40;
-/** More hunks than this behind one picture and the picture explains none of them well. */
-export const FROM_MAX = 3;
-
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
-const WORD = /[A-Za-z_$][\w$]*/g;
-// A word written the way code names things: camelCase, PascalCase with an inner capital, or snake_case.
-const CODE_NAME = /[a-z][A-Z]|[A-Za-z0-9]_[A-Za-z0-9]/;
-// Keys whose strings are ids, refs or settings, never text on screen.
-const NOT_TEXT = new Set(['type', 'from', 'to', 'id', 'topic', 'icon', 'focus', 'initial', 'tone', 'shape', 'layout', 'direction', 'style', 'change', 'show', 'hide', 'at', 'ref', 'mark', 'kind', 'lang', 'better', 'unit', 'hunkId', 'flag']);
-// Keys whose strings are spoken, not drawn: the subtitles show them, but no label does.
-const SPOKEN = new Set(['narration', 'say']);
-
-/** Every label a scene draws, as `[path, text]` with its markup, from any key that holds text other than the spoken ones. */
-function sceneLabels(value, path, key = '', out = []) {
-  if (typeof value === 'string') { if (!NOT_TEXT.has(key) && !SPOKEN.has(key)) out.push([path, value]); }
-  else if (Array.isArray(value)) value.forEach((v, i) => sceneLabels(v, `${path}[${i}]`, key, out));
-  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) sceneLabels(v, `${path}.${k}`, k, out);
-  return out;
-}
-
-/**
- * The ways a label reads as code rather than names it, each `[pattern, what it is]`. Kept narrow, so an
- * identifier or a file name alone (`claimDue`, `limiter.ts`) and plain words never match.
- */
-const CODE_SHAPES = [
-  [/\{[^{}]*[A-Za-z_$][\w$]*\s*:[^{}]*\}/, 'an object literal'],
-  [/=>/, 'an arrow function'],
-  // A space on both sides, since `==marked==` is markup.
-  [/\s(?:===?|!==?)\s|!=|===/, 'a comparison'],
-  [/&&|\|\|/, 'a boolean expression'],
-  [/\b[A-Za-z_$][\w$.]*\((?!s\)|es\))\s*[\w$'"`[{-]/, 'a call with arguments'],
-  [/[\w$]\([^()]*\)\s*;\s*[A-Za-z_$]|[\w$];[A-Za-z_$]/, 'statements'],
-];
-
-/**
- * Scenes whose text may write code: a code scene (refused in a pre-read anyway), a terminal session, and the
- * reading scene, whose checks are the bridge to the code and name its operators ("`>=` on (created_at, id)").
- */
-const NO_CODE_CHECK = new Set(['code', 'terminal', 'reading']);
-
-/** What `text`, with its markup, writes as code, such as "an object literal", or null when it only names things. */
-export function codeShape(text) {
-  return CODE_SHAPES.find(([re]) => re.test(text))?.[1] ?? null;
-}
-
-/**
- * The names a viewer would look for in the code of `hunk`: its file's base name, and each word of its added or
- * removed lines written as code names one (`checkLimit`, `MAX_REQUESTS`). Plain words such as `limit` are left
- * out, since narration says them anyway.
- */
-export function hunkNames(hunk) {
-  const base = hunk.file.split('/').at(-1);
-  const words = hunk.lines.filter((l) => l.type !== 'context').flatMap((l) => l.text.match(WORD) ?? []);
-  return { base, identifiers: new Set(words.filter((w) => CODE_NAME.test(w))) };
-}
-
-function namesOnScreen(scene, hunk) {
-  const text = sceneLabels(scene, '').map(([, t]) => plainText(t)).join('\n');
-  const { base, identifiers } = hunkNames(hunk);
-  if (text.includes(base)) return true;
-  const said = new Set(text.match(WORD) ?? []);
-  return [...identifiers].some((id) => said.has(id));
-}
 
 function checkFrom(s, p, hunks, preread, errors, warnings) {
   if (s.from === undefined) return;
   if (s.type === 'code' || s.type === 'reading') return errors.push(`${p}.from: ${s.type === 'code' ? 'a code scene shows its own hunk' : 'the reading scene lists hunks in items'}; "from" is for a diagram that explains code without showing it`);
   if (!Array.isArray(s.from) || s.from.length === 0 || !s.from.every(isStr)) return errors.push(`${p}.from: must be a non-empty array of hunk ids, the code this scene explains`);
-  if (!preread) warnings.push(`${p}.from: only a pre-read (--audience preread) reads "from"; show the code in a code scene instead`);
-  if (s.from.length > FROM_MAX) warnings.push(`${p}.from: ${s.from.length} hunks; one picture explains at most ${FROM_MAX}, so cite the ones it is about and draw the rest in their own scene`);
+  if (!preread) warnings.push(`${p}.from: only a pre-read (--audience preread) reads "from", so it does nothing here`);
   s.from.forEach((id, j) => {
-    if (!Object.hasOwn(hunks, id)) return errors.push(`${p}.from[${j}]: "${id}" not found in hunks.json`);
-    if (!namesOnScreen(s, hunks[id])) {
-      const { base, identifiers } = hunkNames(hunks[id]);
-      const names = [base, ...[...identifiers].slice(0, 3)].map((n) => `\`${n}\``).join(', ');
-      warnings.push(`${p}.from[${j}]: nothing on screen names ${id}; label the part it explains with its file or identifier, such as ${names}, so the viewer finds it in the code`);
-    }
+    if (!Object.hasOwn(hunks, id)) errors.push(`${p}.from[${j}]: "${id}" not found in hunks.json`);
   });
 }
 
 function checkItems(s, p, hunks, findings, errors, warnings) {
   if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
-  if (s.steps !== undefined) errors.push(`${p}.steps: a reading scene takes no steps; narrate the first three items and why they come first`);
+  if (s.steps !== undefined) errors.push(`${p}.steps: a reading scene takes no steps`);
   if (!Array.isArray(s.items) || s.items.length === 0) return errors.push(`${p}.items: required non-empty array of { hunkId, check }, in the order to read the code`);
   const seen = new Map();
   let readFirst = 0;
@@ -107,24 +35,18 @@ function checkItems(s, p, hunks, findings, errors, warnings) {
     if (item.routine !== undefined && typeof item.routine !== 'boolean') errors.push(`${q}.routine: must be true or false`);
     if (item.routine !== true) readFirst++;
     if (item.check !== undefined && typeof item.check !== 'string') errors.push(`${q}.check: must be a string`);
-    else if (item.routine !== true && !isStr(item.check)) errors.push(`${q}.check: required, what to verify there in under ${CHECK_MAX} characters; set "routine": true for a change to skim`);
-    else if (isStr(item.check) && plainText(item.check).trim().length > CHECK_MAX) warnings.push(`${q}.check: ${plainText(item.check).trim().length} characters; say what to verify in under ${CHECK_MAX}`);
+    else if (item.routine !== true && !isStr(item.check)) errors.push(`${q}.check: required, what to verify there; set "routine": true for a change to skim`);
     if (item.flag !== undefined) checkFlag(item, q, hunks, findings, errors);
-    if (isStr(item.hunkId) && Object.hasOwn(hunks, item.hunkId)) checkLines(item, q, hunks[item.hunkId], errors, warnings);
+    if (isStr(item.hunkId) && Object.hasOwn(hunks, item.hunkId)) checkLines(item, q, hunks[item.hunkId], errors);
   });
-  if (readFirst > READ_FIRST_MAX) warnings.push(`${p}.items: ${readFirst} items to read first; the scene shows ${READ_FIRST_MAX}, so mark the wiring and config "routine": true, and reading.md lists the rest`);
+  if (readFirst > READ_FIRST_MAX) warnings.push(`${p}.items: ${readFirst} items to read first; the scene shows the first ${READ_FIRST_MAX} and counts the rest, which reading.md and the player's Reading order panel list`);
 }
 
-/** `lines` lies inside the hunk's own lines; a long item to read without it points at a whole file. */
-function checkLines(item, q, hunk, errors, warnings) {
+/** `lines` lies inside the hunk's own lines. */
+function checkLines(item, q, hunk, errors) {
   const { file, range } = hunkSpan(hunk);
-  if (!range) return;
+  if (!range || item.lines === undefined) return;
   const where = `${file}:${range[0]}-${range[1]}`;
-  if (item.lines === undefined) {
-    const size = range[1] - range[0] + 1;
-    if (item.routine !== true && size > ITEM_LINES_MAX) warnings.push(`${q}: ${item.hunkId} covers ${where} (${size} lines); set "lines": "a-b" to the lines that matter, so the reader is not sent to the whole hunk`);
-    return;
-  }
   const own = lineSpan(item.lines);
   if (!own) return errors.push(`${q}.lines: must be "a-b" or a line number, such as "${range[0]}-${Math.min(range[1], range[0] + 9)}"`);
   if (own[0] < range[0] || own[1] > range[1]) errors.push(`${q}.lines: ${item.lines} is outside ${item.hunkId}, which covers ${where}; name lines inside it`);
@@ -160,8 +82,7 @@ function checkExplainers(sb, warnings) {
 }
 
 /**
- * The narration's "item 4" names a numbered item of the reading order, as grouped by topic, and outside the reading scene one whose
- * hunk the scene cites in `from`: "check this at item 4" sends the viewer to the code this picture is about.
+ * The narration's "item 4" names a numbered item of the reading order, as grouped by topic.
  */
 function checkItemRefs(sb, hunks, warnings) {
   const numbered = readingOrder(sb, hunks)?.readFirst ?? [];
@@ -173,9 +94,6 @@ function checkItemRefs(sb, hunks, warnings) {
       for (const m of String(text ?? '').matchAll(/\bitem (\d+)\b/gi)) {
         const n = Number(m[1]);
         if (n < 1 || n > count) warnings.push(`${path}: says "${m[0]}", but the reading order numbers ${count} items to read; name one of 1 to ${count}`);
-        else if (s.type !== 'reading' && !(Array.isArray(s.from) && s.from.includes(numbered[n - 1]?.hunkId))) {
-          warnings.push(`${path}: says "${m[0]}", which is ${numbered[n - 1]?.hunkId}, but this scene's "from" does not cite it; name the item of a hunk the scene explains, or add ${numbered[n - 1]?.hunkId} to "from"`);
-        }
       }
     }
   });
@@ -196,10 +114,10 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
   sb.scenes.forEach((s, i) => {
     if (!isScene(s)) return;
     const p = `scenes[${i}]`;
-    if (preread && s.type === 'code') errors.push(`${p} is a code scene, and a pre-read puts no code on screen; draw what the code does as a diagram, name its hunk in that scene's "from", and list it in the reading order`);
+    if (preread && s.type === 'code') errors.push(`${p} is a code scene, and a pre-read puts no code on screen; cite the hunk in a diagram's "from" or list it in the reading order`);
     if (preread && s.type === 'compare' && Array.isArray(s.rows)) {
       s.rows.forEach((row, j) => (Array.isArray(row?.cells) ? row.cells : []).forEach((cell, k) => {
-        if (cell && typeof cell === 'object' && 'code' in cell) errors.push(`${p}.rows[${j}].cells[${k}]: a code snippet, and a pre-read puts no code on screen; write what the code does as text, with the real names and values`);
+        if (cell && typeof cell === 'object' && 'code' in cell) errors.push(`${p}.rows[${j}].cells[${k}]: a code snippet, and a pre-read puts no code on screen; use a text cell`);
       }));
     }
     if (preread && s.type === 'review') errors.push(`${p}: a pre-read ends on the reading order, which carries the findings; remove the review scene and flag each finding on its reading item`);
@@ -207,12 +125,6 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
       s.steps.forEach((step, j) => {
         if (step?.flag !== undefined) errors.push(`${p}.steps[${j}].flag: a pre-read carries its findings on the reading order; flag it on the reading item of its hunk`);
       });
-    }
-    if (preread && !NO_CODE_CHECK.has(s.type)) {
-      for (const [path, text] of sceneLabels(s, p)) {
-        const shape = codeShape(text);
-        if (shape) warnings.push(`${path}: "${text}" is ${shape}, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values`);
-      }
     }
     checkFrom(s, p, hunks, preread, errors, warnings);
     if (s.type !== 'reading') return;
@@ -223,9 +135,7 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
   });
   checkExplainers(sb, warnings);
   if (readings.length > 1) errors.push(`scenes[${readings[1]}]: one reading scene holds the whole reading order; merge the others into it`);
-  const last = sb.scenes.length - 1;
-  if (readings.length && readings[0] !== last) warnings.push(`scenes[${readings[0]}]: the reading scene hands the code to the viewer, so put it last, after the tests`);
-  if (preread && mode === 'diff' && !readings.length) warnings.push('a pre-read ends on a reading scene, the order in which to read the code with what to check at each hunk; add one { "type": "reading", "items": [...] } last');
+  if (preread && mode === 'diff' && !readings.length) warnings.push('a pre-read with no reading scene has no reading order, so no reading.md is written; add { "type": "reading", "items": [...] }');
   if (preread && findings.size) {
     const flagged = new Set(readings.flatMap((i) => (Array.isArray(sb.scenes[i].items) ? sb.scenes[i].items.map((it) => it?.flag) : [])));
     for (const id of findings.keys()) if (!flagged.has(id)) warnings.push(`findings: "${id}" is flagged on no reading item; set "flag": "${id}" on the item of its hunk, so the reader meets it there`);

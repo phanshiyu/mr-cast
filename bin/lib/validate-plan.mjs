@@ -93,24 +93,18 @@ function sceneChecks(sb, plan, written, preread) {
     problems.push(`scenes[${i}] is ${aType(s.type)} scene in "${s.topic}", which the viewer chose to see as "${VIEWS[view].label}"; draw it as ${drawn(view)} scene, or move this scene to another topic`);
   });
   for (const [id, { pick, scenes }] of topics) {
-    const problem = topicProblem(id, pick, scenes.map((i) => [i, sb.scenes[i]]), preread);
+    const problem = topicProblem(id, pick, scenes.map((i) => [i, sb.scenes[i]]));
     if (problem) problems.push(problem);
   }
   return problems;
 }
 
 /** How the scenes of topic `id` do not show `pick`, or null when they do. */
-function topicProblem(id, pick, scenes, preread) {
-  if (pick.depth === 'skip') {
-    const hunks = preread ? 'add its hunks to the reading order, since the reviewer still reads them' : 'list its hunks in skipped with the reason "the viewer chose to skip this topic"';
-    return scenes.length ? `topic "${id}": the viewer chose to skip it, but scenes[${scenes.map(([i]) => i).join(', ')}] show it; remove them and ${hunks}` : null;
-  }
+function topicProblem(id, pick, scenes) {
+  if (pick.depth === 'skip') return scenes.length ? `topic "${id}": the viewer chose to skip it, but scenes[${scenes.map(([i]) => i).join(', ')}] show it` : null;
   if (!scenes.length) return `topic "${id}": the viewer chose ${pick.depth}, and no scene has "topic": "${id}"; add its scenes, or tag the scenes that show it`;
   if (pick.view !== 'code' && !scenes.some(([, s]) => VIEWS[pick.view].scenes.includes(s.type))) {
     return `topic "${id}": the viewer chose to see it as "${VIEWS[pick.view].label}", and none of its scenes is ${drawn(pick.view)} scene; add one`;
-  }
-  if (preread && pick.depth === 'deep' && scenes.filter(([, s]) => !ANY_VIEW.includes(s.type)).length < 2) {
-    return `topic "${id}": the viewer chose deep, which in a pre-read traces one real case through a second diagram; add a flow, array or table that walks it with the actual limits, keys and order`;
   }
   return null;
 }

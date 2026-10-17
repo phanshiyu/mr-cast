@@ -6,15 +6,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hasMarkup } from '../../shared/markup.mjs';
-import { wordCount } from '../../shared/timing.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/fit/report.ts');
-
-/** Past this share of styled characters, emphasis stops pointing at anything. Short labels may be styled whole. */
-const STYLED_SHARE_MAX = 1 / 3;
-const STYLED_MIN_WORDS = 3;
 
 let loaded;
 /** The report module, bundled from the player's source on first use. */
@@ -37,8 +32,7 @@ function where(scene, i, fitPath) {
 }
 
 /**
- * Text that does not fit at its slot's smallest readable size, markup errors, and text styled almost
- * whole. `storyboard` is normalized and otherwise valid.
+ * Text that does not fit at its slot's smallest readable size, and markup errors. `storyboard` is normalized and otherwise valid.
  */
 export async function checkFit(storyboard, hunks, errors, warnings) {
   if (!fs.existsSync(ENTRY)) return;
@@ -62,10 +56,6 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
         seen.add(key);
         const message = fit.text ? `${at}: ${quote(fit.text)} does not fit its ${fit.slot}, even at ${fit.min}px; ${fit.fix}` : `${at}: the ${fit.slot} does not fit the screen at the smallest readable size; ${fit.fix}`;
         (fit.severity === 'warning' ? warnings : errors).push(message);
-      }
-      if (fit.text && fit.styled > STYLED_SHARE_MAX && wordCount(fit.text) >= STYLED_MIN_WORDS && !seen.has(`${fit.path}\nstyled`)) {
-        seen.add(`${fit.path}\nstyled`);
-        warnings.push(`${at}: most of ${quote(fit.text)} is styled; mark only the word or value the sentence is about, so it stands out`);
       }
     }
   }

@@ -39,7 +39,7 @@ export type Risk = 'low' | 'medium' | 'high';
 /**
  * Text drawn on screen (labels, captions, bullets, notes, cells, actions, gaps, callouts, titles) never gets
  * cut: it wraps, then shrinks, and `validate` names any text that still does not fit. It may use inline
- * markup for the one word or value a sentence is about: `**bold**`, `` `code` `` (a monospace chip),
+ * markup: `**bold**`, `` `code` `` (a monospace chip),
  * `==marked==` (a highlighter) and `[words]{tone}` with a Tone (good, bad, warn, accent, neutral). Bold and
  * code may sit inside a mark or a tone; nothing else nests. A backslash keeps * ` = [ ] { } literal. Code
  * names, file paths and test names are shown as written. Narration, `say` and pen notes stay plain.
@@ -56,9 +56,9 @@ export type Change = 'added' | 'removed' | 'modified';
  */
 export interface Marks {
   /**
-   * What this diff does to the item. Mark exactly what the diff changes and nothing else: the viewer
-   * reads every mark as a fact about the diff. An explanation has no diff, so it leaves `change` off
-   * unless it explains a change and sets `explainsChange`.
+   * What the diff does to the item. `validate` warns when an item marked added or removed names nothing on a
+   * changed line. An explanation has no diff, so `validate` warns about its change marks unless it sets
+   * `explainsChange`.
    */
   change?: Change;
   /**
@@ -68,7 +68,7 @@ export interface Marks {
   highlight?: boolean;
   /**
    * A short label of your own, up to 14 characters, e.g. "hot path", "v2", "owner" or "key", drawn as a pill in
-   * `tone` (neutral by default). Never a change word: use `change` for what the diff does.
+   * `tone` (neutral by default).
    */
   badge?: string;
   /** Colour of the badge (and of a node's icon or a timeline mark). */
@@ -80,23 +80,16 @@ interface SceneBase {
   chapter?: string;
   /**
    * The id of the plan.json topic this scene shows, when the run has a plan. `validate` checks each topic's scenes
-   * against the pick in the storyboard's `plan`. Leave it off scenes about the whole video, such as the intent.
+   * against the pick in the storyboard's `plan`.
    */
   topic?: string;
-  /**
-   * The id of the article.md section this scene adapts, from its `## <claim> {#id}` heading. Leave it off when the
-   * scene's `topic` is the section's id, and off the intent, files, review and reading scenes. `validate` warns about
-   * a section no scene adapts and about scenes out of the article's order.
-   */
-  section?: string;
   /** In an explanation, this scene explains a change, so its `change` marks are meant (see Storyboard.explainsChange). */
   explainsChange?: boolean;
   /**
-   * Pre-read only (`--audience preread`): the ids of up to 3 hunks this diagram explains without showing them.
+   * Pre-read only (`--audience preread`): the ids of the hunks this diagram explains without showing them.
    * The scene names their files in a quiet "In the code:" line, and the reading order says "Explained in" this
-   * chapter, which seeks the player to this scene. Put a cited hunk's file name or one of its identifiers
-   * (`checkLimit`) in the scene's labels, so the viewer can map the picture onto the code; `validate` warns when
-   * no label names it. The narration does not count. Give each scene that cites hunks its own `chapter`.
+   * chapter, which seeks the player to this scene. `validate` warns when two scenes that cite hunks share a
+   * `chapter`, since the reading order cannot tell them apart.
    */
   from?: string[];
   /**
@@ -118,8 +111,7 @@ export type PenMark = 'circle' | 'underline' | 'box' | 'arrow' | 'strike' | 'cro
 
 /**
  * Optional pen marks on a step. The mark draws itself in the half second before the step's words and
- * is gone when the next step starts. Mark rarely: the one thing the sentence is about on a busy screen,
- * a risky value, a missing piece. Focus alone is enough on a simple diagram.
+ * is gone when the next step starts.
  */
 export interface PenMarks {
   /** Drawn on the step's first focus ref (all of it, for a range), or a code step's lines or `token`. */
@@ -139,7 +131,7 @@ export interface FocusStep extends PenMarks {
 export interface IntentScene extends SceneBase {
   type: 'intent';
   summary: string;
-  /** Required in a diff walkthrough. An explanation (explain mode) leaves it out. */
+  /** Drawn as a badge under the summary when set. */
   risk?: Risk;
   bullets: string[];
   /**
@@ -237,8 +229,7 @@ export interface CodeStep extends PenMarks {
   token?: string;
   /**
    * Review mode: the id of the finding these lines show. The step draws a pen mark in the finding's colour, a
-   * circle unless `mark` says otherwise, with `note` or else the finding's claim, under its severity. Say it then
-   * and there as your opinion, in plain words, e.g. "I think this looks off. The order is saved without waiting, so a failed save goes unnoticed."
+   * circle unless `mark` says otherwise, with `note` or else the finding's claim, under its severity.
    */
   flag?: string;
 }
@@ -413,9 +404,9 @@ export interface TestsScene extends SceneBase {
   title?: string;
   /** The code under test, e.g. "listEvents in src/lib/pagination.ts". */
   subject?: string;
-  /** Every relevant test, in the order the narration names them. Empty when the change has no tests. */
+  /** The tests to show. May be empty. */
   cases: TestCase[];
-  /** Important behaviors this change introduces that no test covers. Empty means you checked and found none. */
+  /** Behaviors no test covers, listed apart. May be empty. */
   gaps: string[];
   /**
    * Your own panel titles, for a scene that is not about a diff's tests, e.g. { "cases": "Checks", "gaps": "Open questions" }.
@@ -437,9 +428,8 @@ export interface TestsScene extends SceneBase {
 export type Severity = 'bug' | 'risk' | 'nit';
 
 /**
- * Review mode: one thing in the diff that looks clearly wrong, the kind a reviewer reads and says "wait, that's
- * wrong". It is your opinion, so it is drawn apart from the explanation: a pen mark in its severity's colour
- * where a code step `flag`s it, and a row in the review scene. Check it against the code before adding it.
+ * Review mode: one thing in the diff that looks wrong. It is drawn apart from the explanation: a pen mark in its
+ * severity's colour where a code step `flag`s it, and a row in the review scene.
  */
 export interface Finding {
   /** Named by a code step's `flag`, e.g. "unawaited-save". */
@@ -484,11 +474,10 @@ export interface ReadingItem {
 }
 
 /**
- * Pre-read only: the closing handoff, the order in which to read the code after the video, main behaviour
- * first. Lists every substantial hunk not in `skipped`. The scene shows the first 6 non-routine items under
- * "Read first" with their file:line and check, and counts the rest; reading.md, `mr-cast outline` and the
- * player's Reading order panel list them all. Narrate the first three and why they come first. In review
- * mode it also carries the findings, so a pre-read has no review scene.
+ * Pre-read only: the order in which to read the code after the video. The scene shows the first 6 non-routine
+ * items under "Read first" with their file:line and check, and counts the rest; reading.md, `mr-cast outline`
+ * and the player's Reading order panel list them all. In review mode it also carries the findings, so a
+ * pre-read has no review scene.
  */
 export interface ReadingScene extends SceneBase {
   type: 'reading';
@@ -639,7 +628,7 @@ export interface LayerPath {
 export interface LayersScene extends SceneBase {
   type: 'layers';
   title?: string;
-  /** Top to bottom, in their real order: the outermost layer, or the first to see a request, on top. 2 to 7. */
+  /** Top to bottom, in their real order: the outermost layer, or the first to see a request, on top. Up to 7. */
   layers: Layer[];
   /** A request's way through the stack. */
   path?: LayerPath;
@@ -897,9 +886,8 @@ export interface Storyboard {
    */
   findings?: Finding[];
   /**
-   * Hunks deliberately left out of every code scene, each with the reason a reviewer would accept,
-   * e.g. "formatting only", "generated lockfile", "renamed import". `validate` warns about every
-   * test hunk and every hunk of 15+ changed lines that is neither shown nor listed here.
+   * Hunks left out of the video, each with a reason, e.g. "formatting only" or "generated lockfile". `outline`
+   * and validate's summary count them.
    */
   skipped?: SkippedHunk[];
   /**
@@ -916,16 +904,6 @@ export interface Storyboard {
    * built from, so the plan page marks every topic whose pick differs.
    */
   plan?: Record<string, TopicPick>;
-  /**
-   * Article sections that stay in article.md alone, each with the reason, such as an aside that adds no idea the
-   * video needs. Every other section must have a scene that adapts it.
-   */
-  textOnly?: TextOnlySection[];
-}
-
-export interface TextOnlySection {
-  section: string;
-  reason: string;
 }
 
 export interface SkippedHunk {

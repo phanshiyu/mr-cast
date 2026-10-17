@@ -63,17 +63,7 @@ function checkShape(n, q, errors, warnings) {
   if (n?.shape === undefined) return;
   if (!SHAPES.includes(n.shape)) return errors.push(`${q}.shape: must be one of ${SHAPES.join(', ')}`);
   if (n.shape !== 'card' && n.icon !== undefined) warnings.push(`${q}.icon: a ${n.shape} draws no icon; remove it, or make the node a card`);
-  if ((n.shape === 'decision' || n.shape === 'terminal') && n.caption !== undefined) warnings.push(`${q}.caption: a ${n.shape} draws no caption; put the detail in the narration`);
-}
-
-/** A decision branches: two or more edges leave it, each labelled with the answer it follows, such as "yes" and "no". */
-function checkDecisions(s, p, warnings) {
-  s.nodes.forEach((n, j) => {
-    if (n?.shape !== 'decision') return;
-    const out = s.edges.flatMap((e, k) => (e?.from === n.id && e?.to !== n.id ? [k] : []));
-    if (out.length < 2) warnings.push(`${p}.nodes[${j}]: a decision with ${out.length} outgoing ${out.length === 1 ? 'edge' : 'edges'}; give it one edge per answer, labelled, such as "yes" and "no"`);
-    for (const k of out) if (!isStr(s.edges[k]?.label)) warnings.push(`${p}.edges[${k}]: leaves decision "${n.id}" without a label; label it with the answer it follows, such as "yes"`);
-  });
+  if ((n.shape === 'decision' || n.shape === 'terminal') && n.caption !== undefined) warnings.push(`${q}.caption: a ${n.shape} draws no caption`);
 }
 
 export function checkGraph(s, p, errors, warnings) {
@@ -90,7 +80,7 @@ export function checkGraph(s, p, errors, warnings) {
     for (const k of ['x', 'y']) if (n && k in n) warnings.push(`${q}.${k}: ignored, layout is automatic`);
   });
   checkGroups(s.nodes, p, errors, warnings);
-  if (s.nodes.length > GRAPH_NODES_MAX) warnings.push(`${p}.nodes: ${s.nodes.length} nodes; keep it to ${GRAPH_NODES_MAX} or fewer so the cards stay legible, and split the rest into another scene`);
+  if (s.nodes.length > GRAPH_NODES_MAX) warnings.push(`${p}.nodes: ${s.nodes.length} nodes; past ${GRAPH_NODES_MAX} the cards get too small to read`);
   if (!Array.isArray(s.edges)) return errors.push(`${p}.edges: required array (may be empty)`);
   s.edges.forEach((e, j) => {
     const q = `${p}.edges[${j}]`;
@@ -102,5 +92,4 @@ export function checkGraph(s, p, errors, warnings) {
     if (e?.direction !== undefined && !DIRECTIONS.includes(e.direction)) errors.push(`${q}.direction: must be one of ${DIRECTIONS.join(', ')}`);
     if (e?.style !== undefined && !EDGE_STYLES.includes(e.style)) errors.push(`${q}.style: must be one of ${EDGE_STYLES.join(', ')}`);
   });
-  checkDecisions(s, p, warnings);
 }

@@ -7,8 +7,6 @@ import { changedRefs, changesState, STATE_TYPES } from '../../shared/state-steps
 import { tokenSteps } from '../../shared/layers.mjs';
 import { didYouMean } from './suggest.mjs';
 
-// A diagram walked in more steps than this drags; split the scene.
-const DIAGRAM_STEPS_MAX = 8;
 
 /** What a scene type's refs look like, for the error when a ref names nothing. */
 const REF_HELP = {
@@ -76,7 +74,6 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
   lit.forEach((keys, i) => {
     if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i]) && token[i] === token[i - 1]) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
   });
-  if (s.steps.length > DIAGRAM_STEPS_MAX) warnings.push(`${p}.steps: ${s.steps.length} steps; keep at most ${DIAGRAM_STEPS_MAX} per scene and split the rest into another scene`);
   if ((s.type === 'table' || s.type === 'files') && s.highlight !== undefined) warnings.push(`${p}.highlight: steps replace highlight, so remove it`);
   const revealed = REVEALED[s.type];
   if (revealed) checkRevealed(scene, p, hunks, revealed, warnings);

@@ -5,7 +5,6 @@ import { diffFiles, sceneFiles } from '../../shared/files.mjs';
 
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
-const HIGHLIGHT_STEPS_MAX = 5;
 export const TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
 const CHART_KINDS = ['bar', 'line'];
 const CHART_LABELS_MAX = 12;
@@ -14,7 +13,6 @@ const CHART_SERIES_MAX = 4;
 const CHART_BARS_MAX = 24;
 const TIME_UNITS = ['ms', 's', 'min', 'h', 'd'];
 const TIMELINE_EVENTS_MAX = 8;
-const TIMELINE_SPANS_MAX = 4;
 const FILES_MAX = 18;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
@@ -30,7 +28,6 @@ function checkHighlight(list, path, errors, warnings, { plural, one }, valid) {
     else if (seen.has(item)) errors.push(`${path}[${i}]: ${JSON.stringify(item)} is listed twice; each step spotlights a different one`);
     seen.add(item);
   });
-  if (list.length > HIGHLIGHT_STEPS_MAX) warnings.push(`${path}: ${list.length} steps; spotlight at most ${HIGHLIGHT_STEPS_MAX} so each holds long enough to read`);
 }
 
 export function checkTable(s, p, errors, warnings) {
@@ -38,7 +35,7 @@ export function checkTable(s, p, errors, warnings) {
   if (!Array.isArray(s.columns) || s.columns.length === 0 || !s.columns.every(isStr)) {
     return errors.push(`${p}.columns: required non-empty array of header strings`);
   }
-  if (s.columns.length > TABLE_COLUMNS_MAX) warnings.push(`${p}.columns: ${s.columns.length} columns; more than ${TABLE_COLUMNS_MAX} get cramped, so drop or merge some`);
+  if (s.columns.length > TABLE_COLUMNS_MAX) warnings.push(`${p}.columns: ${s.columns.length} columns; more than ${TABLE_COLUMNS_MAX} get cramped`);
   if (!Array.isArray(s.rows) || s.rows.length === 0) return errors.push(`${p}.rows: required non-empty array of { cells, change? }`);
   s.rows.forEach((row, j) => {
     const q = `${p}.rows[${j}]`;
@@ -53,7 +50,7 @@ export function checkTable(s, p, errors, warnings) {
       if (row.change === 'added' || row.change === 'removed') errors.push(`${c}: ${row.change === 'added' ? 'an added' : 'a removed'} row has no old and new values; use plain text, or mark the row "modified"`);
     });
   });
-  if (s.rows.length > TABLE_ROWS_MAX) warnings.push(`${p}.rows: ${s.rows.length} rows; more than ${TABLE_ROWS_MAX} get cramped, so split the table into two scenes`);
+  if (s.rows.length > TABLE_ROWS_MAX) warnings.push(`${p}.rows: ${s.rows.length} rows; more than ${TABLE_ROWS_MAX} get cramped`);
   const rows = s.rows.length;
   const isRow = (n) => Number.isInteger(n) && n >= 0 && n < rows;
   const what = { plural: 'row indexes', one: `a row index from 0 to ${rows - 1}` };
@@ -82,7 +79,7 @@ export function checkChart(s, p, errors, warnings) {
     if (s.kind === 'bar' && series.values.some((v) => v < 0)) errors.push(`${q}.values: bars start at zero, so values must be 0 or more; use kind "line" for negative values`);
   });
   if (s.series.length > CHART_SERIES_MAX) warnings.push(`${p}.series: ${s.series.length} series; more than ${CHART_SERIES_MAX} are hard to tell apart`);
-  if (s.kind === 'bar' && n * s.series.length > CHART_BARS_MAX) warnings.push(`${p}: ${n * s.series.length} bars; keep it to ${CHART_BARS_MAX} so each bar can carry its value`);
+  if (s.kind === 'bar' && n * s.series.length > CHART_BARS_MAX) warnings.push(`${p}: ${n * s.series.length} bars; past ${CHART_BARS_MAX} a bar is too thin to carry its value`);
   const note = s.annotation;
   if (note === undefined) return;
   if (!note || typeof note !== 'object') return errors.push(`${p}.annotation: must be { at, series?, text }`);
@@ -105,7 +102,7 @@ export function checkTimeline(s, p, errors, warnings) {
       if (e?.detail !== undefined && !isText(e.detail)) errors.push(`${q}.detail: must be a string`);
       if (e?.tone !== undefined && !TONES.includes(e.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
     });
-    if (s.events.length > TIMELINE_EVENTS_MAX) warnings.push(`${p}.events: ${s.events.length} events; more than ${TIMELINE_EVENTS_MAX} get cramped, so split the timeline into two scenes`);
+    if (s.events.length > TIMELINE_EVENTS_MAX) warnings.push(`${p}.events: ${s.events.length} events; more than ${TIMELINE_EVENTS_MAX} get cramped`);
   }
   if (Array.isArray(s.events) && s.events.length) {
     const ats = s.events.map((e) => e?.at);
@@ -120,7 +117,6 @@ export function checkTimeline(s, p, errors, warnings) {
     if (!isStr(span?.label)) errors.push(`${q}.label: required string`);
     if (span?.tone !== undefined && !TONES.includes(span.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
   });
-  if (s.spans.length > TIMELINE_SPANS_MAX) warnings.push(`${p}.spans: ${s.spans.length} spans; keep the ${TIMELINE_SPANS_MAX} the narration names`);
 }
 
 const isCount = (v) => Number.isInteger(v) && v >= 0;
@@ -150,7 +146,7 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
     }
   }
   const paths = new Set(sceneFiles(s, hunks).map((f) => f.path));
-  if (paths.size > FILES_MAX) warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped, so list the ones that matter in files`);
+  if (paths.size > FILES_MAX) warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped`);
   if (s.notes !== undefined) {
     if (!s.notes || typeof s.notes !== 'object' || Array.isArray(s.notes)) errors.push(`${p}.notes: must be an object of { "path": "note" }`);
     else for (const [path, note] of Object.entries(s.notes)) {

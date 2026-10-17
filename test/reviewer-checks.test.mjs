@@ -10,31 +10,17 @@ const hunk = (id, file, n) => ({
 // A 20-line change to the worker, and a 3-line config tweak.
 const hunks = { h1: hunk('h1', 'src/worker.js', 20), h2: hunk('h2', 'src/config.js', 3) };
 const intent = { type: 'intent', summary: 'Retries failed deliveries.', bullets: ['Stuck deliveries', 'No shared transaction'], narration: 'This branch retries deliveries.' };
-const board = (skipped) => ({ title: 'Retries', scenes: [intent], skipped });
 const ofScenes = (warnings, prefix) => warnings.filter((w) => w.startsWith(prefix));
 
-test('a reviewer video warns about a substantial hunk skipped because the diagrams cover it, and the overview does not', async () => {
-  const sb = board([{ hunkId: 'h1', reason: 'covered by the diagrams in this overview' }, { hunkId: 'h2', reason: 'covered by the diagrams' }]);
-  const familiar = (await validateStoryboard(sb, hunks, { audience: 'familiar' })).warnings;
-  assert.deepEqual(ofScenes(familiar, 'skipped['), [
-    'skipped[0]: h1 src/worker.js (+20) is skipped as "covered by the diagrams in this overview", but a video for a reviewer shows every substantial hunk; add a code scene for it. Only the team\'s overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "the viewer chose a brief look at this topic"',
-  ]);
-  const fresh = (await validateStoryboard(sb, hunks, { audience: 'new' })).warnings;
-  assert.equal(ofScenes(fresh, 'skipped[0]').length, 1);
-  assert.match(ofScenes(fresh, 'skipped[0]')[0], /a video for someone new to the code shows every substantial hunk/);
-  const overview = (await validateStoryboard(sb, hunks, { audience: 'overview' })).warnings;
-  assert.deepEqual(ofScenes(overview, 'skipped['), []);
-});
-
-test('a reviewer video may still skip a substantial hunk for a reason other than the diagrams', async () => {
-  const { warnings } = await validateStoryboard(board([{ hunkId: 'h1', reason: 'generated lockfile' }]), hunks, { audience: 'familiar' });
-  assert.deepEqual(ofScenes(warnings, 'skipped['), []);
-});
-
-test('a reviewer video may skip the non-key hunks of a topic the viewer chose brief, in those exact words', async () => {
-  const skippedWarnings = async (reason) => ofScenes((await validateStoryboard(board([{ hunkId: 'h1', reason }]), hunks, { audience: 'familiar' })).warnings, 'skipped[');
-  assert.deepEqual(await skippedWarnings('the viewer chose a brief look at this topic'), []);
-  assert.equal((await skippedWarnings('a brief look at this topic; the diagrams cover it')).length, 1);
+test('skipped takes any reason; only an unknown hunk, a missing reason or a hunk also shown is reported', async () => {
+  const check = async (skipped, scenes = [intent]) => validateStoryboard({ title: 'Retries', scenes, skipped }, hunks);
+  const quiet = await check([{ hunkId: 'h1', reason: 'covered by the diagrams' }, { hunkId: 'h2', reason: 'config' }]);
+  assert.deepEqual([quiet.errors, ofScenes(quiet.warnings, 'skipped[')], [[], []]);
+  assert.deepEqual((await check([])).warnings.filter((w) => /h1|h2/.test(w)), []);
+  const broken = await check([{ hunkId: 'h9', reason: 'gone' }, { hunkId: 'h2' }]);
+  assert.deepEqual(broken.errors, ['skipped[0].hunkId: "h9" not found in hunks.json', 'skipped[1].reason: required string']);
+  const shown = await check([{ hunkId: 'h2', reason: 'config' }], [intent, { type: 'code', hunkId: 'h2', narration: 'The config.' }]);
+  assert.deepEqual(ofScenes(shown.warnings, 'skipped['), ['skipped[0]: h2 is also shown in a scene; remove it from skipped or drop the scene']);
 });
 
 const cases = (n, status) => Array.from({ length: n }, (_, i) => ({ name: `case ${i}`, proves: `it handles ${i}`, ...(status ? { status } : {}) }));

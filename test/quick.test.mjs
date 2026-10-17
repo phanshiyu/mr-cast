@@ -25,32 +25,14 @@ const flowchart = (overrides = {}) => ({
   ...overrides,
 });
 
-const check = (scenes, quick) => validateStoryboard({ title: 'How the limiter decides', scenes }, {}, { mode: 'explain', quick });
+const check = (scenes) => validateStoryboard({ title: 'How the limiter decides', scenes }, {}, { mode: 'explain' });
 
-const INTENT_WARNING = 'scenes[0] is a graph scene; open with an intent scene that states the idea and its key points';
-
-test('a quick video may open on its diagram, where a full one is asked for an intent scene', async () => {
-  assert.deepEqual(await check([flowchart()], true), { errors: [], warnings: [], coverage: null });
-  assert.deepEqual((await check([flowchart()], false)).warnings, [INTENT_WARNING]);
-});
-
-test('a quick video keeps to three scenes and about a minute of narration', async () => {
-  const { errors, warnings } = await check([flowchart(), flowchart(), flowchart(), flowchart()], true);
-  assert.deepEqual(errors, []);
-  assert.deepEqual(warnings, ['scenes: 4 scenes; a quick video keeps to 3, so cut to the diagrams that answer the question']);
-
-  const narrated = (times) => flowchart({ narration: Array.from({ length: times }, () => 'The limiter counts each request in this minute.').join(' ') });
-  const lengthWarnings = async (scene) => (await check([scene], true)).warnings.filter((w) => w.startsWith('the narration'));
-  assert.deepEqual(await lengthWarnings(narrated(16)), []);
-  assert.deepEqual(await lengthWarnings(narrated(18)), ['the narration is 144 words, about 66 seconds; a quick video keeps to about 60, so cut what the diagrams already show']);
-});
-
-test('a quick video still gets every correctness and text-fit check', async () => {
+test('a quick video gets every correctness and text-fit check', async () => {
   const broken = flowchart({ edges: [{ from: 'count', to: 'missing' }] });
-  assert.deepEqual((await check([broken], true)).errors, ['scenes[0].edges[0].to: unknown node id "missing"']);
+  assert.deepEqual((await check([broken])).errors, ['scenes[0].edges[0].to: unknown node id "missing"']);
 
   const long = flowchart({ nodes: [{ id: 'count', label: 'Count every single request this caller has sent in the current one minute window before deciding', shape: 'step' }], edges: [] });
-  const { errors } = await check([long], true);
+  const { errors } = await check([long]);
   assert.deepEqual(errors, ['scenes[0] ("The decision").nodes[0].label: "Count every single request this caller has sent in the current one minute window before deciding" does not fit its card title, even at 16px; shorten the label, or move detail into its caption']);
 });
 
@@ -71,13 +53,12 @@ test('init --quick runs in quick-<slug>, and a full init of the same title start
     fs.writeFileSync(path.join(runDir('quick-how-the-limiter-decides'), 'storyboard.json'), JSON.stringify(storyboard));
     const validated = run('validate');
     assert.equal(validated.status, 0, validated.stderr);
-    assert.equal(validated.stdout.includes('intent scene'), false);
 
     const full = run('init', '--title', 'How the limiter decides');
     assert.equal(full.stdout.trim(), runDir('how-the-limiter-decides'));
     assert.match(full.stderr, /note: started from the quick video in \.mr-cast\/quick-how-the-limiter-decides/);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(runDir('how-the-limiter-decides'), 'storyboard.json'), 'utf8')), storyboard);
-    assert.match(run('validate').stdout, /warning: scenes\[0\] is a graph scene; open with an intent scene/);
+    assert.equal(run('validate').status, 0);
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(runDir('quick-how-the-limiter-decides'), 'storyboard.json'), 'utf8')), storyboard);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
