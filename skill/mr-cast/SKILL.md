@@ -77,6 +77,20 @@ Write `storyboard.json` in the run's directory. Print the fields:
 
 The scene types, each with an example: [array](references/scenes/array.md), [chart](references/scenes/chart.md), [code](references/scenes/code.md), [compare](references/scenes/compare.md), [er](references/scenes/er.md), [files](references/scenes/files.md), [flow](references/scenes/flow.md), [graph](references/scenes/graph.md), [intent](references/scenes/intent.md), [layers](references/scenes/layers.md), [memory](references/scenes/memory.md), [mermaid](references/scenes/mermaid.md), [reading](references/scenes/reading.md), [review](references/scenes/review.md), [sequence](references/scenes/sequence.md), [state](references/scenes/state.md), [svg](references/scenes/svg.md), [table](references/scenes/table.md), [terminal](references/scenes/terminal.md), [tests](references/scenes/tests.md), [timeline](references/scenes/timeline.md). Whole storyboards: `{{MR_CAST}}/examples/demo/storyboard.json` (a branch), `{{MR_CAST}}/examples/people/storyboard.json` (an explanation), `{{MR_CAST}}/examples/review/storyboard.json` (review on), `{{MR_CAST}}/examples/preread/storyboard.json` (a pre-read), and a short demo of each scene type in `{{MR_CAST}}/examples/primitives/<type>/storyboard.json`.
 
+Longer explanations with real numbers, each `{{MR_CAST}}/examples/<path>/storyboard.json`:
+
+- `algorithms/quicksort`: a partition on an `array` with pointers, `set` and ranges, the Java in a `code` scene, an `svg` recursion tree, a cost `table`.
+- `algorithms/binary-search`: pointers closing on a value, ruled-out halves dimmed with `tint`, the midpoint formula in a `callout`, a `chart` of steps by size.
+- `algorithms/merge-sort`: several `arrays` splitting and zipping back with a pointer on each, and a `chart`.
+- `algorithms/dijkstra`: a `graph` and the tracker `table` beside it, changing in the same step with `set` and `tint`.
+- `algorithms/hash-table`: a key's sum in a `callout`, slots as `arrays`, a collision, chaining in `memory`, open addressing and a resize.
+- `architecture/youtube`: `graph` pipelines with a `table` beside, a `terminal` manifest, a `timeline` of chunks, an `svg` CDN map.
+- `architecture/react`: JSX beside its object in `compare`, Fiber trees in `memory` with `set`, a `graph` diff, a `timeline` of frames.
+- `architecture/oauth`: `svg` figures, the redirect as a `sequence`, `terminal` requests with a real PKCE hash, a `timeline` of token expiry.
+- `architecture/h3`: `svg` maps and tilings, a `table` of resolutions, a 64-bit index as `array` cells, a k-ring on a hex grid.
+- `explain/bitcoin`: a ledger `table` whose rows arrive and get rejected, real proof of work, a `graph` chain of blocks.
+- `explain/gpt`: tokens as `array` cells, an `svg` vector plot, softmax `table`s and `chart`s at three temperatures.
+
 Write every narration and `say` in plain words. Stop using jargon and speak coherently. State it more simply and concisely, like one human talking to another.
 
 The voice reads the narration and each step's `say` aloud, and each scene lasts as long as its words take. It reads "e.g.", "5s", "200 ms", an arrow and "v0.14" as words. Markup in spoken text is read as plain words.
