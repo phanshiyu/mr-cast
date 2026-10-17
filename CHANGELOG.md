@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0
+
+- **A picker for the scene that explains an idea.** A new skill, `mr-cast-primitives`, installed with the others and hidden from the slash menu, answers one question: which scene explains this idea with the least load for the viewer. Its index takes the idea as an article states it, such as "each pass bubbles the largest remaining value to the end" or "it retries after 1, 2, then 4 seconds", and returns the scene, or a short sequence such as a `sequence` then a `state`, with why that is least load and when the runner-up wins. One file per scene says when it lowers load, when it adds load and what to use instead, and the load mistakes seen in practice, such as words that name parts that are not lit, or a whole pass of a sort in one step. The main skill points at it where the scene is chosen.
+- **Each scene file's example passes `validate`.** A test validates every example against the demo's diff, and fails when a scene type is added to `src/types.ts` without a file.
+- `install-skill` now installs every file under each skill folder, so a new reference or scene file needs no change to the installer.
+
 ## 0.22.0
 
 A new audience for the reviewer who will read the code right after the video. The pre-read shows no code. Its diagrams build the model with the real names and values, and it ends on the order in which to read the code, with what to check at each place. In a small test with AI reviewers allowed one `git diff --stat` and two file reads, those given a pre-read answered 79% of the questions about the change, against 61% with no video and 83% with the usual reviewer's video, and looked at fewer scenes (3.7 against 8.8). With the whole repo to read, no video did as well as either, because the test diffs fit in one `git diff`. Six reviews per arm is a small sample, so read it as a direction rather than a measurement.

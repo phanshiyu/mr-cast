@@ -10,7 +10,7 @@ mr-cast needs Node 22.12 or newer on macOS or Linux. CI tests Node 22, 24 and 26
 
 ```bash
 npm install -g @shiyuphan/mr-cast
-mr-cast install-skill   # installs the mr-cast, mr-cast-prune and mr-cast-upgrade skills
+mr-cast install-skill   # installs the mr-cast, mr-cast-primitives, mr-cast-prune and mr-cast-upgrade skills
 mr-cast --version       # prints the mr-cast and Node versions
 ```
 
@@ -222,6 +222,8 @@ The narration is written to be heard once, like one person explaining the change
 ## Storyboard
 
 `src/types.ts` defines the schema. A storyboard has a title and a list of scenes, and each scene has `narration`.
+
+To choose a scene for an idea, Claude reads the `mr-cast-primitives` skill. Its index takes the idea as an article states it, such as "each pass bubbles the largest remaining value to the end", and names the scene that explains it with the least load, why, and when the runner-up wins. One file per scene says when it lowers load, when it adds load, and the mistakes that add it back, with an example that `validate` passes in the tests.
 
 | Scene | Shows |
 | --- | --- |
