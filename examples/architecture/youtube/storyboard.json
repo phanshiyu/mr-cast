@@ -727,6 +727,7 @@
     {
       "type": "graph",
       "chapter": "View counts",
+      "layout": "TB",
       "title": "Counting 100,000 views a second",
       "narration": "Counting views sounds easy. Now imagine a video going viral, with a hundred thousand views every second.",
       "nodes": [
