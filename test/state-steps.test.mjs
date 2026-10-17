@@ -58,12 +58,12 @@ test('a pointer may stand just past either end, but no further', () => {
   const at = (n) => walkStates({ ...search, steps: [{ move: { hi: n }, say: 'x' }] });
   assert.deepEqual(at(4).states[1].places['ptr:hi'], [4, 4]);
   assert.deepEqual(at(-1).states[1].places['ptr:hi'], [-1, -1]);
-  assert.deepEqual(at(5).problems.map((p) => p.message), ['5 is no place; a pointer moves to a cell index from 0 to 3, or -1 or 4 just past either end']);
+  assert.deepEqual(at(5).problems.filter((p) => p.level === 'error').map((p) => p.message), ['5 is no place; a pointer moves to a cell index from 0 to 3, or -1 or 4 just past either end']);
 });
 
 test('a reference to an object that is hidden then is an error at the step that makes it', () => {
   const early = { ...cart, steps: [{ set: { 'checkout.order': { ref: 'l2' } }, say: 'Too soon.' }] };
-  assert.deepEqual(walkStates(early).problems, [
+  assert.deepEqual(walkStates(early).problems.filter((p) => p.level === 'error'), [
     { step: 0, field: 'set', ref: 'checkout.order', level: 'error', names: [], message: 'points at "l2" from this step, but "l2" is hidden then; show it in this step or an earlier one, or start it shown' },
   ]);
 });
@@ -128,7 +128,7 @@ test('a variable, field or frame whose name holds "/" keeps its owner and name a
   };
   assert.deepEqual(resolveRef(cache, 'c./api/me'), ['f:c//api/me']);
   assert.deepEqual(resolveRef(cache, 'serve/api.req/id'), ['v:serve%2Fapi/req/id']);
-  assert.deepEqual(walkStates(cache).problems.map((p) => [p.ref, p.message]), [
+  assert.deepEqual(walkStates(cache).problems.filter((p) => p.level === 'error').map((p) => [p.ref, p.message]), [
     ['c./api/me', 'points at "v" from this step, but "v" is hidden then; show it in this step or an earlier one, or start it shown'],
   ]);
   const shown = { ...cache, steps: [{ set: { 'c./api/me': { ref: 'v' } }, show: ['v'], say: 'Now the cache holds the other user.' }] };

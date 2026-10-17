@@ -201,7 +201,7 @@ export function checkMemory(s, p, errors, warnings) {
 export function checkStateSteps(s, p, errors, warnings) {
   for (const pr of walkStates(s).problems) {
     const at = pr.step < 0 ? `${p}.${pr.field}` : `${p}.steps[${pr.step}].${pr.field}${pr.ref ? `[${JSON.stringify(pr.ref)}]` : ''}`;
-    const subject = pr.step < 0 ? `${pr.ref} ` : '';
+    const subject = pr.step < 0 && pr.ref ? `${pr.ref} ` : '';
     const close = pr.ref ? didYouMean(pr.ref, pr.names) : '';
     const hint = close || (pr.names.length && pr.names.length <= NAMES_LISTED ? `; it can be ${quoted(pr.names)}` : '');
     (pr.level === 'warning' ? warnings : errors).push(`${at}: ${subject}${pr.message}${hint}`);
