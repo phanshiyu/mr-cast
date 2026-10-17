@@ -5,7 +5,7 @@ import { sceneStates } from '../../shared/state-steps.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import { hasCallout } from '../fit/callout';
 import type { ArrayScene } from '../types';
-import { ARROW_LEN, BAND_H, BAND_PAD, CHIP_H, arrayBoxes, bandBox, cellBox, chipY, ghostBox, layoutArray, pointerLanes, pointerX, type ArrayLayout, type PlacedRow } from '../utils/arrayLayout';
+import { ARROW_LEN, BAND_H, BAND_PAD, CHIP_H, arrayBoxes, bandBox, cellBox, chipY, ghostBox, ghostShown, layoutArray, pointerLanes, pointerX, type ArrayLayout, type PlacedRow } from '../utils/arrayLayout';
 import { staged } from '../utils/penGeometry';
 import { asBrightAs, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { placeOf, shownOf, stateFrame, valueChanged, type StateFrame } from '../utils/stateTrack';
@@ -102,7 +102,7 @@ const Cell: React.FC<{ layout: ArrayLayout; cell: string; s: StateFrame; emphasi
   );
 };
 
-/** A slot past either end of an array, drawn only when a pointer can stand there. */
+/** A slot past either end of an array, drawn while a pointer stands there. */
 const Ghost: React.FC<{ layout: ArrayLayout; row: PlacedRow; index: number; pop: number }> = ({ layout, row, index, pop }) => {
   const box = ghostBox(layout, row, index);
   return <div style={{ position: 'absolute', left: box.x, top: box.y, width: box.width, height: box.height, boxSizing: 'border-box', borderRadius: 12, border: `2px dashed ${colors.borderStrong}`, opacity: 0.8 * pop }} />;
@@ -158,7 +158,7 @@ export const ArrayDiagram: React.FC<SceneProps<ArrayScene>> = ({ scene, hunks, d
               {row.label ? <FitText fit={row.label} style={{ position: 'absolute', left: row.labelX, top: row.labelY, color: colors.muted, opacity: interpolate(frame, [START, START + 10], [0, 1], clamp) }} /> : null}
               {slots.map((i) => {
                 const pop = popAt(row, i);
-                if (i < 0 || i >= row.count) return <Ghost key={i} layout={layout} row={row} index={i} pop={pop} />;
+                if (i < 0 || i >= row.count) return <Ghost key={i} layout={layout} row={row} index={i} pop={pop * ghostShown(pointers, row.name, i)} />;
                 const fills = spans.filter((r) => r.row === row.name).map((r) => ({ color: tones[r.tone].bg, amount: 1.4 * r.shown * cover(i, r.place) }));
                 return <Cell key={i} layout={layout} cell={cellKey(row.name, i)} s={s} emphasis={cellEmphasis(row, i)} pop={pop} fills={fills} />;
               })}
@@ -178,7 +178,7 @@ export const ArrayDiagram: React.FC<SceneProps<ArrayScene>> = ({ scene, hunks, d
                           fontSize: 19,
                           fontWeight: lit ? 700 : 500,
                           color: lit ? colors.accent : colors.faint,
-                          opacity: popAt(row, i),
+                          opacity: popAt(row, i) * (i < 0 || i >= row.count ? ghostShown(pointers, row.name, i) : 1),
                         }}
                       >
                         {i}

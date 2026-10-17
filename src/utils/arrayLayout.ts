@@ -209,6 +209,13 @@ export function cellBox(layout: ArrayLayout, key: string): Box {
   return { x: cellX(layout, row, index) + (layout.hex ? 3 : 0), y: row.cellsY, width: layout.cellW, height: layout.cellH };
 }
 
+/**
+ * How shown a slot past either end of a row is: as shown as the pointer standing on it, fading as the pointer
+ * moves off, so the dashed slot is there only while a pointer sits there.
+ */
+export const ghostShown = (pointers: readonly { row: string; at: number; shown: number }[], row: string, i: number): number =>
+  Math.max(0, ...pointers.filter((p) => p.row === row).map((p) => p.shown * Math.max(0, 1 - Math.abs(p.at - i))));
+
 /** A slot's box past either end of a row, where a pointer can stand. */
 export const ghostBox = (layout: ArrayLayout, row: PlacedRow, i: number): Box => ({ x: cellX(layout, row, i), y: row.cellsY, width: layout.cellW, height: layout.cellH });
 
