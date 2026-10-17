@@ -1,8 +1,9 @@
 import { fitBlock, fitText, type Fit } from '../../shared/textfit.mjs';
 import { isPointer, sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { memberKey, splitMemberKey } from '../../shared/targets.mjs';
+import { memoryMembers } from '../../shared/storyboard-json.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { MemoryScene } from '../types';
+import type { MemoryMembers, MemoryScene } from '../types';
 import type { Box, LayoutBoxes, Pt } from './penGeometry';
 
 export const ROW_H = 48;
@@ -113,16 +114,16 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
   const note = (value: unknown, path: string) => {
     if (!isPointer(value) && !texts.has(String(value))) texts.set(String(value), path);
   };
-  scene.frames.forEach((f, i) => Object.entries(f.vars).forEach(([k, v]) => note(v, `frames[${i}].vars[${JSON.stringify(k)}]`)));
-  scene.objects.forEach((o, i) => Object.entries(o.fields).forEach(([k, v]) => note(v, `objects[${i}].fields[${JSON.stringify(k)}]`)));
+  scene.frames.forEach((f, i) => memoryMembers(f.vars).forEach(([k, v]) => note(v, `frames[${i}].vars[${JSON.stringify(k)}]`)));
+  scene.objects.forEach((o, i) => memoryMembers(o.fields).forEach(([k, v]) => note(v, `objects[${i}].fields[${JSON.stringify(k)}]`)));
   (scene.steps ?? []).forEach((step, k) => Object.entries(step.set ?? {}).forEach(([ref, v]) => note(v, `steps[${k}].set[${JSON.stringify(ref)}]`)));
   const values = new Map([...texts].map(([text, path]) => [text, fitText(text, sized(SLOTS.memoryValue, VALUE_MAX - 2 * VALUE_PAD), path)]));
   /** Width a row's value box needs for every value it holds in any state. */
   const valueWidth = (key: string) =>
     Math.max(REF_W, ...states.map((s) => (isPointer(s.values[key]) ? REF_W : values.get(String(s.values[key]))!.width + 2 * VALUE_PAD)));
 
-  const card = (key: string, title: Fit, record: Record<string, unknown>, kind: 'v' | 'f', owner: string, path: string): MemoryCard => {
-    const rows = Object.keys(record).map((name, i) => ({ key: memberKey(kind, owner, name), name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
+  const card = (key: string, title: Fit, members: MemoryMembers, kind: 'v' | 'f', owner: string, path: string): MemoryCard => {
+    const rows = memoryMembers(members).map(([name], i) => ({ key: memberKey(kind, owner, name), name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
     const nameW = Math.max(0, ...rows.map((r) => r.name.width));
     const valueW = Math.max(0, ...rows.map((r) => valueWidth(r.key)));
     const w = Math.max(title.width + 2 * PAD, PAD + nameW + NAME_GAP + valueW + PAD);

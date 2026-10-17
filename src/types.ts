@@ -803,11 +803,17 @@ export interface ArrayScene extends SceneBase {
 /** A memory value: display text, a number, or `{ "ref": "<object id>" }`, drawn as an arrow to that object. */
 export type MemoryValue = StateValue | { ref: string };
 
+/**
+ * Variables or fields, drawn in the order written, a name such as "2" included: an object of name to value, or
+ * the same as [name, value] pairs, which is how mr-cast reads the object.
+ */
+export type MemoryMembers = Record<string, MemoryValue> | [name: string, value: MemoryValue][];
+
 export interface MemoryFrame {
   /** The function's name, e.g. "main" or "add_item". Different for every frame; a recursive call reads "fact(2)". */
   name: string;
-  /** Its local variables in order, name to value, e.g. { "cart": { "ref": "c1" }, "total": 0 }. */
-  vars: Record<string, MemoryValue>;
+  /** Its local variables, name to value, e.g. { "cart": { "ref": "c1" }, "total": 0 }. */
+  vars: MemoryMembers;
   /** Not drawn until a step shows it ("show": ["frame:add_item"]), as a call. */
   hidden?: boolean;
 }
@@ -817,8 +823,8 @@ export interface MemoryObject {
   id: string;
   /** What it is, e.g. "list", "dict", "Cart", drawn as its header. Defaults to the id. */
   type?: string;
-  /** Its fields or items in order, name to value; a list's are "0", "1", ... */
-  fields: Record<string, MemoryValue>;
+  /** Its fields or items, name to value; a list's are "0", "1", ... */
+  fields: MemoryMembers;
   /** Not drawn until a step shows it, as an object created then. */
   hidden?: boolean;
 }
