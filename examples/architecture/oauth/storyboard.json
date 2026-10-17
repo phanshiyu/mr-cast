@@ -1,0 +1,638 @@
+{
+  "title": "How OAuth 2.0 actually works",
+  "subtitle": "Letting an app into your photos without giving it your password",
+  "scenes": [
+    {
+      "type": "svg",
+      "chapter": "The bad old days",
+      "title": "Alice hands over her password",
+      "narration": "Alice wants PrintMyPhotos to print some pictures from her Google account. Years ago, the only way was to give the app her Google password.",
+      "svg": "<svg viewBox=\"0 0 1200 620\">\n<defs><marker id=\"head-muted\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker><marker id=\"head-bad\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--bad)\" stroke=\"none\"/></marker></defs>\n<g id=\"alice\"><circle cx=\"140\" cy=\"330\" r=\"62\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"140\" y=\"343\" text-anchor=\"middle\" font-size=\"34\">Alice</text><text x=\"140\" y=\"430\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">owns the photos</text></g>\n<g id=\"pmp\"><rect x=\"430\" y=\"270\" width=\"300\" height=\"120\" rx=\"16\" stroke-width=\"3\"/><text x=\"580\" y=\"322\" text-anchor=\"middle\" font-size=\"30\">PrintMyPhotos</text><text x=\"580\" y=\"360\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">prints your photos</text></g>\n<g id=\"google\"><rect x=\"880\" y=\"150\" width=\"280\" height=\"360\" rx=\"16\" stroke-width=\"3\"/><text x=\"1020\" y=\"196\" text-anchor=\"middle\" font-size=\"30\">Google account</text>\n<g id=\"photos\"><rect x=\"910\" y=\"222\" width=\"220\" height=\"56\" rx=\"10\" class=\"tone-accent\"/><text x=\"1020\" y=\"259\" text-anchor=\"middle\" font-size=\"24\">Photos</text></g>\n<g id=\"others\"><rect x=\"910\" y=\"292\" width=\"220\" height=\"56\" rx=\"10\"/><text x=\"1020\" y=\"329\" text-anchor=\"middle\" font-size=\"24\">Gmail</text><rect x=\"910\" y=\"362\" width=\"220\" height=\"56\" rx=\"10\"/><text x=\"1020\" y=\"399\" text-anchor=\"middle\" font-size=\"24\">Drive</text><rect x=\"910\" y=\"432\" width=\"220\" height=\"56\" rx=\"10\"/><text x=\"1020\" y=\"469\" text-anchor=\"middle\" font-size=\"24\">Calendar</text></g></g>\n<g id=\"password\"><line x1=\"210\" y1=\"330\" x2=\"420\" y2=\"330\" stroke=\"var(--bad)\" stroke-width=\"4\" marker-end=\"url(#head-bad)\"/><text x=\"315\" y=\"312\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\" class=\"tone-bad\">password</text></g>\n<g id=\"login\"><line x1=\"740\" y1=\"330\" x2=\"870\" y2=\"330\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/><text x=\"805\" y=\"312\" text-anchor=\"middle\" font-size=\"20\" fill=\"var(--muted)\">as Alice</text></g>\n<g id=\"warn-all\"><rect x=\"350\" y=\"60\" width=\"460\" height=\"56\" rx=\"28\" class=\"tone-bad\"/><text x=\"580\" y=\"97\" text-anchor=\"middle\" font-size=\"24\">1. Opens everything, not just photos</text></g>\n<g id=\"warn-db\"><rect x=\"350\" y=\"130\" width=\"460\" height=\"56\" rx=\"28\" class=\"tone-bad\"/><text x=\"580\" y=\"167\" text-anchor=\"middle\" font-size=\"24\">2. Password sits in their database</text></g>\n<g id=\"warn-revoke\"><rect x=\"350\" y=\"470\" width=\"460\" height=\"56\" rx=\"28\" class=\"tone-bad\"/><text x=\"580\" y=\"507\" text-anchor=\"middle\" font-size=\"24\">3. To stop it, change the password</text></g>\n</svg>",
+      "labels": {
+        "alice": "Alice",
+        "pmp": "PrintMyPhotos",
+        "google": "Google account",
+        "password": "password",
+        "login": "logs in as Alice",
+        "others": "Gmail, Drive and Calendar",
+        "warn-db": "their database",
+        "warn-revoke": "change her password"
+      },
+      "hidden": [
+        "password",
+        "login",
+        "warn-all",
+        "warn-db",
+        "warn-revoke"
+      ],
+      "steps": [
+        {
+          "show": [
+            "password"
+          ],
+          "focus": [
+            "alice",
+            "password",
+            "pmp"
+          ],
+          "say": "Alice types her real password into PrintMyPhotos."
+        },
+        {
+          "show": [
+            "login"
+          ],
+          "focus": [
+            "login",
+            "google"
+          ],
+          "say": "The app logs in to her Google account, pretending to be her."
+        },
+        {
+          "show": [
+            "warn-all"
+          ],
+          "focus": [
+            "warn-all",
+            "others"
+          ],
+          "tint": {
+            "others": "bad"
+          },
+          "say": "Problem one: it opens everything. The app could read her Gmail and Drive, or delete her photos."
+        },
+        {
+          "show": [
+            "warn-db"
+          ],
+          "focus": "warn-db",
+          "say": "Problem two: her secret now sits in their database. If they get hacked, it leaks."
+        },
+        {
+          "show": [
+            "warn-revoke"
+          ],
+          "focus": "warn-revoke",
+          "say": "Problem three: to cut the app off, she has to change her password, which logs out everything else too."
+        },
+        {
+          "focus": "photos",
+          "callout": "OAuth: **what may this app touch?** Not **who are you?**",
+          "say": "OAuth fixes this. It is about what an app may touch, here just the photos. It is not about proving who someone is."
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "The valet key",
+      "title": "Master key or valet key",
+      "narration": "Some cars come with two keys. You keep the master key, and you hand the valet a weaker one.",
+      "sides": [
+        {
+          "title": "Master key",
+          "tone": "neutral"
+        },
+        {
+          "title": "Valet key",
+          "tone": "good"
+        }
+      ],
+      "rows": [
+        {
+          "label": "Starts the car",
+          "cells": [
+            "Yes",
+            "Yes"
+          ]
+        },
+        {
+          "label": "Who holds it",
+          "cells": [
+            "You",
+            "The valet, for one evening"
+          ]
+        },
+        {
+          "label": "Trunk and glove box",
+          "cells": [
+            "Open",
+            "Stay locked"
+          ],
+          "verdict": [
+            "bad",
+            "good"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Both keys start the car, so the valet can do the job."
+        },
+        {
+          "focus": 1,
+          "say": "But you keep the master key. The valet only borrows the weak one, for the evening."
+        },
+        {
+          "focus": 2,
+          "say": "And it cannot open the trunk or the glove box. An OAuth token is that valet key."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Four roles",
+      "title": "Who plays which part",
+      "narration": "OAuth gives each player a name. Here are the four, in Alice’s story and in the car story.",
+      "columns": [
+        "Role",
+        "In Alice’s story",
+        "In the car story"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Resource owner",
+            "Alice",
+            "the car’s owner"
+          ]
+        },
+        {
+          "cells": [
+            "Client",
+            "PrintMyPhotos",
+            "the valet"
+          ]
+        },
+        {
+          "cells": [
+            "Authorization server",
+            "Google’s sign-in service",
+            "the key maker"
+          ]
+        },
+        {
+          "cells": [
+            "Resource server",
+            "the photos API",
+            "the car"
+          ]
+        },
+        {
+          "cells": [
+            "Access token",
+            "a short-lived pass",
+            "the valet key"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "tint": {
+            "0": "good"
+          },
+          "say": "The resource owner is Alice. The photos are hers."
+        },
+        {
+          "focus": 1,
+          "say": "The client is PrintMyPhotos, the app that wants in, like the valet."
+        },
+        {
+          "focus": 2,
+          "say": "The authorization server is Google’s sign-in service. It makes the keys."
+        },
+        {
+          "focus": 3,
+          "say": "The resource server is the photos API, where the photos live. That is the car."
+        },
+        {
+          "show": [
+            4
+          ],
+          "tint": {
+            "4": "accent"
+          },
+          "say": "And the access token is the valet key: a pass that opens only the photos, for a short time."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "A secret and its hash",
+      "title": "PKCE: make a secret, send its hash",
+      "narration": "Before anything else, the app makes a secret of its own. This trick is called PKCE, said pixie. It proves later that the same app is asking.",
+      "svg": "<svg viewBox=\"0 0 1200 600\">\n<defs><marker id=\"head-muted\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"verifier\"><text x=\"600\" y=\"50\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">code_verifier: 43 random characters, kept on the phone</text><rect x=\"150\" y=\"70\" width=\"900\" height=\"70\" rx=\"12\" class=\"tone-warn\" stroke-width=\"3\"/><text x=\"600\" y=\"116\" text-anchor=\"middle\" font-size=\"26\" font-family=\"mono\">dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk</text></g>\n<line x1=\"600\" y1=\"150\" x2=\"600\" y2=\"200\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/>\n<g id=\"sha\"><rect x=\"470\" y=\"205\" width=\"260\" height=\"56\" rx=\"28\"/><text x=\"600\" y=\"242\" text-anchor=\"middle\" font-size=\"26\" font-family=\"mono\">SHA-256</text></g>\n<line x1=\"600\" y1=\"266\" x2=\"600\" y2=\"306\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/>\n<g id=\"bytes\"><text x=\"600\" y=\"336\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">32 bytes, written here in hex</text><text x=\"600\" y=\"372\" text-anchor=\"middle\" font-size=\"21\" font-family=\"mono\">13d31e961a1ad8ec2f16b10c4c982e0876a878ad6df144566ee1894acb70f9c3</text></g>\n<line x1=\"600\" y1=\"388\" x2=\"600\" y2=\"428\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/>\n<g id=\"b64\"><rect x=\"450\" y=\"432\" width=\"300\" height=\"56\" rx=\"28\"/><text x=\"600\" y=\"469\" text-anchor=\"middle\" font-size=\"26\" font-family=\"mono\">BASE64URL</text></g>\n<line x1=\"600\" y1=\"493\" x2=\"600\" y2=\"513\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/>\n<g id=\"challenge\"><rect x=\"150\" y=\"518\" width=\"900\" height=\"70\" rx=\"12\" class=\"tone-accent\" stroke-width=\"3\"/><text x=\"600\" y=\"564\" text-anchor=\"middle\" font-size=\"26\" font-family=\"mono\">E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM</text></g>\n</svg>",
+      "labels": {
+        "verifier": "secret",
+        "sha": "hash",
+        "bytes": "32 bytes",
+        "b64": "safe text",
+        "challenge": "challenge"
+      },
+      "hidden": [
+        "bytes",
+        "b64",
+        "challenge"
+      ],
+      "callout": "`code_challenge = BASE64URL(SHA256(code_verifier))`",
+      "steps": [
+        {
+          "focus": "verifier",
+          "say": "The app picks forty three random characters, the code verifier. It keeps this secret on the phone."
+        },
+        {
+          "show": [
+            "bytes"
+          ],
+          "focus": [
+            "sha",
+            "bytes"
+          ],
+          "say": "It runs that through SHA-256, a hash that cannot be run backwards, and gets thirty two bytes."
+        },
+        {
+          "show": [
+            "b64"
+          ],
+          "focus": "b64",
+          "say": "It writes those bytes as safe text that can go in a web address."
+        },
+        {
+          "show": [
+            "challenge"
+          ],
+          "focus": "challenge",
+          "tint": {
+            "challenge": "accent"
+          },
+          "say": "That text is the code challenge. The challenge goes out, and only the app knows what made it."
+        }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "Asking for access",
+      "title": "Step 1: send Alice to the sign-in page",
+      "window": "Alice’s browser",
+      "narration": "Now the app sends Alice’s browser to the sign-in page, with a few details in the web address. The addresses here are made up; every provider names them a little differently.",
+      "entries": [
+        {
+          "output": "GET https://accounts.example.com/authorize\n  ?response_type=code\n  &client_id=print_photos_123\n  &redirect_uri=https%3A%2F%2Fprintmyphotos.com%2Fcallback\n  &scope=photos.read\n  &state=xyz_secure_random\n  &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM\n  &code_challenge_method=S256"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "0:1",
+            "0:2"
+          ],
+          "say": "It asks for a code, and says which app it is."
+        },
+        {
+          "focus": "0:3",
+          "say": "It says where to send Alice back afterwards."
+        },
+        {
+          "focus": "0:4",
+          "say": "The scope asks to read photos, and nothing else."
+        },
+        {
+          "focus": "0:5",
+          "say": "The state is a random value the app will check when Alice comes back. That stops another site from faking the return trip."
+        },
+        {
+          "focus": [
+            "0:6",
+            "0:7"
+          ],
+          "say": "And here is the challenge, with S256 saying it was made with SHA-256."
+        }
+      ]
+    },
+    {
+      "type": "sequence",
+      "chapter": "Consent and the code",
+      "title": "From consent to tokens",
+      "narration": "Here is the whole round trip, from the first hop to the app holding a token.",
+      "participants": [
+        {
+          "id": "alice",
+          "label": "Alice",
+          "icon": "user",
+          "caption": "in her browser",
+          "tone": "good"
+        },
+        {
+          "id": "app",
+          "label": "PrintMyPhotos",
+          "icon": "printer",
+          "caption": "the client"
+        },
+        {
+          "id": "auth",
+          "label": "Sign-in service",
+          "icon": "key-round",
+          "caption": "authorization server"
+        }
+      ],
+      "messages": [
+        {
+          "from": "app",
+          "to": "alice",
+          "label": "go to /authorize, with the challenge",
+          "kind": "return"
+        },
+        {
+          "from": "alice",
+          "to": "auth",
+          "label": "GET /authorize?…&code_challenge=E9Mel…"
+        },
+        {
+          "from": "auth",
+          "to": "alice",
+          "label": "PrintMyPhotos wants to view your photos"
+        },
+        {
+          "from": "alice",
+          "to": "auth",
+          "label": "Allow"
+        },
+        {
+          "from": "auth",
+          "to": "alice",
+          "label": "go back to /callback, with a code",
+          "kind": "return"
+        },
+        {
+          "from": "alice",
+          "to": "app",
+          "label": "GET /callback?code=AUTH_CODE_789"
+        },
+        {
+          "from": "app",
+          "to": "auth",
+          "label": "POST /token: code + verifier"
+        },
+        {
+          "from": "auth",
+          "to": "auth",
+          "label": "hash the verifier, match the challenge"
+        },
+        {
+          "from": "auth",
+          "to": "app",
+          "label": "access token + refresh token",
+          "kind": "return"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0-1",
+          "say": "The app sends Alice’s browser to the sign-in service, challenge and all."
+        },
+        {
+          "focus": "2-3",
+          "say": "Alice signs in on Google’s own page and sees what the app wants: to view her photos. She taps allow."
+        },
+        {
+          "focus": "4-5",
+          "say": "Alice comes back to the app with a one-time code. Not the token itself, because web addresses leak, into history and logs."
+        },
+        {
+          "focus": 6,
+          "say": "The app swaps the code for a token in a direct request, and sends the secret along."
+        },
+        {
+          "focus": 7,
+          "mark": "circle",
+          "note": "same app?",
+          "say": "The sign-in service hashes the secret. If it matches the challenge from before, this is the same app that asked."
+        },
+        {
+          "focus": 8,
+          "say": "Then it hands over the tokens. Alice’s password never went near the app."
+        }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "The exchange",
+      "title": "Step 2: swap the code for tokens",
+      "window": "PrintMyPhotos to the sign-in service",
+      "narration": "Here is that swap up close: the request the app sends, and the answer it gets.",
+      "entries": [
+        {
+          "output": "POST https://accounts.example.com/token\nContent-Type: application/x-www-form-urlencoded\n\ngrant_type=authorization_code\n&code=AUTH_CODE_789\n&redirect_uri=https%3A%2F%2Fprintmyphotos.com%2Fcallback\n&client_id=print_photos_123\n&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+        },
+        {
+          "output": "[HTTP/1.1 200 OK]{good}\n{\n  \"access_token\": \"eyJhbGciOi...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 3600,\n  \"refresh_token\": \"r_99812...\"\n}"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "0:3",
+            "0:4"
+          ],
+          "say": "The app hands in the one-time code."
+        },
+        {
+          "focus": "0:7",
+          "say": "And the secret itself, the verifier. Only the app that made the challenge knows it."
+        },
+        {
+          "focus": [
+            "1:2",
+            "1:3"
+          ],
+          "say": "Back comes an access token, the valet key."
+        },
+        {
+          "focus": "1:4",
+          "say": "It lasts thirty six hundred seconds, which is one hour."
+        },
+        {
+          "focus": "1:5",
+          "say": "And a refresh token, for getting a new key later without bothering Alice."
+        }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "Using the token",
+      "title": "Step 3: show the token to the API",
+      "window": "PrintMyPhotos to the photos API",
+      "narration": "Now the app asks the photos API for Alice’s pictures, and shows the token instead of a password.",
+      "entries": [
+        {
+          "output": "GET https://photos.example.com/v1/photos\nAuthorization: Bearer eyJhbGciOi..."
+        },
+        {
+          "output": "[HTTP/1.1 200 OK]{good}\n{ \"photos\": [\n  { \"id\": \"p_1\", \"name\": \"beach.jpg\" },\n  { \"id\": \"p_2\", \"name\": \"birthday.jpg\" }\n] }"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0:1",
+          "say": "Bearer means whoever holds this token gets in, so it has to be kept safe."
+        },
+        {
+          "focus": [
+            "1:0",
+            "1:1"
+          ],
+          "say": "The API checks the token is genuine, not expired, and allowed to read photos. Then it answers."
+        }
+      ]
+    },
+    {
+      "type": "timeline",
+      "chapter": "Expiry and refresh",
+      "title": "One token’s life",
+      "unit": "min",
+      "narration": "An access token runs out on purpose. Here is what happens over its hour.",
+      "events": [
+        {
+          "at": 0,
+          "label": "Token issued",
+          "detail": "expires_in 3600",
+          "tone": "good"
+        },
+        {
+          "at": 30,
+          "label": "Photos load",
+          "detail": "200 OK"
+        },
+        {
+          "at": 60,
+          "label": "Token expires",
+          "detail": "401 Unauthorized",
+          "tone": "bad"
+        },
+        {
+          "at": 61,
+          "label": "Refresh",
+          "detail": "refresh_token → /token",
+          "tone": "accent"
+        },
+        {
+          "at": 62,
+          "label": "Photos load again",
+          "detail": "new token",
+          "tone": "good"
+        }
+      ],
+      "spans": [
+        {
+          "from": 0,
+          "to": 60,
+          "label": "first token, 60 min",
+          "tone": "good"
+        },
+        {
+          "from": 61,
+          "to": 121,
+          "label": "second token, 60 min",
+          "tone": "accent"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            0,
+            "span:first token, 60 min"
+          ],
+          "say": "The token starts its sixty minutes."
+        },
+        {
+          "focus": 1,
+          "say": "Half an hour in, requests still work."
+        },
+        {
+          "focus": 2,
+          "say": "At sixty minutes the API says no: four oh one, unauthorized."
+        },
+        {
+          "focus": 3,
+          "say": "The app sends its refresh token to the sign-in service and gets a fresh access token."
+        },
+        {
+          "focus": [
+            4,
+            "span:second token, 60 min"
+          ],
+          "say": "Alice never sees a thing. And if a token leaks, it stops working within the hour."
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "The whole loop",
+      "title": "Authorization Code Flow with PKCE",
+      "narration": "Let’s put the whole thing together.",
+      "steps": [
+        {
+          "actor": "Alice",
+          "action": "consents",
+          "payload": "scope=photos.read",
+          "icon": "user",
+          "tone": "good",
+          "say": "Alice says yes, on the provider’s page, to just what the app needs."
+        },
+        {
+          "actor": "Sign-in service",
+          "action": "returns a one-time code",
+          "payload": "/callback?code=AUTH_CODE_789",
+          "icon": "key-round",
+          "say": "She comes back with a one-time code."
+        },
+        {
+          "actor": "PrintMyPhotos",
+          "action": "swaps code + verifier",
+          "payload": "access_token, refresh_token",
+          "icon": "printer",
+          "say": "The app swaps the code and its secret for tokens."
+        },
+        {
+          "actor": "Photos API",
+          "action": "checks the Bearer token",
+          "payload": "Authorization: Bearer eyJ…",
+          "icon": "image",
+          "tone": "accent",
+          "say": "And it shows the token to fetch the photos."
+        }
+      ]
+    },
+    {
+      "type": "intent",
+      "chapter": "Why it is safer",
+      "summary": "The app gets a small key that runs out, never the password",
+      "bullets": [
+        "The password only ever goes to Google’s own page",
+        "The scope asks for photos and nothing else",
+        "An access token stops working after an hour",
+        "Alice can cut the app off from her account page, and its tokens stop being renewed"
+      ],
+      "narration": "So, compared with the bad old days.",
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Alice’s password only goes to Google, never to the app."
+        },
+        {
+          "focus": 1,
+          "say": "The app asks for just the photos."
+        },
+        {
+          "focus": 2,
+          "say": "Its key runs out after an hour."
+        },
+        {
+          "focus": 3,
+          "say": "And Alice can cut the app off in one click, without changing her password."
+        }
+      ]
+    }
+  ]
+}
