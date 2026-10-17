@@ -10,8 +10,8 @@ import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill
 import { locateJsonError } from './lib/json.mjs';
 import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
 import { KINDS, formatBytes, formatChoices, formatListing, listArtifacts, listingJson, olderThan, pruneArtifacts, pruneChoices, removalPlan, select } from './lib/prune.mjs';
-import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
-import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
+import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, recordAudience, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
+import { SETTINGS_OPTIONS, givenAudience, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { createServing } from './lib/serving.mjs';
@@ -103,6 +103,7 @@ More commands and options:
   extract --context N     context lines per hunk (default 4)
   extract --max-lines N   changed lines shown per hunk in the index (default 14)
   extract --all-files     include lockfiles, minified and build output
+  validate --read-only    check only: write no review.md, reading.md or plan picks, and remember no choice
   validate and outline estimate the length at the --pace given until the narration is voiced at it.`;
 
 /** A path for messages: relative to the current directory when inside it, else absolute. */
@@ -154,7 +155,8 @@ function timingVoiceover(dir, settings) {
   return { voice: settings.voice, speed, pauses, clips: settings.silent ? {} : saved?.clips ?? {} };
 }
 
-async function loadProject(dir, settings) {
+/** The run checked and its storyboard normalized. Unless `write` is false, review.md and reading.md are written or removed to match it. */
+async function loadProject(dir, settings, { write = true } = {}) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
   const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const style = styleOf(settings);
@@ -170,8 +172,8 @@ async function loadProject(dir, settings) {
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
-  const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
-  const reading = result.errors.length ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
+  const review = result.errors.length || !write ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
+  const reading = result.errors.length || !write ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
   return { dir, hunks, raw, storyboard, plan, result, style, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
@@ -279,12 +281,14 @@ function extract(argv) {
 
   const written = { ...hunks, ...Object.fromEntries(snippets.map((h) => [h.id, h])) };
   fs.mkdirSync(dir, { recursive: true });
+  const audience = givenAudience(values) ?? readRunMeta(dir)?.audience;
   writeJson(hunksPath, written);
   writeJson(path.join(dir, 'meta.json'), {
     mode: 'diff', base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
     head: 'HEAD', headSha: diff.headSha, branch: diff.branch,
     working: values.working, generatedAt: new Date().toISOString(),
     files, skipped: diff.skipped,
+    ...(audience && { audience }),
   });
   writeCurrent(runs, name);
   rememberChoices(values);
@@ -306,22 +310,26 @@ function extract(argv) {
 
 /**
  * The run a command after extract or init works on, and the settings its flags ask for. The audience and pace
- * they choose are remembered for the user's next video.
+ * they choose are remembered for the user's next video, and the audience in the run's meta.json for the hook.
  */
 function runFor(values) {
   const settings = settingsFrom(values);
   rememberChoices(values);
-  return { ...currentRun(values), settings };
+  const run = currentRun(values);
+  recordAudience(run.dir, givenAudience(values));
+  return { ...run, settings };
 }
 
 const RUN_OPTIONS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 
 async function validate(argv) {
-  const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
-  const { dir, settings } = runFor(values);
-  const { result, lines, review, reading, plan, storyboard } = await loadProject(dir, settings);
+  const { values } = parseArgs({ args: argv, options: { ...RUN_OPTIONS, 'read-only': { type: 'boolean', default: false } } });
+  // --read-only, for the hook: check the run and write nothing, not even the remembered choices.
+  const write = !values['read-only'];
+  const { dir, settings } = write ? runFor(values) : { ...currentRun(values), settings: settingsFrom(values) };
+  const { result, lines, review, reading, plan, storyboard } = await loadProject(dir, settings, { write });
   // The plan page marks each topic whose pick differs from the one the storyboard says it was written from.
-  if (!result.errors.length && plan) recordBuilt(dir, plan.plan, storyboard.plan);
+  if (write && !result.errors.length && plan) recordBuilt(dir, plan.plan, storyboard.plan);
   // The verdict stays the last line.
   for (const line of lines.slice(0, -1)) console.log(line);
   if (review) console.log(`wrote ${rel(review)}`);
@@ -718,7 +726,8 @@ function articleCommand(argv) {
 
 /**
  * A Claude Code PostToolUse hook (the mr-cast skill's frontmatter): after a write to a run's storyboard.json or
- * article.md, it checks the file and exits 2 with the errors, which Claude sees. Other files pass at once.
+ * article.md, it checks the file and exits 2 with the errors, which Claude sees. Other files pass at once. It
+ * validates with the audience the run's commands were last given (meta.json), and writes nothing.
  */
 function hook() {
   let file;
@@ -730,12 +739,12 @@ function hook() {
   const command = { 'storyboard.json': 'validate', [ARTICLE_FILE]: 'article' }[path.basename(file ?? '')];
   const dir = command && path.dirname(file);
   if (!command || path.basename(path.dirname(dir)) !== '.mr-cast' || !readRunMeta(dir)) return;
-  const { audience } = lastChoices();
-  const args = [fileURLToPath(import.meta.url), command, '--dir', dir, ...(audience && command === 'validate' ? ['--audience', audience] : [])];
-  const run = spawnSync(process.execPath, args, { encoding: 'utf8', env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' } });
+  const { audience } = readRunMeta(dir);
+  const flags = command === 'validate' ? ['--read-only', ...(audience ? ['--audience', audience] : [])] : [];
+  const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), command, '--dir', dir, ...flags], { encoding: 'utf8', env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' } });
   if (run.status === 0) return;
-  const lines = `${run.stdout}\n${run.stderr}`.split('\n').filter((l) => /^(error|✗)/.test(l.trim()));
-  console.error(`mr-cast ${command} on ${rel(file)}:\n${lines.join('\n')}`);
+  const lines = `${run.stdout}\n${run.stderr}`.split('\n').filter((l) => /^(error|✗|mr-cast:|hint:)/.test(l.trim()));
+  console.error(`mr-cast ${command}${flags.length ? ` ${flags.join(' ')}` : ''} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`);
   process.exit(2);
 }
 
@@ -804,11 +813,13 @@ function init(argv) {
     }
   }
   if (!fs.existsSync(files.hunks)) writeJson(files.hunks, {});
+  const audience = givenAudience(values) ?? previous.audience;
   writeJson(files.meta, {
     mode: 'explain',
     title: values.title ?? previous.title ?? null,
     createdAt: previous.createdAt ?? new Date().toISOString(),
     ...(values.quick || previous.quick ? { quick: true } : {}),
+    ...(audience && { audience }),
   });
   writeCurrent(runs, name);
   rememberChoices(values);

@@ -46,9 +46,12 @@ export function settingsFrom(values) {
   };
 }
 
+/** The audience the flags in `values` name, or undefined when they name none. */
+export const givenAudience = (values) => (values.simple ? 'new' : AUDIENCES.includes(values.audience) ? values.audience : undefined);
+
 /** The settings flags `values` gave, as they would be typed again, such as " --audience new --pace slower"; "" for none. */
 export function settingsArgs(values) {
-  const audience = values.simple ? 'new' : values.audience;
+  const audience = givenAudience(values);
   return [
     audience && `--audience ${audience}`,
     values.pace && `--pace ${values.pace}`,
@@ -79,8 +82,8 @@ export function lastChoices() {
 export function rememberChoices(values) {
   /** @type {Choices} */
   const chosen = {};
-  if (values.simple) chosen.audience = 'new';
-  else if (AUDIENCES.includes(values.audience)) chosen.audience = values.audience;
+  const audience = givenAudience(values);
+  if (audience) chosen.audience = audience;
   if (values['no-voice']) chosen.pace = 'silent';
   else if (Object.hasOwn(PACES, values.pace ?? '')) chosen.pace = values.pace;
   if (Object.keys(chosen).length === 0) return;
