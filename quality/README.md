@@ -113,3 +113,18 @@ Run with read access to `<fixture>/answers.md` and `quality/keys/<fixture>.json`
     {"answers":[{"id":"q1","correct":1,"note":"one short sentence"}, ...one per question],
      "ease": <the reviewer's ease number>, "confusing_scene": "<the reviewer's text>"}
     Write only that file.
+
+## Reviewer effort (quality/effort/)
+
+Measures what a walkthrough saves a reviewer who then reads the code, against no video. Arms are audiences
+(`familiar`, `preread`) plus `none`.
+
+- `bugs.json` holds one seeded bug per fixture (file, exact find and replace, and a key for graders). Never copy it into a repo or a packet.
+- `prepare.sh <dir> <variant> <fixture>` builds a writer's workdir with the bug folded into the commit that last touched the file. `checkout.sh <dest> <fixture>` builds the same branch for a reviewer.
+- `collect.sh <writer-dir> <audience> <packet-dir>` validates and renders stills with the audience flag, and adds `reading.md` to the packet when validate wrote one.
+- `prompt.mjs packet|review|budget` prints the reviewer prompts. `packet` is the video-only quiz. `review` adds the checkout and a bug hunt. `budget` allows one `git diff --stat` and two file reads, so a video can only help by pointing.
+- `grader.mjs packet|review` prints a grader prompt over anonymised answer files.
+- `handback.mjs` and `transcript.mjs` read an agent's JSONL transcript: its final report, and its tool calls, files opened, scenes viewed, tool-result size, peak context, tokens and wall time.
+- `harvest.sh` and `report.mjs` gather answers, transcripts and grades into per-arm tables (mean [min-max]).
+
+Run every writer and mr-cast command with temporary `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `CLAUDE_CONFIG_DIR`.
