@@ -1,0 +1,48 @@
+{
+  "prompt": [
+    "Once",
+    " upon",
+    " a",
+    " time",
+    ",",
+    " in",
+    " a",
+    " land",
+    " of",
+    " math",
+    ",",
+    " there",
+    " lived",
+    " a"
+  ],
+  "tokens": {
+    " Snape": [
+      " Snape"
+    ],
+    " Umbridge": [
+      " Um",
+      "bridge"
+    ],
+    " Quirrell": [
+      " Qu",
+      "ir",
+      "rell"
+    ],
+    " Lockhart": [
+      " Lock",
+      "hart"
+    ],
+    " McGonagall": [
+      " McG",
+      "on",
+      "agall"
+    ],
+    " banana": [
+      " banana"
+    ],
+    "tokenization": [
+      "token",
+      "ization"
+    ]
+  }
+}
