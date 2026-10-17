@@ -29,13 +29,19 @@ If the user picks nothing, delete nothing, say so, and stop.
 
 ## 3. Delete the chosen options
 
-For each chosen option, run its `command` as given, after the CLI path. For example, the command `["prune", "--kind", "video"]` runs as:
+If the user chose one option, run its `command` as given, after the CLI path. For example, the command `["prune", "--kind", "video"]` runs as:
 
 ```bash
 {{MR_CAST}}/bin/mr-cast prune --kind video
 ```
 
 Do not add, drop or change any argument.
+
+If the user chose more than one option, in one group or several, run one `prune` with the `ids` of every chosen option, each id once. One command per option would fail: after "All rendered videos", the single video it already removed is an unknown id. For example, "All rendered videos" with `ids` `["video:a/a.mp4", "video:b/b.mp4"]` and a stills option with `ids` `["stills:a"]` run as:
+
+```bash
+{{MR_CAST}}/bin/mr-cast prune video:a/a.mp4 video:b/b.mp4 stills:a
+```
 
 ## 4. A free-text answer
 

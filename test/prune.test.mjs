@@ -181,6 +181,32 @@ test('--choices groups the menu, and each option command removes exactly the ids
   }
 });
 
+test('options picked together run as one prune of the union of their ids, where one command each would fail', () => {
+  const { list, run } = fixture();
+  const options = JSON.parse(run('prune', '--choices', '--json').stdout).groups.flatMap((g) => g.options);
+  const picked = ['All rendered videos', 'Video of "Rate limiter"', 'Stills of "Rate limiter"'].map((label) => options.find((o) => o.label === label));
+  const union = [...new Set(picked.flatMap((o) => o.ids))];
+  assert.deepEqual(union, ['video:rate-limit/rate-limiter.mp4', 'video:retry/retry-backoff.mp4', 'stills:rate-limit']);
+
+  const separate = fixture();
+  assert.equal(separate.run(...picked[0].command).status, 0);
+  assert.match(separate.run(...picked[1].command).stderr, /unknown id: video:rate-limit\/rate-limiter\.mp4/);
+
+  const before = list();
+  const result = run('prune', ...union);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(ids(list()), ids(before.filter((a) => !union.includes(a.id))));
+});
+
+test('ids and --kind together remove the union of both', () => {
+  const { list, run } = fixture();
+  const before = ids(list());
+  const result = run('prune', 'stills:rate-limit', '--kind', 'video', '--dry-run', '--json');
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout).artifacts.map((a) => a.id).sort(), ['stills:rate-limit', 'video:rate-limit/rate-limiter.mp4', 'video:retry/retry-backoff.mp4']);
+  assert.deepEqual(ids(list()), before, 'a dry run removes nothing');
+});
+
 test('selector errors name the fix', () => {
   const { run } = fixture();
   assert.match(run('prune', '--kind', 'videos').stderr, /unknown --kind videos; kinds are run, explain, video, stills, audio, cache/);

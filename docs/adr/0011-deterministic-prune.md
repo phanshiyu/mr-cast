@@ -31,6 +31,7 @@ Good:
 
 Bad:
 - A request the selectors cannot express is refused; the skill tells the user and stops instead of improvising.
+- Since 0.23.0, several chosen options run as one `prune` of the union of their `ids`, since one command each fails once an "All" option has removed an item another names.
 
 ## Alternatives considered
 
