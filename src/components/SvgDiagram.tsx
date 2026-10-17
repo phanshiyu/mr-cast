@@ -19,6 +19,8 @@ const START = 6;
 /** Frames between one top-level part of the drawing landing and the next. */
 const STAGGER = 3;
 const STAGGER_END = 22;
+/** How far past its stage a drawing may paint, in px: room for a lit element's glow, short of the header and captions. */
+const BLEED = 32;
 
 /** Shapes that fill an area, which with no fill of their own draw as a card; the rest draw as a line. */
 const AREAS = new Set(['rect', 'circle', 'ellipse', 'polygon']);
@@ -160,7 +162,7 @@ export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durat
 
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
-      <svg width={box.width} height={box.height} viewBox={`0 0 ${box.width} ${box.height}`} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      <svg width={box.width + 2 * BLEED} height={box.height + 2 * BLEED} viewBox={`${-BLEED} ${-BLEED} ${box.width + 2 * BLEED} ${box.height + 2 * BLEED}`} style={{ position: 'absolute', left: -BLEED, top: -BLEED, overflow: 'hidden' }}>
         <g transform={`translate(${stage.left} ${stage.top}) scale(${stage.scale})`} {...rootProps}>
           {parts.map((part, i) => {
             const appear = spring({ frame: frame - START - i * stagger, fps, config: { damping: 18, stiffness: 140 } });

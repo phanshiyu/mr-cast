@@ -28,7 +28,7 @@ const drawn = (svg) => renderToStaticMarkup(createElement(SvgDiagram, { scene: {
 
 test('the svg scene draws inside its stage, placed by the scene whatever the root <svg> says', () => {
   const html = drawn('<svg viewBox="0 0 10 10" transform="translate(-900 -900) scale(30)" x="40"><rect x="0" y="0" width="5" height="5"/></svg>');
-  assert.match(html, /<svg width="1712" height="804" viewBox="0 0 1712 804" style="position:absolute;inset:0;overflow:hidden"><g transform="translate\(454 0\) scale\(80.4\)"><g opacity="1"><rect /);
+  assert.match(html, /<svg width="1776" height="868" viewBox="-32 -32 1776 868" style="position:absolute;left:-32px;top:-32px;overflow:hidden"><g transform="translate\(454 0\) scale\(80.4\)"><g opacity="1"><rect /);
 });
 
 test('the svg scene draws no class and no paint it has not allowed', () => {
