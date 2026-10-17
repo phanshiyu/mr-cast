@@ -5,6 +5,8 @@
 
 import { CHECK_MAX, READ_FIRST_MAX } from '../../shared/reading.mjs';
 import { plainText } from '../../shared/markup.mjs';
+import { sceneChapter } from '../../shared/chapters.mjs';
+import { findingLocation, lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
 
 /** More hunks than this behind one picture and the picture explains none of them well. */
@@ -15,14 +17,35 @@ const WORD = /[A-Za-z_$][\w$]*/g;
 // A word written the way code names things: camelCase, PascalCase with an inner capital, or snake_case.
 const CODE_NAME = /[a-z][A-Z]|[A-Za-z0-9]_[A-Za-z0-9]/;
 // Keys whose strings are ids, refs or settings, never text on screen.
-const NOT_TEXT = new Set(['type', 'from', 'to', 'id', 'topic', 'icon', 'focus', 'initial', 'tone', 'shape', 'layout', 'direction', 'style', 'change', 'show', 'hide', 'at', 'ref', 'mark', 'kind', 'lang', 'better', 'unit']);
+const NOT_TEXT = new Set(['type', 'from', 'to', 'id', 'topic', 'icon', 'focus', 'initial', 'tone', 'shape', 'layout', 'direction', 'style', 'change', 'show', 'hide', 'at', 'ref', 'mark', 'kind', 'lang', 'better', 'unit', 'hunkId', 'flag']);
+// Keys whose strings are spoken, not drawn: the subtitles show them, but no label does.
+const SPOKEN = new Set(['narration', 'say']);
 
-/** Every string a scene shows or speaks, from any key that holds text. */
-function sceneText(value, key = '', out = []) {
-  if (typeof value === 'string') { if (!NOT_TEXT.has(key)) out.push(plainText(value)); }
-  else if (Array.isArray(value)) value.forEach((v) => sceneText(v, key, out));
-  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) sceneText(v, k, out);
+/** Every label a scene draws, as `[path, text]` with its markup, from any key that holds text other than the spoken ones. */
+function sceneLabels(value, path, key = '', out = []) {
+  if (typeof value === 'string') { if (!NOT_TEXT.has(key) && !SPOKEN.has(key)) out.push([path, value]); }
+  else if (Array.isArray(value)) value.forEach((v, i) => sceneLabels(v, `${path}[${i}]`, key, out));
+  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) sceneLabels(v, `${path}.${k}`, k, out);
   return out;
+}
+
+/**
+ * The ways a label reads as code rather than names it, each `[pattern, what it is]`. Kept narrow, so an
+ * identifier or a file name alone (`claimDue`, `limiter.ts`) and plain words never match.
+ */
+const CODE_SHAPES = [
+  [/\{[^{}]*[A-Za-z_$][\w$]*\s*:[^{}]*\}/, 'an object literal'],
+  [/=>/, 'an arrow function'],
+  // A space on both sides, since `==marked==` is markup.
+  [/\s(?:===?|!==?)\s|!=|===/, 'a comparison'],
+  [/&&|\|\|/, 'a boolean expression'],
+  [/\b[A-Za-z_$][\w$.]*\((?!s\)|es\))\s*[\w$'"`[{-]/, 'a call with arguments'],
+  [/[\w$]\([^()]*\)\s*;\s*[A-Za-z_$]|[\w$];[A-Za-z_$]/, 'statements'],
+];
+
+/** What `text`, with its markup, writes as code, such as "an object literal", or null when it only names things. */
+export function codeShape(text) {
+  return CODE_SHAPES.find(([re]) => re.test(text))?.[1] ?? null;
 }
 
 /**
@@ -37,7 +60,7 @@ export function hunkNames(hunk) {
 }
 
 function namesOnScreen(scene, hunk) {
-  const text = sceneText(scene).join('\n');
+  const text = sceneLabels(scene, '').map(([, t]) => plainText(t)).join('\n');
   const { base, identifiers } = hunkNames(hunk);
   if (text.includes(base)) return true;
   const said = new Set(text.match(WORD) ?? []);
@@ -88,7 +111,28 @@ function checkFlag(item, q, hunks, findings, errors) {
   const finding = findings.get(item.flag);
   if (!finding) return errors.push(`${q}.flag: no finding has id ${JSON.stringify(item.flag)}${typeof item.flag === 'string' ? didYouMean(item.flag, [...findings.keys()]) : ''}`);
   const hunk = Object.hasOwn(hunks, item.hunkId) ? hunks[item.hunkId] : null;
-  if (hunk && finding.file !== hunk.file) errors.push(`${q}.flag: "${finding.id}" is about ${finding.file}, but ${item.hunkId} is in ${hunk.file}; flag it on that file's item`);
+  if (!hunk) return;
+  if (finding.file !== hunk.file) return errors.push(`${q}.flag: "${finding.id}" is about ${finding.file}, but ${item.hunkId} is in ${hunk.file}; flag it on that file's item`);
+  const lines = hunk.lines.map((l) => l.newLine).filter((n) => n !== null);
+  const at = lineSpan(finding.line);
+  if (!at || !lines.length) return;
+  const own = [Math.min(...lines), Math.max(...lines)];
+  if (at[1] < own[0] || own[1] < at[0]) errors.push(`${q}.flag: "${finding.id}" is at ${findingLocation(finding)}, but ${item.hunkId} covers ${hunk.file}:${own[0]}-${own[1]}; flag it on the item of the hunk that holds that line`);
+}
+
+/**
+ * The reading order names the chapter that explains each hunk, so two scenes that cite hunks under one chapter
+ * label leave the reader unsure which scene it means.
+ */
+function checkExplainers(sb, warnings) {
+  const byChapter = new Map();
+  sb.scenes.forEach((s, i) => {
+    if (!Array.isArray(s?.from) || !s.from.length) return;
+    const chapter = sceneChapter(s);
+    const first = byChapter.get(chapter);
+    if (first === undefined) byChapter.set(chapter, i);
+    else warnings.push(`scenes[${i}]: cites hunks in "from" under the chapter "${chapter}", as scenes[${first}] does, so the reading order's "Explained in" cannot tell them apart; give one its own "chapter"`);
+  });
 }
 
 /** The narration's "item 4" names a numbered item of the reading order. */
@@ -113,8 +157,12 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
   const findings = new Map((Array.isArray(sb.findings) ? sb.findings : []).filter((f) => isStr(f?.id)).map((f) => [f.id, f]));
   const listed = new Set();
   const readings = [];
+  const isScene = (s) => s && typeof s === 'object';
+  if (!preread && sb.scenes.some((s) => isScene(s) && (s.type === 'reading' || s.from !== undefined))) {
+    warnings.push('this storyboard is a pre-read; pass --audience preread');
+  }
   sb.scenes.forEach((s, i) => {
-    if (!s || typeof s !== 'object') return;
+    if (!isScene(s)) return;
     const p = `scenes[${i}]`;
     if (preread && s.type === 'code') errors.push(`${p} is a code scene, and a pre-read puts no code on screen; draw what the code does as a diagram, name its hunk in that scene's "from", and list it in the reading order`);
     if (preread && s.type === 'compare' && Array.isArray(s.rows)) {
@@ -123,12 +171,25 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
       }));
     }
     if (preread && s.type === 'review') errors.push(`${p}: a pre-read ends on the reading order, which carries the findings; remove the review scene and flag each finding on its reading item`);
+    if (preread && Array.isArray(s.steps)) {
+      s.steps.forEach((step, j) => {
+        if (step?.flag !== undefined) errors.push(`${p}.steps[${j}].flag: a pre-read carries its findings on the reading order; flag it on the reading item of its hunk`);
+      });
+    }
+    if (preread && s.type !== 'code') {
+      for (const [path, text] of sceneLabels(s, p)) {
+        const shape = codeShape(text);
+        if (shape) warnings.push(`${path}: "${text}" is ${shape}, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values`);
+      }
+    }
     checkFrom(s, p, hunks, preread, errors, warnings);
     if (s.type !== 'reading') return;
+    if (!preread) warnings.push(`${p}: only a pre-read has a reading scene; pass --audience preread, or remove it`);
     readings.push(i);
     checkItems(s, p, hunks, findings, errors, warnings);
     if (Array.isArray(s.items)) for (const item of s.items) if (isStr(item?.hunkId) && Object.hasOwn(hunks, item.hunkId)) listed.add(item.hunkId);
   });
+  checkExplainers(sb, warnings);
   if (readings.length > 1) errors.push(`scenes[${readings[1]}]: one reading scene holds the whole reading order; merge the others into it`);
   const last = sb.scenes.length - 1;
   if (readings.length && readings[0] !== last) warnings.push(`scenes[${readings[0]}]: the reading scene hands the code to the viewer, so put it last, after the tests`);

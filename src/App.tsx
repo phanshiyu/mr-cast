@@ -356,7 +356,7 @@ export const App: React.FC = () => {
               {meta?.quick && ended ? <QuickEndCard /> : null}
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
-            {reading ? <ReadingPanel order={reading} onChapter={(chapter) => seekChapter(chapters.findIndex((c) => sceneChapter(c.scene) === chapter))} /> : null}
+            {reading ? <ReadingPanel order={reading} onScene={seekChapter} /> : null}
             <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
               <span>
                 <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter

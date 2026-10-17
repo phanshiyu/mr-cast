@@ -210,6 +210,8 @@ const hunkSize = (h) => (h.deletions ? `+${h.additions} -${h.deletions}` : `+${h
 const DIAGRAM_REASON = /\b(diagrams?|overview)\b/i;
 // The reason for a hunk left out of a topic the viewer chose to see briefly on the plan page.
 const BRIEF_REASON = 'the viewer chose a brief look at this topic';
+// The reason for a hunk of a topic the viewer chose to skip on the plan page.
+const SKIP_REASON = 'the viewer chose to skip this topic';
 
 /**
  * Every hunk a reviewer needs must be shown in a code scene or listed in `skipped` with a reason. Only the
@@ -238,8 +240,13 @@ function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
     else {
       skipped.add(entry.hunkId);
       const h = hunks[entry.hunkId];
-      if (audience !== 'overview' && isStr(entry.reason) && DIAGRAM_REASON.test(entry.reason) && h.status !== 'source' && !isTestFile(h.file) && h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) {
-        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : preread ? 'a reviewer who reads the code next' : 'a reviewer'} shows every substantial hunk; ${cover}. Only the team's overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "${BRIEF_REASON}"`);
+      const substantial = h.status !== 'source' && h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES;
+      if (audience !== 'overview' && isStr(entry.reason) && DIAGRAM_REASON.test(entry.reason) && substantial && !isTestFile(h.file)) {
+        const only = preread ? 'Only the team\'s overview leaves code to the diagrams' : `Only the team's overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "${BRIEF_REASON}"`;
+        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : preread ? 'a reviewer who reads the code next' : 'a reviewer'} shows every substantial hunk; ${cover}. ${only}`);
+      } else if (preread && substantial && [BRIEF_REASON, SKIP_REASON].includes(entry.reason?.trim?.())) {
+        // In a pre-read the plan's depth changes only the video; the reviewer still reads every hunk.
+        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", so it is not in the reading order; in a pre-read the plan's depth changes only the video, and the reviewer still reads the code, so ${cover}`);
       }
     }
     if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);

@@ -10,7 +10,7 @@ type Copied = 'idle' | 'copied' | 'failed';
  * A pre-read's reading order beside the video, to follow in the editor once it ends: every item with its file and
  * lines, what to check, the finding it carries and the chapter that explains it, which seeks the video there.
  */
-export const ReadingPanel: React.FC<{ order: ReadingOrder; onChapter: (chapter: string) => void }> = ({ order, onChapter }) => {
+export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: number) => void }> = ({ order, onScene }) => {
   const [copied, setCopied] = useState<Copied>('idle');
   const copy = async () => {
     try {
@@ -66,8 +66,8 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onChapter: (chapter: 
                     </div>
                   ) : null}
                   {item.explainedIn ? (
-                    <button onClick={() => onChapter(item.explainedIn!)} className="block text-xs text-slate-500 hover:text-indigo-300">
-                      Explained in: {item.explainedIn}
+                    <button onClick={() => onScene(item.explainedIn!.scene)} className="block text-xs text-slate-500 hover:text-indigo-300">
+                      Explained in: {item.explainedIn.chapter}
                     </button>
                   ) : null}
                 </div>

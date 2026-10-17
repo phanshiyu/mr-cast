@@ -88,8 +88,9 @@ interface SceneBase {
   /**
    * Pre-read only (`--audience preread`): the ids of up to 3 hunks this diagram explains without showing them.
    * The scene names their files in a quiet "In the code:" line, and the reading order says "Explained in" this
-   * chapter. Put a cited hunk's file name or one of its identifiers (`checkLimit`) in the scene's labels or
-   * narration, so the viewer can map the picture onto the code; `validate` warns when none appears.
+   * chapter, which seeks the player to this scene. Put a cited hunk's file name or one of its identifiers
+   * (`checkLimit`) in the scene's labels, so the viewer can map the picture onto the code; `validate` warns when
+   * no label names it. The narration does not count. Give each scene that cites hunks its own `chapter`.
    */
   from?: string[];
   /**
@@ -259,7 +260,10 @@ export interface FlowStep {
   actor: string;
   /** What happens at this step. */
   action: string;
-  /** The data as it looks after this step (JSON, a struct, a short code snippet...). */
+  /**
+   * The data as it looks after this step (JSON, a struct, a short code snippet...). In a pre-read, words with
+   * the real names and values ("status pending, next try in 10 s"), since no code goes on screen.
+   */
   payload?: string;
   /** A Lucide icon name for the actor, as on a diagram node, e.g. "user" or "server". */
   icon?: string;
@@ -464,7 +468,7 @@ export interface ReadingItem {
   check?: DisplayText;
   /** A routine change (wiring, a rename, config): reading.md lists it on its group's one "skim" line, never on screen. */
   routine?: boolean;
-  /** Review mode: the id of the finding at this hunk, drawn on the item in its severity's colour. */
+  /** Review mode: the id of the finding whose line is in this hunk, drawn on the item in its severity's colour. */
   flag?: string;
 }
 

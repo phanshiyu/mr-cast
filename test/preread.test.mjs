@@ -5,11 +5,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 import { startServer } from '../bin/lib/server.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { checkPlan } from '../shared/plan.mjs';
-import { readingLines, readingMarkdown, readingOrder } from '../shared/reading.mjs';
+import { readingChecklist, readingLines, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 
+const bundled = await build({ entryPoints: [new URL('../src/utils/readingLayout.ts', import.meta.url).pathname], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
+const { layoutReading, moreText } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const hunk = (id, file, texts, start = 1) => ({
   id, file, oldFile: null, status: 'modified', language: 'typescript', header: '', startLine: start, oldStartLine: start, endLine: start + texts.length - 1,
@@ -69,7 +72,7 @@ test('a pre-read covers the diff with its reading order, not with from', async (
 test('a pre-read still may not skip a substantial hunk because the diagrams cover it', async () => {
   const { warnings } = await validate([intent, graph(['h1']), tests, reading(both.slice(0, 1))], { skipped: [{ hunkId: 'h2', reason: 'covered by the diagrams' }] });
   assert.deepEqual(matching(warnings, /^skipped\[/), [
-    'skipped[0]: h2 src/server.ts (+16) is skipped as "covered by the diagrams", but a video for a reviewer who reads the code next shows every substantial hunk; add it to the reading scene\'s items ("routine": true for a change to skim). Only the team\'s overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "the viewer chose a brief look at this topic"',
+    'skipped[0]: h2 src/server.ts (+16) is skipped as "covered by the diagrams", but a video for a reviewer who reads the code next shows every substantial hunk; add it to the reading scene\'s items ("routine": true for a change to skim). Only the team\'s overview leaves code to the diagrams',
   ]);
 });
 
@@ -146,19 +149,19 @@ test('a pre-read plan offers no code view, and a deep topic adds a second diagra
   assert.deepEqual(matching(one.warnings, /chose deep/), ['topic "limiter": the viewer chose deep, which in a pre-read traces one real case through a second diagram; add a flow, array or table that walks it with the actual limits, keys and order']);
   const flow = { type: 'flow', topic: 'limiter', narration: 'One visitor sends a twenty-first order.', steps: [{ actor: '`checkLimit`', action: 'count 21 of 20', say: 'The count passes twenty.' }, { actor: '`server.ts`', action: 'answer 429', say: 'The server refuses the order.' }] };
   const two = await validateStoryboard({ title: 'Rate limit', scenes: [intent, scenes[1], flow, tests, reading(both)], plan: { limiter: { depth: 'deep', view: 'parts' } } }, hunks, { audience: 'preread', plan });
-  assert.deepEqual(matching(two.warnings, /chose deep/), []);
+  assert.deepEqual(matching(two.warnings, /chose deep|chose to see it as/), []);
 });
 
 test('the reading order resolves file and lines from hunks.json, numbers the items to read, and collapses routine ones', () => {
   // Without a plan there are no topics, so the checklist has no headings.
   const plain = { title: 'Rate limit', scenes: [intent, graph(['h1', 'h2']), tests, reading([both[0], { hunkId: 'h3', routine: true }, both[1]])] };
   assert.equal(readingMarkdown(plain, readingOrder(plain, hunks)).split('\n').slice(4).join('\n'), [
-    '- [ ] 1. src/limiter.ts:12-31: the key resets on a new minute; check the off-by-one',
-    '- [ ] 2. src/server.ts:40-55: the limiter runs before the order is saved',
+    '- [ ] 1. `src/limiter.ts:12-31`: the key resets on a new minute; check the off-by-one',
+    '- [ ] 2. `src/server.ts:40-55`: the limiter runs before the order is saved',
     '',
     '### Skim',
     '',
-    '- [ ] src/config.ts:3-4',
+    '- [ ] `src/config.ts:3-4`',
     '',
   ].join('\n'));
 
@@ -171,9 +174,9 @@ test('the reading order resolves file and lines from hunks.json, numbers the ite
   };
   const order = readingOrder(sb, hunks, { topics: [{ id: 'limiter', title: 'Rate limiter: twenty a minute' }] });
   assert.deepEqual(order.items.map((i) => [i.number, i.where, i.explainedIn, i.topic]), [
-    [1, 'src/limiter.ts:12-31', 'The limiter', 'Rate limiter: twenty a minute'],
-    [null, 'src/config.ts:3-4', 'The limiter', 'Rate limiter: twenty a minute'],
-    [2, 'src/server.ts:40-55', 'The route', null],
+    [1, 'src/limiter.ts:12-31', { chapter: 'The limiter', scene: 1 }, 'Rate limiter: twenty a minute'],
+    [null, 'src/config.ts:3-4', { chapter: 'The limiter', scene: 1 }, 'Rate limiter: twenty a minute'],
+    [2, 'src/server.ts:40-55', { chapter: 'The route', scene: 2 }, null],
   ]);
   assert.deepEqual(readingLines(order), [
     '  1. src/limiter.ts:12-31  the key resets on a new minute; check the off-by-one (Claude: likely bug, the count is per server)',
@@ -187,15 +190,15 @@ test('the reading order resolves file and lines from hunks.json, numbers the ite
     '',
     '### Rate limiter: twenty a minute',
     '',
-    '- [ ] 1. src/limiter.ts:12-31: the key resets on a new minute; check the off-by-one (Claude: likely bug, the count is per server)',
+    '- [ ] 1. `src/limiter.ts:12-31`: the key resets on a new minute; check the off-by-one (Claude: likely bug, the count is per server)',
     '',
     '### Other changes',
     '',
-    '- [ ] 2. src/server.ts:40-55: the limiter runs before the order is saved',
+    '- [ ] 2. `src/server.ts:40-55`: the limiter runs before the order is saved',
     '',
     '### Skim',
     '',
-    '- [ ] Rate limiter: twenty a minute: src/config.ts:3-4',
+    '- [ ] Rate limiter: twenty a minute: `src/config.ts:3-4`',
     '',
   ].join('\n'));
 });
@@ -208,11 +211,11 @@ test('validate writes reading.md and outline prints the reading order as clickab
     write('meta.json', { mode: 'diff', branch: 'feature/limit', base: 'main' });
     write('storyboard.json', { title: 'Rate limit', scenes: [intent, graph(['h1', 'h2']), tests, reading([...both, { hunkId: 'h3', routine: true }])] });
     const env = { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(dir, 'config'), CLAUDE_CONFIG_DIR: path.join(dir, 'claude') };
-    const run = (cmd) => spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), cmd, '--audience', 'preread', '--dir', dir], { encoding: 'utf8', env });
+    const run = (cmd, audience = ['--audience', 'preread']) => spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), cmd, ...audience, '--dir', dir], { encoding: 'utf8', env });
     const validated = run('validate');
     assert.equal(validated.status, 0, validated.stderr);
     assert.match(validated.stdout, /wrote .*reading\.md/);
-    assert.match(fs.readFileSync(path.join(dir, 'reading.md'), 'utf8'), /^# Reading order: Rate limit\n[\s\S]*- \[ \] 1\. src\/limiter\.ts:12-31: the key resets on a new minute; check the off-by-one\n/);
+    assert.match(fs.readFileSync(path.join(dir, 'reading.md'), 'utf8'), /^# Reading order: Rate limit\n[\s\S]*- \[ \] 1\. `src\/limiter\.ts:12-31`: the key resets on a new minute; check the off-by-one\n/);
     const outlined = run('outline');
     assert.equal(outlined.status, 0, outlined.stderr);
     assert.deepEqual(outlined.stdout.trim().split('\n').slice(-4), [
@@ -221,6 +224,10 @@ test('validate writes reading.md and outline prints the reading order as clickab
       '  2. src/server.ts:40-55  the limiter runs before the order is saved',
       '  skim: src/config.ts:3-4',
     ]);
+    // Only a pre-read has a reading.md; validated for a reviewer, the run's own reading.md goes.
+    const reviewer = run('validate', []);
+    assert.match(reviewer.stdout, /this storyboard is a pre-read; pass --audience preread/);
+    assert.equal(fs.existsSync(path.join(dir, 'reading.md')), false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -235,4 +242,115 @@ test('the server tells the plan page the audience it was started for', async () 
     await server.close();
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('in a pre-read the plan depth changes only the video, so a brief or skipped topic keeps its hunks in the reading order', async () => {
+  const skipped = (reason) => [{ hunkId: 'h2', reason }];
+  const brief = await validate([intent, graph(['h1']), tests, reading(both.slice(0, 1))], { skipped: skipped('the viewer chose a brief look at this topic') });
+  assert.deepEqual(matching(brief.warnings, /^skipped\[/), [
+    'skipped[0]: h2 src/server.ts (+16) is skipped as "the viewer chose a brief look at this topic", so it is not in the reading order; in a pre-read the plan\'s depth changes only the video, and the reviewer still reads the code, so add it to the reading scene\'s items ("routine": true for a change to skim)',
+  ]);
+  const skip = await validate([intent, graph(['h1']), tests, reading(both.slice(0, 1))], { skipped: skipped('the viewer chose to skip this topic') });
+  assert.equal(matching(skip.warnings, /skipped as "the viewer chose to skip this topic", so it is not in the reading order/).length, 1);
+  // A small hunk may still be skipped, and a reviewer's video still skips a brief topic's hunks.
+  const small = await validate([intent, graph(['h1', 'h2']), tests, reading(both)], { skipped: [{ hunkId: 'h3', reason: 'the viewer chose a brief look at this topic' }] });
+  assert.deepEqual(matching(small.warnings, /^skipped\[/), []);
+  const reviewer = await validate([intent, graph(), tests], { skipped: skipped('the viewer chose a brief look at this topic') }, 'familiar');
+  assert.deepEqual(matching(reviewer.warnings, /^skipped\[/), []);
+
+  const topic = { id: 'route', title: 'The route', summary: 'Mounts it.', files: [], depth: 'skip', views: ['parts'], seconds: { brief: 30, deep: 60 } };
+  const plan = { plan: { topics: [topic] }, ...checkPlan({ topics: [topic] }, { preread: true }) };
+  const shown = await validateStoryboard({ title: 'Rate limit', scenes: [intent, { ...graph(['h1', 'h2']), topic: 'route' }, tests, reading(both)], plan: { route: { depth: 'skip', view: 'parts' } } }, hunks, { audience: 'preread', plan });
+  assert.deepEqual(matching(shown.warnings, /chose to skip it/), ['topic "route": the viewer chose to skip it, but scenes[1] show it; remove them and add its hunks to the reading order, since the reviewer still reads them']);
+});
+
+test('a pre-read flags findings only on reading items, on a line of the item\'s hunk', async () => {
+  const finding = (line) => ({ id: 'per-server', severity: 'bug', file: 'src/limiter.ts', line, claim: 'the count is per server', evidence: 'two servers each allow twenty, so forty pass' });
+  const flow = { type: 'flow', narration: 'One order.', from: ['h1'], steps: [{ actor: '`checkLimit`', action: 'count 21 of 20', say: 'I think this count is per server.', flag: 'per-server' }] };
+  const stepFlag = await validate([intent, graph(['h1', 'h2']), flow, tests, reading([{ ...both[0], flag: 'per-server' }, both[1]])], { findings: [finding(14)] });
+  assert.deepEqual(matching(stepFlag.errors, /flag/), ['scenes[2].steps[0].flag: a pre-read carries its findings on the reading order; flag it on the reading item of its hunk']);
+
+  // h1 holds src/limiter.ts lines 12 to 31; line 40 is in the same file but not in that hunk.
+  const outside = await validate([intent, graph(['h1', 'h2']), tests, reading([{ ...both[0], flag: 'per-server' }, both[1]])], { findings: [finding(40)] });
+  assert.deepEqual(matching(outside.errors, /items\[0\]\.flag/), ['scenes[3].items[0].flag: "per-server" is at src/limiter.ts:40, but h1 covers src/limiter.ts:12-31; flag it on the item of the hunk that holds that line']);
+  const edge = await validate([intent, graph(['h1', 'h2']), tests, reading([{ ...both[0], flag: 'per-server' }, both[1]])], { findings: [finding('30-33')] });
+  assert.deepEqual(matching(edge.errors, /items\[0\]\.flag/), []);
+});
+
+test('"Explained in" names the scene to seek to, and two citing scenes need their own chapters', async () => {
+  const twin = { ...graph(['h2']), narration: 'The route mounts it in `server.ts`.' };
+  const { warnings } = await validate([intent, graph(['h1']), twin, tests, reading(both)]);
+  assert.deepEqual(matching(warnings, /Explained in/), ['scenes[2]: cites hunks in "from" under the chapter "The limiter", as scenes[1] does, so the reading order\'s "Explained in" cannot tell them apart; give one its own "chapter"']);
+  const sb = { title: 'Rate limit', scenes: [intent, graph(['h1']), { ...twin, chapter: 'The route' }, tests, reading(both)] };
+  assert.deepEqual(readingOrder(sb, hunks).items.map((i) => i.explainedIn), [{ chapter: 'The limiter', scene: 1 }, { chapter: 'The route', scene: 2 }]);
+});
+
+test('reading.md keeps paths and inline code as code, and file names lose control characters', () => {
+  const odd = { ...hunks, h4: { ...hunk('h4', 'src/we\u001b[31mird\u0007.ts', ['export const LIMIT = 20;']), lines: [{ type: 'add', oldLine: null, newLine: 7, text: 'export const LIMIT = 20;' }] } };
+  const sb = { title: 'Rate limit', findings: [{ id: 'f', severity: 'risk', file: 'src/limiter.ts', line: 12, claim: '`checkLimit` trusts **the header**', evidence: 'x' }], scenes: [intent, graph(['h1']), tests, reading([{ hunkId: 'h1', check: 'the `windowStart` resets on a **new** minute', flag: 'f' }, { hunkId: 'h4', check: 'the limit is 20' }])] };
+  const order = readingOrder(sb, odd);
+  assert.equal(readingChecklist(order), [
+    '- [ ] 1. `src/limiter.ts:12-31`: the `windowStart` resets on a new minute (Claude: risk, `checkLimit` trusts the header)',
+    '- [ ] 2. `src/we[31mird.ts:7`: the limit is 20',
+  ].join('\n'));
+  assert.deepEqual(readingLines(order), [
+    '  1. src/limiter.ts:12-31  the windowStart resets on a new minute (Claude: risk, checkLimit trusts the header)',
+    '  2. src/we[31mird.ts:7  the limit is 20',
+  ]);
+});
+
+test('a reading scene or from outside a pre-read asks for --audience preread', async () => {
+  const { warnings } = await validate([intent, graph(['h1', 'h2']), tests, reading(both)], {}, 'familiar');
+  assert.deepEqual(matching(warnings, /pre-read/), [
+    'this storyboard is a pre-read; pass --audience preread',
+    'scenes[1].from: only a pre-read (--audience preread) reads "from"; show the code in a code scene instead',
+    'scenes[3]: only a pre-read has a reading scene; pass --audience preread, or remove it',
+  ]);
+  const plain = await validate([intent, graph(), tests], { skipped: [{ hunkId: 'h1', reason: 'formatting only' }, { hunkId: 'h2', reason: 'formatting only' }] }, 'familiar');
+  assert.deepEqual(matching(plain.warnings, /pre-read/), []);
+});
+
+test('a pre-read warns about a label that writes code, and allows names and plain words', async () => {
+  const flow = (payloads) => ({
+    type: 'flow', chapter: 'One delivery', narration: 'The worker claims a row, and `claimDue(row, now)` is fine to say.', from: ['h1'],
+    steps: payloads.map((payload, i) => ({ actor: '`checkLimit`', action: 'POST with a 10 s timeout', payload, say: `Step ${i}, where a && b is spoken, not shown.` })),
+  });
+  const wrote = await validate([intent, graph(['h1', 'h2']), flow([
+    "{ status: 'pending', next_attempt_at: now + 10 s }",
+    'rows.filter(r => r.due)',
+    'attempts === 8',
+    'ok && signed',
+    'claimDue(row, now)',
+    'lock(); send()',
+  ]), tests, reading(both)]);
+  assert.deepEqual(matching(wrote.warnings, /never expressions/), [
+    `scenes[2].steps[0].payload: "{ status: 'pending', next_attempt_at: now + 10 s }" is an object literal, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values`,
+    'scenes[2].steps[1].payload: "rows.filter(r => r.due)" is an arrow function, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
+    'scenes[2].steps[2].payload: "attempts === 8" is a comparison, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
+    'scenes[2].steps[3].payload: "ok && signed" is a boolean expression, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
+    'scenes[2].steps[4].payload: "claimDue(row, now)" is a call with arguments, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
+    'scenes[2].steps[5].payload: "lock(); send()" is statements, and a pre-read shows identifiers and file names, never expressions; say it in words with the real names and values',
+  ]);
+  const named = await validate([intent, graph(['h1', 'h2']), flow(['`claimDue`', 'limiter.ts', 'status pending, next try in 10 s', 'retries (up to 8); then dead', '{ status }', 'item(s)']), tests, reading(both)]);
+  assert.deepEqual(matching(named.warnings, /never expressions/), []);
+  const reviewer = await validate([intent, { ...graph(), nodes: [{ id: 'a', label: 'a && b' }, { id: 'b', label: 'b' }], edges: [{ from: 'a', to: 'b' }] }, tests], { skipped: [{ hunkId: 'h1', reason: 'formatting only' }, { hunkId: 'h2', reason: 'formatting only' }] }, 'familiar');
+  assert.deepEqual(matching(reviewer.warnings, /never expressions/), []);
+});
+
+test('the from check counts labels, not narration or a step\'s words', async () => {
+  // h3 is config.ts with MAX_REQUESTS; the narration and the step say both, but no label does.
+  const g = { ...graph(['h1', 'h3']), narration: 'It reads `MAX_REQUESTS` from `config.ts`.', steps: [{ focus: 'limiter', say: 'Here `MAX_REQUESTS` is twenty.' }] };
+  const { warnings } = await validate([intent, g, tests, reading([...both, { hunkId: 'h3', routine: true }])]);
+  assert.equal(matching(warnings, /nothing on screen names h3/).length, 1);
+});
+
+test('the reading scene counts the items to read past the first six apart from the routine ones', () => {
+  const many = Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`r${i}`, hunk(`r${i}`, `src/part${i}.ts`, ['export const a = 1;'], 1)]));
+  const items = Array.from({ length: 11 }, (_, i) => (i < 8 ? { hunkId: `r${i}`, check: `check part ${i}` } : { hunkId: `r${i}`, routine: true }));
+  const sb = { title: 'Parts', scenes: [intent, reading(items)] };
+  const layout = layoutReading(readingOrder(sb, many), items, 1712, 760);
+  assert.equal(layout.rows.length, 6);
+  assert.equal(moreText(layout), '+2 more to read, +3 routine');
+  assert.equal(moreText({ moreToRead: 0, routine: 1 }), '+1 routine');
+  assert.equal(moreText({ moreToRead: 1, routine: 0 }), '+1 more to read');
 });

@@ -155,7 +155,7 @@ async function loadProject(dir, settings) {
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
-  const reading = result.errors.length ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta);
+  const reading = result.errors.length ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
   return { dir, hunks, storyboard, plan, result, style, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
@@ -189,11 +189,11 @@ function writeReview(file, storyboard, meta) {
 
 /**
  * reading.md, a pre-read's reading order as a checklist to follow in the editor and paste into the merge request.
- * Like review.md: removed when the storyboard has no reading scene, and never written over a file mr-cast did not
- * write. Returns the file written, or null.
+ * Like review.md: removed when the run is not a pre-read or the storyboard has no reading scene, and never written
+ * over a file mr-cast did not write. Returns the file written, or null.
  */
-function writeReading(file, storyboard, hunks, plan, meta) {
-  const order = readingOrder(storyboard, hunks, plan);
+function writeReading(file, storyboard, hunks, plan, meta, settings) {
+  const order = settings.audience === 'preread' ? readingOrder(storyboard, hunks, plan) : null;
   if (!ownFile(file, READING_HEADING)) {
     if (order) console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the reading order is not saved`);
     return null;
@@ -594,7 +594,7 @@ async function render(argv) {
   // review.md and reading.md are in the run's directory; a video saved elsewhere gets its own copies beside it.
   const elsewhere = path.dirname(path.resolve(video)) !== path.resolve(dir);
   const review = elsewhere ? writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir)) : null;
-  const reading = elsewhere ? writeReading(video.replace(/\.[^./]+$/, '.reading.md'), storyboard, hunks, planFile?.plan, readRunMeta(dir)) : null;
+  const reading = elsewhere ? writeReading(video.replace(/\.[^./]+$/, '.reading.md'), storyboard, hunks, planFile?.plan, readRunMeta(dir), run.settings) : null;
   console.log(video);
   if (review) console.log(review);
   if (reading) console.log(reading);

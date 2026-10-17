@@ -9,6 +9,9 @@ import { aType } from '../../shared/words.mjs';
 // shows a topic's lines whatever its view.
 const ANY_VIEW = ['intent', 'files', 'tests', 'review', 'reading', 'code'];
 
+// The scenes a pre-read's deep topic traces its concrete case in, whatever its view.
+const TRACE = ['flow', 'array', 'table'];
+
 const drawn = (view) => VIEWS[view].scenes.map(aType).join(' or ');
 const pickJson = (pick) => JSON.stringify({ depth: pick.depth, view: pick.view });
 
@@ -86,6 +89,7 @@ function sceneChecks(sb, plan, written, preread) {
     entry.scenes.push(i);
     const { view, depth } = entry.pick;
     if (depth === 'skip' || ANY_VIEW.includes(s.type) || VIEWS[view].scenes.includes(s.type)) return;
+    if (preread && depth === 'deep' && TRACE.includes(s.type)) return;
     problems.push(`scenes[${i}] is ${aType(s.type)} scene in "${s.topic}", which the viewer chose to see as "${VIEWS[view].label}"; draw it as ${drawn(view)} scene, or move this scene to another topic`);
   });
   for (const [id, { pick, scenes }] of topics) {
@@ -98,7 +102,8 @@ function sceneChecks(sb, plan, written, preread) {
 /** How the scenes of topic `id` do not show `pick`, or null when they do. */
 function topicProblem(id, pick, scenes, preread) {
   if (pick.depth === 'skip') {
-    return scenes.length ? `topic "${id}": the viewer chose to skip it, but scenes[${scenes.map(([i]) => i).join(', ')}] show it; remove them and list its hunks in skipped with the reason "the viewer chose to skip this topic"` : null;
+    const hunks = preread ? 'add its hunks to the reading order, since the reviewer still reads them' : 'list its hunks in skipped with the reason "the viewer chose to skip this topic"';
+    return scenes.length ? `topic "${id}": the viewer chose to skip it, but scenes[${scenes.map(([i]) => i).join(', ')}] show it; remove them and ${hunks}` : null;
   }
   if (!scenes.length) return `topic "${id}": the viewer chose ${pick.depth}, and no scene has "topic": "${id}"; add its scenes, or tag the scenes that show it`;
   if (pick.view !== 'code' && !scenes.some(([, s]) => VIEWS[pick.view].scenes.includes(s.type))) {

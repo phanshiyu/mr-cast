@@ -2,7 +2,7 @@
 // each with what to check there. The storyboard's `reading` scene holds it; the scene, the player's Reading
 // order panel, reading.md and `mr-cast outline` all draw it from here, so they never disagree.
 
-import { plainText } from './markup.mjs';
+import { parseMarkup, plainText } from './markup.mjs';
 import { sceneChapter } from './chapters.mjs';
 
 /** Items the closing scene lists under "Read first"; the rest of the order is in reading.md. */
@@ -15,6 +15,10 @@ export const READING_HEADING = '# Reading order: ';
 export const FLAG_WORDS = { bug: 'likely bug', risk: 'risk', nit: 'nit' };
 
 const oneLine = (text) => plainText(String(text)).replace(/\s+/g, ' ').trim();
+/** One line of Markdown: the markup's `code` stays code, and the rest is plain text. */
+const mdLine = (text) => parseMarkup(String(text)).runs.map((r) => (r.code ? `\`${r.text}\`` : r.text)).join('').replace(/\s+/g, ' ').trim();
+// A file name from git may hold control characters, which would garble the terminal and reading.md.
+const C0 = /[\u0000-\u001f\u007f]/g;
 
 /** The scene that holds the reading order, or undefined. */
 export const readingScene = (storyboard) => storyboard?.scenes?.find((s) => s?.type === 'reading');
@@ -23,9 +27,10 @@ export const readingScene = (storyboard) => storyboard?.scenes?.find((s) => s?.t
 export function hunkLocation(hunk) {
   const side = hunk.lines.some((l) => l.newLine !== null) ? 'newLine' : 'oldLine';
   const numbers = hunk.lines.map((l) => l[side]).filter((n) => n !== null);
-  if (!numbers.length) return hunk.file;
+  if (!numbers.length) return hunk.file.replace(C0, '');
   const [a, b] = [Math.min(...numbers), Math.max(...numbers)];
-  return `${side === 'oldLine' ? hunk.oldFile ?? hunk.file : hunk.file}:${a === b ? a : `${a}-${b}`}${side === 'oldLine' ? ' (removed)' : ''}`;
+  const file = (side === 'oldLine' ? hunk.oldFile ?? hunk.file : hunk.file).replace(C0, '');
+  return `${file}:${a === b ? a : `${a}-${b}`}${side === 'oldLine' ? ' (removed)' : ''}`;
 }
 
 /**
@@ -78,7 +83,7 @@ export function readingOrder(storyboard, hunks, plan = null) {
       routine: item.routine === true,
       number: item.routine === true ? null : ++n,
       finding: typeof item.flag === 'string' ? findings.get(item.flag) ?? null : null,
-      explainedIn: by ? sceneChapter(by.scene) : null,
+      explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
       topic: (by?.scene.topic && topics.get(by.scene.topic)) ?? null,
     };
   });
@@ -93,12 +98,21 @@ export function readingOrder(storyboard, hunks, plan = null) {
 }
 
 /** "Claude: likely bug, the count is per server". */
-export const flagText = (finding) => `Claude: ${FLAG_WORDS[finding.severity] ?? finding.severity}, ${oneLine(finding.claim)}`;
+export const flagText = (finding, line = oneLine) => `Claude: ${FLAG_WORDS[finding.severity] ?? finding.severity}, ${line(finding.claim)}`;
 
-/** One item as a line: its number, place and check, and the finding it carries. */
-function itemLine(item, sep) {
+/** One item as a terminal line: its number, place and check, and the finding it carries. */
+function itemLine(item) {
   const flag = item.finding ? ` (${flagText(item.finding)})` : '';
-  return `${item.number}. ${item.where}${sep}${oneLine(item.check)}${flag}`;
+  return `${item.number}. ${item.where}  ${oneLine(item.check)}${flag}`;
+}
+
+/** "`src/a.ts:3-4`", or "`src/a.ts:3-4` (removed)": the place as Markdown code. */
+const mdWhere = (where) => where.replace(/^(.*?)( \(removed\))?$/, '`$1`$2');
+
+/** One item as a Markdown checklist entry. */
+function itemMarkdown(item) {
+  const flag = item.finding ? ` (${flagText(item.finding, mdLine)})` : '';
+  return `- [ ] ${item.number}. ${mdWhere(item.where)}: ${mdLine(item.check)}${flag}`;
 }
 
 /** The reading order as a Markdown checklist: the items to read in runs by topic, then one "skim" line per topic. */
@@ -106,12 +120,12 @@ export function readingChecklist(order) {
   const out = [];
   for (const group of order.groups) {
     if (group.title) out.push(`### ${oneLine(group.title)}`, '');
-    for (const item of group.items) out.push(`- [ ] ${itemLine(item, ': ')}`);
+    for (const item of group.items) out.push(itemMarkdown(item));
     out.push('');
   }
   if (order.skim.length) {
     out.push('### Skim', '');
-    for (const group of order.skim) out.push(`- [ ] ${group.title ? `${oneLine(group.title)}: ` : ''}${group.items.map((i) => i.where).join(', ')}`);
+    for (const group of order.skim) out.push(`- [ ] ${group.title ? `${oneLine(group.title)}: ` : ''}${group.items.map((i) => mdWhere(i.where)).join(', ')}`);
   }
   return out.join('\n').trimEnd();
 }
@@ -124,7 +138,7 @@ export function readingMarkdown(storyboard, order, { branch, base } = {}) {
 
 /** The reading order as terminal lines, `1. src/limiter.ts:12-30  check`, which Claude Code makes clickable. */
 export function readingLines(order) {
-  const lines = order.readFirst.map((item) => `  ${itemLine(item, '  ')}`);
+  const lines = order.readFirst.map((item) => `  ${itemLine(item)}`);
   const routine = order.items.filter((i) => i.routine);
   if (routine.length) lines.push(`  skim: ${routine.map((i) => i.where).join(', ')}`);
   return lines;

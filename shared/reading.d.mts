@@ -14,8 +14,8 @@ export interface ReadingEntry {
   /** 1-based among the non-routine items; null for a routine one. */
   number: number | null;
   finding: Finding | null;
-  /** The chapter of the scene that cites the hunk in `from` with the fewest hunks. */
-  explainedIn: string | null;
+  /** The scene that cites the hunk in `from` with the fewest hunks: its chapter, and its index to seek to. */
+  explainedIn: { chapter: string; scene: number } | null;
   /** The plan topic of the scene that explains it, or null. */
   topic: string | null;
 }
@@ -38,7 +38,7 @@ export interface ReadingOrder {
 export declare function readingScene(storyboard: Storyboard): ReadingScene | undefined;
 export declare function hunkLocation(hunk: Hunk): string;
 export declare function readingOrder(storyboard: Storyboard, hunks: HunkMap, plan?: Plan | null): ReadingOrder | null;
-export declare function flagText(finding: Finding): string;
+export declare function flagText(finding: Finding, line?: (text: string) => string): string;
 export declare function readingChecklist(order: ReadingOrder): string;
 export declare function readingMarkdown(storyboard: Storyboard, order: ReadingOrder, run?: { branch?: string; base?: string }): string;
 export declare function readingLines(order: ReadingOrder): string[];
