@@ -1,7 +1,8 @@
 name: Publish
 
 # Publishes to npm after CI passes on main, when package.json holds a version npm does not have yet, then renders
-# every example and attaches the MP4s to the GitHub release for that version (docs/adr/0021-example-videos-as-release-assets.md).
+# every example across six runners and attaches the MP4s to the GitHub release for that version
+# (docs/adr/0021-example-videos-as-release-assets.md, docs/adr/0022-shard-the-example-renders.md).
 # Started by hand, it also re-renders the examples for the version in package.json.
 on:
   workflow_run:
@@ -69,14 +70,38 @@ jobs:
           cat "$RUNNER_TEMP/publish.log"
           echo "::notice::Published ${{ steps.check.outputs.version }}"
 
-  media:
-    name: Render the examples onto the release
+  release:
+    name: Open the release as a draft
     needs: publish
     if: needs.publish.outputs.published == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 5
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: v${{ needs.publish.outputs.version }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    # A new release stays a draft until every shard has attached its videos, so the latest/download links never
+    # point at a release without them.
+    steps:
+      - run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --draft --target "$SHA" --title "$TAG" --notes "See [CHANGELOG.md](https://github.com/$GH_REPO/blob/$TAG/CHANGELOG.md)."
+          fi
+
+  media:
+    name: Render examples, shard ${{ matrix.shard }} of 6
+    needs: [publish, release]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
     env:
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
       TAG: v${{ needs.publish.outputs.version }}
@@ -100,19 +125,29 @@ jobs:
           path: .cache/mr-cast/models
           key: kokoro-82m-v1.0-q8
       - run: pnpm build
-      - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media"
-      # A new release stays a draft until its videos are attached, so the latest/download links never point at a
-      # release without them.
+      - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "${{ matrix.shard }}/6"
       - name: Attach the videos to the release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          if ! gh release view "$TAG" > /dev/null 2>&1; then
-            gh release create "$TAG" --draft --target "$SHA" --title "$TAG" --notes "See [CHANGELOG.md](https://github.com/$GH_REPO/blob/$TAG/CHANGELOG.md)."
-          fi
           gh release upload "$TAG" "$RUNNER_TEMP"/media/*.mp4 --clobber
+          echo "::notice::Shard ${{ matrix.shard }} attached $(ls "$RUNNER_TEMP"/media/*.mp4 | wc -l) videos to $TAG"
+
+  undraft:
+    name: Publish the release
+    needs: [publish, media]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: v${{ needs.publish.outputs.version }}
+    steps:
+      - run: |
           if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = true ]; then
             gh release edit "$TAG" --draft=false --latest
           fi
-          echo "::notice::Attached $(ls "$RUNNER_TEMP"/media/*.mp4 | wc -l) videos to $TAG"
+          echo "::notice::$TAG has $(gh release view "$TAG" --json assets --jq '.assets | length') assets"
