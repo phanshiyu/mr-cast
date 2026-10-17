@@ -35,7 +35,7 @@ Good:
 
 Bad:
 - One extra model call per full video.
-- The audit's recall on seeded mismatches is not recorded in these sources; record it here when it is measured again.
+- Measured on 4 bubble-sort storyboards from the 0.22 skill (19 hand-labelled mismatches) and 8 mismatches seeded into other diagram types: the Sonnet audit alone found 12 of 19 real and 8 of 8 seeded, with no false positives, in about 10 to 20 s a call. Haiku found 11 and 8, with 4 false positives, and was slower. The linter alone found 19 of 19 real but 1 of 8 seeded. Linter plus Sonnet found all 27. Sonnet misses swaps described only as a reason; the linter misses lagging or misplaced light on non-array diagrams. Small sample: one topic for the real cases.
 
 ## Alternatives considered
 
