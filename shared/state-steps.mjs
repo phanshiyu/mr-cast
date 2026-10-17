@@ -8,9 +8,9 @@ import { indexRange } from './steps.mjs';
 import { ambiguousIndex, memberKey, resolveRef, splitMemberKey } from './targets.mjs';
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
+import { memoryMembers } from './storyboard-json.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
-const entries = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(v) : []);
 const isText = (v) => typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v));
 /** A memory value that points at an object: `{ "ref": "c1" }`. */
 export const isPointer = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v) && typeof v.ref === 'string';
@@ -155,7 +155,7 @@ const MODELS = {
     initial(scene) {
       const owners = [...list(scene.frames).map((f) => [`fr:${f?.name}`, 'v', f?.name, f?.vars, f?.hidden]), ...list(scene.objects).map((o) => [`o:${o?.id}`, 'f', o?.id, o?.fields, o?.hidden])];
       return {
-        values: Object.fromEntries(owners.flatMap(([, kind, owner, record]) => entries(record).map(([name, value]) => [memberKey(kind, owner, name), value]))),
+        values: Object.fromEntries(owners.flatMap(([, kind, owner, members]) => memoryMembers(members).map(([name, value]) => [memberKey(kind, owner, name), value]))),
         places: {},
         hidden: Object.fromEntries(owners.flatMap(([key, , , , hidden]) => (hidden === true ? [[key, true]] : []))),
       };
@@ -326,9 +326,9 @@ function refNamesOf(scene, prefixes) {
     ...list(scene.pointers).map((p) => `ptr:${p?.name}`),
     ...list(scene.ranges).map((r) => `range:${r?.name}`),
     ...list(scene.frames).map((f) => `frame:${f?.name}`),
-    ...list(scene.frames).flatMap((f) => entries(f?.vars).map(([v]) => `${f?.name}.${v}`)),
+    ...list(scene.frames).flatMap((f) => memoryMembers(f?.vars).map(([v]) => `${f?.name}.${v}`)),
     ...list(scene.objects).map((o) => o?.id),
-    ...list(scene.objects).flatMap((o) => entries(o?.fields).map(([k]) => `${o?.id}.${k}`)),
+    ...list(scene.objects).flatMap((o) => memoryMembers(o?.fields).map(([k]) => `${o?.id}.${k}`)),
     ...(Array.isArray(scene.arrays) ? scene.arrays.map((a) => `array:${a?.name}`) : []),
     ...(scene.type === 'graph' ? list(scene.nodes).map((n) => n?.id) : []),
     ...(scene.type === 'svg' ? svgOf(scene.svg).ids.keys() : []),

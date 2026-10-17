@@ -3,6 +3,7 @@
 // which the scenes draw from. Each pushes human/LLM-readable strings onto `errors` and `warnings`.
 
 import { isPointer, walkStates } from '../../shared/state-steps.mjs';
+import { memoryMembers } from '../../shared/storyboard-json.mjs';
 import { didYouMean } from './suggest.mjs';
 import { TONES } from './validate-scenes.mjs';
 
@@ -146,10 +147,14 @@ export function checkGraphState(s, p, errors, warnings) {
   checkStateSteps(s, p, errors, warnings);
 }
 
-/** A frame's vars or an object's fields: a record of name to text, number or `{ ref }`. */
-function checkValues(record, q, kind, ids, errors, warnings) {
-  if (!isRecord(record)) return errors.push(`${q}: required object of ${kind} name to value, e.g. { "total": 0, "cart": { "ref": "c1" } }`);
-  for (const [name, value] of Object.entries(record)) {
+/** A frame's vars or an object's fields: name to text, number or `{ ref }`, as an object or as [name, value] pairs. */
+function checkValues(members, q, kind, ids, errors, warnings) {
+  const pairs = Array.isArray(members) && members.every((p) => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string');
+  if (!isRecord(members) && !pairs) return errors.push(`${q}: required object of ${kind} name to value, e.g. { "total": 0, "cart": { "ref": "c1" } }`);
+  const seen = new Set();
+  for (const [name, value] of memoryMembers(members)) {
+    if (seen.has(name)) errors.push(`${q}: "${name}" is named twice; every ${kind} name is different`);
+    seen.add(name);
     const at = `${q}[${JSON.stringify(name)}]`;
     if (!name.trim()) errors.push(`${at}: a ${kind} needs a name`);
     if (isText(value)) continue;

@@ -9,6 +9,7 @@ import { sceneFiles } from './files.mjs';
 import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
 import { outputLines } from './terminal.mjs';
+import { memoryMembers } from './storyboard-json.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
@@ -309,7 +310,7 @@ const TARGETS = {
         return frames.some((f) => f?.name === name) ? [`fr:${name}`] : null;
       }
       if (objects.some((o) => o?.id === ref)) return [`o:${ref}`];
-      const has = (record, key) => Boolean(record) && typeof record === 'object' && Object.hasOwn(record, key);
+      const has = (members, key) => memoryMembers(members).some(([name]) => name === key);
       for (let at = ref.indexOf('.'); at > 0; at = ref.indexOf('.', at + 1)) {
         const [owner, name] = [ref.slice(0, at), ref.slice(at + 1)];
         if (frames.some((f) => f?.name === owner && has(f.vars, name))) return [memberKey('v', owner, name)];
@@ -319,9 +320,9 @@ const TARGETS = {
     },
     names: (scene) => [
       ...list(scene.frames).map((f) => `frame:${f?.name}`),
-      ...list(scene.frames).flatMap((f) => Object.keys(f?.vars ?? {}).map((v) => `${f?.name}.${v}`)),
+      ...list(scene.frames).flatMap((f) => memoryMembers(f?.vars).map(([v]) => `${f?.name}.${v}`)),
       ...list(scene.objects).map((o) => o?.id),
-      ...list(scene.objects).flatMap((o) => Object.keys(o?.fields ?? {}).map((k) => `${o?.id}.${k}`)),
+      ...list(scene.objects).flatMap((o) => memoryMembers(o?.fields).map(([k]) => `${o?.id}.${k}`)),
     ],
   },
   svg: {

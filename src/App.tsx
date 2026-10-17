@@ -3,6 +3,7 @@ import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, CircleDot, Columns2,
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
+import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { checkPlan } from '../shared/plan.mjs';
 import { PlanPage, type BuiltPicks } from './PlanPage';
 import { ReadingPanel } from './ReadingPanel';
@@ -53,7 +54,7 @@ async function fetchJson<T>(file: string): Promise<T> {
 }
 
 /** The data file, or null when the run has none. */
-async function fetchOptional<T>(file: string): Promise<T | null> {
+async function fetchOptional<T>(file: string, parse: (text: string) => unknown = JSON.parse): Promise<T | null> {
   let res: Response;
   try {
     res = await fetch(`./data/${file}`, { cache: 'no-store' });
@@ -63,7 +64,7 @@ async function fetchOptional<T>(file: string): Promise<T | null> {
   if (res.status === 404) return null;
   if (!res.ok) throw new DataError(file, `HTTP ${res.status} ${res.statusText}`);
   try {
-    return (await res.json()) as T;
+    return parse(await res.text()) as T;
   } catch (err) {
     throw new DataError(file, `invalid JSON: ${(err as Error).message}`);
   }
@@ -86,7 +87,7 @@ async function loadPlan(): Promise<PlanData | null> {
 async function loadAll(): Promise<LoadState> {
   try {
     const [storyboard, plan, meta, settings] = await Promise.all([
-      fetchOptional<{ scenes?: unknown }>('storyboard.json'),
+      fetchOptional<{ scenes?: unknown }>('storyboard.json', parseStoryboard),
       loadPlan(),
       fetchJson<Meta>('meta.json').catch(() => null),
       fetchOptional<ServedSettings>('settings.json').catch(() => null),

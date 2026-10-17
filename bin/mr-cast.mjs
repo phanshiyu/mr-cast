@@ -24,6 +24,7 @@ import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { formatSteps } from './lib/highlight.mjs';
 import { formatSchema } from './lib/schema.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
+import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
@@ -114,7 +115,7 @@ function intOption(value, name, min) {
   return n;
 }
 
-function readJson(file, missingHint) {
+function readJson(file, missingHint, parse = JSON.parse) {
   let text;
   try {
     text = fs.readFileSync(file, 'utf8');
@@ -123,7 +124,7 @@ function readJson(file, missingHint) {
     throw err;
   }
   try {
-    return JSON.parse(text);
+    return parse(text);
   } catch (err) {
     const loc = locateJsonError(text);
     if (!loc) throw err;
@@ -151,7 +152,7 @@ function timingVoiceover(dir, settings) {
 /** The run checked and its storyboard normalized. Unless `write` is false, review.md and reading.md are written or removed to match it. */
 async function loadProject(dir, settings, { write = true } = {}) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
-  const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
+  const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)', parseStoryboard);
   const plan = readPlan(dir, { preread: settings.audience === 'preread' });
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
   const meta = readRunMeta(dir);

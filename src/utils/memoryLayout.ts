@@ -1,8 +1,9 @@
 import { fitBlock, fitText, type Fit } from '../../shared/textfit.mjs';
 import { isPointer, sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { memberKey, splitMemberKey } from '../../shared/targets.mjs';
+import { memoryMembers } from '../../shared/storyboard-json.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { MemoryScene } from '../types';
+import type { MemoryMembers, MemoryScene } from '../types';
 import type { Box, LayoutBoxes, Pt } from './penGeometry';
 
 export const ROW_H = 48;
@@ -25,12 +26,17 @@ const SCALE_MIN = 0.72;
 const SCALE_MAX = 1.3;
 /** Gap between the ends of arrows that share an object. */
 const END_GAP = 10;
-/** Room under the cards for arrows that point back left, and their depth below the lowest card. */
-const ARC_GAP = 34;
-const ARC_ROOM = 30;
-
-/** Whether an arrow from a row of `from` reaches `to` going right, into its header's left side. */
-const ahead = (from: { x: number; w: number }, to: { x: number }) => to.x >= from.x + from.w;
+/** How far below the lowest card the first lane runs, and the room under the last one. */
+const LANE_GAP = 34;
+const LANE_ROOM = 16;
+/** Distance between routed arrows running side by side, along a lane or down a gap, and the first one's from its card. */
+const ROUTE_STEP = 12;
+const ROUTE_GAP = 18;
+/** Places on each side of a gap: routes leave a column on the gap's left half and enter one on its right half. */
+const ROUTES_PER_GAP = 5;
+const CORNER = 14;
+/** Cubic segments in every arrow, so an arrow that re-routes can blend between any two shapes. */
+const SEGMENTS = 9;
 
 export interface MemoryRow {
   /** Its state key, from `memberKey`: "v:frame/var" or "f:object/field". */
@@ -64,8 +70,13 @@ export interface MemoryLayout {
   /** Every text value any state shows, by its text. */
   values: Map<string, Fit>;
   panels: { frames: Fit | null; objects: Fit | null; objectsX: number };
-  /** Where an arrow back to an object no further right runs, under every card. */
-  arcY: number;
+  /**
+   * Each reference that does not run straight into the next column, by "key>target": its place in the gaps
+   * between columns, and its lane under the cards, or -1 when it keeps to its own column's gap.
+   */
+  routes: Map<string, { place: number; lane: number }>;
+  /** The first lane's y. */
+  laneY: number;
   width: number;
   height: number;
   /** The layout's size in the frame: above 1 for a small program, below 1 for one larger than the frame. */
@@ -113,16 +124,16 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
   const note = (value: unknown, path: string) => {
     if (!isPointer(value) && !texts.has(String(value))) texts.set(String(value), path);
   };
-  scene.frames.forEach((f, i) => Object.entries(f.vars).forEach(([k, v]) => note(v, `frames[${i}].vars[${JSON.stringify(k)}]`)));
-  scene.objects.forEach((o, i) => Object.entries(o.fields).forEach(([k, v]) => note(v, `objects[${i}].fields[${JSON.stringify(k)}]`)));
+  scene.frames.forEach((f, i) => memoryMembers(f.vars).forEach(([k, v]) => note(v, `frames[${i}].vars[${JSON.stringify(k)}]`)));
+  scene.objects.forEach((o, i) => memoryMembers(o.fields).forEach(([k, v]) => note(v, `objects[${i}].fields[${JSON.stringify(k)}]`)));
   (scene.steps ?? []).forEach((step, k) => Object.entries(step.set ?? {}).forEach(([ref, v]) => note(v, `steps[${k}].set[${JSON.stringify(ref)}]`)));
   const values = new Map([...texts].map(([text, path]) => [text, fitText(text, sized(SLOTS.memoryValue, VALUE_MAX - 2 * VALUE_PAD), path)]));
   /** Width a row's value box needs for every value it holds in any state. */
   const valueWidth = (key: string) =>
     Math.max(REF_W, ...states.map((s) => (isPointer(s.values[key]) ? REF_W : values.get(String(s.values[key]))!.width + 2 * VALUE_PAD)));
 
-  const card = (key: string, title: Fit, record: Record<string, unknown>, kind: 'v' | 'f', owner: string, path: string): MemoryCard => {
-    const rows = Object.keys(record).map((name, i) => ({ key: memberKey(kind, owner, name), name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
+  const card = (key: string, title: Fit, members: MemoryMembers, kind: 'v' | 'f', owner: string, path: string): MemoryCard => {
+    const rows = memoryMembers(members).map(([name], i) => ({ key: memberKey(kind, owner, name), name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
     const nameW = Math.max(0, ...rows.map((r) => r.name.width));
     const valueW = Math.max(0, ...rows.map((r) => valueWidth(r.key)));
     const w = Math.max(title.width + 2 * PAD, PAD + nameW + NAME_GAP + valueW + PAD);
@@ -169,12 +180,27 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
     x += w + COL_GAP;
   }
   const cards = [...frames, ...objects];
-  const width = Math.max(framesW, x - (objects.length ? COL_GAP : 0));
   const cardsBottom = Math.max(...cards.map((c) => c.y + c.h));
-  // A reference back to an object no further right runs under the cards, so the layout keeps room for it.
-  const backward = states.some((s) => Object.entries(s.values).some(([key, v]) => isPointer(v) && !ahead(placed.get(ownerOf(key))!, placed.get(`o:${v.ref}`)!)));
-  const arcY = cardsBottom + ARC_GAP;
-  const height = backward ? arcY + ARC_ROOM : cardsBottom;
+  // Every reference any state shows that does not run straight into the next column gets a place of its own,
+  // shortest first, so routes along the lanes nest instead of crossing.
+  const found = new Map<string, { key: string; target: string; kind: RouteKind }>();
+  for (const s of states) {
+    for (const [key, v] of Object.entries(s.values)) {
+      if (!isPointer(v)) continue;
+      const target = `o:${v.ref}`;
+      const kind = routeKind(placed.get(ownerOf(key))!, placed.get(target)!);
+      if (kind !== 'next') found.set(`${key}>${target}`, { key, target, kind });
+    }
+  }
+  const span = (r: { key: string; target: string }) => Math.abs(placed.get(ownerOf(r.key))!.x - placed.get(r.target)!.x);
+  const routed = [...found].sort(([, a], [, b]) => span(a) - span(b));
+  let lanes = 0;
+  const routes = new Map(routed.map(([pair, r], place) => [pair, { place, lane: r.kind === 'same' ? -1 : lanes++ }]));
+  const laneY = cardsBottom + LANE_GAP;
+  const height = lanes ? laneY + (lanes - 1) * ROUTE_STEP + LANE_ROOM : cardsBottom;
+  // A route out of the last column runs down the room to its right.
+  const rightmost = Math.max(...cards.map((c) => c.x + c.w));
+  const width = Math.max(framesW, x - (objects.length ? COL_GAP : 0), routed.length ? rightmost + ROUTE_GAP + Math.min(routed.length, ROUTES_PER_GAP) * ROUTE_STEP : 0);
   const scale = Math.min(SCALE_MAX, box.width / width, box.height / height);
   const row = new Map(cards.flatMap((c) => c.rows.map((r) => [r.key, { card: c, row: r }] as const)));
   const panels = {
@@ -183,7 +209,7 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
     objectsX,
   };
   const fix = 'show fewer frames, objects or variables, or split the program into two scenes';
-  return { cards, card: placed, row, values, panels, width, height, arcY, scale, room: fitBlock('frames', 'memory', scale >= SCALE_MIN, fix) };
+  return { cards, card: placed, row, values, panels, width, height, routes, laneY, scale, room: fitBlock('frames', 'memory', scale >= SCALE_MIN, fix) };
 }
 
 /** A row's value box. */
@@ -192,55 +218,112 @@ export function valueBox(layout: MemoryLayout, key: string): Box {
   return { x: card.x + card.valueX, y: card.y + row.y + 7, width: card.valueW, height: ROW_H - 14 };
 }
 
-/** A cubic curve from a reference's dot to the object it points at. */
+/** A path from a reference's dot to the object it points at: its start, then three points per cubic segment. */
 export interface Arrow {
-  from: Pt;
-  c1: Pt;
-  c2: Pt;
-  to: Pt;
+  points: Pt[];
 }
 
 /**
- * The arrow of each reference `state` shows, by its row key, from the dot in its value box. An arrow to an
- * object further right ends on the left of its header; one back to an object no further right runs under
- * the cards and up into the object's bottom. Arrows into one object end apart, in the order of their dots.
+ * How an arrow gets from a card to the one it points at: straight into the next column (`next`), or routed
+ * through the gaps beside the columns, so it never passes behind a card: within its own column (`same`),
+ * or along a lane under the cards to a column further right (`skip`) or no further right (`back`).
+ */
+type RouteKind = 'next' | 'same' | 'skip' | 'back';
+
+function routeKind(from: MemoryCard, to: MemoryCard): RouteKind {
+  if (to.column === from.column + 1) return 'next';
+  if (to.column === from.column) return 'same';
+  return to.column > from.column ? 'skip' : 'back';
+}
+
+const mix = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const dist = (a: Pt, b: Pt) => Math.hypot(b.x - a.x, b.y - a.y);
+
+/** Straight runs through `turns`, each corner rounded, as an arrow's points. */
+function rounded(turns: Pt[]): Pt[] {
+  const out = [turns[0]!];
+  const line = (a: Pt, b: Pt) => out.push(mix(a, b, 1 / 3), mix(a, b, 2 / 3), b);
+  let at = turns[0]!;
+  for (let i = 1; i < turns.length - 1; i++) {
+    const [prev, corner, next] = [turns[i - 1]!, turns[i]!, turns[i + 1]!];
+    const r = Math.min(CORNER, dist(prev, corner) / 2, dist(corner, next) / 2);
+    const [a, b] = [mix(corner, prev, r / (dist(prev, corner) || 1)), mix(corner, next, r / (dist(corner, next) || 1))];
+    line(at, a);
+    out.push(mix(a, corner, 0.55), mix(b, corner, 0.55), b);
+    at = b;
+  }
+  line(at, turns.at(-1)!);
+  return out;
+}
+
+/** `points` with still segments at its start, up to SEGMENTS. */
+const padded = (points: Pt[]): Pt[] => [points[0]!, ...Array<Pt>(3 * (SEGMENTS - (points.length - 1) / 3)).fill(points[0]!), ...points.slice(1)];
+
+/**
+ * The arrow of each reference `state` shows, by its row key, from the dot in its value box. An arrow into the
+ * next column ends on the left of its object's header. Any other leaves its card into the gap on the right;
+ * within the column it runs to the right of the object's header, and otherwise it runs along its lane under
+ * the cards and up into the object: into its bottom when it is the lowest in its column and no further
+ * right, else beside its header. Arrows into one side of an object end apart, in the order of their dots.
  */
 export function arrowsOf(layout: MemoryLayout, state: SceneState): Map<string, Arrow> {
-  const refs = Object.entries(state.values).flatMap(([key, v]) => (isPointer(v) && layout.row.has(key) ? [{ key, target: `o:${v.ref}` }] : []));
+  const refs = Object.entries(state.values).flatMap(([key, v]) => {
+    if (!isPointer(v) || !layout.row.has(key)) return [];
+    const [from, to] = [layout.row.get(key)!.card, layout.card.get(`o:${v.ref}`)!];
+    const kind = routeKind(from, to);
+    const lowest = !layout.cards.some((c) => c !== to && c.column === to.column && c.y > to.y);
+    const side = kind === 'next' || kind === 'skip' ? 'left' : kind === 'back' && lowest ? 'bottom' : 'right';
+    return [{ key, from, to, kind, side, route: layout.routes.get(`${key}>${to.key}`) }];
+  });
   const dot = (key: string): Pt => {
     const b = valueBox(layout, key);
     return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
   };
-  const forward = (key: string, target: string) => ahead(layout.row.get(key)!.card, layout.card.get(target)!);
   const out = new Map<string, Arrow>();
-  for (const { key, target } of refs) {
-    const to = layout.card.get(target)!;
-    const from = dot(key);
-    const fwd = forward(key, target);
-    const peers = refs.filter((r) => r.target === target && forward(r.key, r.target) === fwd).map((r) => r.key);
-    const spread = (k: string) => peers.indexOf(k) - (peers.length - 1) / 2;
-    if (fwd) {
-      peers.sort((a, b) => dot(a).y - dot(b).y);
-      const ty = to.y + HEAD_H / 2 + spread(key) * END_GAP;
-      const reach = Math.max(60, (to.x - from.x) * 0.5);
-      out.set(key, { from, c1: { x: from.x + reach, y: from.y }, c2: { x: to.x - reach, y: ty }, to: { x: to.x, y: ty } });
-    } else {
-      peers.sort((a, b) => dot(b).x - dot(a).x);
-      const tx = to.x + to.w / 2 + spread(key) * 2 * END_GAP;
-      const low = layout.arcY + ARC_ROOM / 2;
-      out.set(key, { from, c1: { x: from.x + 160, y: low }, c2: { x: tx, y: low }, to: { x: tx, y: to.y + to.h } });
+  for (const { key, from, to, kind, side, route } of refs) {
+    const start = dot(key);
+    const peers = refs.filter((r) => r.to === to && r.side === side).map((r) => r.key);
+    peers.sort(side === 'bottom' ? (a, b) => dot(b).x - dot(a).x : (a, b) => dot(a).y - dot(b).y);
+    const spread = peers.indexOf(key) - (peers.length - 1) / 2;
+    const ty = to.y + HEAD_H / 2 + spread * END_GAP;
+    if (kind === 'next') {
+      const reach = Math.max(60, (to.x - start.x) * 0.5);
+      out.set(key, { points: padded([start, { x: start.x + reach, y: start.y }, { x: to.x - reach, y: ty }, { x: to.x, y: ty }]) });
+      continue;
     }
+    const offset = ROUTE_GAP + (route!.place % ROUTES_PER_GAP) * ROUTE_STEP;
+    const gx = from.x + from.w + offset;
+    const lane = layout.laneY + route!.lane * ROUTE_STEP;
+    const tx = to.x + to.w / 2 + spread * 2 * END_GAP;
+    const turns: Pt[] =
+      kind === 'same'
+        ? [start, { x: gx, y: start.y }, { x: gx, y: ty }, { x: to.x + to.w, y: ty }]
+        : side === 'bottom'
+          ? [start, { x: gx, y: start.y }, { x: gx, y: lane }, { x: tx, y: lane }, { x: tx, y: to.y + to.h }]
+          : [start, { x: gx, y: start.y }, { x: gx, y: lane }, ...beside(to, side, offset, lane, ty)];
+    out.set(key, { points: padded(rounded(turns)) });
   }
   return out;
 }
 
-/** A point along an arrow, `t` from 0 at its dot to 1 at its object. */
-export function pointOn({ from, c1, c2, to }: Arrow, t: number): Pt {
-  const u = 1 - t;
-  return {
-    x: u * u * u * from.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * to.x,
-    y: u * u * u * from.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * to.y,
-  };
+/** The last turns of a lane route that ends beside an object's header, on its left or right, up the gap there. */
+function beside(to: MemoryCard, side: string, offset: number, lane: number, ty: number): Pt[] {
+  const [edge, x] = side === 'left' ? [to.x, to.x - offset] : [to.x + to.w, to.x + to.w + offset];
+  return [{ x, y: lane }, { x, y: ty }, { x: edge, y: ty }];
+}
+
+/** Points along an arrow's segments that move, for keeping notes off it. */
+export function arrowSamples({ points }: Arrow): Pt[] {
+  const out: Pt[] = [];
+  for (let i = 0; i + 3 < points.length; i += 3) {
+    const [p0, c1, c2, p1] = [points[i]!, points[i + 1]!, points[i + 2]!, points[i + 3]!];
+    if (dist(p0, p1) === 0 && dist(p0, c1) === 0) continue;
+    for (const t of [0.25, 0.5, 0.75, 1]) {
+      const u = 1 - t;
+      out.push({ x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p1.x, y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p1.y });
+    }
+  }
+  return out;
 }
 
 /**
@@ -255,7 +338,7 @@ export function memoryBoxes(layout: MemoryLayout, state: SceneState): LayoutBoxe
     for (const r of c.rows) boxes.set(r.key, { x: c.x + 6, y: c.y + r.y, width: c.w - 12, height: ROW_H });
   }
   const lines = [...arrowsOf(layout, state)].flatMap(([key, arrow]) =>
-    boxes.has(key) ? Array.from({ length: 9 }, (_, i) => pointOn(arrow, (i + 1) / 10)) : [],
+    boxes.has(key) ? arrowSamples(arrow) : [],
   );
   return { boxes, obstacles: layout.cards.filter((c) => !state.hidden[c.key]).map((c) => ({ x: c.x, y: c.y, width: c.w, height: c.h })), lines };
 }
