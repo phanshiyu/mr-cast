@@ -11,6 +11,8 @@ import { splitMemberKey, stepTargets } from '../../shared/targets.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { compareTitles } from '../../shared/compare.mjs';
 import { outputLines } from '../../shared/terminal.mjs';
+import { arrayRows, cellKey, cellName, markerRow, rowKey, splitCellKey } from '../../shared/arrays.mjs';
+import { svgOf, textOf } from '../../shared/svg.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? plainText(v) : typeof v === 'number' ? String(v) : '');
@@ -31,20 +33,27 @@ const keysOf = (record) => (record && typeof record === 'object' && !Array.isArr
 /** Per scene type, its items in a state (array and memory change from step to step; the others keep one). */
 const ITEMS = {
   array(scene, state) {
-    const cells = list(scene.values).map((_, i) => {
-      const value = state.values[`c:${i}`];
-      return { key: `c:${i}`, label: `cell ${i} = ${shown(value)}`, names: [text(value), `cell ${i}`, `index ${i}`, `position ${i}`] };
-    });
-    const span = ([a, b]) => cells.slice(Math.max(0, a), b + 1).map((c) => c.key);
+    const rows = arrayRows(scene);
+    const cells = rows.flatMap((a) =>
+      a.values.map((_, i) => {
+        const key = cellKey(a.name, i);
+        const value = state.values[key];
+        const where = a.name ? [`${a.name} ${i}`] : [`cell ${i}`, `index ${i}`, `position ${i}`];
+        return { key, label: `${cellName(a.name, i)} = ${shown(value)}`, names: [text(value), ...where], hidden: a.name ? Boolean(state.hidden[rowKey(a.name)]) : false };
+      }),
+    ).filter((c) => !c.hidden);
+    const span = (row, [a, b]) => cells.filter((c) => splitCellKey(c.key).name === row && splitCellKey(c.key).index >= a && splitCellKey(c.key).index <= b).map((c) => c.key);
     const markers = [
-      ...list(scene.pointers).map((p) => ({ key: `ptr:${p?.name}`, name: p?.name, what: 'pointer' })),
-      ...list(scene.ranges).map((r) => ({ key: `rg:${r?.name}`, name: r?.name, what: 'range' })),
-    ].filter((m) => !state.hidden[m.key]);
+      ...list(scene.pointers).map((p) => ({ key: `ptr:${p?.name}`, name: p?.name, what: 'pointer', row: markerRow(scene, p) })),
+      ...list(scene.ranges).map((r) => ({ key: `rg:${r?.name}`, name: r?.name, what: 'range', row: markerRow(scene, r) })),
+    ].filter((m) => !state.hidden[m.key] && !state.hidden[rowKey(m.row)]);
     return [
-      ...cells,
-      ...markers.map(({ key, name, what }) => {
+      ...cells.map(({ hidden, ...c }) => c),
+      ...rows.filter((a) => a.name && !state.hidden[rowKey(a.name)]).map((a) => ({ key: rowKey(a.name), label: `array ${a.name}`, terms: [a.name, text(a.label)], parts: span(a.name, [0, a.values.length - 1]) })),
+      ...markers.map(({ key, name, what, row }) => {
         const [a, b] = state.places[key] ?? [0, 0];
-        return { key, label: `${what} ${name} at ${a === b ? `cell ${a}` : `cells ${a}-${b}`}`, names: [String(name)], parts: span([a, b]) };
+        const at = a === b ? cellName(row, a) : row ? `${row}[${a}-${b}]` : `cells ${a}-${b}`;
+        return { key, label: `${what} ${name} at ${at}`, names: [String(name)], parts: span(row, [a, b]) };
       }),
     ];
   },
@@ -61,12 +70,19 @@ const ITEMS = {
     });
     return [...owners.map((o) => ({ ...o, parts: members.filter((m) => m.with[0] === o.key).map((m) => m.key) })), ...members];
   },
-  graph(scene) {
+  graph(scene, state) {
     const label = new Map(list(scene.nodes).map((n) => [n?.id, text(n?.label) || n?.id]));
+    const hidden = (key) => Boolean(state?.hidden[key]);
+    const badge = (id) => text(state?.values[`b:${id}`] ?? '');
     return [
-      ...list(scene.nodes).map((n) => ({ key: `n:${n?.id}`, label: `node ${label.get(n?.id)}`, terms: [label.get(n?.id), n?.id] })),
-      ...list(scene.edges).map((e, i) => ({ key: `e:${i}`, label: `edge ${label.get(e?.from)} → ${label.get(e?.to)}${e?.label ? ` "${text(e.label)}"` : ''}`, terms: [text(e?.label)], with: [`n:${e?.from}`, `n:${e?.to}`] })),
+      ...list(scene.nodes)
+        .filter((n) => !hidden(`n:${n?.id}`))
+        .map((n) => ({ key: `n:${n?.id}`, label: `node ${label.get(n?.id)}${badge(n?.id) ? ` (badge ${badge(n?.id)})` : ''}`, terms: [label.get(n?.id), n?.id], names: badge(n?.id) ? [badge(n?.id)] : [] })),
+      ...list(scene.edges).flatMap((e, i) =>
+        hidden(`e:${i}`) || hidden(`n:${e?.from}`) || hidden(`n:${e?.to}`) ? [] : [{ key: `e:${i}`, label: `edge ${label.get(e?.from)} → ${label.get(e?.to)}${e?.label ? ` "${text(e.label)}"` : ''}`, terms: [text(e?.label)], with: [`n:${e?.from}`, `n:${e?.to}`] }],
+      ),
       ...[...new Set(list(scene.nodes).map((n) => n?.group).filter(Boolean))].map((g) => ({ key: `g:${g}`, label: `group ${g}`, terms: [g], parts: list(scene.nodes).filter((n) => n?.group === g).map((n) => `n:${n.id}`) })),
+      ...(scene.table ? tableItems(scene.table, state, 'table ') : []),
     ];
   },
   sequence(scene) {
@@ -114,14 +130,19 @@ const ITEMS = {
       ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${list(s?.values)[i]}`, terms: [text(String(list(s?.values)[i] ?? ''))], with: [`l:${i}`] }))),
     ];
   },
-  table(scene) {
-    const columns = list(scene.columns);
-    const cell = (c) => (c && typeof c === 'object' ? `${text(c.before)} → ${text(c.after)}` : text(c));
-    return [
-      ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i} ${list(r?.cells).map(cell).join(' | ')}`, terms: [], parts: columns.map((_, c) => `x:${i}/${c}`) })),
-      ...columns.map((c, k) => ({ key: `c:${k}`, label: `column ${c}`, terms: [text(c)], parts: list(scene.rows).map((_, i) => `x:${i}/${k}`) })),
-      ...list(scene.rows).flatMap((r, i) => list(r?.cells).map((c, k) => ({ key: `x:${i}/${k}`, label: `${columns[k]} of row ${i} = ${cell(c)}`, terms: c && typeof c === 'object' ? [text(c.before), text(c.after)] : [text(c)] }))),
-    ];
+  table(scene, state) {
+    return tableItems(scene, state, '');
+  },
+  svg(scene, state) {
+    const { ids } = svgOf(scene.svg);
+    const labels = scene.labels && typeof scene.labels === 'object' ? scene.labels : {};
+    return [...ids].flatMap(([id, node]) => {
+      const key = `s:${id}`;
+      if (state?.hidden[key] || !node?.tag) return [];
+      const words = node.tag === 'text' ? text(state?.values[key] ?? textOf(node)) : '';
+      const inside = [...ids].filter(([other, n]) => other !== id && n && contains(node, n)).map(([other]) => `s:${other}`);
+      return [{ key, label: `${node.tag} ${id}${words ? ` "${words}"` : ''}`, names: [text(labels[id] ?? '')].filter(Boolean), terms: [id, words], parts: inside }];
+    });
   },
   compare(scene) {
     const titles = compareTitles(scene);
@@ -152,6 +173,22 @@ const ITEMS = {
   },
 };
 
+/** Whether drawing element `outer` holds `inner` somewhere inside it. */
+const contains = (outer, inner) => list(outer?.children).some((c) => c === inner || contains(c, inner));
+
+/** A table's rows, columns and cells as `state` shows them; `what` starts each label, such as "table " beside a graph. */
+function tableItems(table, state, what) {
+  const columns = list(table.columns);
+  const cell = (c) => (c && typeof c === 'object' ? `${text(c.before)} → ${text(c.after)}` : text(c));
+  const value = (i, k, c) => state?.values[`x:${i}/${k}`] ?? c;
+  const rows = list(table.rows).map((r, i) => ({ i, cells: list(r?.cells).map((c, k) => value(i, k, c)) })).filter(({ i }) => !state?.hidden[`r:${i}`]);
+  return [
+    ...rows.map(({ i, cells }) => ({ key: `r:${i}`, label: `${what}row ${i} ${cells.map(cell).join(' | ')}`, terms: [], parts: columns.map((_, c) => `x:${i}/${c}`) })),
+    ...(what ? [] : columns.map((c, k) => ({ key: `c:${k}`, label: `column ${c}`, terms: [text(c)], parts: rows.map(({ i }) => `x:${i}/${k}`) }))),
+    ...rows.flatMap(({ i, cells }) => cells.map((c, k) => ({ key: `x:${i}/${k}`, label: `${what}${columns[k]} of row ${i} = ${cell(c)}`, terms: c && typeof c === 'object' ? [text(c.before), text(c.after)] : [text(c)] }))),
+  ];
+}
+
 /** Item keys lit with `keys`: each key's own `parts` and `with`, once, so a pointer lights its cell but not the cell's neighbours. */
 function withRelated(items, keys) {
   const byKey = new Map(items.map((it) => [it.key, it]));
@@ -164,7 +201,11 @@ function withRelated(items, keys) {
 function changesOf(scene, before, after) {
   const values = Object.keys(after.values).flatMap((key) => {
     if (sameText(before.values[key], after.values[key])) return [];
-    const where = key.startsWith('c:') ? `cell ${key.slice(2)}` : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
+    const where = key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key))
+      : key.startsWith('b:') ? `badge of ${key.slice(2)}`
+      : key.startsWith('x:') ? `cell ${key.slice(2)}`
+      : key.startsWith('s:') ? `text ${key.slice(2)}`
+      : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
   const places = Object.keys(after.places).flatMap((key) => {
@@ -173,9 +214,11 @@ function changesOf(scene, before, after) {
   });
   const shows = [...new Set([...keysOf(before.hidden), ...keysOf(after.hidden)])].flatMap((key) => {
     const [was, is] = [Boolean(before.hidden[key]), Boolean(after.hidden[key])];
-    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg):/, '')}`];
+    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
   });
-  return [...values, ...places, ...shows];
+  const tints = [...new Set([...keysOf(before.tints), ...keysOf(after.tints)])].flatMap((key) => (before.tints?.[key] === after.tints?.[key] ? [] : [`tints ${key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key)) : key.replace(/^\w+:/, '')} ${after.tints?.[key] ?? 'clear'}`]));
+  const callout = before.callout === after.callout ? [] : [`callout ${after.callout ? JSON.stringify(plainText(after.callout)) : 'off'}`];
+  return [...values, ...places, ...shows, ...tints, ...callout];
 }
 
 /**
@@ -326,7 +369,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal, tests and intent have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare'];
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:

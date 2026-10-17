@@ -1,5 +1,6 @@
 // Pure formatting for CLI output. No IO: callers pass data in, get strings back.
 
+import { svgIds } from '../../shared/svg.mjs';
 import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
@@ -247,7 +248,12 @@ function sceneGist(scene, hunks, storyboard) {
     case 'array': {
       const changes = (scene.steps ?? []).filter(changesState).length;
       const extra = [scene.pointers?.length ? count(scene.pointers, 'pointer') : '', scene.ranges?.length ? count(scene.ranges, 'range') : '', changes ? `${changes} changing` : ''].filter(Boolean);
-      return titled(`${scene.label ? `${scene.label}, ` : ''}${count(scene.values, 'cell')}${extra.map((e) => `, ${e}`).join('')}`);
+      const cells = Array.isArray(scene.arrays) ? `${count(scene.arrays, 'array')} of ${count(scene.arrays.flatMap((a) => a.values ?? []), 'cell')}` : count(scene.values, 'cell');
+      return titled(`${scene.label ? `${scene.label}, ` : ''}${cells}${extra.map((e) => `, ${e}`).join('')}`);
+    }
+    case 'svg': {
+      const changes = (scene.steps ?? []).filter(changesState).length;
+      return titled(`a drawing of ${count(svgIds(scene.svg), 'named part')}${changes ? `, ${changes} changing` : ''}`);
     }
     case 'memory': {
       const changes = (scene.steps ?? []).filter(changesState).length;

@@ -33,6 +33,7 @@
     "examples/people/*.json",
     "examples/preread/*.json",
     "examples/review/*.json",
+    "examples/primitives/*/*.json",
     "tsconfig.json",
     "README.md",
     "LICENSE",
