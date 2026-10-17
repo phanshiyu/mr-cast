@@ -8,7 +8,7 @@ import { indexRange } from './steps.mjs';
 import { ambiguousIndex, memberKey, resolveRef, splitMemberKey } from './targets.mjs';
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
-import { memoryMembers } from './storyboard-json.mjs';
+import { memoryMembers, tintEntries } from './storyboard-json.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isText = (v) => typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v));
@@ -220,8 +220,9 @@ export function walkStates(scene) {
   const applyTints = (record, next, problem) => {
     if (record === undefined) return;
     if (!model.tint) return problem('tint', '', `${aType(scene.type)} scene takes no tint`);
-    if (!record || typeof record !== 'object' || Array.isArray(record)) return problem('tint', '', `must be an object of ref to colour, e.g. { "3": "good" }; a colour is one of ${TINTS.join(', ')}`);
-    for (const [ref, tint] of Object.entries(record)) {
+    const pairs = Array.isArray(record) && record.every((p) => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string');
+    if (!record || typeof record !== 'object' || (Array.isArray(record) && !pairs)) return problem('tint', '', `must be an object of ref to colour, e.g. { "3": "good" }; a colour is one of ${TINTS.join(', ')}`);
+    for (const [ref, tint] of tintEntries(record)) {
       const unclear = ambiguousIndex(scene, ref);
       if (unclear) {
         problem('tint', ref, unclear);
@@ -348,7 +349,7 @@ export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'c
  */
 export function changedRefs(scene, step) {
   const moved = Object.keys(step?.move ?? {}).map((name) => (list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
-  const tints = Object.entries(step?.tint && typeof step.tint === 'object' ? step.tint : {});
+  const tints = tintEntries(step?.tint);
   const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
   // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
   return [...new Set(refs.length ? refs : tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : [])))];

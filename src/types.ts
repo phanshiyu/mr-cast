@@ -211,7 +211,7 @@ export interface GraphStep extends StateStep {
    */
   set?: Record<string, TableCell>;
   /** Nodes and edges to colour from this step on, by node id or edge ref, e.g. { "B": "warn", "S->B": "good" }. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
 }
 
 export interface GraphScene extends SceneBase {
@@ -234,7 +234,7 @@ export interface GraphScene extends SceneBase {
    */
   steps?: GraphStep[];
   /** Nodes and edges coloured from the start, by node id or edge ref. Steps change them with `tint`. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
   /** A boxed line in the top right, such as a formula or a rule. Steps replace it with `callout`. */
   callout?: DisplayText;
   /** A table beside the graph, which steps change with it. */
@@ -529,7 +529,7 @@ export interface TableStep extends StateStep {
   /** New cells by "Header@row", e.g. { "Balance@2": "40" }; `{ before, after }` strikes the old value beside the new. */
   set?: Record<string, TableCell>;
   /** Rows (by index) and cells ("Header@row") to colour from this step on, e.g. { "3": "bad" } for a rejected row. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
 }
 
 export interface TableScene extends SceneBase {
@@ -550,7 +550,7 @@ export interface TableScene extends SceneBase {
    */
   steps?: TableStep[];
   /** Rows and cells coloured from the start. Steps change them with `tint`. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
   /** A boxed line in the top right, such as a rule or a running total. Steps replace it with `callout`. */
   callout?: DisplayText;
 }
@@ -716,6 +716,13 @@ export interface StateStep extends Omit<FocusStep, 'focus'> {
  */
 export type Tint = Tone | 'dim' | 'clear';
 
+/**
+ * Colours by ref, applied in the order written, so a later key wins over an earlier one it overlaps
+ * ({ "0-5": "dim", "3": "good" } leaves cell 3 good): an object of ref to tint, or the same as [ref, tint] pairs,
+ * which is how mr-cast reads the object.
+ */
+export type Tints = Record<string, Tint> | [ref: string, tint: Tint][];
+
 export interface ArrayPointer {
   /** A short name such as "lo", "hi", "mid", "head" or "cursor", drawn above its cell with an arrow. Pointers on one cell stack. */
   name: string;
@@ -746,7 +753,7 @@ export interface ArrayStep extends StateStep {
   /** New places: a pointer's name to a cell index, e.g. { "lo": 4 }, and a range's name to "a-b", e.g. { "window": "2-5" }. */
   move?: Record<string, number | string>;
   /** Cells to colour from this step on, by cell ref, e.g. { "0-7": "dim", "10": "good" }. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
 }
 
 /** One array of an `array` scene with `arrays`: a row of its own, with its own name, indexes and pointers. */
@@ -791,7 +798,7 @@ export interface ArrayScene extends SceneBase {
   /** Shaded spans of cells. Up to 3. */
   ranges?: ArrayRange[];
   /** Cells coloured from the start, by cell ref, e.g. { "0-3": "accent" }. Steps change them with `tint`. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
   /** A boxed line in the top right, such as a formula or a comparison, e.g. "mid = L + ⌊(R − L) / 2⌋". Steps replace it with `callout`. */
   callout?: DisplayText;
   /**
@@ -863,7 +870,7 @@ export interface SvgStep extends StateStep {
   /** New text for `<text>` elements by id, e.g. { "total": "312" }. */
   set?: Record<string, string>;
   /** Elements to colour from this step on, by id, e.g. { "ring1": "good" }. A group's tint colours every shape in it. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
 }
 
 /**
@@ -895,7 +902,7 @@ export interface SvgScene extends SceneBase {
   /** Ids of elements not drawn until a step shows them. */
   hidden?: string[];
   /** Elements coloured from the start, by id. Steps change them with `tint`. */
-  tint?: Record<string, Tint>;
+  tint?: Tints;
   /** A boxed line in the top right, such as a formula. Steps replace it with `callout`. */
   callout?: DisplayText;
   /**

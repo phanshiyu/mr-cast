@@ -23,6 +23,7 @@ What the examples found in the scenes, now fixed:
 - **A part no step shows warns.** A graph node, edge or table row, a table row, an array, pointer or range, a memory frame or object, or an svg element that starts `hidden` and is never shown warns, since it is never drawn.
 - **Refs beside a graph.** A bare number that is both an edge index and a row index of the table beside a graph fails `validate`, naming the edge and the row to write instead. `"col:Header"` lights a column of that table, as in a table scene.
 - **Memory.** Variables and fields keep the order written; a field named `"2"` no longer jumps ahead. An arrow that is not into the next column, such as a Fiber's `return` or `sibling`, runs through the gaps between the columns and under the cards, each in its own lane, instead of behind other cards.
+- **Tint.** Keys apply in the order written, so a later key wins over an earlier one it overlaps: `{ "0-5": "dim", "3": "good" }` leaves cell 3 good. A key such as `"3"` no longer jumps ahead of `"0-5"`.
 - **Chart.** A value under 10,000 prints as written, so 3.125 stays 3.125 and 0.0243% stays 0.0243%; larger values still shorten to 12.3k. `badges: false` hides a two-series chart's change badges.
 - **Table.** Math such as `O(n log n)` and `O(n²)` is drawn as text, not code. A header that holds a formula or code, such as `e^z`, keeps its case; other headers are still upper-cased.
 - **Array.** The dashed slot past the last cell shows only while a pointer stands on it.

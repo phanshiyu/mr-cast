@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { walkStates } from '../shared/state-steps.mjs';
+import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { resolveRef } from '../shared/targets.mjs';
 
 const search = {
@@ -152,4 +153,21 @@ test('validate requires a focus on a step that only hides, or whose changes are 
 test('validate says "an array step"', async () => {
   const token = { ...search, steps: [{ focus: 'ptr:lo', mark: 'circle', token: 'lo', say: 'The low end starts at zero.' }] };
   assert.deepEqual(await errorsOf(token), ['scenes[0].steps[0].token: only code steps take a token; an array step marks its first focus ref']);
+});
+
+test('a later tint key wins over an earlier one it overlaps, a key such as "3" included', async () => {
+  const written = `{ "title": "t", "scenes": [{
+    "type": "array", "narration": "Six cells.", "values": [1, 2, 3, 4, 5, 6],
+    "tint": { "0-5": "dim", "3": "good" },
+    "steps": [{ "tint": { "0-5": "bad", "2": "clear" }, "say": "All but the third are bad." }]
+  }] }`;
+  // The render's props and the player's fetch carry the storyboard as JSON, so the order must survive a round trip.
+  const storyboard = JSON.parse(JSON.stringify(parseStoryboard(written)));
+  const { states, problems } = walkStates(storyboard.scenes[0]);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(states.map((s) => s.tints), [
+    { 'c:0': 'dim', 'c:1': 'dim', 'c:2': 'dim', 'c:3': 'good', 'c:4': 'dim', 'c:5': 'dim' },
+    { 'c:0': 'bad', 'c:1': 'bad', 'c:3': 'bad', 'c:4': 'bad', 'c:5': 'bad' },
+  ]);
+  assert.deepEqual((await validateStoryboard(storyboard, {}, { mode: 'explain' })).errors, []);
 });
