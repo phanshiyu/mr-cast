@@ -232,7 +232,7 @@ Fix every error and rerun until it prints `✓ storyboard ok`. Resolve the warni
 {{MR_CAST}}/bin/mr-cast steps <flags>
 ```
 
-It prints each step's words beside what is lit and what changes on screen. Then make one `Agent` call with `model: "sonnet"`. Its prompt is the text of [references/highlight-audit.md](references/highlight-audit.md) with the `steps` output pasted under its last heading. It answers `no problems`, or one line per step whose words and light disagree, with a fix. Apply each fix you agree with, by changing the step's `focus`, giving a change its own step, or rewording, then rerun `validate`. Make one call for the whole video, not one per scene, and do not call it again after the fixes. Skip this check in quick mode.
+It prints each step's words beside what is lit and what changes on screen. Then make one `Agent` call with `model: "sonnet"` that starts a new subagent. Its prompt is the text of [references/highlight-audit.md](references/highlight-audit.md) with the `steps` output pasted under its last heading. Never resume or message an agent that wrote any of the storyboard, and never answer the audit yourself in place of the call. Whoever wrote a step reads it as it was meant, not as it plays. The subagent answers `no problems`, or one line per step whose words and light disagree, with a fix. Apply each fix you agree with, by changing the step's `focus`, giving a change its own step, or rewording, then rerun `validate`. Make one call for the whole video, not one per scene, and do not call it again after the fixes. Skip this check in quick mode.
 
 ### Teach the change
 
