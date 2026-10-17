@@ -55,7 +55,7 @@ Claude writes the storyboard from your picks, validates it, and opens the browse
 
 For a walkthrough that explains the code line by line in plain words, ask for it "like I'm new to this", "line by line", "ELI5" or "for a non-native speaker", or answer that the video is for someone new to the code. Claude then reads the callers, types, tests and config around the change, shows the important ones first, and voices each line or small group of lines while it is highlighted. See [Simple style](#simple-style).
 
-To free disk space, ask Claude to "prune mr-cast" or "clean up old mr-cast videos". The `mr-cast-prune` skill lists walkthroughs, videos, stills, voice clips and cached downloads with their sizes, asks which to delete, and deletes only those. See [Pruning](#pruning).
+To free disk space, ask Claude to "prune mr-cast" or "clean up old mr-cast videos". The `mr-cast-prune` skill shows a menu of what to delete that the CLI builds, with sizes, and runs the command the CLI gives for each pick. Claude never chooses files or deletes them itself. See [Pruning](#pruning).
 
 To update mr-cast, ask Claude to "upgrade mr-cast". See [Upgrade](#upgrade).
 
@@ -93,7 +93,7 @@ Run these from inside the repository you want to explain. Output goes to `.mr-ca
 | `mr-cast play [--port N] [--no-open]` | Serves the player at `http://127.0.0.1:4747` at once, opens the browser, and voices the narration in the background. Until the voice is ready the player plays muted with subtitles and shows how many scenes are voiced, then it offers "Play with voice (V)". The page reloads when `storyboard.json` changes, once any changed narration is voiced. The player's speed control goes from 0.75x to 1.5x. With a `plan.json`, the player has a Plan tab. |
 | `mr-cast render [--out file.mp4]` | Voices the narration, then renders a 1920x1080, 30 fps MP4 with the voice-over, burned-in subtitles and chapter markers, and prints its path. The file goes in the run's directory, named after the storyboard title, or the run's name, or `walkthrough.mp4`. The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`. |
 | `mr-cast still [sceneIndex...]` | Renders a PNG of each scene's end state, just before it fades out, to check layout. |
-| `mr-cast prune [id...] [--older-than days] [--json]` | Without ids, lists what can be deleted, with an id, size, age and description for each. With ids from that list, deletes exactly those. See [Pruning](#pruning). |
+| `mr-cast prune [id...] [--kind k,k] [--all] [--older-than days] [--except id] [--dry-run] [--json]` | Without a selector, lists what can be deleted, with an id, size, age and description for each. With ids, `--kind` or `--all`, deletes exactly what they pick, or with `--dry-run` only prints it. `--choices` prints a menu of common picks. See [Pruning](#pruning). |
 | `mr-cast upgrade [--check]` | Updates mr-cast to the latest version and reinstalls the skills. `--check` only reports the versions. See [Upgrade](#upgrade). |
 | `mr-cast version` | Prints `mr-cast <version> (node <version>)`. Also `--version` and `-v`. |
 
@@ -127,7 +127,13 @@ Several runs can render at once, in one repository or several, and they share th
 | `stills:<run>`, `audio:<run>` | A run's PNG stills, or its voice clips and `voiceover.json`. `still` and `voice` make them again. |
 | `cache:bundle`, `cache:remotion`, `cache:models` | The player bundle, Chrome Headless Shell (about 580 MB), or the Kokoro voice model (about 90 MB). The next render or voice-over rebuilds or downloads them. |
 
-`--older-than <days>` lists only what has not changed in that many days. `--json` prints the list as JSON. `mr-cast prune <id>...` deletes only ids from a fresh listing with the same filter. An unknown id, or a cache that a render is using or a download has locked, makes it delete nothing. Deleting a run also deletes its videos, stills and clips.
+`--older-than <days>` lists only what has not changed in that many days. `--json` prints the list as JSON.
+
+To delete, pick with selectors, which combine. Ids pick those artifacts, `--kind run,explain` picks every artifact of those kinds (`run`, `explain`, `video`, `stills`, `audio`, `cache`), and `--all` picks everything. `--older-than <days>` then keeps only what has not changed in that many days, and `--except <id>`, repeatable, keeps an artifact. Keeping a walkthrough keeps its parts, and keeping a part keeps its walkthrough. The selection is made from a fresh listing. An artifact in use, such as the Chrome cache during a render, is never picked and is printed as `in use, not removed`. An unknown id, or one in use named by id, makes it delete nothing. Deleting a run also deletes its videos, stills and clips, and their bytes count once.
+
+`--dry-run` prints exactly what would be removed and the bytes, and removes nothing. With `--json`, a dry run or a deletion prints `dryRun`, the `artifacts` with their bytes, `inUse`, and the total `bytes`.
+
+`mr-cast prune --choices --json` prints the menu the prune skill shows. It has up to four groups (rendered videos, stills and voice clips, walkthroughs, cache), each with at most 4 options, and leaves out empty groups. Each option has a `label`, a `description` with its size and what deleting it means, the `ids` it deletes, and a `command`, the exact arguments that delete it, such as `["prune", "--kind", "video"]`.
 
 ## The plan
 

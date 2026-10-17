@@ -67,6 +67,16 @@ test('reinstall removes a file the manifest recorded that this version no longer
   assert.deepEqual(manifestOf(dir).files, EXPECTED);
 });
 
+test('the installed prune skill deletes only through mr-cast prune', () => {
+  const dir = freshDir();
+  installSkill(root, dir);
+  const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast-prune/SKILL.md'), 'utf8');
+  const RULE = 'Never delete with `rm`, `find -delete`, `unlink` or any other command or tool';
+  assert.ok(skill.includes(RULE), 'states the rule');
+  const rest = skill.replace(RULE, '');
+  for (const word of [/\brm[ -]/, /-delete\b/, /\bunlink\b/, /rmSync|rmdir|trash/]) assert.doesNotMatch(rest, word);
+});
+
 test('a recorded file whose content mr-cast did not write is kept', () => {
   const dir = freshDir();
   installSkill(root, dir);
