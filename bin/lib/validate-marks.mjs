@@ -48,7 +48,6 @@ const ITEMS = {
   tests: (s, p) => list(s.cases, `${p}.cases`, 'testCase'),
   layers: (s, p) => list(s.layers, `${p}.layers`, 'layer').flatMap((l) => [l, ...list(l.item.items, `${l.q}.items`, 'node')]),
 };
-const DIAGRAMS = ['graph', 'sequence', 'er', 'state', 'layers'];
 
 /**
  * The change an item shows, as the renderer will draw it: its own `change`, an older `modified: true` on a

@@ -1,6 +1,6 @@
 // Settings: whether the video is a pre-read, and how it sounds. They come from the flags of the one command that
 // runs, and a command without a flag takes its default; nothing keeps them between commands.
-// The last pace a user chose is kept per user, for the skill to use again next time.
+// The last pace a user chose is kept per user; `mr-cast status` prints it, and the skill passes it when the user names none.
 
 import fs from 'node:fs';
 import os from 'node:os';

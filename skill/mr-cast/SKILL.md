@@ -64,7 +64,7 @@ To show source code that is not in the diff, add it as a snippet, at most 80 lin
 
 Each snippet gets an id (`s1`, `s2`, ...) and keeps the file's line numbers. A `code` scene shows a snippet by its id, like a hunk.
 
-The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <name>` or `--no-voice`. A flag applies to its own command only, so pass the same flags to every command.
+The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <name>` or `--no-voice`. When the user names no pace, pass the last pace `status` printed: `--pace <it>`, or `--no-voice` for `silent`. A flag applies to its own command only, so pass the same flags to every command.
 
 ## Write the storyboard
 
