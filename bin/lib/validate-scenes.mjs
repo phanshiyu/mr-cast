@@ -2,6 +2,7 @@
 // src/types.ts. Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
 import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+import { checkStateSteps } from './validate-state.mjs';
 
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
@@ -31,6 +32,7 @@ function checkHighlight(list, path, errors, warnings, { plural, one }, valid) {
 }
 
 export function checkTable(s, p, errors, warnings) {
+  const before = errors.length;
   if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
   if (!Array.isArray(s.columns) || s.columns.length === 0 || !s.columns.every(isStr)) {
     return errors.push(`${p}.columns: required non-empty array of header strings`);
@@ -55,6 +57,11 @@ export function checkTable(s, p, errors, warnings) {
   const isRow = (n) => Number.isInteger(n) && n >= 0 && n < rows;
   const what = { plural: 'row indexes', one: `a row index from 0 to ${rows - 1}` };
   checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, what, isRow);
+  if (s.callout !== undefined && typeof s.callout !== 'string') errors.push(`${p}.callout: must be a string`);
+  s.rows.forEach((row, j) => {
+    if (row?.hidden !== undefined && typeof row.hidden !== 'boolean') errors.push(`${p}.rows[${j}].hidden: must be true or false`);
+  });
+  if (errors.length === before) checkStateSteps(s, p, errors, warnings);
 }
 
 export function checkChart(s, p, errors, warnings) {

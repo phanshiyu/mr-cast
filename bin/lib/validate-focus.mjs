@@ -10,7 +10,7 @@ import { didYouMean } from './suggest.mjs';
 
 /** What a scene type's refs look like, for the error when a ref names nothing. */
 const REF_HELP = {
-  graph: 'a node id, an edge "from->to" or "a-b", a group "group:Name", or an edge index',
+  graph: (s) => `a node id, an edge "from->to" or "a-b", a group "group:Name", or an edge index${s.table ? ', or a table row "row:A" or cell "Header@row"' : ''}`,
   sequence: 'a message index, an "a-b" range of them, or a participant id',
   er: 'an entity id, a field "entity.field", a relation "from->to", or a relation index',
   state: 'a state id, a transition "from->to", a transition label, or a transition index',
@@ -23,9 +23,12 @@ const REF_HELP = {
   intent: 'a bullet index',
   compare: 'a row index, an "a-b" range of them, a side "side:After", or a cell "row@side" such as "2@After"',
   terminal: 'an entry index, an "a-b" range of them, or an output line "entry:line" such as "2:3"',
-  array: 'a cell index, an "a-b" range of cells, a pointer "ptr:name", or a range "range:name"',
+  array: (s) => (Array.isArray(s.arrays) ? 'a cell "left[0]", cells "left[0-1]", an array "array:left", a pointer "ptr:name", or a range "range:name"' : 'a cell index, an "a-b" range of cells, a pointer "ptr:name", or a range "range:name"'),
   memory: 'a frame "frame:name", a variable "frame.var", an object id, or a field "object.field"',
 };
+
+/** The ref help for a scene, which for some types depends on its fields. */
+const refHelp = (s) => (typeof REF_HELP[s.type] === 'function' ? REF_HELP[s.type](s) : REF_HELP[s.type]);
 
 /** Items the steps reveal in order, so one no step names appears unnamed beside a neighbour. */
 const REVEALED = {
@@ -57,15 +60,15 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) {
       if (changedRefs(s, step).length) return;
       const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : 'changes nothing';
-      return errors.push(`${q}.focus: required, ${REF_HELP[s.type]}, or an array of them, since this step ${what}, so it lights nothing`);
+      return errors.push(`${q}.focus: required, ${refHelp(s)}, or an array of them, since this step ${what}, so it lights nothing`);
     }
-    if (value === undefined) return errors.push(`${q}.focus: required, ${REF_HELP[s.type]}, or an array of them${STATE_TYPES.includes(s.type) ? ', unless the step changes something, which it then focuses' : ''}`);
+    if (value === undefined) return errors.push(`${q}.focus: required, ${refHelp(s)}, or an array of them${STATE_TYPES.includes(s.type) ? ', unless the step changes something, which it then focuses' : ''}`);
     const refs = focusRefs(value);
-    if (refs.length === 0) return errors.push(`${q}.${key}: an empty array lights nothing; name at least one ${REF_HELP[s.type]}`);
+    if (refs.length === 0) return errors.push(`${q}.${key}: an empty array lights nothing; name at least one ${refHelp(s)}`);
     refs.forEach((ref, k) => {
       const at = Array.isArray(value) ? `${q}.${key}[${k}]` : `${q}.${key}`;
-      if (typeof ref !== 'string' && typeof ref !== 'number') return errors.push(`${at}: must be a string or a number: ${REF_HELP[s.type]}`);
-      if (!resolveRef(s, ref, hunks)) errors.push(`${at}: ${JSON.stringify(ref)} names nothing in this scene, where a ref is ${REF_HELP[s.type]}${typeof ref === 'string' ? didYouMean(ref, names) : ''}`);
+      if (typeof ref !== 'string' && typeof ref !== 'number') return errors.push(`${at}: must be a string or a number: ${refHelp(s)}`);
+      if (!resolveRef(s, ref, hunks)) errors.push(`${at}: ${JSON.stringify(ref)} names nothing in this scene, where a ref is ${refHelp(s)}${typeof ref === 'string' ? didYouMean(ref, names) : ''}`);
     });
   });
   const scene = { ...s, steps: focusSteps(s) };

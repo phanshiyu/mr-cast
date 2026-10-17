@@ -13,7 +13,7 @@ import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
-import { checkArray, checkMemory } from './validate-state.mjs';
+import { checkArray, checkGraphState, checkMemory } from './validate-state.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
@@ -271,6 +271,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, 
 
       case 'graph':
         checkGraph(s, p, errors, warnings);
+        if (errors.length === errorsBefore) checkGraphState(s, p, errors, warnings);
         break;
 
       case 'code': {

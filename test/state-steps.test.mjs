@@ -37,10 +37,10 @@ test('an array state is the initial state plus every change up to the step, in o
   const { states, problems } = walkStates(search);
   assert.deepEqual(problems, []);
   assert.deepEqual(states, [
-    { values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] }, hidden: { 'ptr:mid': true } },
-    { values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] }, hidden: {} },
-    { values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] }, hidden: {} },
-    { values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] }, hidden: { 'rg:window': true } },
+    { values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] }, hidden: { 'ptr:mid': true }, tints: {}, callout: '' },
+    { values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] }, hidden: {}, tints: {}, callout: '' },
+    { values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] }, hidden: {}, tints: {}, callout: '' },
+    { values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] }, hidden: { 'rg:window': true }, tints: {}, callout: '' },
   ]);
 });
 

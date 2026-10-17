@@ -172,6 +172,8 @@ export interface GraphNode extends DiagramNode {
   group?: string;
   /** Defaults to "card". A decision, terminal or step draws no icon, and only a step draws a caption. */
   shape?: NodeShape;
+  /** Not drawn until a step shows it ("show": ["A"]), as a tree grows a level at a time. Its place is kept from the start. */
+  hidden?: boolean;
 }
 
 export interface GraphEdge {
@@ -190,6 +192,26 @@ export interface GraphEdge {
   change?: Change;
   /** "Look here": the edge glows white. */
   highlight?: boolean;
+  /** Not drawn until a step shows it ("show": ["A->B"]). An edge draws only while both its nodes are shown. */
+  hidden?: boolean;
+}
+
+/** A table drawn beside a graph, whose cells steps change with the graph, such as each node's distance so far. */
+export interface GraphTable {
+  /** Column headers, left to right. Up to 4 fit beside the graph. */
+  columns: string[];
+  /** One cell per column; `{ before, after }` strikes the old value beside the new. Up to 8. */
+  rows: TableRow[];
+}
+
+export interface GraphStep extends StateStep {
+  /**
+   * New text by ref: a node id gives the node a new `badge`, e.g. { "A": "3" } ("" takes it off); a table
+   * cell "Header@row", where row is a row index or the row's first cell, e.g. { "Distance@A": { "before": "4", "after": "3" } }.
+   */
+  set?: Record<string, TableCell>;
+  /** Nodes and edges to colour from this step on, by node id or edge ref, e.g. { "B": "warn", "S->B": "good" }. */
+  tint?: Record<string, Tint>;
 }
 
 export interface GraphScene extends SceneBase {
@@ -205,9 +227,17 @@ export interface GraphScene extends SceneBase {
    * Move the viewer's attention as the voice explains: the whole graph draws first, then each step lights
    * what it focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
    * A ref is a node id, an edge "from->to" (or "a-b" for either direction), a group "group:Support team",
-   * or an edge index. Walk a path with a node, then its edge, then the next node.
+   * or an edge index; with a `table`, a row "row:A" or "row:0" and a cell "Header@row". Walk a path with a
+   * node, then its edge, then the next node. A step can also change the graph at its start: `show` and
+   * `hide` nodes and edges, `set` badges and table cells, `tint` nodes and edges, and replace the `callout`.
    */
-  steps?: FocusStep[];
+  steps?: GraphStep[];
+  /** Nodes and edges coloured from the start, by node id or edge ref. Steps change them with `tint`. */
+  tint?: Record<string, Tint>;
+  /** A boxed line in the top right, such as a formula or a rule. Steps replace it with `callout`. */
+  callout?: DisplayText;
+  /** A table beside the graph, which steps change with it. */
+  table?: GraphTable;
 }
 
 /** A line number or an inclusive range written as "12-18". */
@@ -492,7 +522,14 @@ export type TableCell = string | { before: string; after: string };
  * One cell per column. An added or removed row holds plain text; a row with a `{ before, after }`
  * cell is modified, with or without `change: "modified"`. `badge` and `tone` label the row (see Marks).
  */
-export type TableRow = Pick<Marks, 'badge' | 'tone'> & ({ cells: TableCell[]; change?: 'modified' } | { cells: string[]; change: 'added' | 'removed' });
+export type TableRow = Pick<Marks, 'badge' | 'tone'> & { /** Not drawn until a step shows it ("show": [3]), as a ledger gains a row. */ hidden?: boolean } & ({ cells: TableCell[]; change?: 'modified' } | { cells: string[]; change: 'added' | 'removed' });
+
+export interface TableStep extends StateStep {
+  /** New cells by "Header@row", e.g. { "Balance@2": "40" }; `{ before, after }` strikes the old value beside the new. */
+  set?: Record<string, TableCell>;
+  /** Rows (by index) and cells ("Header@row") to colour from this step on, e.g. { "3": "bad" } for a rejected row. */
+  tint?: Record<string, Tint>;
+}
 
 export interface TableScene extends SceneBase {
   type: 'table';
@@ -507,8 +544,14 @@ export interface TableScene extends SceneBase {
    * Move the viewer's attention as the voice explains: each step lights what it focuses just before its
    * `say` is spoken while the rest dims. `narration` is then the intro. Replaces `highlight`.
    * A ref is a row index (0-based), a column "col:Header", or one cell "Header@row", e.g. "p99@2".
+   * A step can also change the table at its start: `show` and `hide` rows, `set` cells, `tint` rows and
+   * cells, and replace the `callout`.
    */
-  steps?: FocusStep[];
+  steps?: TableStep[];
+  /** Rows and cells coloured from the start. Steps change them with `tint`. */
+  tint?: Record<string, Tint>;
+  /** A boxed line in the top right, such as a rule or a running total. Steps replace it with `callout`. */
+  callout?: DisplayText;
 }
 
 /** Colour of a series, event or span. Neutral is grey, accent is the highlight blue, good green, bad red, warn amber. */
@@ -660,13 +703,23 @@ export interface StateStep extends Omit<FocusStep, 'focus'> {
   show?: string[];
   /** Items to hide from this step on, such as a frame that returned ("frame:helper"). */
   hide?: string[];
+  /** The scene's callout from this step on, e.g. "mid = 0 + ⌊(15 − 0) / 2⌋ = 7"; "" takes it away. */
+  callout?: DisplayText;
 }
+
+/**
+ * The colour a cell or node keeps from a step on, until a later step changes it: a Tone fills it in that
+ * colour, "dim" fades it (ruled out, done with), and "clear" makes it plain again.
+ */
+export type Tint = Tone | 'dim' | 'clear';
 
 export interface ArrayPointer {
   /** A short name such as "lo", "hi", "mid", "head" or "cursor", drawn above its cell with an arrow. Pointers on one cell stack. */
   name: string;
   /** Cell index it points at; -1 or the array's length point just past either end, as a loop that ran off it. */
   at: number;
+  /** With `arrays`, the name of the array it points into. Defaults to the first. */
+  array?: string;
   tone?: Tone;
   /** Not drawn until a step shows it ("show": ["ptr:mid"]). */
   hidden?: boolean;
@@ -678,36 +731,71 @@ export interface ArrayRange {
   /** First and last cell index it covers, inclusive. */
   from: number;
   to: number;
+  /** With `arrays`, the name of the array it spans. Defaults to the first. */
+  array?: string;
   tone?: Tone;
   hidden?: boolean;
 }
 
 export interface ArrayStep extends StateStep {
-  /** New cell values by cell index, e.g. { "3": 42 }. They land before the words, so compare a pair in the step before its swap. */
+  /** New cell values by cell index, e.g. { "3": 42 }, or "left[0]" with `arrays`. They land before the words, so compare a pair in the step before its swap. */
   set?: Record<string, StateValue>;
   /** New places: a pointer's name to a cell index, e.g. { "lo": 4 }, and a range's name to "a-b", e.g. { "window": "2-5" }. */
   move?: Record<string, number | string>;
+  /** Cells to colour from this step on, by cell ref, e.g. { "0-7": "dim", "10": "good" }. */
+  tint?: Record<string, Tint>;
+}
+
+/** One array of an `array` scene with `arrays`: a row of its own, with its own name, indexes and pointers. */
+export interface ArrayRow {
+  /** Names its cells in refs, "left[0]" or "left[0-1]", and the whole array, "array:left". Different for every array. */
+  name: string;
+  /** Drawn above the array. Defaults to the name. */
+  label?: string;
+  /** Each cell's value, left to right. An empty string draws an empty cell. */
+  values: StateValue[];
+  /** Cell indexes the array is cut before, drawn as a wider gap, e.g. [4] for two halves of eight. */
+  splits?: number[];
+  /** Not drawn until a step shows it ("show": ["array:out"]). */
+  hidden?: boolean;
 }
 
 /**
  * A row of cells with their indexes under them, for an algorithm or a buffer walked step by step: binary
- * search, a sliding window, a pagination cursor, a ring buffer, a queue, an off-by-one bug.
+ * search, a sliding window, a pagination cursor, a ring buffer, a queue, an off-by-one bug. With `arrays`,
+ * several rows at once, top to bottom: two lists merging into a third, a list and its halves, a grid.
  */
 export interface ArrayScene extends SceneBase {
   type: 'array';
   title?: string;
   /** The array's name, such as "nums" or "buffer", drawn above it. */
   label?: string;
-  /** Each cell's value, left to right. Up to 16. An empty string draws an empty cell. */
-  values: StateValue[];
+  /** Each cell's value, left to right. Up to 16. An empty string draws an empty cell. Give this or `arrays`. */
+  values?: StateValue[];
+  /** Cell indexes the array is cut before, drawn as a wider gap, e.g. [4] for two halves of eight. */
+  splits?: number[];
+  /**
+   * Several arrays, drawn top to bottom with one cell size, in place of `values`. A cell ref names its array:
+   * "left[0]", "left[0-1]"; "array:left" is the whole array.
+   */
+  arrays?: ArrayRow[];
+  /** "box" (default) draws square cells; "hex" draws hexagons, each row set half a cell right of the one above, for a hex grid. */
+  cells?: 'box' | 'hex';
+  /** Draw each cell's index under it. Defaults to true; false for a grid, where the indexes are noise. */
+  indexes?: boolean;
   /** Named markers on cells. Up to 4. Pointer and range names are all different. */
   pointers?: ArrayPointer[];
   /** Shaded spans of cells. Up to 3. */
   ranges?: ArrayRange[];
+  /** Cells coloured from the start, by cell ref, e.g. { "0-3": "accent" }. Steps change them with `tint`. */
+  tint?: Record<string, Tint>;
+  /** A boxed line in the top right, such as a formula or a comparison, e.g. "mid = L + ⌊(R − L) / 2⌋". Steps replace it with `callout`. */
+  callout?: DisplayText;
   /**
-   * Walk the algorithm: each step changes what it `set`s, `move`s, `show`s and `hide`s at its start, then
-   * lights its focus while its `say` is spoken. `narration` is the intro over the initial state.
-   * A ref is a cell index, an "a-b" range of cells, a pointer "ptr:lo", or a range "range:window".
+   * Walk the algorithm: each step changes what it `set`s, `move`s, `show`s, `hide`s and `tint`s at its start,
+   * then lights its focus while its `say` is spoken. `narration` is the intro over the initial state.
+   * A ref is a cell index, an "a-b" range of cells, a pointer "ptr:lo", or a range "range:window"; with
+   * `arrays`, a cell "left[0]", cells "left[0-1]", or a whole array "array:left".
    */
   steps?: ArrayStep[];
 }
@@ -752,6 +840,8 @@ export interface MemoryScene extends SceneBase {
   frames: MemoryFrame[];
   /** Up to 6. List every object a step creates too, `hidden` until then. */
   objects: MemoryObject[];
+  /** A boxed line in the top right, such as a formula or a comparison. Steps replace it with `callout`. */
+  callout?: DisplayText;
   /**
    * Walk the program: each step changes what it `set`s, `show`s and `hide`s at its start, then lights its
    * focus while its `say` is spoken. Setting a reference re-routes its arrow. `narration` is the intro.

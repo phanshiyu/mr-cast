@@ -2,6 +2,8 @@
 // `validate` (which checks it). A ref resolves to item keys such as "n:api" or "e:2"; a scene lights
 // every item whose key a step's refs resolve to. Keys are internal; refs are what a storyboard writes.
 
+import { arrayRows, cellKey } from './arrays.mjs';
+import { plainText } from './markup.mjs';
 import { sceneFiles } from './files.mjs';
 import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
@@ -54,6 +56,38 @@ function layerPart(scene, ref) {
   return null;
 }
 
+/** The text a table row is named by in refs: its first cell, or the new value of a changed one. */
+const rowName = (row) => {
+  const first = list(row?.cells)[0];
+  return plainText(String(first && typeof first === 'object' ? first.after : (first ?? ''))).trim();
+};
+
+/** A graph table's row by index or by its first cell, or -1. */
+function asideRow(table, name) {
+  const text = String(name).trim();
+  const rows = list(table?.rows);
+  if (/^\d+$/.test(text) && Number(text) < rows.length) return Number(text);
+  return rows.findIndex((r) => rowName(r) === text);
+}
+
+/**
+ * What a ref names in the table beside a graph: a row "row:A" or "row:0" ("r:0"), or a cell "Header@row"
+ * ("x:0/1"); null when it reads as one but names nothing, undefined when it does not read as one.
+ */
+function asideRef(table, ref) {
+  if (!table || typeof ref !== 'string') return undefined;
+  if (ref.startsWith('row:')) {
+    const row = asideRow(table, ref.slice(4));
+    return row >= 0 ? [`r:${row}`] : null;
+  }
+  const at = ref.lastIndexOf('@');
+  if (at <= 0) return undefined;
+  const col = list(table.columns).indexOf(ref.slice(0, at).trim());
+  if (col < 0) return undefined;
+  const row = asideRow(table, ref.slice(at + 1));
+  return row >= 0 ? [`x:${row}/${col}`] : null;
+}
+
 /** Per scene type: `resolve(scene, ref, hunks)` gives item keys or null, `names(scene, hunks)` the refs to suggest. */
 const TARGETS = {
   graph: {
@@ -61,6 +95,8 @@ const TARGETS = {
       const ids = new Set(list(scene.nodes).map((n) => n?.id));
       const edges = list(scene.edges);
       if (typeof ref === 'string' && ids.has(ref)) return [`n:${ref}`];
+      const cell = asideRef(scene.table, ref);
+      if (cell !== undefined) return cell;
       if (typeof ref === 'string' && ref.startsWith('group:')) {
         const name = ref.slice(6).trim();
         return list(scene.nodes).some((n) => n?.group === name) ? [`g:${name}`] : null;
@@ -72,6 +108,7 @@ const TARGETS = {
       ...list(scene.nodes).map((n) => n?.id),
       ...new Set(list(scene.nodes).flatMap((n) => (n?.group ? [`group:${n.group}`] : []))),
       ...list(scene.edges).map(pairName),
+      ...(scene.table ? [...list(scene.table.rows).map((_, i) => `row:${i}`), ...list(scene.table.columns).map((c) => `${c}@0`)] : []),
     ],
   },
   sequence: {
@@ -235,13 +272,23 @@ const TARGETS = {
         const name = ref.slice(prefix.length).trim();
         return list(items).some((item) => item?.name === name) ? [`${key}:${name}`] : null;
       };
-      const marker = named('ptr:', scene.pointers, 'ptr') ?? named('range:', scene.ranges, 'rg');
+      const marker = named('ptr:', scene.pointers, 'ptr') ?? named('range:', scene.ranges, 'rg') ?? named('array:', scene.arrays, 'a');
       if (marker !== undefined) return marker;
-      const r = indexRange(ref);
-      return r && r[1] < list(scene.values).length ? range(r[0], r[1]).map((i) => `c:${i}`) : null;
+      const rows = arrayRows(scene);
+      if (!Array.isArray(scene.arrays)) {
+        const r = indexRange(ref);
+        return r && r[1] < rows[0].values.length ? range(r[0], r[1]).map((i) => cellKey('', i)) : null;
+      }
+      // "left[3]" or "left[0-1]": the array's name, then an index or a range in brackets.
+      const m = typeof ref === 'string' ? /^(.*)\[([^\]]*)\]\s*$/.exec(ref) : null;
+      const row = m ? rows.find((a) => a.name === m[1].trim()) : null;
+      const r = row ? indexRange(/^\s*\d+\s*$/.test(m[2]) ? Number(m[2]) : m[2]) : null;
+      return r && r[1] < row.values.length ? range(r[0], r[1]).map((i) => cellKey(row.name, i)) : null;
     },
     names: (scene) => [
-      `0-${Math.max(0, list(scene.values).length - 1)}`,
+      ...(Array.isArray(scene.arrays)
+        ? arrayRows(scene).flatMap((a) => [`array:${a.name}`, `${a.name}[0]`])
+        : [`0-${Math.max(0, list(scene.values).length - 1)}`]),
       ...list(scene.pointers).map((p) => `ptr:${p?.name}`),
       ...list(scene.ranges).map((r) => `range:${r?.name}`),
     ],
