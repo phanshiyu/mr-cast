@@ -6,6 +6,10 @@ inputs, collects outputs, and computes numbers. You launch the agents.
 
 Nothing under `quality/` ships in the npm package (`package.json` "files" does not list it).
 
+Since 0.25 (ADR 0019) the skill has no article stage, so the article arm of the 0.24 eval is gone: there is no
+`mr-cast article`, no reader test and no `article.md`. A writer's run is the storyboard alone. The `familiar` arm below
+is the plain video; `--audience familiar` is still accepted and means the same as no flag.
+
 ## Layout
 
 - `fixtures/<name>.sh <dir>` builds a git repo with `main` and a feature branch. Four shapes:
