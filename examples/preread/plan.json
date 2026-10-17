@@ -1,0 +1,41 @@
+{
+  "topics": [
+    {
+      "id": "rate-limiter",
+      "title": "Rate limiter: twenty orders a minute",
+      "summary": "Counts each visitor's order requests per minute and refuses the twenty-first.",
+      "files": [
+        "src/api/rate-limit.ts",
+        "src/api/server.ts",
+        "src/queue/events.ts"
+      ],
+      "depth": "deep",
+      "views": [
+        "parts",
+        "data"
+      ],
+      "why": "The twenty-first request is the case to trace.",
+      "seconds": {
+        "brief": 40,
+        "deep": 90
+      }
+    },
+    {
+      "id": "real-prices",
+      "title": "Orders use real prices",
+      "summary": "Each item asks the pricing module for its price; an empty order is refused.",
+      "files": [
+        "src/services/orders.ts"
+      ],
+      "depth": "brief",
+      "views": [
+        "compare",
+        "parts"
+      ],
+      "seconds": {
+        "brief": 35,
+        "deep": 80
+      }
+    }
+  ]
+}

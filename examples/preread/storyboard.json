@@ -1,6 +1,16 @@
 {
   "title": "Rate limiting for the orders API",
   "subtitle": "A pre-read: the ideas first, then the order to read the code in",
+  "plan": {
+    "rate-limiter": {
+      "depth": "deep",
+      "view": "parts"
+    },
+    "real-prices": {
+      "depth": "brief",
+      "view": "compare"
+    }
+  },
   "scenes": [
     {
       "type": "intent",
@@ -16,6 +26,7 @@
     },
     {
       "type": "graph",
+      "topic": "rate-limiter",
       "chapter": "Where it fits",
       "narration": "The new rate limiter sits in front of the orders route, and keeps its counts in Redis. The limiter and the event queue are new.",
       "from": [
@@ -120,6 +131,7 @@
     },
     {
       "type": "flow",
+      "topic": "rate-limiter",
       "chapter": "The twenty-first request",
       "title": "One visitor, one minute",
       "narration": "Follow one visitor who sends a twenty-first order request inside one minute.",
@@ -155,6 +167,7 @@
     },
     {
       "type": "compare",
+      "topic": "real-prices",
       "chapter": "Real prices",
       "narration": "The orders service changes how it prices an order.",
       "from": [

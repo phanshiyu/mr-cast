@@ -31,6 +31,7 @@
     "examples/demo/*.json",
     "examples/demo-simple/*.json",
     "examples/people/*.json",
+    "examples/preread/*.json",
     "examples/review/*.json",
     "tsconfig.json",
     "README.md",
