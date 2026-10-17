@@ -22,6 +22,7 @@ import { spokenTexts } from '../shared/timing.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
+import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
 import { ensureVoiceover, readVoiceover } from './lib/voice.mjs';
 import { ensureVoiceoverInChild, stopVoicing } from './lib/voice-child.mjs';
@@ -70,7 +71,9 @@ Used by the Claude Code skills:
   extract and init make their run the current one, and the commands after them work on the current run.
   extract, init, plan, validate, outline, voice, play, render and still take these flags. A flag applies to its own command
   only, and a command without it uses the default, so pass the same flags to each command:
-      --audience familiar|new|overview   who the video is for; new is the simple style (also --simple)
+      --audience familiar|new|overview|preread
+                                         who the video is for; new is the simple style (also --simple);
+                                         preread shows no code and ends on a reading order
       --pace slower|normal|faster        the voice's speed and the pauses around it (default normal)
       --voice name                       the Kokoro voice (default af_heart)
       --no-voice                         silent, with subtitles timed for reading`;
@@ -143,7 +146,7 @@ async function loadProject(dir, settings) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
   const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)');
   const style = styleOf(settings);
-  const plan = readPlan(dir);
+  const plan = readPlan(dir, { preread: settings.audience === 'preread' });
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
   const meta = readRunMeta(dir);
   const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
@@ -152,13 +155,14 @@ async function loadProject(dir, settings) {
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
-  return { dir, hunks, storyboard, plan, result, style, review, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
+  const reading = result.errors.length ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta);
+  return { dir, hunks, storyboard, plan, result, style, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
-/** Whether `file` is absent or a review.md mr-cast wrote, so mr-cast may replace or remove it. */
-function ownReview(file) {
+/** Whether `file` is absent or a file mr-cast wrote under `heading`, so mr-cast may replace or remove it. */
+function ownFile(file, heading) {
   try {
-    return fs.readFileSync(file, 'utf8').startsWith(REVIEW_HEADING);
+    return fs.readFileSync(file, 'utf8').startsWith(heading);
   } catch (err) {
     if (err.code === 'ENOENT') return true;
     throw err;
@@ -171,7 +175,7 @@ function ownReview(file) {
  * not write is left alone. Returns the file written, or null.
  */
 function writeReview(file, storyboard, meta) {
-  if (!ownReview(file)) {
+  if (!ownFile(file, REVIEW_HEADING)) {
     if (isReviewed(storyboard)) console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the review is not saved`);
     return null;
   }
@@ -180,6 +184,25 @@ function writeReview(file, storyboard, meta) {
     return null;
   }
   fs.writeFileSync(file, reviewMarkdown(storyboard, { branch: meta?.branch, base: meta?.base }));
+  return file;
+}
+
+/**
+ * reading.md, a pre-read's reading order as a checklist to follow in the editor and paste into the merge request.
+ * Like review.md: removed when the storyboard has no reading scene, and never written over a file mr-cast did not
+ * write. Returns the file written, or null.
+ */
+function writeReading(file, storyboard, hunks, plan, meta) {
+  const order = readingOrder(storyboard, hunks, plan);
+  if (!ownFile(file, READING_HEADING)) {
+    if (order) console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the reading order is not saved`);
+    return null;
+  }
+  if (!order) {
+    fs.rmSync(file, { force: true });
+    return null;
+  }
+  fs.writeFileSync(file, readingMarkdown(storyboard, order, { branch: meta?.branch, base: meta?.base }));
   return file;
 }
 
@@ -280,12 +303,13 @@ const RUN_OPTIONS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 async function validate(argv) {
   const { values } = parseArgs({ args: argv, options: RUN_OPTIONS });
   const { dir, settings } = runFor(values);
-  const { result, lines, review, plan, storyboard } = await loadProject(dir, settings);
+  const { result, lines, review, reading, plan, storyboard } = await loadProject(dir, settings);
   // The plan page marks each topic whose pick differs from the one the storyboard says it was written from.
   if (!result.errors.length && plan) recordBuilt(dir, plan.plan, storyboard.plan);
   // The verdict stays the last line.
   for (const line of lines.slice(0, -1)) console.log(line);
   if (review) console.log(`wrote ${rel(review)}`);
+  if (reading) console.log(`wrote ${rel(reading)}`);
   console.log(lines.at(-1));
   if (result.errors.length) process.exit(1);
 }
@@ -462,7 +486,7 @@ async function play(argv) {
       if (voiced) server.reload();
     });
   };
-  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover });
+  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover, audience: settings.audience });
   const url = `${server.url}/#token=${server.token}`;
   console.log(`mr-cast player: ${url}`);
   if (voiceover?.pending) {
@@ -500,7 +524,8 @@ async function plan(argv) {
   });
   const port = intOption(values.port, 'port', 1);
   const { dir, settings } = runFor(values);
-  const planFile = readPlan(dir);
+  const preread = settings.audience === 'preread';
+  const planFile = readPlan(dir, { preread });
   if (!planFile) throw new UserError(`${rel(path.join(dir, 'plan.json'))} not found; write it first (schema: Plan in src/types.ts)`);
   const lines = planLines(planFile);
   if (planFile.errors.length) {
@@ -512,12 +537,12 @@ async function plan(argv) {
 
   const onDataChange = (file) => {
     if (file !== 'plan.json') return;
-    const changed = readPlan(dir);
+    const changed = readPlan(dir, { preread });
     if (!changed) return console.error('mr-cast: plan.json was removed; the page waits for it');
     console.error('mr-cast: plan.json changed');
     for (const line of planLines(changed)) console.error(`  ${line}`);
   };
-  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings) });
+  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings), audience: settings.audience });
   const url = `${server.url}/plan#token=${server.token}`;
   console.log(`mr-cast plan: ${url}`);
   if (!values['no-open']) openBrowser(url);
@@ -556,7 +581,7 @@ function progressReporter(label) {
 async function render(argv) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...RUN_OPTIONS } });
   const run = runFor(values);
-  const { dir, hunks, storyboard } = await loadValidProject(run.dir, run.settings);
+  const { dir, hunks, storyboard, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = await voiceoverFor(dir, storyboard, run.settings);
   reportPace(voiceover);
   const { renderVideo } = await importRender();
@@ -566,10 +591,13 @@ async function render(argv) {
   const written = await renderVideo({ hunks, storyboard, voiceover, dataDir: dir, outFile, onProgress: progress.update });
   progress.done();
   const video = written ?? outFile;
-  // review.md is in the run's directory; a video saved elsewhere gets its own copy beside it.
-  const review = path.dirname(path.resolve(video)) === path.resolve(dir) ? null : writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir));
+  // review.md and reading.md are in the run's directory; a video saved elsewhere gets its own copies beside it.
+  const elsewhere = path.dirname(path.resolve(video)) !== path.resolve(dir);
+  const review = elsewhere ? writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir)) : null;
+  const reading = elsewhere ? writeReading(video.replace(/\.[^./]+$/, '.reading.md'), storyboard, hunks, planFile?.plan, readRunMeta(dir)) : null;
   console.log(video);
   if (review) console.log(review);
+  if (reading) console.log(reading);
 }
 
 async function still(argv) {

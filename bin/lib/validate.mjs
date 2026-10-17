@@ -18,11 +18,12 @@ import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
+import { checkPreread } from './validate-preread.mjs';
 import { aType } from '../../shared/words.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'compare', 'terminal', 'layers', 'array', 'memory'];
+const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
@@ -212,13 +213,17 @@ const BRIEF_REASON = 'the viewer chose a brief look at this topic';
 
 /**
  * Every hunk a reviewer needs must be shown in a code scene or listed in `skipped` with a reason. Only the
- * team's overview may leave out a substantial hunk because the diagrams cover it.
+ * team's overview may leave out a substantial hunk because the diagrams cover it. A pre-read shows no code,
+ * so its reading order (`listed`) takes the code scenes' place: the reviewer reads those hunks next.
  * Returns the counts behind validate's summary line.
  */
-function checkCoverage(sb, hunks, audience, errors, warnings) {
+function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
+  const preread = audience === 'preread';
+  const cover = preread ? 'add it to the reading scene\'s items ("routine": true for a change to skim)' : 'add a code scene for it';
   // A tests scene that links a case to its hunk walks through that hunk as much as a code scene does.
   const shownIds = sb.scenes.flatMap((s) => {
     if (s?.type === 'code') return [s.hunkId];
+    if (s?.type === 'reading' && preread) return [...listed];
     if (s?.type === 'tests' && Array.isArray(s.cases)) return s.cases.map((c) => c?.hunkId);
     return [];
   });
@@ -234,7 +239,7 @@ function checkCoverage(sb, hunks, audience, errors, warnings) {
       skipped.add(entry.hunkId);
       const h = hunks[entry.hunkId];
       if (audience !== 'overview' && isStr(entry.reason) && DIAGRAM_REASON.test(entry.reason) && h.status !== 'source' && !isTestFile(h.file) && h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) {
-        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : 'a reviewer'} shows every substantial hunk; add a code scene for it. Only the team's overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "${BRIEF_REASON}"`);
+        warnings.push(`${p}: ${entry.hunkId} ${h.file} (${hunkSize(h)}) is skipped as "${entry.reason}", but a video for ${audience === 'new' ? 'someone new to the code' : preread ? 'a reviewer who reads the code next' : 'a reviewer'} shows every substantial hunk; ${cover}. Only the team's overview leaves code to the diagrams, and a topic the viewer chose brief its non-key hunks, with the reason "${BRIEF_REASON}"`);
       }
     }
     if (!isStr(entry?.reason)) errors.push(`${p}.reason: required; say in a few words why a reviewer can skip this hunk ("formatting only", "generated lockfile")`);
@@ -250,14 +255,14 @@ function checkCoverage(sb, hunks, audience, errors, warnings) {
       if (shown.has(h.id)) tests.shown++;
     }
     if (shown.has(h.id) || skipped.has(h.id)) continue;
-    if (isTest) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}): changed tests are not walked through; link it from a tests scene case (hunkId), show it in a code scene, or list ${h.id} in skipped with a reason`);
-    else if (h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}) is not shown; add a code scene or list it in skipped with a reason`);
+    if (isTest) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}): changed tests are not walked through; link it from a tests scene case (hunkId), ${preread ? 'add it to the reading order' : 'show it in a code scene'}, or list ${h.id} in skipped with a reason`);
+    else if (h.additions + h.deletions >= SUBSTANTIAL_HUNK_LINES) warnings.push(`${h.id} ${h.file} (${hunkSize(h)}) ${preread ? `is not in the reading order; ${cover},` : 'is not shown; add a code scene'} or list it in skipped with a reason`);
   }
   const testsScenes = sb.scenes.filter((s) => s?.type === 'tests' && Array.isArray(s.cases) && Array.isArray(s.gaps));
   const testsScene = testsScenes.length
     ? { cases: testsScenes.reduce((n, s) => n + s.cases.length, 0), gaps: testsScenes.reduce((n, s) => n + s.gaps.length, 0) }
     : null;
-  return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene };
+  return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene, preread };
 }
 
 const DIAGRAM_TYPES = ['graph', 'sequence', 'flow', 'er', 'state', 'mermaid', 'layers', 'array', 'memory'];
@@ -443,12 +448,13 @@ function checkSimpleLineCoverage(sb, hunks, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', audience?: 'familiar' | 'new' | 'overview', style?: 'simple', plan?: object | null, quick?: boolean }} meta  The mode from meta.json: "explain" (`mr-cast init`)
+ * @param {{ mode?: 'diff' | 'explain', audience?: 'familiar' | 'new' | 'overview' | 'preread', style?: 'simple', plan?: object | null, quick?: boolean }} meta  The mode from meta.json: "explain" (`mr-cast init`)
  *   narrates source snippets instead of a diff, so diff coverage, test and risk rules do not apply. The style
  *   from the command's flags: "simple" (`--audience new`) is explained line by line in plain words, so steps are short, every changed
  *   line of a shown hunk has a step, and sentences stay short. The run's plan.json as `readPlan` read it, when it
  *   has one: each scene's topic must name one of its topics, and each topic's scenes follow the viewer's picks.
  *   `audience` (`--audience`) decides what may be skipped: only the team's overview leaves code to the diagrams.
+ *   A pre-read (`preread`) shows no code and covers the diff with its reading order instead.
  *   `quick` (`mr-cast init --quick`, kept in meta.json) is a short diagram of an explanation made in seconds: it
  *   may open without an intent scene, and keeps to QUICK_SCENES_MAX scenes. Every correctness and text-fit check
  *   still applies.
@@ -637,6 +643,9 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
         checkMemory(s, p, errors, warnings);
         break;
 
+      case 'reading':
+        break;
+
       case 'review':
         if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
         if (s.steps !== undefined) errors.push(`${p}.steps: a review scene takes no steps; its narration recaps the findings, and each was said where its code was shown`);
@@ -652,9 +661,11 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
     checkSpokenMarkup(s, p, warnings);
   });
 
+  const preread = audience === 'preread';
+  const listed = checkPreread(sb, hunks ?? {}, { preread, mode }, errors, warnings);
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
-  checkTopics(sb, plan, errors, warnings);
-  checkReview(sb, hunks ?? {}, mode, errors, warnings);
+  checkTopics(sb, plan, errors, warnings, { preread });
+  checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);
@@ -667,7 +678,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
     if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
     return { errors, warnings, coverage: null };
   }
-  const coverage = checkCoverage(sb, hunks ?? {}, audience, errors, warnings);
+  const coverage = checkCoverage(sb, hunks ?? {}, audience, listed, errors, warnings);
   return { errors, warnings, coverage };
 }
 

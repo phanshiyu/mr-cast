@@ -1,10 +1,12 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, FlaskConical, Shapes, GitBranch, Layers, MemoryStick, MessageCircleWarning, Network, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, FlaskConical, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { sceneChapter } from './components/theme';
+import { sceneChapter } from '../shared/chapters.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { checkPlan } from '../shared/plan.mjs';
 import { PlanPage, type BuiltPicks } from './PlanPage';
+import { ReadingPanel } from './ReadingPanel';
+import { readingOrder } from '../shared/reading.mjs';
 import type { HunkMap, Plan, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
@@ -23,16 +25,21 @@ interface Meta {
 /** plan.json as the page can use it, or the problems Claude still has to fix in it. */
 type PlanData = { status: 'ok'; plan: Plan; built: BuiltPicks | null } | { status: 'invalid'; errors: string[] };
 
+/** What the command serving the page was run with (`settings.json`). */
+interface ServedSettings {
+  audience?: string;
+}
+
 type LoadState =
   | { status: 'loading' }
   | { status: 'error'; file: string; message: string }
   // One `walkthrough` object per load: the Player restarts its frame clock whenever `inputProps` changes
   // identity, and this component re-renders on every frame. It is null before Claude writes the storyboard.
-  | { status: 'ready'; walkthrough: WalkthroughProps | null; meta: Meta | null; plan: PlanData | null };
+  | { status: 'ready'; walkthrough: WalkthroughProps | null; meta: Meta | null; plan: PlanData | null; settings: ServedSettings | null };
 
 type Tab = 'video' | 'plan';
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick };
+const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, reading: ListChecks, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick };
 
 class DataError extends Error {
   constructor(readonly file: string, message: string) {
@@ -79,13 +86,14 @@ async function loadPlan(): Promise<PlanData | null> {
 
 async function loadAll(): Promise<LoadState> {
   try {
-    const [storyboard, plan, meta] = await Promise.all([
+    const [storyboard, plan, meta, settings] = await Promise.all([
       fetchOptional<{ scenes?: unknown }>('storyboard.json'),
       loadPlan(),
       fetchJson<Meta>('meta.json').catch(() => null),
+      fetchOptional<ServedSettings>('settings.json').catch(() => null),
     ]);
     // Before Claude writes the storyboard, the run has only the plan, and the page shows only the plan.
-    if (storyboard === null && (plan || onPlanPath())) return { status: 'ready', walkthrough: null, meta, plan };
+    if (storyboard === null && (plan || onPlanPath())) return { status: 'ready', walkthrough: null, meta, plan, settings };
     if (storyboard === null) throw new DataError('storyboard.json', 'HTTP 404 Not Found');
     if (!Array.isArray(storyboard.scenes) || storyboard.scenes.length === 0) {
       throw new DataError('storyboard.json', 'expected a non-empty "scenes" array');
@@ -96,6 +104,7 @@ async function loadAll(): Promise<LoadState> {
       walkthrough: { storyboard: normalizeStoryboard(storyboard, hunks), hunks, showCaptions: false, voiceover, audioBaseUrl: './data/' },
       meta,
       plan,
+      settings,
     };
   } catch (err) {
     if (err instanceof DataError) return { status: 'error', file: err.file, message: err.message };
@@ -190,6 +199,8 @@ export const App: React.FC = () => {
   }, [shown, total, voiceStatus.kind, turnVoiceOn]);
 
   const current = activeIndex(chapters, frame);
+  const planData = ready?.plan?.status === 'ok' ? ready.plan.plan : null;
+  const reading = useMemo(() => (shown ? readingOrder(shown.storyboard, shown.hunks, planData) : null), [shown, planData]);
   const seekChapter = useCallback(
     (index: number) => {
       const target = chapters[Math.max(0, Math.min(chapters.length - 1, index))];
@@ -243,7 +254,7 @@ export const App: React.FC = () => {
     );
   }
 
-  const { meta, plan } = state;
+  const { meta, plan, settings } = state;
   const branch = meta?.branch ?? meta?.head;
   const planView = (
     <PlanView
@@ -254,6 +265,7 @@ export const App: React.FC = () => {
       branch={branch}
       explanation={meta?.mode === 'explain'}
       active={view === 'plan'}
+      preread={settings?.audience === 'preread'}
     />
   );
   if (!shown) return <Backdrop>{planView}</Backdrop>;
@@ -344,6 +356,7 @@ export const App: React.FC = () => {
               {meta?.quick && ended ? <QuickEndCard /> : null}
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
+            {reading ? <ReadingPanel order={reading} onChapter={(chapter) => seekChapter(chapters.findIndex((c) => sceneChapter(c.scene) === chapter))} /> : null}
             <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
               <span>
                 <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter
@@ -379,7 +392,7 @@ const Tabs: React.FC<{ tab: Tab; onChange: (tab: Tab) => void }> = ({ tab, onCha
 );
 
 /** The plan page, or what stands in for it while plan.json is missing or has problems. */
-const PlanView: React.FC<{ plan: PlanData | null; token: string | null; hasVideo: boolean; title: string; branch?: string; explanation: boolean; active: boolean }> = ({ plan, ...props }) => {
+const PlanView: React.FC<{ plan: PlanData | null; token: string | null; hasVideo: boolean; title: string; branch?: string; explanation: boolean; active: boolean; preread: boolean }> = ({ plan, ...props }) => {
   if (!plan) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">

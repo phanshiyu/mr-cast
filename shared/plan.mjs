@@ -31,8 +31,11 @@ export function choiceError(topic, choice) {
   return extra.length ? `takes only depth and view (got ${extra.join(', ')})` : null;
 }
 
-/** Problems with plan.json as Claude wrote it, as `topics[1].views: ...` lines. */
-export function checkPlan(plan) {
+/**
+ * Problems with plan.json as Claude wrote it, as `topics[1].views: ...` lines. A pre-read (`preread`) puts no
+ * code on screen, so no topic may offer the code view.
+ */
+export function checkPlan(plan, { preread = false } = {}) {
   const errors = [];
   const warnings = [];
   if (!plan || typeof plan !== 'object' || Array.isArray(plan)) return { errors: ['must be a JSON object { "topics": [...] }'], warnings };
@@ -58,6 +61,7 @@ export function checkPlan(plan) {
         else if (t.views.indexOf(v) !== j) { viewsOk = false; errors.push(`${p}.views[${j}]: "${v}" is listed twice`); }
       });
     }
+    if (preread && viewsOk && t.views.includes('code')) errors.push(`${p}.views: a pre-read puts no code on screen, so drop "code" and offer the views that draw the topic, such as "data" or "decisions"`);
     if (t.choice !== undefined && viewsOk) {
       const problem = choiceError(t, t.choice);
       if (problem) errors.push(`${p}.choice: ${problem}`);

@@ -97,7 +97,8 @@ function checkRecap(sb, count, errors, warnings) {
   if (later >= 0) warnings.push(`scenes[${recaps[0]}]: the review scene comes before scenes[${later}] (${sb.scenes[later].type}); put the recap at the end, after the tests`);
 }
 
-export function checkReview(sb, hunks, mode, errors, warnings) {
+/** `preread`: a pre-read flags its findings on reading items, which validate-preread checks, and has no review scene. */
+export function checkReview(sb, hunks, mode, errors, warnings, { preread = false } = {}) {
   const reviewScenes = sb.scenes.some((s) => s?.type === 'review');
   if (sb.findings === undefined) {
     if (reviewScenes) errors.push('findings: the review scene recaps "findings", and the storyboard has none; add them, or "findings": [] when nothing looks wrong');
@@ -111,6 +112,7 @@ export function checkReview(sb, hunks, mode, errors, warnings) {
   sb.findings.forEach((f, k) => checkFinding(f, `findings[${k}]`, files, ids, errors, warnings));
   if (sb.findings.length > FINDINGS_MAX) warnings.push(`findings: ${sb.findings.length} findings; flag only what clearly looks wrong, at most ${FINDINGS_MAX}`);
   const byId = new Map(sb.findings.filter((f) => isStr(f?.id)).map((f) => [f.id, f]));
+  if (preread) return;
   checkFlags(sb, hunks, byId, errors, warnings);
   checkRecap(sb, sb.findings.length, errors, warnings);
 }

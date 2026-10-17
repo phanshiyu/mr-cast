@@ -1,5 +1,6 @@
 import { fitText, type Fit } from '../../shared/textfit.mjs';
-import { SAFE, sceneChapter } from '../components/theme';
+import { sceneChapter } from '../../shared/chapters.mjs';
+import { SAFE } from '../components/theme';
 import type { Scene } from '../types';
 import { SLOTS, sized } from './slots';
 

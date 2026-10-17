@@ -17,10 +17,13 @@ import { layoutSequence } from '../utils/sequenceLayout';
 import { layoutState } from '../utils/stateLayout';
 import { layoutTable } from '../utils/tableLayout';
 import { layoutReview } from '../utils/reviewLayout';
+import { layoutReading } from '../utils/readingLayout';
+import { readingOrder } from '../../shared/reading.mjs';
 import { layoutTests } from '../utils/testsLayout';
 import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline } from '../utils/timelineLayout';
 import { shellFits } from './shell';
+import { sourceFit } from './source';
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
 type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap) => unknown };
@@ -58,6 +61,11 @@ const SCENE_FITS: SceneFits = {
     const box = contentBox(Boolean(scene.title));
     return layoutReview(storyboard.findings ?? [], box.width, box.height);
   },
+  reading: (scene, storyboard, hunks) => {
+    const box = contentBox(Boolean(scene.title));
+    const order = readingOrder(storyboard, hunks);
+    return order ? layoutReading(order, scene.items, box.width, box.height) : null;
+  },
   compare: (scene) => {
     const box = contentBox(Boolean(scene.title));
     return layoutCompare(scene, box.width, box.height);
@@ -90,7 +98,7 @@ export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
   return storyboard.scenes.map((scene, i) => {
     const out: Fit[] = [];
     const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap) => unknown;
-    collect([shellFits(scene), fits(scene, storyboard, hunks)], out, new Set());
+    collect([shellFits(scene), sourceFit(scene, hunks), fits(scene, storyboard, hunks)], out, new Set());
     return { scene: i, fits: out };
   });
 }

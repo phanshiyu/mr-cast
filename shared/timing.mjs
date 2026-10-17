@@ -48,6 +48,7 @@ export const BUILD_SECONDS = {
   layers: 1.5,
   files: 1.5,
   review: 1.5,
+  reading: 1.5,
   compare: 1.8,
   terminal: 0.8,
   array: 1.2,

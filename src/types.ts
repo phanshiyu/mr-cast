@@ -86,6 +86,13 @@ interface SceneBase {
   /** In an explanation, this scene explains a change, so its `change` marks are meant (see Storyboard.explainsChange). */
   explainsChange?: boolean;
   /**
+   * Pre-read only (`--audience preread`): the ids of up to 3 hunks this diagram explains without showing them.
+   * The scene names their files in a quiet "In the code:" line, and the reading order says "Explained in" this
+   * chapter. Put a cited hunk's file name or one of its identifiers (`checkLimit`) in the scene's labels or
+   * narration, so the viewer can map the picture onto the code; `validate` warns when none appears.
+   */
+  from?: string[];
+  /**
    * Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice.
    * The voice starts once the scene has drawn in. A scene with `steps` says it before the first step.
    */
@@ -445,6 +452,33 @@ export interface Finding {
 export interface ReviewScene extends SceneBase {
   type: 'review';
   title?: string;
+}
+
+/** One hunk of the reading order. Its file and lines come from hunks.json, never typed. */
+export interface ReadingItem {
+  hunkId: string;
+  /**
+   * What to verify there, in under 80 characters, with the real names and values, e.g. "the key resets on a
+   * new minute; check the off-by-one". Required unless `routine`.
+   */
+  check?: DisplayText;
+  /** A routine change (wiring, a rename, config): reading.md lists it on its group's one "skim" line, never on screen. */
+  routine?: boolean;
+  /** Review mode: the id of the finding at this hunk, drawn on the item in its severity's colour. */
+  flag?: string;
+}
+
+/**
+ * Pre-read only: the closing handoff, the order in which to read the code after the video, main behaviour
+ * first. Lists every substantial hunk not in `skipped`. The scene shows the first 6 non-routine items under
+ * "Read first" with their file:line and check, and counts the rest; reading.md, `mr-cast outline` and the
+ * player's Reading order panel list them all. Narrate the first three and why they come first. In review
+ * mode it also carries the findings, so a pre-read has no review scene.
+ */
+export interface ReadingScene extends SceneBase {
+  type: 'reading';
+  title?: string;
+  items: ReadingItem[];
 }
 
 /** A cell's text, or `{ before, after }` for a value this change replaced: the old value is struck through beside the new one. */
@@ -836,7 +870,7 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene;
+export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene;
 
 export interface Storyboard {
   title: string;

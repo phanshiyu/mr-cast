@@ -111,10 +111,11 @@ function listen(server, port) {
 /**
  * Serve the player from `distDir` and live data from `dataDir`.
  * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload.
- * `getVoiceover()` is the voiceover the player should use, or null for silent scenes.
+ * `getVoiceover()` is the voiceover the player should use, or null for silent scenes. `audience` is the command's
+ * --audience, served as settings.json so the plan page can word its depths for a pre-read.
  * The plan page changes plan.json through POST /plan/choice, with the returned `token` in TOKEN_HEADER.
  */
-export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover }) {
+export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover, audience = 'familiar' }) {
   const root = path.resolve(distDir);
   const token = randomBytes(16).toString('hex');
   const tokenBytes = Buffer.from(token);
@@ -139,6 +140,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
       req.on('close', () => clients.delete(res));
       return;
     }
+
+    if (pathname === '/data/settings.json') return sendJson(res, 200, { audience });
 
     if (pathname === '/data/voiceover.json') {
       const voiceover = getVoiceover?.();

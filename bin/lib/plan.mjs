@@ -13,9 +13,9 @@ export const BUILT_FILE = 'plan-built.json';
 
 /**
  * The run's plan with its problems, or null when it has no plan.json. A plan that is not JSON has
- * `plan: null` and one error.
+ * `plan: null` and one error. `preread` checks it for a pre-read, which offers no code view.
  */
-export function readPlan(dir) {
+export function readPlan(dir, { preread = false } = {}) {
   let text;
   try {
     text = fs.readFileSync(path.join(dir, PLAN_FILE), 'utf8');
@@ -25,7 +25,7 @@ export function readPlan(dir) {
   }
   try {
     const plan = JSON.parse(text);
-    return { plan, ...checkPlan(plan) };
+    return { plan, ...checkPlan(plan, { preread }) };
   } catch {
     const loc = locateJsonError(text);
     return { plan: null, errors: [`not valid JSON${loc ? ` at line ${loc.line} column ${loc.column}: ${loc.reason}` : ''}`], warnings: [] };

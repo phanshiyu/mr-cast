@@ -4,6 +4,7 @@ import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { pickOf } from '../../shared/plan.mjs';
+import { readingLines, readingOrder } from '../../shared/reading.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
 import { VIEWS } from '../../shared/views.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
@@ -111,6 +112,7 @@ export function formatDuration(seconds) {
 
 /**
  * "shows 9/13 hunks, skipped 2, tests 2/2 shown · tests scene: 5 cases, 1 gap"; each part only when it applies.
+ * A pre-read shows no code, so it counts the hunks its reading order (or tests scene) hands the reader.
  * An explanation (null coverage) has no diff to cover.
  */
 function formatCoverage(coverage) {
@@ -118,7 +120,7 @@ function formatCoverage(coverage) {
   const { shown, skipped, total, tests, testsScene } = coverage;
   const out = [];
   if (total) {
-    const parts = [`shows ${shown}/${total} hunks`];
+    const parts = [coverage.preread ? `reading order ${shown}/${total} hunks` : `shows ${shown}/${total} hunks`];
     if (skipped) parts.push(`skipped ${skipped}`);
     if (tests.total) parts.push(`tests ${tests.shown}/${tests.total} shown`);
     out.push(parts.join(', '));
@@ -238,6 +240,11 @@ function sceneGist(scene, hunks, storyboard) {
     }
     case 'review':
       return titled(formatFindings(storyboard.findings));
+    case 'reading': {
+      const routine = scene.items.filter((i) => i.routine).length;
+      const flags = scene.items.filter((i) => i.flag).length;
+      return titled(`${plural(scene.items.length - routine, 'item')} to read${routine ? `, ${routine} routine` : ''}${flags ? `, ${plural(flags, 'flag')}` : ''}`);
+    }
     case 'array': {
       const changes = (scene.steps ?? []).filter(changesState).length;
       const extra = [scene.pointers?.length ? count(scene.pointers, 'pointer') : '', scene.ranges?.length ? count(scene.ranges, 'range') : '', changes ? `${changes} changing` : ''].filter(Boolean);
@@ -260,7 +267,7 @@ export function formatFindings(findings = []) {
 
 /** A diagram's gist, with its step count when it walks steps, and how many steps draw a pen mark. Code scenes list their steps themselves. */
 function gistWithSteps(scene, hunks, storyboard) {
-  const gist = sceneGist(scene, hunks, storyboard);
+  const gist = `${sceneGist(scene, hunks, storyboard)}${scene.from?.length ? ` · from ${scene.from.join(', ')}` : ''}`;
   const marked = sceneSteps(scene).filter((step) => step?.mark).length;
   const marks = marked ? `, ${plural(marked, 'mark')}` : '';
   const steps = scene.type === 'code' ? 0 : sceneSteps(scene).length;
@@ -302,5 +309,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, st
   if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
   const skipped = [...topics.values()].filter((t) => pickOf(t).depth === 'skip').map((t) => t.title);
   if (skipped.length) out.push(`skipped topics: ${skipped.join(', ')}`);
+  const order = readingOrder(storyboard, hunks, plan);
+  if (order) out.push('', 'reading order:', ...readingLines(order));
   return out.join('\n');
 }

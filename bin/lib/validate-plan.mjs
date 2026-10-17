@@ -7,16 +7,16 @@ import { aType } from '../../shared/words.mjs';
 
 // Scenes that frame the whole video rather than draw one topic, so any view allows them. A code scene
 // shows a topic's lines whatever its view.
-const ANY_VIEW = ['intent', 'files', 'tests', 'review', 'code'];
+const ANY_VIEW = ['intent', 'files', 'tests', 'review', 'reading', 'code'];
 
 const drawn = (view) => VIEWS[view].scenes.map(aType).join(' or ');
 const pickJson = (pick) => JSON.stringify({ depth: pick.depth, view: pick.view });
 
 /**
  * @param {{ plan: object | null, errors: string[], warnings: string[] } | null} planFile  readPlan's result,
- *   or null when the run has no plan.json.
+ *   or null when the run has no plan.json. `preread`: a pre-read's deep topic adds a diagram, not code.
  */
-export function checkTopics(sb, planFile, errors, warnings) {
+export function checkTopics(sb, planFile, errors, warnings, { preread = false } = {}) {
   sb.scenes.forEach((s, i) => {
     if (s?.topic !== undefined && (typeof s.topic !== 'string' || !s.topic.trim())) errors.push(`scenes[${i}].topic: must be a topic id from plan.json`);
   });
@@ -33,7 +33,7 @@ export function checkTopics(sb, planFile, errors, warnings) {
     if (typeof s?.topic === 'string' && !topicIds.includes(s.topic)) errors.push(`scenes[${i}].topic: no topic "${s.topic}" in plan.json; use one of ${topicIds.join(', ')}`);
   });
   const written = writtenFrom(sb, planFile.plan, errors, warnings);
-  warnings.push(...sceneChecks(sb, planFile.plan, written));
+  warnings.push(...sceneChecks(sb, planFile.plan, written, preread));
 }
 
 /**
@@ -77,7 +77,7 @@ function writtenFrom(sb, plan, errors, warnings) {
  * The ways the scenes do not draw the pick each topic was written from (or its current pick, when the storyboard
  * does not record one): the scene problems first, then the topics.
  */
-function sceneChecks(sb, plan, written) {
+function sceneChecks(sb, plan, written, preread) {
   const topics = new Map(plan.topics.map((t) => [t.id, { pick: written.get(t.id) ?? pickOf(t), scenes: [] }]));
   const problems = [];
   sb.scenes.forEach((s, i) => {
@@ -89,20 +89,23 @@ function sceneChecks(sb, plan, written) {
     problems.push(`scenes[${i}] is ${aType(s.type)} scene in "${s.topic}", which the viewer chose to see as "${VIEWS[view].label}"; draw it as ${drawn(view)} scene, or move this scene to another topic`);
   });
   for (const [id, { pick, scenes }] of topics) {
-    const problem = topicProblem(id, pick, scenes.map((i) => [i, sb.scenes[i]]));
+    const problem = topicProblem(id, pick, scenes.map((i) => [i, sb.scenes[i]]), preread);
     if (problem) problems.push(problem);
   }
   return problems;
 }
 
 /** How the scenes of topic `id` do not show `pick`, or null when they do. */
-function topicProblem(id, pick, scenes) {
+function topicProblem(id, pick, scenes, preread) {
   if (pick.depth === 'skip') {
     return scenes.length ? `topic "${id}": the viewer chose to skip it, but scenes[${scenes.map(([i]) => i).join(', ')}] show it; remove them and list its hunks in skipped with the reason "the viewer chose to skip this topic"` : null;
   }
   if (!scenes.length) return `topic "${id}": the viewer chose ${pick.depth}, and no scene has "topic": "${id}"; add its scenes, or tag the scenes that show it`;
   if (pick.view !== 'code' && !scenes.some(([, s]) => VIEWS[pick.view].scenes.includes(s.type))) {
     return `topic "${id}": the viewer chose to see it as "${VIEWS[pick.view].label}", and none of its scenes is ${drawn(pick.view)} scene; add one`;
+  }
+  if (preread && pick.depth === 'deep' && scenes.filter(([, s]) => !ANY_VIEW.includes(s.type)).length < 2) {
+    return `topic "${id}": the viewer chose deep, which in a pre-read traces one real case through a second diagram; add a flow, array or table that walks it with the actual limits, keys and order`;
   }
   return null;
 }

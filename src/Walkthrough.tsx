@@ -14,6 +14,7 @@ import { IntentCard } from './components/IntentCard';
 import { LayerStack } from './components/LayerStack';
 import { MemoryDiagram } from './components/MemoryDiagram';
 import { MermaidDiagram } from './components/MermaidDiagram';
+import { ReadingList } from './components/ReadingList';
 import { ReviewRecap } from './components/ReviewRecap';
 import type { SceneProps } from './components/sceneProps';
 import { SequenceDiagram } from './components/SequenceDiagram';
@@ -21,9 +22,11 @@ import { StateDiagram } from './components/StateDiagram';
 import { Terminal } from './components/Terminal';
 import { TestMatrix } from './components/TestMatrix';
 import { Timeline } from './components/Timeline';
-import { colors, fonts } from './components/theme';
+import { SAFE, colors, fonts } from './components/theme';
+import { FitText } from './components/FitText';
+import { sourceFit } from './fit/source';
 import './fonts';
-import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, IntentScene, LayersScene, MemoryScene, MermaidScene, ReviewScene, SequenceScene, StateScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps } from './types';
+import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, IntentScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -41,6 +44,7 @@ interface SceneByType {
   timeline: TimelineScene;
   files: FilesScene;
   review: ReviewScene;
+  reading: ReadingScene;
   compare: CompareScene;
   terminal: TerminalScene;
   layers: LayersScene;
@@ -63,6 +67,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   timeline: Timeline,
   files: FileTree,
   review: ReviewRecap,
+  reading: ReadingList,
   compare: Compare,
   terminal: Terminal,
   layers: LayerStack,
@@ -74,6 +79,17 @@ function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<Sce
   const Component: React.FC<SceneProps<SceneByType[K]>> = registry[type];
   return <Component {...props} />;
 }
+
+/** A pre-read diagram's quiet "In the code:" line in the top margin, naming the files it explains. */
+const SourceLine: React.FC<{ scene: Scene; hunks: HunkMap }> = ({ scene, hunks }) => {
+  const fit = sourceFit(scene, hunks);
+  if (!fit) return null;
+  return (
+    <AbsoluteFill style={{ pointerEvents: 'none' }}>
+      <FitText fit={fit} style={{ position: 'absolute', top: 22, right: SAFE.right, lineHeight: 'normal', color: colors.muted, opacity: 0.85 }} />
+    </AbsoluteFill>
+  );
+};
 
 const Backdrop: React.FC = () => (
   <AbsoluteFill
@@ -91,6 +107,7 @@ export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, sho
     {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, segments }) => (
       <Sequence key={index} from={from} durationInFrames={durationInFrames} name={`${index + 1}. ${scene.chapter ?? scene.type}`}>
         {renderScene(scene.type, { scene, hunks, storyboard, durationInFrames, segments })}
+        <SourceLine scene={scene} hunks={hunks} />
         {audioBaseUrl === undefined
           ? null
           : segments.map((segment, k) =>

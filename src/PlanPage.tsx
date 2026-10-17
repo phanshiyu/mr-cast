@@ -16,6 +16,12 @@ const depthHint: Record<Depth, string> = {
   brief: 'The view, then the key lines',
   deep: 'The view, then the code line by line',
 };
+/** A pre-read shows no code, so a deeper look is one more diagram that traces a real case. */
+const prereadHint: Record<Depth, string> = {
+  skip: depthHint.skip,
+  brief: 'The picture and its key fact.',
+  deep: 'Trace one real case through it, with the actual limits, keys and order.',
+};
 
 /** The picks the current video was built from, by topic id (plan-built.json). */
 export type BuiltPicks = Record<string, TopicPick>;
@@ -54,7 +60,9 @@ export const PlanPage: React.FC<{
   explanation: boolean;
   /** Keys move between rows and change picks only while the page is on screen. */
   active: boolean;
-}> = ({ plan, built, token, hasVideo, title, branch, explanation, active }) => {
+  /** A pre-read (`--audience preread`): no code on screen, and the video ends on the order to read the code in. */
+  preread: boolean;
+}> = ({ plan, built, token, hasVideo, title, branch, explanation, active, preread }) => {
   const [local, setLocal] = useState(plan);
   const [row, setRow] = useState(0);
   const [save, setSave] = useState<Save>({ status: 'idle' });
@@ -143,7 +151,9 @@ export const PlanPage: React.FC<{
         <div className="min-w-0">
           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-300/80">Plan</div>
           <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-100">{title}</h1>
-          <p className="mt-1 text-sm text-slate-400">Pick how much time each topic gets, and how it is shown.</p>
+          <p className="mt-1 text-sm text-slate-400">
+            Pick how much time each topic gets, and how it is shown.{preread ? ' No code on screen: you read the code after the video.' : ''}
+          </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <SaveNote save={save} />
@@ -189,10 +199,11 @@ export const PlanPage: React.FC<{
             onFocusRow={() => setRow(i)}
             onChoose={(change) => choose(topic, change)}
             onReset={() => void send({ topic: topic.id, choice: null })}
+            hints={preread ? prereadHint : depthHint}
           />
         ))}
       </ol>
-      {explanation ? null : <FixedRow text="The tests, and what is left to check." />}
+      {explanation ? null : <FixedRow text={preread ? 'The tests, then the order in which to read the code, with what to check at each place.' : 'The tests, and what is left to check.'} />}
 
       <p className="mt-6 hidden text-xs text-slate-500 sm:block">
         <Kbd>↑</Kbd> <Kbd>↓</Kbd> topic · <Kbd>1</Kbd> <Kbd>2</Kbd> <Kbd>3</Kbd> skip, brief, deep · <Kbd>←</Kbd> <Kbd>→</Kbd> how it is shown
@@ -231,9 +242,10 @@ interface TopicRowProps {
   onChoose: (change: Partial<TopicPick>) => void;
   onReset: () => void;
   ref: React.Ref<HTMLLIElement>;
+  hints: Record<Depth, string>;
 }
 
-const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, editable, onFocusRow, onChoose, onReset, ref }) => {
+const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, editable, onFocusRow, onChoose, onReset, ref, hints }) => {
   const pick = pickOf(topic);
   const suggested = suggestionOf(topic);
   const changed = !samePick(pick, suggested);
@@ -252,7 +264,7 @@ const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, edita
           <p className="mt-0.5 text-sm text-slate-300">{topic.summary}</p>
           {topic.files.length ? <p className="mt-1 font-mono text-xs text-slate-500">{formatFiles(topic.files)}</p> : null}
         </div>
-        <DepthControl value={pick.depth} suggested={suggested.depth} disabled={!editable} onChange={(depth) => onChoose({ depth })} />
+        <DepthControl value={pick.depth} suggested={suggested.depth} disabled={!editable} hints={hints} onChange={(depth) => onChoose({ depth })} />
       </div>
 
       {skipped ? null : <ViewPicker topic={topic} value={pick.view} disabled={!editable} onChange={(view) => onChoose({ view })} />}
@@ -283,14 +295,14 @@ function formatFiles(files: readonly string[]): string {
   return `${names.join(', ')}${files.length > 2 ? ` +${files.length - 2}` : ''}`;
 }
 
-const DepthControl: React.FC<{ value: Depth; suggested: Depth; disabled: boolean; onChange: (depth: Depth) => void }> = ({ value, suggested, disabled, onChange }) => (
+const DepthControl: React.FC<{ value: Depth; suggested: Depth; disabled: boolean; hints: Record<Depth, string>; onChange: (depth: Depth) => void }> = ({ value, suggested, disabled, hints, onChange }) => (
   <div role="radiogroup" aria-label="Depth" className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5">
     {DEPTHS.map((depth) => (
       <button
         key={depth}
         role="radio"
         aria-checked={depth === value}
-        title={`${depthHint[depth]}${depth === suggested ? ' (suggested)' : ''}`}
+        title={`${hints[depth]}${depth === suggested ? ' (suggested)' : ''}`}
         disabled={disabled}
         onClick={() => onChange(depth)}
         className={`relative rounded-md px-3.5 py-1.5 text-sm transition disabled:cursor-default ${

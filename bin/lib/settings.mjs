@@ -11,13 +11,14 @@ import { parsePace } from './voice.mjs';
 
 /**
  * familiar: knows the code (a reviewer of a change, a teammate for an explanation); new: new to the code, the
- * simple style; overview: a quick overview with little code.
+ * simple style; overview: a quick overview with little code; preread: a reviewer who reads the code next, so
+ * diagrams only, ending on the order in which to read it.
  */
-export const AUDIENCES = ['familiar', 'new', 'overview'];
+export const AUDIENCES = ['familiar', 'new', 'overview', 'preread'];
 
 /**
  * @typedef {{
- *   audience: 'familiar' | 'new' | 'overview',
+ *   audience: 'familiar' | 'new' | 'overview' | 'preread',
  *   pace: { speed: number, pauses: number },
  *   voice: string,
  *   silent: boolean,

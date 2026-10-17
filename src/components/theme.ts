@@ -1,4 +1,4 @@
-import type { Risk, Scene, Severity } from '../types';
+import type { Risk, Severity } from '../types';
 
 export const colors = {
   bg: '#07080c',
@@ -34,28 +34,6 @@ export const riskColors: Record<Risk, string> = {
 export const CAPTION_BAND = 150;
 export const SAFE = { left: 104, right: 104, top: 64, bottom: CAPTION_BAND };
 
-export const defaultChapter: Record<Scene['type'], string> = {
-  intent: 'Overview',
-  graph: 'Architecture',
-  code: 'Code change',
-  flow: 'Data flow',
-  sequence: 'Sequence',
-  er: 'Data model',
-  state: 'States',
-  mermaid: 'Diagram',
-  tests: 'Tests',
-  table: 'Table',
-  chart: 'Chart',
-  timeline: 'Timeline',
-  files: 'Files',
-  review: "Claude's review",
-  compare: 'Compare',
-  terminal: 'Terminal',
-  layers: 'Layers',
-  array: 'Step by step',
-  memory: 'Memory',
-};
-
 /** Ink of a review finding's severity: its pen mark, note and recap row. */
 export const severityInk: Record<Severity, string> = {
   bug: '#ff6b7a',
@@ -64,11 +42,6 @@ export const severityInk: Record<Severity, string> = {
 };
 
 /** The label a scene's header and the player's chapter list show: its own chapter, or one for its type. A graph that branches at a decision is a flowchart. */
-export function sceneChapter(scene: Scene): string {
-  if (scene.chapter) return scene.chapter;
-  if (scene.type === 'graph' && scene.nodes.some((n) => n.shape === 'decision')) return 'Flowchart';
-  return defaultChapter[scene.type];
-}
 
 export const CODE_TAB_SIZE = 2;
 /** Display width of a code line in character cells, with tabs expanded to CODE_TAB_SIZE stops. */
