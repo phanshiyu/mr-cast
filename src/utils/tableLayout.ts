@@ -1,3 +1,4 @@
+import { hasMarkup } from '../../shared/markup.mjs';
 import { fitBlock, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { Box, LayoutBoxes } from './penGeometry';
@@ -22,10 +23,13 @@ const ARROW = ' → ';
 const HEADER_CHAR_W = 13;
 export const HEADER_FONT = 17;
 
-/** Identifiers, paths, numbers with units and the like read as code, so they render in mono. */
+/**
+ * Identifiers, paths, numbers with units and the like read as code, so they render in mono. A cell with markup
+ * (`` `pollIntervalMs` ``) says how it reads itself, so it renders its markup like any other text.
+ */
 const CODE_LIKE = /^[^\s]+$/;
 const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
-const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text);
+const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !hasMarkup(text);
 
 export type PlacedCell =
   | { kind: 'text'; mono: boolean; text: Fit }
