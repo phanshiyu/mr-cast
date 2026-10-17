@@ -1,0 +1,181 @@
+{
+  "s1": {
+    "id": "s1",
+    "file": "QuickSort.java",
+    "oldFile": null,
+    "status": "source",
+    "language": "java",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 27,
+    "additions": 0,
+    "deletions": 0,
+    "beforeCode": "public class QuickSort {\n    static void quickSort(int[] arr, int low, int high) {\n        if (low < high) {\n            int p = partition(arr, low, high);\n            quickSort(arr, low, p - 1);\n            quickSort(arr, p + 1, high);\n        }\n    }\n\n    static int partition(int[] arr, int low, int high) {\n        int pivot = arr[high];\n        int i = low - 1;\n        for (int j = low; j < high; j++) {\n            if (arr[j] < pivot) {\n                i++;\n                swap(arr, i, j);\n            }\n        }\n        swap(arr, i + 1, high);\n        return i + 1;\n    }\n\n    static void swap(int[] arr, int a, int b) {\n        int t = arr[a];\n        arr[a] = arr[b];\n        arr[b] = t;\n    }",
+    "afterCode": "public class QuickSort {\n    static void quickSort(int[] arr, int low, int high) {\n        if (low < high) {\n            int p = partition(arr, low, high);\n            quickSort(arr, low, p - 1);\n            quickSort(arr, p + 1, high);\n        }\n    }\n\n    static int partition(int[] arr, int low, int high) {\n        int pivot = arr[high];\n        int i = low - 1;\n        for (int j = low; j < high; j++) {\n            if (arr[j] < pivot) {\n                i++;\n                swap(arr, i, j);\n            }\n        }\n        swap(arr, i + 1, high);\n        return i + 1;\n    }\n\n    static void swap(int[] arr, int a, int b) {\n        int t = arr[a];\n        arr[a] = arr[b];\n        arr[b] = t;\n    }",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "public class QuickSort {"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "    static void quickSort(int[] arr, int low, int high) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 3,
+        "text": "        if (low < high) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 4,
+        "text": "            int p = partition(arr, low, high);"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 5,
+        "text": "            quickSort(arr, low, p - 1);"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 6,
+        "text": "            quickSort(arr, p + 1, high);"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 7,
+        "text": "        }"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 8,
+        "text": "    }"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 9,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 10,
+        "text": "    static int partition(int[] arr, int low, int high) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 11,
+        "text": "        int pivot = arr[high];"
+      },
+      {
+        "type": "context",
+        "oldLine": 12,
+        "newLine": 12,
+        "text": "        int i = low - 1;"
+      },
+      {
+        "type": "context",
+        "oldLine": 13,
+        "newLine": 13,
+        "text": "        for (int j = low; j < high; j++) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 14,
+        "newLine": 14,
+        "text": "            if (arr[j] < pivot) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 15,
+        "newLine": 15,
+        "text": "                i++;"
+      },
+      {
+        "type": "context",
+        "oldLine": 16,
+        "newLine": 16,
+        "text": "                swap(arr, i, j);"
+      },
+      {
+        "type": "context",
+        "oldLine": 17,
+        "newLine": 17,
+        "text": "            }"
+      },
+      {
+        "type": "context",
+        "oldLine": 18,
+        "newLine": 18,
+        "text": "        }"
+      },
+      {
+        "type": "context",
+        "oldLine": 19,
+        "newLine": 19,
+        "text": "        swap(arr, i + 1, high);"
+      },
+      {
+        "type": "context",
+        "oldLine": 20,
+        "newLine": 20,
+        "text": "        return i + 1;"
+      },
+      {
+        "type": "context",
+        "oldLine": 21,
+        "newLine": 21,
+        "text": "    }"
+      },
+      {
+        "type": "context",
+        "oldLine": 22,
+        "newLine": 22,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 23,
+        "newLine": 23,
+        "text": "    static void swap(int[] arr, int a, int b) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 24,
+        "newLine": 24,
+        "text": "        int t = arr[a];"
+      },
+      {
+        "type": "context",
+        "oldLine": 25,
+        "newLine": 25,
+        "text": "        arr[a] = arr[b];"
+      },
+      {
+        "type": "context",
+        "oldLine": 26,
+        "newLine": 26,
+        "text": "        arr[b] = t;"
+      },
+      {
+        "type": "context",
+        "oldLine": 27,
+        "newLine": 27,
+        "text": "    }"
+      }
+    ]
+  }
+}
