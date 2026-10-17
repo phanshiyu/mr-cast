@@ -22,10 +22,11 @@ const keysOf = (record) => (record && typeof record === 'object' && !Array.isArr
 
 /**
  * An item a scene draws: its key (as shared/targets.mjs names it), how the dump writes it, the keys the scene
- * lights along with it, and the phrases words can name it by. `names` match as they are: a cell's value, a
+ * lights along with it (`parts` it holds, such as a range's cells, and others `with` it, such as an edge's two
+ * nodes), and the phrases words can name it by. `names` match as they are: a cell's value, a
  * pointer's name. `terms` are labels in plain words that prose also uses ("paid", "server"), so they match only
  * where they cannot be ordinary prose: two or more words ("Orders service"), or one identifier ("p95", "user_id").
- * @typedef {{ key: string, label: string, names?: string[], terms?: string[], with?: string[] }} Item
+ * @typedef {{ key: string, label: string, names?: string[], terms?: string[], parts?: string[], with?: string[] }} Item
  */
 
 /** Per scene type, its items in a state (array and memory change from step to step; the others keep one). */
@@ -44,14 +45,14 @@ const ITEMS = {
       ...cells,
       ...markers.map(({ key, name, what }) => {
         const [a, b] = state.places[key] ?? [0, 0];
-        return { key, label: `${what} ${name} at ${a === b ? `cell ${a}` : `cells ${a}-${b}`}`, names: [String(name)], with: span([a, b]) };
+        return { key, label: `${what} ${name} at ${a === b ? `cell ${a}` : `cells ${a}-${b}`}`, names: [String(name)], parts: span([a, b]) };
       }),
     ];
   },
   memory(scene, state) {
     const owners = [
-      ...list(scene.frames).map((f) => ({ key: `fr:${f?.name}`, label: `frame ${f?.name}`, terms: [String(f?.name)], kind: 'v', owner: f?.name })),
-      ...list(scene.objects).map((o) => ({ key: `o:${o?.id}`, label: `object ${o?.id}${o?.type ? ` (${o.type})` : ''}`, terms: [String(o?.id), text(o?.type)], kind: 'f', owner: o?.id })),
+      ...list(scene.frames).map((f) => ({ key: `fr:${f?.name}`, label: `frame ${f?.name}`, terms: [String(f?.name)] })),
+      ...list(scene.objects).map((o) => ({ key: `o:${o?.id}`, label: `object ${o?.id}${o?.type ? ` (${o.type})` : ''}`, terms: [String(o?.id), text(o?.type)] })),
     ].filter((o) => !state.hidden[o.key]);
     const members = Object.entries(state.values).flatMap(([key, value]) => {
       const { owner, ownerKey, name } = splitMemberKey(key);
@@ -59,14 +60,14 @@ const ITEMS = {
       const target = isPointer(value) ? [`o:${value.ref}`] : [];
       return [{ key, label: `${owner}.${name} = ${shown(value)}`, names: isPointer(value) ? [] : [text(value)], terms: [name], with: [ownerKey, ...target] }];
     });
-    return [...owners.map(({ key, label, names }) => ({ key, label, names, with: members.filter((m) => m.with[0] === key).map((m) => m.key) })), ...members];
+    return [...owners.map((o) => ({ ...o, parts: members.filter((m) => m.with[0] === o.key).map((m) => m.key) })), ...members];
   },
   graph(scene) {
     const label = new Map(list(scene.nodes).map((n) => [n?.id, text(n?.label) || n?.id]));
     return [
       ...list(scene.nodes).map((n) => ({ key: `n:${n?.id}`, label: `node ${label.get(n?.id)}`, terms: [label.get(n?.id), n?.id] })),
       ...list(scene.edges).map((e, i) => ({ key: `e:${i}`, label: `edge ${label.get(e?.from)} → ${label.get(e?.to)}${e?.label ? ` "${text(e.label)}"` : ''}`, terms: [text(e?.label)], with: [`n:${e?.from}`, `n:${e?.to}`] })),
-      ...[...new Set(list(scene.nodes).map((n) => n?.group).filter(Boolean))].map((g) => ({ key: `g:${g}`, label: `group ${g}`, terms: [g], with: list(scene.nodes).filter((n) => n?.group === g).map((n) => `n:${n.id}`) })),
+      ...[...new Set(list(scene.nodes).map((n) => n?.group).filter(Boolean))].map((g) => ({ key: `g:${g}`, label: `group ${g}`, terms: [g], parts: list(scene.nodes).filter((n) => n?.group === g).map((n) => `n:${n.id}`) })),
     ];
   },
   sequence(scene) {
@@ -92,7 +93,7 @@ const ITEMS = {
   },
   layers(scene) {
     return list(scene.layers).flatMap((l) => [
-      { key: `l:${l?.id}`, label: `layer ${text(l?.label) || l?.id}`, terms: [text(l?.label)], with: list(l?.items).map((it) => `i:${it?.id}`) },
+      { key: `l:${l?.id}`, label: `layer ${text(l?.label) || l?.id}`, terms: [text(l?.label)], parts: list(l?.items).map((it) => `i:${it?.id}`) },
       ...list(l?.items).map((it) => ({ key: `i:${it?.id}`, label: `item ${text(it?.label) || it?.id}`, terms: [text(it?.label)] })),
     ]);
   },
@@ -106,7 +107,7 @@ const ITEMS = {
     const labels = list(scene.labels);
     return [
       ...labels.map((l, i) => ({ key: `l:${i}`, label: `label ${l}`, terms: [text(l)] })),
-      ...list(scene.series).map((s, k) => ({ key: `s:${k}`, label: `series ${s?.name}`, terms: [text(s?.name)], with: labels.map((_, i) => `p:${k}/${i}`) })),
+      ...list(scene.series).map((s, k) => ({ key: `s:${k}`, label: `series ${s?.name}`, terms: [text(s?.name)], parts: labels.map((_, i) => `p:${k}/${i}`) })),
       ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${list(s?.values)[i]}`, terms: [text(String(list(s?.values)[i] ?? ''))], with: [`l:${i}`] }))),
     ];
   },
@@ -114,8 +115,8 @@ const ITEMS = {
     const columns = list(scene.columns);
     const cell = (c) => (c && typeof c === 'object' ? `${text(c.before)} → ${text(c.after)}` : text(c));
     return [
-      ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i} ${list(r?.cells).map(cell).join(' | ')}`, terms: [], with: columns.map((_, c) => `x:${i}/${c}`) })),
-      ...columns.map((c, k) => ({ key: `c:${k}`, label: `column ${c}`, terms: [text(c)], with: list(scene.rows).map((_, i) => `x:${i}/${k}`) })),
+      ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i} ${list(r?.cells).map(cell).join(' | ')}`, terms: [], parts: columns.map((_, c) => `x:${i}/${c}`) })),
+      ...columns.map((c, k) => ({ key: `c:${k}`, label: `column ${c}`, terms: [text(c)], parts: list(scene.rows).map((_, i) => `x:${i}/${k}`) })),
       ...list(scene.rows).flatMap((r, i) => list(r?.cells).map((c, k) => ({ key: `x:${i}/${k}`, label: `${columns[k]} of row ${i} = ${cell(c)}`, terms: c && typeof c === 'object' ? [text(c.before), text(c.after)] : [text(c)] }))),
     ];
   },
@@ -123,8 +124,8 @@ const ITEMS = {
     const titles = compareTitles(scene);
     const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
     return [
-      ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i}${r?.label ? ` "${text(r.label)}"` : ''}: ${list(r?.cells).map(cell).join(' | ')}`, terms: [text(r?.label)], with: titles.map((_, s) => `x:${i}/${s}`) })),
-      ...titles.map((t, s) => ({ key: `s:${s}`, label: `side ${t}`, terms: [text(t)], with: list(scene.rows).map((_, i) => `x:${i}/${s}`) })),
+      ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i}${r?.label ? ` "${text(r.label)}"` : ''}: ${list(r?.cells).map(cell).join(' | ')}`, terms: [text(r?.label)], parts: titles.map((_, s) => `x:${i}/${s}`) })),
+      ...titles.map((t, s) => ({ key: `s:${s}`, label: `side ${t}`, terms: [text(t)], parts: list(scene.rows).map((_, i) => `x:${i}/${s}`) })),
       ...list(scene.rows).flatMap((r, i) => list(r?.cells).map((c, s) => ({ key: `x:${i}/${s}`, label: `${titles[s]} of row ${i}: ${cell(c)}`, terms: [] }))),
     ];
   },
@@ -148,11 +149,11 @@ const ITEMS = {
   },
 };
 
-/** Item keys lit with `keys`: each key's own `with`, once, so a pointer lights its cell but not the cell's neighbours. */
+/** Item keys lit with `keys`: each key's own `parts` and `with`, once, so a pointer lights its cell but not the cell's neighbours. */
 function withRelated(items, keys) {
   const byKey = new Map(items.map((it) => [it.key, it]));
   const out = new Set(keys);
-  for (const key of keys) for (const k of byKey.get(key)?.with ?? []) out.add(k);
+  for (const key of keys) for (const k of [...list(byKey.get(key)?.parts), ...list(byKey.get(key)?.with)]) out.add(k);
   return out;
 }
 
@@ -299,7 +300,7 @@ export function checkHighlight(scene, p, hunks, warnings) {
     const dark = [];
     for (const { phrase, items } of namedIn(view.say, view.items)) {
       // Named by a part that is lit counts: a side whose cell in the lit row shows, a range over a lit cell.
-      if (items.some((it) => [it.key, ...list(it.with)].some((key) => view.litKeys.has(key)))) continue;
+      if (items.some((it) => [it.key, ...list(it.parts)].some((key) => view.litKeys.has(key)))) continue;
       if (!dark.some((d) => d.phrase === phrase)) dark.push({ phrase, items });
     }
     if (!dark.length) return;

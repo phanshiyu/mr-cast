@@ -109,3 +109,20 @@ test('steps prints each step beside what it lights and changes, then the highlig
     ].join('\n'),
   );
 });
+
+test('a memory step warns about a value its words name in a variable it leaves dark', async () => {
+  const warnings = await highlightWarnings({
+    type: 'memory',
+    narration: 'The cart holds a list.',
+    frames: [{ name: 'checkout', vars: { cart: { ref: 'c1' }, total: 12 } }],
+    objects: [{ id: 'c1', type: 'Cart', fields: { first: 'mug', second: 'tea' } }],
+    steps: [
+      { focus: 'c1.first', say: 'The cart starts with a mug and tea.' },
+      { set: { 'c1.second': 'cake' }, say: 'Tea becomes cake, and the total stays twelve.' },
+    ],
+  });
+  assert.deepEqual(warnings, [
+    'scenes[0].steps[0]: says "tea" (c1.second = "tea"), which is not lit; it lights object c1 (Cart), c1.first = "mug". Focus what the words name, or say only what is lit',
+    'scenes[0].steps[1]: says "12" (checkout.total = 12), which is not lit; it lights object c1 (Cart), c1.second = "cake". Focus what the words name, or say only what is lit',
+  ]);
+});
