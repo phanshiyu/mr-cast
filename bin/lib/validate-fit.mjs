@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hasMarkup } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
+import { READABLE_PX } from '../../shared/textfit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/fit/report.ts');
@@ -44,8 +45,12 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
     warnings.push(`could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`);
     return;
   }
-  for (const { scene: i, fits } of reports) {
+  for (const { scene: i, fits, scaled } of reports) {
     const scene = storyboard.scenes[i];
+    for (const part of scaled) {
+      const message = unreadable(part);
+      if (message) warnings.push(`${where(scene, i, '')}: ${message}`);
+    }
     const seen = new Set();
     for (const fit of fits) {
       const at = where(scene, i, fit.path);
@@ -59,6 +64,23 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
       }
     }
   }
+}
+
+/**
+ * "unreadable: the graph is scaled to 0.52, so it draws its card title at 11 px (22 px unscaled), ..." when the
+ * scale puts a text under both the readable size and its slot's own smallest size. Null when every text
+ * reads, or when the part already fails to fit at its smallest size, which the fit check reports.
+ */
+function unreadable({ name, scale, fits }) {
+  if (fits.some((f) => !f.text && !f.fits)) return null;
+  const largest = new Map();
+  for (const f of fits) {
+    if (!f.text || f.size * scale >= Math.min(READABLE_PX, f.min)) continue;
+    if ((largest.get(f.slot) ?? 0) < f.size) largest.set(f.slot, f.size);
+  }
+  if (!largest.size) return null;
+  const parts = [...largest].sort((a, b) => b[1] - a[1]).map(([slot, size]) => `${slot} at ${Math.floor(size * scale)} px (${size} px unscaled)`);
+  return `unreadable: the ${name} is scaled to ${scale.toFixed(2)}, so it draws its ${parts.join(', ')}, under the ${READABLE_PX} px readable minimum`;
 }
 
 /** Markup in spoken text and pen notes is not drawn as styling: the voice reads the words and notes are handwritten. */
