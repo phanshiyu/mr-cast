@@ -30,12 +30,15 @@ Pick a workdir path without loaded words (no "eval", "test", "judge", and so on)
 
        quality/prepare.sh /path/to/runs/current /path/to/variants/current
 
-   Creates `<workdir>/<fixture>/repo` (fixture repo, feature branch checked out) and
-   `<workdir>/<fixture>/notes/mr-cast/` (the variant skill and its references).
+   Creates `<workdir>/<fixture>/repo` (fixture repo, feature branch checked out),
+   `<workdir>/<fixture>/notes/mr-cast/` (the variant skill and its references), and
+   `<workdir>/<fixture>/bin/mr-cast`, a shim from `shim.sh`. The skill copy calls the shim, which sets
+   `XDG_CONFIG_HOME=<workdir>/<fixture>/config` and `MR_CAST_NO_UPDATE_CHECK=1` and refuses to run against the real
+   `~/.config`, so a writer cannot overwrite the user's remembered choices.
 
 3. Writers. One fresh agent per fixture, cwd `<workdir>/<fixture>/repo`, with the writer prompt below.
-   Give each writer's shell `export XDG_CONFIG_HOME=<workdir>/<fixture>/config` so its runs do not overwrite the
-   user's remembered choices in `~/.config/mr-cast`. Run them in parallel. They write `storyboard.json` in the run `extract` starts, `repo/.mr-cast/<branch>/`.
+   The skill copy already calls the shim; still give each writer's shell `export XDG_CONFIG_HOME=<workdir>/<fixture>/config`
+   for any other tool it runs. Run them in parallel. They write `storyboard.json` in the run `extract` starts, `repo/.mr-cast/<branch>/`.
 
 4. Collect:
 
@@ -120,7 +123,7 @@ Measures what a walkthrough saves a reviewer who then reads the code, against no
 (`familiar`, `preread`) plus `none`.
 
 - `bugs.json` holds one seeded bug per fixture (file, exact find and replace, and a key for graders). Never copy it into a repo or a packet.
-- `prepare.sh <dir> <variant> <fixture>` builds a writer's workdir with the bug folded into the commit that last touched the file. `checkout.sh <dest> <fixture>` builds the same branch for a reviewer.
+- `prepare.sh <dir> <variant> <fixture>` builds a writer's workdir with the bug folded into the commit that last touched the file, and the `quality/shim.sh` shim the skill copy calls. `checkout.sh <dest> <fixture>` builds the same branch for a reviewer.
 - `collect.sh <writer-dir> <audience> <packet-dir>` validates and renders stills with the audience flag, and adds `reading.md` to the packet when validate wrote one.
 - `prompt.mjs packet|review|budget` prints the reviewer prompts. `packet` is the video-only quiz. `review` adds the checkout and a bug hunt. `budget` allows one `git diff --stat` and two file reads, so a video can only help by pointing.
 - `grader.mjs packet|review` prints a grader prompt over anonymised answer files.

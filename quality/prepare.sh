@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Build one working directory per fixture: <workdir>/<fixture>/repo and <workdir>/<fixture>/notes/mr-cast/ (SKILL.md and references/)
+# Build one working directory per fixture: <workdir>/<fixture>/repo, <workdir>/<fixture>/notes/mr-cast/ (SKILL.md and
+# references/), and <workdir>/<fixture>/bin/mr-cast, the shim the skill calls, which keeps config in <workdir>/<fixture>/config
 # Usage: quality/prepare.sh <workdir> <skill-variant-dir>
 # <skill-variant-dir> is the output of variant.sh (contains skills/mr-cast/).
 set -euo pipefail
@@ -15,5 +16,6 @@ for script in "$here"/fixtures/*.sh; do
   mkdir -p "$work/$name/notes"
   bash "$script" "$work/$name/repo" >/dev/null
   cp -R "$skill" "$work/$name/notes/mr-cast"
+  bash "$here/shim.sh" "$work/$name"
   echo "prepared $work/$name"
 done
