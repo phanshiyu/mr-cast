@@ -58,3 +58,7 @@ Keep commits small, with a plain-prose subject. Never commit an MP4. Stills and 
 ## Releases
 
 CI publishes to npm, from `.github/workflows/publish.yml`. When CI passes on `main` and `package.json` holds a version that npm does not have yet, the workflow publishes it. To release, bump `version` in `package.json` and add that version's section to [CHANGELOG.md](CHANGELOG.md), in one commit on `main`. Never run `npm publish` locally. [ADR 12](docs/adr/0012-publish-from-ci.md) says why.
+
+### Example videos and stills
+
+Every example under `examples/` has a still and a video. Commit the stills: render them with `mr-cast still` and keep them beside the storyboard. Do not commit the videos. After each publish, the `media` job in `.github/workflows/publish.yml` runs `scripts/render-examples.mjs`, which renders every `examples/**/storyboard.json`, and attaches the MP4s to that version's GitHub release. Link a video as `https://github.com/phanshiyu/mr-cast/releases/latest/download/<name>.mp4`, where `<name>` is the example's path under `examples/` with slashes as dashes, such as `primitives-array`. To render them locally, run `node scripts/render-examples.mjs <out dir> [name...]` with the temporary directories above. To render again for the current release, run the Publish workflow by hand. [ADR 21](docs/adr/0021-example-videos-as-release-assets.md) says why.
