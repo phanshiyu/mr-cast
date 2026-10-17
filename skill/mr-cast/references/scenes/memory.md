@@ -31,3 +31,5 @@ Call frames with their variables on the left, objects on the right, and an arrow
 A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name.
 
 `{{MR_CAST}}/bin/mr-cast schema memory` prints its fields.
+
+`callout` is a boxed line at the right of the header, such as the line of code that runs; a step's `callout` replaces it from that step on, and `""` removes it. A whole demo: `{{MR_CAST}}/examples/primitives/memory/storyboard.json`.

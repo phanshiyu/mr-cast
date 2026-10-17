@@ -32,4 +32,8 @@ Cards and the lines between them, laid out automatically. With `decision`, `term
 
 A `focus` is a node id, an edge `"a->b"` (`"a-b"` either way), `"group:Name"` or an edge index. Cards take a Lucide `icon` and a `caption`; decision, terminal and step shapes draw no icon, and only a step draws a caption. `layout` is `LR` or `TB`, and a graph with a decision lays out top to bottom by itself. An edge's `direction` is `forward`, `both` or `none`, and its `style` is `flow`, `solid` or `dashed`. `{{MR_CAST}}/bin/mr-cast validate` fails on an unknown node in an edge or an unknown icon, and warns past 12 nodes, on an edge from a node to itself, which is not drawn, and on an icon or caption a shape does not draw.
 
-`{{MR_CAST}}/bin/mr-cast schema graph` prints its fields.
+**Steps that change the graph.** A node or edge with `"hidden": true` is laid out from the start and drawn when a step's `show` names it (`["B", "A->B"]`); an edge draws only while both its nodes do. A step's `set` gives a node a new badge, `{ "A": "3" }` (`""` takes it off). `tint` colours nodes, edges and groups from that step on, by ref, with a tone, `"dim"` or `"clear"`. `callout` is a boxed line at the right of the header that steps replace.
+
+**A table beside the graph.** `table: { columns, rows }` draws a table in the right 40% of the frame. Its rows are named `"row:A"` (by index or first cell) and its cells `"Header@A"`; steps `set` cells (`{ "before": "4", "after": "3" }` strikes the old value), `show` rows that start `hidden`, `tint` rows and cells, and light them with `focus`, in the same step as the graph. `{{MR_CAST}}/bin/mr-cast validate` warns past 4 columns or 8 rows beside a graph.
+
+`{{MR_CAST}}/bin/mr-cast schema graph` prints its fields. A whole demo: `{{MR_CAST}}/examples/primitives/graph/storyboard.json`.
