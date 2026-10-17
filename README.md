@@ -396,6 +396,7 @@ For development, run `pnpm dev`. It serves the player with data from `examples/d
 - `shared/` holds code the CLI and the player both run. `timing.mjs` computes scene durations from spoken segments, pace and build times. `steps.mjs` lists the steps each scene type speaks, and `targets.mjs` what a `focus` can name. `normalize.mjs` rewrites older field names where a storyboard enters. `voice.mjs` names clips and defines the paces. `pen-marks.mjs` says what a pen mark draws on, and `src/components/PenMarks.tsx` draws them.
 - `shared/textfit.mjs` wraps and shrinks text using the widths in `shared/font-metrics.mjs`, which `node scripts/measure-fonts.mjs` generates. `shared/markup.mjs` parses inline markup. Each scene fits its text in layout code under `src/utils/`, against the places listed in `src/fit/slots.ts`. `src/fit/report.ts` runs the same layouts for `validate`. `scripts/check-text.mjs` fails on text clipping or an ellipsis under `src/`.
 - `skill/` holds the skill templates that `mr-cast install-skill` fills in (`bin/lib/install-skill.mjs`).
+- `docs/adr/` records the big design decisions and why they were made ([index](docs/adr/README.md)).
 
 ## Upgrading from older versions
 
