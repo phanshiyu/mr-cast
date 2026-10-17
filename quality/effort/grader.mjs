@@ -12,7 +12,10 @@ const rubric = `For each question, compare the reviewer's answer to the key's mu
 - 1 if every must_mention fact is present and nothing contradicts the key,
 - 0.5 if some but not all of the facts are present, or the answer is right but vague,
 - 0 if the facts are missing, wrong, or the answer is "not shown".
-Accept different wording for the same fact. Do not reward length. Grade each file on its own merits; do not compare files.`;
+Accept different wording for the same fact. Do not reward length. Grade each file on its own merits; do not compare files.
+The reviewed branch differs from the key's description in one seeded defect, the "${fixture}" entry of ${path.join(here, 'bugs.json')}.
+An answer that describes the code as it is with that defect does not contradict the key. Use only the key, that entry and the
+answer files (and the checkout when one is given); do not read the fixture scripts.`;
 
 if (phase === 'packet') {
   console.log(`Grade reviewers' answers against an answer key. The key is ${key}. The answer files are:

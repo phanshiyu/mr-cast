@@ -13,7 +13,11 @@ const models = new Set();
 const times = entries.map((e) => e.timestamp).filter(Boolean).map((t) => Date.parse(t));
 for (const e of entries) {
   if (e.type === 'user' && Array.isArray(e.message?.content)) {
-    for (const c of e.message.content) if (c.type === 'tool_result') resultChars += JSON.stringify(c.content ?? '').length;
+    for (const c of e.message.content) {
+      if (c.type !== 'tool_result') continue;
+      const parts = typeof c.content === 'string' ? [{ type: 'text', text: c.content }] : c.content ?? [];
+      for (const part of parts) if (part.type === 'text') resultChars += part.text.length;
+    }
   }
   if (e.type !== 'assistant' || !e.message) continue;
   const id = e.message.id ?? e.uuid;
