@@ -61,6 +61,7 @@ After Claude explains something, ask it to "animate that" to get a video of the 
 - [Use mr-cast from Claude Code](docs/guide.md): sources, quick videos, MP4s, pre-reads, review mode, cleanup and upgrades.
 - [Command reference](docs/cli.md): every `mr-cast` command, runs, flags, the voice and pruning.
 - [Storyboard reference](docs/storyboard.md): scene types, steps, pen marks, on-screen text and marks.
+- [Scene gallery](docs/gallery.md): a still, a storyboard and a video of every scene type.
 - [Upgrade notes](docs/upgrading.md): what changed for storyboards and skills from older versions.
 - [Design decisions](docs/adr/README.md): the architecture decision records.
 - [Changelog](CHANGELOG.md).

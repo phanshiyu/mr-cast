@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.26.0
+
+Claude gets more ways to draw. A stepped scene can keep a formula with real numbers above the diagram, keep colours on what it has ruled in or out, grow a graph or a table a step at a time, show several arrays at once, and change a graph's numbers with a table beside it. A new `svg` scene draws anything Claude can write as SVG, and steps light, colour, show and hide its parts. The additions came from splitting eleven video ideas, from binary search to H3, into their visual beats and checking each against the scenes ([docs/primitives.md](docs/primitives.md), ADR 0020).
+
+- **`callout`** on `array`, `memory`, `graph`, `table` and `svg`: a boxed line at the right of the header, such as `mid = 0 + ⌊(15 − 0) / 2⌋ = 7`. A step's `callout` replaces it, and `""` removes it. It takes markup, and the voice does not read it.
+- **`tint`** on array cells, graph nodes, edges and groups, table rows and cells, and svg elements: a tone, `"dim"` for ruled out, or `"clear"`, kept from its step on. A step's dimmed cells recede instead of lighting, unless dimming is all the step does.
+- **Graphs and tables grow.** A graph node or edge and a table row can start `hidden`, and a step's `show` brings it in. The graph is laid out with every node from the start, so nothing moves when one appears.
+- **Several arrays in one scene.** `arrays` in place of `values` draws rows that share one cell size, with refs such as `"left[0]"`, `"left[0-1]"` and `"array:left"`, and pointers and ranges on any of them. `splits` cuts an array into halves, `indexes: false` hides the indexes, and `cells: "hex"` draws a hex grid.
+- **Numbers that change.** A graph step `set`s a node's badge, and a table step `set`s cells, with `{ "before", "after" }` to strike the old value. A graph takes a `table` beside it, in the right 40% of the frame, whose cells and rows change in the same steps as the graph.
+- **The `svg` scene.** SVG markup with a viewBox; steps name elements by id, and `set` rewrites a `<text>`. `validate` keeps only drawing elements and attributes and fails on anything else (script, foreignObject, image, style, event handlers, links outside the drawing), and warns on text too small to read once scaled. `var(--good)` and the other palette colours, and `tone-good` classes, make a drawing match the other scenes.
+- **The highlight check** knows several arrays, graph badges, the table beside a graph, table cells as steps set them, and svg elements by id, by their text and by `labels`. `mr-cast steps` lists tints and callouts among a step's changes, and `outline` counts several arrays and a drawing's named parts.
+- **A demo of every scene type.** `examples/primitives/<type>/` holds a short storyboard for each of the 21 scene types, which `validate:examples` runs and the npm package ships. Each scene reference names its demo, and SKILL.md points at them. [docs/gallery.md](docs/gallery.md) shows a still of each, its storyboard and its video, which CI renders for each release; `scripts/gallery.mjs` renders the stills.
+- Tests cover each addition's states, refs, validate errors and warnings, the highlight check, the array and table layouts, and what the svg reader cuts.
+
 ## 0.25.0
 
 mr-cast now gives Claude tools and leaves the teaching to Claude. The skill no longer says what a video should cover, in what order, how long it runs, which scene fits an idea or how to phrase the voice, and `validate` no longer warns about any of that. The one writing rule left is plain speech: no jargon, said simply, like one person talking to another. In the 0.24 test, the article-first videos scored about the same as the ones before them, and the results looked poor, so the guidance goes rather than grows (ADR 0019).

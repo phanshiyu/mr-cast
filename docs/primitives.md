@@ -331,11 +331,6 @@ A script ran each algorithm and each calculation. Most numbers hold; these need 
 
 These were checked and hold: BS's four comparisons (mid 7, 11, 9, 10); MS merging to `[4, 13, 51, 89]`; DJ's order S, B, A, C, E and the path S, B, A, C, E costing 6; HT `"cat"` and `"act"` both summing to 312 and landing in slot 0, and α = 0.875; GP W_E = 50,257 × 12,288 = 617,558,016, and softmax of the logits `[3, 2, 1, 0.5]` at T = 0.2, 1 and 2; BC 2³⁰ = 1,073,741,824 guesses, the rewards 50, 25, 12.5, 6.25 and 3.125, and the 21 million cap.
 
-## What is already built
+## What was built
 
-Commit `35d3f9e` on `wt/examples` is work in progress toward P1 to P5 (option A). It is not usable yet.
-
-- **Done.** The types in `src/types.ts` (`Tint`, `ArrayRow`, `GraphStep`, `GraphTable`, `TableStep`, and the new fields); the state model in `shared/state-steps.mjs` for `array` rows, `graph` and `table`, with `tint` and `callout` on every stepped scene; refs in `shared/targets.mjs` (`left[0]`, `array:left`, `row:A`, `Header@row` beside a graph); `validate` errors for each broken reference; `shared/arrays.mjs`; and the new array layout in `src/utils/arrayLayout.ts`. `pnpm test` passes (227 tests).
-- **Not done.** `src/components/ArrayDiagram.tsx` does not draw the new layout yet, so `pnpm typecheck` fails. Nothing draws a callout, a tint, a hidden graph node or a table beside a graph. The highlight linter does not know named arrays, graph badges or the beside table. No new tests, docs or stills.
-
-If the user drops an addition, its part comes out of that commit before the rest is finished.
+The user picked P1 to P5 with option A, and P6 as an `svg` scene. All of them shipped in 0.26.0; ADR 0020 records the decision, and `examples/primitives/` holds a demo of each scene type.
