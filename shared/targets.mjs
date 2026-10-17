@@ -13,6 +13,8 @@ import { memoryMembers } from './storyboard-json.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+/** The fields that hold a text scene's big line, one of which it sets. */
+export const TEXT_LEADS = ['headline', 'question', 'number', 'term', 'quote'];
 const isIndex = (ref, count) => Number.isInteger(ref) && ref >= 0 && ref < count;
 
 /**
@@ -328,6 +330,27 @@ const TARGETS = {
   svg: {
     resolve: (scene, ref) => (typeof ref === 'string' && svgIds(scene.svg).includes(ref) ? [`s:${ref}`] : null),
     names: (scene) => svgIds(scene.svg),
+  },
+  text: {
+    resolve(scene, ref) {
+      const items = list(scene.items).length;
+      if (isIndex(ref, items)) return [`b:${ref}`];
+      const r = indexRange(ref);
+      if (r && r[1] < items) return range(r[0], r[1]).map((i) => `b:${i}`);
+      if (ref === 'note' && scene.note !== undefined) return ['t:note'];
+      if (ref === 'kicker' && scene.kicker !== undefined) return ['t:kicker'];
+      if (typeof ref === 'string' && TEXT_LEADS.includes(ref) && scene[ref] !== undefined) return ['t:lead'];
+      const side = ['left', 'right'].indexOf(ref);
+      if (side >= 0 && list(scene.sides)[side]) return [`sd:${side}`];
+      return null;
+    },
+    names: (scene) => [
+      ...list(scene.items).map((_, i) => String(i)),
+      ...TEXT_LEADS.filter((f) => scene[f] !== undefined),
+      ...(scene.note !== undefined ? ['note'] : []),
+      ...(scene.kicker !== undefined ? ['kicker'] : []),
+      ...(list(scene.sides).length ? ['left', 'right'] : []),
+    ],
   },
   intent: {
     resolve: (scene, ref) => (isIndex(ref, list(scene.bullets).length) ? [`b:${ref}`] : null),

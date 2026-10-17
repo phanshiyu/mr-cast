@@ -1,0 +1,210 @@
+{
+  "title": "Text moments",
+  "subtitle": "One text scene, drawn by the lead it sets",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "A shared list",
+      "narration": "What does it mean to own a bitcoin?",
+      "kicker": "How Bitcoin works",
+      "question": "What does it mean to own a bitcoin?"
+    },
+    {
+      "type": "text",
+      "chapter": "The problem",
+      "narration": "People upload more than five hundred hours of video to YouTube every minute.",
+      "kicker": "Uploaded to YouTube",
+      "number": "500 hours",
+      "note": "of video, every minute",
+      "steps": [
+        {
+          "set": {
+            "number": "720,000 hours",
+            "note": "of video, every day"
+          },
+          "say": "Over a day, that is seven hundred and twenty thousand hours."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "Two words",
+      "narration": "Two words get mixed up all the time.",
+      "kicker": "Two words that sound alike",
+      "sides": [
+        {
+          "term": "Authentication",
+          "note": "Proving **who you are**. Alice types her password into Google."
+        },
+        {
+          "term": "Authorization",
+          "note": "Deciding **what you may do**. The app may read photos, and nothing else."
+        }
+      ],
+      "steps": [
+        {
+          "focus": "left",
+          "say": "Authentication is proving who you are."
+        },
+        {
+          "focus": "right",
+          "say": "Authorization is what you are then allowed to do. OAuth is about this one."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "The token",
+      "narration": "An access token is a key with an expiry date.",
+      "term": "Access token",
+      "note": "A key that lets the app read Alice's photos for **one hour**, and nothing else"
+    },
+    {
+      "type": "text",
+      "chapter": "The guarantee",
+      "narration": "So here is what a hash table buys you.",
+      "kicker": "Hash tables",
+      "headline": "A key becomes an address in one step",
+      "items": [
+        "Look up, insert and delete take **O(1)** on average",
+        "Two keys on one slot: chain them, or take the next free slot",
+        "Grow the table once it is about three quarters full",
+        "The worst case is **O(n)**, which a good hash makes rare"
+      ],
+      "hidden": [
+        "0-3"
+      ],
+      "steps": [
+        {
+          "show": [
+            0
+          ],
+          "say": "Every operation is one jump."
+        },
+        {
+          "show": [
+            1
+          ],
+          "say": "Collisions are handled by chaining or probing."
+        },
+        {
+          "show": [
+            2
+          ],
+          "say": "The table grows before it gets crowded."
+        },
+        {
+          "show": [
+            3
+          ],
+          "say": "And the worst case almost never happens."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "The rule",
+      "narration": "Dijkstra's algorithm comes down to one rule.",
+      "quote": "Pick the cheapest place you have not visited yet, then look for shortcuts from it.",
+      "note": "Dijkstra's shortest path, in one line"
+    },
+    {
+      "type": "text",
+      "chapter": "Part 2",
+      "narration": "Part two: proof of work.",
+      "headline": "Proof of work",
+      "note": "Making a fake history too expensive to write"
+    },
+    {
+      "type": "text",
+      "chapter": "Pause",
+      "narration": "Before going on, think about this.",
+      "kicker": "Pause and think",
+      "question": "If everyone keeps a copy of the list, who decides which copy is right?",
+      "note": "The copy with the most work behind it.",
+      "hidden": [
+        "note"
+      ],
+      "steps": [
+        {
+          "show": [
+            "note"
+          ],
+          "say": "The answer: whichever copy has the most work behind it."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "One token at a time",
+      "narration": "A GPT writes one token at a time.",
+      "kicker": "What the model sees",
+      "headline": "Once upon a",
+      "steps": [
+        {
+          "set": {
+            "headline": "Once upon a time"
+          },
+          "say": "It picks time."
+        },
+        {
+          "set": {
+            "headline": "Once upon a time, in a"
+          },
+          "say": "Then a comma, in, a."
+        },
+        {
+          "set": {
+            "headline": "Once upon a time, in a land far away"
+          },
+          "say": "And on, one piece at a time."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "Why it is safer",
+      "narration": "So, compared with the bad old days.",
+      "headline": "The app gets a small key that runs out, never the password",
+      "items": [
+        "The password only ever goes to Google's own page",
+        "The scope asks for photos and nothing else",
+        "An access token stops working after an hour",
+        "Alice can cut the app off from her account page"
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Alice's password only goes to Google, never to the app."
+        },
+        {
+          "focus": 1,
+          "say": "The app asks for just the photos."
+        },
+        {
+          "focus": 2,
+          "say": "Its key runs out after an hour."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "At scale",
+      "narration": "Compare the two numbers.",
+      "kicker": "Checks to find one number among 10 million",
+      "sides": [
+        {
+          "label": "A plain list",
+          "number": "10,000,000",
+          "note": "checks, at most"
+        },
+        {
+          "label": "A hash table",
+          "number": "1",
+          "note": "jump, plus a check or two",
+          "tone": "good"
+        }
+      ]
+    }
+  ]
+}

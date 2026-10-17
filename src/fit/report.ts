@@ -12,6 +12,7 @@ import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
 import { layoutIntent } from '../utils/intentLayout';
+import { layoutText } from '../utils/textLayout';
 import { layersScale, layoutLayers } from '../utils/layersLayout';
 import { layoutMemory } from '../utils/memoryLayout';
 import { layoutSequence, sequenceScale } from '../utils/sequenceLayout';
@@ -40,6 +41,7 @@ type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, st
 
 const SCENE_FITS: SceneFits = {
   intent: (scene, storyboard) => layoutIntent(scene, storyboard),
+  text: (scene) => sceneStates(scene).map((state) => layoutText(scene, state.values)),
   graph: (scene) => {
     const { full, graphBox, tableW } = graphAreas(scene);
     const states = sceneStates(scene);

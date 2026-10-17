@@ -1,5 +1,5 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, FlaskConical, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, PenTool, Play, Sheet, Table2, Target, Workflow, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, FlaskConical, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, PenTool, Play, Sheet, Table2, Target, Type, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
@@ -39,7 +39,7 @@ type LoadState =
 
 type Tab = 'video' | 'plan';
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, reading: ListChecks, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick, svg: PenTool };
+const typeIcon: Record<Scene['type'], LucideIcon> = { text: Type, intent: Target, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, reading: ListChecks, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick, svg: PenTool };
 
 class DataError extends Error {
   constructor(readonly file: string, message: string) {

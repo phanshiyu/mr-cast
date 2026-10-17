@@ -13,7 +13,8 @@ import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
-import { checkArray, checkGraphState, checkMemory } from './validate-state.mjs';
+import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
+import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
@@ -23,12 +24,45 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
+const TYPES = ['text', 'intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
 const TEST_CASES_MAX = 10;
 const INTENT_BULLETS_MAX = 6;
+const TEXT_SIDE_ITEMS_MAX = 4;
+
+/** A text scene: at most one lead, items or sides but not both, and the state its steps walk. */
+function checkText(s, p, errors, warnings) {
+  const strings = (v) => Array.isArray(v) && v.every(isStr);
+  const leadOf = (o, at) => {
+    const leads = TEXT_LEADS.filter((f) => o[f] !== undefined);
+    for (const f of leads) if (!isStr(o[f])) errors.push(`${at}.${f}: must be a non-empty string`);
+    if (leads.length > 1) errors.push(`${at}: sets ${leads.join(' and ')}; a text scene draws one lead, so keep one`);
+    return leads;
+  };
+  const leads = leadOf(s, p);
+  if (!leads.length && !s.sides) errors.push(`${p}: needs a lead (${TEXT_LEADS.join(', ')}) or two sides`);
+  for (const f of ['kicker', 'note']) if (s[f] !== undefined && typeof s[f] !== 'string') errors.push(`${p}.${f}: must be a string`);
+  if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
+  if (s.items !== undefined && !strings(s.items)) errors.push(`${p}.items: must be an array of strings`);
+  else if (s.items?.length > INTENT_BULLETS_MAX) errors.push(`${p}.items: ${s.items.length} items; the scene holds ${INTENT_BULLETS_MAX}`);
+  if (s.sides !== undefined) {
+    if (!Array.isArray(s.sides) || s.sides.length !== 2 || !s.sides.every((x) => x && typeof x === 'object')) errors.push(`${p}.sides: must be two objects, left then right`);
+    else {
+      if (s.items !== undefined) errors.push(`${p}: has items and sides; the sides take the room items would, so put the items in a side`);
+      s.sides.forEach((side, i) => {
+        const at = `${p}.sides[${i}]`;
+        if (!leadOf(side, at).length && side.label === undefined) errors.push(`${at}: needs a lead (${TEXT_LEADS.join(', ')}) or a label`);
+        if (side.items !== undefined && !strings(side.items)) errors.push(`${at}.items: must be an array of strings`);
+        else if (side.items?.length > TEXT_SIDE_ITEMS_MAX) errors.push(`${at}.items: ${side.items.length} items; a side holds ${TEXT_SIDE_ITEMS_MAX}`);
+      });
+    }
+  }
+  if (s.hidden !== undefined && !(Array.isArray(s.hidden) && s.hidden.every((r) => typeof r === 'string' || Number.isInteger(r)))) errors.push(`${p}.hidden: must be an array of refs`);
+  else for (const ref of s.hidden ?? []) if (!resolveRef(s, ref)) errors.push(`${p}.hidden: ${JSON.stringify(ref)} names nothing in the scene`);
+  checkStateSteps(s, p, errors, warnings);
+}
 const MAX_LINE_RANGE = 10000;
 // The step diagram beside the code fits this many labelled nodes above the callout at its smallest font.
 const LABELLED_STEPS_MAX = 6;
@@ -268,6 +302,10 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, 
         if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
         if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
         else if (s.bullets.length > INTENT_BULLETS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${INTENT_BULLETS_MAX}, so keep the ones that matter most and say the rest`);
+        break;
+
+      case 'text':
+        checkText(s, p, errors, warnings);
         break;
 
       case 'graph':

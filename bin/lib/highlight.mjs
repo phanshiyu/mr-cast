@@ -168,6 +168,9 @@ const ITEMS = {
       ...outputLines(e).map((line, l) => ({ key: `ln:${i}/${l}`, label: `entry ${i} output line ${l}: ${text(line)}` })),
     ]);
   },
+  text(scene) {
+    return list(scene.items).map((b, i) => ({ key: `b:${i}`, label: `item ${i} "${text(b)}"`, terms: [] }));
+  },
   intent(scene) {
     return list(scene.bullets).map((b, i) => ({ key: `b:${i}`, label: `bullet ${i} "${text(b)}"`, terms: [] }));
   },

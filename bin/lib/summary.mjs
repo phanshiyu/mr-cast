@@ -164,6 +164,10 @@ const refs = (lines) => lines.map(String).join(', ');
 function sceneGist(scene, hunks, storyboard) {
   const titled = (text) => (scene.title ? `${scene.title} · ${text}` : text);
   switch (scene.type) {
+    case 'text': {
+      const lead = ['headline', 'question', 'number', 'term', 'quote'].find((f) => scene[f] !== undefined);
+      return [lead ? `${lead} ${scene[lead]}` : 'no lead', scene.risk ? `${scene.risk} risk` : '', scene.items?.length ? count(scene.items, 'item') : '', scene.sides ? 'two sides' : ''].filter(Boolean).join(' · ');
+    }
     case 'intent':
       return `${scene.risk ? `${scene.risk} risk · ` : ''}${scene.summary}`;
     case 'graph': {

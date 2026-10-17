@@ -5,7 +5,7 @@
 
 import { arrayRows, cellKey, markerRow, rowKey } from './arrays.mjs';
 import { indexRange } from './steps.mjs';
-import { ambiguousIndex, memberKey, resolveRef, splitMemberKey } from './targets.mjs';
+import { ambiguousIndex, memberKey, resolveRef, splitMemberKey, TEXT_LEADS } from './targets.mjs';
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
 import { memoryMembers, tintEntries } from './storyboard-json.mjs';
@@ -148,6 +148,23 @@ const MODELS = {
       if (svgOf(scene.svg).ids.get(key.slice(2))?.tag !== 'text') return 'names an element that is not <text>; only text can be set';
       return typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? null : 'must be text';
     },
+    move: null,
+    moveNames: () => [],
+  },
+  text: {
+    initial(scene) {
+      const lead = TEXT_LEADS.find((f) => scene[f] !== undefined);
+      return {
+        values: { ...(lead ? { 't:lead': scene[lead] } : {}), ...(scene.note !== undefined ? { 't:note': scene.note } : {}), ...(scene.kicker !== undefined ? { 't:kicker': scene.kicker } : {}) },
+        places: {},
+        hidden: Object.fromEntries(list(scene.hidden).flatMap((ref) => (resolveRef(scene, ref) ?? []).map((key) => [key, true]))),
+      };
+    },
+    set: { prefixes: ['t:'], what: 'text', help: (scene) => `the lead's field name ("${TEXT_LEADS.find((f) => scene[f] !== undefined) ?? 'headline'}"), "note" or "kicker"` },
+    show: { prefixes: ['t:', 'b:', 'sd:'], what: 'part', help: () => 'an item index, "note", the lead\'s field name, or a side "left" or "right"' },
+    tint: null,
+    callout: false,
+    checkValue: (value) => (typeof value === 'string' ? null : 'must be text'),
     move: null,
     moveNames: () => [],
   },
@@ -303,6 +320,7 @@ export function walkStates(scene) {
 
 /** Where the storyboard starts the item `key` hidden, such as "nodes[2].hidden". */
 function hiddenField(scene, key) {
+  if (scene.type === 'text') return 'hidden';
   const [kind, name] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
   const at = (field, items, match) => `${field}[${list(items).findIndex(match)}].hidden`;
   return {

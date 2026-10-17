@@ -67,11 +67,11 @@ function checkTests(scene, p, warnings) {
   });
 }
 
-function checkIntent(scene, p, warnings) {
+function checkIntent(scene, p, warnings, bullets = scene.bullets) {
   const texts = [['narration', scene.narration ?? ''], ...sceneSteps(scene).map((step, j) => [`steps[${j}].say`, (isStep(step) && step.say) || ''])];
   for (const [where, text] of texts) {
     for (const { phrase, said } of counts(text, BULLETS_COUNT)) {
-      if (said !== scene.bullets.length) warnings.push(`${p}.${where}: says "${phrase}", but the scene has ${scene.bullets.length} bullets; say the number on screen`);
+      if (said !== bullets.length) warnings.push(`${p}.${where}: says "${phrase}", but the scene has ${bullets.length} ${scene.type === 'text' ? 'items' : 'bullets'}; say the number on screen`);
     }
   }
 }
@@ -82,5 +82,6 @@ export function checkSpokenCounts(scenes, warnings) {
     const p = `scenes[${i}]`;
     if (scene?.type === 'tests' && Array.isArray(scene.cases)) checkTests(scene, p, warnings);
     if (scene?.type === 'intent' && Array.isArray(scene.bullets) && scene.bullets.length) checkIntent(scene, p, warnings);
+    if (scene?.type === 'text' && Array.isArray(scene.items) && scene.items.length) checkIntent(scene, p, warnings, scene.items);
   });
 }

@@ -3,6 +3,7 @@
 
 export const DEFAULT_CHAPTERS = {
   intent: 'Overview',
+  text: 'Overview',
   graph: 'Architecture',
   code: 'Code change',
   flow: 'Data flow',

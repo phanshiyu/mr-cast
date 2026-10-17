@@ -1026,7 +1026,66 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene;
+/**
+ * The big line of a text scene or of one of its sides. Set exactly one; the field says how it is drawn.
+ */
+export interface TextLead {
+  /** A statement in large type: a title, a summary, a takeaway. */
+  headline?: DisplayText;
+  /** A question in large type, with a large question mark beside it. */
+  question?: DisplayText;
+  /** A figure in display type, e.g. "500 hours" or "0.2%": its leading digits draw largest and count up as it appears. */
+  number?: DisplayText;
+  /** A word or name in large type, with its meaning in `note` under a short rule. */
+  term?: DisplayText;
+  /** A quote or a rule, behind a large opening quote mark, with who said it or where it comes from in `note`. */
+  quote?: DisplayText;
+}
+
+export interface TextSide extends TextLead {
+  /** A short heading above the side, in small capitals. */
+  label?: string;
+  /** The line under the side's big line. */
+  note?: DisplayText;
+  /** Up to 4 short points under it. */
+  items?: DisplayText[];
+  tone?: Tone;
+}
+
+export interface TextStep extends StateStep {
+  /** New text from this step on, by ref: the lead's field name ("headline", "number", ...), "note" or "kicker". */
+  set?: Record<string, DisplayText>;
+}
+
+/**
+ * Words on screen as the picture: an opening question, a definition, one big number, a quote or rule, a list,
+ * two things side by side, a title. One lead (see TextLead), a `note` under it, `items` under that, or two
+ * `sides` in place of items.
+ */
+export interface TextScene extends SceneBase, TextLead {
+  type: 'text';
+  /** A short line above the lead, in muted type. */
+  kicker?: DisplayText;
+  /** The line under the lead: a subtitle, the context of a number, a term's meaning, a quote's source. */
+  note?: DisplayText;
+  /** Drawn as a badge under the lead. */
+  risk?: Risk;
+  /** Up to 6 points under the lead. */
+  items?: DisplayText[];
+  /** Two columns, each its own lead, note and items, in place of `items`. */
+  sides?: [TextSide, TextSide];
+  /** In a branch video, the changed files and lines as chips at the top right. */
+  diffstat?: boolean;
+  /** Refs not drawn until a step shows them: "note", an item index or "a-b" range, "left" or "right". */
+  hidden?: (string | number)[];
+  /**
+   * Each step changes what it `set`s, `show`s and `hide`s at its start, then lights its focus while its `say`
+   * is spoken. A ref is an item index or "a-b" range, "note", the lead's field name, or a side "left" or "right".
+   */
+  steps?: TextStep[];
+}
+
+export type Scene = TextScene | IntentScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene;
 
 export interface Storyboard {
   title: string;

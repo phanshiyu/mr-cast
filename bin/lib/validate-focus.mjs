@@ -21,6 +21,7 @@ const REF_HELP = {
   tests: 'a case index, a case name, or a gap "gap:0"',
   layers: 'a layer id, an item id or "layer.item", or a path stop index',
   intent: 'a bullet index',
+  text: 'an item index or "a-b" range, "note", "kicker", the lead\'s field name such as "headline", or a side "left" or "right"',
   compare: 'a row index, an "a-b" range of them, a side "side:After", or a cell "row@side" such as "2@After"',
   terminal: 'an entry index, an "a-b" range of them, or an output line "entry:line" such as "2:3"',
   array: (s) => (Array.isArray(s.arrays) ? 'a cell "left[0]", cells "left[0-1]", an array "array:left", a pointer "ptr:name", or a range "range:name"' : 'a cell index, an "a-b" range of cells, a pointer "ptr:name", or a range "range:name"'),
