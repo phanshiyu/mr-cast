@@ -25,7 +25,7 @@ What the examples found in the scenes, now fixed:
 - **Memory.** Variables and fields keep the order written; a field named `"2"` no longer jumps ahead. An arrow that is not into the next column, such as a Fiber's `return` or `sibling`, runs through the gaps between the columns and under the cards, each in its own lane, instead of behind other cards.
 - **Tint.** Keys apply in the order written, so a later key wins over an earlier one it overlaps: `{ "0-5": "dim", "3": "good" }` leaves cell 3 good. A key such as `"3"` no longer jumps ahead of `"0-5"`.
 - **Chart.** A value under 10,000 prints with up to four significant digits, so 3.125 stays 3.125 and 0.0243% stays 0.0243%, and an unrounded 2/3 prints 0.6667 instead of fifteen digits; larger values still shorten to 12.3k. Timeline stamps print the same way. `validate` warns on a value label that runs into the one on its left. `badges: false` hides a two-series chart's change badges.
-- **Table.** Math such as `O(n log n)` and `O(n²)` is drawn as text, not code. A header that holds a formula or code, such as `e^z`, keeps its case; other headers are still upper-cased.
+- **Table.** Math such as `O(n log n)` and `O(n²)` is drawn as text, not code. A header that holds a formula or code, such as `e^z`, `f(x)` or `maxRetries`, keeps its case; other headers, `Latency (ms)` among them, are still upper-cased.
 - **Array.** The dashed slot past the last cell shows only while a pointer stands on it.
 - **Voice.** `v87` and `v2` are read as written; only a version with a dot, such as `v2.1`, is read as "version 2 point 1", and the subtitle matches.
 - **Header callout.** The callout box takes only its text's width, and a long title beside it wraps onto a second line at full size instead of shrinking.

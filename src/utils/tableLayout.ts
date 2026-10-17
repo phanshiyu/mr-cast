@@ -32,8 +32,11 @@ const CODE_LIKE = /^[^\s]+$/;
 const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
 const MATH = /^[OΘΩ]\(|[¹²³⁰-₟×÷∀-⋿]/u;
 const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !MATH.test(text) && !hasMarkup(text);
-/** A header is upper-cased unless it holds a formula or code, such as "e^z" or "maxRetries", whose case means something. */
-const CASED_HEADER = /[\^_=()[\]{}<>\\|*+]|[a-z][A-Z]/;
+/**
+ * A header is upper-cased unless it holds a formula or code, whose case means something: an operator, a backtick,
+ * a brace or bracket, an underscore, a call such as "f(x)", or camelCase. "Latency (ms)" is upper-cased.
+ */
+const CASED_HEADER = /[\^_=`[\]{}<>\\|*+]|\w\(|[a-z][A-Z]/;
 
 export type PlacedCell =
   | { kind: 'text'; mono: boolean; text: Fit }

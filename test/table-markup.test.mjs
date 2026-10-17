@@ -24,6 +24,6 @@ test('big-O and other math in a table cell reads as text, with spaces or without
 });
 
 test('a table header is upper-cased unless it holds a formula or code', () => {
-  const headers = layoutTable(['Hit rate', 'SHA-256', 'e^z', 'maxRetries', 'f(x)'], [{ cells: ['a', 'b', 'c', 'd', 'e'] }], 1712, 700).headers;
-  assert.deepEqual(headers.map((h) => h.font.upper), [true, true, false, false, false]);
+  const headers = layoutTable(['Hit rate', 'SHA-256', 'Latency (ms)', 'e^z', 'maxRetries', 'f(x)', 'a = b', '`id`', 'max_len'], [{ cells: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'] }], 1712, 700).headers;
+  assert.deepEqual(headers.map((h) => h.font.upper), [true, true, true, false, false, false, false, false, false]);
 });
