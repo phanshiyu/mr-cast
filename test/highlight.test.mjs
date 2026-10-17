@@ -197,3 +197,12 @@ test('an amount that ends a sentence and a denied value do not warn; a chart lab
     'scenes[0].steps[0]: says "Revenue 2024" (series Revenue 2024), which is not lit; it lights series Costs 2024. Focus what the words name, or say only what is lit',
   ]);
 });
+
+test('an error in another scene does not hide this scene\'s highlight warnings', async () => {
+  const sorting = { type: 'array', narration: 'A list.', values: [5, 1, 4], steps: [{ focus: 0, say: 'Compare five and four.' }] };
+  const { errors, warnings } = await validateStoryboard({ title: 't', scenes: [{ type: 'intent', bullets: ['a'] }, sorting] }, {}, { mode: 'explain' });
+  assert.ok(errors.some((e) => e.startsWith('scenes[0].narration')));
+  assert.deepEqual(warnings.filter((w) => / not lit;/.test(w)), [
+    'scenes[1].steps[0]: says "4" (cell 2 = 4), which is not lit; it lights cell 0 = 5. Focus what the words name, or say only what is lit',
+  ]);
+});

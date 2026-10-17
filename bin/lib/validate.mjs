@@ -484,6 +484,7 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
 
   sb.scenes.forEach((s, i) => {
     const p = `scenes[${i}]`;
+    const errorsBefore = errors.length;
     if (!s || typeof s !== 'object') return errors.push(`${p}: must be an object`);
     if (!TYPES.includes(s.type)) return errors.push(`${p}.type: must be one of ${TYPES.join(', ')} (got ${JSON.stringify(s.type)})`);
     if (!isStr(s.narration)) errors.push(`${p}.narration: required string`);
@@ -665,7 +666,8 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience =
         break;
     }
     checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
-    if (!errors.length) checkHighlight(s, p, hunks ?? {}, warnings);
+    // The highlight check trusts the scene's own schema, not the others'.
+    if (errors.length === errorsBefore) checkHighlight(s, p, hunks ?? {}, warnings);
     checkPenMarks(s, p, hunks ?? {}, errors, warnings);
     checkSpokenMarkup(s, p, warnings);
   });
