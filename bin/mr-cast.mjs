@@ -14,6 +14,7 @@ import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, ru
 import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
+import { createServing } from './lib/serving.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, plural, summarizeFiles } from './lib/summary.mjs';
@@ -156,7 +157,7 @@ async function loadProject(dir, settings) {
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
   const reading = result.errors.length ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
-  return { dir, hunks, storyboard, plan, result, style, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
+  return { dir, hunks, raw, storyboard, plan, result, style, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds, style }) };
 }
 
 /** Whether `file` is absent or a file mr-cast wrote under `heading`, so mr-cast may replace or remove it. */
@@ -413,22 +414,46 @@ function openBrowser(url) {
 }
 
 /**
- * The voice-over play can serve before voicing anything: the clips already on disk for the storyboard's texts in the
- * command's voice and at its pace. `pending` marks one that still lacks a clip; the player then plays silent until
- * the viewer turns the voice on.
+ * The voice-over a storyboard can play with now: the clips already on disk for its texts in the command's voice and
+ * at its pace. `wait` when some text still lacks a clip.
  */
-function voicedSoFar(dir, storyboard, settings) {
+async function voiceNow(dir, storyboard, settings) {
+  if (settings.silent) return { voiceover: await voiceoverFor(dir, storyboard, settings), wait: false };
   const { speed, pauses } = settings.pace;
   const clips = Object.fromEntries(Object.entries(readVoiceover(dir)?.clips ?? {}).filter(([, clip]) => fs.existsSync(path.join(dir, clip.src))));
   const voiceover = { voice: settings.voice, speed, pauses, clips };
-  const pending = storyboard.scenes.some((scene) => spokenTexts(scene).some((text) => !clipFor(voiceover, text)));
-  return pending ? { ...voiceover, pending: true } : voiceover;
+  return { voiceover, wait: storyboard.scenes.some((scene) => spokenTexts(scene).some((text) => !clipFor(voiceover, text))) };
 }
 
 /** "3 of 3 scenes": the scenes whose every spoken text has a clip. */
 const voicedScenes = (storyboard, voiceover) =>
   `${storyboard.scenes.filter((scene) => spokenTexts(scene).every((text) => clipFor(voiceover, text))).length} of ${plural(storyboard.scenes.length, 'scene')}`;
 
+/** One terminal line that says how far the voicing is, rewritten in place on a terminal. */
+function voicingLine(storyboard, voiced) {
+  const tty = process.stderr.isTTY;
+  let last = '';
+  const show = (line) => {
+    if (line === last) return;
+    last = line;
+    if (tty) process.stderr.write(`\r\x1b[K${line}`);
+    else console.error(line);
+  };
+  show(`Voicing ${voicedScenes(storyboard, voiced)}... (--no-voice skips the voice)`);
+  return {
+    onProgress(event) {
+      if (event.type === 'clip') show(`Voicing ${voicedScenes(storyboard, event.voiceover)}... (--no-voice skips the voice)`);
+      else reportVoiceProgress(event);
+    },
+    done() { if (tty) process.stderr.write('\n'); },
+  };
+}
+
+/**
+ * Serves the player once the voice is ready. The server starts first, so the URL is printed at once, and the browser
+ * opens once every scene is voiced: a page opened before that waits for the voice instead of playing silent. An edit
+ * keeps the open page on its version, with its voice, until the edit is voiced, then reloads it once.
+ */
 async function play(argv) {
   const { values } = parseArgs({
     args: argv,
@@ -436,68 +461,48 @@ async function play(argv) {
   });
   const port = intOption(values.port, 'port', 1);
   const { settings, ...run } = runFor(values);
-  const { dir, storyboard } = await loadValidProject(run.dir, settings);
+  const { dir, raw, storyboard } = await loadValidProject(run.dir, settings);
   const distDir = ensureDist();
-  let voiceover = settings.silent ? await voiceoverFor(dir, storyboard, settings) : voicedSoFar(dir, storyboard, settings);
-  reportPace(voiceover);
 
-  // One voicing at a time, and only for the newest storyboard: an edit made while one runs replaces any still waiting.
-  // Each runs while the player plays silent, and tells it after each clip so it can show the progress.
-  let voicing = Promise.resolve();
-  let turns = 0;
-  const voiceInTurn = (sb) => {
-    const turn = ++turns;
-    voicing = voicing.then(async () => {
-      if (turn !== turns) return false;
-      const onClip = (partial) => {
-        if (turn !== turns) return;
-        voiceover = { ...partial, pending: true };
-        server.voiceProgress();
-      };
-      const voiced = await voiceoverFor(dir, sb, settings, { onClip, ensure: ensureVoiceoverInChild, markFailed: true });
-      if (turn !== turns) return false;
-      voiceover = voiced;
-      return true;
-    });
-    return voicing;
-  };
+  let server = null;
+  const serving = await createServing({
+    raw,
+    storyboard,
+    now: (sb) => voiceNow(dir, sb, settings),
+    voice: async (sb, voiced) => {
+      const line = voicingLine(sb, voiced);
+      const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: line.onProgress, ensure: ensureVoiceoverInChild, markFailed: true });
+      line.done();
+      if (voiceover?.failed) console.error('mr-cast: voicing failed; the player plays silent with subtitles');
+      else if (voiceover) console.error(`voice ready: ${voicedScenes(sb, voiceover)}`);
+      return voiceover;
+    },
+    reload: () => server?.reload(),
+  });
 
-  // An edited storyboard reloads at once, with the clips it already has and the rest pending, so the player shows
-  // the voice as building; it reloads again once the edit is voiced, or shows that the voice failed.
   const onDataChange = async (file) => {
-    if (file === 'meta.json' || file === BUILT_FILE) return;
+    // An edit still being voiced reloads the page once it is voiced, with every change made meanwhile.
+    const unchanged = serving.holding() ? 'hold' : undefined;
+    if (file === 'meta.json' || file === BUILT_FILE) return unchanged;
     let project;
     try {
       project = await loadProject(dir, settings);
     } catch (err) {
       console.error(`mr-cast: ${file} changed · ${err.message}`);
-      return;
+      return unchanged;
     }
     console.error(`mr-cast: ${file} changed`);
     for (const line of project.lines) console.error(`  ${line}`);
-    if (file !== 'storyboard.json' || project.result.errors.length || settings.silent) return;
-    voiceover = voicedSoFar(dir, project.storyboard, settings);
-    // Already voiced: any voicing still running is for an older storyboard, so its result must not replace this.
-    if (!voiceover.pending) {
-      turns++;
-      return;
-    }
-    void voiceInTurn(project.storyboard).then((voiced) => {
-      if (voiced) server.reload();
-    });
+    if (file !== 'storyboard.json' || project.result.errors.length) return unchanged;
+    return serving.edit(project.raw, project.storyboard);
   };
-  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => voiceover, audience: settings.audience });
+
+  reportPace(serving.voiceover());
+  server = await startServer({
+    distDir, dataDir: dir, port, onDataChange, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard, audience: settings.audience,
+  });
   const url = `${server.url}/#token=${server.token}`;
   console.log(`mr-cast player: ${url}`);
-  if (voiceover?.pending) {
-    console.error('mr-cast: playing with subtitles, voice on the way');
-    void voiceInTurn(storyboard).then((voiced) => {
-      if (!voiced) return;
-      if (!voiceover.failed) console.error(`voice ready: ${voicedScenes(storyboard, voiceover)}`);
-      server.voiceProgress();
-    });
-  }
-  if (!values['no-open']) openBrowser(url);
 
   // Once Kokoro has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
@@ -507,6 +512,10 @@ async function play(argv) {
   };
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
+
+  serving.start();
+  await serving.ready;
+  if (!values['no-open']) openBrowser(url);
 }
 
 /** plan.json's problems as lines, and a summary line when it has no errors. */

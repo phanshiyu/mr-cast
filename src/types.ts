@@ -982,7 +982,7 @@ export interface Voiceover {
   pauses?: number;
   /** Keyed by narrationKey(narration, voice, speed) from shared/voice.mjs. */
   clips: Record<string, VoiceClip>;
-  /** Set by `play` while it still voices some texts in the background; the player reloads as clips arrive. */
+  /** Set by `play` until its first voicing ends; the player waits for the voice and reloads when it is ready. */
   pending?: boolean;
   /** Set by `play` when voicing failed, so the player says so; the scenes are then timed for reading. */
   failed?: boolean;

@@ -110,12 +110,16 @@ function listen(server, port) {
 
 /**
  * Serve the player from `distDir` and live data from `dataDir`.
- * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload.
- * `getVoiceover()` is the voiceover the player should use, or null for silent scenes. `audience` is the command's
+ * `onDataChange(fileName)` runs (debounced, one batch at a time, awaited) before clients are told to reload. When it
+ * returns 'hold' for any file of the batch, clients are told only that an update is coming, and the caller reloads
+ * them later with `reload()`.
+ * `getVoiceover()` is the voiceover the player should use, or null for silent scenes. `getStoryboard()`, when given,
+ * is the storyboard served in place of the file on disk, so the caller can keep it paired with its voiceover.
+ * `audience` is the command's
  * --audience, served as settings.json so the plan page can word its depths for a pre-read.
  * The plan page changes plan.json through POST /plan/choice, with the returned `token` in TOKEN_HEADER.
  */
-export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover, audience = 'familiar' }) {
+export async function startServer({ distDir, dataDir, port, onDataChange, getVoiceover, getStoryboard, audience = 'familiar' }) {
   const root = path.resolve(distDir);
   const token = randomBytes(16).toString('hex');
   const tokenBytes = Buffer.from(token);
@@ -149,6 +153,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
       res.writeHead(200, { 'Content-Type': TYPES['.json'], 'Cache-Control': 'no-store' });
       return res.end(JSON.stringify(voiceover));
     }
+
+    if (pathname === '/data/storyboard.json' && getStoryboard) return sendJson(res, 200, getStoryboard());
 
     const audio = pathname.match(/^\/data\/audio\/([^/]+)$/);
     if (audio) {
@@ -200,14 +206,15 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
       const changed = [...pending];
       pending.clear();
       handling = handling.then(async () => {
+        let hold = false;
         for (const f of changed) {
           try {
-            await onDataChange?.(f);
+            if (await onDataChange?.(f) === 'hold') hold = true;
           } catch (err) {
             console.error(`mr-cast: ${f} changed · ${err.message}`);
           }
         }
-        broadcast('event: change\ndata: change\n\n');
+        broadcast(hold ? 'event: updating\ndata: updating\n\n' : 'event: change\ndata: change\n\n');
       });
     }, DEBOUNCE_MS);
   });
@@ -222,10 +229,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, getVoi
     server.closeAllConnections?.();
   });
 
-  // Tells open players that more of the voice-over is ready, without reloading the walkthrough.
-  const voiceProgress = () => broadcast('event: voice\ndata: voice\n\n');
   // Tells open players to reload the walkthrough, as after a change to its files.
   const reload = () => broadcast('event: change\ndata: change\n\n');
 
-  return { url: `http://${HOST}:${bound}`, token, close, voiceProgress, reload };
+  return { url: `http://${HOST}:${bound}`, token, close, reload };
 }

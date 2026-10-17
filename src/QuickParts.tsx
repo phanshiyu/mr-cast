@@ -1,34 +1,12 @@
-import { Check, Copy, Volume2 } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
-import type { VoiceStatus } from './useVoiceChoice';
 
-/** The voice's progress while `play` makes it, then the button that turns it on. */
-export const VoicePill: React.FC<{ status: VoiceStatus; onVoice: () => void }> = ({ status, onVoice }) => {
-  if (status.kind === 'building') {
-    return (
-      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono" aria-live="polite">
-        Voice: {status.done} of {status.total} scenes
-      </span>
-    );
-  }
-  if (status.kind === 'failed') {
-    return (
-      <span className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1 text-rose-200" aria-live="polite">
-        Voice failed, see the terminal
-      </span>
-    );
-  }
-  if (status.kind !== 'ready') return null;
-  return (
-    <button
-      onClick={onVoice}
-      className="flex items-center gap-1.5 rounded-full bg-indigo-500 px-3 py-1 font-semibold text-white hover:bg-indigo-400"
-    >
-      <Volume2 size={13} />
-      Play with voice (V)
-    </button>
-  );
-};
+/** Shown when `play` could not make the voice, so the walkthrough plays silent with subtitles. */
+export const VoiceFailed: React.FC = () => (
+  <span className="rounded-full border border-rose-400/30 bg-rose-500/10 px-3 py-1 text-rose-200" aria-live="polite">
+    Voice failed, see the terminal
+  </span>
+);
 
 const NEXT_STEPS = [
   { say: 'go deeper', what: 'A full walkthrough of the same code, keeping these scenes.' },
