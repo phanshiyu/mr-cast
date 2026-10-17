@@ -92,7 +92,7 @@ Read [references/article.md](references/article.md), write `article.md` in the r
 {{MR_CAST}}/bin/mr-cast article <flags>
 ```
 
-Then test it with a reader who is not you. Run `{{MR_CAST}}/bin/mr-cast article --reader <flags>`, which prints the article without the answers. Make one `Agent` call with `model: "sonnet"` that starts a new subagent, its prompt the text of [references/reader-test.md](references/reader-test.md) with that output pasted under its last heading. Never resume an agent that wrote the article, and never answer the test yourself.
+Then test it with a reader who is not you. Run `{{MR_CAST}}/bin/mr-cast article --reader <flags>`, which prints the article without the answers. Make one `Agent` call with `model: "sonnet"` that starts a new subagent, its prompt the text of [references/reader-test.md](references/reader-test.md) with that output pasted under its last heading. Wait for its reply before you go on. Never resume an agent that wrote the article, and never answer the test yourself.
 
 Mark each answer against the article's `Answer:`. A question fails when the answer is wrong or `not in the article`. Revise where the reader went wrong: the quoted sentence, the step where it got stuck, each term it guessed. Do not add content unless it serves a takeaway. Then run `article` and the reader again, with a new subagent. Stop when every question passes, after at most 2 revisions, and keep the earlier version if a question that passed now fails.
 
@@ -116,7 +116,7 @@ Write `storyboard.json` in the run's directory, then check it:
 
 Fix every error and rerun until it prints `✓ storyboard ok`. Resolve the warnings the references name, every warning about an article section, and every warning that a step's words name what is `not lit` or that a swap lands `before its words`. Treat other warnings as advice.
 
-**Check what each step lights.** When a scene other than `code` has `steps`, run `{{MR_CAST}}/bin/mr-cast steps <flags>` after `validate` passes. Make one `Agent` call with `model: "sonnet"` that starts a new subagent, its prompt the text of [references/highlight-audit.md](references/highlight-audit.md) with the `steps` output pasted under its last heading. Never resume or message an agent that wrote any of the storyboard, and never answer the audit yourself. Apply each fix you agree with, rerun `validate`, and do not call the audit again.
+**Check what each step lights.** When a scene other than `code` has `steps`, run `{{MR_CAST}}/bin/mr-cast steps <flags>` after `validate` passes. Make one `Agent` call with `model: "sonnet"` that starts a new subagent, its prompt the text of [references/highlight-audit.md](references/highlight-audit.md) with the `steps` output pasted under its last heading. Wait for its reply. Never resume or message an agent that wrote any of the storyboard, and never answer the audit yourself. Apply each fix you agree with, rerun `validate`, and do not call the audit again.
 
 ## 7. Show it
 
