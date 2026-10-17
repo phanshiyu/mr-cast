@@ -1,0 +1,573 @@
+{
+  "title": "Hash tables",
+  "subtitle": "Turning a key into an address",
+  "scenes": [
+    {
+      "type": "table",
+      "chapter": "The problem of scale",
+      "title": "Finding one number among 10 million",
+      "narration": "Say you keep ten million phone numbers, and you need to find one of them, again and again, thousands of times a second.",
+      "columns": [
+        "How it is stored",
+        "Checks for 10 million, at most",
+        "Grows like"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "A list in any order",
+            "10,000,000",
+            "O(n)"
+          ]
+        },
+        {
+          "cells": [
+            "A sorted list, with binary search",
+            "24",
+            "O(log n)"
+          ]
+        },
+        {
+          "cells": [
+            "A hash table",
+            "about 1",
+            "O(1)"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "In a list with no order, you may have to check every one of the ten million."
+        },
+        {
+          "focus": 1,
+          "say": "Sort the list and you can halve it on each check, so twenty four checks are enough."
+        },
+        {
+          "focus": "Checks for 10 million, at most@1",
+          "say": "That is fast. But when a busy system does this thousands of times a second, even twenty four checks add up."
+        },
+        {
+          "show": [
+            2
+          ],
+          "tint": {
+            "2": "good"
+          },
+          "say": "What we want is one jump, straight to the spot where the number lives. No scanning, no halving. That is what a hash table gives you."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "The hash function",
+      "title": "Working out where \"cat\" goes",
+      "narration": "The trick is to work out the spot from the key itself. The rule that does this is called a hash function.",
+      "arrays": [
+        {
+          "name": "key",
+          "label": "\"cat\"",
+          "values": [
+            "c",
+            "a",
+            "t"
+          ]
+        },
+        {
+          "name": "table",
+          "label": "table",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        }
+      ],
+      "pointers": [
+        {
+          "name": "h(cat)",
+          "array": "table",
+          "at": 0,
+          "hidden": true
+        }
+      ],
+      "callout": "h(key) = (sum of character codes) mod 8",
+      "steps": [
+        {
+          "focus": "array:key",
+          "say": "Our key is the word cat."
+        },
+        {
+          "set": {
+            "key[0]": 99,
+            "key[1]": 97,
+            "key[2]": 116
+          },
+          "callout": "c = 99,  a = 97,  t = 116",
+          "say": "Every letter is stored as a number. C is 99, a is 97, and t is 116."
+        },
+        {
+          "focus": "array:key",
+          "callout": "99 + 97 + 116 = 312",
+          "say": "Add them up, and you get 312."
+        },
+        {
+          "focus": "array:table",
+          "callout": "312 mod 8 = 0",
+          "say": "The table has only eight slots, so we keep the remainder after dividing by eight. 312 divided by eight leaves 0."
+        },
+        {
+          "show": [
+            "ptr:h(cat)"
+          ],
+          "set": {
+            "table[0]": "cat"
+          },
+          "tint": {
+            "table[0]": "good"
+          },
+          "say": "So cat goes in slot zero."
+        },
+        {
+          "focus": [
+            "ptr:h(cat)",
+            "table[0]"
+          ],
+          "callout": "h(\"cat\") = 0",
+          "say": "To find cat later, we do not search. We do the same sum, get zero again, and read slot zero."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "A collision",
+      "title": "\"act\" lands on the same slot",
+      "narration": "Now add a second word, act.",
+      "arrays": [
+        {
+          "name": "key",
+          "label": "\"act\"",
+          "values": [
+            "a",
+            "c",
+            "t"
+          ]
+        },
+        {
+          "name": "table",
+          "label": "table",
+          "values": [
+            "cat",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        }
+      ],
+      "pointers": [
+        {
+          "name": "h(act)",
+          "array": "table",
+          "at": 0,
+          "hidden": true
+        }
+      ],
+      "tint": {
+        "table[0]": "good"
+      },
+      "steps": [
+        {
+          "set": {
+            "key[0]": 97,
+            "key[1]": 99,
+            "key[2]": 116
+          },
+          "callout": "97 + 99 + 116 = 312",
+          "say": "It has the same letters as the first word, in a different order, so its sum is also 312."
+        },
+        {
+          "show": [
+            "ptr:h(act)"
+          ],
+          "callout": "312 mod 8 = 0",
+          "say": "And the remainder is zero again, so act points at slot zero."
+        },
+        {
+          "tint": {
+            "table[0]": "bad"
+          },
+          "callout": "[collision]{bad}",
+          "say": "But cat is already there. Two different keys want the same slot. This is called a collision."
+        },
+        {
+          "focus": "array:table",
+          "callout": "endless words, 8 slots",
+          "say": "You cannot avoid it. There are endless possible words, and only eight slots. Put ten pigeons in nine holes, and some hole gets two."
+        }
+      ]
+    },
+    {
+      "type": "memory",
+      "chapter": "Fix one: chaining",
+      "title": "Each slot holds a short list",
+      "narration": "The first fix is called chaining. Each slot holds the start of a small linked list instead of one key.",
+      "frames": [],
+      "objects": [
+        {
+          "id": "slots",
+          "type": "table, 8 slots",
+          "fields": {
+            "[0]": {
+              "ref": "n1"
+            },
+            "[1]": "null",
+            "[2]": "null",
+            "[3] to [7]": "null"
+          }
+        },
+        {
+          "id": "n1",
+          "type": "node",
+          "fields": {
+            "key": "\"cat\"",
+            "next": "null"
+          }
+        },
+        {
+          "id": "n2",
+          "type": "node",
+          "fields": {
+            "key": "\"act\"",
+            "next": "null"
+          },
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "slots.[0]",
+            "n1"
+          ],
+          "say": "Slot zero points at a node holding cat."
+        },
+        {
+          "show": [
+            "n2"
+          ],
+          "set": {
+            "n1.next": {
+              "ref": "n2"
+            }
+          },
+          "callout": "slot 0: \"cat\" → \"act\" → null",
+          "say": "When act collides with it, act just joins the end of that list."
+        },
+        {
+          "focus": [
+            "slots.[0]",
+            "n1",
+            "n1.next",
+            "n2"
+          ],
+          "callout": "find \"act\": slot 0, then 2 checks",
+          "say": "To find act, jump to slot zero, then walk the list until you meet act. Here that is two checks."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "Fix two: open addressing",
+      "title": "Take the next free slot",
+      "narration": "The second fix is called open addressing. Every key lives in the table itself, and a taken slot sends you looking further along.",
+      "values": [
+        "cat",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "pointers": [
+        {
+          "name": "probe",
+          "at": 0
+        }
+      ],
+      "tint": {
+        "0": "good"
+      },
+      "steps": [
+        {
+          "focus": [
+            "ptr:probe",
+            0
+          ],
+          "callout": "h(\"act\") = 0",
+          "say": "Act starts at slot zero, its hash."
+        },
+        {
+          "tint": {
+            "0": "bad"
+          },
+          "callout": "slot 0 is taken",
+          "say": "Slot zero is taken by cat."
+        },
+        {
+          "move": {
+            "probe": 1
+          },
+          "set": {
+            "1": "act"
+          },
+          "tint": {
+            "0": "good",
+            "1": "good"
+          },
+          "callout": "try slot 1: free",
+          "say": "So it steps to the next slot, slot one, which is free, and act goes there."
+        },
+        {
+          "focus": [
+            0,
+            1
+          ],
+          "callout": "find \"act\": slot 0, then slot 1",
+          "say": "To find act later, start at slot zero, see cat, and step along until you meet act or an empty slot."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "Load factor",
+      "title": "When the table gets crowded",
+      "narration": "With chaining, the danger is a crowded table. Here seven keys sit in eight slots, and each list hangs down below its slot.",
+      "arrays": [
+        {
+          "name": "old0",
+          "label": "8 slots",
+          "values": [
+            "cat",
+            "",
+            "owl",
+            "ant",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "old1",
+          "label": "",
+          "values": [
+            "act",
+            "",
+            "dog",
+            "hen",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "old2",
+          "label": "",
+          "values": [
+            "pig",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "new0",
+          "label": "16 slots",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "hidden": true
+        },
+        {
+          "name": "new1",
+          "label": "",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "hidden": true
+        }
+      ],
+      "callout": "load factor α = N / M",
+      "steps": [
+        {
+          "focus": [
+            "array:old0",
+            "array:old1",
+            "array:old2"
+          ],
+          "callout": "α = 7 / 8 = 0.875",
+          "say": "The load factor is the number of keys divided by the number of slots. Seven over eight is zero point eight seven five."
+        },
+        {
+          "tint": {
+            "old0[0]": "bad",
+            "old1[0]": "bad",
+            "old2[0]": "bad",
+            "old0[2]": "bad",
+            "old1[2]": "bad",
+            "old0[3]": "bad",
+            "old1[3]": "bad"
+          },
+          "say": "The keys do not spread out evenly, so the lists grow. Slot zero holds 3 keys, and finding pig means walking past cat and act first."
+        },
+        {
+          "show": [
+            "array:new0",
+            "array:new1"
+          ],
+          "tint": {
+            "array:old0": "dim",
+            "array:old1": "dim",
+            "array:old2": "dim"
+          },
+          "focus": [
+            "array:new0",
+            "array:new1"
+          ],
+          "say": "So the table grows. We make a new one with twice the slots, sixteen."
+        },
+        {
+          "set": {
+            "new0[0]": "pig",
+            "new0[2]": "owl",
+            "new0[3]": "ant",
+            "new0[8]": "cat",
+            "new1[8]": "act",
+            "new0[10]": "dog",
+            "new0[11]": "hen"
+          },
+          "tint": {
+            "new0[0]": "good",
+            "new0[2]": "good",
+            "new0[3]": "good",
+            "new0[8]": "bad",
+            "new1[8]": "bad",
+            "new0[10]": "good",
+            "new0[11]": "good"
+          },
+          "callout": "α = 7 / 16 ≈ 0.44",
+          "say": "Then every key is hashed again, this time with the remainder after dividing by sixteen, and moves to its new slot. Most lists shrink to one key."
+        },
+        {
+          "focus": [
+            "new0[8]",
+            "new1[8]"
+          ],
+          "callout": "312 mod 16 = 8",
+          "say": "Cat and act still share slot eight, because their sums are equal whatever the size. Real hash functions mix in the order of the letters, so this happens far less."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "The guarantee",
+      "title": "What a hash table costs",
+      "narration": "Many tables grow once the load factor passes about two thirds to three quarters. Then the lists stay short, and every operation is one jump plus a check or two.",
+      "columns": [
+        "Operation",
+        "Average",
+        "Worst case"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Look up",
+            "O(1)",
+            "O(n)"
+          ]
+        },
+        {
+          "cells": [
+            "Insert",
+            "O(1)",
+            "O(n)"
+          ]
+        },
+        {
+          "cells": [
+            "Delete",
+            "O(1)",
+            "O(n)"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": "col:Average",
+          "tint": {
+            "Average@0": "good",
+            "Average@1": "good",
+            "Average@2": "good"
+          },
+          "say": "On average, looking up, adding and removing all take the same short time, however big the table gets."
+        },
+        {
+          "focus": "col:Worst case",
+          "say": "The worst case is every key in one slot, which a good hash function makes very unlikely."
+        },
+        {
+          "focus": "Average@1",
+          "say": "Growing the table is slow when it happens, but it happens so rarely that it adds only a little to each insert on average. That is how dictionaries, database indexes and caches answer in an instant."
+        }
+      ]
+    }
+  ]
+}

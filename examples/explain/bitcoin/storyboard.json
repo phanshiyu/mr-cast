@@ -1,0 +1,998 @@
+{
+  "title": "How Bitcoin works",
+  "subtitle": "Building digital money from a shared list",
+  "scenes": [
+    {
+      "type": "table",
+      "chapter": "A shared list",
+      "title": "Who paid whom",
+      "narration": "What does it mean to own a bitcoin? Start with something simpler. A few friends pay for each other’s dinners, and they keep one shared list of who paid whom.",
+      "columns": [
+        "Who",
+        "Pays whom",
+        "Amount"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Alice",
+            "Bob",
+            "$20"
+          ]
+        },
+        {
+          "cells": [
+            "Bob",
+            "Charlie",
+            "$40"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Charlie",
+            "Alice",
+            "$10"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Alice",
+            "Bob",
+            "$100"
+          ],
+          "hidden": true,
+          "badge": "fake",
+          "tone": "bad"
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Alice pays Bob twenty dollars, so she writes it down."
+        },
+        {
+          "show": [
+            1,
+            2
+          ],
+          "say": "More lines go on the list as the month goes by."
+        },
+        {
+          "focus": [
+            0,
+            1,
+            2
+          ],
+          "callout": "Alice −$10 · Bob −$20 · Charlie +$30",
+          "say": "At the end of the month they settle up. Whoever is down puts cash in a pot, and whoever is up takes cash out."
+        },
+        {
+          "show": [
+            3
+          ],
+          "tint": {
+            "3": "bad"
+          },
+          "callout": "[who wrote this line?]{bad}",
+          "say": "But anyone can add a line. What stops Bob from writing that Alice pays him a hundred dollars?"
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "Signatures",
+      "title": "Sign with a secret, check in public",
+      "narration": "The fix is a digital signature. Each person makes a pair of keys: a secret key they never share, and a public key everyone can see.",
+      "steps": [
+        {
+          "actor": "Alice",
+          "action": "signs the line with her secret key",
+          "payload": "Sign(\"Alice pays Bob $100\", secret key) → 699b849d8dad1e54…",
+          "icon": "key-round",
+          "say": "Alice runs her line and her secret key through a signing function. Out comes a signature, a string of five hundred and twelve bits."
+        },
+        {
+          "actor": "Anyone",
+          "action": "checks it with her public key",
+          "payload": "Verify(line, signature, public key) → true",
+          "icon": "badge-check",
+          "tone": "good",
+          "say": "Anyone can check that signature against the line and Alice’s public key. The answer is true."
+        },
+        {
+          "actor": "Bob",
+          "action": "changes $100 to $900",
+          "payload": "Verify(changed line, same signature, public key) → false",
+          "icon": "user",
+          "tone": "bad",
+          "say": "If Bob changes the line, the old signature no longer fits, and the check says false. Without Alice’s secret key, he cannot make a new one."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Copies and IDs",
+      "title": "Real signatures, first 64 of 512 bits",
+      "narration": "Here are real signatures made with one secret key. Watch what happens when the line changes.",
+      "columns": [
+        "Line",
+        "Signature",
+        "Check"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Alice pays Bob $100",
+            "`699b849d8dad1e54…`",
+            "valid"
+          ]
+        },
+        {
+          "cells": [
+            "Alice pays Bob $101",
+            "`b95e7651a3c63501…`",
+            "valid"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Alice pays Bob $900",
+            "`699b849d8dad1e54…`",
+            "fails"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Alice pays Bob $100",
+            "`699b849d8dad1e54…`",
+            "valid, a copy"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "#342 Alice pays Bob $100",
+            "`a183fa68eaea95c7…`",
+            "valid"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "#342 Alice pays Bob $100",
+            "`a183fa68eaea95c7…`",
+            "ID used already"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": "Signature@0",
+          "say": "This is Alice’s signature for paying Bob a hundred dollars."
+        },
+        {
+          "show": [
+            1
+          ],
+          "focus": [
+            "Signature@0",
+            "Signature@1"
+          ],
+          "say": "Change one character, a hundred to a hundred and one, and the signature looks completely different."
+        },
+        {
+          "show": [
+            2
+          ],
+          "tint": {
+            "2": "bad"
+          },
+          "say": "Put the old signature on a changed line, and the check fails."
+        },
+        {
+          "show": [
+            3
+          ],
+          "tint": {
+            "3": "warn"
+          },
+          "callout": "[same line, same signature]{warn}",
+          "say": "But Bob can still copy the whole signed line, word for word. The copy checks out, so Alice would pay him twice."
+        },
+        {
+          "show": [
+            4
+          ],
+          "tint": {
+            "3": "dim",
+            "4": "good"
+          },
+          "callout": "every line gets a unique ID",
+          "say": "So every line gets a number of its own, and the signature covers that number too."
+        },
+        {
+          "show": [
+            5
+          ],
+          "tint": {
+            "5": "bad"
+          },
+          "callout": "",
+          "say": "Now a copy carries a number that is already on the list, and everyone ignores it."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "chapter": "Ledger dollars",
+      "layout": "LR",
+      "narration": "Signatures stop fake lines, but not debt. Charlie could run up a huge bill and vanish. So add a rule: everyone starts with a hundred, and a line counts only if the list shows the payer has the money.",
+      "nodes": [
+        {
+          "id": "Alice",
+          "label": "Alice",
+          "icon": "user",
+          "badge": "100"
+        },
+        {
+          "id": "Bob",
+          "label": "Bob",
+          "icon": "user",
+          "badge": "100"
+        },
+        {
+          "id": "Charlie",
+          "label": "Charlie",
+          "icon": "user",
+          "badge": "100"
+        },
+        {
+          "id": "David",
+          "label": "David",
+          "icon": "user",
+          "badge": "100"
+        }
+      ],
+      "edges": [
+        {
+          "from": "Charlie",
+          "to": "Alice",
+          "label": "60",
+          "hidden": true
+        },
+        {
+          "from": "Charlie",
+          "to": "Bob",
+          "label": "40",
+          "hidden": true
+        },
+        {
+          "from": "Alice",
+          "to": "David",
+          "label": "20",
+          "hidden": true
+        },
+        {
+          "from": "Charlie",
+          "to": "David",
+          "label": "30",
+          "hidden": true
+        }
+      ],
+      "table": {
+        "columns": [
+          "ID",
+          "Payment",
+          "OK?"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "#1",
+              "Charlie pays Alice 60 LD",
+              "?"
+            ],
+            "hidden": true
+          },
+          {
+            "cells": [
+              "#2",
+              "Charlie pays Bob 40 LD",
+              "?"
+            ],
+            "hidden": true
+          },
+          {
+            "cells": [
+              "#3",
+              "Alice pays David 20 LD",
+              "?"
+            ],
+            "hidden": true
+          },
+          {
+            "cells": [
+              "#4",
+              "Charlie pays David 30 LD",
+              "?"
+            ],
+            "hidden": true
+          }
+        ]
+      },
+      "callout": "everyone starts with 100 LD",
+      "steps": [
+        {
+          "show": [
+            "row:0",
+            "Charlie->Alice"
+          ],
+          "set": {
+            "Charlie": "40",
+            "Alice": "160",
+            "OK?@0": "yes"
+          },
+          "callout": "Charlie 100 − 60 = 40",
+          "say": "Charlie pays Alice sixty. He can cover it, so the line counts, and he has forty left."
+        },
+        {
+          "show": [
+            "row:1",
+            "Charlie->Bob"
+          ],
+          "set": {
+            "Charlie": "0",
+            "Bob": "140",
+            "OK?@1": "yes"
+          },
+          "callout": "Charlie 40 − 40 = 0",
+          "say": "Charlie pays Bob forty. That leaves him with nothing."
+        },
+        {
+          "show": [
+            "row:2",
+            "Alice->David"
+          ],
+          "set": {
+            "Alice": "140",
+            "David": "120",
+            "OK?@2": "yes"
+          },
+          "callout": "Alice 160 − 20 = 140",
+          "say": "Alice pays David twenty. She has plenty."
+        },
+        {
+          "show": [
+            "row:3",
+            "Charlie->David"
+          ],
+          "tint": {
+            "row:3": "bad",
+            "Charlie->David": "bad"
+          },
+          "set": {
+            "OK?@3": "no"
+          },
+          "callout": "[Charlie has 0, not 30]{bad}",
+          "say": "Then Charlie tries to pay David thirty. Read the list from the top, and he has nothing left, so everyone rejects that line."
+        },
+        {
+          "focus": [
+            "Alice",
+            "Bob",
+            "Charlie",
+            "David"
+          ],
+          "callout": "the history is the money",
+          "say": "Notice that nobody holds any dollars now. The money is just the list, so call it ledger dollars. Owning some means the history says you have them."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "No one in charge",
+      "title": "Everyone keeps a copy",
+      "narration": "So far one website holds the list. But then you have to trust whoever runs it.",
+      "svg": "<svg viewBox=\"0 0 1280 600\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--accent)\" stroke=\"none\"/></marker></defs><g id=\"site\"><rect x=\"470\" y=\"20\" width=\"340\" height=\"80\" rx=\"14\"/><text x=\"640\" y=\"70\" text-anchor=\"middle\" font-size=\"28\">one website keeps the list</text></g><g id=\"cross\" stroke=\"var(--bad)\" stroke-width=\"7\" stroke-linecap=\"round\"><line x1=\"460\" y1=\"14\" x2=\"820\" y2=\"106\"/><line x1=\"820\" y1=\"14\" x2=\"460\" y2=\"106\"/></g><g id=\"card-alice\"><rect x=\"20\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"165\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">Alice’s copy</text><text x=\"42\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"alice-a\" x=\"42\" y=\"395\" font-size=\"22\"> </text><text id=\"alice-b\" x=\"42\" y=\"450\" font-size=\"22\"> </text></g><g id=\"card-bob\"><rect x=\"340\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"485\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">Bob’s copy</text><text x=\"362\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"bob-a\" x=\"362\" y=\"395\" font-size=\"22\"> </text><text id=\"bob-b\" x=\"362\" y=\"450\" font-size=\"22\"> </text></g><g id=\"card-charlie\"><rect x=\"660\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"805\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">Charlie’s copy</text><text x=\"682\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"charlie-a\" x=\"682\" y=\"395\" font-size=\"22\"> </text><text id=\"charlie-b\" x=\"682\" y=\"450\" font-size=\"22\"> </text></g><g id=\"card-david\"><rect x=\"980\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"1125\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">David’s copy</text><text x=\"1002\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"david-a\" x=\"1002\" y=\"395\" font-size=\"22\"> </text><text id=\"david-b\" x=\"1002\" y=\"450\" font-size=\"22\"> </text></g><g id=\"broadcast\"><path d=\"M 165 230 Q 325 130 485 226\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path d=\"M 165 230 Q 485 110 805 226\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path d=\"M 165 230 Q 645 90 1125 226\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head)\"/></g></svg>",
+      "hidden": [
+        "cross",
+        "broadcast"
+      ],
+      "labels": {
+        "site": "website",
+        "broadcast": "broadcast",
+        "card-charlie": "Charlie’s copy",
+        "card-david": "David’s copy"
+      },
+      "steps": [
+        {
+          "show": [
+            "cross"
+          ],
+          "focus": [
+            "site",
+            "card-alice",
+            "card-bob",
+            "card-charlie",
+            "card-david"
+          ],
+          "say": "So drop the website. Instead, everyone keeps their own copy of the list."
+        },
+        {
+          "show": [
+            "broadcast"
+          ],
+          "focus": [
+            "broadcast",
+            "card-alice"
+          ],
+          "callout": "Alice broadcasts “#7 Alice pays Bob 10”",
+          "say": "To pay Bob, Alice broadcasts her signed line to everyone, and each person adds it to their copy."
+        },
+        {
+          "set": {
+            "alice-a": "#7 Alice pays Bob 10",
+            "bob-a": "#7 Alice pays Bob 10",
+            "charlie-a": "#8 David pays Charlie 5",
+            "david-a": "#8 David pays Charlie 5"
+          },
+          "tint": {
+            "card-charlie": "warn",
+            "card-david": "warn"
+          },
+          "say": "But messages take time to travel. At the same moment, David sends a line of his own, and Charlie and David get his line first."
+        },
+        {
+          "set": {
+            "alice-b": "#8 David pays Charlie 5",
+            "bob-b": "#8 David pays Charlie 5",
+            "charlie-b": "#7 Alice pays Bob 10",
+            "david-b": "#7 Alice pays Bob 10"
+          },
+          "callout": "[two orders, no one in charge]{warn}",
+          "focus": [
+            "card-alice",
+            "card-bob",
+            "card-charlie",
+            "card-david"
+          ],
+          "say": "Now the copies disagree about the order. With no one in charge, how does everyone agree on one history?"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Hashes",
+      "title": "Any text in, 256 bits out",
+      "narration": "The answer needs one more tool, a hash function called SHA-256. It takes any text, short or long, and gives back two hundred and fifty six bits, written here as sixty four hex digits.",
+      "columns": [
+        "Text",
+        "SHA-256"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Hello",
+            "`185f8db3 2271fe25 f561a6fc 938b2e26` `4306ec30 4eda5180 07d17648 26381969`"
+          ]
+        },
+        {
+          "cells": [
+            "hello",
+            "`2cf24dba 5fb0a30e 26e83b2a c5b9e29e` `1b161e5c 1fa7425e 73043362 938b9824`"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "This is the hash of Hello, with a capital H."
+        },
+        {
+          "show": [
+            1
+          ],
+          "say": "Change just that one letter to lower case, and the whole result changes. Nothing about it is close to the first."
+        },
+        {
+          "focus": "SHA-256@1",
+          "callout": "reversing it: about 2²⁵⁶ guesses",
+          "say": "And there is no way back. To find text with a given hash, all you can do is guess, and the guesses would outlast the universe."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Proof of work",
+      "title": "Hunting for 30 zeros",
+      "narration": "Now a puzzle. Take a batch of lines, add a number called a nonce, and hash the lot. The goal is a hash that starts with thirty zero bits.",
+      "columns": [
+        "Nonce",
+        "First 32 bits of the hash",
+        "Zeros"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "0",
+            "`01101100 01111110 00000100 10100001`",
+            "1"
+          ]
+        },
+        {
+          "cells": [
+            "1",
+            "`00000001 00011101 10111100 11010011`",
+            "7"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "2",
+            "`10100100 01111110 10101010 11101001`",
+            "0"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "3",
+            "`11000111 10011001 01011101 01010110`",
+            "0"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "1,275,982,337",
+            "`00000000 00000000 00000000 00000001`",
+            "31"
+          ],
+          "hidden": true
+        }
+      ],
+      "callout": "SHA-256(lines + nonce) starts with 30 zero bits?",
+      "steps": [
+        {
+          "focus": 0,
+          "say": "With a nonce of zero, the hash starts with only 1 zero bit."
+        },
+        {
+          "show": [
+            1,
+            2,
+            3
+          ],
+          "say": "So try one, then two, then three. Each guess gives a hash that looks random."
+        },
+        {
+          "show": [
+            4
+          ],
+          "tint": {
+            "4": "good"
+          },
+          "callout": "[1,275,982,337 → 31 zeros]{good}",
+          "say": "Our computer kept going for a few minutes, and this number finally worked. Each bit halves the odds, so thirty zeros takes about two to the thirty guesses, around a billion."
+        },
+        {
+          "focus": "Nonce@4",
+          "callout": "1 hash to check it",
+          "say": "Finding it is slow, but checking it is fast. Anyone can hash the lines with this nonce once and see the zeros."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "chapter": "A chain of blocks",
+      "layout": "TB",
+      "narration": "Lines are grouped into blocks. A block counts only if it solves the puzzle, and each block starts with the hash of the block before it. That links them into a chain.",
+      "nodes": [
+        {
+          "id": "b1",
+          "label": "Block 1",
+          "shape": "step",
+          "caption": "3 payments · nonce 1,275,982,337"
+        },
+        {
+          "id": "b2",
+          "label": "Block 2",
+          "shape": "step",
+          "caption": "2 payments · nonce 1,233,325,635"
+        },
+        {
+          "id": "b3",
+          "label": "Block 3",
+          "shape": "step",
+          "caption": "2 payments · nonce 318,487,328"
+        }
+      ],
+      "edges": [
+        {
+          "from": "b1",
+          "to": "b2",
+          "label": "prev hash"
+        },
+        {
+          "from": "b2",
+          "to": "b3",
+          "label": "prev hash"
+        }
+      ],
+      "table": {
+        "columns": [
+          "Block",
+          "Prev",
+          "Hash"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "1",
+              "0000…",
+              "000000015d9b…"
+            ]
+          },
+          {
+            "cells": [
+              "2",
+              "000000015d9b…",
+              "000000000942…"
+            ]
+          },
+          {
+            "cells": [
+              "3",
+              "000000000942…",
+              "000000005a65…"
+            ]
+          }
+        ]
+      },
+      "steps": [
+        {
+          "focus": [
+            "b1",
+            "Hash@0"
+          ],
+          "say": "Block one’s hash starts with the zeros its nonce bought."
+        },
+        {
+          "focus": [
+            "b1->b2",
+            "b2",
+            "Prev@1"
+          ],
+          "say": "Block two writes that hash at its top. So does every block after, about the one before it."
+        },
+        {
+          "set": {
+            "b1": "edited",
+            "Hash@0": {
+              "before": "000000015d9b…",
+              "after": "a7b31c3cf367…"
+            }
+          },
+          "tint": {
+            "b1": "bad",
+            "row:0": "bad"
+          },
+          "callout": "“Alice pays Bob 10” → “100”",
+          "say": "Now say someone changes an old line in block one, ten to a hundred. Its hash changes completely, and no longer starts with zeros."
+        },
+        {
+          "tint": {
+            "b1->b2": "bad"
+          },
+          "focus": [
+            "b1->b2",
+            "Prev@1",
+            "Hash@0"
+          ],
+          "callout": "[block 2’s prev no longer matches]{bad}",
+          "say": "Block two still points at the old hash, so the link is broken, and everyone can see it."
+        },
+        {
+          "tint": {
+            "b2": "warn",
+            "b3": "warn"
+          },
+          "focus": [
+            "b1",
+            "b2",
+            "b3"
+          ],
+          "callout": "redo the work for every later block",
+          "say": "To hide the change, the cheat must solve the puzzle again for block one, then for every block after it."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "chapter": "Miners",
+      "layout": "LR",
+      "narration": "People called miners collect the lines everyone broadcasts and race to solve the puzzle for the next block.",
+      "nodes": [
+        {
+          "id": "b3",
+          "label": "Block 3",
+          "shape": "step",
+          "caption": "everyone agrees"
+        },
+        {
+          "id": "b4a",
+          "label": "Block 4",
+          "shape": "step",
+          "caption": "first line: 10 LD to miner Maya",
+          "hidden": true
+        },
+        {
+          "id": "b4b",
+          "label": "Block 4",
+          "shape": "step",
+          "caption": "first line: 10 LD to miner Omar",
+          "hidden": true
+        },
+        {
+          "id": "b5",
+          "label": "Block 5",
+          "shape": "step",
+          "caption": "built on Maya’s block 4",
+          "hidden": true
+        }
+      ],
+      "edges": [
+        {
+          "from": "b3",
+          "to": "b4a",
+          "hidden": true
+        },
+        {
+          "from": "b3",
+          "to": "b4b",
+          "hidden": true
+        },
+        {
+          "from": "b4a",
+          "to": "b5",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "show": [
+            "b4a",
+            "b3->b4a"
+          ],
+          "callout": "reward: new money, from nothing",
+          "say": "Maya solves it first. The first line of her block pays her ten ledger dollars out of thin air. That reward is the only way new money appears."
+        },
+        {
+          "show": [
+            "b4b",
+            "b3->b4b"
+          ],
+          "tint": {
+            "b4a": "warn",
+            "b4b": "warn"
+          },
+          "callout": "[two chains, equal length]{warn}",
+          "say": "But Omar solved a different block four at nearly the same moment. Now there are two chains of the same length."
+        },
+        {
+          "show": [
+            "b5",
+            "b4a->b5"
+          ],
+          "tint": {
+            "b4a": "good",
+            "b5": "good",
+            "b4b": "dim"
+          },
+          "callout": "rule: follow the longest chain",
+          "say": "The next miner happens to build on Maya’s block. That chain is longer now, and the rule is simple: everyone follows the longest chain. Omar’s block is dropped, and its lines go back into the pool."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Double spending",
+      "title": "Chance a cheat with a tenth of the computing power catches up",
+      "kind": "bar",
+      "unit": "%",
+      "better": "lower",
+      "narration": "Here is the attack. Alice pays Bob in one block, while secretly building another chain where that payment never happened. If her chain gets longer, everyone switches to it, and her money comes back.",
+      "labels": [
+        "0 blocks",
+        "1 block",
+        "2 blocks",
+        "3 blocks",
+        "4 blocks",
+        "5 blocks",
+        "6 blocks"
+      ],
+      "series": [
+        {
+          "name": "chance",
+          "values": [
+            100,
+            20.5,
+            5.1,
+            1.32,
+            0.346,
+            0.0914,
+            0.0243
+          ]
+        }
+      ],
+      "annotation": {
+        "at": "6 blocks",
+        "text": "about 2 in 10,000"
+      },
+      "steps": [
+        {
+          "focus": "0 blocks",
+          "say": "But her one machine races everyone else’s together. Say she has a tenth of all the computing power."
+        },
+        {
+          "focus": "1 block",
+          "say": "If Bob waits for one block on top of his payment, her chance of ever catching up is about one in five."
+        },
+        {
+          "focus": "6 blocks",
+          "say": "Each extra block makes it much smaller. After six blocks it is about two in ten thousand. So Bob waits a few blocks before he trusts the payment."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Bitcoin itself",
+      "title": "The reward halves",
+      "narration": "That is Bitcoin. The network adjusts the puzzle every two thousand and sixteen blocks, about two weeks, so a new block comes about every ten minutes.",
+      "columns": [
+        "Year",
+        "From block",
+        "Reward per block"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "2009",
+            "0",
+            "50 BTC"
+          ]
+        },
+        {
+          "cells": [
+            "2012",
+            "210,000",
+            "25 BTC"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "2016",
+            "420,000",
+            "12.5 BTC"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "2020",
+            "630,000",
+            "6.25 BTC"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "2024",
+            "840,000",
+            "3.125 BTC"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "In two thousand and nine, each block paid its miner fifty bitcoin."
+        },
+        {
+          "show": [
+            1,
+            2,
+            3
+          ],
+          "say": "Every two hundred and ten thousand blocks, about four years, the reward halves. Twenty five, then twelve and a half, then six and a quarter."
+        },
+        {
+          "show": [
+            4
+          ],
+          "tint": {
+            "4": "accent"
+          },
+          "callout": "all ever made: 20,999,999.977 BTC",
+          "say": "Since twenty twenty four it is three point one two five. Add up every halving and the total stops just short of twenty one million bitcoin."
+        },
+        {
+          "focus": "col:Reward per block",
+          "callout": "plus fees, for a spot in a full block",
+          "say": "Blocks also have a size limit, so people add a small fee to their line, and miners pick the lines that pay them best. As the reward shrinks, fees pay more of the miners’ bills."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Recap",
+      "title": "One tool for each problem",
+      "narration": "Each problem we hit along the way got one tool.",
+      "columns": [
+        "Problem",
+        "Tool"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Anyone can write a fake line",
+            "Signatures, from a secret key"
+          ]
+        },
+        {
+          "cells": [
+            "A signed line can be copied",
+            "A unique ID on every line"
+          ]
+        },
+        {
+          "cells": [
+            "People spend money they do not have",
+            "The history is the money"
+          ]
+        },
+        {
+          "cells": [
+            "Copies disagree, and no one is in charge",
+            "Proof of work, and the longest chain wins"
+          ]
+        },
+        {
+          "cells": [
+            "Someone rewrites an old block",
+            "Redoing the work is too expensive"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            0,
+            1
+          ],
+          "say": "Signatures and IDs stop fake and copied lines."
+        },
+        {
+          "focus": 2,
+          "say": "The shared history decides who owns what."
+        },
+        {
+          "focus": [
+            3,
+            4
+          ],
+          "say": "And proof of work, with the longest chain, lets strangers agree on one history without anyone in charge."
+        }
+      ]
+    }
+  ]
+}
