@@ -53,7 +53,7 @@ test('numbers that count or name something else do not warn, though the scene ho
 test('a spelled number is read whole, so "twenty three" names 23 and not 20', async () => {
   const scene = (say) => ({ type: 'array', narration: 'Sorted limits.', values: [5, 20, 23, 200, 205], steps: [{ focus: 2, say }] });
   assert.deepEqual(await highlightWarnings(scene('The middle cell holds twenty three.')), []);
-  assert.deepEqual(await highlightWarnings(scene('Twenty-three is not two hundred and five.')), [
+  assert.deepEqual(await highlightWarnings(scene('Twenty-three sits left of two hundred and five.')), [
     'scenes[0].steps[0]: says "205" (cell 4 = 205), which is not lit; it lights cell 2 = 23. Focus what the words name, or say only what is lit',
   ]);
 });
@@ -132,5 +132,68 @@ test('a memory step warns about a value its words name in a variable it leaves d
   assert.deepEqual(warnings, [
     'scenes[0].steps[0]: says "tea" (c1.second = "tea"), which is not lit; it lights object c1 (Cart), c1.first = "mug". Focus what the words name, or say only what is lit',
     'scenes[0].steps[1]: says "12" (checkout.total = 12), which is not lit; it lights object c1 (Cart), c1.second = "cake". Focus what the words name, or say only what is lit',
+  ]);
+});
+
+test('a lit entity lights its fields, and a lit relation lights both entities with their fields', async () => {
+  const er = (steps) => ({
+    type: 'er',
+    narration: 'Orders belong to users.',
+    entities: [
+      { id: 'orders', name: 'orders', fields: [{ name: 'id' }, { name: 'user_id' }] },
+      { id: 'users', name: 'users', fields: [{ name: 'id' }, { name: 'email' }] },
+      { id: 'carts', name: 'carts', fields: [{ name: 'cart_id' }] },
+    ],
+    relations: [{ from: 'orders', to: 'users', label: 'placed by', cardinality: 'one-to-many' }],
+    steps,
+  });
+  assert.deepEqual(await highlightWarnings(er([
+    { focus: 'orders', say: 'Each order stores a user_id.' },
+    { focus: 0, say: 'The user_id points at users.' },
+  ])), []);
+  assert.deepEqual(await highlightWarnings(er([{ focus: 'orders', say: 'An order never holds a cart_id, but the cart keeps its cart_id here.' }, { focus: 'users', say: 'Each cart has a cart_id.' }])), [
+    'scenes[0].steps[1]: says "cart id" (field carts.cart_id), which is not lit; it lights entity users. Focus what the words name, or say only what is lit',
+  ]);
+});
+
+test('a number after a move or a pointer name is the index it lands on, not a cell value', async () => {
+  const warnings = await highlightWarnings({
+    type: 'array',
+    narration: 'Binary search.',
+    values: [10, 3, 7, 1, 12],
+    pointers: [{ name: 'mid', at: 2 }],
+    steps: [
+      { move: { mid: 1 }, focus: 'ptr:mid', say: 'mid moves to 1.' },
+      { move: { mid: 3 }, focus: 'ptr:mid', say: 'Then mid jumps to 3, so mid at 3 holds one.' },
+      { focus: 'ptr:mid', say: 'It is bigger than 7.' },
+    ],
+  });
+  assert.deepEqual(warnings, [
+    'scenes[0].steps[2]: says "7" (cell 2 = 7), which is not lit; it lights cell 3 = 1, pointer mid at cell 3. Focus what the words name, or say only what is lit',
+  ]);
+});
+
+test('an amount that ends a sentence and a denied value do not warn; a chart label lights with its series and keeps its case', async () => {
+  const array = await highlightWarnings({ type: 'array', narration: 'A search.', values: [50, 3], steps: [{ focus: 1, say: 'Done in 50.' }] });
+  assert.deepEqual(array, []);
+  const memory = await highlightWarnings({
+    type: 'memory',
+    narration: 'Two counters.',
+    frames: [{ name: 'main', vars: { count: 3, total: 5 } }],
+    objects: [],
+    steps: [{ focus: 'main.count', say: 'count is 3, not 5.' }],
+  });
+  assert.deepEqual(memory, []);
+  const chart = (focus) => ({
+    type: 'chart',
+    kind: 'bar',
+    narration: 'Revenue by quarter.',
+    labels: ['Q1', 'Q2', 'Q3'],
+    series: [{ name: 'Revenue 2024', values: [1, 2, 3] }, { name: 'Costs 2024', values: [1, 1, 1] }],
+    steps: [{ focus, say: 'Revenue 2024 peaks in Q3.' }],
+  });
+  assert.deepEqual(await highlightWarnings(chart('series:Revenue 2024')), []);
+  assert.deepEqual(await highlightWarnings(chart('series:Costs 2024')), [
+    'scenes[0].steps[0]: says "Revenue 2024" (series Revenue 2024), which is not lit; it lights series Costs 2024. Focus what the words name, or say only what is lit',
   ]);
 });

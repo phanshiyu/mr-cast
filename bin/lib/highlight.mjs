@@ -85,10 +85,13 @@ const ITEMS = {
     ];
   },
   er(scene) {
+    // An entity is drawn with its fields, so a lit entity lights them, and a lit relation lights both its entities whole.
+    const fields = new Map(list(scene.entities).map((e) => [e?.id, list(e?.fields).map((_, k) => `f:${e?.id}/${k}`)]));
+    const whole = (id) => [`e:${id}`, ...(fields.get(id) ?? [])];
     return [
-      ...list(scene.entities).map((e) => ({ key: `e:${e?.id}`, label: `entity ${text(e?.name) || e?.id}`, terms: [text(e?.name), e?.id] })),
+      ...list(scene.entities).map((e) => ({ key: `e:${e?.id}`, label: `entity ${text(e?.name) || e?.id}`, terms: [text(e?.name), e?.id], parts: fields.get(e?.id) })),
       ...list(scene.entities).flatMap((e) => list(e?.fields).map((f, k) => ({ key: `f:${e?.id}/${k}`, label: `field ${e?.id}.${f?.name}`, terms: [f?.name], with: [`e:${e?.id}`] }))),
-      ...list(scene.relations).map((r, i) => ({ key: `r:${i}`, label: `relation ${r?.from} → ${r?.to}${r?.label ? ` "${text(r.label)}"` : ''}`, terms: [text(r?.label)], with: [`e:${r?.from}`, `e:${r?.to}`] })),
+      ...list(scene.relations).map((r, i) => ({ key: `r:${i}`, label: `relation ${r?.from} → ${r?.to}${r?.label ? ` "${text(r.label)}"` : ''}`, terms: [text(r?.label)], with: [...whole(r?.from), ...whole(r?.to)] })),
     ];
   },
   layers(scene) {
@@ -107,7 +110,8 @@ const ITEMS = {
     const labels = list(scene.labels);
     return [
       ...labels.map((l, i) => ({ key: `l:${i}`, label: `label ${l}`, terms: [text(l)] })),
-      ...list(scene.series).map((s, k) => ({ key: `s:${k}`, label: `series ${s?.name}`, terms: [text(s?.name)], parts: labels.map((_, i) => `p:${k}/${i}`) })),
+      // A lit series is read against its labels, so they light with it.
+      ...list(scene.series).map((s, k) => ({ key: `s:${k}`, label: `series ${s?.name}`, terms: [text(s?.name)], parts: labels.map((_, i) => `p:${k}/${i}`), with: labels.map((_, i) => `l:${i}`) })),
       ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${list(s?.values)[i]}`, terms: [text(String(list(s?.values)[i] ?? ''))], with: [`l:${i}`] }))),
     ];
   },
@@ -227,13 +231,17 @@ const ONE_LEADERS = new Set('the a each any no which every only this that anothe
 /** "The two swap", "both three are": a number between these words means the group, not a value. */
 const GROUP_LEADERS = new Set('the these those all both'.split(' '));
 const PLURAL_VERBS = new Set('are were swap trade stay move sit go become land have'.split(' '));
+/** Words that move a pointer or range, so "to" or "at" after them leads its new index ("mid moves to 1"). */
+const MOVES = new Set('move moves moved moving jump jumps jumped step steps stepped go goes went land lands landed slide slides slid shift shifts shifted advance advances advanced sit sits sat point points pointed start starts started stop stops stopped'.split(' '));
+/** Words before a number that ends its sentence, making it an amount ("done in 50"). */
+const AMOUNT_LEADERS = new Set('in within after'.split(' '));
 /** Words that deny what a sentence names. */
 const NEGATIONS = new Set('never not no nor without skips skipped bypasses'.split(' '));
 /** Words never worth matching alone: a name made only of these is skipped. */
 const STOP = new Set('a an the of to in on at by for and or is are be it this that its with from as not no yes if then so'.split(' '));
 
-/** Lowercase words of a text. */
-const words = (s) => String(s).toLowerCase().match(/[a-z0-9]+(?:[.'][a-z0-9]+)*/g) ?? [];
+/** Words of a text, in their own case. */
+const words = (s) => String(s).match(/[a-z0-9]+(?:[.'][a-z0-9]+)*/gi) ?? [];
 
 /** The number a run of number words starting at `i` spells ("twenty three", "two hundred and five"), and its length. */
 function spelled(ws, i) {
@@ -258,14 +266,19 @@ function spelled(ws, i) {
   return [value, used];
 }
 
-/** A text's words with each spelled number as its digits, beside the first word it was spelled with. */
+/**
+ * A text's lowercase words with each spelled number as its digits, beside the first word it was spelled with and
+ * the words as written.
+ */
 function wordsAndTokens(s) {
-  const ws = words(s);
+  const written = words(s);
+  const ws = written.map((w) => w.toLowerCase());
   const out = [];
   for (let i = 0; i < ws.length; ) {
     const n = spelled(ws, i);
-    out.push([n ? String(n[0]) : ws[i], ws[i]]);
-    i += n ? n[1] : 1;
+    const used = n ? n[1] : 1;
+    out.push([n ? String(n[0]) : ws[i], ws[i], written.slice(i, i + used).join(' ')]);
+    i += used;
   }
   return out;
 }
@@ -289,13 +302,18 @@ function namedIn(say, items) {
     ...[...new Set(list(item.names).filter(Boolean))].map((name) => ({ t: tokens(name), item, term: false })).filter((n) => matchable(n.t)),
     ...[...new Set(list(item.terms).filter(Boolean))].map((term) => ({ t: tokens(term), item, term: true, ok: distinctive(term, tokens(term)) })).filter((n) => n.ok),
   ]);
+  // Pointer and range names, after which "to" or "at" leads an index, not a value ("mid at 3").
+  const markers = new Set(items.filter((it) => /^(ptr|rg):/.test(it.key)).flatMap((it) => tokens(list(it.names)[0] ?? '')));
   const found = [];
   for (const sentence of String(say).split(/(?<=[.!?;])\s+/)) {
     const pairs = wordsAndTokens(sentence);
     const said = pairs.map(([t]) => t);
     const raw = pairs.map(([, w]) => w);
-    // A label in a sentence that denies it ("the orders service is never reached") is named on purpose while dark.
+    // As written, so the warning quotes "Q3", but a spelled number as its digits.
+    const written = pairs.map(([t, w, as]) => (t === w ? as : t));
+    // What a sentence denies ("the orders service is never reached", "count is 3, not 5") is named on purpose while dark.
     const denied = said.some((w) => NEGATIONS.has(w));
+    const index = (i) => (said[i - 1] === 'to' || said[i - 1] === 'at') && (MOVES.has(said[i - 2]) || markers.has(said[i - 2]));
     for (let i = 0; i < said.length; ) {
       const best = names.reduce((top, n) => (n.t.length > (top?.t.length ?? 0) && n.t.every((w, j) => said[i + j] === w) ? n : top), null);
       if (!best) {
@@ -307,10 +325,11 @@ function namedIn(say, items) {
       const counted =
         best.t.length === 1 &&
         isNumber(best.t[0]) &&
-        (COUNT_LEADERS.has(said[i - 1]) || (raw[i] === 'one' && ONE_LEADERS.has(said[i - 1])) ||
+        (COUNT_LEADERS.has(said[i - 1]) || (raw[i] === 'one' && ONE_LEADERS.has(said[i - 1])) || index(i) ||
+          (next === undefined && AMOUNT_LEADERS.has(said[i - 1])) ||
           (GROUP_LEADERS.has(said[i - 1]) && PLURAL_VERBS.has(next)) || (next !== undefined && !isNumber(next) && !VALUE_FOLLOWERS.has(next)));
-      const meant = names.filter((n) => n.t.join(' ') === phrase && !(n.term && denied)).map((n) => n.item);
-      if (!counted && meant.length) found.push({ phrase, items: meant });
+      const meant = denied ? [] : names.filter((n) => n.t.join(' ') === phrase).map((n) => n.item);
+      if (!counted && meant.length) found.push({ phrase: written.slice(i, i + best.t.length).join(' '), items: meant });
       i += best.t.length;
     }
   }
