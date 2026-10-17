@@ -6,8 +6,8 @@
 //   stills:<run>  audio:<run>             PNG stills, voice-over clips; render and voice regenerate them
 //   cache:bundle  cache:remotion  cache:models   the shared cache in ~/.cache/mr-cast
 //
-// Ids name places, not contents, so the same id means the same thing across listings. Deletion takes ids
-// only from a fresh listing, so nothing outside .mr-cast/ and the cache can be named.
+// Ids name places, not contents, so the same id means the same thing across listings. Deletion takes
+// artifacts only from a fresh listing, picked by `select`, so nothing outside .mr-cast/ and the cache can be named.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,14 +21,20 @@ import { plural } from './summary.mjs';
  * @typedef {'run' | 'explain' | 'video' | 'stills' | 'audio' | 'cache'} Kind
  * @typedef {{
  *   id: string, kind: Kind, parent: string | null, path: string, bytes: number, modified: number,
- *   detail: string, busy: string | null, remove: string[], lock: string | null,
+ *   label: string, detail: string, busy: string | null, remove: string[], lock: string | null,
  * }} Artifact  `remove` is what deleting it removes; `lock` is a lock file to hold meanwhile.
+ * @typedef {{
+ *   ids: string[], kinds: Kind[] | null, all: boolean, except: string[], olderThanDays: number | null,
+ * }} Selector  Picks ids, every artifact of `kinds`, or `all`, then drops `except` and anything newer than `olderThanDays`.
  */
 
+export const KINDS = /** @type {Kind[]} */ (['run', 'explain', 'video', 'stills', 'audio', 'cache']);
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const CACHES = [
-  { name: 'bundle', detail: 'player bundle; the next render rebuilds it in a few seconds', lock: false },
-  { name: 'remotion', detail: 'Chrome Headless Shell; the next render downloads it again', lock: true },
-  { name: 'models', detail: 'Kokoro voice model; the next voice-over downloads it again (about 90 MB)', lock: true },
+  { name: 'bundle', label: 'Player bundle', detail: 'player bundle; the next render rebuilds it in a few seconds', lock: false },
+  { name: 'remotion', label: 'Chrome cache', detail: 'Chrome Headless Shell; the next render downloads it again', lock: true },
+  { name: 'models', label: 'Voice model', detail: 'Kokoro voice model; the next voice-over downloads it again (about 90 MB)', lock: true },
 ];
 
 /** Total size and newest mtime under `p`, without following symlinks. */
@@ -47,10 +53,10 @@ function measure(p) {
   return { bytes, modified };
 }
 
-function artifact({ id, kind, parent = null, at, remove, detail, busy = null, lock = null }) {
+function artifact({ id, kind, parent = null, at, remove, label, detail, busy = null, lock = null }) {
   const sizes = remove.map(measure);
   return {
-    id, kind, parent, path: at, detail, busy, remove, lock,
+    id, kind, parent, path: at, label, detail, busy, remove, lock,
     bytes: sizes.reduce((n, s) => n + s.bytes, 0),
     modified: Math.max(0, ...sizes.map((s) => s.modified)),
   };
@@ -74,17 +80,19 @@ const count = (dir) => entries(dir).filter((e) => e.isFile()).length;
 
 /** The videos, stills and voice-over inside one run directory. */
 function runParts(dir, key, parent, label) {
-  const parts = entries(dir)
-    .filter((e) => e.isFile() && e.name.endsWith('.mp4'))
-    .map((e) => artifact({ id: `video:${key}/${e.name}`, kind: 'video', parent, at: path.join(dir, e.name), remove: [path.join(dir, e.name)], detail: `video of ${label}` }));
+  const videos = entries(dir).filter((e) => e.isFile() && e.name.endsWith('.mp4'));
+  const parts = videos.map((e) => artifact({
+    id: `video:${key}/${e.name}`, kind: 'video', parent, at: path.join(dir, e.name), remove: [path.join(dir, e.name)],
+    label: `Video of ${label}${videos.length > 1 ? ` (${e.name})` : ''}`, detail: `video of ${label}`,
+  }));
   const stills = path.join(dir, 'stills');
   if (fs.existsSync(stills)) {
-    parts.push(artifact({ id: `stills:${key}`, kind: 'stills', parent, at: stills, remove: [stills], detail: `${plural(count(stills), 'still')} of ${label}` }));
+    parts.push(artifact({ id: `stills:${key}`, kind: 'stills', parent, at: stills, remove: [stills], label: `Stills of ${label}`, detail: `${plural(count(stills), 'still')} of ${label}` }));
   }
   const audio = path.join(dir, 'audio');
   if (fs.existsSync(audio)) {
     // voiceover.json lists the clips; without them it would claim the narration is voiced.
-    parts.push(artifact({ id: `audio:${key}`, kind: 'audio', parent, at: audio, remove: [audio, path.join(dir, 'voiceover.json')], detail: `${plural(count(audio), 'voice clip')} of ${label}` }));
+    parts.push(artifact({ id: `audio:${key}`, kind: 'audio', parent, at: audio, remove: [audio, path.join(dir, 'voiceover.json')], label: `Voice clips of ${label}`, detail: `${plural(count(audio), 'voice clip')} of ${label}` }));
   }
   return parts;
 }
@@ -96,7 +104,7 @@ function walkthrough({ id, kind, dir, key, remove, noun }) {
   const label = title ? `"${title}"` : `${noun} ${key}`;
   const detail = `${noun} ${title ? label : '(no storyboard yet)'}${branch ? ` · branch ${branch}` : ''}`;
   return [
-    artifact({ id, kind, at: dir, remove, detail }),
+    artifact({ id, kind, at: dir, remove, label, detail }),
     ...runParts(dir, key, id, label),
   ];
 }
@@ -133,24 +141,19 @@ function cacheBusy(dir, lock) {
 
 function listCache() {
   return CACHES
-    .map(({ name, detail, lock }) => ({ dir: cacheDir(name), name, detail, lock }))
+    .map((c) => ({ ...c, dir: cacheDir(c.name) }))
     .filter(({ dir }) => fs.existsSync(dir))
-    .map(({ dir, name, detail, lock }) => artifact({
-      id: `cache:${name}`, kind: 'cache', at: dir, remove: [dir], detail,
+    .map(({ dir, name, label, detail, lock }) => artifact({
+      id: `cache:${name}`, kind: 'cache', at: dir, remove: [dir], label, detail,
       busy: cacheBusy(dir, lock), lock: lock ? `${dir}.lock` : null,
     }));
 }
 
-/**
- * Everything prune can delete under `dataRoot` and in the cache: each run followed by its parts, then the
- * cache. `olderThanDays` keeps only artifacts with nothing inside modified more recently than that.
- */
-export function listArtifacts({ dataRoot, olderThanDays = null, now = Date.now() }) {
-  const all = [...listRuns(dataRoot), ...listCache()];
-  if (olderThanDays === null) return all;
-  const cutoff = now - olderThanDays * 24 * 60 * 60 * 1000;
-  return all.filter((a) => a.modified < cutoff);
-}
+/** Everything prune can delete under `dataRoot` and in the cache: each run followed by its parts, then the cache. */
+export const listArtifacts = (dataRoot) => [...listRuns(dataRoot), ...listCache()];
+
+/** The artifacts with nothing inside modified in the last `days` days; all of them when `days` is null. */
+export const olderThan = (listing, days, now = Date.now()) => (days === null ? listing : listing.filter((a) => a.modified < now - days * DAY_MS));
 
 const inside = (child, parent) => {
   const rel = path.relative(parent, child);
@@ -166,32 +169,53 @@ function assertContained(a, dataRoot) {
   }
 }
 
-/** The artifacts `ids` name in `listing`; throws, deleting nothing, on an unknown or busy id. */
-export function resolveIds(listing, ids, listCommand = 'mr-cast prune') {
-  const byId = new Map(listing.map((a) => [a.id, a]));
-  const unknown = ids.filter((id) => !byId.has(id));
+/**
+ * What `selector` picks from `listing` (a whole, unfiltered listing): `chosen` to delete and `inUse`, the busy
+ * artifacts it matched, which are never chosen. Excepting an artifact keeps its parts and the walkthrough
+ * holding it. Throws, choosing nothing, on an unknown id, a busy id named outright, or an unknown --except.
+ */
+export function select(listing, selector, { now = Date.now(), listCommand = 'mr-cast prune' } = {}) {
+  const pool = olderThan(listing, selector.olderThanDays, now);
+  const inPool = new Set(pool.map((a) => a.id));
+  const unknown = [...new Set(selector.ids)].filter((id) => !inPool.has(id));
   if (unknown.length) throw new UserError(`unknown id${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}; run \`${listCommand}\` to list what can be pruned`);
-  const chosen = [...new Set(ids)].map((id) => byId.get(id));
-  const busy = chosen.filter((a) => a.busy);
-  if (busy.length) throw new UserError(`not pruning anything: ${busy.map((a) => `${a.id} is in use, ${a.busy}`).join('; ')}`);
-  return chosen;
+  const except = new Set(selector.except);
+  const unknownExcept = [...except].filter((id) => !listing.some((a) => a.id === id));
+  if (unknownExcept.length) throw new UserError(`unknown --except id${unknownExcept.length === 1 ? '' : 's'}: ${unknownExcept.join(', ')}; run \`mr-cast prune\` to list the ids`);
+  const named = new Set(selector.ids);
+  const busyNamed = pool.filter((a) => named.has(a.id) && a.busy);
+  if (busyNamed.length) throw new UserError(`not pruning anything: ${busyNamed.map((a) => `${a.id} is in use, ${a.busy}`).join('; ')}`);
+  const kept = (a) => except.has(a.id) || except.has(a.parent) || listing.some((b) => b.parent === a.id && except.has(b.id));
+  const picked = pool.filter((a) => (selector.all || named.has(a.id) || selector.kinds?.includes(a.kind)) && !kept(a));
+  return { chosen: picked.filter((a) => !a.busy), inUse: picked.filter((a) => a.busy) };
 }
 
 /**
- * Deletes `chosen` (from resolveIds). A part inside another chosen artifact goes with it. Removing the
+ * What deleting `chosen` removes, in order: each artifact with its bytes, or with `with` naming the chosen
+ * artifact that contains it, whose bytes already count it.
+ */
+export function removalPlan(chosen) {
+  const container = (a) => chosen.find((b) => b !== a && a.remove.every((p) => b.remove.some((q) => q === p || inside(p, q))));
+  return chosen.map((artifact) => {
+    const outer = container(artifact);
+    return outer ? { artifact, bytes: 0, with: outer.id } : { artifact, bytes: artifact.bytes, with: null };
+  });
+}
+
+/**
+ * Deletes `chosen` (from select). A part inside another chosen artifact goes with it. Removing the
  * current run clears .current, so a later command asks which run instead of guessing.
  * Returns { removed: [{ artifact, bytes, with }], skipped: [{ artifact, reason }] }: `with` names the
  * artifact that took a part along, and `skipped` holds cache directories a render started using since listing.
  */
 export async function pruneArtifacts(chosen, dataRoot) {
   for (const a of chosen) assertContained(a, dataRoot);
-  const container = (a) => chosen.find((b) => b !== a && a.remove.every((p) => b.remove.some((q) => q === p || inside(p, q))));
   const removed = [];
   const skipped = [];
-  for (const a of chosen) {
-    const outer = container(a);
-    if (outer) {
-      removed.push({ artifact: a, bytes: 0, with: outer.id });
+  for (const step of removalPlan(chosen)) {
+    const a = step.artifact;
+    if (step.with) {
+      removed.push(step);
       continue;
     }
     const remove = () => {
@@ -258,3 +282,62 @@ export const listingJson = (listing, dataRoot) => ({
     modified: new Date(a.modified).toISOString(), detail: a.detail, busy: a.busy,
   })),
 });
+
+/** The CLI arguments that make `select` pick what `selector` picks. */
+export const pruneCommand = (selector) => [
+  'prune', ...selector.ids,
+  ...(selector.kinds ? ['--kind', selector.kinds.join(',')] : []),
+  ...(selector.all ? ['--all'] : []),
+  ...(selector.olderThanDays === null ? [] : ['--older-than', String(selector.olderThanDays)]),
+  ...selector.except.flatMap((id) => ['--except', id]),
+];
+
+const OLD_DAYS = 30;
+const MAX_OPTIONS = 4;
+
+/** The menu groups, as the prune skill shows them. `aged` groups offer "not changed in 30 days". */
+const GROUPS = [
+  { name: 'Rendered videos', kinds: ['video'], all: 'All rendered videos', aged: 'Videos not changed in 30 days', consequence: 'the walkthrough stays, so render makes the video again' },
+  { name: 'Stills and voice clips', kinds: ['stills', 'audio'], all: 'All stills and voice clips', aged: 'Stills and voice clips not changed in 30 days', consequence: 'still and voice make them again; voice clips take a few seconds per scene to speak again' },
+  { name: 'Walkthroughs', kinds: ['run', 'explain'], all: 'All walkthroughs', aged: 'Walkthroughs not changed in 30 days', consequence: 'deletes the storyboard and everything inside' },
+  { name: 'Cache', kinds: ['cache'], all: 'All cached downloads', aged: null, consequence: null },
+];
+
+const selectorOf = (fields) => ({ ids: [], kinds: null, all: false, except: [], olderThanDays: null, ...fields });
+
+/**
+ * The prune menu for `listing`: per group with something deletable, up to 4 options, each with the exact
+ * `command` that deletes what its description counts. Busy artifacts appear only in `inUse`.
+ */
+export function pruneChoices(listing, now = Date.now()) {
+  const option = (label, selector, note) => {
+    const { chosen } = select(listing, selector, { now });
+    const bytes = removalPlan(chosen).reduce((n, r) => n + r.bytes, 0);
+    const size = chosen.length > 1 ? `${formatBytes(bytes)} in ${plural(chosen.length, 'item')}` : formatBytes(bytes);
+    return { label, description: `${size}; ${note}`, command: pruneCommand(selector), ids: chosen.map((a) => a.id), bytes };
+  };
+  const groups = GROUPS.flatMap((g) => {
+    const items = listing.filter((a) => g.kinds.includes(a.kind) && !a.busy);
+    if (items.length === 0) return [];
+    const options = [];
+    if (items.length > 1) options.push(option(g.all, selectorOf({ kinds: g.kinds }), g.consequence ?? 'each is downloaded or rebuilt again when next needed'));
+    const old = olderThan(items, OLD_DAYS, now).length;
+    if (g.aged && old > 0 && old < items.length) options.push(option(g.aged, selectorOf({ kinds: g.kinds, olderThanDays: OLD_DAYS }), g.consequence));
+    if (items.length <= MAX_OPTIONS - options.length) {
+      for (const a of items) {
+        const age = a.kind === 'cache' ? `downloaded ${formatAge(a.modified, now)} ago` : `changed ${formatAge(a.modified, now)} ago`;
+        options.push(option(a.label, selectorOf({ ids: [a.id] }), `${age}; ${g.consequence ?? a.detail}`));
+      }
+    }
+    return [{ name: g.name, options }];
+  });
+  return { groups, inUse: listing.filter((a) => a.busy).map((a) => ({ id: a.id, label: a.label, busy: a.busy })) };
+}
+
+export function formatChoices({ groups, inUse }) {
+  if (groups.length === 0 && inUse.length === 0) return ['nothing to prune'];
+  return [
+    ...groups.flatMap((g) => [g.name, ...g.options.flatMap((o) => [`  ${o.label} · ${o.description}`, `    mr-cast ${o.command.join(' ')}`])]),
+    ...inUse.map((a) => `in use, not offered: ${a.id} · ${a.busy}`),
+  ];
+}

@@ -9,7 +9,7 @@ import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
-import { formatBytes, formatListing, listArtifacts, listingJson, pruneArtifacts, resolveIds } from './lib/prune.mjs';
+import { KINDS, formatBytes, formatChoices, formatListing, listArtifacts, listingJson, olderThan, pruneArtifacts, pruneChoices, removalPlan, select } from './lib/prune.mjs';
 import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
 import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
@@ -39,9 +39,10 @@ commands under "Used by the Claude Code skills" for you.
                     (or $CLAUDE_CONFIG_DIR), and remove what earlier versions installed there
   uninstall-skill   remove every skill mr-cast installed
   upgrade [--check] update mr-cast from npm, then its skills; --check only reports the versions
-  prune [id...] [--older-than days] [--json]
+  prune [id...] [--kind k,k] [--all] [--older-than days] [--except id] [--dry-run] [--json]
                     list what mr-cast stored (walkthroughs, videos, voice clips, downloads) with sizes;
-                    with ids from that list, delete exactly those
+                    with ids, --kind or --all, delete exactly what they pick (--dry-run only prints it);
+                    --choices prints a menu of common picks, each with the command that deletes it
   version           print the mr-cast and Node versions (also --version, -v)
   help [--all]      this message; --all adds every command and option
 
@@ -778,26 +779,59 @@ function status(argv) {
   console.log(out.join('\n'));
 }
 
+function parseKinds(values) {
+  if (!values) return null;
+  const kinds = values.flatMap((v) => v.split(',')).map((k) => k.trim()).filter(Boolean);
+  const unknown = kinds.filter((k) => !KINDS.includes(k));
+  if (unknown.length) throw new UserError(`unknown --kind ${unknown.join(', ')}; kinds are ${KINDS.join(', ')}`);
+  return [...new Set(kinds)];
+}
+
 async function prune(argv) {
   const { values, positionals } = parseArgs({
     args: argv, allowPositionals: true,
-    options: { 'older-than': { type: 'string' }, json: { type: 'boolean', default: false } },
+    options: {
+      'older-than': { type: 'string' }, kind: { type: 'string', multiple: true }, all: { type: 'boolean', default: false },
+      except: { type: 'string', multiple: true }, 'dry-run': { type: 'boolean', default: false },
+      choices: { type: 'boolean', default: false }, json: { type: 'boolean', default: false },
+    },
   });
   const dataRoot = dataDir(findRepoRoot() ?? process.cwd());
   const olderThanDays = values['older-than'] === undefined ? null : intOption(values['older-than'], 'older-than', 0);
-  const listing = listArtifacts({ dataRoot, olderThanDays });
-  if (positionals.length === 0) {
-    if (values.json) console.log(JSON.stringify(listingJson(listing, dataRoot), null, 2));
-    else for (const line of formatListing(listing)) console.log(line);
+  const selector = { ids: positionals, kinds: parseKinds(values.kind), all: values.all, except: values.except ?? [], olderThanDays };
+  const selecting = selector.ids.length > 0 || selector.kinds !== null || selector.all;
+  const print = (json, lines) => (values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l)));
+  const listing = listArtifacts(dataRoot);
+  if (values.choices) {
+    if (selecting || olderThanDays !== null || selector.except.length || values['dry-run']) throw new UserError('--choices takes only --json');
+    const choices = pruneChoices(listing);
+    print(choices, formatChoices(choices));
     return;
   }
-  if (values.json) throw new UserError('--json only applies to the listing; pass it without ids');
-  const { removed, skipped } = await pruneArtifacts(resolveIds(listing, positionals, `mr-cast prune${olderThanDays === null ? '' : ` --older-than ${olderThanDays}`}`), dataRoot);
-  for (const { artifact, bytes, with: outer } of removed) {
-    console.log(outer ? `removed ${artifact.id} (with ${outer})` : `removed ${artifact.id} · ${formatBytes(bytes)} · ${rel(artifact.path)}`);
+  if (!selecting) {
+    if (selector.except.length || values['dry-run']) throw new UserError('--except and --dry-run need ids, --kind or --all');
+    const shown = olderThan(listing, olderThanDays);
+    print(listingJson(shown, dataRoot), formatListing(shown));
+    return;
   }
+  const { chosen, inUse } = select(listing, selector, { listCommand: `mr-cast prune${olderThanDays === null ? '' : ` --older-than ${olderThanDays}`}` });
+  const dryRun = values['dry-run'];
+  const { removed, skipped } = dryRun ? { removed: removalPlan(chosen), skipped: [] } : await pruneArtifacts(chosen, dataRoot);
+  const verb = dryRun ? 'would remove' : 'removed';
+  const freed = removed.reduce((n, r) => n + r.bytes, 0);
+  print({
+    dryRun,
+    artifacts: removed.map(({ artifact: a, bytes, with: outer }) => ({ id: a.id, kind: a.kind, path: a.path, bytes, with: outer })),
+    inUse: inUse.map((a) => ({ id: a.id, busy: a.busy })),
+    skipped: skipped.map(({ artifact, reason }) => ({ id: artifact.id, reason })),
+    bytes: freed,
+  }, [
+    ...(removed.length ? [] : ['nothing matched']),
+    ...removed.map(({ artifact, bytes, with: outer }) => (outer ? `${verb} ${artifact.id} (with ${outer})` : `${verb} ${artifact.id} · ${formatBytes(bytes)} · ${rel(artifact.path)}`)),
+    ...inUse.map((a) => `in use, not removed: ${a.id} · ${a.busy}`),
+    `${dryRun ? 'would free' : 'freed'} ${formatBytes(freed)}`,
+  ]);
   for (const { artifact, reason } of skipped) console.error(`mr-cast: kept ${artifact.id}: ${reason}`);
-  console.log(`freed ${formatBytes(removed.reduce((n, r) => n + r.bytes, 0))}`);
   if (skipped.length) process.exitCode = 1;
 }
 
