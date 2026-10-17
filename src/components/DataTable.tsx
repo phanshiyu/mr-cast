@@ -4,7 +4,7 @@ import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, TableScene } from '../types';
 import { brighter, focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { sameValue, sceneStates } from '../../shared/state-steps.mjs';
-import { hasCallout } from '../fit/callout';
+import { headerBox } from '../fit/shell';
 import { COL_GAP, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, layoutTableStates, stateRows, type PlacedCell, type PlacedRow, type TableLayout, tableBoxes } from '../utils/tableLayout';
 import { shownOf, stateFrame, type StateFrame } from '../utils/stateTrack';
 import { dimOpacity, mainTone, tintFill, tintMix } from '../utils/tint';
@@ -17,7 +17,7 @@ import { badgesOf, changeTone, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { FitText } from './FitText';
-import { clamp, colors, fonts, sceneBox } from './theme';
+import { clamp, colors, fonts } from './theme';
 
 const START = 10;
 /** Every row has started landing by this frame, so all have landed by the end of the build. */
@@ -210,7 +210,7 @@ export const TableView: React.FC<{
 
 export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
-  const box = sceneBox(scene, hasCallout(scene));
+  const box = headerBox(scene);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const layouts = useMemo(() => layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, states), box.width, box.height), [scene, states, box.width, box.height]);
   const s = stateFrame(states, segments, frame);

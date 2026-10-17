@@ -264,3 +264,13 @@ test('the dashed slot past an array end shows only while a pointer stands on it'
   const atEachStep = walkStates(scene).states.map((state) => ghostShown([{ row: '', at: state.places['ptr:i'][0], shown: 1 }], '', 3));
   assert.deepEqual(atEachStep, [0, 1, 0]);
 });
+
+test('a long title beside a callout wraps onto a second line, and the content below gives up that line', async () => {
+  const scene = { ...search, title: 'Binary search halves the part of the sorted list it still has to look at, every step' };
+  assert.deepEqual(await errorsOf(scene), []);
+  const { shellFits, headerBox } = await bundle('../src/fit/shell.ts');
+  const { title } = shellFits(scene);
+  assert.equal(title.size, 50);
+  assert.equal(title.lines.length, 2);
+  assert.equal(headerBox({ ...search, title: 'Binary search' }).height - headerBox(scene).height, 60);
+});

@@ -2,7 +2,7 @@ import { createElement, useMemo, type ReactNode } from 'react';
 import { spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { SVG_COLORS, SVG_TONES, svgGeometry, svgOf, svgStage, type SvgNode } from '../../shared/svg.mjs';
-import { hasCallout } from '../fit/callout';
+import { headerBox } from '../fit/shell';
 import type { SvgScene, Tone } from '../types';
 import { staged } from '../utils/penGeometry';
 import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
@@ -12,7 +12,7 @@ import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { colors, fonts, sceneBox } from './theme';
+import { colors, fonts } from './theme';
 import { tones } from './tones';
 
 const START = 6;
@@ -139,7 +139,7 @@ function hashOf(text: string): string {
 export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const box = sceneBox(scene, hasCallout(scene));
+  const box = headerBox(scene);
   const { root, viewBox } = svgOf(scene.svg);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = viewBox ? svgStage(viewBox, box) : { scale: 1, left: 0, top: 0 };

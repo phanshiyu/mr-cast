@@ -3,7 +3,7 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { cellKey } from '../../shared/arrays.mjs';
 import { sceneStates } from '../../shared/state-steps.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
-import { hasCallout } from '../fit/callout';
+import { headerBox } from '../fit/shell';
 import type { ArrayScene } from '../types';
 import { ARROW_LEN, BAND_H, BAND_PAD, CHIP_H, arrayBoxes, bandBox, cellBox, chipY, ghostBox, ghostShown, layoutArray, pointerLanes, pointerX, type ArrayLayout, type PlacedRow } from '../utils/arrayLayout';
 import { staged } from '../utils/penGeometry';
@@ -15,7 +15,7 @@ import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { clamp, colors, fonts, sceneBox } from './theme';
+import { clamp, colors, fonts } from './theme';
 import { tones } from './tones';
 
 const START = 6;
@@ -111,7 +111,7 @@ const Ghost: React.FC<{ layout: ArrayLayout; row: PlacedRow; index: number; pop:
 export const ArrayDiagram: React.FC<SceneProps<ArrayScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const box = sceneBox(scene, hasCallout(scene));
+  const box = headerBox(scene);
   const layout = useMemo(() => layoutArray(scene, box), [scene, box.width, box.height]);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = { left: Math.round((box.width - layout.width) / 2), top: Math.round(Math.max(0, box.height - layout.height) * 0.4), scale: 1 };

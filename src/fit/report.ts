@@ -1,8 +1,8 @@
 import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, Scene, Storyboard } from '../types';
-import { contentBox, sceneBox } from '../components/theme';
-import { calloutFits, hasCallout } from './callout';
+import { contentBox } from '../components/theme';
+import { calloutFits } from './callout';
 import { fitGraph, graphAreas, graphDirection } from '../utils/graphLayout';
 import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
@@ -24,7 +24,7 @@ import { readingOrder } from '../../shared/reading.mjs';
 import { layoutTests } from '../utils/testsLayout';
 import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline } from '../utils/timelineLayout';
-import { shellFits } from './shell';
+import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
@@ -48,7 +48,7 @@ const SCENE_FITS: SceneFits = {
     return layoutTests(scene, box.width, box.height);
   },
   table: (scene) => {
-    const box = sceneBox(scene, hasCallout(scene));
+    const box = headerBox(scene);
     return layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, sceneStates(scene)), box.width, box.height);
   },
   chart: (scene) => {
@@ -61,8 +61,8 @@ const SCENE_FITS: SceneFits = {
     return layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
   },
   layers: (scene) => layoutLayers(scene, contentBox(Boolean(scene.title))),
-  array: (scene) => layoutArray(scene, sceneBox(scene, hasCallout(scene))),
-  memory: (scene) => layoutMemory(scene, sceneBox(scene, hasCallout(scene))),
+  array: (scene) => layoutArray(scene, headerBox(scene)),
+  memory: (scene) => layoutMemory(scene, headerBox(scene)),
   review: (scene, storyboard) => {
     const box = contentBox(Boolean(scene.title));
     return layoutReview(storyboard.findings ?? [], box.width, box.height);

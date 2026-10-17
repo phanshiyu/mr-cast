@@ -12,9 +12,9 @@ import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import { hasCallout } from '../fit/callout';
+import { headerBox } from '../fit/shell';
 import { HeaderCallout } from './HeaderCallout';
-import { clamp, colors, sceneBox } from './theme';
+import { clamp, colors } from './theme';
 
 const START = 6;
 /** Frames between cards landing, frames first, then objects. */
@@ -173,7 +173,7 @@ const Line: React.FC<{ d: Styled }> = ({ d }) => (
 export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const box = sceneBox(scene, hasCallout(scene));
+  const box = headerBox(scene);
   const layout = useMemo(() => layoutMemory(scene, box), [scene, box.width, box.height]);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = centredStage(box, layout, layout.scale);
