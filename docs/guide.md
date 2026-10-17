@@ -30,7 +30,7 @@ A branch video starts from `mr-cast extract`, which diffs the branch against its
 
 ## Make a quick diagram video
 
-Say "quick", "just a diagram" or "explain this flow in a diagram". You can also select code in your editor and type a bare `/mr-cast`. Claude makes a video of 1 to 3 scenes and opens it in the browser.
+Say "quick", "just a diagram" or "explain this flow in a diagram". You can also select code in your editor and type a bare `/mr-cast`. Claude makes a short diagram video and opens it in the browser.
 
 The quick video ends on three phrases to say to Claude next. "Go deeper" makes a full walkthrough of the same code that keeps these scenes. "The whole branch" makes a full walkthrough of the branch's changes. "Save it" renders the video as an MP4.
 

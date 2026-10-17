@@ -49,7 +49,7 @@ After Claude explains something, ask it to "animate that" to get a video of the 
 ## Features
 
 - Videos of a branch's diff, or of an explanation with no diff behind it.
-- A quick diagram video of one to three scenes, a full walkthrough, or an MP4 with chapter markers and subtitles.
+- A quick diagram video, a full walkthrough, or an MP4 with chapter markers and subtitles.
 - A pre-read for a reviewer: diagrams only, with no code on screen, ending on the order in which to read the code.
 - A review mode that flags bugs and risks on the lines that hold them and writes them to `review.md`.
 - 20 scene types, among them graphs, sequence diagrams, state machines, code with line-by-line steps, arrays, memory, timelines and terminals.

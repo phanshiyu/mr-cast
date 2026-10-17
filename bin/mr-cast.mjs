@@ -56,9 +56,10 @@ Used by the Claude Code skills:
                     --working diffs the merge base against uncommitted changes
   init --title text [--reset] [--quick]
                     start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
-                    it and keeps its storyboard unless --reset; --quick starts a quick video of 1 to 3 scenes
-                    in .mr-cast/quick-<title-slug> (it needs --title); a full video with no storyboard yet
-                    starts from the quick one's scenes
+                    it and keeps its storyboard unless --reset; --quick starts a quick video in
+                    .mr-cast/quick-<title-slug> (it needs --title), which ends on the phrases "go deeper",
+                    "the whole branch" and "save it"; a full video with no storyboard yet starts from the
+                    quick one's scenes
   snippet <file>:<start>-<end> ...
                     add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
   plan [--port N] [--no-open]

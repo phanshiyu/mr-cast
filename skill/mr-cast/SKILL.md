@@ -22,7 +22,7 @@ Pick the row that matches the user's words first, then what is in context.
 
 | The request | The video |
 | --- | --- |
-| After a quick video in this conversation: "save it", "render it", "go deeper", "the whole branch" | About that video. "Save it" renders the quick run as it is. "Go deeper" runs `init` with the same `--title` and no `--quick`, which starts from the quick video's scenes. |
+| After a quick video in this conversation: "save it", "render it", "go deeper", "the whole branch" | About that video. "Save it" renders the quick run as it is. "Go deeper" runs `init` with the same `--title` and no `--quick`, which starts from the quick video's scenes. "The whole branch" runs `extract` for a full video of the branch's changes. |
 | "mp4", "render", "save", "share", "video file" | An MP4. Otherwise the browser player. |
 | "pre-read", "before I review", "no code on screen", "without code" | A pre-read: pass `--audience preread` (below). |
 | "review it", "what looks wrong", "flag problems" | Review on: add `findings` (below). |
