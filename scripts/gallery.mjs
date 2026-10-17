@@ -14,7 +14,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEMOS = path.join(ROOT, 'examples/primitives');
 const STILLS = path.join(ROOT, 'docs/assets/scenes');
 const SCENES = path.join(ROOT, 'skill/mr-cast/references/scenes');
-const VIDEO = (type) => `https://github.com/phanshiyu/mr-cast/releases/latest/download/${type}.mp4`;
+const VIDEO = (name) => `https://github.com/phanshiyu/mr-cast/releases/latest/download/${name}.mp4`;
 
 const types = fs.readdirSync(DEMOS).filter((t) => fs.existsSync(path.join(DEMOS, t, 'storyboard.json'))).sort();
 const wanted = process.argv.slice(2);
@@ -58,7 +58,7 @@ const sections = types.map((type) =>
     '',
     `![The ${type} demo's ${type} scene, at the end of its last step](assets/scenes/${type}.png)`,
     '',
-    `Storyboard: [examples/primitives/${type}/storyboard.json](../examples/primitives/${type}/storyboard.json). Video: [${type}.mp4](${VIDEO(type)}). Reference: [${type}.md](../skill/mr-cast/references/scenes/${type}.md).`,
+    `Storyboard: [examples/primitives/${type}/storyboard.json](../examples/primitives/${type}/storyboard.json). Video: [primitives-${type}.mp4](${VIDEO(`primitives-${type}`)}). Reference: [${type}.md](../skill/mr-cast/references/scenes/${type}.md).`,
   ].join('\n'),
 );
 const gallery = `# Scene gallery
