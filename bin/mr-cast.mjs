@@ -453,6 +453,7 @@ function voicingLine(storyboard, voiced) {
     open = false;
   };
   const log = (print) => {
+    if (!tty) return print();
     end();
     print();
     const again = last;

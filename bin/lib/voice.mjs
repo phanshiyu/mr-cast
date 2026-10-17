@@ -201,8 +201,10 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
       const src = `${AUDIO_DIR}/${key}.wav`;
       writeAtomic(path.join(dataDir, src), encodeWav(samples, sampleRate));
       clips[key] = { src, seconds: roundMs(samples.length / sampleRate), sentences, voice: chosen, speed };
-      // The clips so far, so a player already open can voice the scenes they cover while the rest are made.
+      // The clips so far, so a player already open can voice the scenes they cover while the rest are made, and a
+      // voicing stopped for a newer edit keeps them.
       const partial = { voice: chosen, speed, pauses, clips: { ...clips } };
+      writeAtomic(path.join(dataDir, VOICEOVER_FILE), `${JSON.stringify(partial, null, 2)}\n`);
       onProgress?.({ type: 'clip', text, seconds: clips[key].seconds, done: ++done, total: missing.size, voiceover: partial });
     }
   }
