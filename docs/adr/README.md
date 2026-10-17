@@ -28,3 +28,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0018](0018-validate-hook.md) | A PostToolUse hook in the skill runs the checks after every write | Accepted; article part superseded by 0019 |
 | [0019](0019-tools-not-opinions.md) | Tools, not opinions: the skill and `validate` give the model tools and leave the teaching to it | Accepted |
 | [0020](0020-stepped-scene-additions-and-svg.md) | Callout, tint, growing diagrams, several arrays, changing tables, and an svg scene | Accepted |
+| [0021](0021-example-videos-as-release-assets.md) | Example videos are rendered in CI and attached to the GitHub release; stills are committed | Accepted |
