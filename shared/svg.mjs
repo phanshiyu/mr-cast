@@ -94,7 +94,35 @@ function parse(markup) {
   return { root, cut };
 }
 
-const URL_REF = /url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/;
+/** Attributes that paint: a colour, or `url(#id)` for a gradient in the drawing. */
+const PAINTS = new Set(['fill', 'stroke']);
+/** Attributes that point at an element of the drawing: `none` or `url(#id)`. */
+const REFERENCES = new Set(['clip-path', 'marker-start', 'marker-mid', 'marker-end']);
+/** A colour: hex, a keyword such as `none`, `currentColor` or `white`, rgb() or hsl() of numbers, or a palette `var(--name)`. */
+const COLOUR = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|[a-z]+|(?:rgba?|hsla?)\(\s*[-+\d.%\s,/]*\)|var\(\s*--[\w-]+\s*\))$/i;
+const LOCAL_REF = /^url\(\s*(['"]?)#([\w.:-]+)\1\s*\)$/i;
+/** The classes the scene reads; the player's own classes never reach a drawing. */
+const TONE_CLASS = new RegExp(`^(?:tone|fill|stroke)-(?:${SVG_TONES.join('|')})$`);
+/** Attributes the scene sets itself on the root `<svg>`, where the drawing is placed on its stage. */
+const PLACED = new Set(['transform', 'x', 'y']);
+
+/**
+ * A kept attribute's value, or a problem saying why it is cut. Paint and references are allowlisted, since CSS
+ * reads `url()` in fill, stroke, clip-path and markers and would load from outside the drawing.
+ * @returns {{ value: string, ref?: string } | { problem: string }}
+ */
+function attribute(name, value) {
+  if (value.includes('\\')) return { problem: `"${value}" has a backslash, which CSS reads as an escape, so it is cut` };
+  if (/javascript:|expression\s*\(|@import/i.test(value)) return { problem: `"${value}" is cut` };
+  const local = LOCAL_REF.exec(value.trim());
+  if (local && (PAINTS.has(name) || REFERENCES.has(name))) return { value: `url(#${local[2]})`, ref: local[2] };
+  if (PAINTS.has(name) || name === 'stop-color') {
+    return COLOUR.test(value.trim()) ? { value } : { problem: `"${value}" is no colour, so it is cut; a ${name} is a colour such as #7c8cff, none, currentColor or var(--good)${name === 'stop-color' ? '' : ', or url(#id) for a gradient in the drawing'}` };
+  }
+  if (REFERENCES.has(name)) return value.trim() === 'none' ? { value } : { problem: `"${value}" is not url(#id), so it is cut; point at a ${name === 'clip-path' ? 'clip path' : 'marker'} in the drawing, url(#id), or write none` };
+  if (/url\s*\(/i.test(value)) return { problem: `"${value}" loads from outside the drawing, so it is cut; use url(#id) in fill, stroke, clip-path or a marker` };
+  return { value };
+}
 
 /**
  * Parses a drawing and keeps only what draws: the elements and attributes above, `url(#id)` and `href="#id"`
@@ -133,15 +161,23 @@ export function readSvg(markup) {
       if (/^on/i.test(name)) problems.push(`${where} ${name}: an event handler is cut`);
       else if (name === 'style') problems.push(`${where} style: a style attribute is cut; set fill, stroke and the rest as attributes`);
       else if (!ATTRIBUTES.has(name)) problems.push(`${where} ${name}: not a drawing attribute, so it is cut`);
-      else if (/javascript:|expression\s*\(|@import/i.test(value)) problems.push(`${where} ${name}: "${value}" is cut`);
-      else if (name === 'href' || name === 'xlink:href') {
-        if (!value.startsWith('#')) problems.push(`${where} ${name}: "${value}" points outside the drawing, so it is cut; point at an element's id, "#arrow"`);
+      else if (!path && PLACED.has(name)) problems.push(`${where} ${name}: the scene places the drawing on its stage, so ${name} on the root <svg> is cut; put it on a <g> inside`);
+      else if (name === 'class') {
+        const [kept, cut] = [[], []];
+        for (const c of value.split(/\s+/).filter(Boolean)) (TONE_CLASS.test(c) ? kept : cut).push(c);
+        if (cut.length) problems.push(`${where} class: ${cut.map((c) => `"${c}"`).join(', ')} ${cut.length === 1 ? 'is no tone class, so it is' : 'are no tone classes, so they are'} cut; a class is tone-, fill- or stroke- and one of ${SVG_TONES.join(', ')}, such as tone-good`);
+        if (kept.length) attrs.class = kept.join(' ');
+      } else if (name === 'href' || name === 'xlink:href') {
+        if (!/^#[\w.:-]+$/.test(value)) problems.push(`${where} ${name}: "${value}" points outside the drawing, so it is cut; point at an element's id, "#arrow"`);
         else (refs.push([where, name, value.slice(1)]), (attrs.href = value));
-      } else if (/url\(/i.test(value)) {
-        const ref = URL_REF.exec(value);
-        if (!ref || value.replace(URL_REF, '').includes('url(')) problems.push(`${where} ${name}: "${value}" loads from outside the drawing, so it is cut; use url(#id) for a marker, gradient or clip path in it`);
-        else (refs.push([where, name, ref[1]]), (attrs[name] = value));
-      } else attrs[name] = value;
+      } else {
+        const kept = attribute(name, value);
+        if ('problem' in kept) problems.push(`${where} ${name}: ${kept.problem}`);
+        else {
+          if (kept.ref) refs.push([where, name, kept.ref]);
+          attrs[name] = kept.value;
+        }
+      }
     }
     for (const v of Object.values(attrs)) {
       for (const [, name] of v.matchAll(/var\(\s*--([\w-]+)\s*\)/g)) {

@@ -42,7 +42,7 @@ function classTones(cls: string | undefined) {
 }
 
 /** An SVG attribute as a React prop name: stroke-width → strokeWidth, xlink:href → href. */
-const propName = (name: string) => (name === 'xlink:href' ? 'href' : name === 'class' ? 'className' : name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()));
+const propName = (name: string) => (name === 'xlink:href' ? 'href' : name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()));
 
 interface Inherited {
   fill: boolean;
@@ -156,11 +156,11 @@ export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durat
   const parts = root.children;
   const stagger = Math.min(STAGGER, (STAGGER_END - START) / Math.max(1, parts.length - 1));
   const rootProps: Record<string, string> = {};
-  for (const [name, value] of Object.entries(root.attrs)) if (!['viewBox', 'width', 'height', 'preserveAspectRatio', 'version', 'id', 'class'].includes(name) && !name.startsWith('xmlns')) rootProps[propName(name)] = resolveVars(value);
+  for (const [name, value] of Object.entries(root.attrs)) if (!['viewBox', 'width', 'height', 'preserveAspectRatio', 'version', 'id', 'class'].includes(name) && !name.startsWith('xmlns')) rootProps[propName(name)] = prefixRefs(name, resolveVars(value), d.prefix);
 
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
-      <svg width={box.width} height={box.height} viewBox={`0 0 ${box.width} ${box.height}`} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+      <svg width={box.width} height={box.height} viewBox={`0 0 ${box.width} ${box.height}`} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
         <g transform={`translate(${stage.left} ${stage.top}) scale(${stage.scale})`} {...rootProps}>
           {parts.map((part, i) => {
             const appear = spring({ frame: frame - START - i * stagger, fps, config: { damping: 18, stiffness: 140 } });

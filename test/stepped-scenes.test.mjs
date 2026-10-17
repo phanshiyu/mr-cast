@@ -160,7 +160,7 @@ test('readSvg cuts everything that is not drawing and says what it cut', () => {
     '<svg> <script> is not drawn, so it is cut',
     '<svg> <rect> onclick: an event handler is cut',
     '<svg> <rect> style: a style attribute is cut; set fill, stroke and the rest as attributes',
-    '<svg> <rect> fill: "url(http://x/a)" loads from outside the drawing, so it is cut; use url(#id) for a marker, gradient or clip path in it',
+    '<svg> <rect> fill: "url(http://x/a)" is no colour, so it is cut; a fill is a colour such as #7c8cff, none, currentColor or var(--good), or url(#id) for a gradient in the drawing',
     '<svg> <image> is not drawn, so it is cut',
     '<svg> <foreignObject> is not drawn, so it is cut',
     `<svg> <use> href: "https://e/x#a" points outside the drawing, so it is cut; point at an element's id, "#arrow"`,
@@ -169,6 +169,44 @@ test('readSvg cuts everything that is not drawing and says what it cut', () => {
   assert.deepEqual(readSvg('<svg><rect/></svg>').problems, ['<svg> needs a viewBox of four numbers with a positive width and height, such as viewBox="0 0 400 300"; it has none']);
   assert.deepEqual(readSvg('<svg viewBox="0 0 1 1"><g></svg>').problems, ['does not parse: </svg> closes <g>']);
   assert.deepEqual(readSvg('<svg viewBox="0 0 1 1"><rect fill="url(#nowhere)"/></svg>').problems, ['<svg> <rect> fill: points at "#nowhere", which no element has as its id']);
+});
+
+test('readSvg keeps paint and references only as colours and url(#id), whatever escape or entity spells a url', () => {
+  const cut = (attrs) => readSvg(`<svg viewBox="0 0 10 10"><marker id="m"/><rect ${attrs}/></svg>`).problems.map((p) => p.replace(/^<svg> <rect> /, ''));
+  // CSS reads each of these as url(...), so Chrome would fetch it.
+  for (const [attr, value] of [
+    ['fill', '\\75 rl(https://x/a)'],
+    ['stroke', 'u\\72 l(https://x/a)'],
+    ['clip-path', 'ur\\6c(https://x/a)'],
+    ['marker-end', 'url(\\68 ttps://x/a)'],
+    ['fill', '&#92;75 rl(https://x/a)'],
+    ['stroke', 'u&#x5C;72 l(https://x/a)'],
+  ]) {
+    assert.deepEqual(cut(`${attr}="${value}"`), [`${attr}: "${value.replace('&#92;', '\\').replace('&#x5C;', '\\')}" has a backslash, which CSS reads as an escape, so it is cut`]);
+  }
+  assert.deepEqual(cut('fill="&#117;rl(https://x/a)"'), ['fill: "url(https://x/a)" is no colour, so it is cut; a fill is a colour such as #7c8cff, none, currentColor or var(--good), or url(#id) for a gradient in the drawing']);
+  assert.deepEqual(cut('stroke="URL(https://x/a)"'), ['stroke: "URL(https://x/a)" is no colour, so it is cut; a stroke is a colour such as #7c8cff, none, currentColor or var(--good), or url(#id) for a gradient in the drawing']);
+  assert.deepEqual(cut('marker-end="Url(https://x/a)"'), ['marker-end: "Url(https://x/a)" is not url(#id), so it is cut; point at a marker in the drawing, url(#id), or write none']);
+  assert.deepEqual(cut('clip-path="url(#m) url(https://x/a)"'), ['clip-path: "url(#m) url(https://x/a)" is not url(#id), so it is cut; point at a clip path in the drawing, url(#id), or write none']);
+  assert.deepEqual(cut('fill="var(--good, url(https://x/a))"'), ['fill: "var(--good, url(https://x/a))" is no colour, so it is cut; a fill is a colour such as #7c8cff, none, currentColor or var(--good), or url(#id) for a gradient in the drawing']);
+  assert.deepEqual(cut('transform="translate(1 2) url(https://x/a)"'), ['transform: "translate(1 2) url(https://x/a)" loads from outside the drawing, so it is cut; use url(#id) in fill, stroke, clip-path or a marker']);
+  assert.deepEqual(cut('font-family="a\\62 c"'), ['font-family: "a\\62 c" has a backslash, which CSS reads as an escape, so it is cut']);
+
+  const kept = readSvg('<svg viewBox="0 0 10 10"><marker id="m"/><rect fill="#7C8CFF" stroke="currentColor" marker-end="URL( \'#m\' )" clip-path="none"/><rect fill="rgb(1, 2, 3)" stroke="var(--good)"/><style>@import url(https://x/a.css);</style></svg>');
+  assert.deepEqual(kept.problems.map((p) => p.replace(/; a drawing uses .*/, '')), ['<svg> <style> is not drawn, so it is cut']);
+  assert.deepEqual(kept.root.children.map((n) => n.attrs), [{ id: 'm' }, { fill: '#7C8CFF', stroke: 'currentColor', 'marker-end': 'url(#m)', 'clip-path': 'none' }, { fill: 'rgb(1, 2, 3)', stroke: 'var(--good)' }]);
+});
+
+test('readSvg keeps only tone classes, and cuts what would move the root off its stage', () => {
+  const { root, problems } = readSvg('<svg viewBox="0 0 10 10" transform="scale(3)" x="5" fill="var(--text)"><rect class="tone-good absolute inset-0 fill-bad"/><rect class="bg-red-500"/></svg>');
+  assert.deepEqual(problems, [
+    '<svg> transform: the scene places the drawing on its stage, so transform on the root <svg> is cut; put it on a <g> inside',
+    '<svg> x: the scene places the drawing on its stage, so x on the root <svg> is cut; put it on a <g> inside',
+    '<svg> <rect> class: "absolute", "inset-0" are no tone classes, so they are cut; a class is tone-, fill- or stroke- and one of accent, good, bad, warn, neutral, such as tone-good',
+    '<svg> <rect> class: "bg-red-500" is no tone class, so it is cut; a class is tone-, fill- or stroke- and one of accent, good, bad, warn, neutral, such as tone-good',
+  ]);
+  assert.deepEqual(root.attrs, { viewBox: '0 0 10 10', fill: 'var(--text)' });
+  assert.deepEqual(root.children.map((n) => n.attrs), [{ class: 'tone-good fill-bad' }, {}]);
 });
 
 test('svgGeometry boxes each element through its transforms, and a group around its children', () => {
