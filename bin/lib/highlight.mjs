@@ -5,16 +5,19 @@
 
 import { plainText } from '../../shared/markup.mjs';
 import { focusSteps } from '../../shared/normalize.mjs';
-import { isPointer, sceneStates } from '../../shared/state-steps.mjs';
+import { STATE_TYPES, isPointer, sceneStates } from '../../shared/state-steps.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { splitMemberKey, stepTargets } from '../../shared/targets.mjs';
 import { stepLines } from '../../shared/focus.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { compareTitles } from '../../shared/compare.mjs';
+import { outputLines } from '../../shared/terminal.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? plainText(v) : typeof v === 'number' ? String(v) : '');
-const shown = (v) => (isPointer(v) ? `→ ${v.ref}` : JSON.stringify(v));
+const shown = (v) => (isPointer(v) ? `points at ${v.ref}` : typeof v === 'string' ? JSON.stringify(plainText(v)) : JSON.stringify(v));
+const valueText = (v) => (isPointer(v) ? `ref:${v.ref}` : String(v));
+const sameText = (a, b) => valueText(a) === valueText(b);
 const keysOf = (record) => (record && typeof record === 'object' && !Array.isArray(record) ? Object.keys(record) : []);
 
 /**
@@ -118,7 +121,7 @@ const ITEMS = {
   },
   compare(scene) {
     const titles = compareTitles(scene);
-    const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).split('\n')[0]}` : text(c));
+    const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
     return [
       ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i}${r?.label ? ` "${text(r.label)}"` : ''}: ${list(r?.cells).map(cell).join(' | ')}`, terms: [text(r?.label)], with: titles.map((_, s) => `x:${i}/${s}`) })),
       ...titles.map((t, s) => ({ key: `s:${s}`, label: `side ${t}`, terms: [text(t)], with: list(scene.rows).map((_, i) => `x:${i}/${s}`) })),
@@ -135,7 +138,10 @@ const ITEMS = {
     ];
   },
   terminal(scene) {
-    return list(scene.entries).map((e, i) => ({ key: `en:${i}`, label: `entry ${i}${e?.command ? ` $ ${e.command}` : ''}`, terms: [] }));
+    return list(scene.entries).flatMap((e, i) => [
+      { key: `en:${i}`, label: `entry ${i}${e?.command ? ` $ ${e.command}` : ''}` },
+      ...outputLines(e).map((line, l) => ({ key: `ln:${i}/${l}`, label: `entry ${i} output line ${l}: ${text(line)}` })),
+    ]);
   },
   intent(scene) {
     return list(scene.bullets).map((b, i) => ({ key: `b:${i}`, label: `bullet ${i} "${text(b)}"`, terms: [] }));
@@ -153,7 +159,7 @@ function withRelated(items, keys) {
 /** Labels of the cells, variables and fields a step changes, as "cell 0 5 → 1". */
 function changesOf(scene, before, after) {
   const values = Object.keys(after.values).flatMap((key) => {
-    if (String(before.values[key]) === String(after.values[key]) && isPointer(before.values[key]) === isPointer(after.values[key])) return [];
+    if (sameText(before.values[key], after.values[key])) return [];
     const where = key.startsWith('c:') ? `cell ${key.slice(2)}` : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
@@ -186,9 +192,11 @@ export function stepViews(scene, hunks) {
     const state = states[k + 1] ?? states[0] ?? { values: {}, places: {}, hidden: {} };
     const items = ITEMS[scene.type]?.(scene, state, hunks) ?? [];
     const litKeys = withRelated(items, targets[k] ?? []);
+    // The dump lists what a step names; in an array or memory it adds the cells and values that light with it.
+    const listed = STATE_TYPES.includes(scene.type) ? litKeys : new Set(targets[k]);
     return {
       say: text(step?.say),
-      lit: items.filter((it) => litKeys.has(it.key)).map((it) => it.label),
+      lit: items.filter((it) => listed.has(it.key)).map((it) => it.label),
       changes: states.length ? changesOf(scene, states[k], state) : [],
       items,
       litKeys,
@@ -310,8 +318,6 @@ function swapped(before, after) {
   const now = keys.map((key) => valueText(after.values[key])).sort();
   return was.every((v, i) => v === now[i]) ? keys : null;
 }
-const valueText = (v) => (isPointer(v) ? `ref:${v.ref}` : String(v));
-const sameText = (a, b) => valueText(a) === valueText(b);
 
 function checkSwaps(scene, p, views, hunks, warnings) {
   const states = sceneStates(scene);

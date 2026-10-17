@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.0
+
+- **The lit part matches the words.** A step's changes land as it starts, before its words, so a bubble sort step that said "compare five and one, so they swap" showed the swap while the voice still compared. Every writer we tried wrote it that way. The skill now gives the comparison its own step that lights both cells, and swaps in the next step.
+- **`validate` warns when a step's words name what it leaves dark.** It reads each step's words against what the step lights: a cell value or index, a pointer or range in an `array`, a value in a `memory` scene, and a label of two or more words or an identifier in the other diagrams. Counts such as "two passes" or "pass three", and a label the sentence denies ("never reaches the orders service"), do not warn. It also warns about an `array` or `memory` swap that no step lit before it. Over 150 storyboards and 1,963 steps from earlier runs it warns once, about a step that does name a dark field.
+- **`mr-cast steps`** prints each step's words beside what is lit, written out as "cell 2 = 4" or "node Rate limiter", and what changes on screen as it starts. After `validate` passes, Claude hands it to one Sonnet subagent with `references/highlight-audit.md`, which lists each step where the words and the light disagree, and fixes those. Quick videos skip it.
+
 ## 0.22.0
 
 A new audience for the reviewer who will read the code right after the video. The pre-read shows no code. Its diagrams build the model with the real names and values, and it ends on the order in which to read the code, with what to check at each place. In a small test with AI reviewers allowed one `git diff --stat` and two file reads, those given a pre-read answered 79% of the questions about the change, against 61% with no video and 83% with the usual reviewer's video, and looked at fewer scenes (3.7 against 8.8). With the whole repo to read, no video did as well as either, because the test diffs fit in one `git diff`. Six reviews per arm is a small sample, so read it as a direction rather than a measurement.

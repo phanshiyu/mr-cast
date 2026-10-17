@@ -106,6 +106,7 @@ export function installSkill(root, claudeDir = defaultClaudeDir()) {
     skill('mr-cast', 'references/branch.md'),
     skill('mr-cast', 'references/explanation.md'),
     skill('mr-cast', 'references/review.md'),
+    skill('mr-cast', 'references/highlight-audit.md'),
     skill('mr-cast-prune'),
     skill('mr-cast-upgrade'),
   ];
