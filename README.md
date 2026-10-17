@@ -24,7 +24,7 @@ mr-cast is a command-line tool and a Claude Code skill. Ask Claude for a video o
   <img src="docs/assets/still-code.png" width="49%" alt="A code scene of src/api/rate-limit.ts. Line 18 is highlighted, and a step list beside it says 'Under the limit, pass the request on'.">
 </p>
 
-Two scenes from [`examples/demo`](examples/demo), a walkthrough of a rate limit change. A video moves through diagrams and code while the voice explains it, and lights each part as the voice reaches it.
+Two scenes from [`examples/demo`](examples/demo), a walkthrough of a rate limit change ([watch the video](https://github.com/phanshiyu/mr-cast/releases/latest/download/demo.mp4)). A video moves through diagrams and code while the voice explains it, and lights each part as the voice reaches it.
 
 ## Install
 
