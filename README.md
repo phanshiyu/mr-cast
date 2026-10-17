@@ -2,7 +2,7 @@
   <img src="docs/assets/logo.svg" width="112" height="112" alt="">
 </p>
 
-<h1 align="center">mr-cast</h1>
+<h1 align="center">Mister Cast (<code>mr-cast</code>)</h1>
 
 <p align="center">
   Turn a branch, or something Claude Code explained, into a narrated, animated video.
