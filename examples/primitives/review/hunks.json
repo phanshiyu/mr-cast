@@ -1,0 +1,168 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "src/events/list.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 14,
+    "additions": 11,
+    "deletions": 2,
+    "beforeCode": "import { db } from '../db';\n\nexport async function listEvents(page: number) {\n  return db.query('select * from events order by id limit 50 offset $1', [(page - 1) * 50]);\n}",
+    "afterCode": "import { db } from '../db';\n\n/** One page of events, newest first, and the cursor for the next page. */\nexport async function listEvents(after: string | undefined, limit = 50) {\n  const rows = await db.query(\n    `select * from events\n     where ($1::timestamptz is null or created_at < $1)\n     order by created_at desc\n     limit $2`,\n    [after ?? null, limit],\n  );\n  const next = rows.length === limit ? rows[rows.length - 1].created_at : null;\n  return { events: rows, next };\n}",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { db } from '../db';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "export async function listEvents(page: number) {"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  return db.query('select * from events order by id limit 50 offset $1', [(page - 1) * 50]);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "/** One page of events, newest first, and the cursor for the next page. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "export async function listEvents(after: string | undefined, limit = 50) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  const rows = await db.query("
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "    `select * from events"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "     where ($1::timestamptz is null or created_at < $1)"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "     order by created_at desc"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "     limit $2`,"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "    [after ?? null, limit],"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  );"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  const next = rows.length === limit ? rows[rows.length - 1].created_at : null;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  return { events: rows, next };"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 14,
+        "text": "}"
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "src/events/routes.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 5,
+    "additions": 1,
+    "deletions": 1,
+    "beforeCode": "import { listEvents } from './list';\n\nexport const routes = (app: App) => {\n  app.get('/events', async (req) => listEvents(Number(req.query.page) || 1));\n};",
+    "afterCode": "import { listEvents } from './list';\n\nexport const routes = (app: App) => {\n  app.get('/events', async (req) => listEvents(req.query.after, Number(req.query.limit)));\n};",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { listEvents } from './list';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 3,
+        "text": "export const routes = (app: App) => {"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  app.get('/events', async (req) => listEvents(Number(req.query.page) || 1));"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  app.get('/events', async (req) => listEvents(req.query.after, Number(req.query.limit)));"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 5,
+        "text": "};"
+      }
+    ]
+  }
+}

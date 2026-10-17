@@ -30,3 +30,5 @@ Each test beside what it proves in plain words, and the gaps nothing tests liste
 A `focus` is a case index, a case name, or `"gap:0"`. Each case has its `name` and what it `proves`; `cases` and `gaps` may be empty, and `titles` renames the panels. `{{MR_CAST}}/bin/mr-cast validate` warns past 10 cases and on a spoken count that disagrees with the cases.
 
 `{{MR_CAST}}/bin/mr-cast schema tests` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/tests/storyboard.json`.

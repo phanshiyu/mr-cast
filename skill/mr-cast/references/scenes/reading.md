@@ -20,3 +20,5 @@ The order in which to read the code, each item with its file, lines and what to 
 Pre-read only (`--audience preread`). Each item names a `hunkId`, optional `lines` inside it, and a `check` unless it is `routine`; the file and lines come from hunks.json. The scene shows the first 6 items to read and counts the rest; `reading.md` and the player's Reading order panel list them all, grouped by the `topic` of the scene that cites each hunk in `from`. A `flag` names a finding whose line is in the item's hunk. The scene takes no `steps`. `{{MR_CAST}}/bin/mr-cast validate` fails on a hunk listed twice, a missing check, and `lines` outside the hunk.
 
 `{{MR_CAST}}/bin/mr-cast schema reading` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/reading/storyboard.json`.

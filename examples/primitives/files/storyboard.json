@@ -1,0 +1,147 @@
+{
+  "title": "Load the settings in one place",
+  "subtitle": "One checked config object instead of reading the environment everywhere",
+  "skipped": [
+    {
+      "hunkId": "h1",
+      "reason": "readme points at the moved example file"
+    },
+    {
+      "hunkId": "h2",
+      "reason": "example file gains the pool size"
+    },
+    {
+      "hunkId": "h3",
+      "reason": "two lines that parse the environment with the schema"
+    },
+    {
+      "hunkId": "h5",
+      "reason": "same swap from env() to config as server.ts"
+    },
+    {
+      "hunkId": "h6",
+      "reason": "the old env() helper, deleted"
+    },
+    {
+      "hunkId": "h7",
+      "reason": "same swap from env() to config as server.ts"
+    }
+  ],
+  "scenes": [
+    {
+      "type": "files",
+      "chapter": "What changed",
+      "title": "Files in this change",
+      "narration": "Today every part of the server reads its own settings from the environment, and a missing one shows up much later as a strange error. This change reads all the settings once, in one new folder.",
+      "notes": {
+        "src/config/schema.ts": "every setting, its type and default",
+        "src/config/index.ts": "checks them once at start-up",
+        "src/env.ts": "the old helper, now unused",
+        "src/server.ts": "reads config instead of env()",
+        "config/example.env": "moved, gains the pool size",
+        "test/config.test.ts": "defaults and a missing setting"
+      },
+      "steps": [
+        {
+          "focus": [
+            "src/config/schema.ts",
+            "src/config/index.ts"
+          ],
+          "say": "The new config folder lists every setting the server needs, and checks them all when the server starts."
+        },
+        {
+          "focus": "src/env.ts",
+          "mark": "strike",
+          "say": "The old helper, which read one setting at a time, is deleted."
+        },
+        {
+          "focus": [
+            "src/server.ts",
+            "src/db/pool.ts",
+            "src/mail/send.ts"
+          ],
+          "say": "The server, the database pool and the mailer now read their settings from the one checked object."
+        },
+        {
+          "focus": "config/example.env",
+          "say": "The example settings file moves into the config folder, and lists the pool size too."
+        },
+        {
+          "focus": "test/config.test.ts",
+          "mark": "box",
+          "say": "A new test checks the defaults, and that a missing setting is named."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The settings",
+      "hunkId": "h4",
+      "narration": "The schema is the one list of settings.",
+      "steps": [
+        {
+          "lines": 4,
+          "say": "The port is a number with a default, so the server starts without it."
+        },
+        {
+          "lines": 5,
+          "token": "z.string().url()",
+          "mark": "underline",
+          "note": "no default",
+          "say": "The database address has no default. Without it the server refuses to start, and says which setting is missing."
+        },
+        {
+          "lines": 6,
+          "say": "The pool size is a number too, ten unless set."
+        },
+        {
+          "lines": "7-8",
+          "say": "The mail settings must be there, and the sender must look like an email address."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Reading it",
+      "hunkId": "h8",
+      "narration": "The server shows the swap every other file makes.",
+      "steps": [
+        {
+          "lines": 1,
+          "say": "It imports the config object instead of the old helper."
+        },
+        {
+          "lines": "4-5",
+          "say": "The port and the database address come from that object, already checked and already numbers."
+        }
+      ]
+    },
+    {
+      "type": "tests",
+      "chapter": "What the tests prove",
+      "title": "Config tests",
+      "subject": "Config in src/config/schema.ts",
+      "narration": "Two new tests cover the schema.",
+      "cases": [
+        {
+          "name": "fills in defaults",
+          "proves": "The port is 3000 when nothing sets it",
+          "hunkId": "h9"
+        },
+        {
+          "name": "names a missing setting",
+          "proves": "A missing database address fails with its name",
+          "hunkId": "h9"
+        },
+        {
+          "name": "starts",
+          "proves": "The server still starts with the new config",
+          "status": "existing"
+        }
+      ],
+      "gaps": [
+        "A sender address that is not an email"
+      ]
+    }
+  ]
+}

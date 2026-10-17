@@ -1,0 +1,42 @@
+{
+  "title": "Tables that change",
+  "subtitle": "A shared ledger, and three plans side by side",
+  "scenes": [
+    {
+      "type": "table",
+      "chapter": "A shared ledger",
+      "title": "Everyone keeps the same list",
+      "narration": "Instead of a bank, everyone keeps one shared list of who paid whom.",
+      "columns": ["ID", "Payment", "Charlie's balance"],
+      "rows": [
+        { "cells": ["1", "Alice pays Charlie 50", "50"] },
+        { "cells": ["2", "Charlie pays Bob 20", "30"], "hidden": true },
+        { "cells": ["3", "Charlie pays David 40", "−10"], "hidden": true }
+      ],
+      "callout": "Charlie has 50",
+      "steps": [
+        { "focus": 0, "say": "Alice pays Charlie fifty, so he starts with fifty." },
+        { "show": [1], "callout": "Charlie has 30", "say": "Then Charlie pays Bob twenty, which everyone writes down." },
+        { "show": [2], "callout": "[Charlie has 30, not 40]{bad}", "say": "Now Charlie tries to pay David forty, but he only has thirty." },
+        { "tint": { "2": "bad" }, "set": { "Charlie's balance@2": { "before": "−10", "after": "rejected" } }, "callout": "", "say": "So everyone marks that payment as rejected." }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Three plans",
+      "title": "Picking a plan for a small team",
+      "narration": "Three plans, compared on what a small team cares about.",
+      "columns": ["Plan", "Seats", "Price a month", "Support"],
+      "rows": [
+        { "cells": ["Free", "3", "$0", "Forum"] },
+        { "cells": ["Team", "20", "$40", "Email"] },
+        { "cells": ["Business", "Unlimited", "$200", "Phone"] }
+      ],
+      "steps": [
+        { "focus": "col:Seats", "say": "The team has eight people, so look at seats first." },
+        { "tint": { "0": "dim" }, "say": "The free plan only has three seats, so it is out." },
+        { "tint": { "1": "good" }, "focus": "Price a month@1", "say": "The team plan fits eight people for forty dollars a month." }
+      ]
+    }
+  ]
+}

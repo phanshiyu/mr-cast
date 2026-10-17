@@ -1,0 +1,184 @@
+{
+  "title": "The life of a pull request",
+  "subtitle": "Every state a pull request can be in, and what moves it",
+  "scenes": [
+    {
+      "type": "state",
+      "chapter": "Its states",
+      "title": "Pull request",
+      "narration": "A pull request is a proposed change to the code. Here are the states it can be in, from the first draft to merged or closed.",
+      "initial": "draft",
+      "states": [
+        {
+          "id": "draft",
+          "label": "Draft"
+        },
+        {
+          "id": "review",
+          "label": "In review"
+        },
+        {
+          "id": "changes",
+          "label": "Changes requested",
+          "badge": "most time",
+          "tone": "warn"
+        },
+        {
+          "id": "approved",
+          "label": "Approved"
+        },
+        {
+          "id": "merged",
+          "label": "Merged",
+          "final": true
+        },
+        {
+          "id": "closed",
+          "label": "Closed",
+          "final": true
+        }
+      ],
+      "transitions": [
+        {
+          "from": "draft",
+          "to": "review",
+          "label": "ready"
+        },
+        {
+          "from": "review",
+          "to": "changes",
+          "label": "request changes"
+        },
+        {
+          "from": "changes",
+          "to": "review",
+          "label": "push fixes"
+        },
+        {
+          "from": "review",
+          "to": "approved",
+          "label": "approve"
+        },
+        {
+          "from": "approved",
+          "to": "review",
+          "label": "new commit"
+        },
+        {
+          "from": "approved",
+          "to": "merged",
+          "label": "merge [checks pass]"
+        },
+        {
+          "from": "review",
+          "to": "closed",
+          "label": "close"
+        },
+        {
+          "from": "review",
+          "to": "review",
+          "label": "comment"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "draft",
+            "ready"
+          ],
+          "say": "It starts as a draft, which nobody is asked to look at. When the author is ready, it goes into review."
+        },
+        {
+          "focus": [
+            "review->changes",
+            "changes->review"
+          ],
+          "mark": "circle",
+          "note": "the loop that takes longest",
+          "say": "A reviewer can ask for changes. The author pushes fixes, and it goes back into review. This loop is where most of the time goes."
+        },
+        {
+          "focus": "comment",
+          "say": "A plain comment does not change the state at all."
+        },
+        {
+          "focus": [
+            "approve",
+            "new commit"
+          ],
+          "say": "Once approved, any new commit sends it back into review, so the reviewer sees the final code."
+        },
+        {
+          "focus": [
+            "merge [checks pass]",
+            "merged",
+            "closed"
+          ],
+          "say": "An approved pull request merges only when all its checks pass. Merged and closed are the two ways it ends."
+        }
+      ]
+    },
+    {
+      "type": "timeline",
+      "chapter": "One real example",
+      "title": "Pull request 412",
+      "unit": "h",
+      "narration": "Here is one pull request from last week, through those same states.",
+      "events": [
+        {
+          "at": 0,
+          "label": "Opened as draft"
+        },
+        {
+          "at": 3,
+          "label": "Ready for review"
+        },
+        {
+          "at": 9,
+          "label": "Changes requested",
+          "tone": "warn"
+        },
+        {
+          "at": 26,
+          "label": "Fixes pushed"
+        },
+        {
+          "at": 28,
+          "label": "Approved",
+          "tone": "good"
+        },
+        {
+          "at": 29,
+          "label": "Merged",
+          "tone": "good"
+        }
+      ],
+      "spans": [
+        {
+          "from": 9,
+          "to": 26,
+          "label": "waiting on the author",
+          "tone": "warn"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0-1",
+          "say": "It sat as a draft for three hours, then went into review."
+        },
+        {
+          "focus": [
+            "span:waiting on the author",
+            2,
+            3
+          ],
+          "say": "The longest stretch, seventeen hours, was waiting for the author to make the asked-for changes."
+        },
+        {
+          "focus": "4-5",
+          "say": "After that, approval and the merge took three hours."
+        }
+      ]
+    }
+  ]
+}

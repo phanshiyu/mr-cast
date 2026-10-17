@@ -1,0 +1,264 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "src/search/SearchBox.tsx",
+    "oldFile": null,
+    "status": "modified",
+    "language": "tsx",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 16,
+    "additions": 7,
+    "deletions": 2,
+    "beforeCode": "import { useState } from 'react';\nimport { fetchResults } from './api';\n\nexport function SearchBox({ onResults }: { onResults: (r: string[]) => void }) {\n  const [query, setQuery] = useState('');\n  const onChange = (text: string) => {\n    setQuery(text);\n    fetchResults(text).then(onResults);\n  };\n  return <input value={query} onChange={(e) => onChange(e.target.value)} placeholder=\"Search\" />;\n}",
+    "afterCode": "import { useMemo, useState } from 'react';\nimport { fetchResults } from './api';\nimport { debounce } from './debounce';\n\nexport function SearchBox({ onResults }: { onResults: (r: string[]) => void }) {\n  const [query, setQuery] = useState('');\n  const search = useMemo(\n    () => debounce((text: string) => fetchResults(text).then(onResults)),\n    [onResults],\n  );\n  const onChange = (text: string) => {\n    setQuery(text);\n    search(text);\n  };\n  return <input value={query} onChange={(e) => onChange(e.target.value)} placeholder=\"Search\" />;\n}",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "import { useState } from 'react';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { useMemo, useState } from 'react';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "import { fetchResults } from './api';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "import { debounce } from './debounce';"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 4,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 5,
+        "text": "export function SearchBox({ onResults }: { onResults: (r: string[]) => void }) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 6,
+        "text": "  const [query, setQuery] = useState('');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  const search = useMemo("
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "    () => debounce((text: string) => fetchResults(text).then(onResults)),"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "    [onResults],"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  );"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 11,
+        "text": "  const onChange = (text: string) => {"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 12,
+        "text": "    setQuery(text);"
+      },
+      {
+        "type": "del",
+        "oldLine": 8,
+        "newLine": null,
+        "text": "    fetchResults(text).then(onResults);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "    search(text);"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 14,
+        "text": "  };"
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 15,
+        "text": "  return <input value={query} onChange={(e) => onChange(e.target.value)} placeholder=\"Search\" />;"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 16,
+        "text": "}"
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "src/search/debounce.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 20,
+    "additions": 20,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "/** Runs `fn` once the calls stop for `waitMs`, with the last args. */\nexport function debounce<A extends unknown[]>(\n  fn: (...args: A) => void,\n  waitMs = 250,\n) {\n  let timer: ReturnType<typeof setTimeout> | undefined;\n  const call = (...args: A) => {\n    if (timer !== undefined) clearTimeout(timer);\n    timer = setTimeout(() => {\n      timer = undefined;\n      fn(...args);\n    }, waitMs);\n  };\n  /** Drops a waiting call, e.g. when the search box goes away. */\n  call.cancel = () => {\n    clearTimeout(timer);\n    timer = undefined;\n  };\n  return call;\n}",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "/** Runs `fn` once the calls stop for `waitMs`, with the last args. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "export function debounce<A extends unknown[]>("
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "  fn: (...args: A) => void,"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  waitMs = 250,"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": ") {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  let timer: ReturnType<typeof setTimeout> | undefined;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  const call = (...args: A) => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "    if (timer !== undefined) clearTimeout(timer);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "    timer = setTimeout(() => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "      timer = undefined;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "      fn(...args);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "    }, waitMs);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  /** Drops a waiting call, e.g. when the search box goes away. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "  call.cancel = () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "    clearTimeout(timer);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "    timer = undefined;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "  };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "  return call;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": "}"
+      }
+    ]
+  }
+}

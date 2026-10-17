@@ -1,0 +1,476 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "docs/sessions.md",
+    "oldFile": null,
+    "status": "modified",
+    "language": "markdown",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 3,
+    "additions": 1,
+    "deletions": 1,
+    "beforeCode": "# Sessions\n\nA session lasts 30 days.",
+    "afterCode": "# Sessions\n\nA session lasts 30 days, and ends sooner after 30 minutes without a request.",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "# Sessions"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "A session lasts 30 days."
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "A session lasts 30 days, and ends sooner after 30 minutes without a request."
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "src/auth/signin.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "import { SESSION_COOKIE, SESSION_MAX_AGE_DAYS } from '../config';",
+    "startLine": 4,
+    "oldStartLine": 4,
+    "endLine": 12,
+    "additions": 1,
+    "deletions": 1,
+    "beforeCode": "\nexport async function signIn(res, userId: number) {\n  const id = randomUUID();\n  await save(id, { userId });\n  res.cookie(SESSION_COOKIE, id, { httpOnly: true, maxAge: SESSION_MAX_AGE_DAYS * 86_400_000 });\n}\n\nexport async function updateProfile(req, name: string) {\n  await save(req.cookies[SESSION_COOKIE], { ...req.session, name });",
+    "afterCode": "\nexport async function signIn(res, userId: number) {\n  const id = randomUUID();\n  await save(id, { userId });\n  res.cookie(SESSION_COOKIE, id, { httpOnly: true, sameSite: 'lax', maxAge: SESSION_MAX_AGE_DAYS * 86_400_000 });\n}\n\nexport async function updateProfile(req, name: string) {\n  await save(req.cookies[SESSION_COOKIE], { ...req.session, name });",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 4,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 5,
+        "text": "export async function signIn(res, userId: number) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 6,
+        "text": "  const id = randomUUID();"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 7,
+        "text": "  await save(id, { userId });"
+      },
+      {
+        "type": "del",
+        "oldLine": 8,
+        "newLine": null,
+        "text": "  res.cookie(SESSION_COOKIE, id, { httpOnly: true, maxAge: SESSION_MAX_AGE_DAYS * 86_400_000 });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  res.cookie(SESSION_COOKIE, id, { httpOnly: true, sameSite: 'lax', maxAge: SESSION_MAX_AGE_DAYS * 86_400_000 });"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 9,
+        "text": "}"
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 10,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 11,
+        "text": "export async function updateProfile(req, name: string) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 12,
+        "newLine": 12,
+        "text": "  await save(req.cookies[SESSION_COOKIE], { ...req.session, name });"
+      }
+    ]
+  },
+  "h3": {
+    "id": "h3",
+    "file": "src/config.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 3,
+    "additions": 1,
+    "deletions": 0,
+    "beforeCode": "export const SESSION_COOKIE = 'sid';\nexport const SESSION_MAX_AGE_DAYS = 30;",
+    "afterCode": "export const SESSION_COOKIE = 'sid';\nexport const SESSION_MAX_AGE_DAYS = 30;\nexport const SESSION_IDLE_MINUTES = 30;",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "export const SESSION_COOKIE = 'sid';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "export const SESSION_MAX_AGE_DAYS = 30;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "export const SESSION_IDLE_MINUTES = 30;"
+      }
+    ]
+  },
+  "h4": {
+    "id": "h4",
+    "file": "src/session/middleware.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 9,
+    "additions": 3,
+    "deletions": 1,
+    "beforeCode": "import { load } from './store';\nimport { SESSION_COOKIE } from '../config';\n\nexport const session = async (req, res, next) => {\n  req.session = await load(req.cookies[SESSION_COOKIE]);\n  next();\n};",
+    "afterCode": "import { load } from './store';\nimport { SESSION_COOKIE } from '../config';\n\nexport const session = async (req, res, next) => {\n  const id = req.cookies[SESSION_COOKIE];\n  req.session = id ? await load(id) : null;\n  if (id && !req.session) res.clearCookie(SESSION_COOKIE);\n  next();\n};",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { load } from './store';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "import { SESSION_COOKIE } from '../config';"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 3,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 4,
+        "text": "export const session = async (req, res, next) => {"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "  req.session = await load(req.cookies[SESSION_COOKIE]);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  const id = req.cookies[SESSION_COOKIE];"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  req.session = id ? await load(id) : null;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  if (id && !req.session) res.clearCookie(SESSION_COOKIE);"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 8,
+        "text": "  next();"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 9,
+        "text": "};"
+      }
+    ]
+  },
+  "h5": {
+    "id": "h5",
+    "file": "src/session/store.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 17,
+    "additions": 9,
+    "deletions": 3,
+    "beforeCode": "import { redis } from '../redis';\nimport { SESSION_MAX_AGE_DAYS } from '../config';\n\nexport async function load(id: string) {\n  const raw = await redis.get(`session:${id}`);\n  return raw ? JSON.parse(raw) : null;\n}\n\nexport async function save(id: string, data: object) {\n  await redis.set(`session:${id}`, JSON.stringify(data), 'EX', SESSION_MAX_AGE_DAYS * 86400);\n}",
+    "afterCode": "import { redis } from '../redis';\nimport { SESSION_IDLE_MINUTES, SESSION_MAX_AGE_DAYS } from '../config';\n\nconst IDLE_S = SESSION_IDLE_MINUTES * 60;\n\nexport async function load(id: string) {\n  const raw = await redis.get(`session:${id}`);\n  if (!raw) return null;\n  const session = JSON.parse(raw);\n  if (Date.now() - session.createdAt > SESSION_MAX_AGE_DAYS * 86_400_000) return null;\n  await redis.expire(`session:${id}`, IDLE_S);\n  return session;\n}\n\nexport async function save(id: string, data: object) {\n  await redis.set(`session:${id}`, JSON.stringify({ ...data, createdAt: Date.now() }), 'EX', IDLE_S);\n}",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { redis } from '../redis';"
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "import { SESSION_MAX_AGE_DAYS } from '../config';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "import { SESSION_IDLE_MINUTES, SESSION_MAX_AGE_DAYS } from '../config';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "const IDLE_S = SESSION_IDLE_MINUTES * 60;"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 5,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 6,
+        "text": "export async function load(id: string) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 7,
+        "text": "  const raw = await redis.get(`session:${id}`);"
+      },
+      {
+        "type": "del",
+        "oldLine": 6,
+        "newLine": null,
+        "text": "  return raw ? JSON.parse(raw) : null;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  if (!raw) return null;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  const session = JSON.parse(raw);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  if (Date.now() - session.createdAt > SESSION_MAX_AGE_DAYS * 86_400_000) return null;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  await redis.expire(`session:${id}`, IDLE_S);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  return session;"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 13,
+        "text": "}"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 14,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 15,
+        "text": "export async function save(id: string, data: object) {"
+      },
+      {
+        "type": "del",
+        "oldLine": 10,
+        "newLine": null,
+        "text": "  await redis.set(`session:${id}`, JSON.stringify(data), 'EX', SESSION_MAX_AGE_DAYS * 86400);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "  await redis.set(`session:${id}`, JSON.stringify({ ...data, createdAt: Date.now() }), 'EX', IDLE_S);"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 17,
+        "text": "}"
+      }
+    ]
+  },
+  "h6": {
+    "id": "h6",
+    "file": "test/session.test.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 15,
+    "additions": 15,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import { load, save } from '../src/session/store';\n\ntest('a session idle for 31 minutes is gone', async () => {\n  await save('s1', { userId: 7 });\n  clock.advance(31 * 60_000);\n  expect(await load('s1')).toBeNull();\n});\n\ntest('each request pushes the idle limit back', async () => {\n  await save('s1', { userId: 7 });\n  clock.advance(20 * 60_000);\n  await load('s1');\n  clock.advance(20 * 60_000);\n  expect(await load('s1')).not.toBeNull();\n});",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { load, save } from '../src/session/store';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "test('a session idle for 31 minutes is gone', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  await save('s1', { userId: 7 });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  clock.advance(31 * 60_000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  expect(await load('s1')).toBeNull();"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "test('each request pushes the idle limit back', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "  await save('s1', { userId: 7 });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "  clock.advance(20 * 60_000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  await load('s1');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 13,
+        "text": "  clock.advance(20 * 60_000);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 14,
+        "text": "  expect(await load('s1')).not.toBeNull();"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "});"
+      }
+    ]
+  }
+}

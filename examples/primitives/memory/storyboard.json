@@ -1,0 +1,42 @@
+{
+  "title": "What a program holds",
+  "subtitle": "A copy that is not a copy, and a call stack",
+  "scenes": [
+    {
+      "type": "memory",
+      "chapter": "Two names, one list",
+      "title": "b = a does not copy the list",
+      "narration": "In Python, giving a list a second name does not make a second list.",
+      "frames": [{ "name": "main", "vars": { "a": { "ref": "l1" }, "b": "None" } }],
+      "objects": [
+        { "id": "l1", "type": "list", "fields": { "0": 1, "1": 2 } },
+        { "id": "l2", "type": "list", "fields": { "0": 1, "1": 99 }, "hidden": true }
+      ],
+      "callout": "`b = a`",
+      "steps": [
+        { "set": { "main.b": { "ref": "l1" } }, "say": "After b equals a, both names point at the same list." },
+        { "set": { "l1.1": 99 }, "callout": "`b[1] = 99`, so `a[1]` is [99]{warn}", "say": "So changing b's second item changes a's too." },
+        { "show": ["l2"], "set": { "main.b": { "ref": "l2" } }, "callout": "`b = a.copy()`", "say": "Copying the list gives b a list of its own, and the two stop sharing." }
+      ]
+    },
+    {
+      "type": "memory",
+      "chapter": "The call stack",
+      "title": "Each call gets its own frame",
+      "narration": "Every call to factorial gets a frame of its own, stacked on the one that called it.",
+      "frames": [
+        { "name": "fact(3)", "vars": { "n": 3 } },
+        { "name": "fact(2)", "vars": { "n": 2 }, "hidden": true },
+        { "name": "fact(1)", "vars": { "n": 1 }, "hidden": true }
+      ],
+      "objects": [],
+      "callout": "fact(n) = n × fact(n − 1)",
+      "steps": [
+        { "show": ["frame:fact(2)"], "callout": "fact(3) = 3 × fact(2)", "say": "Factorial of three needs factorial of two, so a new frame goes on top." },
+        { "show": ["frame:fact(1)"], "callout": "fact(2) = 2 × fact(1)", "say": "That needs factorial of one, which is the base case." },
+        { "hide": ["frame:fact(1)"], "focus": "frame:fact(2)", "callout": "fact(2) = 2 × 1 = 2", "say": "It returns one, and its frame is gone." },
+        { "hide": ["frame:fact(2)"], "focus": "frame:fact(3)", "callout": "[fact(3) = 3 × 2 = 6]{good}", "say": "Then the last frame finishes with six." }
+      ]
+    }
+  ]
+}

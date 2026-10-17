@@ -1,0 +1,65 @@
+{
+  "title": "Finding the commit that broke checkout",
+  "subtitle": "Letting git bisect search a hundred commits in seven steps",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "The problem",
+      "narration": "Checkout totals were right last Monday and wrong today, with a hundred and twenty commits in between. Git can search those commits for us, halving the list each time.",
+      "summary": "Find the one commit, out of **120**, that broke the checkout total",
+      "bullets": [
+        "Last Monday's release, v4.2, was fine",
+        "Today's main is wrong",
+        "One test, `checkout.test.ts`, shows the bug"
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "The search",
+      "title": "git bisect",
+      "window": "zsh: ~/shop",
+      "narration": "Here is the whole search, run in the shop's code.",
+      "entries": [
+        {
+          "command": "git bisect start main v4.2",
+          "output": "Bisecting: 60 revisions left to test after this (roughly 6 steps)",
+          "exit": 0
+        },
+        {
+          "command": "git bisect run pnpm test test/checkout.test.ts",
+          "output": "[FAIL]{bad} totals include shipping once\nBisecting: 29 revisions left to test after this (roughly 5 steps)\n[PASS]{good} totals include shipping once\nBisecting: 14 revisions left to test after this (roughly 4 steps)\n…\n==3f9c2e1== is the first bad commit\n    Apply free-shipping discount per item",
+          "exit": 0
+        },
+        {
+          "command": "git show --stat 3f9c2e1",
+          "output": "src/cart/shipping.ts | 6 +++---\n1 file changed, 3 insertions(+), 3 deletions(-)",
+          "exit": 0
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "We tell git which commit is bad and which was good. It picks the commit halfway between."
+        },
+        {
+          "focus": "1:0",
+          "say": "Then git runs the checkout test at each stop by itself. Here the test fails, so the bug is in the older half."
+        },
+        {
+          "focus": "1:2",
+          "say": "At the next stop the test passes, so the bug is in the newer half of what is left."
+        },
+        {
+          "focus": "1:5",
+          "mark": "underline",
+          "note": "found in 7 runs",
+          "say": "Seven test runs later, git names the first bad commit, the free shipping discount."
+        },
+        {
+          "focus": 2,
+          "say": "That commit touched one file, the shipping code, so that is where to look."
+        }
+      ]
+    }
+  ]
+}

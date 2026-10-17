@@ -31,3 +31,5 @@ A bar or line chart of real numbers, with a change badge on each label when ther
 `kind` is `bar` or `line`. A `focus` is a label, `"series:after"`, or `"after@p99"`. `annotation` calls out one point. `{{MR_CAST}}/bin/mr-cast validate` fails on a series whose length differs from the labels and a negative bar, and warns past 12 labels or 4 series, and past 24 bars, where a bar is too thin for its value.
 
 `{{MR_CAST}}/bin/mr-cast schema chart` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/chart/storyboard.json`.

@@ -1,0 +1,44 @@
+{
+  "title": "Where to keep a signed-in session",
+  "subtitle": "A signed cookie or a session kept on the server, side by side",
+  "scenes": [
+    {
+      "type": "compare",
+      "chapter": "Two ways",
+      "title": "Two ways to remember who is signed in",
+      "narration": "A website can remember who you are in two ways. It can put everything in a signed cookie that your browser carries, or keep it on the server and give you only a ticket number.",
+      "sides": [
+        { "title": "Signed cookie", "tone": "warn" },
+        { "title": "Server session", "tone": "accent" }
+      ],
+      "rows": [
+        { "label": "What the browser holds", "cells": ["The whole session, signed", "A random id"] },
+        { "label": "Stored cookie", "cells": [
+          { "code": "{\n  \"userId\": 7,\n  \"role\": \"admin\",\n  \"sig\": \"9f2c…\"\n}", "lang": "json" },
+          { "code": "sid=4b1e9a7c0d", "lang": "text" }
+        ] },
+        { "label": "Sign out everywhere", "cells": ["Not possible until it expires", "Delete the row, done"], "verdict": ["bad", "good"] },
+        { "label": "Lookup per request", "cells": ["None", "One read from Redis"], "verdict": ["good", "warn"] },
+        { "label": "Size limit", "cells": ["About **4 KB**", "As much as the server allows"], "verdict": ["warn", "good"] },
+        { "label": "Works over HTTPS only", "cells": ["Yes, with `Secure`", "Yes, with `Secure`"] }
+      ],
+      "steps": [
+        { "focus": 0, "say": "With a signed cookie, the browser holds the whole session. With a server session, it holds only a random id." },
+        { "focus": 1, "say": "Here is what each cookie looks like. One carries the user and their role, the other just a number." },
+        { "focus": ["2@Server session", "2@Signed cookie"], "mark": "circle", "note": "the deciding row", "say": "The big difference is signing out. A stolen signed cookie keeps working until it expires. A server session can be deleted at once." },
+        { "focus": "3-4", "say": "The cost is one extra read per request. In return there is no size limit." },
+        { "focus": 5, "say": "Both are equally safe on the wire, as long as the cookie is marked secure." }
+      ]
+    },
+    {
+      "type": "intent",
+      "chapter": "What we picked",
+      "narration": "We picked the server session, because being able to sign someone out at once matters more than one fast read.",
+      "summary": "Keep sessions **on the server**, and give the browser only a random id",
+      "bullets": [
+        "Support can sign a user out of every device at once",
+        "Each request reads its session from Redis, about one millisecond"
+      ]
+    }
+  ]
+}

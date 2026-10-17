@@ -1,6 +1,6 @@
 # array
 
-A row of cells with their indexes, named pointers above and shaded ranges below. Each step changes a value or moves a pointer, then lights what it is about.
+One or more rows of cells with their indexes, named pointers above and shaded ranges below, or a hex grid. Each step changes a value, moves a pointer or tints cells, then lights what it is about.
 
 ## Example
 

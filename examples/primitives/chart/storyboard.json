@@ -1,0 +1,43 @@
+{
+  "title": "A cache in front of the product page",
+  "subtitle": "What one week of numbers says about the new page cache",
+  "scenes": [
+    {
+      "type": "chart",
+      "chapter": "Page speed",
+      "title": "Product page load time",
+      "kind": "bar",
+      "unit": "ms",
+      "better": "lower",
+      "narration": "The product page now keeps a copy of each page for one minute, instead of building it again for every visitor. Here is how long the page takes, before and after.",
+      "labels": ["p50", "p90", "p99"],
+      "series": [
+        { "name": "before", "values": [410, 880, 2100] },
+        { "name": "after", "values": [95, 140, 1650] }
+      ],
+      "annotation": { "at": "p99", "text": "a page nobody asked for in the last minute" },
+      "steps": [
+        { "focus": "p50", "say": "The typical visit drops from four hundred ten milliseconds to under a hundred." },
+        { "focus": "p90", "say": "Nine visits in ten now finish within a hundred forty milliseconds." },
+        { "focus": "after@p99", "mark": "circle", "say": "The slowest one percent gets only a fifth faster. Those are pages nobody looked at in the last minute, so they are still built from scratch." }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Hit rate",
+      "title": "Share of visits served from the cache",
+      "kind": "line",
+      "unit": "%",
+      "better": "higher",
+      "narration": "Over the week, more visits found a page already in the cache.",
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      "series": [
+        { "name": "served from cache", "values": [62, 71, 78, 81, 83, 88, 90], "tone": "good" }
+      ],
+      "steps": [
+        { "focus": "Mon", "say": "On the first day, about six visits in ten came from the cache." },
+        { "focus": "served from cache@Sun", "say": "By Sunday it was nine in ten, as weekend shoppers kept to the same popular pages." }
+      ]
+    }
+  ]
+}

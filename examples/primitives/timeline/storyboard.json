@@ -1,0 +1,147 @@
+{
+  "title": "A nightly job that ran into itself",
+  "subtitle": "Why two copies of the report job were running at once",
+  "scenes": [
+    {
+      "type": "timeline",
+      "chapter": "One bad night",
+      "title": "The report job, Tuesday night",
+      "unit": "min",
+      "narration": "The sales report job starts every thirty minutes. On Tuesday night one run took far longer than usual, and here is what happened.",
+      "events": [
+        {
+          "at": 0,
+          "label": "Run 1 starts",
+          "detail": "02:00"
+        },
+        {
+          "at": 30,
+          "label": "Run 2 starts",
+          "detail": "run 1 still going",
+          "tone": "warn"
+        },
+        {
+          "at": 41,
+          "label": "Both write the report",
+          "detail": "rows counted twice",
+          "tone": "bad",
+          "badge": "the bug"
+        },
+        {
+          "at": 52,
+          "label": "Run 1 ends",
+          "detail": "52 min, usually 12"
+        },
+        {
+          "at": 60,
+          "label": "Run 3 starts",
+          "detail": "with the lock, waits",
+          "tone": "good"
+        },
+        {
+          "at": 71,
+          "label": "Run 2 ends"
+        },
+        {
+          "at": 83,
+          "label": "Run 3 ends",
+          "detail": "report correct",
+          "tone": "good"
+        }
+      ],
+      "spans": [
+        {
+          "from": 0,
+          "to": 52,
+          "label": "run 1",
+          "tone": "neutral"
+        },
+        {
+          "from": 30,
+          "to": 71,
+          "label": "run 2",
+          "tone": "warn"
+        },
+        {
+          "from": 30,
+          "to": 52,
+          "label": "overlap",
+          "tone": "bad",
+          "highlight": true
+        },
+        {
+          "from": 71,
+          "to": 83,
+          "label": "run 3",
+          "tone": "good"
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "Run one starts at two in the morning, and on a normal night it ends twelve minutes later."
+        },
+        {
+          "focus": [
+            1,
+            "span:run 1",
+            "span:run 2"
+          ],
+          "say": "That night the database was slow, so run one was still going when run two started."
+        },
+        {
+          "focus": [
+            "span:overlap",
+            2
+          ],
+          "mark": "circle",
+          "say": "For twenty two minutes, both runs added the same sales to the report, so some rows were counted twice."
+        },
+        {
+          "focus": [
+            3,
+            "span:run 1"
+          ],
+          "say": "Run one finally ended after fifty two minutes."
+        },
+        {
+          "focus": [
+            "4-6",
+            "span:run 2",
+            "span:run 3"
+          ],
+          "say": "The fix makes each run take a lock first. Run three waits for run two to finish, then writes a correct report."
+        }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "The fix",
+      "title": "Two runs, one lock",
+      "window": "zsh: ~/reports",
+      "narration": "Starting a second run by hand shows the lock at work.",
+      "entries": [
+        {
+          "command": "flock -n /tmp/sales-report.lock node report.js &",
+          "output": "[1] 48211",
+          "exit": 0
+        },
+        {
+          "command": "flock -n /tmp/sales-report.lock node report.js",
+          "output": "[locked]{warn} another run holds /tmp/sales-report.lock, skipping",
+          "exit": 1
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "The first run takes the lock."
+        },
+        {
+          "focus": 1,
+          "say": "A second run finds the lock taken, and skips instead of writing the same rows again."
+        }
+      ]
+    }
+  ]
+}

@@ -22,3 +22,5 @@ The files as a tree with their line counts, and a short note beside the ones tha
 A `focus` is a path in the tree. `notes` maps a path to a short note. Leave `files` out in a diff walkthrough and the tree is every changed file. `{{MR_CAST}}/bin/mr-cast validate` fails on a note or focus for a path not in the tree, and warns past 18 files and on a path the diff does not change.
 
 `{{MR_CAST}}/bin/mr-cast schema files` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/files/storyboard.json`.

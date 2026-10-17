@@ -1,0 +1,107 @@
+{
+  "title": "What happens to a photo you upload",
+  "subtitle": "From the browser to a thumbnail on the page",
+  "scenes": [
+    {
+      "type": "flow",
+      "chapter": "One upload",
+      "title": "One photo, step by step",
+      "narration": "Here is what happens to one photo, from the moment you pick it to the moment its thumbnail shows up.",
+      "steps": [
+        {
+          "actor": "Browser",
+          "action": "asks for an upload link",
+          "payload": "POST /uploads\n{ \"name\": \"beach.jpg\", \"size\": \"4.2 MB\" }",
+          "icon": "monitor",
+          "say": "Your browser tells the server it has a photo, and how big it is."
+        },
+        {
+          "actor": "API",
+          "action": "signs a link to storage",
+          "payload": "{ \"url\": \"https://s3…/u/91.jpg?sig=…\",\n  \"expires\": \"in 5 min\" }",
+          "icon": "server",
+          "say": "The server answers with a link that lets the browser upload straight to storage, for the next five minutes."
+        },
+        {
+          "actor": "Browser",
+          "action": "uploads the photo",
+          "payload": "PUT u/91.jpg\n4.2 MB",
+          "icon": "upload",
+          "say": "The browser sends the photo straight to storage, so the server never carries the big file."
+        },
+        {
+          "actor": "S3",
+          "action": "stores it, sends an event",
+          "payload": "{ \"event\": \"created\",\n  \"key\": \"u/91.jpg\" }",
+          "icon": "database",
+          "say": "Storage keeps the photo and announces that a new file arrived."
+        },
+        {
+          "actor": "Resizer",
+          "action": "makes a thumbnail",
+          "payload": "{\n  \"thumb\": \"u/91_400.webp\",\n  \"width\": 400,\n  \"size\": \"38 KB\",\n  \"from\": \"u/91.jpg, 4.2 MB\"\n}",
+          "icon": "image",
+          "tone": "good",
+          "say": "A small worker hears that, and makes a thumbnail a hundred times smaller."
+        }
+      ]
+    },
+    {
+      "type": "timeline",
+      "chapter": "How long it takes",
+      "title": "One upload on a home connection",
+      "unit": "s",
+      "narration": "On a typical home connection the whole trip takes about four seconds, and most of it is the upload itself.",
+      "events": [
+        {
+          "at": 0,
+          "label": "Link asked for"
+        },
+        {
+          "at": 0.1,
+          "label": "Link received"
+        },
+        {
+          "at": 3.4,
+          "label": "Photo stored",
+          "detail": "4.2 MB sent"
+        },
+        {
+          "at": 4.1,
+          "label": "Thumbnail ready",
+          "tone": "good"
+        }
+      ],
+      "spans": [
+        {
+          "from": 0.1,
+          "to": 3.4,
+          "label": "upload",
+          "tone": "accent"
+        },
+        {
+          "from": 3.4,
+          "to": 4.1,
+          "label": "resize"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0-1",
+          "say": "Getting the link takes a tenth of a second."
+        },
+        {
+          "focus": [
+            "span:upload",
+            2
+          ],
+          "say": "Sending the photo takes over three seconds."
+        },
+        {
+          "focus": 3,
+          "say": "The thumbnail is ready less than a second after that."
+        }
+      ]
+    }
+  ]
+}

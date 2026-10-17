@@ -1,0 +1,5 @@
+{
+  "mode": "diff",
+  "branch": "feature/debounce-search",
+  "base": "main"
+}

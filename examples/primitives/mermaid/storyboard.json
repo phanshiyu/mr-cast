@@ -1,0 +1,20 @@
+{
+  "title": "How a release branch works",
+  "subtitle": "Freezing a release while main keeps moving",
+  "scenes": [
+    {
+      "type": "mermaid",
+      "chapter": "The branches",
+      "title": "Release 2.4",
+      "narration": "When we get ready to ship, we split off a release branch. Main keeps getting new features, while the release branch only gets fixes, shown as squares. Once the release ships, its fixes are merged back into main, so they are not lost. An urgent fix to the live version gets its own short branch the same way.",
+      "code": "gitGraph\n  commit id: \"v2.3\"\n  branch hotfix/2.3.1\n  commit id: \"fix checkout\" type: HIGHLIGHT tag: \"2.3.1\"\n  checkout main\n  merge hotfix/2.3.1 id: \"hotfix in\"\n  branch release/2.4\n  checkout main\n  commit id: \"search\"\n  checkout release/2.4\n  commit id: \"freeze\" tag: \"2.4.0-rc1\"\n  checkout main\n  commit id: \"dark mode\"\n  checkout release/2.4\n  commit id: \"fix login\" type: HIGHLIGHT\n  checkout main\n  commit id: \"new footer\"\n  checkout release/2.4\n  commit id: \"fix prices\" type: HIGHLIGHT\n  commit id: \"ship\" tag: \"2.4.0\"\n  checkout main\n  merge release/2.4 id: \"merge back\"\n  commit id: \"wishlist\"\n"
+    },
+    {
+      "type": "mermaid",
+      "chapter": "The week",
+      "title": "One release week",
+      "narration": "Most of a release week goes into testing the frozen branch, and fixing what testing finds. Writing the notes and merging back take only a few hours.",
+      "code": "pie showData\n  title Hours in one release week\n  \"Testing the release branch\" : 14\n  \"Fixing bugs found in testing\" : 9\n  \"Writing release notes\" : 3\n  \"Merging back to main\" : 2"
+    }
+  ]
+}

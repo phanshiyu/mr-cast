@@ -1,0 +1,5 @@
+{
+  "mode": "diff",
+  "branch": "feature/webhook-retries",
+  "base": "main"
+}

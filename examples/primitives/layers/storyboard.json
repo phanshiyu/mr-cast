@@ -1,0 +1,50 @@
+{
+  "title": "Where an image comes from",
+  "subtitle": "The caches a product photo passes on its way to your screen",
+  "scenes": [
+    {
+      "type": "layers",
+      "chapter": "The way down",
+      "title": "Fetching a product photo",
+      "narration": "When your browser needs a product photo, it asks a stack of places in order, nearest first. Here is a first visit, when none of them has the photo yet.",
+      "layers": [
+        { "id": "browser", "label": "Your browser", "caption": "on your device", "items": [
+          { "id": "memory", "label": "Memory cache", "icon": "cpu", "caption": "this tab only" },
+          { "id": "disk", "label": "Disk cache", "icon": "hard-drive", "caption": "kept for a day" }
+        ] },
+        { "id": "cdn", "label": "CDN edge", "caption": "a server **near you**", "items": [
+          { "id": "edge", "label": "Edge cache", "icon": "globe", "caption": "kept for a week", "badge": "hot path", "tone": "accent" }
+        ] },
+        { "id": "origin", "label": "Our servers", "caption": "one region", "items": [
+          { "id": "nginx", "label": "nginx", "icon": "server", "caption": "resizes on the fly" }
+        ] },
+        { "id": "storage", "label": "Storage", "caption": "the original files", "items": [
+          { "id": "s3", "label": "S3 bucket", "icon": "database", "caption": "full-size photos" }
+        ] }
+      ],
+      "path": { "label": "GET /p/91.webp", "stops": ["memory", "disk", "edge", "nginx", "s3"], "return": true, "reply": "200 image/webp, 38 KB" },
+      "steps": [
+        { "focus": 0, "say": "The browser looks in its memory first. Nothing there on a first visit." },
+        { "focus": 1, "say": "Then in its disk cache. Not there either." },
+        { "focus": 2, "mark": "circle", "note": "where most photos come from", "say": "So the request goes to the nearest edge server of the CDN. On a busy shop, this is where nearly every photo is found." },
+        { "focus": [3, 4], "say": "This time the edge does not have it, so it asks our own servers, which read the original from storage and shrink it." },
+        { "focus": 2, "say": "On the way back up, the edge keeps a copy for a week." },
+        { "focus": 0, "say": "And the browser keeps one too, so the next time this photo shows at once." }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Where photos come from",
+      "title": "Where a day's photo requests were answered",
+      "kind": "bar",
+      "unit": "%",
+      "narration": "Over one day, here is where the photos were actually found.",
+      "labels": ["Browser", "CDN edge", "Our servers"],
+      "series": [{ "name": "share of requests", "values": [61, 37, 2] }],
+      "steps": [
+        { "focus": "Browser", "say": "Most come straight from the browser's own cache." },
+        { "focus": "Our servers", "say": "Only two in a hundred reach our servers at all." }
+      ]
+    }
+  ]
+}

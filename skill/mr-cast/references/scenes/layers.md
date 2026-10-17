@@ -35,3 +35,5 @@ Bands stacked top to bottom in their real order, each holding a few cards, with 
 A `focus` is a layer id, an item id or `"layer.item"`, or a path stop index, which moves the token. `path.stops` go down the stack in order. `skip` turns the token back early at a stop with a `reply`. With `return` or `skip`, focus a stop again to bring the token back up. `{{MR_CAST}}/bin/mr-cast validate` fails on stops that go back up and a duplicate id, and warns past 7 layers or 5 items in a band, on a step at a stop the token has passed, and on a reply that never shows.
 
 `{{MR_CAST}}/bin/mr-cast schema layers` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/layers/storyboard.json`.

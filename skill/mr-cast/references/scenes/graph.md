@@ -1,6 +1,6 @@
 # graph
 
-Cards and the lines between them, laid out automatically. With `decision`, `terminal` and `step` shapes it is a flowchart.
+Cards and the lines between them, laid out automatically. With `decision`, `terminal` and `step` shapes it is a flowchart. Steps can grow it, tint it, set badges, and change a table beside it.
 
 ## Example
 

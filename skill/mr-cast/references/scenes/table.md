@@ -1,6 +1,6 @@
 # table
 
-Rows and columns of facts, with a changed value drawn as the old one struck through beside the new.
+Rows and columns of facts, with a changed value drawn as the old one struck through beside the new. Steps can add rows, change cells and tint rows.
 
 ## Example
 

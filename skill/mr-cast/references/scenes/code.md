@@ -24,3 +24,5 @@ The lines of one hunk or snippet, the rest dimmed, walked a range at a time, wit
 Each step names its `lines` (or `oldLines` for removed code) and its `say`; with a `label` on every step, a step diagram is drawn beside the code, with an `outcome` where a step branches. The scene's `narration` is the intro before the first step. Reference the code by `hunkId`; the lines come from hunks.json. Without steps, `focusLinesAfter` (and `focusLinesBefore` for removed code) take the printed line numbers as numbers or `"start-end"` strings, each string its own range, and `flow` gives one labelled step per range, in the same order. A pen `token` is text that occurs once on the step's lines, such as `"max: 20"`. `{{MR_CAST}}/bin/mr-cast validate` fails on lines outside the hunk, overlapping steps, steps out of top-to-bottom order (the light follows the code down), labels on only some steps, and a `flow` whose length differs from the ranges. It warns past 6 labelled steps, which is what the step diagram holds.
 
 `{{MR_CAST}}/bin/mr-cast schema code` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/code/storyboard.json`.

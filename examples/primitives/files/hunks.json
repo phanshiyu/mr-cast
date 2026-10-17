@@ -1,0 +1,437 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "README.md",
+    "oldFile": null,
+    "status": "modified",
+    "language": "markdown",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 4,
+    "additions": 2,
+    "deletions": 1,
+    "beforeCode": "# shop\n\nCopy `.env.example` to `.env` and run `pnpm dev`.",
+    "afterCode": "# shop\n\nCopy `config/example.env` to `.env` and run `pnpm dev`.\nThe server checks every setting at start-up and names any that is missing.",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "# shop"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "Copy `.env.example` to `.env` and run `pnpm dev`."
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "Copy `config/example.env` to `.env` and run `pnpm dev`."
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "The server checks every setting at start-up and names any that is missing."
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "config/example.env",
+    "oldFile": ".env.example",
+    "status": "renamed",
+    "language": "text",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 5,
+    "additions": 1,
+    "deletions": 0,
+    "beforeCode": "PORT=3000\nDATABASE_URL=postgres://localhost/shop\nSMTP_HOST=localhost\nSMTP_FROM=shop@example.com",
+    "afterCode": "PORT=3000\nDATABASE_URL=postgres://localhost/shop\nDB_POOL_MAX=10\nSMTP_HOST=localhost\nSMTP_FROM=shop@example.com",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "PORT=3000"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "DATABASE_URL=postgres://localhost/shop"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "DB_POOL_MAX=10"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 4,
+        "text": "SMTP_HOST=localhost"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 5,
+        "text": "SMTP_FROM=shop@example.com"
+      }
+    ]
+  },
+  "h3": {
+    "id": "h3",
+    "file": "src/config/index.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 4,
+    "additions": 4,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import { Config } from './schema';\n\n/** Read once at start-up; a missing or bad value stops the server with its name. */\nexport const config: Config = Config.parse(process.env);",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { Config } from './schema';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "/** Read once at start-up; a missing or bad value stops the server with its name. */"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "export const config: Config = Config.parse(process.env);"
+      }
+    ]
+  },
+  "h4": {
+    "id": "h4",
+    "file": "src/config/schema.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 10,
+    "additions": 10,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import { z } from 'zod';\n\nexport const Config = z.object({\n  PORT: z.coerce.number().default(3000),\n  DATABASE_URL: z.string().url(),\n  DB_POOL_MAX: z.coerce.number().default(10),\n  SMTP_HOST: z.string(),\n  SMTP_FROM: z.string().email(),\n});\nexport type Config = z.infer<typeof Config>;",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { z } from 'zod';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "export const Config = z.object({"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  PORT: z.coerce.number().default(3000),"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  DATABASE_URL: z.string().url(),"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  DB_POOL_MAX: z.coerce.number().default(10),"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  SMTP_HOST: z.string(),"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "  SMTP_FROM: z.string().email(),"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 10,
+        "text": "export type Config = z.infer<typeof Config>;"
+      }
+    ]
+  },
+  "h5": {
+    "id": "h5",
+    "file": "src/db/pool.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 2,
+    "additions": 2,
+    "deletions": 2,
+    "beforeCode": "import { env } from '../env';\nexport const connect = (url: string) => createPool({ url, max: Number(env('DB_POOL_MAX')) || 10 });",
+    "afterCode": "import { config } from '../config';\nexport const connect = (url: string) => createPool({ url, max: config.DB_POOL_MAX });",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "import { env } from '../env';"
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "export const connect = (url: string) => createPool({ url, max: Number(env('DB_POOL_MAX')) || 10 });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { config } from '../config';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "export const connect = (url: string) => createPool({ url, max: config.DB_POOL_MAX });"
+      }
+    ]
+  },
+  "h6": {
+    "id": "h6",
+    "file": "src/env.ts",
+    "oldFile": null,
+    "status": "deleted",
+    "language": "typescript",
+    "header": "",
+    "startLine": 0,
+    "oldStartLine": 1,
+    "endLine": 0,
+    "additions": 0,
+    "deletions": 1,
+    "beforeCode": "export const env = (name: string) => process.env[name] ?? '';",
+    "afterCode": "",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "export const env = (name: string) => process.env[name] ?? '';"
+      }
+    ]
+  },
+  "h7": {
+    "id": "h7",
+    "file": "src/mail/send.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 2,
+    "additions": 2,
+    "deletions": 2,
+    "beforeCode": "import { env } from '../env';\nexport const send = (to: string, body: string) => smtp(env('SMTP_HOST'), env('SMTP_FROM')).send(to, body);",
+    "afterCode": "import { config } from '../config';\nexport const send = (to: string, body: string) => smtp(config.SMTP_HOST, config.SMTP_FROM).send(to, body);",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "import { env } from '../env';"
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "export const send = (to: string, body: string) => smtp(env('SMTP_HOST'), env('SMTP_FROM')).send(to, body);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { config } from '../config';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "export const send = (to: string, body: string) => smtp(config.SMTP_HOST, config.SMTP_FROM).send(to, body);"
+      }
+    ]
+  },
+  "h8": {
+    "id": "h8",
+    "file": "src/server.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 5,
+    "additions": 3,
+    "deletions": 4,
+    "beforeCode": "import { env } from './env';\nimport { connect } from './db/pool';\n\nconst port = Number(env('PORT')) || 3000;\nconst db = connect(env('DATABASE_URL'));\nexport const start = () => listen(port, db);",
+    "afterCode": "import { config } from './config';\nimport { connect } from './db/pool';\n\nconst db = connect(config.DATABASE_URL);\nexport const start = () => listen(config.PORT, db);",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "import { env } from './env';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { config } from './config';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "import { connect } from './db/pool';"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 3,
+        "text": ""
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "const port = Number(env('PORT')) || 3000;"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "const db = connect(env('DATABASE_URL'));"
+      },
+      {
+        "type": "del",
+        "oldLine": 6,
+        "newLine": null,
+        "text": "export const start = () => listen(port, db);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "const db = connect(config.DATABASE_URL);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "export const start = () => listen(config.PORT, db);"
+      }
+    ]
+  },
+  "h9": {
+    "id": "h9",
+    "file": "test/config.test.ts",
+    "oldFile": null,
+    "status": "added",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 0,
+    "endLine": 5,
+    "additions": 5,
+    "deletions": 0,
+    "beforeCode": "",
+    "afterCode": "import { Config } from '../src/config/schema';\n\nconst ok = { DATABASE_URL: 'postgres://localhost/shop', SMTP_HOST: 'localhost', SMTP_FROM: 'shop@example.com' };\ntest('fills in defaults', () => expect(Config.parse(ok).PORT).toBe(3000));\ntest('names a missing setting', () => expect(() => Config.parse({})).toThrow(/DATABASE_URL/));",
+    "lines": [
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "import { Config } from '../src/config/schema';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "const ok = { DATABASE_URL: 'postgres://localhost/shop', SMTP_HOST: 'localhost', SMTP_FROM: 'shop@example.com' };"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "test('fills in defaults', () => expect(Config.parse(ok).PORT).toBe(3000));"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "test('names a missing setting', () => expect(() => Config.parse({})).toThrow(/DATABASE_URL/));"
+      }
+    ]
+  }
+}

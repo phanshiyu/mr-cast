@@ -1,0 +1,295 @@
+{
+  "title": "Rows of cells",
+  "subtitle": "Binary search, a merge, and a hex grid",
+  "scenes": [
+    {
+      "type": "array",
+      "chapter": "Binary search",
+      "title": "Looking for 72 in a sorted list",
+      "label": "sorted",
+      "narration": "The list is sorted, so each look can rule out half of what is left.",
+      "values": [
+        2,
+        5,
+        8,
+        12,
+        16,
+        23,
+        38,
+        45,
+        56,
+        67,
+        72,
+        79,
+        84,
+        91,
+        95,
+        99
+      ],
+      "pointers": [
+        {
+          "name": "L",
+          "at": 0
+        },
+        {
+          "name": "R",
+          "at": 15
+        },
+        {
+          "name": "mid",
+          "at": 7,
+          "hidden": true
+        }
+      ],
+      "callout": "mid = L + ⌊(R − L) / 2⌋",
+      "steps": [
+        {
+          "show": [
+            "ptr:mid"
+          ],
+          "callout": "mid = 0 + ⌊(15 − 0) / 2⌋ = 7",
+          "say": "The middle is at index seven."
+        },
+        {
+          "focus": 7,
+          "callout": "[45 < 72]{warn}",
+          "say": "Forty five is too small."
+        },
+        {
+          "tint": {
+            "0-7": "dim"
+          },
+          "move": {
+            "L": 8,
+            "mid": 11
+          },
+          "callout": "mid = 8 + ⌊(15 − 8) / 2⌋ = 11",
+          "say": "So the first eight cells are out, and the new middle is index eleven."
+        },
+        {
+          "focus": 11,
+          "callout": "[79 > 72]{warn}",
+          "say": "Seventy nine is too big."
+        },
+        {
+          "tint": {
+            "11-15": "dim"
+          },
+          "move": {
+            "R": 10,
+            "mid": 9
+          },
+          "callout": "mid = 8 + ⌊(10 − 8) / 2⌋ = 9",
+          "say": "So it and everything above it are out, and the middle is index nine."
+        },
+        {
+          "focus": 9,
+          "callout": "[67 < 72]{warn}",
+          "say": "Sixty seven is too small."
+        },
+        {
+          "tint": {
+            "8-9": "dim",
+            "10": "good"
+          },
+          "move": {
+            "L": 10,
+            "mid": 10
+          },
+          "callout": "[72 = 72]{good}",
+          "say": "That leaves index ten, which holds seventy two."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "Merging",
+      "title": "Two sorted halves become one",
+      "narration": "Merge sort zips two sorted halves together by always taking the smaller front value.",
+      "arrays": [
+        {
+          "name": "left",
+          "values": [
+            13,
+            51
+          ]
+        },
+        {
+          "name": "right",
+          "values": [
+            4,
+            89
+          ]
+        },
+        {
+          "name": "out",
+          "label": "merged",
+          "values": [
+            "",
+            "",
+            "",
+            ""
+          ]
+        }
+      ],
+      "pointers": [
+        {
+          "name": "i",
+          "array": "left",
+          "at": 0
+        },
+        {
+          "name": "j",
+          "array": "right",
+          "at": 0
+        },
+        {
+          "name": "k",
+          "array": "out",
+          "at": 0
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "left[0]",
+            "right[0]"
+          ],
+          "callout": "13 vs 4",
+          "say": "Compare thirteen with four."
+        },
+        {
+          "set": {
+            "out[0]": 4
+          },
+          "tint": {
+            "right[0]": "dim"
+          },
+          "move": {
+            "j": 1,
+            "k": 1
+          },
+          "callout": "[4]{good} is smaller",
+          "say": "Four is smaller, so it goes first."
+        },
+        {
+          "set": {
+            "out[1]": 13
+          },
+          "tint": {
+            "left[0]": "dim"
+          },
+          "move": {
+            "i": 1,
+            "k": 2
+          },
+          "callout": "[13]{good} < 89",
+          "say": "Thirteen beats eighty nine.",
+          "focus": [
+            "left[0]",
+            "right[1]",
+            "out[1]"
+          ]
+        },
+        {
+          "set": {
+            "out[2]": 51,
+            "out[3]": 89
+          },
+          "tint": {
+            "left[1]": "dim",
+            "right[1]": "dim",
+            "array:out": "good"
+          },
+          "move": {
+            "i": 2,
+            "j": 2,
+            "k": 4
+          },
+          "callout": "",
+          "say": "Then fifty one and eighty nine, and the merge is done."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "A hex grid",
+      "title": "Neighbours at one distance",
+      "narration": "On a grid of hexagons, every neighbour of a cell is the same distance away.",
+      "cells": "hex",
+      "arrays": [
+        {
+          "name": "r0",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "r1",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "r2",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "r3",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        },
+        {
+          "name": "r4",
+          "values": [
+            "",
+            "",
+            "",
+            "",
+            ""
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "set": {
+            "r2[2]": "car"
+          },
+          "tint": {
+            "r2[2]": "accent"
+          },
+          "say": "Here is a car in one cell."
+        },
+        {
+          "tint": {
+            "r1[1-2]": "good",
+            "r2[1]": "good",
+            "r2[3]": "good",
+            "r3[1-2]": "good"
+          },
+          "callout": "6 neighbours, all at distance d",
+          "say": "It has six neighbours, and they all touch it along a full side."
+        }
+      ]
+    }
+  ]
+}

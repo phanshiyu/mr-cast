@@ -27,3 +27,5 @@ A shell window where commands type out and their output appears, a failing exit 
 A `focus` is an entry index, an `"a-b"` range, or one output line `"entry:line"`. Each entry has a one-line `command`, its `output`, and an `exit`. Without steps the whole session plays during the narration. `{{MR_CAST}}/bin/mr-cast validate` fails on a multi-line command and an entry with neither command nor output.
 
 `{{MR_CAST}}/bin/mr-cast schema terminal` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/terminal/storyboard.json`.

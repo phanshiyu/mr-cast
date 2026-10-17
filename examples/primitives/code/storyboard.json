@@ -1,0 +1,114 @@
+{
+  "title": "Debounce the search box",
+  "subtitle": "One search request when typing stops, instead of one per key",
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Why this change",
+      "narration": "Today the search box asks the server for results on every key you press. Typing one word sends seven requests, and the answers can come back out of order. This change waits until you stop typing, then searches once.",
+      "summary": "Search **once**, a quarter second after the last key, instead of on every key",
+      "risk": "low",
+      "bullets": [
+        "Results show a quarter second later than before",
+        "A slow answer can no longer overwrite a newer one"
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The debounce helper",
+      "hunkId": "h2",
+      "narration": "The new helper wraps any function so that it only runs once the calls stop coming.",
+      "steps": [
+        {
+          "lines": 4,
+          "label": "wait 250 ms by default",
+          "token": "waitMs = 250",
+          "mark": "underline",
+          "note": "a quarter second",
+          "say": "The helper takes the function to run and how long to wait. By default it waits two hundred fifty milliseconds."
+        },
+        {
+          "lines": 6,
+          "label": "keep one timer",
+          "say": "It keeps a single timer, shared by every call."
+        },
+        {
+          "lines": 8,
+          "label": "cancel the earlier wait",
+          "outcome": "a new key restarts the wait",
+          "mark": "circle",
+          "say": "Each new call cancels the wait started by the call before it. So while you keep typing, nothing runs."
+        },
+        {
+          "lines": "9-12",
+          "label": "run once it goes quiet",
+          "outcome": "one search with the last text",
+          "say": "When a quarter second passes with no new call, the timer fires and runs the function once, with the last text you typed."
+        },
+        {
+          "lines": "15-18",
+          "label": "drop a waiting search",
+          "say": "A cancel function drops a search that is still waiting, so a closed search box sends nothing."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Using it",
+      "hunkId": "h1",
+      "narration": "The search box now sends its text through the helper instead of straight to the server.",
+      "steps": [
+        {
+          "lines": "7-10",
+          "say": "The box builds its debounced search once, and keeps it between renders so the timer survives."
+        },
+        {
+          "lines": 13,
+          "say": "Each key press now calls that search, which only reaches the server when you pause."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "What it saves",
+      "title": "Requests to type one word",
+      "kind": "bar",
+      "unit": " req",
+      "better": "lower",
+      "narration": "Here is how many requests each word sends, typed at a normal speed.",
+      "labels": [
+        "cat",
+        "react",
+        "debounce"
+      ],
+      "series": [
+        {
+          "name": "before",
+          "values": [
+            3,
+            5,
+            8
+          ]
+        },
+        {
+          "name": "after",
+          "values": [
+            1,
+            1,
+            1
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": "series:before",
+          "say": "Before, every letter was its own request."
+        },
+        {
+          "focus": "series:after",
+          "say": "Now each word is one request, however long it is."
+        }
+      ]
+    }
+  ]
+}

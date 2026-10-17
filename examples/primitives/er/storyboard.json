@@ -1,0 +1,66 @@
+{
+  "title": "How a blog stores its posts",
+  "subtitle": "Five tables, and the lines between them",
+  "scenes": [
+    {
+      "type": "er",
+      "chapter": "The tables",
+      "title": "Blog data",
+      "narration": "A small blog keeps its writing in five tables. Here is what each one holds, and how they point at each other.",
+      "entities": [
+        { "id": "users", "name": "users", "fields": [
+          { "name": "id", "type": "bigint", "pk": true },
+          { "name": "email", "type": "text", "badge": "unique" },
+          { "name": "name", "type": "text" }
+        ] },
+        { "id": "posts", "name": "posts", "highlight": true, "fields": [
+          { "name": "id", "type": "bigint", "pk": true },
+          { "name": "author_id", "type": "bigint", "fk": true },
+          { "name": "title", "type": "text" },
+          { "name": "published_at", "type": "timestamp" }
+        ] },
+        { "id": "comments", "name": "comments", "fields": [
+          { "name": "id", "type": "bigint", "pk": true },
+          { "name": "post_id", "type": "bigint", "fk": true },
+          { "name": "user_id", "type": "bigint", "fk": true },
+          { "name": "body", "type": "text" }
+        ] },
+        { "id": "tags", "name": "tags", "fields": [
+          { "name": "id", "type": "int", "pk": true },
+          { "name": "slug", "type": "text", "badge": "unique" }
+        ] },
+        { "id": "post_tags", "name": "post_tags", "fields": [
+          { "name": "post_id", "type": "bigint", "pk": true, "fk": true },
+          { "name": "tag_id", "type": "int", "pk": true, "fk": true }
+        ] }
+      ],
+      "relations": [
+        { "from": "users", "to": "posts", "cardinality": "one-to-many", "label": "writes" },
+        { "from": "posts", "to": "comments", "cardinality": "one-to-many", "label": "has" },
+        { "from": "users", "to": "comments", "cardinality": "one-to-many", "label": "leaves" },
+        { "from": "posts", "to": "post_tags", "cardinality": "one-to-many" },
+        { "from": "tags", "to": "post_tags", "cardinality": "one-to-many" }
+      ],
+      "steps": [
+        { "focus": ["users", "users->posts", "posts.author_id"], "say": "Each post has one author, and one author can write many posts." },
+        { "focus": "posts.published_at", "mark": "underline", "note": "empty means draft", "say": "A post with no publish date is still a draft, so nobody else sees it." },
+        { "focus": ["comments", "posts->comments", "users->comments"], "say": "A comment belongs to one post and one user, so it points at both." },
+        { "focus": ["post_tags", "posts->post_tags", "tags->post_tags"], "mark": "box", "note": "joins posts and tags", "say": "Posts and tags meet in a small table in the middle. Each row says this post has this tag, so a post can have many tags and a tag many posts." }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "Asking a question",
+      "title": "Posts tagged postgres",
+      "window": "psql: blog",
+      "narration": "To find every published post with a tag, the query walks the same lines.",
+      "entries": [
+        { "prompt": "blog=#", "command": "select p.title, u.name from posts p join users u on u.id = p.author_id join post_tags pt on pt.post_id = p.id join tags t on t.id = pt.tag_id where t.slug = 'postgres' and p.published_at is not null;", "output": "          title          |  name\n-------------------------+--------\n Indexes you forgot      | Ana\n Why vacuum runs at 3 am | Ravi\n(2 rows)", "exit": 0 }
+      ],
+      "steps": [
+        { "focus": 0, "say": "It joins posts to their authors, then through the middle table to the tags, and keeps only published posts." },
+        { "focus": "0:2", "mark": "underline", "say": "Two posts come back, each with its author." }
+      ]
+    }
+  ]
+}

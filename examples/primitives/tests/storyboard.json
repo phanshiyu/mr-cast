@@ -1,0 +1,56 @@
+{
+  "title": "Retry failed webhooks",
+  "subtitle": "What the tests prove about three retries, and what they leave open",
+  "scenes": [
+    {
+      "type": "code",
+      "chapter": "The retry loop",
+      "hunkId": "h1",
+      "narration": "Today a webhook that fails once is lost. This change tries again, up to three more times.",
+      "steps": [
+        { "lines": 1, "say": "The waits between tries are one, four and sixteen seconds." },
+        { "lines": "4-6", "say": "Each try posts the event, and a good answer ends the loop." },
+        { "lines": 7, "mark": "underline", "token": "res.status < 500", "note": "only server errors retry", "say": "Only a server error is worth another try. A bad request, or the last try, gives up." },
+        { "lines": 8, "say": "Otherwise it waits, then tries again." }
+      ]
+    },
+    {
+      "type": "tests",
+      "chapter": "What the tests prove",
+      "title": "Delivery tests",
+      "subject": "deliver in src/webhooks/deliver.ts",
+      "narration": "Four new tests cover the retries. Two old tests change a little, and one is removed.",
+      "cases": [
+        { "name": "retries a 503 until it succeeds", "proves": "Two server errors, then success, gives ==delivered== after three calls", "hunkId": "h2" },
+        { "name": "gives up after three retries", "proves": "Five server errors stop after **4** calls with failed", "hunkId": "h2" },
+        { "name": "does not retry a 400", "proves": "A bad request fails at once, with one call", "hunkId": "h2", "badge": "edge case", "tone": "warn" },
+        { "name": "waits 1, 4 and 16 seconds", "proves": "The waits between tries grow four times each time", "hunkId": "h2" },
+        { "name": "posts the event as JSON", "proves": "The body is the event as JSON, now without real waits", "status": "modified", "hunkId": "h2" },
+        { "name": "returns delivered on 200", "proves": "A good answer on the first try is delivered", "status": "modified", "hunkId": "h2" },
+        { "name": "throws when the receiver errors", "proves": "A 500 threw an error, which now returns failed instead", "status": "removed" }
+      ],
+      "gaps": [
+        "A receiver that never answers, since no try has a time limit",
+        "The same event sent twice when a try succeeds but its answer is lost"
+      ],
+      "steps": [
+        { "focus": [0, 1], "say": "The first two new tests check both ends. A few server errors still end in delivered, and five in a row give up after four calls." },
+        { "focus": "does not retry a 400", "mark": "circle", "say": "A bad request is never retried, because sending the same thing again would fail the same way." },
+        { "focus": 3, "say": "The fourth test checks the waits themselves, without really waiting." },
+        { "focus": 6, "say": "The test that expected an error is removed, since a failure now returns failed." },
+        { "focus": "gap:0", "mark": "underline", "note": "could hang forever", "say": "Nothing tests a receiver that never answers. Each try waits for it without a limit." },
+        { "focus": "gap:1", "say": "And nothing covers a delivery that worked but whose answer was lost, which sends the event twice." }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "Running them",
+      "title": "The delivery tests",
+      "window": "zsh: ~/shop",
+      "narration": "Running the tests shows all six pass, in a few milliseconds, since none really waits.",
+      "entries": [
+        { "command": "pnpm test test/deliver.test.ts", "output": " [✓]{good} posts the event as JSON\n [✓]{good} returns delivered on 200\n [✓]{good} retries a 503 until it succeeds\n [✓]{good} gives up after three retries\n [✓]{good} does not retry a 400\n [✓]{good} waits 1, 4 and 16 seconds\n\nTests  **6 passed** (6)  12 ms", "exit": 0 }
+      ]
+    }
+  ]
+}

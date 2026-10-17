@@ -36,3 +36,5 @@ Tables or models with their keys and in-play fields, and lines between them with
 A `focus` is an entity id, a field `"orders.status"`, a relation `"users->orders"`, or a relation index. Cardinality is `one-to-one`, `one-to-many` or `many-to-many`, and for one-to-many `from` is the one side. `{{MR_CAST}}/bin/mr-cast validate` fails on a relation to an unknown entity or cardinality, and warns past 6 entities.
 
 `{{MR_CAST}}/bin/mr-cast schema er` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/er/storyboard.json`.

@@ -1,0 +1,52 @@
+{
+  "title": "Cursor pages for the events list",
+  "subtitle": "A review: how the new paging works, and what looks wrong",
+  "findings": [
+    { "id": "tied-timestamps", "severity": "bug", "file": "src/events/list.ts", "line": 7, "claim": "Events that share a timestamp across a page edge are **skipped**", "evidence": "The next page asks for created_at < cursor, so a second event with the cursor's exact timestamp is never returned; two events inserted in one transaction share now()." },
+    { "id": "limit-nan", "severity": "bug", "file": "src/events/routes.ts", "line": 4, "claim": "Without `?limit`, the limit is `NaN` and the query fails", "evidence": "Number(undefined) is NaN, which is passed explicitly, so the default of 50 never applies and Postgres rejects LIMIT NaN." },
+    { "id": "response-shape", "severity": "risk", "file": "src/events/list.ts", "line": 13, "claim": "The response is now an object, so old clients break", "evidence": "GET /events returned an array; it now returns { events, next }, and the mobile app iterates the body directly." },
+    { "id": "after-name", "severity": "nit", "file": "src/events/list.ts", "line": 4, "claim": "`after` means older than, since the list is newest first", "evidence": "The query keeps rows with created_at < after; `before` or `cursor` would read the right way round." }
+  ],
+  "scenes": [
+    {
+      "type": "intent",
+      "chapter": "Why this change",
+      "narration": "The events list used page numbers. When new events arrive while someone pages through, every page shifts and they see repeats. This change pages by the time of the last event seen instead.",
+      "summary": "Page the events list by the **last event's time**, not by page number",
+      "risk": "medium",
+      "bullets": [
+        "Two events at the same moment, at the edge of a page",
+        "Requests that leave out the page size",
+        "Clients that expect a plain list back"
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The new query",
+      "hunkId": "h1",
+      "narration": "Here is the new list function, from what it takes to what it gives back.",
+      "steps": [
+        { "lines": 4, "flag": "after-name", "note": "means older than", "say": "It takes a cursor called after, and a page size of fifty by default. Small thing, after here actually means older than, since the newest come first." },
+        { "lines": "6-9", "flag": "tied-timestamps", "note": "ties fall between pages", "say": "The query keeps events strictly older than the cursor. I think this is a bug. A second event with the very same time as the cursor is never shown." },
+        { "lines": 12, "say": "When the page is full, the time of its last event becomes the cursor for the next page." },
+        { "lines": 13, "flag": "response-shape", "note": "was a plain list", "say": "It now gives back an object with the events and the cursor, where it used to give back a plain list. Old clients that expect a list will break." }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The route",
+      "hunkId": "h2",
+      "view": "morph",
+      "narration": "The route reads both values from the address.",
+      "steps": [
+        { "lines": 4, "flag": "limit-nan", "note": "Number(undefined) is NaN", "say": "This also looks wrong. When the address has no limit, the number becomes not a number, which is passed on, so the default of fifty never applies and the query fails." }
+      ]
+    },
+    {
+      "type": "review",
+      "chapter": "What looks wrong",
+      "title": "Review",
+      "narration": "Four things to fix. Two are bugs: events at the same moment can be skipped, and a request without a page size fails. One risk: old clients get an object instead of a list. And one small naming point."
+    }
+  ]
+}

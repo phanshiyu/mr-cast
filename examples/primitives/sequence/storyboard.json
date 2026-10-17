@@ -1,0 +1,48 @@
+{
+  "title": "Signing in with Google",
+  "subtitle": "Who talks to whom when you press the Google button",
+  "scenes": [
+    {
+      "type": "sequence",
+      "chapter": "The sign-in",
+      "title": "Sign in with Google",
+      "narration": "When you press sign in with Google, four parties pass messages back and forth. Your password only ever goes to Google.",
+      "participants": [
+        { "id": "you", "label": "You", "icon": "user", "caption": "in a browser", "tone": "good" },
+        { "id": "app", "label": "Our app", "icon": "server", "caption": "the shop", "highlight": true },
+        { "id": "google", "label": "Google", "icon": "key-round", "caption": "sign-in page" },
+        { "id": "db", "label": "Users table", "icon": "database", "caption": "accounts" }
+      ],
+      "messages": [
+        { "from": "you", "to": "app", "label": "press Sign in with Google" },
+        { "from": "app", "to": "you", "label": "go to Google, with a one-time state", "kind": "return" },
+        { "from": "you", "to": "google", "label": "enter password, agree to share email" },
+        { "from": "google", "to": "you", "label": "back to the shop with a code", "kind": "return" },
+        { "from": "you", "to": "app", "label": "here is the code" },
+        { "from": "app", "to": "app", "label": "check the state matches", "note": "stops forged sign-ins" },
+        { "from": "app", "to": "google", "label": "swap code for your email" },
+        { "from": "google", "to": "app", "label": "ana@example.com", "kind": "return" },
+        { "from": "app", "to": "db", "label": "find or create the account", "kind": "async" },
+        { "from": "app", "to": "you", "label": "signed in, here is a session cookie", "kind": "return" }
+      ],
+      "steps": [
+        { "focus": "0-1", "say": "You press the button. The shop sends you on to Google, with a random value it will check later." },
+        { "focus": "2-3", "say": "You type your password on Google's own page, never on ours. Google sends you back with a short-lived code." },
+        { "focus": [4, 5], "mark": "box", "say": "The shop checks that the random value is the one it gave you, so nobody can slip you their own code." },
+        { "focus": "6-7", "say": "The shop trades the code for your email address, straight with Google." },
+        { "focus": "8-9", "say": "It finds your account, or makes one, and signs you in." }
+      ]
+    },
+    {
+      "type": "intent",
+      "chapter": "What to remember",
+      "narration": "Three things make this safe.",
+      "summary": "Your password goes **only to Google**; the shop gets a code it trades for your email",
+      "bullets": [
+        "The code works once, and only for a few minutes",
+        "The random state ties the answer to the browser that asked",
+        "The shop swaps the code server to server, so it never passes through scripts on the page"
+      ]
+    }
+  ]
+}

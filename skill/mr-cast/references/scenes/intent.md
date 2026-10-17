@@ -27,3 +27,5 @@ A card with a one-line summary, an optional risk badge, and up to 6 bullets.
 A `focus` is a bullet index. `risk` is optional and drawn as a badge. `{{MR_CAST}}/bin/mr-cast validate` fails on more than 6 bullets, which is what the card holds, or a missing `summary`, and warns on a spoken count that disagrees with the bullets.
 
 `{{MR_CAST}}/bin/mr-cast schema intent` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/intent/storyboard.json`.

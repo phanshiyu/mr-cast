@@ -1,0 +1,6 @@
+{
+  "mode": "diff",
+  "branch": "feature/idle-sessions",
+  "base": "main",
+  "audience": "preread"
+}

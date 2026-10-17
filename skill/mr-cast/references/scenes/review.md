@@ -26,3 +26,5 @@ A recap of what looks wrong, grouped by severity, each with its file and line.
 The scene takes no `steps`. The storyboard's `findings` hold each finding's `id`, `severity` (`bug`, `risk` or `nit`), `file`, `line`, `claim` and `evidence`; `evidence` goes into `review.md`, not on screen. A code step's `flag` names a finding and draws a pen circle in its severity's colour around the step's lines, with the claim (or the step's `note`) as the handwritten note. `{{MR_CAST}}/bin/mr-cast validate` fails on a finding whose line the diff does not show, a flag on a step that does not show its line, and a review scene with no findings, and warns on a finding no step flags.
 
 `{{MR_CAST}}/bin/mr-cast schema review` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/review/storyboard.json`.

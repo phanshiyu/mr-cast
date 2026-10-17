@@ -34,3 +34,5 @@ Participants across the top and messages down the page in time order: calls, rep
 A `focus` is a message index, an `"a-b"` range of messages, or a participant id; a step draws every message up to the last one it focuses. Messages take `kind` `call`, `return` or `async`, and `from` equal to `to` for a self-call. `{{MR_CAST}}/bin/mr-cast validate` fails on an unknown participant and a label that does not fit, and warns past 6 participants and on a message no step names, which then appears unnamed with a neighbouring step.
 
 `{{MR_CAST}}/bin/mr-cast schema sequence` prints its fields.
+
+A whole demo: `{{MR_CAST}}/examples/primitives/sequence/storyboard.json`.

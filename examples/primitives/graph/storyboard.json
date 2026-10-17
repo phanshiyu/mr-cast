@@ -1,0 +1,332 @@
+{
+  "title": "Graphs that change",
+  "subtitle": "Shortest paths, and a list split in halves",
+  "scenes": [
+    {
+      "type": "graph",
+      "chapter": "Shortest paths",
+      "layout": "TB",
+      "narration": "Dijkstra's method finds the cheapest route from S to every other place, one place at a time.",
+      "nodes": [
+        {
+          "id": "S",
+          "label": "S",
+          "shape": "terminal",
+          "badge": "0"
+        },
+        {
+          "id": "A",
+          "label": "A",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "B",
+          "label": "B",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "C",
+          "label": "C",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "D",
+          "label": "D",
+          "shape": "terminal",
+          "badge": "∞"
+        },
+        {
+          "id": "E",
+          "label": "E",
+          "shape": "terminal",
+          "badge": "∞"
+        }
+      ],
+      "edges": [
+        {
+          "from": "S",
+          "to": "A",
+          "label": "4",
+          "direction": "none"
+        },
+        {
+          "from": "S",
+          "to": "B",
+          "label": "1",
+          "direction": "none"
+        },
+        {
+          "from": "A",
+          "to": "C",
+          "label": "1",
+          "direction": "none"
+        },
+        {
+          "from": "B",
+          "to": "C",
+          "label": "5",
+          "direction": "none"
+        },
+        {
+          "from": "B",
+          "to": "D",
+          "label": "2",
+          "direction": "none"
+        },
+        {
+          "from": "C",
+          "to": "E",
+          "label": "3",
+          "direction": "none"
+        },
+        {
+          "from": "D",
+          "to": "E",
+          "label": "6",
+          "direction": "none"
+        }
+      ],
+      "table": {
+        "columns": [
+          "Node",
+          "Distance",
+          "Previous"
+        ],
+        "rows": [
+          {
+            "cells": [
+              "S",
+              "0",
+              "–"
+            ]
+          },
+          {
+            "cells": [
+              "A",
+              "∞",
+              "–"
+            ]
+          },
+          {
+            "cells": [
+              "B",
+              "∞",
+              "–"
+            ]
+          },
+          {
+            "cells": [
+              "C",
+              "∞",
+              "–"
+            ]
+          },
+          {
+            "cells": [
+              "D",
+              "∞",
+              "–"
+            ]
+          },
+          {
+            "cells": [
+              "E",
+              "∞",
+              "–"
+            ]
+          }
+        ]
+      },
+      "callout": "d(u) + w(u, v) < d(v)",
+      "tint": {
+        "S": "warn"
+      },
+      "steps": [
+        {
+          "set": {
+            "A": "4",
+            "B": "1",
+            "Distance@A": "4",
+            "Distance@B": "1",
+            "Previous@A": "S",
+            "Previous@B": "S"
+          },
+          "callout": "0 + 4 = 4,  0 + 1 = 1",
+          "say": "From S, A costs four and B costs one."
+        },
+        {
+          "tint": {
+            "B": "warn"
+          },
+          "set": {
+            "C": "6",
+            "D": "3",
+            "Distance@C": "6",
+            "Previous@C": "B",
+            "Distance@D": "3",
+            "Previous@D": "B"
+          },
+          "callout": "1 + 5 = 6,  1 + 2 = 3",
+          "say": "B is the closest, so it is settled. Through B, C costs six and D costs three."
+        },
+        {
+          "tint": {
+            "D": "warn"
+          },
+          "set": {
+            "E": "9",
+            "Distance@E": "9",
+            "Previous@E": "D"
+          },
+          "callout": "3 + 6 = 9",
+          "say": "D is next. Through D, E costs nine."
+        },
+        {
+          "tint": {
+            "A": "warn"
+          },
+          "set": {
+            "C": "5",
+            "Distance@C": {
+              "before": "6",
+              "after": "5"
+            },
+            "Previous@C": "A"
+          },
+          "callout": "[4 + 1 = 5 < 6]{good}",
+          "say": "Then A. Through A, C costs five, which beats six."
+        },
+        {
+          "tint": {
+            "C": "warn"
+          },
+          "set": {
+            "E": "8",
+            "Distance@E": {
+              "before": "9",
+              "after": "8"
+            },
+            "Previous@E": "C"
+          },
+          "callout": "[5 + 3 = 8 < 9]{good}",
+          "say": "Then C. Through C, E costs eight instead of nine."
+        },
+        {
+          "tint": {
+            "E": "warn",
+            "S->A": "good",
+            "A->C": "good",
+            "C->E": "good"
+          },
+          "callout": "S → A → C → E costs 8",
+          "say": "Following the previous column back from E gives the cheapest route, which costs eight."
+        }
+      ]
+    },
+    {
+      "type": "graph",
+      "chapter": "Divide",
+      "layout": "TB",
+      "narration": "Merge sort keeps cutting the list in half until every piece holds one number.",
+      "nodes": [
+        {
+          "id": "all",
+          "label": "51 13 89 4",
+          "shape": "step"
+        },
+        {
+          "id": "l",
+          "label": "51 13",
+          "shape": "step",
+          "hidden": true
+        },
+        {
+          "id": "r",
+          "label": "89 4",
+          "shape": "step",
+          "hidden": true
+        },
+        {
+          "id": "l1",
+          "label": "51",
+          "shape": "step",
+          "hidden": true
+        },
+        {
+          "id": "l2",
+          "label": "13",
+          "shape": "step",
+          "hidden": true
+        },
+        {
+          "id": "r1",
+          "label": "89",
+          "shape": "step",
+          "hidden": true
+        },
+        {
+          "id": "r2",
+          "label": "4",
+          "shape": "step",
+          "hidden": true
+        }
+      ],
+      "edges": [
+        {
+          "from": "all",
+          "to": "l"
+        },
+        {
+          "from": "all",
+          "to": "r"
+        },
+        {
+          "from": "l",
+          "to": "l1"
+        },
+        {
+          "from": "l",
+          "to": "l2"
+        },
+        {
+          "from": "r",
+          "to": "r1"
+        },
+        {
+          "from": "r",
+          "to": "r2"
+        }
+      ],
+      "steps": [
+        {
+          "show": [
+            "l",
+            "r"
+          ],
+          "say": "First the list splits into two halves."
+        },
+        {
+          "show": [
+            "l1",
+            "l2",
+            "r1",
+            "r2"
+          ],
+          "say": "Then each half splits again."
+        },
+        {
+          "tint": {
+            "l1": "good",
+            "l2": "good",
+            "r1": "good",
+            "r2": "good"
+          },
+          "say": "A piece of one number is already sorted, so the cutting stops."
+        }
+      ]
+    }
+  ]
+}
