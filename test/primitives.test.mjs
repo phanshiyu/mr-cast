@@ -8,7 +8,6 @@ import { validateStoryboard } from '../bin/lib/validate.mjs';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const skillDir = path.join(root, 'skill/mr-cast');
 const leafDir = path.join(skillDir, 'references/scenes');
-const index = fs.readFileSync(path.join(skillDir, 'references/adapt.md'), 'utf8');
 const skill = fs.readFileSync(path.join(skillDir, 'SKILL.md'), 'utf8');
 const demoHunks = JSON.parse(fs.readFileSync(path.join(root, 'examples/demo/hunks.json'), 'utf8'));
 // Every example runs against one diff: the new rate limiter, src/api/rate-limit.ts, 20 added lines.
@@ -45,17 +44,14 @@ test('every scene type in src/types.ts has a leaf, and every leaf is a scene typ
   assert.deepEqual(leaves(), sceneTypes());
 });
 
-test('SKILL.md links every scene file, and the picker in adapt.md links every scene', () => {
-  for (const type of sceneTypes()) {
-    assert.ok(skill.includes(`](references/scenes/${type}.md)`), `SKILL.md does not link references/scenes/${type}.md`);
-    assert.ok(index.includes(`](scenes/${type}.md)`), `adapt.md does not link scenes/${type}.md`);
-  }
+test('SKILL.md links every scene file', () => {
+  for (const type of sceneTypes()) assert.ok(skill.includes(`](references/scenes/${type}.md)`), `SKILL.md does not link references/scenes/${type}.md`);
 });
 
 test('every leaf has the same sections and names validate by the CLI path the installer fills', () => {
   for (const type of leaves()) {
     const headings = read(type).match(/^## .+$/gm);
-    assert.deepEqual(headings, ['## Lowers load when', '## Adds load when', '## Load mistakes', '## Example', '## Schema and validate notes'], `${type}.md`);
+    assert.deepEqual(headings, ['## Example', '## Schema and validate notes'], `${type}.md`);
     assert.ok(read(type).includes('{{MR_CAST}}/bin/mr-cast validate'), `${type}.md must name {{MR_CAST}}/bin/mr-cast validate, which also marks the file as mr-cast's for uninstall`);
   }
 });

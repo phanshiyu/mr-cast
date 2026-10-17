@@ -2,22 +2,6 @@
 
 A shell window where commands type out and their output appears, a failing exit tinted red.
 
-## Lowers load when
-
-- The idea is a run and its output: "the test fails with a timeout, and passes after the fix", "the migration refuses twelve old rows".
-- The viewer sees the evidence itself, not a claim about it. Only use output you ran or read.
-
-## Adds load when
-
-- You know the behaviour but did not run it. Use [compare](compare.md), and never invent output.
-- The point is what each test proves. Use [tests](tests.md).
-
-## Load mistakes
-
-- **A whole log pasted in.** The line that matters is lost. Trim each output to the lines the words name.
-- **Words about one line while the whole entry is lit.** Light the line, as `"0:2"`.
-- **More than 3 commands at once.** Walk them one or two a step.
-
 ## Example
 
 ```json
@@ -40,6 +24,6 @@ A shell window where commands type out and their output appears, a failing exit 
 
 ## Schema and validate notes
 
-A `focus` is an entry index, an `"a-b"` range, or one output line `"entry:line"`. Each entry has a one-line `command`, its `output`, and an `exit`. `{{MR_CAST}}/bin/mr-cast validate` fails on a multi-line command and an entry with neither command nor output, and warns on output over 30 lines and more than 3 entries with no steps.
+A `focus` is an entry index, an `"a-b"` range, or one output line `"entry:line"`. Each entry has a one-line `command`, its `output`, and an `exit`. Without steps the whole session plays during the narration. `{{MR_CAST}}/bin/mr-cast validate` fails on a multi-line command and an entry with neither command nor output.
 
 `{{MR_CAST}}/bin/mr-cast schema terminal` prints its fields.

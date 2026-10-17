@@ -2,23 +2,6 @@
 
 Bands stacked top to bottom in their real order, each holding a few cards, with a token that carries a request down and its reply back up.
 
-## Lowers load when
-
-- The idea is a stack or chain: "every request passes the middleware in order, and the limiter can stop it".
-- The screen order is the real order, so "before" and "after" need no words. The token shows where the request is, and where it turns back.
-
-## Adds load when
-
-- The parts connect sideways or in a web. Use [graph](graph.md).
-- The parts call back and forth. Use [sequence](sequence.md).
-- There is only one layer, or more than 7.
-
-## Load mistakes
-
-- **Words about stops the token has not reached.** Say what happens at the stop the token is on.
-- **The whole path at once.** Without steps the token runs the full path while the narration plays. Walk the stops in steps.
-- **Layers the idea does not need.** Each extra band is one more thing to hold. Keep the layers the request touches.
-
 ## Example
 
 ```json
@@ -49,6 +32,6 @@ Bands stacked top to bottom in their real order, each holding a few cards, with 
 
 ## Schema and validate notes
 
-A `focus` is a layer id, an item id or `"layer.item"`, or a path stop index, which moves the token. `path.stops` go down the stack in order. `skip` turns the token back early at a stop with a `reply`. With `return` or `skip`, focus a stop again to bring the token back up. `{{MR_CAST}}/bin/mr-cast validate` fails on stops that go back up and a duplicate id, and warns past 7 layers or 5 items in a band, and on a step at a stop the token has passed.
+A `focus` is a layer id, an item id or `"layer.item"`, or a path stop index, which moves the token. `path.stops` go down the stack in order. `skip` turns the token back early at a stop with a `reply`. With `return` or `skip`, focus a stop again to bring the token back up. `{{MR_CAST}}/bin/mr-cast validate` fails on stops that go back up and a duplicate id, and warns past 7 layers or 5 items in a band, on a step at a stop the token has passed, and on a reply that never shows.
 
 `{{MR_CAST}}/bin/mr-cast schema layers` prints its fields.

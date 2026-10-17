@@ -2,20 +2,6 @@
 
 The order in which to read the code, each item with its file, lines and what to check there.
 
-## Lowers load when
-
-- The viewer will read the code next. A short ordered list, main behaviour first, tells them where to start and what to look for.
-- Not picked per idea. The mr-cast skill says when there is one.
-
-## Adds load when
-
-- An item points at a whole file. Give it the `lines` that matter.
-
-## Load mistakes
-
-- **More than 6 items to read first.** Mark wiring and config `routine` so they leave the screen.
-- **A check in vague words.** Write the real names and values, such as "the key resets on a new minute".
-
 ## Example
 
 ```json
@@ -31,6 +17,6 @@ The order in which to read the code, each item with its file, lines and what to 
 
 ## Schema and validate notes
 
-Each item names a `hunkId`, optional `lines` inside it, and a `check` unless it is `routine`. The scene takes no `steps`. `{{MR_CAST}}/bin/mr-cast validate` fails on a hunk listed twice and a missing check, and warns on an item over 40 lines with no `lines`.
+Pre-read only (`--audience preread`). Each item names a `hunkId`, optional `lines` inside it, and a `check` unless it is `routine`; the file and lines come from hunks.json. The scene shows the first 6 items to read and counts the rest; `reading.md` and the player's Reading order panel list them all, grouped by the `topic` of the scene that cites each hunk in `from`. A `flag` names a finding whose line is in the item's hunk. The scene takes no `steps`. `{{MR_CAST}}/bin/mr-cast validate` fails on a hunk listed twice, a missing check, and `lines` outside the hunk.
 
 `{{MR_CAST}}/bin/mr-cast schema reading` prints its fields.

@@ -2,23 +2,6 @@
 
 Events at their real times on one axis, with spans for waits and windows, and a playhead that moves as the steps go.
 
-## Lowers load when
-
-- The idea is about time: "it retries after 1, 2, then 4 seconds", "the token expires after an hour", "the rollout takes three days".
-- Distance on the axis is time, so a doubling wait looks doubled and a short window looks short.
-
-## Adds load when
-
-- Who acts matters more than when. Use [sequence](sequence.md).
-- The story is which status a thing is in. Use [state](state.md).
-- Events are so close together and so many that they crowd, past 8. Keep the ones the words name.
-
-## Load mistakes
-
-- **A spoken total that disagrees with the axis,** such as "about nine minutes" over 635 seconds. The viewer stops trusting one of them. Say the number the screen shows.
-- **Words about events not yet reached.** The playhead stands on the last event a step names. Name events in order.
-- **Mixed units in the words.** The axis has one unit. Say times in that unit.
-
 ## Example
 
 ```json
@@ -48,6 +31,6 @@ Events at their real times on one axis, with spans for waits and windows, and a 
 
 ## Schema and validate notes
 
-A `focus` is an event index, an `"a-b"` range, or `"span:label"`. `unit` is one of `ms`, `s`, `min`, `h` and `d`. `{{MR_CAST}}/bin/mr-cast validate` fails on events out of order of `at` with steps and a span that ends before it starts, and warns past 8 events or 4 spans.
+A `focus` is an event index, an `"a-b"` range, or `"span:label"`. `unit` is one of `ms`, `s`, `min`, `h` and `d`. `{{MR_CAST}}/bin/mr-cast validate` fails on events out of order of `at` with steps and a span that ends before it starts, and warns past 8 events.
 
 `{{MR_CAST}}/bin/mr-cast schema timeline` prints its fields.

@@ -2,20 +2,6 @@
 
 A recap of what looks wrong, grouped by severity, each with its file and line.
 
-## Lowers load when
-
-- Each finding was already said where its code was shown. The recap gathers them, so the viewer leaves with a short list instead of remembering them.
-- Not picked per idea. The mr-cast skill says when there is one.
-
-## Adds load when
-
-- It introduces a finding for the first time. Say each finding on the code step that shows its line, with `flag`.
-
-## Load mistakes
-
-- **A finding said as fact.** It is an opinion. Say "I think this looks off".
-- **A long list.** Keep the few findings that clearly look wrong.
-
 ## Example
 
 ```json
@@ -37,6 +23,6 @@ A recap of what looks wrong, grouped by severity, each with its file and line.
 
 ## Schema and validate notes
 
-The scene takes no `steps`. The storyboard's `findings` hold each finding's `id`, `severity`, `file`, `line`, `claim` and `evidence`, and a code step's `flag` names one. `{{MR_CAST}}/bin/mr-cast validate` fails on a finding with no evidence, a flag on a step that does not show its line, and findings with no review scene.
+The scene takes no `steps`. The storyboard's `findings` hold each finding's `id`, `severity` (`bug`, `risk` or `nit`), `file`, `line`, `claim` and `evidence`; `evidence` goes into `review.md`, not on screen. A code step's `flag` names a finding and draws a pen circle in its severity's colour around the step's lines, with the claim (or the step's `note`) as the handwritten note. `{{MR_CAST}}/bin/mr-cast validate` fails on a finding whose line the diff does not show, a flag on a step that does not show its line, and a review scene with no findings, and warns on a finding no step flags.
 
 `{{MR_CAST}}/bin/mr-cast schema review` prints its fields.

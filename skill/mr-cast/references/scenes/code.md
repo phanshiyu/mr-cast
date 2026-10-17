@@ -2,24 +2,6 @@
 
 The lines of one hunk or snippet, the rest dimmed, walked a range at a time, with an optional step diagram beside them.
 
-## Lowers load when
-
-- The idea is how the lines do it: "the key includes the minute, so a new minute starts a new count".
-- A drawing of the idea came first. The picture gives the model, so the lines only confirm it.
-- The idea is the lines themselves, such as an off-by-one or a missing check.
-
-## Adds load when
-
-- The idea can be drawn: a structure, an order of calls, a lifecycle, a schema, data moving through stages. Draw it first with the matching primitive.
-- More than one idea is in the hunk. Split it, one idea a scene.
-
-## Load mistakes
-
-- **Words about lines that are not lit.** Never talk about line 14 while lines 11 to 13 are lit.
-- **A wall of code.** Ranges over 8 lines, or a long hunk with no steps. Walk at most 8 lines a step.
-- **Reading code aloud,** such as "count greater than max". Say what it does: "past the limit".
-- **Steps out of order.** The light jumps up and down the screen. Walk top to bottom.
-
 ## Example
 
 ```json
@@ -39,6 +21,6 @@ The lines of one hunk or snippet, the rest dimmed, walked a range at a time, wit
 
 ## Schema and validate notes
 
-Each step names its `lines` (or `oldLines` for removed code), its `say`, and a `label` for the step diagram, with an `outcome` where it branches. The scene's `narration` is then the intro before the first step. Reference the code by `hunkId`. Never paste code. Without steps, `focusLinesAfter` (and `focusLinesBefore` for removed code) take the printed line numbers as numbers or `"start-end"` strings, each string its own range, at most 3 ranges a scene; `flow` adds one labelled step per range, in the same order, for lines that branch or retry, and stays off declarations and config. `calloutText` is about the code on screen. A pen `token` is text that occurs once on the step's lines, such as `"max: 20"`. `{{MR_CAST}}/bin/mr-cast validate` fails on lines outside the hunk, overlapping or out-of-order steps, labels on only some steps, and 12 or more changed lines with no focus, and warns on a range over 8 lines or more than 8 steps.
+Each step names its `lines` (or `oldLines` for removed code) and its `say`; with a `label` on every step, a step diagram is drawn beside the code, with an `outcome` where a step branches. The scene's `narration` is the intro before the first step. Reference the code by `hunkId`; the lines come from hunks.json. Without steps, `focusLinesAfter` (and `focusLinesBefore` for removed code) take the printed line numbers as numbers or `"start-end"` strings, each string its own range, and `flow` gives one labelled step per range, in the same order. A pen `token` is text that occurs once on the step's lines, such as `"max: 20"`. `{{MR_CAST}}/bin/mr-cast validate` fails on lines outside the hunk, overlapping steps, steps out of top-to-bottom order (the light follows the code down), labels on only some steps, and a `flow` whose length differs from the ranges. It warns past 6 labelled steps, which is what the step diagram holds.
 
 `{{MR_CAST}}/bin/mr-cast schema code` prints its fields.

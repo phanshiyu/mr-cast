@@ -2,20 +2,6 @@
 
 A static Mermaid diagram, for a shape no other primitive draws.
 
-## Lowers load when
-
-- The idea has a shape the viewer already knows how to read and no other primitive draws: a class hierarchy, a gantt plan, a git history, the proportions of a whole as a pie.
-
-## Adds load when
-
-- Any other primitive fits. Mermaid has no steps, so it cannot build up or light parts as the words name them.
-- More than about 12 nodes. A static picture of that size is read all at once.
-
-## Load mistakes
-
-- **A flowchart or sequence in Mermaid.** It cannot walk, so the viewer reads it all at once. Use [graph](graph.md) or [sequence](sequence.md).
-- **Words that walk a static picture part by part.** Nothing lights, so the eye searches. Keep the narration to what the whole picture shows.
-
 ## Example
 
 ```json

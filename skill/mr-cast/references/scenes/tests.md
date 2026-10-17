@@ -2,22 +2,6 @@
 
 Each test beside what it proves in plain words, and the gaps nothing tests listed apart.
 
-## Lowers load when
-
-- The idea is what the tests prove: "three tests cover the limit, and nothing tests two servers".
-- The proof and the gap sit in separate columns, so the viewer does not have to sort them from the voice.
-
-## Adds load when
-
-- The run itself is the proof. Use [terminal](terminal.md).
-- More than 10 tests. Group them by subject in two scenes.
-
-## Load mistakes
-
-- **A count the voice says that the screen contradicts,** such as "seven tests" over nine rows.
-- **Reading out test names.** Say what each proves.
-- **Words about a gap while a test is lit.** Light `"gap:0"` to talk about it.
-
 ## Example
 
 ```json
@@ -43,6 +27,6 @@ Each test beside what it proves in plain words, and the gaps nothing tests liste
 
 ## Schema and validate notes
 
-A `focus` is a case index, a case name, or `"gap:0"`. Each case has its `name` as written in code and what it `proves`. `{{MR_CAST}}/bin/mr-cast validate` fails on no cases and no gaps, and warns past 10 cases or 4 gaps and on a spoken count that disagrees.
+A `focus` is a case index, a case name, or `"gap:0"`. Each case has its `name` and what it `proves`; `cases` and `gaps` may be empty, and `titles` renames the panels. `{{MR_CAST}}/bin/mr-cast validate` warns past 10 cases and on a spoken count that disagrees with the cases.
 
 `{{MR_CAST}}/bin/mr-cast schema tests` prints its fields.

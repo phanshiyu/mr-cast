@@ -2,22 +2,6 @@
 
 A bar or line chart of real numbers, with a change badge on each label when there are two series.
 
-## Lowers load when
-
-- The idea is a quantity: "p99 latency fell from 2.4 s to 0.9 s", "memory grows with each request".
-- Size is seen, not read, so "much faster" needs no arithmetic. Two series named `before` and `after` with `better` set get green or red badges.
-
-## Adds load when
-
-- The numbers are facts to look up. Use [table](table.md).
-- You do not have real numbers. Never invent them. Say the trend in words over another primitive instead.
-
-## Load mistakes
-
-- **Too many bars.** Past about 12 labels or 3 series the eye cannot find the one that matters. Keep the ones the words name.
-- **Words about a value that is not lit.** To say the p99 number, light `"after@p99"`.
-- **The voice reads every number.** Name the one or two that carry the point, and let the bars show the rest.
-
 ## Example
 
 ```json
@@ -44,6 +28,6 @@ A bar or line chart of real numbers, with a change badge on each label when ther
 
 ## Schema and validate notes
 
-`kind` is `bar` for categories and `line` for a trend. A `focus` is a label, `"series:after"`, or `"after@p99"`. `annotation` calls out one point. `{{MR_CAST}}/bin/mr-cast validate` fails on a series whose length differs from the labels and a negative bar, and warns past 12 labels or 4 series.
+`kind` is `bar` or `line`. A `focus` is a label, `"series:after"`, or `"after@p99"`. `annotation` calls out one point. `{{MR_CAST}}/bin/mr-cast validate` fails on a series whose length differs from the labels and a negative bar, and warns past 12 labels or 4 series, and past 24 bars, where a bar is too thin for its value.
 
 `{{MR_CAST}}/bin/mr-cast schema chart` prints its fields.

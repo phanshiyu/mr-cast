@@ -13,9 +13,8 @@ const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const SCENES = ['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'intent', 'layers', 'memory', 'mermaid', 'reading', 'review', 'sequence', 'state', 'table', 'terminal', 'tests', 'timeline'];
 const EXPECTED = [
   'skills/mr-cast/SKILL.md',
-  ...['adapt', 'article', 'audience-new', 'audience-overview', 'audience-preread', 'branch', 'explanation', 'highlight-audit', 'plan', 'questions', 'quick', 'reader-test', 'review'].map((r) => `skills/mr-cast/references/${r}.md`),
+  'skills/mr-cast/references/plan.md',
   ...SCENES.map((t) => `skills/mr-cast/references/scenes/${t}.md`),
-  'skills/mr-cast/references/voice.md',
   'skills/mr-cast-prune/SKILL.md',
   'skills/mr-cast-upgrade/SKILL.md',
 ];
@@ -52,16 +51,16 @@ test('installed skills point at this package, with the plan views filled in', ()
   assert.equal(skillsInstalledFrom(root, freshDir()), false);
 });
 
-// Claude Code keeps the first 5,000 tokens of a skill after compaction, and Anthropic's guidance is under 500 lines.
-// At about 4 characters a token, the whole installed SKILL.md then fits in the part that survives.
-test('the installed mr-cast SKILL.md stays under 500 lines and about 5,000 tokens', () => {
+// Claude Code keeps the first 5,000 tokens of a skill after compaction. The skill holds only the tools (ADR 0019),
+// so it stays well under that: at about 4 characters a token, under 3,000 tokens and 200 lines.
+test('the installed mr-cast SKILL.md stays under 200 lines and about 3,000 tokens', () => {
   const dir = freshDir();
   installSkill(root, dir);
   const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
   const lines = skill.split('\n').length;
   const tokens = Math.round(skill.replaceAll(root, '').length / 4);
-  assert.ok(lines < 500, `${lines} lines`);
-  assert.ok(tokens <= 5000, `about ${tokens} tokens; move detail into a reference`);
+  assert.ok(lines < 200, `${lines} lines`);
+  assert.ok(tokens <= 3000, `about ${tokens} tokens; move detail into a reference`);
 });
 
 test('SKILL.md links every reference and every link resolves', () => {
@@ -89,7 +88,7 @@ test('a dotfile, an editor backup or a merge leftover in a skill folder is not i
   for (const f of ['package.json', 'src', 'skill']) fs.cpSync(path.join(root, f), path.join(copy, f), { recursive: true });
   fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/scenes/.DS_Store'), 'x');
   fs.writeFileSync(path.join(copy, 'skill/mr-cast/SKILL.md~'), 'x');
-  fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/branch.md.orig'), 'x');
+  fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/plan.md.orig'), 'x');
   const dir = freshDir();
   installSkill(copy, dir);
   assert.deepEqual(manifestOf(dir).files, EXPECTED);
@@ -107,13 +106,15 @@ test('a template from before 0.24 gets the whole storyboard schema in place of {
   assert.ok(skill.includes('interface ArrayScene extends SceneBase {') && skill.includes('interface TopicPick {'));
 });
 
-test('a reference that names no CLI is marked on its first line, with no install path in what is pasted', () => {
+test('a reference that names no CLI is marked on its first line, with no install path in it', () => {
+  const copy = fs.mkdtempSync(path.join(tmp, 'root-'));
+  for (const f of ['package.json', 'src', 'shared', 'skill']) fs.cpSync(path.join(root, f), path.join(copy, f), { recursive: true });
+  fs.writeFileSync(path.join(copy, 'skill/mr-cast/references/plain.md'), '# Plain\n\nNo command here.\n');
   const dir = freshDir();
-  installSkill(root, dir);
-  const file = path.join(dir, 'skills/mr-cast/references/reader-test.md');
+  installSkill(copy, dir);
+  const file = path.join(dir, 'skills/mr-cast/references/plain.md');
   const text = fs.readFileSync(file, 'utf8');
-  assert.equal(text, `<!-- written by mr-cast install-skill -->\n${fs.readFileSync(path.join(root, 'skill/mr-cast/references/reader-test.md'), 'utf8')}`);
-  assert.equal(text.includes(root) || text.includes('/bin/mr-cast'), false);
+  assert.equal(text, '<!-- written by mr-cast install-skill -->\n# Plain\n\nNo command here.\n');
   assert.ok(uninstallSkill(dir).removed.includes(file));
 });
 

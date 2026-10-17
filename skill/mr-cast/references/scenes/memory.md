@@ -2,24 +2,6 @@
 
 Call frames with their variables on the left, objects on the right, and an arrow for every reference.
 
-## Lowers load when
-
-- The idea is about references and copies: "the order kept the cart's own list, so editing the cart changed the order".
-- Two arrows into one box show sharing at a glance, and setting a reference re-routes its arrow, so a fix is seen.
-
-## Adds load when
-
-- It is one list and its indexes. Use [array](array.md).
-- It is a data structure's shape, such as a hash map that points into a linked list. Every pointer is an arrow, and the arrows cross. Use a [graph](graph.md) with the list nodes in a group.
-- The data changes shape as it passes between functions. Use [flow](flow.md).
-- More than 4 frames or 6 objects.
-
-## Load mistakes
-
-- **Objects on screen before they exist.** List an object a later step creates with `"hidden": true`, and `show` it in that step.
-- **Words about sharing while one arrow is lit.** Light both fields and the object they point at.
-- **Variables the idea does not need.** Every extra box is one more thing to hold.
-
 ## Example
 
 ```json
@@ -46,6 +28,6 @@ Call frames with their variables on the left, objects on the right, and an arrow
 
 ## Schema and validate notes
 
-A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name, and warns past 4 frames or 6 objects.
+A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. `set` changes a value, and `{ "ref": "c1" }` draws an arrow. Object ids take no `.` or `:`. `{{MR_CAST}}/bin/mr-cast validate` fails on a ref to an unknown or hidden object and two frames with one name.
 
 `{{MR_CAST}}/bin/mr-cast schema memory` prints its fields.

@@ -2,24 +2,6 @@
 
 The statuses a thing can be in and the moves between them, with the start marked and the end states double-bordered.
 
-## Lowers load when
-
-- The idea is a lifecycle: "an order starts pending, becomes paid, and is cancelled after a day unpaid".
-- Every status is on screen at once, so each move is one lit arrow, and the viewer sees where a thing can and cannot go.
-- After a [sequence](sequence.md) of calls, it shows the statuses those calls move through.
-
-## Adds load when
-
-- The idea is one check and its answers rather than a status. Use a [graph](graph.md) flowchart.
-- When it happens matters more than which status it is in. Use [timeline](timeline.md).
-- There are more than 10 states. Merge minor ones, or split the machine.
-
-## Load mistakes
-
-- **Words name a move that is not lit.** "Paying moves it to paid" while only the pending state is lit. Light the transition, and the state it lands in.
-- **No start.** Without `initial` the viewer cannot tell where to begin reading.
-- **Unlabelled arrows.** The viewer must guess what causes each move. Label each with its event or guard, such as `"timeout [24h]"`.
-
 ## Example
 
 ```json

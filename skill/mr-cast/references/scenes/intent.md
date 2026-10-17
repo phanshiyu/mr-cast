@@ -1,20 +1,6 @@
 # intent
 
-The opening card: a one-line summary, the risk, and up to 6 bullets.
-
-## Lowers load when
-
-- It names, before anything is drawn, the one problem and the few things the rest answers, so each later picture has a place to go.
-- Not picked per idea. The mr-cast skill says where it goes.
-
-## Adds load when
-
-- It lists every detail. Keep the bullets the viewer must hold, at most 6.
-
-## Load mistakes
-
-- **An abstract problem,** such as "adds rate limiting". One real case with real values is easier to hold.
-- **A count the voice promises that the card breaks,** such as "three things" over two bullets.
+A card with a one-line summary, an optional risk badge, and up to 6 bullets.
 
 ## Example
 
@@ -38,6 +24,6 @@ The opening card: a one-line summary, the risk, and up to 6 bullets.
 
 ## Schema and validate notes
 
-A `focus` is a bullet index. `{{MR_CAST}}/bin/mr-cast validate` fails on more than 6 bullets or a missing `summary`, and warns on a spoken count that disagrees with the bullets.
+A `focus` is a bullet index. `risk` is optional and drawn as a badge. `{{MR_CAST}}/bin/mr-cast validate` fails on more than 6 bullets, which is what the card holds, or a missing `summary`, and warns on a spoken count that disagrees with the bullets.
 
 `{{MR_CAST}}/bin/mr-cast schema intent` prints its fields.
