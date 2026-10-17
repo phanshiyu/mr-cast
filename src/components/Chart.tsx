@@ -330,6 +330,8 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; frame: number; d
   );
 };
 
+const showsBadges = (scene: ChartScene) => scene.series.length === 2 && scene.badges !== false;
+
 /** The top of the labels above a slot's highest value, where its change badge sits. */
 function slotTop(scene: ChartScene, layout: ChartLayout, i: number): number {
   const valueH = VALUE_FONT * 1.25 + 14;
@@ -368,7 +370,7 @@ function chartTargets(scene: ChartScene, layout: ChartLayout, size: { width: num
     const label = { x: layout.xs[i]! - width / 2, y: layout.xLabelTop - 4, width, height: text.lines.length * layout.xLabelFont * 1.3 + 8 };
     boxes.set(`l:${i}`, label);
     obstacles.push(label);
-    if (scene.series.length === 2) obstacles.push({ x: layout.xs[i]! - 60, y: slotTop(scene, layout, i) - BADGE_H, width: 120, height: BADGE_H });
+    if (showsBadges(scene)) obstacles.push({ x: layout.xs[i]! - 60, y: slotTop(scene, layout, i) - BADGE_H, width: 120, height: BADGE_H });
   });
   scene.series.forEach((_, s) => boxes.set(`s:${s}`, union(scene.labels.map((__, l) => boxes.get(`p:${s}/${l}`)))!));
   if (scene.annotation) obstacles.push({ x: layout.plot.x0, y: 0, width: layout.plot.x1 - layout.plot.x0, height: ANNOTATION_BAND });
@@ -454,7 +456,6 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
   const emphasisOf = (i: number): Emphasis => ({ ...focus(`l:${i}`), opacity: Math.max(...scene.series.map((_, s) => valueOf(s, i).opacity)) });
   const seriesOpacity = (s: number) => Math.max(...scene.labels.map((_, i) => valueOf(s, i).opacity));
   const gridIn = interpolate(frame, [START, START + 14], [0, 1], clamp);
-  const pair = scene.series.length === 2;
   const point = annotationPoint(scene, layout);
   // The note lands with the build, or with the first step that focuses its label or its value.
   const noteSteps = point ? [...(targetSteps(scene).get(`l:${point.label}`) ?? []), ...(targetSteps(scene).get(`p:${point.series}/${point.label}`) ?? [])] : [];
@@ -483,7 +484,7 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
         ) : (
           <Lines scene={scene} layout={layout} frame={frame} drawAt={timeline.drawAt} drawFrames={timeline.drawFrames} valueOf={valueOf} labelGlow={(i) => emphasisOf(i).glow} />
         )}
-        {pair
+        {showsBadges(scene)
           ? scene.labels.map((_, i) => {
               const d = delta(scene.series[0]!.values[i]!, scene.series[1]!.values[i]!, scene.better);
               if (!d) return null;

@@ -17,3 +17,13 @@ test('a table cell renders its inline markup instead of showing the backticks', 
   assert.equal(bare.mono, true);
   assert.equal(drawn(bare.text), 'pollIntervalMs');
 });
+
+test('big-O and other math in a table cell reads as text, with spaces or without', () => {
+  assert.deepEqual(['O(n²)', 'O(n log n)', 'O(1)', 'n × m'].map((cell) => firstCell(cell).mono), [false, false, false, false]);
+  assert.equal(firstCell('max_retries').mono, true);
+});
+
+test('a table header is upper-cased unless it holds a formula or code', () => {
+  const headers = layoutTable(['Hit rate', 'SHA-256', 'e^z', 'maxRetries', 'f(x)'], [{ cells: ['a', 'b', 'c', 'd', 'e'] }], 1712, 700).headers;
+  assert.deepEqual(headers.map((h) => h.font.upper), [true, true, false, false, false]);
+});

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CALLOUT_PAD, calloutFits } from '../fit/callout';
+import { CALLOUT_PAD, calloutBoxWidth, calloutFits } from '../fit/callout';
 import type { Scene } from '../types';
 import type { StateFrame } from '../utils/stateTrack';
 import { FitText } from './FitText';
@@ -13,7 +13,7 @@ import { colors } from './theme';
 export const HeaderCallout: React.FC<{ scene: Scene; s: StateFrame }> = ({ scene, s }) => {
   const fits = useMemo(() => calloutFits(scene), [scene]);
   if (!fits.size) return null;
-  const width = Math.max(...[...fits.values()].map((f) => f.width)) + 2 * CALLOUT_PAD.x;
+  const width = calloutBoxWidth(scene);
   const height = Math.max(...[...fits.values()].map((f) => f.height)) + 2 * CALLOUT_PAD.y;
   const [was, now] = [s.before.callout, s.now.callout];
   const shown = (was ? 1 : 0) + ((now ? 1 : 0) - (was ? 1 : 0)) * s.t;

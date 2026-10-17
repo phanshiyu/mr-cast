@@ -12,7 +12,7 @@ test('the voice reads written shorthand as words', () => {
 });
 
 test('the voice leaves counts, decades, routes, addresses and spacing as written', () => {
-  for (const text of ['100s of requests', 'the 90s and mid-90s', 'two 747s', 'GET /v1/orders', 'IP 192.168.1.1', 'a <-> b', 'Two  spaces.  Here']) {
+  for (const text of ['model v87', 'the v2 key', '100s of requests', 'the 90s and mid-90s', 'two 747s', 'GET /v1/orders', 'IP 192.168.1.1', 'a <-> b', 'Two  spaces.  Here']) {
     assert.equal(speechText(text), text);
   }
   assert.equal(speechText('A --> B, as in e.g.'), 'A to B, as in for example');
@@ -20,4 +20,8 @@ test('the voice leaves counts, decades, routes, addresses and spacing as written
 
 test('spoken text drops markup, then says shorthand in words', () => {
   assert.deepEqual(spokenTexts({ type: 'graph', narration: 'Waits **5s**, e.g. now.' }), ['Waits 5 seconds, for example, now.']);
+});
+
+test('a version with a dot reads as a version in the voice and the subtitle alike, a bare v87 as written', () => {
+  assert.deepEqual(spokenTexts({ type: 'graph', narration: 'Run v87 on v2.1.' }), ['Run v87 on version 2 point 1.']);
 });

@@ -10,7 +10,7 @@ function trimmed(v: number, digits: number): string {
   return Number(v.toPrecision(digits)).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
-/** "1,250 ms", "3.4M req/s", "12%": three significant digits, thousands grouped, big numbers compacted. */
+/** "1,250 ms", "3.125 s", "0.0243%", "3.4M req/s": a value below 10,000 as written, thousands grouped; bigger ones compacted to three significant digits. */
 export function formatValue(v: number, unit: string | undefined): string {
   const abs = Math.abs(v);
   const sign = v < 0 ? MINUS : '';
@@ -18,7 +18,8 @@ export function formatValue(v: number, unit: string | undefined): string {
   if (abs >= 1e9) text = `${trimmed(abs / 1e9, 3)}B`;
   else if (abs >= 1e6) text = `${trimmed(abs / 1e6, 3)}M`;
   else if (abs >= 1e4) text = `${trimmed(abs / 1e3, 3)}k`;
-  else text = Number.isInteger(abs) ? abs.toLocaleString('en-US') : trimmed(abs, 3);
+  // 15 significant digits keeps every digit a storyboard writes and drops float noise such as 0.30000000000000004.
+  else text = abs.toLocaleString('en-US', { maximumSignificantDigits: 15 });
   if (!unit) return sign + text;
   return sign + text + (TIGHT_UNITS.has(unit) ? '' : ' ') + unit;
 }

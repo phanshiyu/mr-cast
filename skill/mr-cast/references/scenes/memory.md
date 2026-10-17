@@ -32,4 +32,4 @@ A `focus` is `"frame:main"`, a variable `"main.cart"`, an object id, or a field 
 
 `{{MR_CAST}}/bin/mr-cast schema memory` prints its fields.
 
-`callout` is a boxed line at the right of the header, such as the line of code that runs; a step's `callout` replaces it from that step on, and `""` removes it. A whole demo: `{{MR_CAST}}/examples/primitives/memory/storyboard.json`.
+`callout` is a boxed line at the right of the header, such as the line of code that runs; a step's `callout` replaces it from that step on, and `""` removes it. The callout box is as wide as its longest text; beside it, a title too long for one line wraps onto a second. A whole demo: `{{MR_CAST}}/examples/primitives/memory/storyboard.json`.

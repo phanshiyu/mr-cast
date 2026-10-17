@@ -256,3 +256,21 @@ test('a table whose cells change keeps its columns from state to state', async (
   assert.deepEqual(layouts[0].cols, layouts[2].cols);
   assert.equal(layouts[2].rows[1].cells[1].kind, 'change');
 });
+
+test('the dashed slot past an array end shows only while a pointer stands on it', async () => {
+  const { layoutArray, ghostShown } = await bundle('../src/utils/arrayLayout.ts');
+  const scene = { type: 'array', narration: 'x', values: [1, 2, 3], pointers: [{ name: 'i', at: 0 }], steps: [{ move: { i: 3 }, say: 'Past the end.' }, { move: { i: 1 }, say: 'Back.' }] };
+  assert.deepEqual(layoutArray(scene, { width: 1712, height: 760 }).rows[0].ghosts, { left: false, right: true });
+  const atEachStep = walkStates(scene).states.map((state) => ghostShown([{ row: '', at: state.places['ptr:i'][0], shown: 1 }], '', 3));
+  assert.deepEqual(atEachStep, [0, 1, 0]);
+});
+
+test('a long title beside a callout wraps onto a second line, and the content below gives up that line', async () => {
+  const scene = { ...search, title: 'Binary search halves the part of the sorted list it still has to look at, every step' };
+  assert.deepEqual(await errorsOf(scene), []);
+  const { shellFits, headerBox } = await bundle('../src/fit/shell.ts');
+  const { title } = shellFits(scene);
+  assert.equal(title.size, 50);
+  assert.equal(title.lines.length, 2);
+  assert.equal(headerBox({ ...search, title: 'Binary search' }).height - headerBox(scene).height, 60);
+});

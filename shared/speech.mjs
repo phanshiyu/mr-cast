@@ -15,9 +15,10 @@ const SPOKEN_FORMS = [
   [/(\w)\/(?:h|hr|hour)\b/g, '$1 per hour'],
   [/(\w)\/day\b/g, '$1 per day'],
   [/(\d)\s?reqs?\b/g, '$1 requests'],
-  // "v0.14" or "0.14.2" is a version, read part by part ("zero point fourteen"), never as a decimal. Not inside a
-  // route or a URL ("/v1/orders"), and not an address with four parts.
-  [/(?<![\w/.]|\bversion\s)v(\d+(?:\.\d+)*)(?![\w/]|\.\d)/gi, (_, v) => `version ${v.split('.').join(' point ')}`],
+  // "v0.14" or "0.14.2" is a version, read part by part ("zero point fourteen"), never as a decimal. Not a bare
+  // "v87", which is as often an id as a version, not inside a route or a URL ("/v1/orders"), and not an address
+  // with four parts.
+  [/(?<![\w/.]|\bversion\s)v(\d+(?:\.\d+)+)(?![\w/]|\.\d)/gi, (_, v) => `version ${v.split('.').join(' point ')}`],
   [/(?<![\w.])\d+\.\d+\.\d+(?![\w]|\.\d)/g, (v) => v.split('.').join(' point ')],
 ];
 

@@ -24,12 +24,16 @@ const HEADER_CHAR_W = 13;
 export const HEADER_FONT = 17;
 
 /**
- * Identifiers, paths, numbers with units and the like read as code, so they render in mono. A cell with markup
- * (`` `pollIntervalMs` ``) says how it reads itself, so it renders its markup like any other text.
+ * Identifiers, paths, numbers with units and the like read as code, so they render in mono. Math, such as
+ * "O(n²)" or "n × m", reads as text whether or not it has spaces. A cell with markup (`` `pollIntervalMs` ``)
+ * says how it reads itself, so it renders its markup like any other text.
  */
 const CODE_LIKE = /^[^\s]+$/;
 const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
-const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !hasMarkup(text);
+const MATH = /^[OΘΩ]\(|[¹²³⁰-₟×÷∀-⋿]/u;
+const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !MATH.test(text) && !hasMarkup(text);
+/** A header is upper-cased unless it holds a formula or code, such as "e^z" or "maxRetries", whose case means something. */
+const CASED_HEADER = /[\^_=()[\]{}<>\\|*+]|[a-z][A-Z]/;
 
 export type PlacedCell =
   | { kind: 'text'; mono: boolean; text: Fit }
@@ -169,7 +173,7 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
     y += h + ROW_GAP;
     return out;
   });
-  const headers = columns.map((c, i) => fitText(c, sized(SLOTS.tableHeader, widths[i]! + COL_GAP / 2), `columns[${i}]`));
+  const headers = columns.map((c, i) => fitText(c, { ...sized(SLOTS.tableHeader, widths[i]! + COL_GAP / 2), upper: !CASED_HEADER.test(c) }, `columns[${i}]`));
   return { font, lineHeight, cols, headers, rows: placed, width, height: y - ROW_GAP, truncated, scale: 1, room: fitBlock('rows', 'table', true, '') };
 }
 

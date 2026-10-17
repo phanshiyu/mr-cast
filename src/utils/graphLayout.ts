@@ -2,8 +2,9 @@ import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { GraphEdge, GraphNode, GraphScene, NodeShape } from '../types';
 import { badgeWords } from './marks';
-import { sceneBox } from '../components/theme';
+import { contentBox } from '../components/theme';
 import { hasCallout } from '../fit/callout';
+import { headerBox } from '../fit/shell';
 import { cardTexts, sharedTitleSize, type CardText } from './nodeText';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
 
@@ -671,7 +672,7 @@ const TABLE_GAP = 48;
 
 /** Where a graph scene draws: the whole content box, the graph's part of it, and the width of the table beside it (0 for none). */
 export function graphAreas(scene: GraphScene): { full: { width: number; height: number }; graphBox: { width: number; height: number }; tableW: number } {
-  const full = sceneBox({}, hasCallout(scene));
+  const full = hasCallout(scene) ? headerBox(scene) : contentBox(false);
   const tableW = scene.table ? Math.round(full.width * TABLE_SHARE) : 0;
   return { full, graphBox: { width: full.width - (scene.table ? tableW + TABLE_GAP : 0), height: full.height }, tableW };
 }
