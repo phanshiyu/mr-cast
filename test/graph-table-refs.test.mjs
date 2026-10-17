@@ -3,6 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { stepViews } from '../bin/lib/highlight.mjs';
+import { resolveRef, stepTargets } from '../shared/targets.mjs';
 
 const check = async (scene) => validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
 
@@ -14,6 +16,42 @@ const tracker = {
   table: { columns: ['Node', 'Distance'], rows: [{ cells: ['S', '0'] }, { cells: ['A', '4'] }] },
   steps: [{ focus: 'S', say: 'Start at S.' }],
 };
+
+test('a bare number that is both an edge and a table row fails, naming the edge and the row', async () => {
+  const { errors } = await check({
+    ...tracker,
+    steps: [
+      { focus: [1, 'S'], say: 'One.' },
+      { show: ['0'], tint: { 1: 'good' }, say: 'Two.' },
+    ],
+  });
+  assert.deepEqual(errors, [
+    'scenes[0].steps[1].show["0"]: could be edge 0 or table row 0; name the edge "S->A" or the row "row:0"',
+    'scenes[0].steps[1].tint["1"]: could be edge 1 or table row 1; name the edge "S->B" or the row "row:1"',
+    'scenes[0].steps[0].focus[0]: 1 could be edge 1 or table row 1; name the edge "S->B" or the row "row:1"',
+  ]);
+});
+
+test('a number past the table\'s rows is an edge, and the edge and row refs pass', async () => {
+  const { errors } = await check({ ...tracker, steps: [{ focus: 2, say: 'A to B.' }, { focus: ['S->B', 'row:1'], tint: { 'row:0': 'good' }, say: 'Both.' }] });
+  assert.deepEqual(errors, []);
+  assert.deepEqual(resolveRef(tracker, 2), ['e:2']);
+});
+
+test('a column "col:Header" of the table beside a graph lights as it does in a table scene', async () => {
+  const scene = { ...tracker, steps: [{ focus: 'col:Distance', say: 'Each distance so far.' }] };
+  const { errors } = await check(scene);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(stepTargets(scene), [['c:1']]);
+  assert.deepEqual(stepViews(scene, {})[0].lit, ['table column Distance', 'table Distance of row 0 = 0', 'table Distance of row 1 = 4']);
+});
+
+test('a column takes no tint or show beside a graph, as in a table scene', async () => {
+  const { errors } = await check({ ...tracker, steps: [{ focus: 'S', tint: { 'col:Distance': 'good' }, say: 'x' }] });
+  const table = await check({ type: 'table', narration: 'n', columns: ['Node', 'Distance'], rows: [{ cells: ['S', '0'] }], steps: [{ focus: 0, tint: { 'col:Distance': 'good' }, say: 'x' }] });
+  assert.deepEqual(errors, ['scenes[0].steps[0].tint["col:Distance"]: names no node, edge or table row; a tint key is a node id, an edge "from->to", a group "group:Name", or a table row "row:A" or cell "Header@row"; it can be "S", "A", "B"']);
+  assert.deepEqual(table.errors, ['scenes[0].steps[0].tint["col:Distance"]: names no row or cell; a tint key is a row index or a cell "Header@row"']);
+});
 
 const neverShown = (warnings) => warnings.filter((w) => w.includes('never drawn'));
 

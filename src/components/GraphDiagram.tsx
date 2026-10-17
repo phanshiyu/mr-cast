@@ -212,8 +212,8 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
   };
   /** How shown an edge is: its own show and hide, and never more than either end. */
   const edgeShown = (e: GraphEdge, i: number) => Math.min(shownOf(s, `e:${i}`), shownOf(s, `n:${e.from}`), shownOf(s, `n:${e.to}`));
-  /** A table row lights with its own focus, or any of its cells'. */
-  const cellEmphasis = (row: number, col: number) => emphasisOf(`x:${row}/${col}`);
+  /** A table cell lights with its own focus or its column's; a row with its own, or any of its cells'. */
+  const cellEmphasis = (row: number, col: number) => brighter(emphasisOf(`c:${col}`), emphasisOf(`x:${row}/${col}`));
   const rowEmphasis = (row: number): Emphasis => {
     const own = emphasisOf(`r:${row}`);
     return { ...own, opacity: Math.max(own.opacity, ...(scene.table?.columns ?? []).map((_, col) => cellEmphasis(row, col).opacity)) };
@@ -305,7 +305,7 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
           rowAt={(i) => NODES_END + 4 + i * 3}
           rowEmphasis={rowEmphasis}
           cellEmphasis={cellEmphasis}
-          headerGlow={() => 0}
+          headerGlow={(i) => emphasisOf(`c:${i}`).glow}
         />
       ) : null}
       <PenMarks scene={scene} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />

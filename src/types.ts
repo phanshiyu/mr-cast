@@ -227,9 +227,10 @@ export interface GraphScene extends SceneBase {
    * Move the viewer's attention as the voice explains: the whole graph draws first, then each step lights
    * what it focuses just before its `say` is spoken while the rest dims. `narration` is then the intro.
    * A ref is a node id, an edge "from->to" (or "a-b" for either direction), a group "group:Support team",
-   * or an edge index; with a `table`, a row "row:A" or "row:0" and a cell "Header@row". Walk a path with a
-   * node, then its edge, then the next node. A step can also change the graph at its start: `show` and
-   * `hide` nodes and edges, `set` badges and table cells, `tint` nodes and edges, and replace the `callout`.
+   * or an edge index; with a `table`, a row "row:A" or "row:0", a column "col:Header" and a cell "Header@row".
+   * Walk a path with a node, then its edge, then the next node. A step can also change the graph at its
+   * start: `show` and `hide` nodes and edges, `set` badges and table cells, `tint` nodes and edges, and
+   * replace the `callout`.
    */
   steps?: GraphStep[];
   /** Nodes and edges coloured from the start, by node id or edge ref. Steps change them with `tint`. */

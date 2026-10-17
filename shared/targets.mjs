@@ -72,14 +72,19 @@ function asideRow(table, name) {
 }
 
 /**
- * What a ref names in the table beside a graph: a row "row:A" or "row:0" ("r:0"), or a cell "Header@row"
- * ("x:0/1"); null when it reads as one but names nothing, undefined when it does not read as one.
+ * What a ref names in the table beside a graph: a row "row:A" or "row:0" ("r:0"), a column "col:Header"
+ * ("c:1"), or a cell "Header@row" ("x:0/1"); null when it reads as one but names nothing, undefined when it
+ * does not read as one.
  */
 function asideRef(table, ref) {
   if (!table || typeof ref !== 'string') return undefined;
   if (ref.startsWith('row:')) {
     const row = asideRow(table, ref.slice(4));
     return row >= 0 ? [`r:${row}`] : null;
+  }
+  if (ref.startsWith('col:')) {
+    const col = list(table.columns).indexOf(ref.slice(4).trim());
+    return col >= 0 ? [`c:${col}`] : null;
   }
   const at = ref.lastIndexOf('@');
   if (at <= 0) return undefined;
@@ -109,7 +114,7 @@ const TARGETS = {
       ...list(scene.nodes).map((n) => n?.id),
       ...new Set(list(scene.nodes).flatMap((n) => (n?.group ? [`group:${n.group}`] : []))),
       ...list(scene.edges).map(pairName),
-      ...(scene.table ? [...list(scene.table.rows).map((_, i) => `row:${i}`), ...list(scene.table.columns).map((c) => `${c}@0`)] : []),
+      ...(scene.table ? [...list(scene.table.rows).map((_, i) => `row:${i}`), ...list(scene.table.columns).flatMap((c) => [`col:${c}`, `${c}@0`])] : []),
     ],
   },
   sequence: {
@@ -353,6 +358,18 @@ export function resolveRef(scene, ref, hunks) {
   if (!resolve) return null;
   // An index written as a string, "2", means the index when nothing in the scene is named "2".
   return resolve(scene, ref, hunks) ?? (typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) ? resolve(scene, Number(ref), hunks) : null);
+}
+
+/**
+ * In a graph with a table beside it, a bare number is an edge index. When the table has a row of that index
+ * too, this says how to name each one; otherwise null.
+ */
+export function ambiguousIndex(scene, ref) {
+  if (scene?.type !== 'graph' || !scene.table) return null;
+  const n = typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) && !list(scene.nodes).some((node) => node?.id === ref) ? Number(ref) : ref;
+  const edges = list(scene.edges);
+  if (!isIndex(n, edges.length) || !isIndex(n, list(scene.table.rows).length)) return null;
+  return `could be edge ${n} or table row ${n}; name the edge "${pairName(edges[n])}" or the row "row:${n}"`;
 }
 
 /** Refs worth suggesting for a scene, for "did you mean" hints. */
