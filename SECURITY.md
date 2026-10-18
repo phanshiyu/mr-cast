@@ -13,36 +13,7 @@ Report it privately through GitHub: open the repository's **Security** tab and c
 
 ## Setting up Renovate
 
-Renovate runs from `.github/workflows/renovate.yml` every 4 hours and on demand from the Actions tab. Until it has a token, each run is skipped with a notice. Pull requests opened with the workflow's own `GITHUB_TOKEN` would never start CI, so Renovate needs a token of its own. Use a GitHub App (preferred) or a fine-grained personal access token.
-
-### Option A: GitHub App
-
-1. Open **Settings → Developer settings → GitHub Apps → New GitHub App**. Name it, for example, `mr-cast-renovate`. Set any homepage URL, and clear **Webhook → Active**.
-2. Under **Repository permissions**, set:
-   - **Contents**: Read and write
-   - **Pull requests**: Read and write
-   - **Issues**: Read and write (the dependency dashboard)
-   - **Workflows**: Read and write (to update pinned actions in `.github/workflows`)
-   - **Commit statuses**: Read and write
-   - **Checks**: Read-only
-   - **Dependabot alerts**: Read-only (security updates)
-   - **Administration**: Read-only (lets Renovate see that auto-merge is allowed)
-   - **Metadata**: Read-only (set automatically)
-3. Under **Where can this GitHub App be installed?**, choose **Only on this account**, then **Create GitHub App**.
-4. Note the **App ID**. Under **Private keys**, choose **Generate a private key**, which downloads a `.pem` file.
-5. Choose **Install App**, then install it on **Only select repositories → phanshiyu/mr-cast**.
-6. In the repository, open **Settings → Secrets and variables → Actions → New repository secret** and add:
-   - `RENOVATE_APP_ID`: the App ID
-   - `RENOVATE_APP_PRIVATE_KEY`: the whole content of the `.pem` file
-
-### Option B: fine-grained personal access token
-
-1. Open **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
-2. Set **Repository access** to **Only select repositories → phanshiyu/mr-cast**, and an expiry you will renew.
-3. Under **Repository permissions**, set **Contents**, **Pull requests**, **Issues**, **Workflows** and **Commit statuses** to Read and write, and **Dependabot alerts** and **Administration** to Read-only.
-4. Add the token as the repository secret `RENOVATE_TOKEN`.
-
-The workflow uses the App when both App secrets exist, and the token otherwise. Pull requests opened with a personal token show you as their author.
+Renovate runs as the hosted Renovate GitHub App (github.com/apps/renovate), installed on this repository. It reads `renovate.json` in the repository root, so there is no workflow or token to set up. Its pull requests start CI like any other.
 
 ### Repository settings for auto-merge
 
@@ -53,4 +24,4 @@ The workflow uses the App when both App secrets exist, and the token otherwise. 
    - Select **Require status checks to pass**, choose **Add checks**, and add `ci-ok`. It passes only when every CI job passes. The check appears in the list after CI has run once.
    - Leave **Require a pull request before merging** cleared. Auto-merge needs only the required check.
    - Choose **Create**.
-3. Run the workflow once from **Actions → Renovate → Run workflow**. It opens the **Dependency Dashboard** issue and the first pull requests.
+3. The Renovate app opens the **Dependency Dashboard** issue and the first pull requests on its next run. Check its run logs at developer.mend.io.
