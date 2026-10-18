@@ -9,6 +9,7 @@ const HOST = '127.0.0.1';
 const PORT_ATTEMPTS = 21;
 const DEBOUNCE_MS = 150;
 const KEEPALIVE_MS = 25_000;
+const IDLE_TICK_MS = 1_000;
 const DATA_FILES = new Set(['hunks.json', 'storyboard.json', 'meta.json', PLAN_FILE, BUILT_FILE]);
 // A choice is a topic id and two words; anything near this size is not one.
 const BODY_MAX = 4096;
@@ -119,8 +120,9 @@ function listen(server, port) {
  * --audience, served as settings.json so the plan page can word its depths for a pre-read.
  * The plan page changes plan.json through POST /plan/choice, with the returned `token` in TOKEN_HEADER.
  * Each open page holds one /events stream, so their number is the pages open: `onViewers(count)` hears each change.
- * With `idle.ms`, `idle.onIdle()` runs once no page has been open for that long, counted from the last one leaving or
- * from the start; while `idle.busy?.()` is true the count starts over.
+ * With `idle.ms`, `idle.onIdle()` runs once no page has been open, and `idle.busy?.()` has been false, for that long:
+ * the count starts from the start, from the last page leaving, or from the end of the work `busy` reports, such as
+ * a voicing. `idle.onDeadline?.(ms)` hears when it would run, as a timestamp, or null while it is not counting.
  */
 export async function startServer({ distDir, dataDir, port, onDataChange, holding, getVoiceover, getStoryboard, audience = 'familiar', onViewers, idle }) {
   const root = path.resolve(distDir);
@@ -128,12 +130,18 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
   const tokenBytes = Buffer.from(token);
   const clients = new Set();
   let allowedHosts = new Set();
-  let idleTimer = null;
+  let idleTicker = null;
+  let deadline = null;
   let closing = false;
   const countDown = () => {
-    clearTimeout(idleTimer);
-    if (!idle?.ms || clients.size) return;
-    idleTimer = setTimeout(() => (idle.busy?.() ? countDown() : idle.onIdle()), idle.ms);
+    if (!idle?.ms || closing) return;
+    const next = clients.size || idle.busy?.() ? null : deadline ?? Date.now() + idle.ms;
+    if (next !== deadline) idle.onDeadline?.(next);
+    deadline = next;
+    if (deadline !== null && Date.now() >= deadline) {
+      clearInterval(idleTicker);
+      idle.onIdle();
+    }
   };
   const viewersChanged = () => {
     onViewers?.(clients.size);
@@ -207,6 +215,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
   }
   if (!bound) throw new Error(`ports ${port}-${port + PORT_ATTEMPTS - 1} are all in use; pass --port`);
   allowedHosts = new Set([`${HOST}:${bound}`, `localhost:${bound}`]);
+  // Checked often, since `busy` can change at any time; a quarter of the limit keeps a short limit in the tests close.
+  if (idle?.ms) idleTicker = setInterval(countDown, Math.max(10, Math.min(IDLE_TICK_MS, idle.ms / 4)));
   countDown();
 
   const broadcast = (msg) => { for (const c of clients) c.write(msg); };
@@ -241,7 +251,7 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
 
   const close = () => new Promise((resolve) => {
     closing = true;
-    clearTimeout(idleTimer);
+    clearInterval(idleTicker);
     clearInterval(keepalive);
     clearTimeout(timer);
     watcher.close();

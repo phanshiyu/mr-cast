@@ -20,14 +20,15 @@ import { plural } from './summary.mjs';
  * @typedef {{
  *   pid: number, ppid: number, kind: ProcKind, started: string, command: string, version: string | null, url: string | null,
  *   dir: string | null, run: string | null, repo: string | null, viewers?: number, idleSince?: string | null,
- *   idleExit?: number,
+ *   idleExit?: number, exitsAt?: string | null,
  * }} Entry  What a process writes about itself. `started` is its start time and `command` its command line, both as
  *   `ps` prints them.
  * @typedef {Entry & {
  *   registered: boolean, startedAt: number, viewers: number | null, idleSince: number | null,
- *   idleExit: number | null, parent: number | null,
- * }} Proc  A verified running process. `viewers` is null where it is unknown or not a server; `parent` is the
- *   listed process a voice or download child belongs to.
+ *   idleExit: number | null, exitsAt: number | null, parent: number | null,
+ * }} Proc  A verified running process. `viewers` is null where it is unknown or not a server; `exitsAt` is when an
+ *   idle server exits, null while a page is open or a voicing runs; `parent` is the listed process a voice or download
+ *   child belongs to.
  */
 
 const ROOT = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
@@ -204,7 +205,7 @@ function unregistered(row) {
     pid: row.pid, ppid: row.ppid, kind, started: row.started, command: row.command, version: null, registered: false,
     url: port && SERVERS.has(kind) ? `http://127.0.0.1:${port}${kind === 'plan' ? '/plan' : ''}` : null,
     dir: null, run: name, repo: kind === 'voice' ? null : cwd, startedAt: parseStarted(row.started),
-    viewers: null, idleSince: null, idleExit: null, parent: null,
+    viewers: null, idleSince: null, idleExit: null, exitsAt: null, parent: null,
   };
 }
 
@@ -237,6 +238,7 @@ export function listProcesses({ ps = processTable } = {}) {
         viewers: SERVERS.has(entry.kind) ? entry.viewers ?? 0 : null,
         idleSince: SERVERS.has(entry.kind) ? parseTime(entry.idleSince) || null : null,
         idleExit: SERVERS.has(entry.kind) ? entry.idleExit ?? null : null,
+        exitsAt: SERVERS.has(entry.kind) ? parseTime(entry.exitsAt) || null : null,
         parent: null,
       });
     } else if (!row || row.started !== entry.started) {
@@ -363,13 +365,17 @@ export function formatAge(ms) {
 
 const home = (p) => (p && p.startsWith(os.homedir() + path.sep) ? `~${p.slice(os.homedir().length)}` : p);
 
-/** "1 open", "none · exits in 12m", "none", "?" for an older mr-cast, and "" for what is not a server. */
+/**
+ * "1 open", "none · exits in 12m", "none · voicing" while a voicing holds off the idle exit, "none" with no idle exit,
+ * "?" for an older mr-cast, and "" for what is not a server.
+ */
 function pageOf(p, now) {
   if (!SERVERS.has(p.kind)) return '';
   if (p.viewers === null) return '?';
   if (p.viewers > 0) return `${p.viewers} open`;
-  if (!p.idleExit || !p.idleSince) return 'none';
-  return `none · exits in ${formatAge(Math.max(0, p.idleSince + p.idleExit * 60_000 - now) + 59_999)}`;
+  if (!p.idleExit) return 'none';
+  if (p.exitsAt === null) return 'none · voicing';
+  return `none · exits in ${formatAge(Math.max(0, p.exitsAt - now) + 59_999)}`;
 }
 
 function whereOf(p) {
@@ -391,6 +397,7 @@ export const procJson = (p) => ({
   pid: p.pid, ppid: p.ppid, kind: p.kind, registered: p.registered, parent: p.parent,
   startedAt: new Date(p.startedAt).toISOString(), url: p.url, repo: p.repo, run: p.run, dir: p.dir, version: p.version,
   viewers: p.viewers, idleSince: p.idleSince === null ? null : new Date(p.idleSince).toISOString(), idleExit: p.idleExit,
+  exitsAt: p.exitsAt === null ? null : new Date(p.exitsAt).toISOString(),
 });
 
 const NOUNS = { play: 'player', plan: 'plan page', render: 'render', voice: 'voicing', download: 'voice model download' };

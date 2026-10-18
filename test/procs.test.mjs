@@ -29,8 +29,9 @@ function withScan(fn) {
 fs.mkdirSync(env.MR_CAST_DIST, { recursive: true });
 fs.writeFileSync(path.join(env.MR_CAST_DIST, 'index.html'), '<!doctype html>');
 
-const { listProcesses, processTable, procsDir, selectProcs, stopChoices, stopProcesses } = await import('../bin/lib/procs.mjs');
+const { formatPs, listProcesses, processTable, procsDir, selectProcs, stopChoices, stopProcesses } = await import('../bin/lib/procs.mjs');
 const { startServer } = await import('../bin/lib/server.mjs');
+const { narrationKey } = await import('../shared/voice.mjs');
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BIN = path.join(ROOT, 'bin', 'mr-cast.mjs');
@@ -275,7 +276,7 @@ test('a play started with a relative script path is registered, listed and repla
 
 const proc = (pid, kind, fields = {}) => ({
   pid, ppid: 1, kind, started: 'x', command: 'x', version: '0.28.0', url: null, dir: null, run: null, repo: null, registered: true,
-  startedAt: 0, viewers: kind === 'play' || kind === 'plan' ? 0 : null, idleSince: null, idleExit: 30, parent: null, ...fields,
+  startedAt: 0, viewers: kind === 'play' || kind === 'plan' ? 0 : null, idleSince: null, idleExit: 30, exitsAt: null, parent: null, ...fields,
 });
 const HOUR = 3_600_000;
 const NOW = 10 * HOUR;
@@ -318,6 +319,15 @@ test('stop <run> stops that run of this repository only, unless --any-repo', asy
   assert.match(elsewhere.stderr, /no running mr-cast process of this repository has run "shared-name" \(--any-repo stops it in other repositories\)/);
   for (const p of [a, b]) p.kill('SIGTERM');
   await Promise.all([a.exited, b.exited]);
+});
+
+test('ps says when an idle server exits, and that a voicing holds it off', () => {
+  const lines = formatPs([
+    proc(1, 'play', { run: 'idle', startedAt: NOW - HOUR, exitsAt: NOW + 11 * 60_000 + 1 }),
+    proc(4, 'play', { run: 'voicing', startedAt: NOW - HOUR }),
+    proc(3, 'plan', { run: 'kept', startedAt: NOW - HOUR, idleExit: 0 }),
+  ], NOW);
+  assert.deepEqual(lines.slice(1, 4).map((l) => l.split(/\s{2,}/)[3]), ['none · exits in 12m', 'none · voicing', 'none']);
 });
 
 test('stop --choices offers every process, the narrowing picks, and each process, with the command that stops it', () => {
@@ -398,6 +408,80 @@ test('the server reports pages coming and going, and calls onIdle once none has 
   } finally {
     await server.close();
   }
+});
+
+test('the idle count waits while busy, starts over once it is not, and reports when it would end', async () => {
+  const dist = path.join(tmp, 'dist');
+  const data = fs.mkdtempSync(path.join(tmp, 'data-'));
+  const deadlines = [];
+  let idled = 0;
+  let busy = false;
+  const server = await startServer({ distDir: dist, dataDir: data, port: 0, idle: { ms: 300, busy: () => busy, onDeadline: (ms) => deadlines.push(ms), onIdle: () => idled++ } });
+  try {
+    const start = Date.now();
+    assert.equal(deadlines.length, 1);
+    assert.ok(Math.abs(deadlines[0] - (start + 300)) < 50, 'counting from the start');
+    await new Promise((r) => setTimeout(r, 150));
+    busy = true;
+    await new Promise((r) => setTimeout(r, 400));
+    assert.equal(idled, 0, 'not while busy, though the first count has run out');
+    assert.equal(deadlines.at(-1), null);
+    busy = false;
+    const free = Date.now();
+    await new Promise((r) => setTimeout(r, 150));
+    assert.ok(deadlines.at(-1) >= free + 300 - 100, 'a new count from when it stopped being busy');
+    assert.equal(idled, 0);
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(idled, 1);
+  } finally {
+    await server.close();
+  }
+});
+
+/** A stalled model host: it answers each request with a few bytes and then nothing, until closed. */
+async function stalledHub() {
+  const requests = [];
+  let arrived;
+  const firstRequest = new Promise((resolve) => { arrived = resolve; });
+  const server = http.createServer((req, res) => {
+    requests.push(req);
+    res.writeHead(200, { 'content-length': '78268016' });
+    res.write('ONNX');
+    arrived();
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const close = () => new Promise((resolve) => {
+    server.closeAllConnections();
+    server.close(() => resolve());
+  });
+  after(close);
+  return { url: `http://127.0.0.1:${server.address().port}`, requests, firstRequest, close };
+}
+
+/** Gives the run's narration a clip on disk, so play serves it at once without a voice model. */
+function voiceRun(dir, text) {
+  const voice = 'kitten:luna';
+  const src = 'audio/0000abcd.wav';
+  fs.mkdirSync(path.join(dir, 'audio'), { recursive: true });
+  fs.writeFileSync(path.join(dir, src), Buffer.alloc(44 + 4800));
+  fs.writeFileSync(path.join(dir, 'voiceover.json'), JSON.stringify({ voice, speed: 1, pauses: 1, clips: { [narrationKey(text, voice, 1)]: { src, seconds: 0.2, voice, speed: 1 } } }));
+}
+
+test('an idle play does not exit while an edit is being voiced, and ps says so', async () => {
+  const { cwd, dir } = runIn('edit-voicing');
+  voiceRun(dir, 'Requests over the limit wait.');
+  const hub = await stalledHub();
+  const play = await startCli(cwd, ['play', '--no-open', '--port', '5790', '--idle-exit', '0.02'], /mr-cast player:/, { HF_ENDPOINT: hub.url });
+  const board = JSON.parse(fs.readFileSync(path.join(dir, 'storyboard.json'), 'utf8'));
+  board.scenes[0].narration = 'Requests over the limit wait their turn.';
+  fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify(board));
+  await within(hub.firstRequest, 5000);
+  assert.equal(await within(play.exited, 2500), 'timeout', 'still running though no page opened for twice --idle-exit');
+  const ps = cli(cwd, 'ps');
+  assert.match(ps.stdout, new RegExp(`^${play.pid}\\s+play\\s+\\S+\\s+none · voicing\\s`, 'm'));
+  await hub.close();
+  assert.deepEqual(await within(play.exited, 5000), { code: 0, signal: null });
+  assert.match(play.output, /no page has been open for 0\.02 minutes, so the player stopped/);
 });
 
 test('play with --idle-exit stops by itself when no page opens, and removes its entry', async () => {

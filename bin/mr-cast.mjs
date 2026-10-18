@@ -452,11 +452,18 @@ async function replaceRunning(kind, dir) {
   for (const { proc, outcome } of results) if (outcome === 'failed') console.error(`mr-cast: warning: pid ${proc.pid} did not stop; both run until it does`);
 }
 
-/** Records a server in the registry, with the pages open on it, which `startServer`'s onViewers keeps current. */
-function registerServer(kind, url, dir, idleMs) {
+/**
+ * Records a server in the registry before it starts, so it is there to hear the first deadline, then its URL, the
+ * pages open on it and when it exits for want of one, which `startServer`'s onViewers and idle.onDeadline keep current.
+ */
+function registerServer(kind, dir, idleMs) {
   const since = () => new Date().toISOString();
-  const entry = register({ kind, url, ...runFields(dir), viewers: 0, idleSince: since(), idleExit: idleMs / 60_000 });
-  return (viewers) => entry.update({ viewers, idleSince: viewers ? null : since() });
+  const entry = register({ kind, url: null, ...runFields(dir), viewers: 0, idleSince: since(), idleExit: idleMs / 60_000, exitsAt: null });
+  return {
+    url: (url) => entry.update({ url }),
+    viewers: (viewers) => entry.update({ viewers, idleSince: viewers ? null : since() }),
+    deadline: (ms) => entry.update({ exitsAt: ms === null ? null : new Date(ms).toISOString() }),
+  };
 }
 
 const idleMessage = (what, ms) => `mr-cast: no page has been open for ${plural(ms / 60_000, 'minute')}, so the ${what} stopped (--idle-exit 0 keeps it running)`;
@@ -546,7 +553,6 @@ async function play(argv) {
   let server = null;
   let stopped = false;
   let ready = false;
-  let viewersChanged = null;
   // The voicing line on screen, which the other output of play prints above.
   let line = null;
   const log = (msg) => (line ? line.log(msg) : console.error(msg));
@@ -587,14 +593,17 @@ async function play(argv) {
   };
 
   reportPace(serving.voiceover());
-  // Not while the first voicing runs: the page opens only once it is done.
-  const idle = idleMs ? { ms: idleMs, busy: () => !ready, onIdle: () => { log(idleMessage('player', idleMs)); shutdown(); } } : null;
+  const registered = registerServer('play', dir, idleMs);
+  // Not while a voicing runs: the page opens only once the first is done, and an edit's reloads the page once voiced.
+  const idle = idleMs ? {
+    ms: idleMs, busy: () => !ready || serving.holding(), onDeadline: registered.deadline, onIdle: () => { log(idleMessage('player', idleMs)); shutdown(); },
+  } : null;
   server = await startServer({
     distDir, dataDir: dir, port, onDataChange, holding: serving.holding, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard, audience: settings.audience,
-    onViewers: (n) => viewersChanged?.(n), idle,
+    onViewers: registered.viewers, idle,
   });
   const url = `${server.url}/#token=${server.token}`;
-  viewersChanged = registerServer('play', url, dir, idleMs);
+  registered.url(url);
   console.log(`mr-cast player: ${url}`);
 
   // Once a voice model has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
@@ -645,13 +654,13 @@ async function plan(argv) {
     for (const line of planLines(changed)) console.error(`  ${line}`);
   };
   await replaceRunning('plan', dir);
-  let viewersChanged = null;
-  const idle = idleMs ? { ms: idleMs, onIdle: () => { console.error(idleMessage('plan page', idleMs)); shutdown(); } } : null;
+  const registered = registerServer('plan', dir, idleMs);
+  const idle = idleMs ? { ms: idleMs, onDeadline: registered.deadline, onIdle: () => { console.error(idleMessage('plan page', idleMs)); shutdown(); } } : null;
   const server = await startServer({
-    distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings), audience: settings.audience, onViewers: (n) => viewersChanged?.(n), idle,
+    distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings), audience: settings.audience, onViewers: registered.viewers, idle,
   });
   const url = `${server.url}/plan#token=${server.token}`;
-  viewersChanged = registerServer('plan', url, dir, idleMs);
+  registered.url(url);
   console.log(`mr-cast plan: ${url}`);
   if (!values['no-open']) openBrowser(url);
   const shutdown = () => server.close();
