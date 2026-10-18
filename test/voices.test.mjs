@@ -166,7 +166,7 @@ test('a download is kept only when its sha256 matches the pinned one', async () 
 
 /** A server whose response sends `chunks` (strings) with `gapMs` between them, then ends unless `stall`. */
 async function slowServer({ chunks, gapMs, stall = false }) {
-  const server = http.createServer(async (req, res) => {
+  const server = http.createServer(async (_req, res) => {
     res.writeHead(200, { 'content-type': 'application/octet-stream' });
     for (const chunk of chunks) {
       res.write(chunk);

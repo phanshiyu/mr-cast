@@ -154,7 +154,7 @@ function checkFocusInHunk(refs, hunk, side, path, warnings) {
 const formatRange = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
 
 /** A code scene's `flow` names one step per focus range, in the order the ranges play. */
-function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
+function checkCodeFlow(scene, hunk, refsOk, p, errors) {
   const { flow } = scene;
   if (!Array.isArray(flow) || flow.length === 0)
     return errors.push(`${p}.flow: must be a non-empty array of { label, outcome? }`);
@@ -559,7 +559,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
         if (hunk && afterOk) checkFocusInHunk(s.focusLinesAfter, hunk, 'new', `${p}.focusLinesAfter`, warnings);
         if (hunk && beforeOk) checkFocusInHunk(s.focusLinesBefore, hunk, 'old', `${p}.focusLinesBefore`, warnings);
         const refsOk = (afterOk || s.focusLinesAfter === undefined) && (beforeOk || s.focusLinesBefore === undefined);
-        if (s.flow !== undefined) checkCodeFlow(s, refsOk ? hunk : undefined, refsOk, p, errors, warnings);
+        if (s.flow !== undefined) checkCodeFlow(s, refsOk ? hunk : undefined, refsOk, p, errors);
         break;
       }
 
@@ -582,7 +582,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
 
       case 'sequence': {
         const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) =>
-          checkNodeFields(n, q, errors, warnings),
+          checkNodeFields(n, q, errors),
         );
         if (!ids) break;
         if (ids.size > 6) warnings.push(`${p}.participants: ${ids.size} participants; more than 6 get cramped`);
@@ -680,7 +680,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
         break;
 
       case 'terminal':
-        checkTerminal(s, p, errors, warnings);
+        checkTerminal(s, p, errors);
         break;
 
       case 'array':
@@ -726,7 +726,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
     checkFocusSteps(s, p, hunks ?? {}, errors, warnings);
     // The highlight check trusts the scene's own schema, not the others'.
     if (errors.length === errorsBefore) checkHighlight(s, p, hunks ?? {}, warnings);
-    checkPenMarks(s, p, hunks ?? {}, errors, warnings);
+    checkPenMarks(s, p, hunks ?? {}, errors);
     checkInk(s, p, hunks ?? {}, errors);
     checkCamera(s, p, hunks ?? {}, errors);
     checkSpokenMarkup(s, p, warnings);

@@ -177,7 +177,7 @@ const MODELS = {
           : [key],
     },
     callout: true,
-    checkValue(value, scene, key) {
+    checkValue(value, _scene, key) {
       if (key.startsWith('b:'))
         return isText(value) ? null : 'is a badge, which must be text or a number ("" takes it off)';
       return typeof value === 'string' || isChange(value)

@@ -9,7 +9,7 @@ import { aType } from '../../shared/words.mjs';
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
-export function checkPenMarks(s, p, hunks, errors, warnings) {
+export function checkPenMarks(s, p, hunks, errors) {
   if (!Array.isArray(s.steps)) return;
   const code = s.type === 'code';
   const hunk = code && typeof s.hunkId === 'string' && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;

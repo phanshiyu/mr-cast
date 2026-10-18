@@ -356,7 +356,7 @@ scenes.push({
 const tampered = ['#1 Alice pays Bob 100 LD', ...b1.txs.slice(1)];
 const th = sha(blockText(b1.prev, tampered, b1.nonce));
 assert(zeroBits(th) < 30, 'tampered block fails the puzzle');
-const blocks = chain.map((b, i) => ({ id: `b${i + 1}`, i }));
+const blocks = chain.map((_, i) => ({ id: `b${i + 1}`, i }));
 scenes.push({
   type: 'graph',
   chapter: 'A chain of blocks',

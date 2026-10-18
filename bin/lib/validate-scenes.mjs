@@ -23,7 +23,7 @@ const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isText = (v) => typeof v === 'string';
 
 /** An optional ordered list of unique items, each checked by `valid`. */
-function checkHighlight(list, path, errors, warnings, { plural, one }, valid) {
+function checkHighlight(list, path, errors, { plural, one }, valid) {
   if (list === undefined) return;
   if (!Array.isArray(list)) return errors.push(`${path}: must be an array of ${plural}`);
   const seen = new Set();
@@ -69,7 +69,7 @@ export function checkTable(s, p, errors, warnings) {
   const rows = s.rows.length;
   const isRow = (n) => Number.isInteger(n) && n >= 0 && n < rows;
   const what = { plural: 'row indexes', one: `a row index from 0 to ${rows - 1}` };
-  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, what, isRow);
+  checkHighlight(s.highlight, `${p}.highlight`, errors, what, isRow);
   if (s.callout !== undefined && typeof s.callout !== 'string') errors.push(`${p}.callout: must be a string`);
   s.rows.forEach((row, j) => {
     if (row?.hidden !== undefined && typeof row.hidden !== 'boolean')
@@ -245,7 +245,7 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
       }
   }
   const what = { plural: 'file paths', one: 'a path this scene lists' };
-  checkHighlight(s.highlight, `${p}.highlight`, errors, warnings, what, (path) => paths.has(path));
+  checkHighlight(s.highlight, `${p}.highlight`, errors, what, (path) => paths.has(path));
 }
 
 /** A flow speaks per step when its steps carry `say`: every step, or none. */

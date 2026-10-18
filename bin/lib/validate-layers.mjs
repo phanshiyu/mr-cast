@@ -111,7 +111,7 @@ export function checkLayers(s, p, errors, warnings) {
       if (!item || typeof item !== 'object')
         return errors.push(`${r}: must be an object { id, label, icon?, caption? }`);
       claim(item.id, r);
-      checkNodeFields(item, r, errors, warnings);
+      checkNodeFields(item, r, errors);
     });
     if (layer.items.length > ITEMS_MAX)
       warnings.push(`${q}.items: ${layer.items.length} items; a band holds ${ITEMS_MAX} at a readable size`);

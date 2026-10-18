@@ -1,7 +1,7 @@
 // Checks for the terminal scene, mirroring src/types.ts. Pushes human/LLM-readable strings onto `errors`
 // and `warnings`, like the checks in validate.mjs.
 
-export function checkTerminal(s, p, errors, warnings) {
+export function checkTerminal(s, p, errors) {
   for (const k of ['title', 'window'])
     if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
   if (!Array.isArray(s.entries) || s.entries.length === 0)

@@ -344,12 +344,12 @@ function build() {
       steps: [
         { focus: 'col:Score z', say: 'Scores can be any size, even below zero. Banana gets minus three.' },
         {
-          set: Object.fromEntries(cands.map((c, k) => [`e^z@${k}`, e[k].toFixed(2)])),
+          set: Object.fromEntries(cands.map((_, k) => [`e^z@${k}`, e[k].toFixed(2)])),
           callout: `e^4.2 = ${e[0].toFixed(2)}, e^−3 = ${e[5].toFixed(2)}`,
           say: 'Raise e to each score. Now every number is above zero, and big scores pull far ahead.',
         },
         {
-          set: Object.fromEntries(cands.map((c, k) => [`Chance@${k}`, pct(p1[k])])),
+          set: Object.fromEntries(cands.map((_, k) => [`Chance@${k}`, pct(p1[k])])),
           callout: `${e[0].toFixed(2)} ÷ ${sum.toFixed(2)} = ${pct(p1[0])}`,
           say: `Divide each by the total, ${sum.toFixed(2)}. Now they add up to one hundred percent. Snape gets ${Math.round(p1[0] * 100)} percent.`,
         },

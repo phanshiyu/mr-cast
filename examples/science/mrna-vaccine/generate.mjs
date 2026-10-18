@@ -257,7 +257,7 @@ const yShape = (s = 1) =>
   `<path d="M 0 ${24 * s} L 0 0 M 0 0 L ${-16 * s} ${-20 * s} M 0 0 L ${16 * s} ${-20 * s}" fill="none" stroke="var(--accent)" stroke-width="${6 * s}" stroke-linecap="round"/>`;
 const bcell = (id, x, y, extra = '') =>
   `<g id="${id}"${extra}><circle cx="${x}" cy="${y}" r="78" class="tone-good" stroke-width="4"/><circle cx="${x + 10}" cy="${y + 6}" r="34" fill="var(--good)" stroke="none" opacity="0.5"/>${[0, 90, 180, 270, 45, 135, 225, 315].map((d) => `<g transform="translate(${f1(x + 86 * Math.sin(rad(d)))} ${f1(y - 86 * Math.cos(rad(d)))}) rotate(${d})">${yShape(0.8)}</g>`).join('')}</g>`;
-const homeOf = (i) => [B0.x + meet, B0.y];
+const home = [B0.x + meet, B0.y];
 const abStart = clonesTo.slice(0, 4).map(([x, y]) => [x + 100, y]);
 const antibodies = tips
   .slice(0, 4)
@@ -270,7 +270,7 @@ const immuneSvg =
   `<circle cx="${edge.x}" cy="${edge.y}" r="${edge.r}" fill="var(--surface)" stroke="var(--muted)" stroke-width="8"/>` +
   `<g id="flags">${flags.map((p) => spikeAt('', p, 1.3, 'tone-warn')).join('')}</g>` +
   `<text x="1480" y="440" text-anchor="middle" font-size="30" fill="var(--muted)">the cell</text><text x="1480" y="478" text-anchor="middle" font-size="30" fill="var(--muted)">from before</text>` +
-  clonesTo.map(([x, y], i) => bcell(`clone${i}`, ...homeOf(i))).join('') +
+  clonesTo.map((_, i) => bcell(`clone${i}`, ...home)).join('') +
   bcell('bcell', B0.x, B0.y) +
   `<text id="b-label" x="${B0.x}" y="${B0.y + 130}" text-anchor="middle" font-size="30" fill="var(--good)">an immune cell</text>` +
   antibodies +
@@ -301,7 +301,7 @@ scenes.push({
     {
       show: ['clone0', 'clone1', 'clone2', 'clone3', 'clone4'],
       move: Object.fromEntries(
-        clonesTo.map(([x, y], i) => [`clone${i}`, `translate(${x - homeOf(i)[0]} ${y - homeOf(i)[1]})`]),
+        clonesTo.map(([x, y], i) => [`clone${i}`, `translate(${x - home[0]} ${y - home[1]})`]),
       ),
       focus: ['clone0', 'clone1', 'clone2', 'clone3', 'clone4'],
       say: 'That match tells it to make copies of itself, again and again.',

@@ -40,7 +40,7 @@ export function checkIcon(icon, q, errors) {
 }
 
 /** The fields a node shares across graph and sequence scenes, plus the older `kind` and `modified`. Marks are checked in validate-marks.mjs. */
-export function checkNodeFields(n, q, errors, warnings) {
+export function checkNodeFields(n, q, errors) {
   if (!isStr(n?.label)) errors.push(`${q}.label: required string`);
   checkIcon(n?.icon, `${q}.icon`, errors);
   if (n?.caption !== undefined && typeof n.caption !== 'string') errors.push(`${q}.caption: must be a string`);
@@ -90,7 +90,7 @@ export function checkGraph(s, p, errors, warnings) {
     if (!isStr(n?.id)) errors.push(`${q}.id: required string`);
     else if (ids.has(n.id)) errors.push(`${q}.id: duplicate id "${n.id}"`);
     else ids.add(n.id);
-    checkNodeFields(n, q, errors, warnings);
+    checkNodeFields(n, q, errors);
     checkShape(n, q, errors, warnings);
     for (const k of ['x', 'y']) if (n && k in n) warnings.push(`${q}.${k}: ignored, layout is automatic`);
   });

@@ -27,7 +27,12 @@
   "linter": {
     "rules": {
       "preset": "recommended",
-      "correctness": { "noUnusedVariables": "error", "noUnusedImports": "error" },
+      "correctness": {
+        "noUnusedVariables": "error",
+        "noUnusedImports": "error",
+        // tsc compiles only the .ts and .tsx files; this catches a misspelt name in the .mjs.
+        "noUndeclaredVariables": "error"
+      },
       "nursery": { "noFloatingPromises": "error", "noMisusedPromises": "error" },
       "suspicious": {
         // eqeqeq; `== null` is still allowed, for null or undefined.

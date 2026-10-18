@@ -185,7 +185,7 @@ export function checkGraphState(s, p, errors, warnings) {
 }
 
 /** A frame's vars or an object's fields: name to text, number or `{ ref }`, as an object or as [name, value] pairs. */
-function checkValues(members, q, kind, ids, errors, warnings) {
+function checkValues(members, q, kind, ids, errors) {
   const pairs =
     Array.isArray(members) && members.every((p) => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string');
   if (!isRecord(members) && !pairs)
@@ -239,14 +239,14 @@ export function checkMemory(s, p, errors, warnings) {
     else if (ids.has(f.name))
       errors.push(`${q}.name: "${f.name}" is also an object id; refs name either, so rename one`);
     names.add(f.name);
-    checkValues(f.vars, `${q}.vars`, 'variable', ids, errors, warnings);
+    checkValues(f.vars, `${q}.vars`, 'variable', ids, errors);
     if (f.hidden !== undefined && typeof f.hidden !== 'boolean') errors.push(`${q}.hidden: must be true or false`);
   });
   objects.forEach((o, j) => {
     const q = `${p}.objects[${j}]`;
     if (!isRecord(o)) return;
     if (o.type !== undefined && !isStr(o.type)) errors.push(`${q}.type: must be a non-empty string, e.g. "list"`);
-    checkValues(o.fields, `${q}.fields`, 'field', ids, errors, warnings);
+    checkValues(o.fields, `${q}.fields`, 'field', ids, errors);
     if (o.hidden !== undefined && typeof o.hidden !== 'boolean') errors.push(`${q}.hidden: must be true or false`);
   });
   if (errors.length > before) return;

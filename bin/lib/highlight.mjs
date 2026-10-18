@@ -811,7 +811,7 @@ export function checkHighlight(scene, p, hunks, warnings) {
       `${p}.steps[${k}]: says ${said}, which ${dark.length === 1 && dark[0].items.length === 1 ? 'is' : 'are'} not lit; ${lit}. Focus what the words name, or say only what is lit`,
     );
   });
-  if (scene.type === 'array' || scene.type === 'memory') checkSwaps(scene, p, views, hunks, warnings);
+  if (scene.type === 'array' || scene.type === 'memory') checkSwaps(scene, p, views, warnings);
 }
 
 /** A step whose changes only trade values among the items it sets: a swap. */
@@ -823,7 +823,7 @@ function swapped(before, after) {
   return was.every((v, i) => v === now[i]) ? keys : null;
 }
 
-function checkSwaps(scene, p, views, hunks, warnings) {
+function checkSwaps(scene, p, views, warnings) {
   const states = sceneStates(scene);
   sceneSteps(scene).forEach((_, k) => {
     const keys = swapped(states[k], states[k + 1]);
