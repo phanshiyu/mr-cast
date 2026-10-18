@@ -312,15 +312,25 @@ export function walkStates(scene) {
     states.push(next);
     state = next;
   });
-  for (const key of Object.keys(states[0].hidden)) {
-    if (states.every((st) => st.hidden[key])) problems.push({ step: -1, field: hiddenField(scene, key), ref: '', message: 'starts hidden and no step shows it, so it is never drawn', names: [], level: 'warning' });
+  const neverShown = (key) => states.every((st) => st.hidden[key]);
+  if (scene.type === 'text') {
+    // A text scene hides by ref, and one ref can name several items, so each ref is reported once.
+    list(scene.hidden).forEach((ref, i) => {
+      const keys = resolveRef(scene, ref) ?? [];
+      const never = keys.filter(neverShown);
+      const which = never.length === keys.length ? 'it' : never.map((key) => `item ${key.slice(2)}`).join(', ');
+      if (never.length) problems.push({ step: -1, field: `hidden[${i}]`, ref: '', message: `${JSON.stringify(ref)} starts hidden and no step shows ${which}, so it is never drawn`, names: [], level: 'warning' });
+    });
+  } else {
+    for (const key of Object.keys(states[0].hidden)) {
+      if (neverShown(key)) problems.push({ step: -1, field: hiddenField(scene, key), ref: '', message: 'starts hidden and no step shows it, so it is never drawn', names: [], level: 'warning' });
+    }
   }
   return { states, problems };
 }
 
 /** Where the storyboard starts the item `key` hidden, such as "nodes[2].hidden". */
 function hiddenField(scene, key) {
-  if (scene.type === 'text') return 'hidden';
   const [kind, name] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
   const at = (field, items, match) => `${field}[${list(items).findIndex(match)}].hidden`;
   return {
