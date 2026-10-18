@@ -70,12 +70,15 @@ function trimmed(v: number, digits: number): string {
   return Number(v.toPrecision(digits)).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
+/** What a value prints with: a `prefix` before the number, such as "$", and a `unit` after it, such as "ms". */
+export type Affix = { unit?: string; prefix?: string };
+
 /**
- * "1,250 ms", "3.125 s", "0.0243%", "0.6667", "3.4M req/s": a value below 10,000 to four significant digits, so
+ * "1,250 ms", "$35", "3.125 s", "0.0243%", "0.6667", "3.4M req/s": a value below 10,000 to four significant digits, so
  * a value written with four or fewer prints as written and an unrounded float does not run on; thousands grouped.
  * Bigger values are compacted to three significant digits.
  */
-export function formatValue(v: number, unit: string | undefined): string {
+export function formatValue(v: number, { unit, prefix }: Affix): string {
   const abs = Math.abs(v);
   const sign = v < 0 ? MINUS : '';
   let text: string;
@@ -83,8 +86,9 @@ export function formatValue(v: number, unit: string | undefined): string {
   else if (abs >= 1e6) text = `${trimmed(abs / 1e6, 3)}M`;
   else if (abs >= 1e4) text = `${trimmed(abs / 1e3, 3)}k`;
   else text = abs.toLocaleString('en-US', { maximumSignificantDigits: 4 });
-  if (!unit) return sign + text;
-  return sign + text + (TIGHT_UNITS.has(unit) ? '' : ' ') + unit;
+  const head = sign + (prefix ?? '') + text;
+  if (!unit) return head;
+  return head + (TIGHT_UNITS.has(unit) ? '' : ' ') + unit;
 }
 
 function ticksOf(lo: number, span: number, count: number): number[] {
@@ -179,7 +183,7 @@ export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueF
     const values = scene.series.map((s) => s.values);
     return scene.labels.map((_, i) => {
       const y = layout.y(labelTotal(values, i));
-      return { series: k - 1, label: i, text: formatValue(labelTotal(shown, i), scene.unit), x: layout.xs[i]!, y, top: y - 14 - size * 1.25, size, below: false };
+      return { series: k - 1, label: i, text: formatValue(labelTotal(shown, i), scene), x: layout.xs[i]!, y, top: y - 14 - size * 1.25, size, below: false };
     });
   }
   const size = scene.kind === 'bar' && layout.barW < 64 ? NARROW_VALUE_FONT : VALUE_FONT;
@@ -190,7 +194,7 @@ export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueF
       const below = scene.kind === 'line' && k === 2 && scene.series.some((o, j) => j !== s && o.values[i]! > v);
       const x = scene.kind === 'bar' ? barX(layout, layout.xs[i]!, s, k) + layout.barW / 2 : layout.xs[i]!;
       const y = layout.y(v);
-      return [{ series: s, label: i, text: formatValue(shown[s]?.[i] ?? v, scene.unit), x, y, top: below ? y + 14 : y - 14 - size * 1.25, size, below }];
+      return [{ series: s, label: i, text: formatValue(shown[s]?.[i] ?? v, scene), x, y, top: below ? y + 14 : y - 14 - size * 1.25, size, below }];
     }),
   );
 }
@@ -234,7 +238,7 @@ function placeChart(scene: ChartScene, width: number, height: number, states: re
   const lo = ticks[0]!;
   const hi = ticks[ticks.length - 1]!;
   const n = scene.labels.length;
-  const axisW = Math.max(...ticks.map((t) => formatValue(t, scene.unit).length)) * TICK_CHAR_W + 30;
+  const axisW = Math.max(...ticks.map((t) => formatValue(t, scene).length)) * TICK_CHAR_W + 30;
   const x0 = axisW;
   const x1 = width - PLOT_RIGHT_PAD;
   const slotW = (x1 - x0) / n;

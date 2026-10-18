@@ -384,6 +384,7 @@
       "chapter": "Inflation",
       "title": "What the balance buys, in dollars",
       "kind": "bar",
+      "prefix": "$",
       "better": "higher",
       "narration": "Here is the same story as bars. Each pair starts out as the balance on your statement.",
       "labels": [

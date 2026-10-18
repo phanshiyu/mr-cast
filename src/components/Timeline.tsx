@@ -175,7 +175,7 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
   const full = placed.x1 - placed.x0;
   const w = Math.max(0, Math.min(full, playX - placed.x0));
   const label = interpolate(frame, [doneAt - 4, doneAt + 8], [0, 1], clamp);
-  const duration = formatValue(Math.abs(placed.span.to - placed.span.from), unit);
+  const duration = formatValue(Math.abs(placed.span.to - placed.span.from), { unit });
   const room = full - 24 - placed.label.width - measure(duration, { family: 'mono', weight: 600, size: 17 }) - 20;
   return (
     <div style={{ opacity: emphasis.opacity }}>

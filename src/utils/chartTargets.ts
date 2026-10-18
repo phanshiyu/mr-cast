@@ -125,7 +125,7 @@ function rowTargets(scene: ChartScene, layout: BarRowsLayout, values: number[][]
       const x = layout.x0 + (scene.stacked ? (run / longest) * layout.barMax : 0);
       const w = (v / longest) * layout.barMax;
       run += v;
-      const valueW = (scene.stacked && s < scene.series.length - 1 ? 0 : formatValue(scene.stacked ? labelTotal(values, l) : v, scene.unit).length * layout.valueFont * 0.62) + VALUE_PAD;
+      const valueW = (scene.stacked && s < scene.series.length - 1 ? 0 : formatValue(scene.stacked ? labelTotal(values, l) : v, scene).length * layout.valueFont * 0.62) + VALUE_PAD;
       const bar = { x, y: rowBarY(layout, top, scene.stacked ? 0 : s, k), width: Math.max(8, w) + valueW, height: layout.barH };
       boxes.set(`p:${s}/${l}`, bar);
       obstacles.push(bar);

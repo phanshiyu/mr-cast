@@ -213,7 +213,7 @@ function sceneGist(scene, hunks, storyboard) {
     }
     case 'chart': {
       const series = scene.series.map((x) => x.name).join(', ');
-      return titled(`${scene.kind}, ${series} over ${count(scene.labels, 'label')}${scene.unit ? ` in ${scene.unit}` : ''}${scene.annotation ? ', annotated' : ''}`);
+      return titled(`${scene.kind}, ${series} over ${count(scene.labels, 'label')}${scene.unit || scene.prefix ? ` in ${scene.prefix ?? ''}${scene.unit ?? ''}` : ''}${scene.annotation ? ', annotated' : ''}`);
     }
     case 'timeline': {
       const ats = [...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((x) => [x.from, x.to])];

@@ -750,6 +750,8 @@ export interface ChartScene extends SceneBase {
   title?: string;
   /** Unit printed after each value, e.g. "ms", "MB", "%", "req/s". */
   unit?: string;
+  /** Printed before each value, against the number, on the bars, slices and axis: "$" prints "$35", where unit "$" would print "35 $". */
+  prefix?: string;
   /** Categories: the x axis left to right, a horizontal chart's rows top to bottom, or a pie's slices clockwise from the top. Up to 12. */
   labels: string[];
   /** Up to 4; a pie or donut takes exactly one. With exactly two, each label of a bar or line chart gets a badge with the change from the first to the second, e.g. "−42%". */
