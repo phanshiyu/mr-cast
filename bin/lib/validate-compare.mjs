@@ -2,7 +2,7 @@
 // and `warnings`, like the checks in validate.mjs.
 
 import { checkImageFit, checkImageSrc } from './validate-image.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 const COMPARE_ROWS_MAX = 6;
 /** A code cell is a short snippet; past this many lines it crowds its row. */

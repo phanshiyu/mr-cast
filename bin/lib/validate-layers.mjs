@@ -3,7 +3,7 @@
 
 import { layerOf, layerRoute, stopKey, tokenSteps } from '../../shared/layers.mjs';
 import { checkNodeFields } from './validate-diagram.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 // More layers than this and each band gets too thin to read.
 export const LAYERS_MAX = 7;

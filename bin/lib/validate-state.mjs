@@ -5,7 +5,7 @@
 import { isPointer, walkStates } from '../../shared/state-steps.mjs';
 import { memoryMembers } from '../../shared/storyboard-json.mjs';
 import { didYouMean } from './suggest.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 const ARRAY_CELLS_MAX = 16;
 /** A table beside a graph has about 40% of the frame. */

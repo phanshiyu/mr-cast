@@ -3,7 +3,7 @@
 // below lists every markable item of every scene, and each rule walks it.
 
 import { diffFiles } from '../../shared/files.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 const CHANGES = ['added', 'removed', 'modified'];
 const BADGE_MAX = 14;

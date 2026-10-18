@@ -25,7 +25,7 @@ import { cueWord, spokenTexts } from '../../shared/timing.mjs';
 import { stageOf } from './validate-svg.mjs';
 import { checkStateSteps } from './validate-state.mjs';
 import { didYouMean } from './suggest.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 const isStr = (v) => typeof v === 'string';
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);

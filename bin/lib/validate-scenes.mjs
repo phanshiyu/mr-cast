@@ -4,10 +4,10 @@
 import { diffFiles, sceneFiles } from '../../shared/files.mjs';
 import { walkStates } from '../../shared/state-steps.mjs';
 import { checkStateSteps } from './validate-state.mjs';
+import { TONES } from './tones.mjs';
 
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
-export const TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
 const CHART_KINDS = ['bar', 'line', 'pie', 'donut'];
 /** Past this many slices the palette repeats a colour. */
 const PIE_SLICES_MAX = 8;

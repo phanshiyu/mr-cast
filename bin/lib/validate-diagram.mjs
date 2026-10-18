@@ -4,7 +4,7 @@
 import lucideNames from 'lucide-react/dynamicIconImports.mjs';
 import { NODE_KINDS } from '../../shared/normalize.mjs';
 import { didYouMean } from './suggest.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 const DIRECTIONS = ['forward', 'both', 'none'];
 const EDGE_STYLES = ['flow', 'solid', 'dashed'];

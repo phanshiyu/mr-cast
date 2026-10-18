@@ -24,7 +24,7 @@ import { stepTargets } from '../../shared/targets.mjs';
 import { didYouMean } from './suggest.mjs';
 import { checkStateSteps } from './validate-state.mjs';
 import { stageOf } from './validate-svg.mjs';
-import { TONES } from './validate-scenes.mjs';
+import { TONES } from './tones.mjs';
 
 const FIELDS = ['places', 'routes', 'lines', 'regions'];
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
