@@ -4,7 +4,7 @@
 //   run:.  explain:<name>                 a walkthrough mr-cast 0.11 left in .mr-cast/ or .mr-cast/explain/<name>
 //   video:<run>/<file>.mp4                a rendered video          (<run> is <name>, . or explain/<name>)
 //   stills:<run>  audio:<run>             PNG stills, voice-over clips; render and voice regenerate them
-//   cache:bundle  cache:remotion  cache:models   the shared cache in ~/.cache/mr-cast
+//   cache:bundle  cache:remotion  cache:kitten  cache:models   the shared cache in ~/.cache/mr-cast (models: Kokoro)
 //
 // Ids name places, not contents, so the same id means the same thing across listings. Deletion takes
 // artifacts only from a fresh listing, picked by `select`, so nothing outside .mr-cast/ and the cache can be named.
@@ -34,7 +34,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const CACHES = [
   { name: 'bundle', label: 'Player bundle', detail: 'player bundle; the next render rebuilds it in a few seconds', lock: false },
   { name: 'remotion', label: 'Chrome cache', detail: 'Chrome Headless Shell; the next render downloads it again', lock: true },
-  { name: 'models', label: 'Voice model', detail: 'Kokoro voice model; the next voice-over downloads it again (about 90 MB)', lock: true },
+  { name: 'kitten', label: 'Kitten voice model', detail: 'Kitten voice model; the next voice-over in a kitten voice downloads it again (about 82 MB)', lock: true },
+  { name: 'models', label: 'Kokoro voice model', detail: 'Kokoro voice model, the default voice before 0.27; the next voice-over in a kokoro voice downloads it again (about 90 MB)', lock: true },
 ];
 
 /**

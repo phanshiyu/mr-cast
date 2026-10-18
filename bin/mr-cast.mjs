@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -28,7 +29,8 @@ import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
-import { ensureVoiceover, readVoiceover, voicedLines } from './lib/voice.mjs';
+import { ensureVoiceover, readVoiceover, sampleVoice, voicedLines } from './lib/voice.mjs';
+import { DEFAULT_VOICE, formatVoices, resolveVoice } from './lib/voices.mjs';
 import { ensureVoiceoverInChild, stopVoicing } from './lib/voice-child.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -47,11 +49,14 @@ commands under "Used by the Claude Code skills" for you.
                     list what mr-cast stored (walkthroughs, videos, voice clips, downloads) with sizes;
                     with ids, --kind or --all, delete exactly what they pick (--dry-run only prints it);
                     --choices prints a menu of common picks, each with the command that deletes it
+  voices [--sample engine:name] [--out file.wav]
+                    list the voice engines, whether each model is downloaded, and their voices;
+                    --sample voices one sentence into a WAV file to hear before choosing
   version           print the mr-cast and Node versions (also --version, -v)
   help [--all]      this message; --all adds every command and option
 
 Used by the Claude Code skills:
-  status            the branch's changes against its base, uncommitted files, and the last pace
+  status            the branch's changes against its base, uncommitted files, and the last pace and voice
   extract [base] [--working]
                     start a walkthrough of the branch's diff in .mr-cast/<branch> and print a hunk index;
                     --working diffs the merge base against uncommitted changes
@@ -81,7 +86,9 @@ Used by the Claude Code skills:
   only, and a command without it uses the default, so pass the same flags to each command:
       --audience preread                 a pre-read: no code on screen, ending on the order to read the code in
       --pace slower|normal|faster        the voice's speed and the pauses around it (default normal)
-      --voice name                       the Kokoro voice (default af_heart)
+      --voice engine:name                the voice, such as kitten:luna (the default) or kokoro:af_heart;
+                                         mr-cast voices lists them
+      --engine kitten|kokoro             the voice engine, for a --voice name without one or its default voice
       --no-voice                         silent, with subtitles timed for reading`;
 
 const USAGE_ALL = `${USAGE}
@@ -349,7 +356,7 @@ function reportPace(voiceover) {
 }
 
 function reportVoiceProgress(event) {
-  if (event.type === 'download') console.error(`mr-cast: downloading the Kokoro voice model (about 90 MB, first run only) into ${event.cacheDir}`);
+  if (event.type === 'download') console.error(`mr-cast: downloading the ${event.engine} voice model (about ${event.mb} MB, first use only) into ${event.cacheDir}`);
   else if (event.type === 'clip') {
     const text = event.text.length > 60 ? `${event.text.slice(0, 57)}...` : event.text;
     console.error(`  voiced ${event.done}/${event.total} · ${event.seconds.toFixed(1)}s · ${text}`);
@@ -542,7 +549,7 @@ async function play(argv) {
   const url = `${server.url}/#token=${server.token}`;
   console.log(`mr-cast player: ${url}`);
 
-  // Once Kokoro has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
+  // Once a voice model has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
   const shutdown = () => {
     stopped = true;
@@ -870,7 +877,7 @@ function status(argv) {
     out.push(`working tree: ${parts.length ? parts.join(', ') : 'clean'}`, ...fileLines(s.working));
   }
   const last = lastChoices();
-  out.push(`last pace: ${last.pace ?? 'none yet'}`);
+  out.push(`last pace: ${last.pace ?? 'none yet'}`, `last voice: ${last.voice ?? `none yet (default ${DEFAULT_VOICE})`}`);
   console.log(out.join('\n'));
 }
 
@@ -930,7 +937,20 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
-const COMMANDS = { hook, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, upgrade: upgradeCommand };
+async function voices(argv) {
+  const { values } = parseArgs({ args: argv, options: { sample: { type: 'string' }, out: { type: 'string' }, ...SETTINGS_OPTIONS } });
+  if (values.sample === undefined) {
+    if (values.out !== undefined) throw new UserError('--out needs --sample');
+    console.log(formatVoices(lastChoices().voice).join('\n'));
+    return;
+  }
+  const voice = resolveVoice({ voice: values.sample, engine: values.engine });
+  const out = path.resolve(values.out ?? path.join(os.tmpdir(), `mr-cast-sample-${voice.replace(':', '-')}.wav`));
+  const seconds = await sampleVoice({ voice, speed: settingsFrom({ ...values, voice: undefined, engine: undefined }).pace.speed, out, onProgress: reportVoiceProgress });
+  console.log(`✓ ${voice} · ${seconds.toFixed(1)}s · ${out}`);
+}
+
+const COMMANDS = { hook, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, voices, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);

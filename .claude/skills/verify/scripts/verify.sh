@@ -103,7 +103,7 @@ cmd_doctor() {
   check "evidence dir exists ($EV)" "[ -d '$EV' ]"
   local cache="${XDG_CACHE_HOME:-$HOME/.cache}/mr-cast"
   check "Chrome Headless Shell cached (renders and browse need it)" "find '$cache/remotion' -name chrome-headless-shell -type f -perm -u+x | grep -q ."
-  check "Kokoro voice model cached (voice, play and render without --no-voice)" "[ -d '$cache/models' ]"
+  check "Kitten voice model cached (voice, play and render without --no-voice)" "[ -d '$cache/kitten' ]"
   local comp
   comp="$(compositor 2>/dev/null || true)"
   check "ffprobe runs" "DYLD_LIBRARY_PATH='$comp' '$comp/ffprobe' -version"

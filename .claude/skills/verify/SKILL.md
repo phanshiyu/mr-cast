@@ -38,7 +38,7 @@ It prints `verify: ready run=<run> repo=<run>/work/repo evidence=<run>/evidence`
 
 There is no server to keep alive for the CLI. The player is started per recipe with `play-start` (see Drive).
 
-First use on a fresh machine downloads Chrome Headless Shell (about 580 MB) and the Kokoro voice model (about 90 MB) into `~/.cache/mr-cast` on the first `still`/`render`/`voice`. Doctor reports whether they are already there.
+First use on a fresh machine downloads Chrome Headless Shell (about 580 MB) and the Kitten voice model (about 82 MB; Kokoro, about 90 MB, only for a kokoro voice) into `~/.cache/mr-cast` on the first `still`/`render`/`voice`. Doctor reports whether they are already there.
 
 ## Doctor
 

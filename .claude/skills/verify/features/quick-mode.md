@@ -19,7 +19,7 @@
 
 ## Driving it with verify.sh
 
-Preconditions: launched `$RUN`, Kokoro cached (doctor). A 2-scene storyboard with no intent scene, such as a decision `graph` and a `sequence`, in `$RUN/work/quick.json`.
+Preconditions: launched `$RUN`, the Kitten model cached (doctor). A 2-scene storyboard with no intent scene, such as a decision `graph` and a `sequence`, in `$RUN/work/quick.json`.
 
 - **Start.** `$V mrc $RUN quick-init -- init --quick --title "Rate limiter quick"` prints `.../.mr-cast/quick-rate-limiter-quick`. Copy `$RUN/work/quick.json` there as `storyboard.json`.
 - **Validate.** `$V mrc $RUN quick-validate -- validate` prints `✓ storyboard ok` and no `intent scene` warning.

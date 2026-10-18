@@ -56,7 +56,7 @@ Preconditions:
 - Coverage warnings (`h2 … is not shown`, `no scene draws how they fit together`) are advice. They leave the exit code 0. Only errors exit 1.
 - `still` without `--out` writes to `<data dir>/stills`, which cleanup deletes. Always use `--out $EV/...` for proof.
 - A still is the settled end state of a scene, not its animation. To prove motion or timing, extract frames from a render at chosen seconds.
-- `render` and `voice` without `--no-voice` need the Kokoro model in `~/.cache/mr-cast/models`. A voice failure prints `warning: continuing without voice-over` and still exits 0, so check for the audio stream with `probe` rather than trusting the exit code.
+- `render` and `voice` without `--no-voice` need the Kitten model in `~/.cache/mr-cast/kitten` (or, with a kokoro voice, the Kokoro model in `~/.cache/mr-cast/models`). A voice failure prints `warning: continuing without voice-over` and still exits 0, so check for the audio stream with `probe` rather than trusting the exit code.
 - `extract` names the base from `origin/HEAD`, then `main`, `master`, and so on. The demo repo has no remote, so it picks `main`.
 - A re-extract whose hunks are identical prints no note at all. Only changed or vanished hunk ids are reported.
 - `--no-voice` applies to its own command only: `render --name short` after **Render silent** is voiced again.

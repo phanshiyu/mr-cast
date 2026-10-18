@@ -94,11 +94,11 @@ jobs:
         with:
           path: .cache/mr-cast/remotion
           key: chrome-${{ runner.os }}-remotion-${{ steps.versions.outputs.remotion }}
-      - name: Cache the Kokoro voice model
+      - name: Cache the Kitten voice model
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .cache/mr-cast/models
-          key: kokoro-82m-v1.0-q8
+          path: .cache/mr-cast/kitten
+          key: kitten-tts-mini-0.8-c0272566
       - run: pnpm build
       - run: scripts/smoke.sh "$RUNNER_TEMP/smoke"
       - name: Show the smoke logs as annotations

@@ -1,9 +1,7 @@
 // Voice-over lookup shared by the CLI (plain Node) and the player bundle.
 
-export const DEFAULT_VOICE = 'af_heart';
-
 /**
- * Named paces: Kokoro's speaking speed, and a factor on every pause around the voice. A slower pace
+ * Named paces: the voice engine's speaking speed, and a factor on every pause around the voice. A slower pace
  * also leaves the viewer more time to look at the screen between sentences.
  */
 export const PACES = {
@@ -14,7 +12,8 @@ export const PACES = {
 
 /**
  * FNV-1a (32-bit) over the voice, the speed and the spoken text, as 8 hex digits. Names a clip in
- * voiceover.json. Speed 1 is left out of the hash, so clips voiced before speeds existed keep their names.
+ * voiceover.json. The voice is its full name with its engine, such as kitten:luna, so no engine's clip stands in
+ * for another's. Speed 1 is left out of the hash, so clips voiced before speeds existed keep their names.
  */
 export function narrationKey(text, voice, speed = 1) {
   const pace = speed === 1 ? '' : `${speed}\n`;

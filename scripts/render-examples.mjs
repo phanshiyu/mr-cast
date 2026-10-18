@@ -3,7 +3,7 @@
 // slashes as dashes (examples/primitives/array is primitives-array.mp4), since release assets are flat. Each renders
 // with the audience its meta.json records. `--shard i/n` renders the i-th (1-based) of n groups of about equal spoken
 // length, so n runners split the work. Renders a copy of each example, so nothing is written into examples/. Voices with the
-// Kokoro model in $XDG_CACHE_HOME/mr-cast. Exits 1 when any example fails to render.
+// default Kitten model in $XDG_CACHE_HOME/mr-cast. Exits 1 when any example fails to render.
 // `--list` prints the chosen examples and their flags instead of rendering.
 // usage: node scripts/render-examples.mjs <out dir> [--shard i/n] [--list] [name...]
 import { spawnSync } from 'node:child_process';
