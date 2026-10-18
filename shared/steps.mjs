@@ -21,6 +21,7 @@ const STEPS_OF = {
   array: own,
   memory: own,
   svg: own,
+  map: own,
   flow: (scene) => (Array.isArray(scene.steps) && scene.steps.some((step) => step?.say !== undefined) ? scene.steps : undefined),
 };
 

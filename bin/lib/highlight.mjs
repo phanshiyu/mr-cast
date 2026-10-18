@@ -13,6 +13,7 @@ import { compareTitles } from '../../shared/compare.mjs';
 import { outputLines } from '../../shared/terminal.mjs';
 import { arrayRows, cellKey, cellName, markerRow, rowKey, splitCellKey } from '../../shared/arrays.mjs';
 import { svgOf, textOf } from '../../shared/svg.mjs';
+import { countryName, countriesAt, mapItems, namedCountries } from '../../shared/map.mjs';
 import { outcomeKey, testKey, testKeys, testsMatrix } from '../../shared/tests.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -145,6 +146,18 @@ const ITEMS = {
       return [{ key, label: `${node.tag} ${id}${words ? ` "${words}"` : ''}`, names: [text(labels[id] ?? '')].filter(Boolean), terms: [id, words], parts: inside }];
     });
   },
+  map(scene, state) {
+    const routes = list(scene.routes);
+    const items = [...mapItems(scene)].flatMap(([key, item]) => {
+      if (state?.hidden[key]) return [];
+      const label = text(state?.values[key] ?? item.label);
+      const stops = item.kind === 'route' ? list(routes.find((r) => r?.id === item.id)?.stops).flatMap((s) => (typeof s === 'string' ? [`mp:${s}`] : [])) : [];
+      return [{ key, label: `${item.kind} ${item.id}${label ? ` "${label}"` : ''}`, names: [label].filter(Boolean), terms: [item.id], with: stops }];
+    });
+    // The countries the scene names anywhere, by their names.
+    const codes = [...new Set(namedCountries(scene))];
+    return [...items, ...codes.map((code) => ({ key: `mc:${code}`, label: `country ${code} ${countryName(code)}`, names: countriesAt('50m').get(code)?.names ?? [], terms: [] }))];
+  },
   compare(scene) {
     const titles = compareTitles(scene);
     const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
@@ -210,6 +223,7 @@ function changesOf(scene, before, after) {
       : key.startsWith('b:') ? `badge of ${key.slice(2)}`
       : key.startsWith('x:') ? `cell ${key.slice(2)}`
       : key.startsWith('s:') ? `text ${key.slice(2)}`
+      : /^m[prlg]:/.test(key) ? `label of ${key.slice(3)}`
       : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
@@ -219,7 +233,7 @@ function changesOf(scene, before, after) {
   });
   const shows = [...new Set([...keysOf(before.hidden), ...keysOf(after.hidden)])].flatMap((key) => {
     const [was, is] = [Boolean(before.hidden[key]), Boolean(after.hidden[key])];
-    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
+    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a|mp|mr|ml|mg):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
   });
   const tints = [...new Set([...keysOf(before.tints), ...keysOf(after.tints)])].flatMap((key) => (before.tints?.[key] === after.tints?.[key] ? [] : [`tints ${key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key)) : key.replace(/^\w+:/, '')} ${after.tints?.[key] ?? 'clear'}`]));
   const callout = before.callout === after.callout ? [] : [`callout ${after.callout ? JSON.stringify(plainText(after.callout)) : 'off'}`];
@@ -374,7 +388,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'tests'];
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'map', 'tests'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:

@@ -3,13 +3,15 @@
 
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
+import { mapBoxes, mapLabels, mapLayout } from '../../shared/map.mjs';
+import { stepTargets } from '../../shared/targets.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
+import type { ArrayScene, GraphScene, MapScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
 import { layoutMemory, memoryBoxes } from './memoryLayout';
-import { centredStage, staged, type MarkTargets } from './penGeometry';
+import { areaOf, centredStage, staged, type MarkTargets } from './penGeometry';
 import { layoutState, stateBoxes, stateScale } from './stateLayout';
 import { layoutTableStates, stateRows, tableBoxes } from './tableLayout';
 import { layoutTests, testsBoxes } from './testsLayout';
@@ -56,6 +58,22 @@ export function svgTargets(scene: SvgScene): MarkTargets[] {
   const { boxes } = svgGeometry(root);
   const targets = staged({ boxes: new Map([...boxes].map(([id, b]) => [`s:${id}`, b])) }, stage, box);
   return sceneStates(scene).slice(1).map(() => targets);
+}
+
+/**
+ * A map's items where each step's view settles: places by their dot and label, routes, lines and regions by the part
+ * of them on the stage, and the countries a step lights. Notes keep off the labels and dots.
+ */
+export function mapTargets(scene: MapScene): MarkTargets[] {
+  const box = headerBox(scene);
+  const { proj, cameras } = mapLayout(scene, box);
+  const countries = [...new Set(stepTargets(scene).flat())].filter((key) => key.startsWith('mc:'));
+  return sceneStates(scene).slice(1).map((state, k) => {
+    const camera = cameras[k + 1]!;
+    const obstacles = mapLabels(scene, proj, camera, box, state).flatMap((l) => [l.dot, l.box].filter((b) => b !== null));
+    const boxOf = (key: string) => (key.startsWith('mc:') ? (mapBoxes(scene, proj, camera, box, state, [key]).get(key) ?? null) : null);
+    return { boxes: mapBoxes(scene, proj, camera, box, state, countries), obstacles, area: areaOf(box), boxOf };
+  });
 }
 
 /** A state diagram does not change between steps, so every step has the same targets. */

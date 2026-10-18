@@ -8,6 +8,7 @@ import { indexRange } from './steps.mjs';
 import { ambiguousIndex, memberKey, resolveRef, splitMemberKey, TEXT_LEADS } from './targets.mjs';
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
+import { mapRefNames, tracedKeys } from './map.mjs';
 import { memoryMembers, tintEntries } from './storyboard-json.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -148,6 +149,27 @@ const MODELS = {
       if (svgOf(scene.svg).ids.get(key.slice(2))?.tag !== 'text') return 'names an element that is not <text>; only text can be set';
       return typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? null : 'must be text';
     },
+    move: null,
+    moveNames: () => [],
+  },
+  map: {
+    initial(scene) {
+      const items = ['places', 'routes', 'lines', 'regions'].flatMap((field) => list(scene[field]).map((item) => [field, item]));
+      const keyOf = (field, item) => `${{ places: 'mp', routes: 'mr', lines: 'ml', regions: 'mg' }[field]}:${item?.id}`;
+      return {
+        values: Object.fromEntries(items.flatMap(([field, item]) => (typeof item?.label === 'string' ? [[keyOf(field, item), item.label]] : []))),
+        places: {},
+        hidden: Object.fromEntries([...items.flatMap(([field, item]) => (item?.hidden === true ? [[keyOf(field, item), true]] : [])), ...tracedKeys(scene).map((key) => [key, true])]),
+      };
+    },
+    // A step can rewrite the label of a place, route, line or region.
+    set: { prefixes: ['mp:', 'mr:', 'ml:', 'mg:'], what: 'labelled place, route, line or region', help: () => 'the id of a place, route, line or region' },
+    show: { prefixes: ['mp:', 'mr:', 'ml:', 'mg:'], what: 'place, route, line or region', help: () => 'the id of a place, route, line or region' },
+    tint: { prefixes: ['mc:', 'mp:', 'mr:', 'ml:', 'mg:'], what: 'country, place, route, line or region', help: () => 'a country code such as "CAN", or the id of a place, route, line or region', expand: (_scene, key) => [key] },
+    // A traced route or line is shown, and draws on from its first stop.
+    trace: { prefixes: ['mr:', 'ml:'], what: 'route or line', help: () => 'the id of a route or a line' },
+    callout: true,
+    checkValue: (value) => (typeof value === 'string' ? null : 'must be text'),
     move: null,
     moveNames: () => [],
   },
@@ -302,6 +324,18 @@ export function walkStates(scene) {
         else next.hidden[key] = true;
       }
     }
+    if (step?.trace !== undefined) {
+      if (!model.trace) problem('trace', '', `${aType(scene.type)} scene has nothing to trace`);
+      else if (!Array.isArray(step.trace)) problem('trace', '', `must be an array of refs: ${model.trace.help(scene)}, or { "ref": "...", "when": "words of the say" }`);
+      else {
+        for (const item of step.trace) {
+          const ref = traceRef(item);
+          const key = oneKey(scene, ref, model.trace.prefixes);
+          if (!key) problem('trace', typeof ref === 'string' ? ref : '', `names no ${model.trace.what}; trace takes ${model.trace.help(scene)}`, refNamesOf(scene, model.trace.prefixes));
+          else delete next.hidden[key];
+        }
+      }
+    }
     applyTints(step?.tint, next, problem);
     if (step?.callout !== undefined) {
       if (!model.callout) problem('callout', '', `${aType(scene.type)} scene draws no callout`);
@@ -343,6 +377,10 @@ function hiddenField(scene, key) {
     fr: () => at('frames', scene.frames, (f) => f?.name === name),
     o: () => at('objects', scene.objects, (o) => o?.id === name),
     s: () => `hidden[${list(scene.hidden).indexOf(name)}]`,
+    mp: () => at('places', scene.places, (m) => m?.id === name),
+    mr: () => at('routes', scene.routes, (m) => m?.id === name),
+    ml: () => at('lines', scene.lines, (m) => m?.id === name),
+    mg: () => at('regions', scene.regions, (m) => m?.id === name),
   }[kind]();
 }
 
@@ -361,6 +399,7 @@ function refNamesOf(scene, prefixes) {
     ...(Array.isArray(scene.arrays) ? scene.arrays.map((a) => `array:${a?.name}`) : []),
     ...(scene.type === 'graph' ? list(scene.nodes).map((n) => n?.id) : []),
     ...(scene.type === 'svg' ? svgOf(scene.svg).ids.keys() : []),
+    ...(scene.type === 'map' ? mapRefNames(scene) : []),
   ];
   return names.filter((ref) => oneKey(scene, ref, prefixes));
 }
@@ -369,7 +408,10 @@ function refNamesOf(scene, prefixes) {
 export const sceneStates = (scene) => walkStates(scene).states;
 
 /** Whether a step changes anything. */
-export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout'].some((field) => step?.[field] !== undefined);
+export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace', 'view'].some((field) => step?.[field] !== undefined);
+
+/** The ref a `trace` entry names: the entry itself, or its `ref`. */
+export const traceRef = (item) => (item && typeof item === 'object' && !Array.isArray(item) ? item.ref : item);
 
 /**
  * The refs a step changes, as focus refs: what it sets, the pointers and ranges it moves, what it shows
@@ -378,7 +420,10 @@ export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'c
 export function changedRefs(scene, step) {
   const moved = Object.keys(step?.move ?? {}).map((name) => (list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
   const tints = tintEntries(step?.tint);
-  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
+  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...list(step?.trace).map(traceRef), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
   // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
-  return [...new Set(refs.length ? refs : tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : [])))];
+  const dimmed = tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : []));
+  // A map step that only moves the view lights what it frames, or the whole map.
+  const framed = scene?.type === 'map' && step?.view !== undefined ? (Array.isArray(step.view) ? step.view : ['map']) : [];
+  return [...new Set(refs.length ? refs : dimmed.length ? dimmed : framed)];
 }

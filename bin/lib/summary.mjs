@@ -258,6 +258,11 @@ function sceneGist(scene, hunks, storyboard) {
       const changes = (scene.steps ?? []).filter(changesState).length;
       return titled(`a drawing of ${count(svgIds(scene.svg), 'named part')}${changes ? `, ${changes} changing` : ''}`);
     }
+    case 'map': {
+      const changes = (scene.steps ?? []).filter(changesState).length;
+      const parts = [['places', 'place'], ['routes', 'route'], ['lines', 'line'], ['regions', 'region']].filter(([f]) => scene[f]?.length).map(([f, one]) => count(scene[f], one));
+      return titled(`a map${parts.length ? ` of ${parts.join(', ')}` : ''}${changes ? `, ${changes} changing` : ''}`);
+    }
     case 'memory': {
       const changes = (scene.steps ?? []).filter(changesState).length;
       return titled(`${count(scene.frames, 'frame')}, ${count(scene.objects, 'object')}${changes ? `, ${changes} changing` : ''}`);

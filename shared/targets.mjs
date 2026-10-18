@@ -5,6 +5,7 @@
 import { arrayRows, cellKey } from './arrays.mjs';
 import { plainText } from './markup.mjs';
 import { svgIds } from './svg.mjs';
+import { mapRef, mapRefNames } from './map.mjs';
 import { sceneFiles } from './files.mjs';
 import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
@@ -323,6 +324,10 @@ const TARGETS = {
   svg: {
     resolve: (scene, ref) => (typeof ref === 'string' && svgIds(scene.svg).includes(ref) ? [`s:${ref}`] : null),
     names: (scene) => svgIds(scene.svg),
+  },
+  map: {
+    resolve: mapRef,
+    names: mapRefNames,
   },
   text: {
     resolve(scene, ref) {

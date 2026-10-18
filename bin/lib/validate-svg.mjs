@@ -9,7 +9,7 @@ import { checkStateSteps } from './validate-state.mjs';
 import { didYouMean } from './suggest.mjs';
 
 /** The stage a drawing fills: the content box under its header, taller without a title or callout (src/components/theme.ts contentBox). */
-const stageOf = (s) => ({ width: 1920 - 104 - 104, height: 1080 - 64 - 150 - 62 - (s.title || s.callout || (Array.isArray(s.steps) && s.steps.some((st) => st?.callout)) ? 70 : 0) });
+export const stageOf = (s) => ({ width: 1920 - 104 - 104, height: 1080 - 64 - 150 - 62 - (s.title || s.callout || (Array.isArray(s.steps) && s.steps.some((st) => st?.callout)) ? 70 : 0) });
 
 const isStr = (v) => typeof v === 'string';
 

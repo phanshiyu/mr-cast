@@ -54,6 +54,7 @@ export const BUILD_SECONDS = {
   array: 1.2,
   memory: 1.5,
   svg: 1.2,
+  map: 1.2,
 };
 /**
  * Frames every scene has, from a step's start, to bring the step's items to rest: move its camera, draw
