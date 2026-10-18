@@ -3,7 +3,7 @@
 // shared/map.mjs, the same code the scene draws from). Each pushes human/LLM-readable strings onto `errors` and
 // `warnings`.
 
-import { countryCode, countryNames, isLatLng, MAP_SIDES, mapBoxes, mapLabels, mapLayout, mapRef, MIN_SPAN, PROJECTIONS, viewSpan } from '../../shared/map.mjs';
+import { antipodal, countryCode, countryNames, isLatLng, MAP_SIDES, mapBoxes, mapLabels, mapLayout, mapRef, MIN_SPAN, placePoint, PROJECTIONS, viewSpan } from '../../shared/map.mjs';
 import { focusSteps } from '../../shared/normalize.mjs';
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { stepTargets } from '../../shared/targets.mjs';
@@ -95,8 +95,10 @@ export function checkMap(s, p, errors, warnings) {
       }
       return checkPoint(stop, `${q}.stops[${k}]`, errors) ? stop.join(',') : null;
     });
+    const points = r.stops.map((stop, k) => (where[k] === null ? null : typeof stop === 'string' ? placePoint((s.places ?? []).find((pl) => pl?.id === stop)?.at) : [stop[1], stop[0]]));
     where.forEach((w, k) => {
       if (k > 0 && w !== null && w === where[k - 1]) errors.push(`${q}.stops[${k}]: is the same place as the stop before it, so that leg has no length; drop one`);
+      else if (k > 0 && points[k] && points[k - 1] && antipodal(points[k - 1], points[k])) errors.push(`${q}.stops[${k}]: is on the opposite side of the globe from the stop before it, so no one great circle joins them; add a stop between them on the way the route should go`);
     });
   });
   (s.lines ?? []).forEach((l, j) => {

@@ -91,11 +91,17 @@ export function mapRef(scene, ref) {
 export const mapRefNames = (scene) => ['map', ...KINDS.flatMap(([field]) => list(scene?.[field]).map((item) => item?.id)), ...countryNames()];
 
 /** A place's point as [lng, lat]: its own, or its country's label point. */
-function placePoint(at) {
+export function placePoint(at) {
   if (isLatLng(at)) return [at[1], at[0]];
   const code = countryCode(at);
   return code ? countriesAt('50m').get(code).label : null;
 }
+
+/**
+ * Whether a and b, both [lng, lat], are opposite each other on the globe, where every great circle through one passes
+ * through the other, so a leg between them has no one way to go.
+ */
+export const antipodal = (a, b) => geoDistance(a, b) > Math.PI - 1e-6;
 
 /** Points every `step` degrees along the great circle from a to b, both [lng, lat], ends included. */
 function greatCircle(a, b, step) {

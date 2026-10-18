@@ -55,6 +55,16 @@ test('a map scene fails on unknown countries, swapped points, bad stops, ids nam
   assert.deepEqual(await errorsOf({ ...flight, lines: [{ id: 'l', lat: 49, lng: 0 }] }), ['scenes[0].lines[0]: give lat for a parallel, such as 49, or lng for a meridian, such as 0; one of them']);
 });
 
+test('a route leg between opposite points of the globe fails, naming the stop, and one stop between them fixes it', async () => {
+  const scene = (stops) => ({ type: 'map', narration: 'A map.', places: [{ id: 'quito', at: [-0.18, -78.47], label: 'Quito' }, { id: 'opposite', at: [0.18, 101.53], label: 'Opposite' }], routes: [{ id: 'r', stops }], steps: [{ trace: ['r'], say: 'Here it goes.' }] });
+  const message = (k) => `scenes[0].routes[0].stops[${k}]: is on the opposite side of the globe from the stop before it, so no one great circle joins them; add a stop between them on the way the route should go`;
+  assert.deepEqual(await errorsOf(scene([[0, 0], [0, 180]])), [message(1)]);
+  assert.deepEqual(await errorsOf(scene([[10, 20], [-10, -160]])), [message(1)]);
+  assert.deepEqual(await errorsOf(scene([[0, 10], 'quito', 'opposite'])), [message(2)]);
+  assert.deepEqual(await errorsOf(scene([[0, 0], [0, 90], [0, 180]])), []);
+  assert.deepEqual(await errorsOf(scene([[0, 0], [0, 179.9]])), []);
+});
+
 test('a traced route is undrawn until its trace, which shows and lights it', () => {
   const { states, problems } = walkStates(flight);
   assert.deepEqual(problems, []);

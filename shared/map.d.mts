@@ -52,6 +52,8 @@ export declare function countryName(code: string): string;
 export declare function itemKey(field: 'places' | 'routes' | 'lines' | 'regions', id: string): string;
 export declare function mapRef(scene: MapScene, ref: unknown): string[] | null;
 export declare function mapRefNames(scene: MapScene): string[];
+export declare function placePoint(at: unknown): LngLat | null;
+export declare function antipodal(a: LngLat, b: LngLat): boolean;
 export declare function mapItems(scene: MapScene): Map<string, MapItem>;
 export declare function keyGeometry(scene: MapScene, key: string): object | null;
 export declare function viewBounds(scene: MapScene, view: MapView | undefined): [LngLat, LngLat] | null;
