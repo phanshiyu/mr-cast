@@ -807,8 +807,8 @@ export interface TimelineSpan extends Pick<Marks, 'highlight' | 'badge'> {
 export interface TimelineScene extends SceneBase {
   type: 'timeline';
   title?: string;
-  /** Unit of every `at`, `from` and `to`. */
-  unit: 'ms' | 's' | 'min' | 'h' | 'd';
+  /** Unit of every `at`, `from` and `to`, counted from the start: the axis begins at 0, so `at` is time elapsed, not a calendar year. */
+  unit: 'ms' | 's' | 'min' | 'h' | 'd' | 'wk' | 'mo' | 'yr';
   /** Revealed left to right. Up to 8. With `steps`, list them in order of `at`. */
   events: TimelineEvent[];
   /** Intervals drawn as bands under the axis, such as a wait, a window or a phase. Up to 4. */

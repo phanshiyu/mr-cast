@@ -31,7 +31,7 @@ Events at their real times on one axis, with spans for waits and windows, and a 
 
 ## Schema and validate notes
 
-A `focus` is an event index, an `"a-b"` range, or `"span:label"`. `unit` is one of `ms`, `s`, `min`, `h` and `d`. `{{MR_CAST}}/bin/mr-cast validate` fails on events out of order of `at` with steps and a span that ends before it starts, and warns past 8 events.
+A `focus` is an event index, an `"a-b"` range, or `"span:label"`. `unit` is one of `ms`, `s`, `min`, `h`, `d`, `wk`, `mo` and `yr`. The axis starts at 0, so `at` is the time since the start ("year 12 of the loan"), not a calendar date such as 1969. `{{MR_CAST}}/bin/mr-cast validate` fails on events out of order of `at` with steps and a span that ends before it starts, and warns past 8 events.
 
 `{{MR_CAST}}/bin/mr-cast schema timeline` prints its fields.
 
