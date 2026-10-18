@@ -1,7 +1,8 @@
 import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, ImageManifest, Scene, Storyboard } from '../types';
-import { layoutImage } from '../utils/imageLayout';
+import { cameraFor, layoutImage, viewAt } from '../utils/imageLayout';
+import { cameraShots, frameShot } from '../../shared/camera.mjs';
 import { sceneDurationInFrames, sceneSegments } from '../../shared/timing.mjs';
 import { contentBox } from '../components/theme';
 import { calloutFits } from './callout';
@@ -31,6 +32,7 @@ import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
 import { arrayTargets, erTargets, filesTargets, graphTargets, imageTargets, layersTargets, mapTargets, memoryTargets, plotTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
+import { chartStepTargets } from '../utils/chartTargets';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
 class Scaled {
@@ -185,6 +187,7 @@ const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { typ
   svg: svgTargets,
   plot: plotTargets,
   map: mapTargets,
+  chart: chartStepTargets,
   state: (scene) => everyStep(scene.steps, () => stateTargets(scene)),
   tests: testsTargets,
   er: (scene) => everyStep(scene.steps, () => erTargets(scene)),
@@ -217,8 +220,18 @@ export function inkStages(storyboard: Storyboard, hunks: HunkMap, images: ImageM
 export function imageScales(storyboard: Storyboard, images: ImageManifest): { scene: number; natural: { width: number; height: number }; drawn: { width: number; height: number }; scale: number }[] {
   return storyboard.scenes.flatMap((scene, i) => {
     if (scene.type !== 'image') return [];
-    const layout = layoutImage(scene, headerBox(scene), images);
-    if (!layout.natural || layout.upscale <= 2) return [];
-    return [{ scene: i, natural: layout.natural, drawn: { width: Math.round(layout.base.width), height: Math.round(layout.base.height) }, scale: layout.upscale }];
+    const area = headerBox(scene);
+    const layout = layoutImage(scene, area, images);
+    if (!layout.natural) return [];
+    // A pan and zoom, or a step's camera, enlarges the picture further; it is as soft as it is at its closest.
+    const { shots } = cameraShots(scene);
+    const regions = imageTargets(scene, images, shots.slice(1).map(() => 0));
+    const zoom = Math.max(
+      ...[0, 1].map((t) => cameraFor(layout, viewAt(scene, t)).zoom),
+      ...shots.slice(1).map((shot, k) => frameShot(shot, (key) => regions[k]?.boxes.get(key) ?? null, area).zoom),
+    );
+    const scale = layout.upscale * zoom;
+    if (scale <= 2) return [];
+    return [{ scene: i, natural: layout.natural, drawn: { width: Math.round(layout.base.width * zoom), height: Math.round(layout.base.height * zoom) }, scale }];
   });
 }

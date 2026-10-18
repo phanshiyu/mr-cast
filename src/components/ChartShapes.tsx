@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
+import { sceneStates } from '../../shared/state-steps.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import { headerBox } from '../fit/shell';
 import type { ChartScene } from '../types';
-import { chartOrder, chartStateOf, formatValue, labelTotal, shownBetween, valuesBetween } from '../utils/chartLayout';
-import { layoutBarRows, layoutPie, PIE_SWATCH, rowBarY, sliceText, sum, VALUE_PAD, type BarRowsLayout, type PieLayout } from '../utils/chartShapes';
-import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
+import { chartOrder, formatValue, labelTotal } from '../utils/chartLayout';
+import { layoutBarRows, layoutPie, PIE_SWATCH, rowBarY, sliceText, sum, VALUE_PAD, type PieLayout } from '../utils/chartShapes';
 import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
-import { stateFrame, type StateFrame } from '../utils/stateTrack';
+import { stateFrame } from '../utils/stateTrack';
+import { chartStepTargets, framed, point, sliceAngles } from '../utils/chartTargets';
 import { FitText } from './FitText';
 import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
@@ -36,16 +36,7 @@ export const Legend: React.FC<{ scene: ChartScene; legend: readonly Fit[]; serie
   </div>
 );
 
-/** Where a step leaves the chart: values partway from the step's start to its own, and each label's place in the order. */
-function framed(scene: ChartScene, f: StateFrame) {
-  const [before, now] = [chartStateOf(scene, f.before), chartStateOf(scene, f.now)];
-  const values = valuesBetween(before.values, now.values, f.t);
-  const shown = shownBetween(before.values, now.values, f.t);
-  const [from, to] = [chartOrder(scene, before.values, before.sort), chartOrder(scene, now.values, now.sort)];
-  return { before, now, values, shown, from, to, place: (i: number) => from[i]! + (to[i]! - from[i]!) * f.t };
-}
 
-const settledFrame = (state: SceneState): StateFrame => ({ before: state, now: state, t: 1, lit: 0 });
 
 /** How lit one value is through its label, its series or itself. */
 function emphasisOf(focus: (key: string) => Emphasis) {
@@ -59,33 +50,6 @@ function emphasisOf(focus: (key: string) => Emphasis) {
 /** A row's colour: each label its own when one series has no tone, so a bar is easy to follow as it moves. */
 const barColor = (scene: ChartScene, s: number, label: number) => (scene.series.length === 1 && !scene.series[0]!.tone ? sliceColor(label) : tones[seriesTone(scene.series, s)].color);
 
-/** Each row's bars and value, by item key, as a step leaves them; a note keeps off the labels, bars and values. */
-function rowTargets(scene: ChartScene, layout: BarRowsLayout, values: number[][], place: (i: number) => number, box: { width: number; height: number }): MarkTargets {
-  const boxes = new Map<string, Box>();
-  const obstacles: Box[] = [];
-  const k = scene.stacked ? 1 : scene.series.length;
-  const longest = Math.max(1e-9, ...scene.labels.map((_, l) => (scene.stacked ? labelTotal(values, l) : Math.max(...values.map((row) => row[l]!)))));
-  scene.labels.forEach((_, l) => {
-    const top = layout.top + place(l) * layout.rowH;
-    const label = layout.labels[l]!;
-    const labelBox = { x: layout.labelW - 18 - label.width, y: top + (layout.rowH - label.height) / 2, width: label.width, height: label.height };
-    boxes.set(`l:${l}`, labelBox);
-    obstacles.push(labelBox);
-    let run = 0;
-    scene.series.forEach((_, s) => {
-      const v = values[s]![l]!;
-      const x = layout.x0 + (scene.stacked ? (run / longest) * layout.barMax : 0);
-      const w = (v / longest) * layout.barMax;
-      run += v;
-      const valueW = (scene.stacked && s < scene.series.length - 1 ? 0 : formatValue(scene.stacked ? labelTotal(values, l) : v, scene.unit).length * layout.valueFont * 0.62) + VALUE_PAD;
-      const bar = { x, y: rowBarY(layout, top, scene.stacked ? 0 : s, k), width: Math.max(8, w) + valueW, height: layout.barH };
-      boxes.set(`p:${s}/${l}`, bar);
-      obstacles.push(bar);
-    });
-  });
-  scene.series.forEach((_, s) => boxes.set(`s:${s}`, union(scene.labels.map((__, l) => boxes.get(`p:${s}/${l}`)))!));
-  return { boxes, obstacles, area: areaOf(box) };
-}
 
 /** A horizontal bar chart: rows that slide to their places when sorted, bars as long as their values against the largest. */
 export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durationInFrames, segments }) => {
@@ -103,14 +67,12 @@ export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durati
   const ends = scene.labels.map((_, l) => (scene.stacked ? labelTotal(values, l) : Math.max(...values.map((row) => row[l]!))));
   const longest = Math.max(1e-9, ...ends);
   const stagger = Math.min(5, (buildFrames('chart') - START - 16) / Math.max(1, scene.labels.length - 1));
-  const marks = (step: number) => {
-    const settled = framed(scene, settledFrame(states[step + 1]!));
-    return rowTargets(scene, layout, settled.values, settled.place, box);
-  };
+  const marks = useMemo(() => chartStepTargets(scene), [scene]);
   return (
     <SceneShell
       scene={scene}
       durationInFrames={durationInFrames}
+      camera={{ hunks, segments, targets: (k) => marks[k] ?? null }}
       aside={<>{scene.series.length > 1 ? <Legend scene={scene} legend={layout.legend} seriesOpacity={seriesOpacity} /> : null}<HeaderCallout scene={scene} s={f} /></>}
     >
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
@@ -178,13 +140,11 @@ export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durati
           );
         })}
       </div>
-      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={marks} />
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />
     </SceneShell>
   );
 };
 
-/** Angles are radians clockwise from twelve o'clock. */
-const point = (cx: number, cy: number, r: number, a: number) => [cx + r * Math.sin(a), cy - r * Math.cos(a)] as const;
 
 function wedge(layout: PieLayout, from: number, to: number, out = 0): string {
   const span = Math.min(to - from, Math.PI * 2 - 1e-4);
@@ -200,28 +160,7 @@ function wedge(layout: PieLayout, from: number, to: number, out = 0): string {
   return `M ${x0} ${y0} A ${layout.r} ${layout.r} 0 ${large} 1 ${x1} ${y1} L ${i1} ${j1} A ${layout.hole} ${layout.hole} 0 ${large} 0 ${i0} ${j0} Z`;
 }
 
-/** The box around a wedge, from points along its arcs. */
-function wedgeBox(layout: PieLayout, from: number, to: number): Box {
-  const steps = 16;
-  const pts = Array.from({ length: steps + 1 }, (_, i) => from + ((to - from) * i) / steps).flatMap((a) => [point(layout.cx, layout.cy, layout.r, a), point(layout.cx, layout.cy, layout.hole, a)]);
-  const xs = pts.map((p) => p[0]);
-  const ys = pts.map((p) => p[1]);
-  return { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
-}
 
-/** Each slice's start angle, clockwise from the top in the given order, and its sweep. */
-function sliceAngles(values: readonly number[], order: readonly number[]): { from: number; span: number }[] {
-  const total = sum(values) || 1;
-  const byPlace = values.map((_, i) => i).sort((a, b) => order[a]! - order[b]!);
-  const out = new Array<{ from: number; span: number }>(values.length);
-  let at = 0;
-  for (const i of byPlace) {
-    const span = (values[i]! / total) * Math.PI * 2;
-    out[i] = { from: at, span };
-    at += span;
-  }
-  return out;
-}
 
 /** A pie or donut of one series: slices that sweep in, change size as steps set them, and swap places when sorted. */
 export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durationInFrames, segments }) => {
@@ -241,23 +180,9 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
   const focus = focusSpotlight(scene, hunks, segments, frame);
   const valueOf = emphasisOf(focus);
   const legendIn = interpolate(frame, [START + 10, START + 26], [0, 1], clamp);
-  const marks = (step: number) => {
-    const state = chartStateOf(scene, states[step + 1]!);
-    const settled = sliceAngles(state.values[0]!, chartOrder(scene, state.values, state.sort));
-    const order = chartOrder(scene, state.values, state.sort);
-    const boxes = new Map<string, Box>();
-    scene.labels.forEach((_, i) => {
-      const wedgeAt = wedgeBox(layout, settled[i]!.from, settled[i]!.from + settled[i]!.span);
-      const row = { x: layout.legendX, y: layout.legendTop + order[i]! * layout.rowH + 6, width: box.width - layout.legendX, height: layout.rowH - 12 };
-      boxes.set(`l:${i}`, wedgeAt);
-      boxes.set(`p:0/${i}`, wedgeAt);
-      boxes.set(`x:${i}`, row);
-    });
-    boxes.set('s:0', { x: layout.cx - layout.r, y: layout.cy - layout.r, width: 2 * layout.r, height: 2 * layout.r });
-    return { boxes, obstacles: [boxes.get('s:0')!, ...scene.labels.map((_, i) => boxes.get(`x:${i}`)!)], area: areaOf(box) };
-  };
+  const marks = useMemo(() => chartStepTargets(scene), [scene]);
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={f} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<HeaderCallout scene={scene} s={f} />}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
           {scene.labels.map((_, i) => {
@@ -310,7 +235,7 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
           );
         })}
       </div>
-      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={marks} />
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />
     </SceneShell>
   );
 };

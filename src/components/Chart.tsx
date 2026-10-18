@@ -5,10 +5,10 @@ import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import { headerBox } from '../fit/shell';
 import type { ChartScene } from '../types';
-import { ANNOTATION_BAND, barX, chartOrder, chartStateOf, delta, formatValue, labelTotal, layoutChart, shownBetween, valuesBetween, VALUE_FONT, valueLabels, withValues, type ChartLayout, type Direction, type ValueLabel as Value } from '../utils/chartLayout';
-import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
+import { ANNOTATION_BAND, barX, delta, formatValue, labelTotal, layoutChart, VALUE_FONT, valueLabels, type ChartLayout, type Direction, type ValueLabel as Value } from '../utils/chartLayout';
 import { brighter, focusSpotlight, stepSpring, type Emphasis } from '../utils/spotlight';
-import { stateFrame, type StateFrame } from '../utils/stateTrack';
+import { stateFrame } from '../utils/stateTrack';
+import { BADGE_H, chartAt, chartStepTargets, showsBadges, slotTop } from '../utils/chartTargets';
 import { BarRows, Legend, PieChart } from './ChartShapes';
 import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
@@ -20,7 +20,6 @@ import { clamp, colors, fonts } from './theme';
 import { seriesTone, tones } from './tones';
 
 const START = 10;
-const BADGE_H = 34;
 const directionTone: Record<Direction, { color: string; bg: string }> = { good: tones.good, bad: tones.bad, neutral: tones.accent };
 
 interface Point {
@@ -320,55 +319,7 @@ const Lines: React.FC<{ scene: ChartScene; layout: ChartLayout; shown: number[][
   );
 };
 
-const showsBadges = (scene: ChartScene) => scene.series.length === 2 && scene.badges !== false && !scene.stacked;
 
-/** The top of the labels above a slot's highest value, where its change badge sits. */
-function slotTop(scene: ChartScene, layout: ChartLayout, i: number): number {
-  const valueH = VALUE_FONT * 1.25 + 14;
-  if (scene.kind === 'line') {
-    const [a, b] = [scene.series[0]!.values[i]!, scene.series[1]!.values[i]!];
-    return layout.y(Math.max(a, b)) - valueH - 10;
-  }
-  return layout.y(scene.stacked ? labelTotal(scene.series.map((s) => s.values), i) : Math.max(...scene.series.map((s) => s.values[i]!))) - valueH - 6;
-}
-
-/**
- * The box of each item a step can focus, by its key in shared/targets.mjs: a value's number and the top
- * of its bar or its point, a label's text, a series' values together. A note keeps off the bars, the
- * numbers, the labels, the change badges and the annotation.
- */
-function chartTargets(scene: ChartScene, layout: ChartLayout, size: { width: number; height: number }): MarkTargets {
-  const font = scene.kind === 'bar' && layout.barW < 64 ? 17 : VALUE_FONT;
-  const valueH = font * 1.25 + 14;
-  const boxes = new Map<string, Box>();
-  const obstacles: Box[] = [];
-  const lines = scene.kind === 'line' ? scene.series.flatMap((s) => s.values.slice(1).flatMap((v, i) => Array.from({ length: 8 }, (_, t) => ({ x: layout.xs[i]! + ((layout.xs[i + 1]! - layout.xs[i]!) * t) / 8, y: layout.y(s.values[i]!) + ((layout.y(v) - layout.y(s.values[i]!)) * t) / 8 })))) : [];
-  scene.series.forEach((series, s) =>
-    series.values.forEach((v, l) => {
-      const below = scene.stacked ? labelTotal(scene.series.slice(0, s).map((o) => o.values), l) : 0;
-      const top = layout.y(below + v);
-      const value =
-        scene.kind === 'bar'
-          ? scene.stacked
-            ? { x: barX(layout, layout.xs[l]!, s, 1, true) - 6, y: top - (s === scene.series.length - 1 ? valueH : 0), width: layout.barW + 12, height: layout.y(below) - top + (s === scene.series.length - 1 ? valueH : 0) }
-            : { x: barX(layout, layout.xs[l]!, s, scene.series.length) - 6, y: top - valueH, width: layout.barW + 12, height: valueH + Math.min(40, layout.plot.y1 - top) }
-          : { x: layout.xs[l]! - 34, y: top - valueH, width: 68, height: valueH + 16 };
-      boxes.set(`p:${s}/${l}`, value);
-      obstacles.push(scene.kind === 'bar' ? { x: value.x, y: value.y, width: value.width, height: layout.plot.y1 - value.y } : value);
-    }),
-  );
-  scene.labels.forEach((_, i) => {
-    const text = layout.xLabels[i]!;
-    const width = Math.min(layout.slotW, text.width + 8);
-    const label = { x: layout.xs[i]! - width / 2, y: layout.xLabelTop - 4, width, height: text.lines.length * layout.xLabelFont * 1.3 + 8 };
-    boxes.set(`l:${i}`, label);
-    obstacles.push(label);
-    if (showsBadges(scene)) obstacles.push({ x: layout.xs[i]! - 60, y: slotTop(scene, layout, i) - BADGE_H, width: 120, height: BADGE_H });
-  });
-  scene.series.forEach((_, s) => boxes.set(`s:${s}`, union(scene.labels.map((__, l) => boxes.get(`p:${s}/${l}`)))!));
-  if (scene.annotation) obstacles.push({ x: layout.plot.x0, y: 0, width: layout.plot.x1 - layout.plot.x0, height: ANNOTATION_BAND });
-  return { boxes, obstacles, lines, area: areaOf(size) };
-}
 
 function annotationPoint(scene: ChartScene, layout: ChartLayout): Point | null {
   const note = scene.annotation;
@@ -432,14 +383,6 @@ const Note: React.FC<{ note: NoteBox; appear: number }> = ({ note, appear }) => 
 /** How lit one value is: bright through its label, its series or itself, and glowing through its series or itself. */
 type ValueEmphasis = (series: number, label: number) => Emphasis;
 
-/** The chart as the step at `frame` shows it: its values partway to the step's, and each label's slot sliding to its place. */
-function chartAt(source: ChartScene, base: ChartLayout, f: StateFrame): { scene: ChartScene; layout: ChartLayout; shown: number[][] } {
-  const [before, now] = [chartStateOf(source, f.before), chartStateOf(source, f.now)];
-  const scene = withValues(source, valuesBetween(before.values, now.values, f.t));
-  const [from, to] = [chartOrder(source, before.values, before.sort), chartOrder(source, now.values, now.sort)];
-  const xs = source.labels.map((_, i) => base.xs[from[i]!]! + (base.xs[to[i]!]! - base.xs[from[i]!]!) * f.t);
-  return { scene, layout: { ...base, xs }, shown: shownBetween(before.values, now.values, f.t) };
-}
 
 export const Chart: React.FC<SceneProps<ChartScene>> = (props) => {
   if (props.scene.kind === 'pie' || props.scene.kind === 'donut') return <PieChart {...props} />;
@@ -457,10 +400,7 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
   const f = stateFrame(states, segments, frame);
   const { scene, layout, shown } = chartAt(source, base, f);
   // Marks land where each step's values settle.
-  const marks = (k: number) => {
-    const settled = chartAt(source, base, { before: states[k + 1]!, now: states[k + 1]!, t: 1, lit: 0 });
-    return chartTargets(settled.scene, settled.layout, box);
-  };
+  const marks = useMemo(() => chartStepTargets(source), [source]);
   const timeline = buildTimeline(scene);
   // Each step lights its labels, series or values while the rest dim. A label stays bright while any of its values is lit.
   const stepFroms = segments.slice(1).map((segment) => segment.from);
@@ -485,7 +425,7 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
   const leaderEnd = point ? (scene.kind === 'bar' ? point.y - VALUE_FONT * 1.25 - 18 : point.y - 15) : 0;
 
   return (
-    <SceneShell scene={source} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: marks }} aside={<><Legend scene={scene} legend={layout.legend} seriesOpacity={seriesOpacity} /><HeaderCallout scene={source} s={f} /></>}>
+    <SceneShell scene={source} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<><Legend scene={scene} legend={layout.legend} seriesOpacity={seriesOpacity} /><HeaderCallout scene={source} s={f} /></>}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
         {scene.labels.map((_, i) => (
           <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />
@@ -515,7 +455,7 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
           : null}
         {note ? <Note note={note} appear={noteIn} /> : null}
       </div>
-      <PenMarks scene={source} hunks={hunks} segments={segments} targets={marks} />
+      <PenMarks scene={source} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />
     </SceneShell>
   );
 };
