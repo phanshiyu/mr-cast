@@ -241,6 +241,19 @@ export function shaftBulge(sketch: Sketch): Pt {
   return pts.reduce((m, p) => (off(p) > off(m) ? p : m), pts[Math.floor(pts.length / 2)]!);
 }
 
+/**
+ * A spot for text level with `mark`, just past the last thing on its row, as a comment at the end of a line of code:
+ * read as the mark's without an arrow. Null when the row runs to the edge or the spot covers something.
+ */
+export function rowEnd(mark: Box, size: Size, obstacles: readonly Box[], area: Box): Box | null {
+  const y = mark.y + mark.height / 2 - size.height / 2;
+  const band = { x: area.x, y, width: area.width, height: size.height };
+  const end = Math.max(right(mark), ...obstacles.filter((o) => overlapArea(o, band) > 0 && o.x < right(mark) + 400).map(right));
+  const box = { x: end + 24, y, ...size };
+  if (right(box) > right(area) || obstacles.some((o) => overlapArea(box, o) > 0)) return null;
+  return box;
+}
+
 /** Text put where `placeText` found no clear spot: off in the nearest free space, with a leader arrow back to the mark. */
 export function leader(mark: Box, size: Size, obstacles: readonly Box[], area: Box, seed: number, pen: number): { box: Box; strokes: Stroke[] } {
   const c = center(mark);

@@ -9,7 +9,7 @@ import { plainText } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { cueFrame } from '../../shared/timing.mjs';
 import type { HunkMap, InkItem, Scene } from '../types';
-import { besideBox, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
+import { besideBox, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, rowEnd, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
 import { center, grow, seedOf, sketchMark, strokeLength, strokePath, union, type Box, type MarkTargets, type Pt, type Sketch, type Stroke } from '../utils/penGeometry';
 import type { SpokenSegment } from '../utils/timing';
 import { clamp, colors } from './theme';
@@ -141,8 +141,9 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
         if (item.side) box = keepIn(besideBox(target, item.side, blockSize, 16), t.area);
         else {
           const near = placeText(grow(target, 6), target, blockSize, obstacles, t.area);
-          box = near.box;
-          if (near.crowded) {
+          const end = near.crowded ? rowEnd(grow(target, 6), blockSize, obstacles, t.area) : null;
+          box = end ?? near.box;
+          if (near.crowded && !end) {
             const far = leader(grow(target, 6), blockSize, obstacles, t.area, seed, PEN);
             box = far.box;
             sketch = { strokes: far.strokes, bounds: strokesBounds(far.strokes) };
@@ -156,8 +157,9 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
       sketch = it.verb === 'tick' ? tickSketch(target, seed, PEN) : sketchMark(it.verb as 'circle' | 'box' | 'underline' | 'strike' | 'cross', target, t.area, obstacles, seed, PEN);
       if (block) {
         const near = placeText(sketch.bounds, target, blockSize, obstacles, t.area, item.side ? SIDE_ONLY[item.side] : it.verb === 'underline' ? UNDER_FIRST : undefined);
-        box = near.box;
-        if (near.crowded && !item.side) {
+        const end = near.crowded && !item.side ? rowEnd(sketch.bounds, blockSize, obstacles, t.area) : null;
+        box = end ?? near.box;
+        if (near.crowded && !item.side && !end) {
           const far = leader(sketch.bounds, blockSize, obstacles, t.area, seed, PEN);
           box = far.box;
           sketch = { strokes: [...sketch.strokes, ...far.strokes], bounds: sketch.bounds };
