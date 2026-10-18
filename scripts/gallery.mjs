@@ -12,6 +12,10 @@ import sharp from 'sharp';
 import { ROOT, copyExample, findExamples } from './lib/examples.mjs';
 
 const SCENES = path.join(ROOT, 'skill/mr-cast/references/scenes');
+const REFERENCES = path.join(ROOT, 'skill/mr-cast/references');
+/** A demo's reference: its scene type's file, or for a tool on every scene, such as ink, the tool's own file. */
+const reference = (type) => (fs.existsSync(path.join(SCENES, `${type}.md`)) ? `scenes/${type}.md` : `${type}.md`);
+const isScene = (type) => reference(type).startsWith('scenes/');
 const VIDEO = (name) => `https://github.com/phanshiyu/mr-cast/releases/latest/download/${name}.mp4`;
 // The scene each worked example's still shows, at the end of its last step.
 const SCENE = {
@@ -31,13 +35,14 @@ const SCENE = {
 const all = findExamples();
 const storyboard = (e) => JSON.parse(fs.readFileSync(path.join(e.dir, 'storyboard.json'), 'utf8'));
 const worked = all.filter((e) => e.name in SCENE);
-// A demo named for a scene type shows it; one named otherwise, such as tests-map, is a pattern its type's reference points at.
+// A demo named for a scene type or a tool, such as ink, shows it; one named otherwise, such as tests-map, is a pattern
+// its type's reference points at.
 const demos = all
-  .filter((e) => e.rel.startsWith(`primitives${path.sep}`) && fs.existsSync(path.join(SCENES, `${path.basename(e.rel)}.md`)))
+  .filter((e) => e.rel.startsWith(`primitives${path.sep}`) && fs.existsSync(path.join(REFERENCES, reference(path.basename(e.rel)))))
   .map((e) => ({ ...e, type: path.basename(e.rel) }));
 const stills = [
   ...worked.map((e) => ({ example: e, key: e.name, scene: SCENE[e.name], out: `assets/examples/${e.name}.png` })),
-  ...demos.map((e) => ({ example: e, key: e.type, scene: storyboard(e).scenes.findIndex((s) => s.type === e.type), out: `assets/scenes/${e.type}.png` })),
+  ...demos.map((e) => ({ example: e, key: e.type, scene: isScene(e.type) ? storyboard(e).scenes.findIndex((s) => s.type === e.type) : 0, out: `assets/scenes/${e.type}.png` })),
 ];
 const wanted = process.argv.slice(2);
 for (const w of wanted) if (!stills.some((s) => s.key === w)) throw new Error(`no example or demo "${w}"; they are ${stills.map((s) => s.key).join(', ')}`);
@@ -64,7 +69,7 @@ try {
 }
 
 /** The scene reference's one-line description: the first paragraph under its heading. */
-const describe = (type) => fs.readFileSync(path.join(SCENES, `${type}.md`), 'utf8').split('\n\n')[1].trim();
+const describe = (type) => fs.readFileSync(path.join(REFERENCES, reference(type)), 'utf8').split('\n\n')[1].trim();
 const storyboardLink = (e) => `[examples/${e.rel}/storyboard.json](../examples/${e.rel}/storyboard.json)`;
 const videoLink = (e) => `[${e.name}.mp4](${VIDEO(e.name)})`;
 
@@ -87,24 +92,25 @@ const aliases = Object.entries(ALIASES).map(([type, as]) => ({
   type,
   text: [`### ${type}`, '', `An older scene type, drawn as a [${as}](#${as}) scene; see [${as}.md](../skill/mr-cast/references/scenes/${as}.md).`].join('\n'),
 }));
-const typeEntries = demos.map((e) => ({
-  type: e.type,
-  text: [
+const demoSection = (e) =>
+  [
     `### ${e.type}`,
     '',
     describe(e.type),
     '',
-    `![The ${e.type} demo's ${e.type} scene, at the end of its last step](assets/scenes/${e.type}.png)`,
+    `![The ${e.type} demo's ${isScene(e.type) ? e.type : storyboard(e).scenes[0].type} scene, at the end of its last step](assets/scenes/${e.type}.png)`,
     '',
-    `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}. Reference: [${e.type}.md](../skill/mr-cast/references/scenes/${e.type}.md).`,
-  ].join('\n'),
-}));
-const types = [...typeEntries, ...aliases].sort((a, b) => a.type.localeCompare(b.type)).map((t) => t.text);
+    `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}. Reference: [${e.type}.md](../skill/mr-cast/references/${reference(e.type)}).`,
+  ].join('\n');
+const types = [...demos.filter((e) => isScene(e.type)).map((e) => ({ type: e.type, text: demoSection(e) })), ...aliases]
+  .sort((a, b) => a.type.localeCompare(b.type))
+  .map((t) => t.text);
+const tools = demos.filter((e) => !isScene(e.type)).map(demoSection);
 const gallery = `# Gallery
 
 <!-- Written by scripts/gallery.mjs from examples/ and skill/mr-cast/references/scenes/; edit those and rerun it. -->
 
-Worked examples, then one short demo per scene type. Each still is one scene at the end of its last step, from \`mr-cast still\`. Each video is the whole storyboard, rendered by CI and attached to the latest release.
+Worked examples, then one short demo per scene type, then a demo of the ink any stepped scene can draw. Each still is one scene at the end of its last step, from \`mr-cast still\`. Each video is the whole storyboard, rendered by CI and attached to the latest release.
 
 ## Examples
 
@@ -113,6 +119,10 @@ ${examples.join('\n\n')}
 ## Scene types
 
 ${types.join('\n\n')}
+
+## On every scene
+
+${tools.join('\n\n')}
 `;
 fs.writeFileSync(path.join(ROOT, 'docs/gallery.md'), gallery);
 console.log('docs/gallery.md');

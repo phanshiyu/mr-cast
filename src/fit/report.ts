@@ -26,6 +26,8 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
+import { arrayTargets, graphTargets, memoryTargets, stateTargets, svgTargets, tableTargets } from '../utils/sceneTargets';
+import type { Box, MarkTargets } from '../utils/penGeometry';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
 class Scaled {
@@ -159,5 +161,29 @@ export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
     const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap) => unknown;
     collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks)], out, scaled, new Set());
     return { scene: i, fits: out, scaled };
+  });
+}
+
+/** Each step's item boxes, for the scene types whose layout code gives them without rendering. */
+const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { type: T }>) => MarkTargets[] }> = {
+  graph: graphTargets,
+  table: tableTargets,
+  array: arrayTargets,
+  memory: memoryTargets,
+  svg: svgTargets,
+  state: (scene) => (scene.steps ?? []).map(() => stateTargets(scene)),
+};
+
+export interface InkStage {
+  area: Box;
+  /** Item boxes by item key, as `focus` refs resolve to them. */
+  boxes: [string, Box][];
+}
+
+/** Per scene, each step's stage and item boxes, where ink at a point would land; null for a scene type without them. */
+export function inkStages(storyboard: Storyboard): (InkStage[] | null)[] {
+  return storyboard.scenes.map((scene) => {
+    const targets = (STEP_TARGETS[scene.type] as ((s: Scene) => MarkTargets[]) | undefined)?.(scene);
+    return targets ? targets.map((t) => ({ area: t.area, boxes: [...t.boxes] })) : null;
   });
 }

@@ -26,6 +26,7 @@ const settle = (u) => {
 /** Relax u->v: returns the step changes and the callout with the real sum. */
 const relax = (u, v) => {
   const w = W[`${u}->${v}`]; const cand = st.d[u] + w; const old = st.d[v];
+  const ink = (when) => ({ arrow: [u, v], note: `${st.d[u]} + ${w} = ${cand} ${cand < old ? '<' : '≥'} ${show(old)}`, when });
   const better = cand < old;
   const callout = better
     ? `[${st.d[u]} + ${w} = ${cand} < ${show(old)}]{good}`
@@ -37,7 +38,7 @@ const relax = (u, v) => {
     set['Previous@' + v] = u;
     st.d[v] = cand; st.prev[v] = u;
   }
-  return { set, callout, better };
+  return { set, callout, better, cand, ink, sum: `${st.d[u]} + ${w} = ${cand}` };
 };
 const col = (h) => NODES.map((n) => `${h}@${n}`);
 const merge = (...parts) => parts.reduce((a, p) => ({ ...a, ...p, set: { ...(a.set ?? {}), ...(p.set ?? {}) }, tint: { ...(a.tint ?? {}), ...(p.tint ?? {}) } }), {});
@@ -71,23 +72,27 @@ scene({ chapter: 'The first pick', narration: 'Start S at zero, since it costs n
 });
 
 scene({ chapter: 'Finding a shortcut', narration: 'Now we look at the roads leaving B.', callout: 'if d(u) + w(u, v) < d(v), then d(v) = d(u) + w(u, v)' }, () => {
+  const known = st.d.A;
   const ra = relax('B', 'A'); const rc = relax('B', 'C');
+  if (!ra.better || !rc.better) throw new Error('both roads from B are shortcuts');
+  // The pen writes each relaxation's sum as the voice says it, so the header keeps the rule.
   return [
-    { focus: ['B->A', 'Distance@A'], say: 'We already know a way to A that costs four, straight from S.' },
-    { set: ra.set, callout: ra.callout, say: 'But going S to B, then B to A, costs two plus one, which is three. Three is less than four.' },
-    { focus: ['row:A', 'A'], callout: 'if d(u) + w(u, v) < d(v), then d(v) = d(u) + w(u, v)', say: 'So we cross out four, write three, and note that A now comes from B. This is called relaxing a road. We found a shortcut, so we replace the old guess.' },
-    { set: rc.set, callout: '2 + 5 = 7 < ∞', say: 'The road from B to C costs five, so C becomes seven, by way of B.' },
+    { focus: ['B->A', 'Distance@A'], say: 'We already know a way to A that costs four, straight from S.', draw: [{ circle: 'Distance@A', note: 'via S', when: 'four' }] },
+    { set: ra.set, say: 'But going S to B, then B to A, costs two plus one, which is three. Three is less than four.', draw: [{ arrow: ['B', 'A'], note: ra.sum, when: 'two plus one' }, { write: `${ra.cand} < ${known} ✓`, near: 'Distance@A', tone: 'good', when: 'three is less' }] },
+    { focus: ['row:A', 'A'], say: 'So we cross out four, write three, and note that A now comes from B. This is called relaxing a road. We found a shortcut, so we replace the old guess.', draw: [{ underline: 'Previous@A', note: 'came from B', when: 'comes from B' }] },
+    { set: rc.set, erase: true, say: 'The road from B to C costs five, so C becomes seven, by way of B.', draw: [rc.ink('costs five')] },
   ];
 });
 
 scene({ chapter: 'Reaching E', narration: 'We keep repeating the same two moves: pick the cheapest unvisited place, then relax the roads leaving it.', callout: 'unvisited: A 3, C 7, E ∞' }, () => {
   const steps = [];
   steps.push({ ...settle('A'), callout: '[A = 3 is final]{good}', say: 'A is cheapest at three, so we visit it.' });
-  const rc = relax('A', 'C'); steps.push({ set: rc.set, callout: rc.callout, say: 'Through A, C costs three plus two, which is five. That beats seven.' });
-  const re = relax('A', 'E'); steps.push({ set: re.set, callout: '3 + 6 = 9 < ∞', say: 'And E costs three plus six, which is nine.' });
-  steps.push({ ...settle('C'), callout: 'unvisited: C 5, E 9', say: 'C is next, at five.' });
-  const re2 = relax('C', 'E'); steps.push({ set: re2.set, callout: re2.callout, say: 'Through C, E costs five plus one, which is six. Six beats nine.' });
-  steps.push({ ...settle('E'), callout: '[E = 6 is final]{good}', say: 'Now E is the cheapest place left, so its cost of six is settled, and we can stop.' });
+  // The pen writes each relaxation's sum along its road; a settled pick wipes the board.
+  const rc = relax('A', 'C'); steps.push({ set: rc.set, say: 'Through A, C costs three plus two, which is five. That beats seven.', draw: [rc.ink('three plus two')] });
+  const re = relax('A', 'E'); steps.push({ set: re.set, say: 'And E costs three plus six, which is nine.', draw: [re.ink('three plus six')] });
+  steps.push({ ...settle('C'), erase: true, callout: 'unvisited: C 5, E 9', say: 'C is next, at five.' });
+  const re2 = relax('C', 'E'); steps.push({ set: re2.set, say: 'Through C, E costs five plus one, which is six. Six beats nine.', draw: [re2.ink('five plus one')] });
+  steps.push({ ...settle('E'), erase: true, callout: '[E = 6 is final]{good}', say: 'Now E is the cheapest place left, so its cost of six is settled, and we can stop.' });
   // Walk the previous pointers back from E.
   const path = ['E']; while (st.prev[path[0]]) path.unshift(st.prev[path[0]]);
   if (path.join('') !== 'SBACE' || st.d.E !== 6) throw new Error(`path ${path} ${st.d.E}`);

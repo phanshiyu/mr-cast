@@ -5,8 +5,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { inkBoard } from '../../shared/ink.mjs';
 import { hasMarkup } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
+import { refNames, resolveRef } from '../../shared/targets.mjs';
 import { READABLE_PX } from '../../shared/textfit.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -38,13 +40,16 @@ function where(scene, i, fitPath) {
 export async function checkFit(storyboard, hunks, errors, warnings) {
   if (!fs.existsSync(ENTRY)) return;
   let reports;
+  let stages;
   try {
-    const { fitReport } = await reportModule();
+    const { fitReport, inkStages } = await reportModule();
     reports = fitReport(storyboard, hunks);
+    stages = inkStages(storyboard);
   } catch (err) {
     warnings.push(`could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`);
     return;
   }
+  checkInkPoints(storyboard, hunks, stages, warnings);
   for (const { scene: i, fits, scaled } of reports) {
     const scene = storyboard.scenes[i];
     for (const part of scaled) {
@@ -64,6 +69,43 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
       }
     }
   }
+}
+
+/** Handwriting's size and an upper estimate of its width a character, as the player writes it (src/components/Ink.tsx). */
+const WRITE_PX = 42;
+const WRITE_ADVANCE = 0.42;
+
+const overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/**
+ * Text written `at` a point that lands on something the scene draws while the text is up. Only the scene types whose
+ * layout gives each step's boxes without rendering are checked: graph, table, array, memory, svg and state.
+ */
+function checkInkPoints(storyboard, hunks, stages, warnings) {
+  storyboard.scenes.forEach((scene, i) => {
+    const steps = stages[i];
+    if (!steps) return;
+    // Each key by the narrowest ref that names it: a cell's index rather than a range over every cell.
+    const named = new Map();
+    const width = new Map();
+    const names = [...refNames(scene, hunks), ...(Array.isArray(scene.values) ? scene.values.map((_, n) => String(n)) : [])];
+    for (const name of names) {
+      const keys = resolveRef(scene, name, hunks) ?? [];
+      for (const key of keys) if (!named.has(key) || keys.length < width.get(key)) [named.set(key, name), width.set(key, keys.length)];
+    }
+    for (const { step, index, item, until } of inkBoard(scene, hunks).items) {
+      if (!item.at || typeof item.write !== 'string') continue;
+      const lines = item.write.split('\n');
+      const { area } = steps[step];
+      const width = Math.max(...lines.map((l) => l.length)) * WRITE_PX * WRITE_ADVANCE + 10;
+      const height = lines.length * Math.round(WRITE_PX * 1.2);
+      const x = Math.min(Math.max(area.x + item.at[0] * area.width, area.x), area.x + area.width - width);
+      const y = Math.min(Math.max(area.y + item.at[1] * area.height, area.y), area.y + area.height - height);
+      const text = { x, y, width, height };
+      const hit = steps.slice(step, Math.min(until, steps.length)).flatMap((s, j) => s.boxes.filter(([, b]) => overlaps(text, b)).map(([key]) => ({ key, at: step + j })))[0];
+      if (hit) warnings.push(`scenes[${i}].steps[${step}].draw[${index}].at: the text lands on ${named.has(hit.key) ? JSON.stringify(named.get(hit.key)) : 'part of the drawing'}${hit.at === step ? '' : ` once step ${hit.at} shows it`}; move it to free space, or write it near a ref`);
+    }
+  });
 }
 
 /** A size to one decimal, rounded down so a size under the minimum never prints as the minimum: 14.96 is "14.9". */
@@ -95,5 +137,8 @@ export function checkSpokenMarkup(scene, p, warnings) {
   if (!Array.isArray(scene.steps)) return;
   scene.steps.forEach((step, j) => {
     if (typeof step?.note === 'string' && hasMarkup(step.note)) warnings.push(`${p}.steps[${j}].note: a pen note is handwritten, so its markup is dropped and the words drawn plain; remove the markup`);
+    (Array.isArray(step?.draw) ? step.draw : []).forEach((item, k) => {
+      for (const field of ['note', 'write']) if (typeof item?.[field] === 'string' && hasMarkup(item[field])) warnings.push(`${p}.steps[${j}].draw[${k}].${field}: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup`);
+    });
   });
 }

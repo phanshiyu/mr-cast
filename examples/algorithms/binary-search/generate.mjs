@@ -63,12 +63,13 @@ const story = {
       ],
       callout: 'mid = 0 + ⌊(15 − 0) / 2⌋ = 7',
       steps: [
-        { focus: 7, callout: '[72 > 45]{good}', say: 'The target is bigger than forty five.' },
-        { tint: { '0-7': 'dim' }, move: { L: 8 }, callout: 'L = mid + 1 = 8', say: 'Every box left of it is even smaller. So none of those first eight can be the one. We cross them all out in one go, and L jumps to index eight.' },
-        { move: { mid: 11 }, callout: 'mid = 8 + ⌊(15 − 8) / 2⌋ = 11', say: 'Find the new middle. It is index eleven.' },
-        { focus: 11, callout: '[72 < 79]{good}', say: 'It holds seventy nine. The target is smaller.' },
-        { focus: ['11-15', 'ptr:R'], tint: { '11-15': 'dim' }, move: { R: 10 }, callout: 'R = mid − 1 = 10', say: 'So index eleven and everything right of it are out. R moves to index ten.' },
-        { focus: '8-10', callout: '16 → 8 → 3 left', say: 'Sixteen boxes went down to half, and now just three are left, after only two looks.' },
+        // The pen writes each comparison and brackets each half it rules out; the header keeps the pointer arithmetic.
+        { focus: 7, say: 'The target is bigger than forty five.', draw: [{ circle: 7 }, { write: `72 > ${values[7]}`, near: 7, when: 'bigger' }] },
+        { tint: { '0-7': 'dim' }, move: { L: 8 }, callout: 'L = mid + 1 = 8', say: 'Every box left of it is even smaller. So none of those first eight can be the one. We cross them all out in one go, and L jumps to index eight.', draw: [{ brace: '0-7', note: `all ≤ ${values[7]}, so not here`, when: 'even smaller' }] },
+        { move: { mid: 11 }, erase: true, callout: 'mid = 8 + ⌊(15 − 8) / 2⌋ = 11', say: 'Find the new middle. It is index eleven.' },
+        { focus: 11, say: 'It holds seventy nine. The target is smaller.', draw: [{ circle: 11 }, { write: `72 < ${values[11]}`, near: 11, when: 'smaller' }] },
+        { focus: ['11-15', 'ptr:R'], tint: { '11-15': 'dim' }, move: { R: 10 }, callout: 'R = mid − 1 = 10', say: 'So index eleven and everything right of it are out. R moves to index ten.', draw: [{ brace: '11-15', note: 'out', when: 'everything right' }] },
+        { focus: '8-10', erase: true, callout: '16 → 8 → 3 left', say: 'Sixteen boxes went down to half, and now just three are left, after only two looks.', draw: [{ brace: '8-10', note: 'still in play', when: 'three are left' }] },
       ],
     },
     {

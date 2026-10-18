@@ -139,6 +139,54 @@ function wordsSpoken(segment, seconds) {
   return speaking <= 0 ? words : Math.max(0, Math.min(words, Math.floor((seconds / speaking) * words)));
 }
 
+/** A spoken text's words, lower case without punctuation, each with its index among the text's words. */
+function cueTokens(text) {
+  return String(text ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((word, index) => ({ word: word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''), index }))
+    .filter((t) => t.word);
+}
+
+/**
+ * Where `cue` starts among the words of a spoken `text`, as the index of its first word, or -1 when the text does
+ * not say it. Both are compared as the voice reads them, ignoring case and punctuation.
+ */
+export function cueWord(text, cue) {
+  const said = cueTokens(text);
+  const want = cueTokens(speechText(plainText(String(cue ?? '')))).map((t) => t.word);
+  if (!want.length) return -1;
+  for (let i = 0; i + want.length <= said.length; i++) if (want.every((w, j) => said[i + j].word === w)) return said[i].index;
+  return -1;
+}
+
+/**
+ * Seconds after a segment's voice starts at which it reaches word `index`: the inverse of `wordsSpoken`, so the
+ * caption and a cue agree.
+ */
+function wordStart(segment, index) {
+  const words = wordCount(segment.text);
+  const sentences = segment.clip?.sentences;
+  if (sentences?.length && sentences.reduce((n, s) => n + s.words, 0) === words) {
+    let before = 0;
+    for (const s of sentences) {
+      if (index < before + s.words) return s.start + ((index - before) / s.words) * (s.end - s.start);
+      before += s.words;
+    }
+  }
+  return words ? (index / words) * (segment.speakingFrames / FPS) : 0;
+}
+
+/** Frames before its word a cued pen stroke starts, so the hand moves as the word is heard. */
+const CUE_LEAD = 3;
+
+/** Frame, from the scene's start, at which a segment's voice says `cue`, less a short lead; null when it never does. */
+export function cueFrame(segment, cue) {
+  const index = cueWord(segment.text, cue);
+  if (index < 0) return null;
+  return Math.max(segment.markFrom, segment.voiceFrom + Math.round(wordStart(segment, index) * FPS) - CUE_LEAD);
+}
+
 /**
  * Which segment is being spoken at a frame of its scene, and which of its words. A segment's caption
  * starts with its voice; until the next voice starts the caption stays on it, past its last word.

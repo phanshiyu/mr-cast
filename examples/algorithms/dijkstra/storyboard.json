@@ -499,7 +499,14 @@
             "B->A",
             "Distance@A"
           ],
-          "say": "We already know a way to A that costs four, straight from S."
+          "say": "We already know a way to A that costs four, straight from S.",
+          "draw": [
+            {
+              "circle": "Distance@A",
+              "note": "via S",
+              "when": "four"
+            }
+          ]
         },
         {
           "set": {
@@ -510,16 +517,37 @@
             },
             "Previous@A": "B"
           },
-          "callout": "[2 + 1 = 3 < 4]{good}",
-          "say": "But going S to B, then B to A, costs two plus one, which is three. Three is less than four."
+          "say": "But going S to B, then B to A, costs two plus one, which is three. Three is less than four.",
+          "draw": [
+            {
+              "arrow": [
+                "B",
+                "A"
+              ],
+              "note": "2 + 1 = 3",
+              "when": "two plus one"
+            },
+            {
+              "write": "3 < 4 ✓",
+              "near": "Distance@A",
+              "tone": "good",
+              "when": "three is less"
+            }
+          ]
         },
         {
           "focus": [
             "row:A",
             "A"
           ],
-          "callout": "if d(u) + w(u, v) < d(v), then d(v) = d(u) + w(u, v)",
-          "say": "So we cross out four, write three, and note that A now comes from B. This is called relaxing a road. We found a shortcut, so we replace the old guess."
+          "say": "So we cross out four, write three, and note that A now comes from B. This is called relaxing a road. We found a shortcut, so we replace the old guess.",
+          "draw": [
+            {
+              "underline": "Previous@A",
+              "note": "came from B",
+              "when": "comes from B"
+            }
+          ]
         },
         {
           "set": {
@@ -527,8 +555,18 @@
             "Distance@C": "7",
             "Previous@C": "B"
           },
-          "callout": "2 + 5 = 7 < ∞",
-          "say": "The road from B to C costs five, so C becomes seven, by way of B."
+          "erase": true,
+          "say": "The road from B to C costs five, so C becomes seven, by way of B.",
+          "draw": [
+            {
+              "arrow": [
+                "B",
+                "C"
+              ],
+              "note": "2 + 5 = 7 < ∞",
+              "when": "costs five"
+            }
+          ]
         }
       ]
     },
@@ -681,8 +719,17 @@
             },
             "Previous@C": "A"
           },
-          "callout": "[3 + 2 = 5 < 7]{good}",
-          "say": "Through A, C costs three plus two, which is five. That beats seven."
+          "say": "Through A, C costs three plus two, which is five. That beats seven.",
+          "draw": [
+            {
+              "arrow": [
+                "A",
+                "C"
+              ],
+              "note": "3 + 2 = 5 < 7",
+              "when": "three plus two"
+            }
+          ]
         },
         {
           "set": {
@@ -690,8 +737,17 @@
             "Distance@E": "9",
             "Previous@E": "A"
           },
-          "callout": "3 + 6 = 9 < ∞",
-          "say": "And E costs three plus six, which is nine."
+          "say": "And E costs three plus six, which is nine.",
+          "draw": [
+            {
+              "arrow": [
+                "A",
+                "E"
+              ],
+              "note": "3 + 6 = 9 < ∞",
+              "when": "three plus six"
+            }
+          ]
         },
         {
           "tint": {
@@ -700,6 +756,7 @@
           "set": {
             "Visited@C": "Yes"
           },
+          "erase": true,
           "callout": "unvisited: C 5, E 9",
           "say": "C is next, at five."
         },
@@ -712,8 +769,17 @@
             },
             "Previous@E": "C"
           },
-          "callout": "[5 + 1 = 6 < 9]{good}",
-          "say": "Through C, E costs five plus one, which is six. Six beats nine."
+          "say": "Through C, E costs five plus one, which is six. Six beats nine.",
+          "draw": [
+            {
+              "arrow": [
+                "C",
+                "E"
+              ],
+              "note": "5 + 1 = 6 < 9",
+              "when": "five plus one"
+            }
+          ]
         },
         {
           "tint": {
@@ -722,6 +788,7 @@
           "set": {
             "Visited@E": "Yes"
           },
+          "erase": true,
           "callout": "[E = 6 is final]{good}",
           "say": "Now E is the cheapest place left, so its cost of six is settled, and we can stop."
         },

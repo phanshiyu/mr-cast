@@ -3,21 +3,21 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import { shownOf, stateFrame, type StateFrame } from '../utils/stateTrack';
-import { layoutTableStates, stateRows, tableBoxes } from '../utils/tableLayout';
+import { layoutTableStates, stateRows } from '../utils/tableLayout';
 import { dimOpacity, mainTone, tintMix } from '../utils/tint';
 import { TableView } from './DataTable';
 import { HeaderCallout } from './HeaderCallout';
 import { tones } from './tones';
 import type { GraphEdge, GraphNode, GraphScene, Change } from '../types';
-import { GROUP_NAME, LABEL_PAD, asShown, graphAreas, graphBoxes, fitSceneGraph, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
+import { GROUP_NAME, LABEL_PAD, asShown, graphAreas, fitSceneGraph, shapeOf, type PlacedGroup, type RoutedEdge } from '../utils/graphLayout';
 import { ShapeNode } from './ShapeNode';
-import { centredStage, staged, type MarkTargets } from '../utils/penGeometry';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { ChangeLegend } from './ChangeLegend';
 import { changeTone, EMPHASIS } from './marks';
 import { FitText } from './FitText';
 import { NodeCard } from './NodeCard';
 import { PenMarks } from './PenMarks';
+import { graphTargets } from '../utils/sceneTargets';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors } from './theme';
@@ -171,10 +171,6 @@ function tintedTone(base: ReturnType<typeof edgeTone>, s: StateFrame, key: strin
   return tone && tone !== 'accent' ? { stroke: tones[tone].color, marker: tone } : tone === 'accent' ? { stroke: colors.accent, marker: 'accent' } : base;
 }
 
-/** Two sets of mark targets in one content box, such as a graph's and its table's. */
-const merged = (a: MarkTargets, b: MarkTargets | null): MarkTargets =>
-  b ? { boxes: new Map([...a.boxes, ...b.boxes]), obstacles: [...(a.obstacles ?? a.boxes.values()), ...(b.obstacles ?? b.boxes.values())], lines: [...(a.lines ?? []), ...(b.lines ?? [])], area: a.area } : a;
-
 export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -184,13 +180,9 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
   const tables = useMemo(() => (scene.table ? layoutTableStates(scene.table.columns, stateRows(scene.table.columns, scene.table.rows, states), tableW, full.height, 'table.') : null), [scene.table, states, tableW, full.height]);
   const nodes = useMemo(() => new Map(scene.nodes.map((n) => [n.id, n])), [scene.nodes]);
   const flowchart = scene.nodes.some((n) => shapeOf(n) === 'decision');
-  const graphStage = centredStage(graphBox, layout, scale);
   const tableTop = tables ? Math.max(0, (full.height - Math.max(...tables.map((t) => t.height * t.scale))) / 2) : 0;
   const tableLeft = full.width - tableW;
-  const marks = useMemo(() => {
-    const graph = staged(graphBoxes(layout), graphStage, full);
-    return states.slice(1).map((_, k) => merged(graph, tables ? staged(tableBoxes(tables[k + 1]!), { left: tableLeft, top: tableTop, scale: tables[k + 1]!.scale }, full) : null));
-  }, [layout, scale, tables, states]);
+  const marks = useMemo(() => graphTargets(scene), [scene]);
   const s = stateFrame(states, segments, frame);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   // Groups and nodes land layer by layer, then the edges draw, all before the voice starts.

@@ -4,12 +4,13 @@ import { isPointer, sceneStates } from '../../shared/state-steps.mjs';
 import { splitMemberKey } from '../../shared/targets.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { MemoryScene } from '../types';
-import { HEAD_H, ROW_H, arrowsOf, layoutMemory, memoryBoxes, valueBox, type Arrow, type MemoryCard, type MemoryLayout } from '../utils/memoryLayout';
-import { centredStage, staged, type Pt } from '../utils/penGeometry';
+import { HEAD_H, ROW_H, arrowsOf, layoutMemory, valueBox, type Arrow, type MemoryCard, type MemoryLayout } from '../utils/memoryLayout';
+import { centredStage, type Pt } from '../utils/penGeometry';
 import { asBrightAs, brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { shownOf, stateFrame, valueChanged, type StateFrame } from '../utils/stateTrack';
 import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
+import { memoryTargets } from '../utils/sceneTargets';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { headerBox } from '../fit/shell';
@@ -180,7 +181,7 @@ export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks,
   const layout = useMemo(() => layoutMemory(scene, box), [scene, box.width, box.height]);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = centredStage(box, layout, layout.scale);
-  const marks = useMemo(() => states.slice(1).map((state) => staged(memoryBoxes(layout, state), stage, box)), [states, layout, stage.left, stage.top]);
+  const marks = useMemo(() => memoryTargets(scene), [scene]);
   const s = stateFrame(states, segments, frame);
   const focus = focusSpotlight(scene, hunks, segments, frame);
 

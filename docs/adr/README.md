@@ -32,4 +32,5 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0022](0022-shard-the-example-renders.md) | Render the examples on six runners from their meta.json flags, and keep the release a draft until all finish | Accepted; amended: a draft is finished by a rerun, renders run read-only |
 | [0023](0023-kitten-tts-default-voice-engine.md) | Kitten TTS is the default voice engine, and Kokoro stays as an option | Accepted |
 | [0024](0024-tests-scene-as-behaviour-matrix.md) | The tests scene is a behaviour matrix of situations, promised outcomes and the tests that check them | Accepted |
+| [0025](0025-ink-board.md) | Ink: a step's `draw` stays on the board until a step erases it, timed to the words and placed clear of the scene | Accepted |
 | [0026](0026-text-scene.md) | A text scene whose lead field says how it is drawn, with intent as its alias | Accepted |

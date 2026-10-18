@@ -112,6 +112,32 @@ The pen starts once the step has settled, after its camera has moved and its ite
 
 `validate` rejects an unknown `mark`, a `note` over 40 characters or without a `mark`, a `token` outside a code step, and a `token` that does not occur exactly once on its lines.
 
+## Ink
+
+A step can also write and draw on the scene, like a teacher at a whiteboard. Its `draw` lists the items, each keyed by what it draws, and they stay on the board until a later step's `erase`:
+
+```json
+{ "set": { "A": "3" }, "say": "Going through B costs two plus one, which is three.",
+  "draw": [{ "arrow": ["B", "A"], "note": "2 + 1 = 3", "when": "two plus one" },
+           { "write": "3 < 4", "near": "Distance@A", "tone": "good" }] }
+```
+
+| Verb | Draws |
+| --- | --- |
+| `circle`, `box`, `underline`, `strike`, `cross` | As the pen marks above, on a ref, a list of refs, or an earlier item's `id`. |
+| `tick` | A check mark to its right. |
+| `brace` | A curly brace along the span its refs cover. |
+| `arrow` | `[from, to]`: an arrow between two refs, ids or `[x, y]` points. |
+| `write` | Handwritten text `near` a ref or id, or `at` an `[x, y]` point, each a fraction of the stage. |
+
+An item can add a `note`, a `when` (words of the step's `say` at which it starts), a `tone`, a `side` and an `id`. Without `when`, a step's items draw one after another once its items have settled. A stroke draws at about 60 pixels a frame, an arrow at 40, and handwriting at 2.2 frames a character, with the pen's tip at the end of the line. `"erase": true` takes everything off the board as the step starts, before the step's own `draw`, and `"erase": ["id"]` takes the named items. Ink fades out over 10 frames.
+
+Each item goes where it covers least of what the scene shows from its step on, including pointers that move later and ink already up. Text with no clear spot beside its target goes to the end of its row, as a comment ends a line of code, or else to free space with a leader arrow back. A long arrow bends, or swings round the side, to cross the fewest things. On a code, terminal or sequence step, ink moves with the camera, and on code it is clipped to the code's viewport.
+
+A step's `mark` and `note` are the shorthand for one item on the first focus ref, drawn in the half second before the words and cleared at the next step. They draw as before. Ink is not lit: the highlight check reads only `focus` and what a step changes.
+
+`validate` fails on an item with no verb or two, an unknown field, a ref that names nothing, an id not on the board at that step (an `arrow` from an item drawn later, an `erase` of an id never drawn), an id that is also a ref, a `when` the step's `say` does not contain, and a note or a line of text over 40 characters. It warns when text written `at` a point lands on what a graph, table, array, memory, svg or state scene draws while the text is up, and when ink text has markup, which is dropped. `mr-cast still <scene> --step <k>` renders the board as step k ends. The full reference is [skill/mr-cast/references/ink.md](../skill/mr-cast/references/ink.md), and [examples/primitives/ink](../examples/primitives/ink/storyboard.json) is a short demo.
+
 ## Text on screen
 
 A scene never cuts its text. Every label, caption, bullet, note, cell and title wraps to the lines its place allows, then shrinks down to a minimum readable size. Text that still does not fit makes `validate` fail, naming the scene, the item, the text and a fix:

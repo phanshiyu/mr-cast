@@ -49,7 +49,7 @@ export function focusRanges(refs = []) {
  * A step's one range on its side. A malformed ref, which the validator reports, yields a range no
  * line falls in, so step k always stays range k and keeps its spoken segment.
  */
-function stepRange(step) {
+export function stepRange(step) {
   const side = step?.lines === undefined && step?.oldLines !== undefined ? 'oldLine' : 'newLine';
   const range = focusRanges([side === 'oldLine' ? step.oldLines : step?.lines])[0] ?? [0, 0];
   return { side, range };

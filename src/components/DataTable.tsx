@@ -5,13 +5,13 @@ import type { Change, TableScene } from '../types';
 import { brighter, focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { sameValue, sceneStates } from '../../shared/state-steps.mjs';
 import { headerBox } from '../fit/shell';
-import { COL_GAP, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, layoutTableStates, stateRows, type PlacedCell, type PlacedRow, type TableLayout, tableBoxes } from '../utils/tableLayout';
+import { COL_GAP, HEADER_H, MARKER_W, PAD_X, ROW_BADGE, layoutTableStates, stateRows, type PlacedCell, type PlacedRow, type TableLayout } from '../utils/tableLayout';
 import { shownOf, stateFrame, type StateFrame } from '../utils/stateTrack';
 import { dimOpacity, mainTone, tintFill, tintMix } from '../utils/tint';
 import { HeaderCallout } from './HeaderCallout';
 import { tones } from './tones';
-import { staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
+import { tableTargets } from '../utils/sceneTargets';
 import { ChangeLegend } from './ChangeLegend';
 import { badgesOf, changeTone, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
@@ -231,7 +231,7 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
   };
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
   const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
-  const marks = useMemo(() => layouts.slice(1).map((l) => staged(tableBoxes(l), { left: 0, top, scale: l.scale }, box)), [layouts, top, box.width, box.height]);
+  const marks = useMemo(() => tableTargets(scene), [scene]);
   const used = new Set<Change>(layout.rows.flatMap((r) => (r.change ? [r.change] : [])));
 
   return (

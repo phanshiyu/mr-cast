@@ -6,6 +6,7 @@ import { sceneSteps } from '../../shared/steps.mjs';
 import type { CodeStep, FocusStep, HunkMap, Scene } from '../types';
 import { arrowSketch, placeArrow, placeNote, random, seedOf, sketchMark, strokeLength, strokePath, union, type MarkTargets, type Sketch } from '../utils/penGeometry';
 import type { SpokenSegment } from '../utils/timing';
+import { InkLayer } from './Ink';
 import { clamp, colors } from './theme';
 
 const INK = '#ffe066';
@@ -151,7 +152,8 @@ const Mark: React.FC<{ step: MarkedStep; k: number; scene: Scene; hunks: HunkMap
 };
 
 /**
- * Draws each step's pen mark on what the step points at, and its note beside it. A mark draws itself
+ * Draws the ink each step's `draw` puts on the board (Ink.tsx), and each step's pen mark on what the step points at,
+ * with its note beside it. A mark draws itself
  * between the step's items coming to rest and its words, and clears when the next step starts. Scenes
  * give only the boxes where the items rest.
  */
@@ -169,9 +171,11 @@ export const PenMarks: React.FC<{ scene: Scene; hunks: HunkMap; segments: readon
     const { start, clear } = markTiming(segments, k);
     return frame >= start && frame < clear + CLEAR_FRAMES ? [k] : [];
   });
-  if (!shown.length) return null;
+  const ink = <InkLayer scene={scene} hunks={hunks} segments={segments} targets={targets} />;
+  if (!shown.length) return ink;
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {ink}
       {shown.map((k) => {
         const t = targets(k);
         return t ? <Mark key={k} step={steps[k] as MarkedStep} k={k} scene={scene} hunks={hunks} segments={segments} targets={t} frame={frame} ink={inkOf?.(steps[k]!) ?? null} /> : null;

@@ -1,6 +1,7 @@
-// Checks pen marks: a step's `mark`, its `note`, and a code step's `token`. What a mark draws on lives in
-// shared/pen-marks.mjs, which the scenes use to draw it.
+// Checks pen marks: a step's `mark`, its `note`, a code step's `token`, and the ink a step draws and erases. What a
+// mark draws on lives in shared/pen-marks.mjs and the ink board in shared/ink.mjs, which the scenes draw from.
 
+import { inkBoard } from '../../shared/ink.mjs';
 import { NOTE_MAX, PEN_MARKS, tokenHits } from '../../shared/pen-marks.mjs';
 import { FOCUS_TYPES } from '../../shared/targets.mjs';
 import { didYouMean } from './suggest.mjs';
@@ -36,4 +37,12 @@ export function checkPenMarks(s, p, hunks, errors, warnings) {
     if (hits === 0) errors.push(`${q}.token: ${JSON.stringify(step.token)} is not on ${lines}; copy it exactly from the code, spaces included`);
     else if (hits > 1) errors.push(`${q}.token: ${JSON.stringify(step.token)} occurs ${hits} times on ${lines}; lengthen it until it names one place`);
   });
+}
+
+/** Every problem the walk over a scene's ink board finds, such as a ref or id that names nothing yet, or a cue the say lacks. */
+export function checkInk(s, p, hunks, errors) {
+  for (const { step, index, field, message, suggest } of inkBoard(s, hunks).problems) {
+    const at = `${p}.steps[${step}]${index === null ? '' : `.draw[${index}]`}${field ? `.${field}` : ''}`;
+    errors.push(`${at}: ${message}${suggest ? didYouMean(suggest.name, suggest.names) : ''}`);
+  }
 }
