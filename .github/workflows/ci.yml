@@ -26,6 +26,7 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm check
       - name: Report duplication and complexity
+        continue-on-error: true
         run: |
           pnpm exec fallow dupes --format github-summary >> "$GITHUB_STEP_SUMMARY"
           pnpm exec fallow health --report-only --format github-summary >> "$GITHUB_STEP_SUMMARY"
