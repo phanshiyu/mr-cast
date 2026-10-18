@@ -15,10 +15,10 @@ import {
   type RoutedRelation,
 } from '../utils/erLayout';
 import type { Fit } from '../../shared/textfit.mjs';
+import { ChangeLegend } from './ChangeLegend';
 import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
-import { CHANGE_WORD } from '../utils/marks';
 import { Badge, badgesOf, EMPHASIS, emphasisRing, type BadgeSpec } from './marks';
 import { SceneShell } from './SceneShell';
 import { erTargets } from '../utils/sceneTargets';
@@ -473,36 +473,7 @@ const Legend: React.FC<{ scene: ErScene }> = ({ scene }) => {
     for (const f of e.fields) if (f.change) used.add(f.change);
   }
   for (const r of scene.relations) if (r.change) used.add(r.change);
-  const order: Change[] = ['added', 'removed', 'modified'];
-  return (
-    <div style={{ display: 'flex', gap: 22, fontSize: 19, color: colors.muted, flexShrink: 0, paddingBottom: 6 }}>
-      {order
-        .filter((c) => used.has(c))
-        .map((c) => (
-          <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 7,
-                background: changeTone[c].bg,
-                border: `1px solid ${changeTone[c].color}88`,
-                color: changeTone[c].color,
-                fontFamily: fonts.mono,
-                fontWeight: 800,
-                fontSize: 19,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {changeTone[c].marker}
-            </span>
-            {CHANGE_WORD[c]}
-          </div>
-        ))}
-    </div>
-  );
+  return <ChangeLegend used={used} />;
 };
 
 export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, durationInFrames, segments }) => {
