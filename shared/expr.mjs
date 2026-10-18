@@ -33,6 +33,12 @@ export const RESERVED_NAMES = [...Object.keys(FUNCTIONS), 'sum', ...Object.keys(
 const FUNCTION_NAMES = [...Object.keys(FUNCTIONS), 'sum'];
 /** The most terms one sum adds; past it the sum has no value. */
 const MAX_TERMS = 10000;
+/** The most terms nested sums whose bounds are numbers may add at one point; past it the expression does not parse. */
+export const MAX_STATIC_TERMS = 10000;
+/** The most terms one evaluation adds across all its sums, nested ones included; past it the value is NaN. */
+export const MAX_EVAL_TERMS = 100000;
+/** How deep parentheses, minus signs, powers and calls may nest. */
+export const MAX_DEPTH = 200;
 
 const NUMBER = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*/;
@@ -114,14 +120,23 @@ export function parseExpr(text) {
     }
     return left;
   };
+  // Every nesting (parentheses, a call's arguments, a minus sign, a power's exponent) passes through unary, so its
+  // depth bounds the parser's recursion and every walk of the tree below.
+  let depth = 0;
   // Unary minus binds looser than ^, so -x^2 is -(x^2), and a power's exponent may be negative: 2^-x.
   const unary = () => {
-    if (isOp('-') || isOp('+')) {
-      const op = tokens[i++];
-      const arg = unary();
-      return op.text === '-' ? { kind: 'neg', arg, at: op.at } : arg;
+    if (depth >= MAX_DEPTH) throw new ParseError(`nests more than ${MAX_DEPTH} levels deep in parentheses, minus signs, powers or calls; write it more simply`, peek()?.at ?? end);
+    depth++;
+    try {
+      if (isOp('-') || isOp('+')) {
+        const op = tokens[i++];
+        const arg = unary();
+        return op.text === '-' ? { kind: 'neg', arg, at: op.at } : arg;
+      }
+      return power();
+    } finally {
+      depth--;
     }
-    return power();
   };
   const power = () => {
     const base = primary();
@@ -175,6 +190,7 @@ export function parseExpr(text) {
   try {
     const ast = additive();
     if (peek()) throw new ParseError(`unexpected ${describe(peek())}`, peek().at);
+    checkSumSizes(ast);
     return { ast };
   } catch (err) {
     if (err instanceof ParseError) return { error: { message: err.message, at: err.at } };
@@ -182,37 +198,87 @@ export function parseExpr(text) {
   }
 }
 
+/** A node's children, each with the names bound inside it: a sum's index is bound in its term. */
+function children(node, bound) {
+  switch (node.kind) {
+    case 'bin':
+      return [[node.left, bound], [node.right, bound]];
+    case 'neg':
+      return [[node.arg, bound]];
+    case 'call':
+      return node.args.map((a) => [a, bound]);
+    case 'sum':
+      return [[node.from, bound], [node.to, bound], [node.term, new Set([...bound, node.index])]];
+    default:
+      return [];
+  }
+}
+
 /** Names the expression reads that it does not define itself (constants, and a sum's index inside its term), with where each first appears. */
 export function freeNames(ast) {
+  const found = [];
+  const stack = [[ast, new Set()]];
+  while (stack.length) {
+    const [node, bound] = stack.pop();
+    if (node.kind === 'name' && !bound.has(node.name) && !own(CONSTANTS, node.name)) found.push({ name: node.name, at: node.at });
+    const next = children(node, bound);
+    for (let k = next.length - 1; k >= 0; k--) stack.push(next[k]);
+  }
   const out = new Map();
-  const walk = (node, bound) => {
-    switch (node.kind) {
-      case 'name':
-        if (!bound.has(node.name) && !own(CONSTANTS, node.name) && !out.has(node.name)) out.set(node.name, node.at);
-        return;
-      case 'bin':
-        walk(node.left, bound);
-        return walk(node.right, bound);
-      case 'neg':
-        return walk(node.arg, bound);
-      case 'call':
-        return node.args.forEach((a) => walk(a, bound));
-      case 'sum':
-        walk(node.from, bound);
-        walk(node.to, bound);
-        return walk(node.term, new Set([...bound, node.index]));
-    }
-  };
-  walk(ast, new Set());
+  for (const { name, at } of found) if (!out.has(name)) out.set(name, at);
   return [...out].map(([name, at]) => ({ name, at }));
 }
 
+/** How many terms a sum adds when its bounds are numbers, as a parse would see them; null when they read names. */
+function staticTerms(node) {
+  if (freeNames(node.from).length || freeNames(node.to).length) return null;
+  const [a, b] = [Math.ceil(compileExpr(node.from)({})), Math.ceil(compileExpr(node.to)({}))];
+  return Number.isFinite(a) && Number.isFinite(b) ? Math.max(0, b - a + 1) : null;
+}
+
+/** Throws when sums whose bounds are numbers, nested inside each other, would add more than MAX_STATIC_TERMS terms at one point. */
+function checkSumSizes(ast) {
+  const stack = [[ast, 1, []]];
+  while (stack.length) {
+    const [node, product, counts] = stack.pop();
+    let [inner, path] = [product, counts];
+    if (node.kind === 'sum') {
+      const n = staticTerms(node);
+      if (n !== null) {
+        [inner, path] = [product * n, [...counts, n]];
+        if (inner > MAX_STATIC_TERMS) {
+          const many = path.length > 1 ? `these nested sums add ${path.join(' × ')} = ${inner} terms` : `this sum adds ${inner} terms`;
+          throw new ParseError(`${many} at every point; at most ${MAX_STATIC_TERMS} in all, so use fewer terms`, node.at);
+        }
+      }
+      stack.push([node.from, product, counts], [node.to, product, counts], [node.term, inner, path]);
+      continue;
+    }
+    for (const [child] of children(node, null)) stack.push([child, product, counts]);
+  }
+}
+
 /**
- * The expression as a function of its names' values. A sum whose upper bound is not whole adds its last term in part,
- * so a bound tweened from 1 to 3 grows the sum smoothly; past MAX_TERMS terms it has no value (NaN).
- * @returns {(scope: Record<string, number>) => number}
+ * A left-leaning run of one precedence, a + b - c or a * b / c, as its first operand and the [op, operand] pairs
+ * after it, so a long chain is computed in a loop rather than one nested call per operator.
  */
-export function compileExpr(ast) {
+function chainOf(node, ops) {
+  const rest = [];
+  let first = node;
+  while (first.kind === 'bin' && ops.includes(first.op)) {
+    rest.push([first.op, first.right]);
+    first = first.left;
+  }
+  return { first, rest: rest.reverse() };
+}
+
+const APPLY = { '+': (a, b) => a + b, '-': (a, b) => a - b, '*': (a, b) => a * b, '/': (a, b) => a / b, '^': (a, b) => a ** b };
+
+/**
+ * The tree as a function of a scope and the evaluation's term budget, `{ left, spent }`, which every sum draws from,
+ * nested ones included.
+ */
+function build(ast) {
   switch (ast.kind) {
     case 'num':
       return () => ast.value;
@@ -220,49 +286,86 @@ export function compileExpr(ast) {
       if (own(CONSTANTS, ast.name)) return () => CONSTANTS[ast.name];
       return (scope) => (own(scope, ast.name) && typeof scope[ast.name] === 'number' ? scope[ast.name] : NaN);
     case 'neg': {
-      const arg = compileExpr(ast.arg);
-      return (scope) => -arg(scope);
+      const arg = build(ast.arg);
+      return (scope, budget) => -arg(scope, budget);
     }
     case 'bin': {
-      const [a, b] = [compileExpr(ast.left), compileExpr(ast.right)];
-      switch (ast.op) {
-        case '+':
-          return (s) => a(s) + b(s);
-        case '-':
-          return (s) => a(s) - b(s);
-        case '*':
-          return (s) => a(s) * b(s);
-        case '/':
-          return (s) => a(s) / b(s);
-        default:
-          return (s) => a(s) ** b(s);
+      if (ast.op === '^') {
+        const [a, b] = [build(ast.left), build(ast.right)];
+        return (s, budget) => a(s, budget) ** b(s, budget);
       }
+      const { first, rest } = chainOf(ast, ast.op === '+' || ast.op === '-' ? ['+', '-'] : ['*', '/']);
+      const head = build(first);
+      const tail = rest.map(([op, node]) => [APPLY[op], build(node)]);
+      if (tail.length === 1) {
+        const [[apply, b]] = tail;
+        return (s, budget) => apply(head(s, budget), b(s, budget));
+      }
+      return (s, budget) => {
+        let value = head(s, budget);
+        for (const [apply, b] of tail) value = apply(value, b(s, budget));
+        return value;
+      };
     }
     case 'call': {
       const fn = FUNCTIONS[ast.fn][2];
-      const args = ast.args.map(compileExpr);
-      if (args.length === 1) return (s) => fn(args[0](s));
-      return (s) => fn(...args.map((arg) => arg(s)));
+      const args = ast.args.map(build);
+      if (args.length === 1) return (s, budget) => fn(args[0](s, budget));
+      // Pairwise, so min or max of a long list never spreads it into one call's arguments.
+      if (FUNCTIONS[ast.fn][1] === Infinity) return (s, budget) => args.reduce((acc, arg) => fn(acc, arg(s, budget)), fn(args[0](s, budget)));
+      return (s, budget) => fn(...args.map((arg) => arg(s, budget)));
     }
     case 'sum': {
-      const [from, to, term] = [compileExpr(ast.from), compileExpr(ast.to), compileExpr(ast.term)];
-      return (scope) => {
-        const [a, b] = [Math.ceil(from(scope)), to(scope)];
+      const [from, to, term] = [build(ast.from), build(ast.to), build(ast.term)];
+      return (scope, budget) => {
+        const [a, b] = [Math.ceil(from(scope, budget)), to(scope, budget)];
         if (!Number.isFinite(a) || !Number.isFinite(b)) return NaN;
         const last = Math.ceil(b);
-        if (last - a + 1 > MAX_TERMS) return NaN;
+        const count = Math.max(0, last - a + 1);
+        if (count > MAX_TERMS) return NaN;
+        if (count > budget.left) {
+          budget.left = 0;
+          budget.spent = true;
+          return NaN;
+        }
+        budget.left -= count;
         const inner = { ...scope };
         let total = 0;
         for (let k = a; k <= last; k++) {
           inner[ast.index] = k;
           const weight = Math.min(1, b - k + 1);
-          if (weight > 0) total += weight * term(inner);
+          if (weight > 0) total += weight * term(inner, budget);
         }
         return total;
       };
     }
   }
   throw new Error(`unknown expression node ${ast.kind}`);
+}
+
+/**
+ * The expression's value in a scope, and whether its sums ran out of the evaluation's MAX_EVAL_TERMS terms, which
+ * leaves the value NaN.
+ * @returns {(scope: Record<string, number>) => { value: number, overBudget: boolean }}
+ */
+function evaluatorOf(ast) {
+  const run = build(ast);
+  return (scope) => {
+    const budget = { left: MAX_EVAL_TERMS, spent: false };
+    const value = run(scope, budget);
+    return { value: budget.spent ? NaN : value, overBudget: budget.spent };
+  };
+}
+
+/**
+ * The expression as a function of its names' values. A sum whose upper bound is not whole adds its last term in part,
+ * so a bound tweened from 1 to 3 grows the sum smoothly; past MAX_TERMS terms it has no value (NaN), and so has the
+ * whole expression once its sums add more than MAX_EVAL_TERMS in one evaluation.
+ * @returns {(scope: Record<string, number>) => number}
+ */
+export function compileExpr(ast) {
+  const evaluate = evaluatorOf(ast);
+  return (scope) => evaluate(scope).value;
 }
 
 const compiled = new Map();
@@ -275,7 +378,11 @@ export function exprOf(text) {
   let hit = compiled.get(key);
   if (!hit) {
     const parsed = parseExpr(key);
-    hit = parsed.error ? { error: parsed.error, names: [], fn: () => NaN } : { error: null, names: freeNames(parsed.ast), fn: compileExpr(parsed.ast) };
+    if (parsed.error) hit = { error: parsed.error, names: [], fn: () => NaN, evaluate: () => ({ value: NaN, overBudget: false }) };
+    else {
+      const evaluate = evaluatorOf(parsed.ast);
+      hit = { error: null, names: freeNames(parsed.ast), fn: (scope) => evaluate(scope).value, evaluate };
+    }
     compiled.set(key, hit);
   }
   return hit;

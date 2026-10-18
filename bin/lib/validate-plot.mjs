@@ -3,7 +3,7 @@
 // draws it (shared/plot.mjs): lines with no value inside the range, parts that land off the plot, and labels that
 // overlap or run off the stage. Each pushes human/LLM-readable strings onto `errors` and `warnings`.
 
-import { exprOf, RESERVED_NAMES } from '../../shared/expr.mjs';
+import { exprOf, MAX_EVAL_TERMS, RESERVED_NAMES } from '../../shared/expr.mjs';
 import { areaFunctions, labelPieces, PART_KINDS, paramNames, partNumbers, partOf, plotAxes, plotGeometry, plotLabels, plotParts, sampleFunction, stateParams, overlaps, formatNumber } from '../../shared/plot.mjs';
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { cueWord, spokenTexts } from '../../shared/timing.mjs';
@@ -170,7 +170,16 @@ function checkDrawn(s, p, warnings) {
       const q = `${p}.${part.path}`;
       if (part.kind === 'functions' && shown(id)) {
         const { undefinedAt } = sampleFunction(part.item, s, scope);
-        if (undefinedAt !== null) warn(`undef:${id}`, `${q}.y: has no value at ${part.item.x !== undefined ? 't' : 'x'} = ${short(undefinedAt)}${at} ${when(k)}, so its line breaks there; check the expression, or start it past that point with from`);
+        if (undefinedAt !== null) {
+          const v = part.item.x !== undefined ? 't' : 'x';
+          const field = ['y', 'x'].find((f) => typeof part.item[f] === 'string' && exprOf(part.item[f]).evaluate({ ...scope, [v]: undefinedAt }).overBudget);
+          warn(
+            `undef:${id}`,
+            field
+              ? `${q}.${field}: its sums add more than ${MAX_EVAL_TERMS} terms at ${v} = ${short(undefinedAt)}${at} ${when(k)}, so it has no value there; use fewer terms or smaller bounds`
+              : `${q}.y: has no value at ${v} = ${short(undefinedAt)}${at} ${when(k)}, so its line breaks there; check the expression, or start it past that point with from`,
+          );
+        }
         if (!geo.visible) warn(`off:${id}`, `${q}: draws nowhere on the plot${at} ${when(k)}: every value is outside the axes' ranges; widen the y axis or check the expression`);
       } else if (part.kind === 'points' && !geo.visible && shown(id)) {
         const [x, y] = geo.data;

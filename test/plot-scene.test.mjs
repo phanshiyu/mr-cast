@@ -54,6 +54,39 @@ test('a parse error says what is wrong and where, and nothing reaches past the n
   assert.equal(value('toString + 1', {}), NaN);
 });
 
+test('deep nesting is a parse error at its column, and a long flat chain parses and computes', () => {
+  const tooDeep = { message: 'nests more than 200 levels deep in parentheses, minus signs, powers or calls; write it more simply' };
+  assert.deepEqual(parseError(`${'('.repeat(20000)}1${')'.repeat(20000)}`), { ...tooDeep, at: 200 });
+  assert.deepEqual(parseError(`${'-'.repeat(50000)}1`), { ...tooDeep, at: 200 });
+  assert.deepEqual(parseError(Array(20000).fill('2').join('^')), { ...tooDeep, at: 400 });
+  assert.deepEqual(parseError(`${'sin('.repeat(300)}x${')'.repeat(300)}`), { ...tooDeep, at: 800 });
+  assert.equal(value(`${'('.repeat(150)}2${')'.repeat(150)}`), 2);
+  assert.equal(value(Array(200000).fill('x').join('+'), { x: 1 }), 200000);
+  assert.equal(value(Array(200000).fill('x').join('*'), { x: 1 }), 1);
+  assert.equal(value(`max(${Array(200000).fill('x').join(',')}, 3)`, { x: 2 }), 3);
+  assert.deepEqual(exprOf(Array(200000).fill('x').join('-')).names, [{ name: 'x', at: 0 }]);
+});
+
+test('nested sums share one budget of terms per value, and sums with number bounds past 10000 terms do not parse', () => {
+  assert.deepEqual(parseError('sum(k, 1, 10000, sum(j, 1, 10000, k*j))'), { message: 'these nested sums add 10000 × 10000 = 100000000 terms at every point; at most 10000 in all, so use fewer terms', at: 17 });
+  assert.deepEqual(parseError('sum(k, 1, 10001, k)'), { message: 'this sum adds 10001 terms at every point; at most 10000 in all, so use fewer terms', at: 0 });
+  assert.equal(value('sum(k, 1, 100, sum(j, 1, 100, 1))'), 10000);
+  const nested = exprOf('sum(k, 1, n, sum(j, 1, n, 1))');
+  assert.deepEqual(nested.evaluate({ n: 300 }), { value: 90000, overBudget: false });
+  assert.deepEqual(nested.evaluate({ n: 400 }), { value: NaN, overBudget: true });
+  assert.equal(nested.fn({ n: 10000 }), NaN);
+  assert.deepEqual(nested.evaluate({ n: 300 }), { value: 90000, overBudget: false }, 'each evaluation starts with the whole budget');
+});
+
+test('validate warns on a line whose sums run out of terms, and reports deep nesting without throwing', async () => {
+  const scene = { type: 'plot', narration: 'A plot.', x: { from: 0, to: 1 }, y: { from: -10, to: 10 }, params: { n: 400 }, functions: [{ id: 'f', y: 'sum(k, 1, n, sum(j, 1, n, 1)) / 1e5' }] };
+  const { errors, warnings } = await check(scene);
+  assert.deepEqual(errors, []);
+  assert.equal(warnings[0], 'scenes[0].functions[0].y: its sums add more than 100000 terms at x = 0 (with n = 400) at the start, so it has no value there; use fewer terms or smaller bounds');
+  const deep = await check({ ...scene, params: {}, functions: [{ id: 'f', y: `${'('.repeat(5000)}x${')'.repeat(5000)}` }, { id: 'g', y: Array(200000).fill('x').join('+') }] });
+  assert.deepEqual(deep.errors, ['scenes[0].functions[0].y: "' + '('.repeat(5000) + 'x' + ')'.repeat(5000) + '" column 201: nests more than 200 levels deep in parentheses, minus signs, powers or calls; write it more simply']);
+});
+
 test('a step sets a parameter, traces a hidden line on, and a parameter\'s name lights the parts it moves', () => {
   const { states, problems } = walkStates(growth);
   assert.deepEqual(problems, []);
