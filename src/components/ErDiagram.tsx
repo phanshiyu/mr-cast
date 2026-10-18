@@ -3,15 +3,15 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, ErField, ErRelation, ErScene } from '../types';
-import { erBoxes, HEADER_H, RELATION_LABEL_MAX, ROW_H, layoutEr, erScale, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import { HEADER_H, RELATION_LABEL_MAX, ROW_H, layoutEr, erScale, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
 import type { Fit } from '../../shared/textfit.mjs';
 import { FitText } from './FitText';
-import { centredStage, staged } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { brighter, focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
 import { CHANGE_WORD } from '../utils/marks';
 import { Badge, badgesOf, EMPHASIS, emphasisRing, type BadgeSpec } from './marks';
 import { SceneShell } from './SceneShell';
+import { erTargets } from '../utils/sceneTargets';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox, fonts } from './theme';
 
@@ -382,7 +382,7 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, duratio
     brighter(emphasisOf(`r:${i}`), { ...brighter(entityEmphasis(routed.relation.from), entityEmphasis(routed.relation.to)), glow: 0, bar: 0 });
   const box = contentBox(Boolean(scene.title));
   const scale = erScale(layout, box);
-  const marks = useMemo(() => staged(erBoxes(layout), centredStage(box, layout, scale), box), [layout, box.width, box.height, scale]);
+  const marks = useMemo(() => erTargets(scene), [scene]);
   const draws = layout.relations.map((_, i) => interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + RELATION_FRAMES], [0, 1], clamp));
 
   return (

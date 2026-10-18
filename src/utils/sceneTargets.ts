@@ -6,8 +6,13 @@ import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
 import { stateMotion } from '../../shared/svg-motion.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
+import { sceneFiles } from '../../shared/files.mjs';
+import type { ArrayScene, ErScene, FilesScene, GraphScene, HunkMap, LayersScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene, TimelineScene } from '../types';
 import { arrayBoxes, layoutArray } from './arrayLayout';
+import { erBoxes, erScale, layoutEr } from './erLayout';
+import { filesBoxes, layoutFiles, treeRows } from './filesLayout';
+import { layersBoxes, layersScale, layoutLayers } from './layersLayout';
+import { layoutTimeline, timelineBoxes, timelineScale } from './timelineLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
 import { layoutMemory, memoryBoxes } from './memoryLayout';
 import { centredStage, staged, type MarkTargets } from './penGeometry';
@@ -74,4 +79,31 @@ export function testsTargets(scene: TestsScene): MarkTargets[] {
   const layout = layoutTests(scene, box.width, box.height);
   const targets = staged(testsBoxes(layout), { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale }, box);
   return (scene.steps ?? []).map(() => targets);
+}
+
+// The scenes below do not move between steps, so one set of targets serves every step.
+
+export function erTargets(scene: ErScene): MarkTargets {
+  const layout = layoutEr(scene.entities, scene.relations);
+  const box = contentBox(Boolean(scene.title));
+  return staged(erBoxes(layout), centredStage(box, layout, erScale(layout, box)), box);
+}
+
+export function filesTargets(scene: FilesScene, hunks: HunkMap): MarkTargets {
+  const box = contentBox(Boolean(scene.title));
+  const layout = layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+  return staged(filesBoxes(layout), { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale }, box);
+}
+
+export function layersTargets(scene: LayersScene): MarkTargets {
+  const box = contentBox(Boolean(scene.title));
+  const layout = layoutLayers(scene, box);
+  return staged(layersBoxes(layout), centredStage(box, layout, layersScale(layout, box)), box);
+}
+
+export function timelineTargets(scene: TimelineScene): MarkTargets {
+  const box = contentBox(Boolean(scene.title));
+  const layout = layoutTimeline(scene, box.width);
+  const scale = timelineScale(layout, box);
+  return staged(timelineBoxes(layout), { left: (box.width - layout.width * scale) / 2, top: Math.max(0, box.height - layout.height * scale) * 0.4, scale }, box);
 }

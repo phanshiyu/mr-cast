@@ -26,7 +26,7 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
-import { arrayTargets, graphTargets, memoryTargets, stateTargets, svgTargets, tableTargets, testsTargets } from '../utils/sceneTargets';
+import { arrayTargets, erTargets, filesTargets, graphTargets, layersTargets, memoryTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
@@ -164,15 +164,22 @@ export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
   });
 }
 
+/** The same targets for each step of a scene whose items do not move. */
+const everyStep = (steps: readonly unknown[] | undefined, targets: () => MarkTargets) => (steps?.length ? steps.map(targets) : []);
+
 /** Each step's item boxes, for the scene types whose layout code gives them without rendering. */
-const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { type: T }>) => MarkTargets[] }> = {
+const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, hunks: HunkMap) => MarkTargets[] }> = {
   graph: graphTargets,
   table: tableTargets,
   array: arrayTargets,
   memory: memoryTargets,
   svg: svgTargets,
-  state: (scene) => (scene.steps ?? []).map(() => stateTargets(scene)),
+  state: (scene) => everyStep(scene.steps, () => stateTargets(scene)),
   tests: testsTargets,
+  er: (scene) => everyStep(scene.steps, () => erTargets(scene)),
+  files: (scene, hunks) => everyStep(scene.steps, () => filesTargets(scene, hunks)),
+  layers: (scene) => everyStep(scene.steps, () => layersTargets(scene)),
+  timeline: (scene) => everyStep(scene.steps, () => timelineTargets(scene)),
 };
 
 export interface InkStage {
@@ -182,9 +189,9 @@ export interface InkStage {
 }
 
 /** Per scene, each step's stage and item boxes, where ink at a point would land; null for a scene type without them. */
-export function inkStages(storyboard: Storyboard): (InkStage[] | null)[] {
+export function inkStages(storyboard: Storyboard, hunks: HunkMap): (InkStage[] | null)[] {
   return storyboard.scenes.map((scene) => {
-    const targets = (STEP_TARGETS[scene.type] as ((s: Scene) => MarkTargets[]) | undefined)?.(scene);
+    const targets = (STEP_TARGETS[scene.type] as ((s: Scene, h: HunkMap) => MarkTargets[]) | undefined)?.(scene, hunks);
     return targets ? targets.map((t) => ({ area: t.area, boxes: [...t.boxes] })) : null;
   });
 }

@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { layerOf, layerRoute, tokenSteps } from '../../shared/layers.mjs';
 import type { HunkMap, LayersScene } from '../types';
-import { BAND_GAP, CAPTION_GAP, DOT_R, PAD_X, PILL_GAP, PILL_H, PILL_PAD_X, layersBoxes, layersScale, layoutLayers, tokenPoint, type LayersLayout, type PlacedLayer } from '../utils/layersLayout';
-import { centredStage, staged } from '../utils/penGeometry';
+import { BAND_GAP, CAPTION_GAP, DOT_R, PAD_X, PILL_GAP, PILL_H, PILL_PAD_X, layersScale, layoutLayers, tokenPoint, type LayersLayout, type PlacedLayer } from '../utils/layersLayout';
+import { centredStage } from '../utils/penGeometry';
 import { asBrightAs, brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { FitText } from './FitText';
@@ -11,6 +11,7 @@ import { badgesOf, changeTone, CornerBadges, EMPHASIS, emphasisRing } from './ma
 import { NodeCard } from './NodeCard';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
+import { layersTargets } from '../utils/sceneTargets';
 import type { SceneProps } from './sceneProps';
 import { clamp, colors, contentBox } from './theme';
 import { tones } from './tones';
@@ -125,7 +126,7 @@ export const LayerStack: React.FC<SceneProps<LayersScene>> = ({ scene, hunks, du
   const layout = useMemo(() => layoutLayers(scene, box), [scene, box.width, box.height]);
   const scale = layersScale(layout, box);
   const stage = centredStage(box, layout, scale);
-  const marks = useMemo(() => staged(layersBoxes(layout), stage, box), [layout, stage.left, stage.top, scale, box.width, box.height]);
+  const marks = useMemo(() => layersTargets(scene), [scene]);
   const route = useMemo(() => layerRoute(scene), [scene]);
   const keys = useMemo(() => tokenKeys(scene, hunks, segments, route.visits.length), [scene, hunks, segments, route]);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
