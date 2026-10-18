@@ -1,6 +1,6 @@
 # 30. A map scene on a bundled Natural Earth outline
 
-- Status: Accepted; amended by [0033](0033-one-trace-camera-and-ink-across-scenes.md)
+- Status: Accepted; amended by [0033](0033-one-trace-camera-and-ink-across-scenes.md) and [0035](0035-bounds-from-the-0.28-review.md)
 - Date: 2026-10-18
 
 ## Context

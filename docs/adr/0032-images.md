@@ -1,6 +1,6 @@
 # 32. Pictures from local copies, never from the network at play or render time
 
-- Status: Accepted
+- Status: Accepted; amended by [0035](0035-bounds-from-the-0.28-review.md)
 - Date: 2026-10-18
 
 ## Context
