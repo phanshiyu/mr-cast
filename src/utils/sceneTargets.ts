@@ -5,7 +5,8 @@ import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
+import type { ArrayScene, GraphScene, ImageManifest, ImageScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
+import { cameraFor, layoutImage, regionOnScreen, viewAt } from './imageLayout';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
 import { layoutMemory, memoryBoxes } from './memoryLayout';
@@ -71,4 +72,14 @@ export function testsTargets(scene: TestsScene): MarkTargets[] {
   const layout = layoutTests(scene, box.width, box.height);
   const targets = staged(testsBoxes(layout), { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale }, box);
   return (scene.steps ?? []).map(() => targets);
+}
+
+/** A picture's regions, as the camera frames them at the start of each step (`starts`, fractions of the scene). */
+export function imageTargets(scene: ImageScene, images: ImageManifest, starts: readonly number[]): MarkTargets[] {
+  const box = headerBox(scene);
+  const layout = layoutImage(scene, box, images);
+  return starts.map((t) => {
+    const camera = cameraFor(layout, viewAt(scene, t));
+    return { boxes: new Map((scene.regions ?? []).map((r) => [`im:${r.id}`, regionOnScreen(layout, r.box, camera)])), obstacles: [], area: { x: 0, y: 0, width: box.width, height: box.height } };
+  });
 }

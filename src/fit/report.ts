@@ -2,6 +2,7 @@ import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, ImageManifest, Scene, Storyboard } from '../types';
 import { layoutImage } from '../utils/imageLayout';
+import { sceneDurationInFrames, sceneSegments } from '../../shared/timing.mjs';
 import { contentBox } from '../components/theme';
 import { calloutFits } from './callout';
 import { fitSceneGraph, graphAreas } from '../utils/graphLayout';
@@ -28,7 +29,7 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
-import { arrayTargets, graphTargets, memoryTargets, stateTargets, svgTargets, tableTargets, testsTargets } from '../utils/sceneTargets';
+import { arrayTargets, graphTargets, imageTargets, memoryTargets, stateTargets, svgTargets, tableTargets, testsTargets } from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
@@ -186,8 +187,14 @@ export interface InkStage {
 }
 
 /** Per scene, each step's stage and item boxes, where ink at a point would land; null for a scene type without them. */
-export function inkStages(storyboard: Storyboard): (InkStage[] | null)[] {
+export function inkStages(storyboard: Storyboard, images: ImageManifest = {}): (InkStage[] | null)[] {
   return storyboard.scenes.map((scene) => {
+    if (scene.type === 'image') {
+      // Each step's ink lands as the step's pen starts, the pan and zoom that far along.
+      const segments = sceneSegments(scene, null);
+      const total = sceneDurationInFrames(scene, null);
+      return imageTargets(scene, images, segments.slice(1).map((s) => s.markFrom / total)).map((t) => ({ area: t.area, boxes: [...t.boxes] }));
+    }
     const targets = (STEP_TARGETS[scene.type] as ((s: Scene) => MarkTargets[]) | undefined)?.(scene);
     return targets ? targets.map((t) => ({ area: t.area, boxes: [...t.boxes] })) : null;
   });

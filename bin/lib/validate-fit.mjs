@@ -45,7 +45,7 @@ export async function checkFit(storyboard, hunks, errors, warnings, images = {})
   try {
     const { fitReport, imageScales, inkStages } = await reportModule();
     reports = fitReport(storyboard, hunks, images);
-    stages = inkStages(storyboard);
+    stages = inkStages(storyboard, images);
     upscaled = imageScales(storyboard, images);
   } catch (err) {
     warnings.push(`could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`);

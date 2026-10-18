@@ -3,7 +3,8 @@ import { interpolate, useCurrentFrame } from 'remotion';
 import { headerBox } from '../fit/shell';
 import type { ImageScene } from '../types';
 import { cameraFor, layoutImage, regionOnScreen, viewAt } from '../utils/imageLayout';
-import { areaOf, type Box, type MarkTargets } from '../utils/penGeometry';
+import type { MarkTargets } from '../utils/penGeometry';
+import { imageTargets } from '../utils/sceneTargets';
 import { focusSpotlight } from '../utils/spotlight';
 import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
@@ -33,11 +34,7 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
   const { frame: area, base } = layout;
   const regions = (scene.regions ?? []).map((r) => ({ region: r, at: regionOnScreen(layout, r.box, camera), lit: focus(`im:${r.id}`).glow }));
   // Ink lands where each step's region is as the step's pen starts.
-  const marks = (k: number): MarkTargets => {
-    const settled = cameraAt(segments[k + 1]?.markFrom ?? 0);
-    const boxes = new Map<string, Box>((scene.regions ?? []).map((r) => [`im:${r.id}`, regionOnScreen(layout, r.box, settled)]));
-    return { boxes, obstacles: [], area: areaOf(box) };
-  };
+  const marks = (k: number): MarkTargets => imageTargets(scene, images, [(segments[k + 1]?.markFrom ?? 0) / Math.max(1, durationInFrames)])[0]!;
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
       <div

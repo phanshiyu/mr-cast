@@ -191,3 +191,8 @@ test('the player serves the run\'s picture copies by their hashed names and noth
     await server.close();
   }
 });
+
+test('ink written at a point on a region of a picture warns, as on any scene with boxes', async () => {
+  const scene = imageScene({ regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4] }], steps: [{ focus: 'laptop', say: 'The laptop.', draw: [{ write: 'here', at: [0.45, 0.45] }] }] });
+  assert.deepEqual((await check(scene)).warnings, ['scenes[0].steps[0].draw[0].at: the text lands on "laptop"; move it to free space, or write it near a ref']);
+});
