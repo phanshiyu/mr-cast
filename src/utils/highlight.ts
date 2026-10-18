@@ -1,5 +1,8 @@
 import { Prism, normalizeTokens, themes, type Token } from 'prism-react-renderer';
 import type { DiffLine } from '../types';
+import { addDocker } from './prismDocker';
+
+addDocker(Prism);
 
 const ALIASES: Record<string, string> = {
   java: 'clike', csharp: 'clike', php: 'clike', scala: 'clike',
