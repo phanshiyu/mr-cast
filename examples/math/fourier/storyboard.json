@@ -1,0 +1,530 @@
+{
+  "title": "A square wave from sine waves",
+  "subtitle": "How smooth waves add up to a sharp jump, and the bump that never goes away",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "The puzzle",
+      "narration": "Here is a strange claim. Take waves that are perfectly smooth, add enough of them, and you get a shape with a sharp jump in it.",
+      "kicker": "A puzzle",
+      "question": "Can smooth waves add up to a sharp jump?",
+      "sides": [
+        {
+          "label": "a sine wave",
+          "term": "smooth",
+          "note": "no corners anywhere",
+          "tone": "accent"
+        },
+        {
+          "label": "a square wave",
+          "term": "jumps",
+          "note": "straight down, in no time",
+          "tone": "warn"
+        }
+      ],
+      "hidden": [
+        "left",
+        "right"
+      ],
+      "steps": [
+        {
+          "show": [
+            "left"
+          ],
+          "say": "A sine wave bends gently, everywhere. It never has a corner."
+        },
+        {
+          "show": [
+            "right"
+          ],
+          "say": "A square wave sits flat, then jumps straight down, then jumps back up."
+        },
+        {
+          "focus": [
+            "question"
+          ],
+          "say": "Adding smooth things should give something smooth. So how could this ever work? Let us try it and see."
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "One wave",
+      "title": "The best single wave",
+      "narration": "The dashed grey line is our target, the square wave. It is one for half the time, then minus one.",
+      "x": {
+        "from": 0,
+        "to": 6.283185307179586,
+        "ticks": "pi"
+      },
+      "y": {
+        "from": -1.5,
+        "to": 1.5,
+        "ticks": 0.5,
+        "grid": true
+      },
+      "params": {
+        "a": 1
+      },
+      "functions": [
+        {
+          "id": "square",
+          "y": "sign(sin(x))",
+          "tone": "neutral",
+          "dashed": true,
+          "label": "square wave"
+        },
+        {
+          "id": "wave",
+          "y": "a * sin(x)",
+          "label": "{a:2} × sin x",
+          "hidden": true
+        }
+      ],
+      "points": [
+        {
+          "id": "middle",
+          "at": [
+            "pi/2",
+            "a"
+          ],
+          "label": "{a:2}",
+          "side": "above",
+          "hidden": true
+        },
+        {
+          "id": "edge",
+          "at": [
+            0.4,
+            "a * sin(0.4)"
+          ],
+          "label": "{a * sin(0.4):2}",
+          "side": "right",
+          "tone": "warn",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "trace": [
+            "wave"
+          ],
+          "focus": [
+            "wave",
+            "square"
+          ],
+          "say": "Start with the plainest wave there is, sin x. It goes up when the square wave is up, and down when it is down."
+        },
+        {
+          "set": {
+            "a": 1.2732395447351628
+          },
+          "focus": [
+            "wave"
+          ],
+          "callout": "best height: 4 ÷ π = 1.27",
+          "say": "Now stretch it until it matches the target as well as one wave can. That happens at a height of four over pi, about 1.27."
+        },
+        {
+          "show": [
+            "middle"
+          ],
+          "focus": [
+            "middle"
+          ],
+          "say": "It is not a good match yet. In the middle it climbs to 1.27, too high.",
+          "draw": [
+            {
+              "circle": "middle",
+              "when": "too high"
+            }
+          ]
+        },
+        {
+          "show": [
+            "edge"
+          ],
+          "focus": [
+            "edge"
+          ],
+          "say": "And near the jump it is far too low, only 0.50.",
+          "draw": [
+            {
+              "write": "too low",
+              "near": "edge",
+              "side": "below",
+              "when": "far too low"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "Adding waves",
+      "title": "Add faster, smaller waves",
+      "narration": "To fix it, we add a second wave, three times as fast and one third as tall.",
+      "x": {
+        "from": 0,
+        "to": 6.283185307179586,
+        "ticks": "pi"
+      },
+      "y": {
+        "from": -1.5,
+        "to": 1.5,
+        "ticks": 0.5,
+        "grid": true
+      },
+      "params": {
+        "n": 1
+      },
+      "functions": [
+        {
+          "id": "square",
+          "y": "sign(sin(x))",
+          "tone": "neutral",
+          "dashed": true
+        },
+        {
+          "id": "next",
+          "y": "4 / (pi * (2*n + 1)) * sin((2*n + 1) * x)",
+          "label": "next wave",
+          "tone": "accent",
+          "dashed": true,
+          "hidden": true
+        },
+        {
+          "id": "wave",
+          "y": "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))",
+          "label": "waves added: {n:0}"
+        }
+      ],
+      "points": [
+        {
+          "id": "middle",
+          "at": [
+            "pi/2",
+            "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi/2)))"
+          ],
+          "label": "{sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi/2))):2}",
+          "side": "above"
+        }
+      ],
+      "callout": "sin x + sin 3x ÷ 3 + sin 5x ÷ 5 + …",
+      "steps": [
+        {
+          "trace": [
+            "next"
+          ],
+          "focus": [
+            "next"
+          ],
+          "say": "Here is that small, fast wave on its own. Notice it dips in the middle and rises near the edges, just where our first wave was wrong."
+        },
+        {
+          "set": {
+            "n": 2
+          },
+          "hide": [
+            "next"
+          ],
+          "focus": [
+            "wave",
+            "middle"
+          ],
+          "say": "Add it in. The middle drops from 1.27 to 0.85, now a little too low, and the shoulders lift."
+        },
+        {
+          "set": {
+            "n": 3
+          },
+          "focus": [
+            "wave",
+            "middle"
+          ],
+          "say": "Then add one five times as fast and one fifth as tall. With it, the middle comes back up to 1.10."
+        },
+        {
+          "set": {
+            "n": 5
+          },
+          "focus": [
+            "wave",
+            "middle"
+          ],
+          "say": "Each wave fixes some of the last one's mistake. With five, the middle is 1.06 and the sides are getting steep."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "The recipe",
+      "title": "How tall each wave is",
+      "kind": "bar",
+      "narration": "So what is the recipe? Measure how much each wave lines up with the square wave, and that tells you how tall to make it.",
+      "labels": [
+        "sin x",
+        "sin 3x",
+        "sin 5x",
+        "sin 7x",
+        "sin 9x",
+        "sin 11x"
+      ],
+      "series": [
+        {
+          "name": "height",
+          "values": [
+            1.273,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tone": "accent"
+        }
+      ],
+      "callout": "height = 4 ÷ (π × k)",
+      "steps": [
+        {
+          "focus": "sin x",
+          "say": "The first wave lines up best, so it is the tallest, 1.27."
+        },
+        {
+          "set": {
+            "height@sin 3x": 0.424,
+            "height@sin 5x": 0.255
+          },
+          "say": "The wave three times as fast gets a third of that. Five times as fast, a fifth."
+        },
+        {
+          "set": {
+            "height": [
+              1.273,
+              0.424,
+              0.255,
+              0.182,
+              0.141,
+              0.116
+            ]
+          },
+          "say": "And so on, smaller and smaller, forever."
+        },
+        {
+          "focus": [
+            "sin x",
+            "sin 3x"
+          ],
+          "draw": [
+            {
+              "write": "no sin 2x, no sin 4x",
+              "near": "height@sin 7x",
+              "side": "above",
+              "when": "two or four"
+            }
+          ],
+          "say": "Notice the list skips from one to three to five. What about waves two or four times as fast? They line up with the top half exactly as much as they fight it, so they cancel out. Their height is zero. Only the odd ones are in the recipe."
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "The jump",
+      "title": "Zoom in on the jump",
+      "narration": "Here is the middle of the picture, around the jump. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is 1.02, almost exactly one.",
+      "x": {
+        "from": 1.5707963267948966,
+        "to": 4.71238898038469,
+        "ticks": "pi"
+      },
+      "y": {
+        "from": -1.5,
+        "to": 1.5,
+        "ticks": 0.5,
+        "grid": true
+      },
+      "params": {
+        "n": 13
+      },
+      "functions": [
+        {
+          "id": "square",
+          "y": "sign(sin(x))",
+          "tone": "neutral",
+          "dashed": true
+        },
+        {
+          "id": "wave",
+          "y": "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))",
+          "label": "waves added: {n:0}"
+        }
+      ],
+      "points": [
+        {
+          "id": "peak",
+          "at": [
+            "pi - pi/(2*n)",
+            "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi - pi/(2*n))))"
+          ],
+          "label": "{sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi - pi/(2*n)))):3}",
+          "side": "left",
+          "tone": "warn",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "show": [
+            "peak"
+          ],
+          "camera": {
+            "on": "peak",
+            "zoom": 3
+          },
+          "focus": [
+            "peak"
+          ],
+          "say": "But look closely at the jump. Just before it, the sum shoots past one, up to 1.18."
+        },
+        {
+          "set": {
+            "n": 50
+          },
+          "focus": [
+            "peak"
+          ],
+          "say": "Surely more waves fix that. Here are fifty. The bump gets thinner and moves closer to the jump, but it is still 1.18 tall.",
+          "draw": [
+            {
+              "write": "still there",
+              "near": "peak",
+              "side": "right",
+              "when": "still"
+            }
+          ]
+        },
+        {
+          "camera": "all",
+          "erase": true,
+          "callout": "overshoot: 9% of the jump",
+          "focus": [
+            "wave"
+          ],
+          "say": "Everywhere else the sum gets as close as you like. At the jump, it always overshoots by about nine percent of the jump."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "The bump that stays",
+      "title": "More waves, same overshoot",
+      "narration": "Here are the numbers. For each count of waves, how high the bump climbs, and how far it sits from the jump.",
+      "columns": [
+        "waves",
+        "top of the bump",
+        "distance from the jump"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "5",
+            "1.182",
+            "0.314"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "13",
+            "1.179",
+            "0.121"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "50",
+            "1.179",
+            "0.031"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "200",
+            "1.179",
+            "0.008"
+          ],
+          "hidden": true
+        }
+      ],
+      "callout": "limit: 1.179",
+      "steps": [
+        {
+          "show": [
+            0,
+            1
+          ],
+          "say": "Five waves, 1.182. Thirteen, 1.179."
+        },
+        {
+          "show": [
+            2,
+            3
+          ],
+          "say": "Fifty, 1.179. Two hundred, 1.179. The height settles and stops falling."
+        },
+        {
+          "focus": [
+            "col:distance from the jump"
+          ],
+          "say": "Meanwhile the bump squeezes toward the jump, a quarter as far away for four times the waves."
+        },
+        {
+          "focus": [
+            "col:top of the bump"
+          ],
+          "tint": {
+            "top of the bump@3": "warn"
+          },
+          "say": "The height heads to 1.179, never to one. People call this the Gibbs phenomenon."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "What to keep",
+      "narration": "So, can smooth waves make a sharp jump? Almost.",
+      "kicker": "The answer",
+      "headline": "Smooth waves can build a jump, almost",
+      "items": [
+        "Each odd wave is a third, a fifth, a seventh as tall as the first",
+        "Each one fixes part of the mistake the others leave",
+        "At the jump the sum always overshoots by about 9%"
+      ],
+      "hidden": [
+        "0-2"
+      ],
+      "steps": [
+        {
+          "show": [
+            0
+          ],
+          "say": "The recipe is simple: the odd waves, each one a third, a fifth, a seventh as tall."
+        },
+        {
+          "show": [
+            1
+          ],
+          "say": "Every wave you add fixes part of what the others got wrong."
+        },
+        {
+          "show": [
+            2
+          ],
+          "say": "And right at the jump there is one mistake no amount of waves can fix: an overshoot of about nine percent, that only gets thinner."
+        }
+      ]
+    }
+  ]
+}
