@@ -4,7 +4,7 @@ import { build } from 'esbuild';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 
 const bundled = await build({ entryPoints: [new URL('../src/utils/textLayout.ts', import.meta.url).pathname], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
-const { countText, layoutText } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const { countText, layoutText, textRects } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 
 const check = (scene) => validateStoryboard({ title: 't', scenes: [{ narration: 'Here it is.', ...scene, type: 'text' }] }, {}, { mode: 'explain' });
 const LEADS = ['headline', 'question', 'number', 'term', 'quote'];
@@ -71,4 +71,26 @@ test('a crowded text scene shrinks its items first, then its lead, and reports w
   const crowded = layoutText({ ...scene, items: [0, 1, 2, 3, 4, 5].map(item) });
   assert.deepEqual(sizes(crowded), [28, 44, 34, 24, 24, 24, 24, 24, 24]);
   assert.equal(crowded.room.fits, false);
+});
+
+test('a question over two sides keeps them clear of its question mark, and the fit check reports text that would run into it', async () => {
+  const sides = [
+    { label: 'ser', term: 'es', note: 'what something **is**' },
+    { label: 'estar', term: 'está', note: 'where it is, and how it is **right now**' },
+  ];
+  const scene = { type: 'text', narration: '', kicker: 'Spanish has two verbs for “is”', question: '¿Es o está?', sides };
+  const layout = layoutText(scene);
+  const { box } = layout.mark;
+  assert.deepEqual([layout.mark.size, Math.round(box.x)], [585, 1370]);
+  // The sides share the 80% left of the mark: the right one starts at 749px and its note wraps to two lines there.
+  const right = textRects(layout, 780, (1712 * 0.8 - 128) / 2).filter((r) => r.x > 700);
+  assert.deepEqual(right.map((r) => Math.round(r.x)), [749, 749, 749]);
+  assert.equal(layout.sides[1].block.note.lines.length, 2);
+  assert.ok(right.every((r) => r.x + r.width < box.x));
+  assert.equal(layout.clear.fits, true);
+  assert.deepEqual((await check({ kicker: scene.kicker, question: scene.question, sides })).errors, []);
+  // Laid out at the full width, as a headline's sides are, the right note runs under the mark: the check sees it.
+  const wide = layoutText({ ...scene, question: undefined, headline: scene.question });
+  const hits = textRects(wide, 780, (1712 - 128) / 2).filter((r) => r.x < box.x + box.width && box.x < r.x + r.width && r.y < box.y + box.height && box.y < r.y + r.height);
+  assert.equal(hits.length, 1);
 });
