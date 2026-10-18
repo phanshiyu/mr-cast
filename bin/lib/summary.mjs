@@ -20,6 +20,14 @@ const MINUS = '−';
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** A duration as whole minutes, hours below two days, or days: `5m`, `3h`, `4d`. */
+export function formatAge(ms) {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 48 * 60) return `${Math.floor(minutes / 60)}h`;
+  return `${Math.floor(minutes / (24 * 60))}d`;
+}
+
 /** One entry per changed file, in diff order, with the ids of its hunks. */
 export function summarizeFiles(parsedFiles, hunks) {
   const all = Object.values(hunks);

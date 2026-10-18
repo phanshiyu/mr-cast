@@ -12,7 +12,7 @@ import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { UserError } from './errors.mjs';
-import { plural } from './summary.mjs';
+import { formatAge, plural } from './summary.mjs';
 
 /**
  * @typedef {'play' | 'plan' | 'render' | 'voice' | 'download'} ProcKind
@@ -432,13 +432,6 @@ export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTab
   for (const p of toKill) outcome.set(p.pid, survivors.includes(p) ? 'failed' : 'killed');
   for (const p of procs) if (p.registered && outcome.get(p.pid) !== 'failed') removeEntry(p.pid);
   return procs.map((proc) => ({ proc, outcome: outcome.get(proc.pid) }));
-}
-
-export function formatAge(ms) {
-  const minutes = Math.max(0, Math.floor(ms / 60_000));
-  if (minutes < 60) return `${minutes}m`;
-  if (minutes < 48 * 60) return `${Math.floor(minutes / 60)}h`;
-  return `${Math.floor(minutes / (24 * 60))}d`;
 }
 
 const home = (p) => (p && p.startsWith(os.homedir() + path.sep) ? `~${p.slice(os.homedir().length)}` : p);

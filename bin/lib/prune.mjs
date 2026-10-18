@@ -15,7 +15,7 @@ import { cacheDir, cacheLock, cacheRoot } from './cache.mjs';
 import { UserError } from './errors.mjs';
 import { liveHolder, usersOf, withLock } from './lock.mjs';
 import { CURRENT_FILE, clearCurrent, isExplanationName, isRunName, readCurrent, readRunMeta } from './runs.mjs';
-import { plural } from './summary.mjs';
+import { formatAge, plural } from './summary.mjs';
 
 /**
  * @typedef {'run' | 'explain' | 'video' | 'stills' | 'audio' | 'cache'} Kind
@@ -365,13 +365,6 @@ export function formatBytes(bytes) {
   return `${unit === 0 || n >= 100 ? Math.round(n) : n.toFixed(1)} ${units[unit]}`;
 }
 
-export function formatAge(modified, now = Date.now()) {
-  const minutes = Math.max(0, Math.floor((now - modified) / 60_000));
-  if (minutes < 60) return `${minutes}m`;
-  if (minutes < 48 * 60) return `${Math.floor(minutes / 60)}h`;
-  return `${Math.floor(minutes / (24 * 60))}d`;
-}
-
 const listed = (listing) => new Set(listing.map((a) => a.id));
 
 /** Bytes deletable now, counting a listed run's parts once (they are inside it) and skipping busy artifacts. */
@@ -386,7 +379,7 @@ export function formatListing(listing, { now = Date.now() } = {}) {
   const rows = listing.map((a) => [
     ids.has(a.parent) ? `  ${a.id}` : a.id,
     formatBytes(a.bytes),
-    formatAge(a.modified, now),
+    formatAge(now - a.modified),
     a.busy ? `${a.detail} · in use: ${a.busy}` : a.detail,
   ]);
   const head = ['id', 'size', 'age', 'what'];
@@ -493,8 +486,8 @@ export function pruneChoices(listing, now = Date.now()) {
       for (const a of items) {
         const age =
           a.kind === 'cache'
-            ? `downloaded ${formatAge(a.modified, now)} ago`
-            : `changed ${formatAge(a.modified, now)} ago`;
+            ? `downloaded ${formatAge(now - a.modified)} ago`
+            : `changed ${formatAge(now - a.modified)} ago`;
         options.push(option(a.label, selectorOf({ ids: [a.id] }), `${age}; ${g.consequence ?? a.detail}`));
       }
     }
