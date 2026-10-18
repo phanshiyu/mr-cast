@@ -6,6 +6,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { UserError } from './errors.mjs';
 
 export const KITTEN_REPO = 'KittenML/kitten-tts-mini-0.8';
 export const KITTEN_REVISION = 'c02725660cea441db4c383af69f1f26f5cd00947';
@@ -30,34 +31,58 @@ export const kittenDir = (cacheRoot) => path.join(cacheRoot, `${KITTEN_REPO.spli
 
 export const kittenDownloaded = (dir) => KITTEN_FILES.every((f) => fs.statSync(path.join(dir, f.name), { throwIfNoEntry: false })?.size === f.bytes);
 
-/** Downloads `file` into `dir`, keeping it only when its sha256 matches the pinned one. */
-export async function downloadChecked(url, dir, file, fetchImpl = fetch) {
+/** A download that sends nothing for this long is given up, however large it is. */
+const IDLE_MS = 120_000;
+const WRITE_ERRORS = new Set(['ENOSPC', 'EDQUOT', 'EACCES', 'EPERM', 'EROFS']);
+
+/**
+ * Downloads `file` into `dir`, keeping it only when its sha256 matches the pinned one. It is written to
+ * `<name>.tmp-<pid>` meanwhile, which the next download removes once this process is gone.
+ */
+export async function downloadChecked(url, dir, file, { fetchImpl = fetch, idleMs = IDLE_MS } = {}) {
   const dest = path.join(dir, file.name);
   const tmp = `${dest}.tmp-${process.pid}`;
-  const res = await fetchImpl(url);
-  if (!res.ok) throw new Error(`${url} answered ${res.status}`);
-  const hash = crypto.createHash('sha256');
-  const out = fs.createWriteStream(tmp);
+  const ctl = new AbortController();
+  let timer;
+  const stillSending = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => ctl.abort(new Error(`${url} sent nothing for ${idleMs / 1000} s`)), idleMs);
+  };
+  const cannotWrite = (err) => {
+    throw WRITE_ERRORS.has(err.code) ? new UserError(`could not write ${file.name} into ${dir} (${err.code}: ${err.message})`) : err;
+  };
+  let out = null;
   try {
+    stillSending();
+    const res = await fetchImpl(url, { signal: ctl.signal });
+    if (!res.ok) throw new Error(`${url} answered ${res.status}`);
+    const hash = crypto.createHash('sha256');
+    out = await fs.promises.open(tmp, 'w').catch(cannotWrite);
     for await (const chunk of res.body) {
+      stillSending();
       hash.update(chunk);
-      if (!out.write(chunk)) await new Promise((resolve) => out.once('drain', resolve));
+      await out.write(chunk).catch(cannotWrite);
     }
-    await new Promise((resolve, reject) => out.end((err) => (err ? reject(err) : resolve())));
+    await out.close().catch(cannotWrite);
+    out = null;
     const sha256 = hash.digest('hex');
     if (sha256 !== file.sha256) throw new Error(`${file.name} failed its integrity check (sha256 ${sha256}, expected ${file.sha256})`);
     fs.renameSync(tmp, dest);
   } finally {
-    out.destroy();
+    clearTimeout(timer);
+    await out?.close().catch(() => {});
     fs.rmSync(tmp, { force: true });
   }
 }
 
-export async function downloadKitten(dir, fetchImpl) {
+/** The Hub, or the mirror HF_ENDPOINT names, as huggingface_hub reads it. */
+export const hubUrl = () => (process.env.HF_ENDPOINT || 'https://huggingface.co').replace(/\/+$/, '');
+
+export async function downloadKitten(dir) {
   fs.mkdirSync(dir, { recursive: true });
   for (const file of KITTEN_FILES) {
     if (fs.statSync(path.join(dir, file.name), { throwIfNoEntry: false })?.size === file.bytes) continue;
-    await downloadChecked(`https://huggingface.co/${KITTEN_REPO}/resolve/${KITTEN_REVISION}/${file.name}`, dir, file, fetchImpl);
+    await downloadChecked(`${hubUrl()}/${KITTEN_REPO}/resolve/${KITTEN_REVISION}/${file.name}`, dir, file);
   }
 }
 

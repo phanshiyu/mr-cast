@@ -2,11 +2,13 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { chunkText, downloadChecked, kittenPhonemes, kittenTokens } from '../bin/lib/kitten.mjs';
+import { UserError } from '../bin/lib/errors.mjs';
 import { ensureVoiceover } from '../bin/lib/voice.mjs';
 import { resolveVoice } from '../bin/lib/voices.mjs';
 import { settingsArgs, settingsFrom } from '../bin/lib/settings.mjs';
@@ -99,13 +101,61 @@ test('a download is kept only when its sha256 matches the pinned one', async () 
   const dir = tmp();
   const body = Buffer.from('kitten weights');
   const file = { name: 'model.onnx', bytes: body.length, sha256: crypto.createHash('sha256').update(body).digest('hex') };
-  await assert.rejects(downloadChecked('https://example.test/model.onnx', dir, file, async () => new Response('tampered weights')),
+  await assert.rejects(downloadChecked('https://example.test/model.onnx', dir, file, { fetchImpl: async () => new Response('tampered weights') }),
     /model\.onnx failed its integrity check \(sha256 [0-9a-f]{64}, expected [0-9a-f]{64}\)/);
   assert.deepEqual(fs.readdirSync(dir), []);
-  await assert.rejects(downloadChecked('https://example.test/model.onnx', dir, file, async () => new Response('gone', { status: 404 })), /answered 404/);
-  await downloadChecked('https://example.test/model.onnx', dir, file, async () => new Response(body));
+  await assert.rejects(downloadChecked('https://example.test/model.onnx', dir, file, { fetchImpl: async () => new Response('gone', { status: 404 }) }), /answered 404/);
+  await downloadChecked('https://example.test/model.onnx', dir, file, { fetchImpl: async () => new Response(body) });
   assert.deepEqual(fs.readdirSync(dir), ['model.onnx']);
   assert.equal(fs.readFileSync(path.join(dir, 'model.onnx'), 'utf8'), 'kitten weights');
+});
+
+/** A server whose response sends `chunks` (strings) with `gapMs` between them, then ends unless `stall`. */
+async function slowServer({ chunks, gapMs, stall = false }) {
+  const server = http.createServer(async (req, res) => {
+    res.writeHead(200, { 'content-type': 'application/octet-stream' });
+    for (const chunk of chunks) {
+      res.write(chunk);
+      await new Promise((resolve) => setTimeout(resolve, gapMs));
+    }
+    if (!stall) res.end();
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  return { url: `http://127.0.0.1:${server.address().port}/model.onnx`, close: () => server.closeAllConnections() || server.close() };
+}
+
+const pinned = (text) => ({ name: 'model.onnx', bytes: Buffer.byteLength(text), sha256: crypto.createHash('sha256').update(text).digest('hex') });
+
+test('a download gives up after a silence, not after a total time, and leaves no partial file', async () => {
+  const dir = tmp();
+  const steady = await slowServer({ chunks: ['a', 'b', 'c', 'd', 'e', 'f'], gapMs: 100 });
+  await downloadChecked(steady.url, dir, pinned('abcdef'), { idleMs: 300 });
+  steady.close();
+  assert.deepEqual(fs.readdirSync(dir), ['model.onnx'], 'a 600 ms download that never pauses 300 ms is kept');
+  fs.rmSync(path.join(dir, 'model.onnx'));
+  const stalled = await slowServer({ chunks: ['a'], gapMs: 0, stall: true });
+  await assert.rejects(downloadChecked(stalled.url, dir, pinned('abcdef'), { idleMs: 300 }), /model\.onnx sent nothing for 0\.3 s/);
+  stalled.close();
+  assert.deepEqual(fs.readdirSync(dir), []);
+});
+
+test('a body that fails before its first byte leaves no empty partial file behind', async () => {
+  const dir = tmp();
+  const broken = () => new Response(new ReadableStream({ pull(c) { c.error(new Error('connection reset')); } }));
+  await assert.rejects(downloadChecked('https://example.test/model.onnx', dir, pinned('x'), { fetchImpl: async () => broken() }), /connection reset/);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(fs.readdirSync(dir), []);
+});
+
+test('a cache it cannot write to is a user error naming the directory', { skip: process.getuid?.() === 0 && 'root writes anywhere' }, async () => {
+  const dir = tmp();
+  fs.chmodSync(dir, 0o500);
+  const err = await downloadChecked('https://example.test/model.onnx', dir, pinned('x'), { fetchImpl: async () => new Response('x') }).catch((e) => e);
+  fs.chmodSync(dir, 0o700);
+  assert.ok(err instanceof UserError, `a UserError, not ${err}`);
+  assert.equal(err.message.split(' (')[0], `could not write model.onnx into ${dir}`);
+  assert.match(err.message, /\(EACCES: /);
+  assert.deepEqual(fs.readdirSync(dir), []);
 });
 
 // The phonemes and ids kittenml 0.9.4 makes for these lines (espeak-ng 1.52), from its Python package.
