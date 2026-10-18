@@ -1,0 +1,567 @@
+{
+  "title": "The 49th parallel",
+  "subtitle": "Why the US and Canada share a straight line",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "A straight line",
+      "narration": "For about two thousand kilometres, the border between the United States and Canada is a dead straight line.",
+      "kicker": "The US and Canada border",
+      "number": "2,000 km",
+      "note": "along one line of latitude, 49° N",
+      "hidden": [
+        "note"
+      ],
+      "steps": [
+        {
+          "show": [
+            "note"
+          ],
+          "say": "It follows the forty ninth parallel. It ignores rivers and mountains. So why there?"
+        }
+      ]
+    },
+    {
+      "type": "map",
+      "chapter": "1818",
+      "title": "The first stretch",
+      "narration": "In 1818 the United States and Britain, which still ran what is now Canada, needed a border across the plains.",
+      "view": {
+        "box": [
+          [
+            36,
+            -130
+          ],
+          [
+            60,
+            -80
+          ]
+        ]
+      },
+      "tint": {
+        "USA": "accent",
+        "CAN": "warn"
+      },
+      "places": [
+        {
+          "id": "us-name",
+          "at": [
+            40,
+            -100
+          ],
+          "dot": false,
+          "label": "United States"
+        },
+        {
+          "id": "br-name",
+          "at": [
+            55,
+            -100
+          ],
+          "dot": false,
+          "label": "British land"
+        },
+        {
+          "id": "woods",
+          "at": [
+            49.38,
+            -95.15
+          ],
+          "label": "Lake of the Woods",
+          "side": "right"
+        },
+        {
+          "id": "divide",
+          "at": [
+            49,
+            -114.07
+          ],
+          "label": "Rockies",
+          "side": "below",
+          "hidden": true
+        }
+      ],
+      "lines": [
+        {
+          "id": "line-1818",
+          "lat": 49,
+          "from": -95.15,
+          "to": -114.07,
+          "label": "49° N",
+          "tone": "good"
+        }
+      ],
+      "steps": [
+        {
+          "show": [
+            "divide"
+          ],
+          "trace": [
+            {
+              "ref": "line-1818",
+              "when": "to the Rocky Mountains"
+            }
+          ],
+          "focus": [
+            "line-1818",
+            "woods",
+            "divide"
+          ],
+          "say": "They picked the forty ninth parallel, from the Lake of the Woods to the Rocky Mountains."
+        },
+        {
+          "focus": [
+            "line-1818",
+            "us-name",
+            "br-name"
+          ],
+          "callout": "about 1,380 km",
+          "say": "A straight line was easy to agree on. Each side gave up the scraps of land on the wrong side of it."
+        }
+      ]
+    },
+    {
+      "type": "map",
+      "chapter": "Oregon",
+      "title": "The land west of the Rockies",
+      "narration": "West of the mountains, nobody could agree. So the two countries shared that land, which they called the Oregon Country.",
+      "view": {
+        "box": [
+          [
+            38,
+            -136
+          ],
+          [
+            60,
+            -100
+          ]
+        ]
+      },
+      "tint": {
+        "USA": "accent",
+        "CAN": "neutral"
+      },
+      "places": [
+        {
+          "id": "us-name",
+          "at": [
+            40,
+            -100
+          ],
+          "dot": false,
+          "label": "United States"
+        },
+        {
+          "id": "br-name",
+          "at": [
+            57,
+            -108
+          ],
+          "dot": false,
+          "label": "British land"
+        }
+      ],
+      "lines": [
+        {
+          "id": "line-1818",
+          "lat": 49,
+          "from": -95.15,
+          "to": -114.07,
+          "label": "49° N",
+          "tone": "good"
+        },
+        {
+          "id": "claim",
+          "lat": 54.666666666666664,
+          "from": -130.6,
+          "to": -120.5,
+          "label": "54°40′ N",
+          "tone": "bad",
+          "hidden": true
+        }
+      ],
+      "regions": [
+        {
+          "id": "oregon",
+          "outline": [
+            [
+              42,
+              -124.3
+            ],
+            [
+              42,
+              -109.5
+            ],
+            [
+              44.5,
+              -110.5
+            ],
+            [
+              46,
+              -112.6
+            ],
+            [
+              47.5,
+              -112.8
+            ],
+            [
+              49,
+              -114.07
+            ],
+            [
+              51.4,
+              -116.3
+            ],
+            [
+              52.9,
+              -118.4
+            ],
+            [
+              54.666666666666664,
+              -120.5
+            ],
+            [
+              54.666666666666664,
+              -130.6
+            ],
+            [
+              52,
+              -128.4
+            ],
+            [
+              50.5,
+              -128.4
+            ],
+            [
+              48.4,
+              -124.7
+            ],
+            [
+              46.25,
+              -124.05
+            ]
+          ],
+          "label": "Oregon Country",
+          "tone": "warn"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "oregon",
+          "say": "For almost thirty years, British fur traders and American settlers both moved in."
+        },
+        {
+          "trace": [
+            {
+              "ref": "claim",
+              "when": "fifty four forty"
+            }
+          ],
+          "focus": [
+            "claim",
+            "oregon"
+          ],
+          "say": "Some Americans wanted all of it, right up to Russian Alaska, at fifty four forty."
+        },
+        {
+          "focus": "claim",
+          "say": "But in 1846 the United States went to war with Mexico, and it did not want a second war with Britain.",
+          "draw": [
+            {
+              "cross": "claim",
+              "when": "second war"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "map",
+      "chapter": "1846",
+      "title": "On to the Pacific",
+      "narration": "So they split the difference.",
+      "view": {
+        "box": [
+          [
+            45.5,
+            -131
+          ],
+          [
+            53,
+            -112
+          ]
+        ]
+      },
+      "places": [
+        {
+          "id": "divide",
+          "at": [
+            49,
+            -114.07
+          ],
+          "label": "Rockies",
+          "side": "below"
+        },
+        {
+          "id": "vi",
+          "at": [
+            49.75,
+            -125.9
+          ],
+          "dot": false,
+          "label": "Vancouver Island",
+          "hidden": true
+        }
+      ],
+      "lines": [
+        {
+          "id": "line-1818",
+          "lat": 49,
+          "from": -95.15,
+          "to": -114.07,
+          "label": "49° N",
+          "tone": "good"
+        },
+        {
+          "id": "line-1846",
+          "lat": 49,
+          "from": -114.07,
+          "to": -123.32,
+          "label": "1846",
+          "tone": "good"
+        }
+      ],
+      "routes": [
+        {
+          "id": "water",
+          "stops": [
+            [
+              49,
+              -123.32
+            ],
+            [
+              48.77,
+              -123.22
+            ],
+            [
+              48.42,
+              -123.2
+            ],
+            [
+              48.29,
+              -123.7
+            ],
+            [
+              48.49,
+              -124.73
+            ]
+          ],
+          "tone": "good",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "trace": [
+            {
+              "ref": "line-1846",
+              "when": "to the sea"
+            }
+          ],
+          "focus": "line-1846",
+          "say": "The Oregon Treaty of 1846 carried the same straight line west, over the mountains, all the way to the sea."
+        },
+        {
+          "show": [
+            "vi"
+          ],
+          "trace": [
+            {
+              "ref": "water",
+              "when": "stayed British"
+            }
+          ],
+          "focus": [
+            "water",
+            "vi"
+          ],
+          "say": "At the coast it swings south through the water, so the whole of Vancouver Island stayed British."
+        }
+      ]
+    },
+    {
+      "type": "map",
+      "chapter": "Point Roberts",
+      "title": "The leftover tip",
+      "narration": "But a straight line drawn on a map does not care what it cuts.",
+      "view": {
+        "box": [
+          [
+            48.75,
+            -123.6
+          ],
+          [
+            49.25,
+            -122.6
+          ]
+        ]
+      },
+      "places": [
+        {
+          "id": "roberts",
+          "at": [
+            48.955,
+            -123.062
+          ],
+          "dot": false,
+          "label": "Point Roberts",
+          "hidden": true
+        },
+        {
+          "id": "blaine",
+          "at": [
+            49,
+            -122.75
+          ],
+          "label": "Blaine, WA",
+          "side": "right",
+          "hidden": true
+        }
+      ],
+      "lines": [
+        {
+          "id": "line",
+          "lat": 49,
+          "from": -122.6,
+          "to": -123.32,
+          "label": "49° N",
+          "tone": "good"
+        }
+      ],
+      "regions": [
+        {
+          "id": "tip",
+          "outline": [
+            [
+              49,
+              -123.0905
+            ],
+            [
+              49,
+              -123.0353
+            ],
+            [
+              48.9844,
+              -123.0453
+            ],
+            [
+              48.9722,
+              -123.0885
+            ],
+            [
+              48.988,
+              -123.0893
+            ]
+          ],
+          "tone": "warn",
+          "hidden": true
+        }
+      ],
+      "routes": [
+        {
+          "id": "drive",
+          "stops": [
+            [
+              48.985,
+              -123.07
+            ],
+            [
+              49.03,
+              -123.065
+            ],
+            [
+              49.07,
+              -123
+            ],
+            [
+              49.06,
+              -122.9
+            ],
+            [
+              49,
+              -122.75
+            ]
+          ],
+          "label": "about 40 km by road",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "view": {
+            "box": [
+              [
+                48.86,
+                -123.32
+              ],
+              [
+                49.1,
+                -122.8
+              ]
+            ]
+          },
+          "show": [
+            "tip",
+            "roberts"
+          ],
+          "focus": [
+            "tip",
+            "line",
+            "roberts"
+          ],
+          "say": "Near the coast it slices the tip off a Canadian peninsula. That tip, Point Roberts, is in the United States."
+        },
+        {
+          "tint": {
+            "tip": "accent"
+          },
+          "focus": [
+            "tip",
+            "roberts"
+          ],
+          "callout": "12.65 km², 1,191 people",
+          "say": "About twelve square kilometres, and some twelve hundred people."
+        },
+        {
+          "view": {
+            "box": [
+              [
+                48.85,
+                -123.3
+              ],
+              [
+                49.15,
+                -122.55
+              ]
+            ]
+          },
+          "show": [
+            "blaine"
+          ],
+          "trace": [
+            {
+              "ref": "drive",
+              "when": "through Canada"
+            }
+          ],
+          "focus": [
+            "drive",
+            "tip",
+            "blaine"
+          ],
+          "say": "To drive home to the rest of their country, they cross the border twice, and about forty kilometres through Canada."
+        }
+      ]
+    }
+  ]
+}
