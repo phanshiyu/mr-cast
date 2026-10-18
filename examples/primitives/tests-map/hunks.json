@@ -1,0 +1,384 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "src/webhooks/deliver.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 12,
+    "additions": 11,
+    "deletions": 4,
+    "beforeCode": "export async function deliver(url: string, event: object) {\n  const res = await fetch(url, { method: 'POST', body: JSON.stringify(event) });\n  if (!res.ok) throw new Error(`webhook failed: ${res.status}`);\n  return 'delivered';\n}",
+    "afterCode": "const WAITS_MS = [1_000, 4_000, 16_000];\n\nexport async function deliver(url: string, event: object, sleep = wait) {\n  for (let attempt = 0; ; attempt++) {\n    const res = await fetch(url, { method: 'POST', body: JSON.stringify(event) });\n    if (res.ok) return 'delivered';\n    if (res.status < 500 || attempt === WAITS_MS.length) return 'failed';\n    await sleep(WAITS_MS[attempt]);\n  }\n}\n\nconst wait = (ms: number) => new Promise((done) => setTimeout(done, ms));",
+    "lines": [
+      {
+        "type": "del",
+        "oldLine": 1,
+        "newLine": null,
+        "text": "export async function deliver(url: string, event: object) {"
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "  const res = await fetch(url, { method: 'POST', body: JSON.stringify(event) });"
+      },
+      {
+        "type": "del",
+        "oldLine": 3,
+        "newLine": null,
+        "text": "  if (!res.ok) throw new Error(`webhook failed: ${res.status}`);"
+      },
+      {
+        "type": "del",
+        "oldLine": 4,
+        "newLine": null,
+        "text": "  return 'delivered';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 1,
+        "text": "const WAITS_MS = [1_000, 4_000, 16_000];"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "export async function deliver(url: string, event: object, sleep = wait) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "  for (let attempt = 0; ; attempt++) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "    const res = await fetch(url, { method: 'POST', body: JSON.stringify(event) });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "    if (res.ok) return 'delivered';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "    if (res.status < 500 || attempt === WAITS_MS.length) return 'failed';"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 8,
+        "text": "    await sleep(WAITS_MS[attempt]);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 9,
+        "text": "  }"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 10,
+        "text": "}"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));"
+      }
+    ]
+  },
+  "h2": {
+    "id": "h2",
+    "file": "test/deliver.test.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "typescript",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 37,
+    "additions": 27,
+    "deletions": 5,
+    "beforeCode": "import { deliver } from '../src/webhooks/deliver';\n\ntest('posts the event as JSON', async () => {\n  const seen = mockServer([200]);\n  await deliver(seen.url, { id: 1 });\n  expect(seen.bodies).toEqual(['{\"id\":1}']);\n});\n\ntest('throws when the receiver errors', async () => {\n  await expect(deliver(mockServer([500]).url, {})).rejects.toThrow('webhook failed: 500');\n});\n\ntest('returns delivered on 200', async () => {\n  expect(await deliver(mockServer([200]).url, {})).toBe('delivered');\n});",
+    "afterCode": "import { deliver } from '../src/webhooks/deliver';\n\nconst noWait = async () => {};\n\ntest('posts the event as JSON', async () => {\n  const seen = mockServer([200]);\n  await deliver(seen.url, { id: 1 }, noWait);\n  expect(seen.bodies).toEqual(['{\"id\":1}']);\n});\n\ntest('returns delivered on 200', async () => {\n  expect(await deliver(mockServer([200]).url, {}, noWait)).toBe('delivered');\n});\n\ntest('retries a 503 until it succeeds', async () => {\n  const seen = mockServer([503, 503, 200]);\n  expect(await deliver(seen.url, {}, noWait)).toBe('delivered');\n  expect(seen.calls).toBe(3);\n});\n\ntest('gives up after three retries', async () => {\n  const seen = mockServer([500, 500, 500, 500, 500]);\n  expect(await deliver(seen.url, {}, noWait)).toBe('failed');\n  expect(seen.calls).toBe(4);\n});\n\ntest('does not retry a 400', async () => {\n  const seen = mockServer([400, 200]);\n  expect(await deliver(seen.url, {}, noWait)).toBe('failed');\n  expect(seen.calls).toBe(1);\n});\n\ntest('waits 1, 4 and 16 seconds', async () => {\n  const waits: number[] = [];\n  await deliver(mockServer([500, 500, 500, 500]).url, {}, async (ms) => void waits.push(ms));\n  expect(waits).toEqual([1000, 4000, 16000]);\n});",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "import { deliver } from '../src/webhooks/deliver';"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "const noWait = async () => {};"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 5,
+        "text": "test('posts the event as JSON', async () => {"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 6,
+        "text": "  const seen = mockServer([200]);"
+      },
+      {
+        "type": "del",
+        "oldLine": 5,
+        "newLine": null,
+        "text": "  await deliver(seen.url, { id: 1 });"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 7,
+        "text": "  await deliver(seen.url, { id: 1 }, noWait);"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 8,
+        "text": "  expect(seen.bodies).toEqual(['{\"id\":1}']);"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 9,
+        "text": "});"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 10,
+        "text": ""
+      },
+      {
+        "type": "del",
+        "oldLine": 9,
+        "newLine": null,
+        "text": "test('throws when the receiver errors', async () => {"
+      },
+      {
+        "type": "del",
+        "oldLine": 10,
+        "newLine": null,
+        "text": "  await expect(deliver(mockServer([500]).url, {})).rejects.toThrow('webhook failed: 500');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 11,
+        "text": "test('returns delivered on 200', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 12,
+        "text": "  expect(await deliver(mockServer([200]).url, {}, noWait)).toBe('delivered');"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 13,
+        "text": "});"
+      },
+      {
+        "type": "context",
+        "oldLine": 12,
+        "newLine": 14,
+        "text": ""
+      },
+      {
+        "type": "del",
+        "oldLine": 13,
+        "newLine": null,
+        "text": "test('returns delivered on 200', async () => {"
+      },
+      {
+        "type": "del",
+        "oldLine": 14,
+        "newLine": null,
+        "text": "  expect(await deliver(mockServer([200]).url, {})).toBe('delivered');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 15,
+        "text": "test('retries a 503 until it succeeds', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 16,
+        "text": "  const seen = mockServer([503, 503, 200]);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 17,
+        "text": "  expect(await deliver(seen.url, {}, noWait)).toBe('delivered');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 18,
+        "text": "  expect(seen.calls).toBe(3);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 19,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 20,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 21,
+        "text": "test('gives up after three retries', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 22,
+        "text": "  const seen = mockServer([500, 500, 500, 500, 500]);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 23,
+        "text": "  expect(await deliver(seen.url, {}, noWait)).toBe('failed');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 24,
+        "text": "  expect(seen.calls).toBe(4);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 25,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 26,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 27,
+        "text": "test('does not retry a 400', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 28,
+        "text": "  const seen = mockServer([400, 200]);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 29,
+        "text": "  expect(await deliver(seen.url, {}, noWait)).toBe('failed');"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 30,
+        "text": "  expect(seen.calls).toBe(1);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 31,
+        "text": "});"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 32,
+        "text": ""
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 33,
+        "text": "test('waits 1, 4 and 16 seconds', async () => {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 34,
+        "text": "  const waits: number[] = [];"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 35,
+        "text": "  await deliver(mockServer([500, 500, 500, 500]).url, {}, async (ms) => void waits.push(ms));"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 36,
+        "text": "  expect(waits).toEqual([1000, 4000, 16000]);"
+      },
+      {
+        "type": "context",
+        "oldLine": 15,
+        "newLine": 37,
+        "text": "});"
+      }
+    ]
+  }
+}

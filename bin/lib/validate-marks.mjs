@@ -27,7 +27,6 @@ const KINDS = {
   event: { highlight: true, badge: true },
   span: { highlight: true, badge: true },
   file: { change: true, badge: true, tone: true },
-  testCase: { badge: true, tone: true },
   layer: { change: true, highlight: true, badge: true, tone: true },
 };
 
@@ -45,7 +44,6 @@ const ITEMS = {
   table: (s, p) => list(s.rows, `${p}.rows`, 'row'),
   timeline: (s, p) => [...list(s.events, `${p}.events`, 'event'), ...list(s.spans, `${p}.spans`, 'span')],
   files: (s, p) => list(s.files, `${p}.files`, 'file'),
-  tests: (s, p) => list(s.cases, `${p}.cases`, 'testCase'),
   layers: (s, p) => list(s.layers, `${p}.layers`, 'layer').flatMap((l) => [l, ...list(l.item.items, `${l.q}.items`, 'node')]),
 };
 

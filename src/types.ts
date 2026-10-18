@@ -419,37 +419,69 @@ export interface MermaidScene extends SceneBase {
 
 export type TestStatus = 'added' | 'modified' | 'removed' | 'existing';
 
-export interface TestCase extends Pick<Marks, 'badge' | 'tone'> {
-  /** The test's name as written in code. */
-  name: string;
-  /** The behavior it proves, in plain words. */
-  proves: string;
-  /** What the diff does to the test, drawn NEW, CHANGED or REMOVED. Defaults to "added". Use "existing" for an unchanged test that already covers the changed code. */
-  status?: TestStatus;
-  /** Hunk with this test's code, if the diff has it. Linking a test hunk here counts it as shown. */
-  hunkId?: string;
+/** A situation the code can meet, drawn as a row of the matrix. */
+export interface TestSituation {
+  /** What `checks` and steps name it by, e.g. "retry". */
+  id: string;
+  /** The situation in plain words, e.g. "503, 503, then 200". Drawn as the row's header. */
+  when: DisplayText;
+  /**
+   * What the code promises here, by outcome, with real values, e.g. { "Result": "delivered", "Calls": "3" }.
+   * A promised cell no test checks is drawn amber and dashed, "unchecked"; an outcome left out does not apply
+   * here and is drawn faint.
+   */
+  expect?: Record<string, DisplayText>;
+  /**
+   * A situation no test tries, as what goes wrong in it, e.g. "nothing tries this: each try waits forever".
+   * With no `expect`, the row is one red dashed bar holding this text. With `expect` it is not drawn, and
+   * `validate` warns.
+   */
+  gap?: DisplayText;
 }
 
+/** A test, by what it checks. */
+export interface TestEntry {
+  /** The test's name as written in code. A step that focuses it shows it in the callout. */
+  name: string;
+  /** What the diff does to the test. A cell a test checks shows NEW or CHANGED; "existing" adds no word, "removed" checks nothing. Defaults to "added". */
+  status?: TestStatus;
+  /** The cells it asserts, each "situation.Outcome", e.g. ["retry.Result", "retry.Calls"]. They draw green with a tick. */
+  checks: string[];
+  /** Hunk with this test's code, if the diff has it. Linking a test hunk here counts it as shown. */
+  hunkId?: string;
+  /** What the cells it checks held before the diff, struck through in them, e.g. "threw". A removed test with `was` may check a cell with no promise. */
+  was?: DisplayText;
+}
+
+export interface TestsStep extends FocusStep {
+  /** The callout during this step. Defaults to the names of the tests the step focuses, with their status; "" shows none. */
+  callout?: DisplayText;
+}
+
+/**
+ * The tests as a behaviour matrix: rows are situations, columns the outcomes the code promises, and each cell
+ * the promised value, green with a tick when a test checks it. A tests scene written before 0.27, with `cases`
+ * and `gaps`, still validates and renders: each case reads as a situation named by the test with one outcome,
+ * "Proves", and each gap as a situation drawn as a gap.
+ */
 export interface TestsScene extends SceneBase {
   type: 'tests';
   title?: string;
-  /** The code under test, e.g. "listEvents in src/lib/pagination.ts". */
+  /** The code under test, e.g. "deliver in src/webhooks/deliver.ts". */
   subject?: string;
-  /** The tests to show. May be empty. */
-  cases: TestCase[];
-  /** Behaviors no test covers, listed apart. May be empty. */
-  gaps: string[];
+  /** Header of the situations column, e.g. "When the receiver…". Defaults to "When". */
+  when?: string;
+  /** The columns: what the code promises, e.g. ["Result", "Calls", "Waits", "Body"]. */
+  outcomes: string[];
+  situations: TestSituation[];
+  /** May be empty. */
+  tests: TestEntry[];
   /**
-   * Your own panel titles, for a scene that is not about a diff's tests, e.g. { "cases": "Checks", "gaps": "Open questions" }.
-   * Defaults: subject "Under test", proves "Proves", gaps "Not tested", none "No tests in this change" (shown when `cases` is empty).
+   * Move the viewer's attention as the voice explains: the matrix draws first, then each step lights what it
+   * focuses just before its `say` is spoken. `narration` is then the intro. A ref is a situation id (its row),
+   * a cell "retry.Calls", an outcome (its column), or a test's name (every cell it checks).
    */
-  titles?: { subject?: string; proves?: string; gaps?: string; none?: string };
-  /**
-   * Move the viewer's attention as the voice explains: the matrix draws first, then each step lights what
-   * it focuses just before its `say` is spoken. `narration` is then the intro.
-   * A ref is a case index (0-based), a case's name, or a gap "gap:0".
-   */
-  steps?: FocusStep[];
+  steps?: TestsStep[];
 }
 
 /**

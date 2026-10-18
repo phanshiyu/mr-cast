@@ -31,7 +31,10 @@ const SCENE = {
 const all = findExamples();
 const storyboard = (e) => JSON.parse(fs.readFileSync(path.join(e.dir, 'storyboard.json'), 'utf8'));
 const worked = all.filter((e) => e.name in SCENE);
-const demos = all.filter((e) => e.rel.startsWith(`primitives${path.sep}`)).map((e) => ({ ...e, type: path.basename(e.rel) }));
+// A demo named for a scene type shows it; one named otherwise, such as tests-map, is a pattern its type's reference points at.
+const demos = all
+  .filter((e) => e.rel.startsWith(`primitives${path.sep}`) && fs.existsSync(path.join(SCENES, `${path.basename(e.rel)}.md`)))
+  .map((e) => ({ ...e, type: path.basename(e.rel) }));
 const stills = [
   ...worked.map((e) => ({ example: e, key: e.name, scene: SCENE[e.name], out: `assets/examples/${e.name}.png` })),
   ...demos.map((e) => ({ example: e, key: e.type, scene: storyboard(e).scenes.findIndex((s) => s.type === e.type), out: `assets/scenes/${e.type}.png` })),

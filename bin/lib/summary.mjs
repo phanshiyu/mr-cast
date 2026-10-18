@@ -9,6 +9,7 @@ import { readingLines, readingOrder } from '../../shared/reading.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
 import { VIEWS } from '../../shared/views.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
+import { isGapRow } from '../../shared/tests.mjs';
 
 const LINE_WIDTH = 110;
 const HEADER_WIDTH = 60;
@@ -111,7 +112,7 @@ export function formatDuration(seconds) {
 }
 
 /**
- * "shows 9/13 hunks, skipped 2, tests 2/2 shown · tests scene: 5 cases, 1 gap"; each part only when it applies.
+ * "shows 9/13 hunks, skipped 2, tests 2/2 shown · tests scene: 5 tests, 1 gap"; each part only when it applies.
  * A pre-read shows no code, so it counts the hunks its reading order (or tests scene) hands the reader.
  * An explanation (null coverage) has no diff to cover.
  */
@@ -125,7 +126,7 @@ function formatCoverage(coverage) {
     if (tests.total) parts.push(`tests ${tests.shown}/${tests.total} shown`);
     out.push(parts.join(', '));
   }
-  if (testsScene) out.push(`tests scene: ${plural(testsScene.cases, 'case')}, ${plural(testsScene.gaps, 'gap')}`);
+  if (testsScene) out.push(`tests scene: ${plural(testsScene.tests, 'test')}, ${plural(testsScene.gaps, 'gap')}`);
   return out.map((part) => ` · ${part}`).join('');
 }
 
@@ -201,7 +202,7 @@ function sceneGist(scene, hunks, storyboard) {
     case 'mermaid':
       return titled(`mermaid ${scene.code.trim().split(/\s/)[0]}`);
     case 'tests':
-      return `${scene.subject ? `${scene.subject} · ` : ''}${count(scene.cases, 'case')}, ${count(scene.gaps, 'gap')}`;
+      return `${scene.subject ? `${scene.subject} · ` : ''}${count(scene.tests, 'test')}, ${count(scene.situations, 'situation')}, ${plural(scene.situations.filter(isGapRow).length, 'gap')}`;
     case 'table': {
       const changed = scene.rows.filter((r) => r.change || r.cells.some((c) => typeof c !== 'string')).length;
       const extra = [changed ? `${changed} changed` : '', scene.highlight?.length ? `${scene.highlight.length} highlighted` : ''].filter(Boolean);

@@ -1,14 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { focusSteps, isExplanation, normalizeStoryboard, upgradeTypes } from '../shared/normalize.mjs';
+import { focusSteps, isExplanation, normalizeStoryboard, upgradeScenes } from '../shared/normalize.mjs';
 
 const diff = { h1: { status: 'modified' } };
 const source = { s1: { status: 'source' } };
 
 test('renames an arch scene to graph and leaves a current storyboard untouched', () => {
-  assert.deepEqual(upgradeTypes({ scenes: [{ type: 'arch' }, { type: 'code' }] }), { scenes: [{ type: 'graph' }, { type: 'code' }] });
+  assert.deepEqual(upgradeScenes({ scenes: [{ type: 'arch' }, { type: 'code' }] }), { scenes: [{ type: 'graph' }, { type: 'code' }] });
   const current = { scenes: [{ type: 'graph' }] };
-  assert.equal(upgradeTypes(current), current);
+  assert.equal(upgradeScenes(current), current);
 });
 
 test('an explanation is a storyboard whose hunks are all source snippets', () => {

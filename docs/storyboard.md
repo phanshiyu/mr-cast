@@ -16,7 +16,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `er` | Tables and crow's-foot relations. With `steps`, each table, field or relation lights as the voice names it. |
 | `state` | A state machine with an entry dot, final states and labelled transitions. |
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph or pie, among others) as a static themed SVG, for diagrams the other scenes don't cover. |
-| `tests` | Each test case with its status and the behavior it proves, then a "Not tested" panel of important behaviors no test covers. With no cases, it says the change has no tests. |
+| `tests` | A matrix: rows are situations the code meets, columns the outcomes it promises, and each cell the promised value. A cell a test checks is green with a tick and NEW or CHANGED; a promise no test checks is amber, "unchecked"; a situation no test tries is a red dashed bar with what goes wrong. A removed test's old value shows struck through. A step that focuses a test shows its name in the callout, and the tests that check each row are listed beside it when there is room. |
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. A changed cell shows its old value struck through beside the new one. Steps can show rows that start `hidden`, `set` cells and `tint` rows and cells. |
 | `chart` | A bar or line chart of one or more series. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`, unless `badges` is `false`. A value under 10,000 prints with up to four significant digits, as written when it has four or fewer. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. Cards of events close in time move apart, and a bent leader joins each card to its dot, so no card covers another. |
@@ -32,7 +32,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 
 The stepped scenes (`array`, `memory`, `graph`, `table` and `svg`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
 
-A `tests` scene that is not about a diff's tests can rename its panels with `titles`, for example `{ "subject": "Checked", "proves": "Shows", "gaps": "Open questions", "none": "Nothing checks this yet" }`.
+A `tests` scene written before 0.27, with `cases` and `gaps`, still validates and renders: each case reads as a situation named by its test, with one outcome, "Proves" (or its `titles.proves`), and each gap as a situation drawn as a gap. A case's `badge` and `tone` and the `subject` and `none` titles are not drawn. A decision `graph` with `tint` can show the paths tests take through the code: see `examples/primitives/tests-map/`.
 
 ## Examples
 
@@ -73,7 +73,7 @@ A diagram's steps each name what to light in `focus`, one ref or a list, and wha
 | `timeline` | An event index, an `"a-b"` range of them, or a span `"span:wait"`. The playhead moves to the furthest one. |
 | `files` | A path in the tree. |
 | `layers` | A layer id, an item id or `"layer.item"`, or a path stop index. A step that focuses a stop moves the token there. The token only moves on along the path, so focus the first stop again to bring it back up. |
-| `tests` | A case index, a case's name, or a gap `"gap:0"`. |
+| `tests` | A situation id (its row), a cell `"retry.Calls"`, an outcome (its column), or a test's name (every cell it checks). |
 | `array` | A cell index, an `"a-b"` range of cells, a pointer `"ptr:lo"`, or a range `"range:window"`; with `arrays`, a cell `"left[0]"`, cells `"left[0-1]"`, or a whole array `"array:left"`. A step that changes something and has no `focus` focuses what it changes, except what it only dims. |
 | `memory` | A frame `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. A step that changes something and has no `focus` focuses what it changes. |
 | `svg` | An element id. A lit group lights everything in it. A step that changes something and has no `focus` focuses what it changes. |
@@ -175,7 +175,7 @@ Three marks say three different things:
 | timeline event, span | no | yes | yes |
 | files entry | yes, by colour and marker | no, use the scene's `highlight` or `steps` | yes |
 | layer, layer item | yes, with a badge | yes | yes |
-| tests case | its `status` | no | yes |
+| test | its `status` | no | no |
 
 Everything that names a change uses the same three words: NEW, CHANGED and REMOVED. A code header says RENAMED for a renamed file and SOURCE for a snippet. An explanation that explains a change sets `"explainsChange": true` on the storyboard or the scene to use change marks.
 

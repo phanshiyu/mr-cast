@@ -250,7 +250,7 @@ Storyboard: [examples/primitives/terminal/storyboard.json](../examples/primitive
 
 ### tests
 
-Each test beside what it proves in plain words, and the gaps nothing tests listed apart.
+A matrix of the situations the code meets against the outcomes it promises, with the tests that check each cell, the promises nothing checks, and the situations no test tries.
 
 ![The tests demo's tests scene, at the end of its last step](assets/scenes/tests.png)
 

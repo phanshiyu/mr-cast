@@ -1,10 +1,12 @@
-// Counts the voice says that the screen contradicts: "seven tests" over a list of nine cases, or "three things to
+// Counts the voice says that the screen contradicts: "seven tests" over a matrix of nine tests, or "three things to
 // check" over two bullets. Only a count right before the noun is read, so "the second of four tests" is never
 // guessed at. Of the plain counts in one text only the largest is taken as the total, so "Nine tests cover it; one
 // test checks the reset" is read as nine, and a bare "one" is never checked; "one new test" is. Each warning names both numbers.
 
 import { plainText } from '../../shared/markup.mjs';
-import { indexRange, sceneSteps } from '../../shared/steps.mjs';
+import { sceneSteps } from '../../shared/steps.mjs';
+import { focusRefs } from '../../shared/targets.mjs';
+import { resolveTestsRef, testKeys } from '../../shared/tests.mjs';
 
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const NUMBER = `(\\d+|${NUMBER_WORDS.join('|')})`;
@@ -29,15 +31,8 @@ function counts(text, pattern) {
 
 const isStep = (step) => step !== null && typeof step === 'object';
 
-/** The item indexes a step lights, from its numeric refs and "a-b" ranges. */
-const focusedItems = (step) =>
-  (Array.isArray(step.focus) ? step.focus : [step.focus]).flatMap((ref) => {
-    const range = indexRange(ref);
-    return range ? Array.from({ length: range[1] - range[0] + 1 }, (_, k) => range[0] + k) : [];
-  });
-
 /**
- * The counts a list of cases allows: with a qualifier, the cases of that status; without, all of them, or all but
+ * The counts a list of tests allows: with a qualifier, the tests of that status; without, all of them, or all but
  * the removed ones, since a removed test no longer covers anything.
  */
 function allowed(list, qualifier) {
@@ -50,15 +45,21 @@ function allowed(list, qualifier) {
   return { counts: [list.length, kept], shown: kept === list.length ? `${list.length}` : `${kept}, and ${list.length - kept} removed` };
 }
 
+/** The tests a step lights: those it names, and those that check a situation, outcome or cell it lights. */
+function litTests(scene, step) {
+  const keys = new Set(focusRefs(step.focus).flatMap((ref) => resolveTestsRef(scene, ref) ?? []));
+  return scene.tests.filter((_, n) => testKeys(scene, n).some((key) => keys.has(key)));
+}
+
 function checkTests(scene, p, warnings) {
-  const cases = scene.cases;
+  const tests = scene.tests;
   for (const { phrase, said, qualifier } of counts(scene.narration ?? '', TESTS_COUNT)) {
-    const { counts: ok, shown } = allowed(cases, qualifier);
+    const { counts: ok, shown } = allowed(tests, qualifier);
     if (!ok.includes(said)) warnings.push(`${p}.narration: says "${phrase}", but the scene lists ${shown}; say the number on screen`);
   }
   sceneSteps(scene).forEach((step, j) => {
     if (!isStep(step)) return;
-    const lit = focusedItems(step).filter((k) => k < cases.length).map((k) => cases[k]);
+    const lit = litTests(scene, step);
     if (!lit.length) return;
     for (const { phrase, said, qualifier } of counts(step.say ?? '', TESTS_COUNT)) {
       const { counts: ok, shown } = allowed(lit, qualifier);
@@ -80,7 +81,7 @@ function checkIntent(scene, p, warnings) {
 export function checkSpokenCounts(scenes, warnings) {
   scenes.forEach((scene, i) => {
     const p = `scenes[${i}]`;
-    if (scene?.type === 'tests' && Array.isArray(scene.cases)) checkTests(scene, p, warnings);
+    if (scene?.type === 'tests' && Array.isArray(scene.tests) && Array.isArray(scene.situations)) checkTests(scene, p, warnings);
     if (scene?.type === 'intent' && Array.isArray(scene.bullets) && scene.bullets.length) checkIntent(scene, p, warnings);
   });
 }

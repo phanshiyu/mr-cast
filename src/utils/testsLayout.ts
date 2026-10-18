@@ -1,29 +1,21 @@
-import { fitBlock, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
+import { plainText } from '../../shared/markup.mjs';
+import { fitBlock, fitText, fitTextAt, measure, type Fit, type Font, type Slot } from '../../shared/textfit.mjs';
+import { isLive, testsMatrix, type MatrixCell, type MatrixRow, type TestsMatrix } from '../../shared/tests.mjs';
 import { SLOTS, sized } from '../fit/slots';
+import type { TestsScene } from '../types';
 import type { Box as PenBox, LayoutBoxes } from './penGeometry';
-import { rowBadgeRoom } from './marks';
-import type { TestCase, TestsScene } from '../types';
-
 
 const MAX_FONT = 25;
-/** With no matrix on screen the gaps are the whole story, so they may run larger. */
-const MAX_FONT_NO_CASES = 29;
 const MIN_FONT = 15;
-const LINE_HEIGHT = 1.3;
-
-export const MATRIX_HEADER_H = 40;
-export const CHECK_W = 44;
-export const STATUS_W = 138;
-export const COL_GAP = 22;
-export const ROW_PAD_X = 18;
-const ROW_GAP = 6;
-const SECTION_GAP = 24;
-export const GAPS_HEADER_H = 52;
-export const GAPS_PAD = 20;
-const GAP_ITEM_GAP = 10;
-export const GAP_MARKER_W = 34;
-/** The "No tests in this change" card that replaces the matrix when a scene has no cases. */
-export const EMPTY_CARD_H = 196;
+const COL_GAP = 12;
+const ROW_GAP = 8;
+/** Room between a cell's value and its tag. */
+const TAG_GAP = 10;
+/** The column titles' row, and the line under the matrix with the subject and the counts. */
+export const HEAD_H = 40;
+export const FOOT_H = 44;
+const FOOT_GAP = 14;
+const HEAD_SLOT = { ...SLOTS.tableHeader, size: 17 };
 
 export interface Box {
   x: number;
@@ -32,158 +24,242 @@ export interface Box {
   h: number;
 }
 
-export interface PlacedCase extends Box {
-  test: TestCase;
-  name: Fit;
-  proves: Fit;
+/** The word at the right of a cell. */
+export type CellTag = 'NEW' | 'CHANGED' | 'unchecked' | 'REMOVED' | null;
+
+export interface PlacedCell extends Box {
+  cell: MatrixCell;
+  /** The value with a tick when a test checks it; null for a cell no situation promises. */
+  value: Fit | null;
+  was: Fit | null;
+  tag: CellTag;
 }
 
-export interface PlacedGap extends Box {
-  text: Fit;
+export interface PlacedRow extends Box {
+  row: MatrixRow;
+  when: Fit;
+  /** How many live tests check the row, drawn at the right of its header. */
+  count: string;
+  cells: PlacedCell[];
+  /** The bar a gap row draws across the outcome columns, and its text. */
+  bar: (Box & { text: Fit }) | null;
+  /** The names of the tests that check the row, when the names column has room; a removed one is struck through. */
+  names: { fit: Fit; removed: boolean }[];
 }
-
-/** The scene's panel titles: its own words, or the defaults. */
-export type TestsTitles = Required<NonNullable<TestsScene['titles']>>;
-export const DEFAULT_TITLES: TestsTitles = { subject: 'Under test', proves: 'Proves', gaps: 'Not tested', none: 'No tests in this change' };
 
 export interface TestsLayout {
-  /** Body text size; the test name renders slightly smaller in mono. */
+  matrix: TestsMatrix;
   font: number;
-  nameFont: number;
+  tagFont: number;
   lineHeight: number;
-  /** Absent when the scene has no cases: the empty card takes the matrix's place. */
-  matrix: (Box & { nameX: number; nameW: number; provesX: number; provesW: number }) | null;
-  emptyCard: Box | null;
-  rows: PlacedCase[];
-  gapsPanel: Box;
-  gaps: PlacedGap[];
-  /** Some text needs more lines than it may take. */
-  truncated: boolean;
-  /** Total height in layout pixels. */
+  padX: number;
+  /** The situations column, the outcome columns, and the test names column when it has room. */
+  whenCol: { x: number; w: number; title: Fit };
+  cols: { x: number; w: number; title: Fit }[];
+  namesCol: { x: number; w: number; title: Fit } | null;
+  rows: PlacedRow[];
+  footY: number;
+  subject: Fit | null;
+  counts: string;
+  /** Total width and height in layout pixels. */
+  width: number;
   height: number;
   /** Below 1 when even the smallest font overflows: the scene draws at `width / scale` and shrinks to fit. */
   scale: number;
-  /** Whether the matrix and gaps fit the frame at a readable size. */
+  /** Whether the matrix fits the frame at a readable size. */
   room: Fit;
-  titles: { proves: Fit; gaps: Fit; none: Fit; subject: { title: Fit; text: Fit } | null };
 }
 
-function attempt(cases: readonly TestCase[], gaps: readonly string[], width: number, font: number, maxLines = 2) {
-  const lineHeight = Math.round(font * LINE_HEIGHT);
-  const nameFont = Math.round(font * 0.92);
-  const pad = Math.round(font * 0.45);
-  let truncated = false;
-  let y = 0;
+const TAG_OF: Record<MatrixCell['state'], (cell: MatrixCell) => CellTag> = {
+  checked: (c) => (c.status === 'added' ? 'NEW' : c.status === 'modified' ? 'CHANGED' : null),
+  unchecked: () => 'unchecked',
+  removed: () => 'REMOVED',
+  none: () => null,
+};
 
-  let matrix: TestsLayout['matrix'] = null;
-  let emptyCard: Box | null = null;
-  const rows: PlacedCase[] = [];
-  if (cases.length) {
-    const textW = width - CHECK_W - STATUS_W - 2 * ROW_PAD_X - 3 * COL_GAP - rowBadgeRoom(cases, ROW_BADGE);
-    const nameW = Math.round(textW * 0.42);
-    const provesW = textW - nameW;
-    const nameX = ROW_PAD_X + CHECK_W + COL_GAP + STATUS_W + COL_GAP;
-    const provesX = nameX + nameW + COL_GAP;
-    let rowY = MATRIX_HEADER_H;
-    for (const [i, test] of cases.entries()) {
-      const name = fitTextAt(test.name, { ...sized(SLOTS.testName, nameW), lines: maxLines }, `cases[${i}].name`, nameFont);
-      const proves = fitTextAt(test.proves, { ...sized(SLOTS.testProves, provesW), lines: maxLines }, `cases[${i}].proves`, font);
-      truncated ||= !name.fits || !proves.fits;
-      const h = Math.max(name.lines.length, proves.lines.length) * lineHeight + 2 * pad;
-      rows.push({ test, name, proves, x: 0, y: rowY, w: width, h });
-      rowY += h + ROW_GAP;
-    }
-    const h = rowY - ROW_GAP + 6;
-    matrix = { x: 0, y, w: width, h, nameX, nameW, provesX, provesW };
-    y += h;
-  } else {
-    emptyCard = { x: 0, y, w: width, h: EMPTY_CARD_H };
-    y += EMPTY_CARD_H;
-  }
-  y += SECTION_GAP;
+export const tagFont = (tag: NonNullable<CellTag>, size: number): Font =>
+  tag === 'unchecked' ? { family: 'sans', weight: 600, size } : { family: 'sans', weight: 800, size, letterSpacing: 1 };
+const tagWidth = (tag: CellTag, size: number) => (tag ? measure(tag, tagFont(tag, size)) + TAG_GAP : 0);
 
-  // Gaps sit in two columns once there are enough of them to fill a row.
-  const cols = gaps.length >= 2 ? 2 : 1;
-  const itemW = (width - 2 * GAPS_PAD - (cols - 1) * GAP_ITEM_GAP) / cols;
-  const wrapped = gaps.map((g, i) => {
-    const text = fitTextAt(g, { ...sized(SLOTS.testGap, itemW - GAP_MARKER_W - 2 * pad), lines: maxLines }, `gaps[${i}]`, font);
-    truncated ||= !text.fits;
-    return text;
-  });
-  const placedGaps: PlacedGap[] = [];
-  let gy = y + GAPS_HEADER_H;
-  for (let i = 0; i < wrapped.length; i += cols) {
-    const band = wrapped.slice(i, i + cols);
-    const h = Math.max(...band.map((t) => t.lines.length)) * lineHeight + 2 * pad;
-    band.forEach((text, c) => placedGaps.push({ text, x: GAPS_PAD + c * (itemW + GAP_ITEM_GAP), y: gy, w: itemW, h }));
-    gy += h + GAP_ITEM_GAP;
-  }
-  const gapsH = gaps.length ? gy - GAP_ITEM_GAP - y + GAPS_PAD : GAPS_HEADER_H + lineHeight + GAPS_PAD;
-  const gapsPanel = { x: 0, y, w: width, h: gapsH };
+/** The text a cell shows: its promised value, ticked when a test checks it. */
+const cellText = (cell: MatrixCell) => (cell.state === 'checked' ? `✓ ${cell.value ?? ''}`.trimEnd() : (cell.value ?? ''));
 
-  return { font, nameFont, lineHeight, matrix, emptyCard, rows, gapsPanel, gaps: placedGaps, truncated, height: y + gapsH, scale: 1, room: fitBlock('cases', 'tests scene', true, '') };
+/** "7 tests · 4 new · 2 changed · 1 removed · 2 unchecked · 2 gaps": the counts under the matrix. */
+export function countsLine({ counts }: TestsMatrix): string {
+  const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+  const parts = [counts.tests ? n(counts.tests, 'test') : 'no tests'];
+  if (counts.added && counts.added < counts.tests) parts.push(`${counts.added} new`);
+  if (counts.modified) parts.push(`${counts.modified} changed`);
+  if (counts.removed) parts.push(`${counts.removed} removed`);
+  if (counts.unchecked) parts.push(`${counts.unchecked} unchecked`);
+  if (counts.gaps) parts.push(n(counts.gaps, 'gap'));
+  return parts.join(' · ');
 }
 
-/** Room the "No tests" card's title has beside its icon. */
-const EMPTY_TITLE_W = (width: number) => width - 2 * 52 - 112 - 40;
+const rowCount = (scene: TestsScene, row: MatrixRow) => {
+  const live = row.tests.filter((n) => (scene.tests[n]?.status ?? 'added') !== 'removed').length;
+  return row.gap ? '' : live === 0 ? 'no test' : live === 1 ? '1 test' : `${live} tests`;
+};
 
-/** The scene's own panel titles and subject, fitted to where they sit. */
-function titleFits(scene: TestsScene, layout: Omit<TestsLayout, 'titles'>, width: number): TestsLayout['titles'] {
-  const titles: TestsTitles = { ...DEFAULT_TITLES, ...scene.titles };
-  const at = (key: keyof TestsTitles) => (scene.titles?.[key] ? `titles.${key}` : '');
-  const label = { ...SLOTS.panelTitle, size: 17, weight: 700 };
-  return {
-    proves: fitText(titles.proves, sized(label, layout.matrix?.provesW ?? width), at('proves')),
-    gaps: fitText(titles.gaps, sized(SLOTS.panelTitle, width - 2 * GAPS_PAD - 24 - 12 - 80), at('gaps')),
-    none: fitText(titles.none, sized(SLOTS.emptyTitle, EMPTY_TITLE_W(width)), at('none')),
-    subject: scene.subject
-      ? { title: fitText(titles.subject, sized({ ...SLOTS.panelTitle, size: 16, weight: 700 }, SUBJECT_W), at('subject')), text: fitText(scene.subject, sized(SLOTS.testSubject, SUBJECT_W), 'subject') }
-      : null,
-  };
-}
-
-/** The subject sits at the right end of the header, at most this wide. */
-export const SUBJECT_W = 698;
-
-/** Font size of a case's own badges, drawn at its right end. */
-export const ROW_BADGE = 13;
 
 /**
- * Places the test matrix and the "Not tested" panel in a box. Picks the largest font at which every text
- * fits its two lines and the whole stack fits the height; failing that, the smallest font with three
- * lines a text; failing that, the smallest font laid out wider and scaled down, so text never runs into
- * the caption band, which `validate` reports.
+ * Column widths for `room`: every column its natural width and an equal part of what is left; when they do not
+ * all fit, the narrow ones keep theirs and the wide ones share the rest equally, so one long value never starves
+ * the others.
+ */
+function shareWidths(natural: readonly number[], room: number): number[] {
+  const total = natural.reduce((a, b) => a + b, 0);
+  if (total <= room) return natural.map((n) => n + (room - total) / natural.length);
+  const out = natural.map(() => 0);
+  let open = natural.map((_, i) => i);
+  let left = room;
+  for (;;) {
+    const share = left / open.length;
+    const fitting = open.filter((i) => natural[i]! <= share);
+    if (!fitting.length) break;
+    for (const i of fitting) {
+      out[i] = natural[i]!;
+      left -= natural[i]!;
+    }
+    open = open.filter((i) => !fitting.includes(i));
+    if (!open.length) return out;
+  }
+  for (const i of open) out[i] = left / open.length;
+  return out;
+}
+
+function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: number, maxLines = 2): Omit<TestsLayout, 'scale' | 'room'> & { fits: boolean } {
+  const lineHeight = Math.round(font * 1.25);
+  const padX = Math.round(font * 0.6);
+  const padY = Math.round(font * 0.42);
+  const small = Math.max(MIN_FONT, Math.round(font * 0.66));
+  const { outcomes, rows } = matrix;
+  const valueFont: Font = { family: 'sans', weight: 700, size: font };
+  const whenFont: Font = { family: 'sans', weight: 600, size: font };
+  const counted = rows.some((r) => r.tests.filter((n) => isLive(scene.tests[n])).length > 1);
+  const countW = counted ? measure('99 tests', { family: 'sans', weight: 600, size: small }) + TAG_GAP : 0;
+
+  const whenNat = Math.max(...rows.map((r) => measure(plainText(r.situation.when ?? ''), whenFont)), 0) + 2 * padX + countW;
+  const whenW = Math.round(Math.min(Math.max(whenNat, width * 0.16), width * 0.34));
+  const colNat = outcomes.map((o, col) =>
+    Math.max(
+      measure(o, { family: 'sans', weight: 700, size: HEAD_SLOT.size, letterSpacing: HEAD_SLOT.letterSpacing, upper: true }) + 2 * padX,
+      ...rows.filter((r) => !r.gap).map((r) => {
+        const cell = r.cells[col]!;
+        return measure(plainText(cellText(cell)), valueFont) + tagWidth(TAG_OF[cell.state](cell), small) + 2 * padX;
+      }),
+    ),
+  );
+
+  const nameFont: Font = { family: 'mono', weight: 500, size: Math.max(MIN_FONT, Math.round(font * 0.76)) };
+  const namesNat = scene.tests.length ? Math.max(...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX : 0;
+  const outcomeRoom = (namesW: number) => width - whenW - namesW - COL_GAP * (outcomes.length + (namesW ? 1 : 0));
+  const natSum = colNat.reduce((a, b) => a + b, 0);
+  const namesFit = Math.round(Math.min(namesNat, width * 0.3));
+  // The names column only when every value still fits one line beside it.
+  const namesW = namesNat && outcomeRoom(namesFit) >= natSum ? namesFit : 0;
+  const room = outcomeRoom(namesW);
+  const colW = shareWidths(colNat, room);
+
+  let fits = true;
+  const fitAt = (text: string, slot: Slot, w: number, path: string, size: number, lines = maxLines) => {
+    const f = fitTextAt(text, { ...sized(slot, Math.max(1, w)), lines }, path, size);
+    fits &&= f.fits;
+    return f;
+  };
+  const whenCol = { x: 0, w: whenW, title: fitText(scene.when ?? 'When', sized(HEAD_SLOT, whenW - padX), scene.when ? 'when' : '') };
+  let x = whenW + COL_GAP;
+  const cols = outcomes.map((o, col) => {
+    const placed = { x, w: Math.round(colW[col]!), title: fitText(o, sized(HEAD_SLOT, colW[col]! - padX), `outcomes[${col}]`) };
+    x += placed.w + COL_GAP;
+    return placed;
+  });
+  const namesCol = namesW ? { x, w: namesW, title: fitText('Tests', sized(HEAD_SLOT, namesW - padX), '') } : null;
+  const right = namesCol ? namesCol.x + namesCol.w : x - COL_GAP;
+
+  const placedRows: PlacedRow[] = [];
+  let y = HEAD_H;
+  rows.forEach((row, r) => {
+    const sit = row.situation;
+    // With the names column beside it a count would only repeat it, and with one test a row it says nothing a tick does not.
+    const count = namesCol || !counted ? '' : rowCount(scene, row);
+    const when = fitAt(sit.when ?? '', SLOTS.testWhen, whenW - 2 * padX - (count ? countW : 0), `situations[${r}].when`, font);
+    let h = when.lines.length * lineHeight;
+    let bar: PlacedRow['bar'] = null;
+    const cells: PlacedCell[] = [];
+    if (row.gap) {
+      const barX = cols[0]?.x ?? whenW + COL_GAP;
+      const text = fitAt(`✗ ${sit.gap}`, SLOTS.testGap, right - barX - 2 * padX, `situations[${r}].gap`, font);
+      h = Math.max(h, text.lines.length * lineHeight);
+      bar = { x: barX, y, w: right - barX, h: 0, text };
+    } else {
+      row.cells.forEach((cell, col) => {
+        const tag = TAG_OF[cell.state](cell);
+        const c = cols[col]!;
+        const inner = c.w - 2 * padX - tagWidth(tag, small);
+        const text = cellText(cell);
+        const value = text ? fitAt(text, SLOTS.testValue, inner, cell.value === undefined ? '' : `situations[${r}].expect.${cell.outcome}`, font) : null;
+        const wasPath = `tests[${cell.tests.find((n) => scene.tests[n]!.was)}].was`;
+        const was = cell.was.length ? fitAt(cell.was.join(', '), SLOTS.testWas, inner, wasPath, small, 1) : null;
+        h = Math.max(h, (value?.lines.length ?? 1) * lineHeight + (was ? Math.round(small * 1.25) : 0));
+        cells.push({ cell, value, was, tag, x: c.x, y, w: c.w, h: 0 });
+      });
+    }
+    const names = namesCol && !row.gap
+      ? row.tests.map((n) => ({ fit: fitAt(scene.tests[n]!.name, SLOTS.testNames, namesCol.w - 2 * padX, `tests[${n}].name`, nameFont.size, 1), removed: !isLive(scene.tests[n]) }))
+      : [];
+    if (names.length) h = Math.max(h, names.length * Math.round(nameFont.size * 1.25));
+    h += 2 * padY;
+    for (const c of cells) c.h = h;
+    if (bar) bar.h = h;
+    placedRows.push({ row, when, count, cells, bar, names, x: 0, y, w: right, h });
+    y += h + ROW_GAP;
+  });
+  const footY = y - ROW_GAP + FOOT_GAP;
+  const subject = scene.subject ? fitText(scene.subject, sized(SLOTS.testSubject, right * 0.55), 'subject') : null;
+  if (subject && !subject.fits) fits = false;
+  return { matrix, font, tagFont: small, lineHeight, padX, whenCol, cols, namesCol, rows: placedRows, footY, subject, counts: countsLine(matrix), width: right, height: footY + FOOT_H, fits };
+}
+
+/**
+ * Places the matrix in a box. Picks the largest font at which every text fits its two lines and the whole
+ * matrix fits the height; failing that, the smallest font with three lines a text; failing that, the smallest
+ * font laid out wider and scaled down, which `validate` reports.
  */
 export function layoutTests(scene: TestsScene, width: number, height: number): TestsLayout {
-  const { cases, gaps } = scene;
-  const done = (layout: Omit<TestsLayout, 'titles'>): TestsLayout => ({ ...layout, titles: titleFits(scene, layout, layout.matrix?.w ?? width / layout.scale) });
-  for (let font = cases.length ? MAX_FONT : MAX_FONT_NO_CASES; font >= MIN_FONT; font--) {
-    const result = attempt(cases, gaps, width, font);
-    if (result.height <= height && !result.truncated) return done(result);
+  const matrix = testsMatrix(scene);
+  const ok = fitBlock('situations', 'tests scene', true, '');
+  for (let font = MAX_FONT; font >= MIN_FONT; font--) {
+    const { fits, ...result } = attempt(scene, matrix, width, font);
+    if (fits && result.height <= height) return { ...result, scale: 1, room: ok };
   }
-  // At the smallest font a text may take a third line; a scene that still overflows draws smaller and is reported.
-  const last = attempt(cases, gaps, width, MIN_FONT, 3);
-  if (last.height <= height) return done(last);
+  const { fits: _, ...last } = attempt(scene, matrix, width, MIN_FONT, 3);
+  if (last.height <= height) return { ...last, scale: 1, room: ok };
   // A wider layout wraps less, so it is never taller: scaling by the first estimate always fits.
   const scale = height / last.height;
-  return done({ ...attempt(cases, gaps, width / scale, MIN_FONT, 3), scale, room: fitBlock('cases', 'tests scene', false, 'split the cases into two tests scenes, or shorten them') });
+  const { fits: __, ...wide } = attempt(scene, matrix, width / scale, MIN_FONT, 3);
+  return { ...wide, scale, room: fitBlock('situations', 'tests scene', false, 'split the situations into two tests scenes, or use fewer outcomes') };
 }
 
-const boxOf = (b: Box) => ({ x: b.x, y: b.y, width: b.w, height: b.h });
+const boxOf = (b: Box): PenBox => ({ x: b.x, y: b.y, width: b.w, height: b.h });
 
 /**
- * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a case's
- * row and a gap's line. A note keeps off the names, what they prove, and the gaps.
+ * The box of each item a step can focus, by its key in shared/tests.mjs, in layout units: a situation's row,
+ * a cell, and an outcome's column. A note keeps off the headers, the cells and the bars.
  */
 export function testsBoxes(layout: TestsLayout): LayoutBoxes {
-  const m = layout.matrix;
-  const boxes = new Map<string, PenBox>([
-    ...layout.rows.map((row, i): [string, PenBox] => [`c:${i}`, boxOf(row)]),
-    ...layout.gaps.map((gap, i): [string, PenBox] => [`g:${i}`, boxOf(gap)]),
-  ]);
-  const obstacles = [
-    ...layout.rows.flatMap((row) => (m ? [{ x: m.nameX, y: row.y, width: m.nameW, height: row.h }, { x: m.provesX, y: row.y, width: m.provesW, height: row.h }] : [boxOf(row)])),
-    ...layout.gaps.map(boxOf),
-  ];
+  const boxes = new Map<string, PenBox>();
+  const obstacles: PenBox[] = [];
+  for (const row of layout.rows) {
+    boxes.set(row.row.key, boxOf(row));
+    obstacles.push({ x: 0, y: row.y, width: layout.whenCol.w, height: row.h });
+    for (const c of row.cells) {
+      boxes.set(c.cell.key, boxOf(c));
+      obstacles.push(boxOf(c));
+    }
+    if (row.bar) obstacles.push(boxOf(row.bar));
+  }
+  const last = layout.rows.at(-1);
+  layout.cols.forEach((c, col) => boxes.set(`o:${col}`, { x: c.x, y: 0, width: c.w, height: last ? last.y + last.h : HEAD_H }));
   return { boxes, obstacles };
 }

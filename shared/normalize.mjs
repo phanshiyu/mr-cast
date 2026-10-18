@@ -4,6 +4,7 @@
 import { plainText } from './markup.mjs';
 import { FLAG_MARK, flaggedFinding } from './review.mjs';
 import { STATE_TYPES, changedRefs } from './state-steps.mjs';
+import { testsCallouts, upgradeTests } from './tests.mjs';
 
 /** What `kind` meant before nodes had their own icon and caption. */
 const KINDS = {
@@ -30,13 +31,16 @@ const LEGACY_TYPES = { arch: 'graph' };
 export const NODE_KINDS = Object.keys(KINDS);
 
 /**
- * The storyboard with every scene type renamed since it was written replaced by its current name. It runs
- * where a storyboard enters, before `validate` and inside normalizeStoryboard, so nothing past it sees `arch`.
+ * The storyboard with every scene in its current shape: a type renamed since it was written replaced by its
+ * current name (an `arch` scene is a `graph`), and a tests scene with `cases` and `gaps` read as a matrix. It
+ * runs where a storyboard enters, before `validate` and inside normalizeStoryboard, so nothing past it sees
+ * either older shape.
  */
-export function upgradeTypes(storyboard) {
+export function upgradeScenes(storyboard) {
   if (!Array.isArray(storyboard?.scenes)) return storyboard;
   const renamed = (scene) => (scene && typeof scene === 'object' && Object.hasOwn(LEGACY_TYPES, scene.type) ? { ...scene, type: LEGACY_TYPES[scene.type] } : scene);
-  return storyboard.scenes.some((s) => renamed(s) !== s) ? { ...storyboard, scenes: storyboard.scenes.map(renamed) } : storyboard;
+  const upgraded = (scene) => upgradeTests(renamed(scene));
+  return storyboard.scenes.some((s) => upgraded(s) !== s) ? { ...storyboard, scenes: storyboard.scenes.map(upgraded) } : storyboard;
 }
 export const legacyFocusKeys = (type) => LEGACY_FOCUS[type] ?? [];
 
@@ -91,6 +95,11 @@ function normalizeScene(scene, explain, storyboard) {
   if (scene.type === 'code' && Array.isArray(out.steps)) out.steps = flagSteps(out.steps, storyboard);
   if (scene.type === 'graph') out.nodes = scene.nodes.map((n) => normalizeNode(n, explain));
   if (scene.type === 'layers') out.layers = scene.layers.map((l) => (l.items ? { ...l, items: l.items.map((n) => normalizeNode(n, explain)) } : l));
+  // A step that focuses tests names them in the callout, unless it sets its own.
+  if (scene.type === 'tests' && Array.isArray(out.steps)) {
+    const callouts = testsCallouts(scene);
+    out.steps = out.steps.map((step, k) => ({ ...step, callout: callouts[k] }));
+  }
   if (scene.type === 'sequence') {
     out.participants = scene.participants.map((n) => normalizeNode(n, explain));
     out.messages = scene.messages.map((m) => normalizeMarks(m, explain));
@@ -101,6 +110,6 @@ function normalizeScene(scene, explain, storyboard) {
 /** Expects a storyboard that passed `validate`; returns it with every older field name replaced. */
 export function normalizeStoryboard(storyboard, hunks) {
   const explain = isExplanation(hunks);
-  const current = upgradeTypes(storyboard);
+  const current = upgradeScenes(storyboard);
   return { ...current, scenes: current.scenes.map((scene) => normalizeScene(scene, explain, current)) };
 }

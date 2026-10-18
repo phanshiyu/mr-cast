@@ -64,9 +64,9 @@ const SCENE_FITS: SceneFits = {
   },
   mermaid: () => null,
   tests: (scene) => {
-    const box = contentBox(Boolean(scene.title));
+    const box = headerBox(scene);
     const layout = layoutTests(scene, box.width, box.height);
-    return new Scaled('test list', layout.scale, layout);
+    return new Scaled('test matrix', layout.scale, layout);
   },
   table: (scene) => {
     const box = headerBox(scene);

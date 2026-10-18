@@ -1,358 +1,167 @@
-import { FlaskConical, FlaskConicalOff, TriangleAlert } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
+import type { SceneState } from '../../shared/state-steps.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
-import type { TestStatus, TestsScene } from '../types';
-import {
-  CHECK_W,
-  COL_GAP,
-  GAP_MARKER_W,
-  GAPS_HEADER_H,
-  GAPS_PAD,
-  MATRIX_HEADER_H,
-  ROW_PAD_X,
-  STATUS_W,
-  layoutTests,
-  type PlacedCase,
-  type PlacedGap,
-  type TestsLayout,
-  type TestsTitles,
-  DEFAULT_TITLES,
-  ROW_BADGE, testsBoxes } from '../utils/testsLayout';
+import { headerBox } from '../fit/shell';
+import type { TestsScene } from '../types';
 import { staged } from '../utils/penGeometry';
+import { asBrightAs, focusSpotlight, type Emphasis } from '../utils/spotlight';
+import { stateFrame } from '../utils/stateTrack';
+import { FOOT_H, HEAD_H, layoutTests, tagFont, testsBoxes, type PlacedCell, type PlacedRow, type TestsLayout } from '../utils/testsLayout';
+import { FitText } from './FitText';
+import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
-import { focusSpotlight, type Emphasis } from '../utils/spotlight';
-import { CHANGE_WORD } from '../utils/marks';
-import { badgesOf, RowBadges } from './marks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
-import type { Fit } from '../../shared/textfit.mjs';
-import { FitText } from './FitText';
-import { clamp, colors, contentBox } from './theme';
+import { clamp, colors, fonts } from './theme';
+import { tones } from './tones';
 
-const AMBER = '#fbbf24';
-const AMBER_BG = 'rgba(251, 191, 36, 0.08)';
-const START = 10;
-/** Frames a gap card takes to land. */
-const GAP_FRAMES = 14;
+const START = 8;
+const AMBER = tones.warn.color;
 
-const statusTone: Record<TestStatus, { label: string; color: string; bg: string }> = {
-  added: { label: CHANGE_WORD.added, color: colors.add, bg: colors.addBg },
-  modified: { label: CHANGE_WORD.modified, color: colors.accent, bg: colors.accentSoft },
-  removed: { label: CHANGE_WORD.removed, color: colors.del, bg: colors.delBg },
-  existing: { label: 'existing', color: colors.muted, bg: 'rgba(144, 151, 168, 0.12)' },
-};
-
-const STATUS_ORDER: TestStatus[] = ['added', 'modified', 'removed', 'existing'];
-
-/** Frames at which each part arrives; all of it inside the build. */
-function buildTimeline(layout: TestsLayout) {
-  const rowsStart = START + (layout.matrix ? 8 : 18);
-  const rowStagger = Math.min(6, 12 / Math.max(1, layout.rows.length - 1));
-  const panelAt = rowsStart + Math.max(0, layout.rows.length - 1) * rowStagger + 6;
-  const gapStagger = Math.min(6, (buildFrames('tests') - GAP_FRAMES - panelAt - 12) / Math.max(1, layout.gaps.length - 1));
-  return {
-    rowAt: (i: number) => rowsStart + i * rowStagger,
-    panelAt,
-    gapAt: (i: number) => panelAt + 12 + i * gapStagger,
-  };
+/** Frames at which each row lands; all of them inside the build. */
+function rowAt(layout: TestsLayout) {
+  const stagger = Math.min(5, (buildFrames('tests') - START - 24) / Math.max(1, layout.rows.length - 1));
+  return (i: number) => START + 6 + i * stagger;
 }
 
-/** A tick for a passing row, a cross for a removed test; the stroke draws in as the row lands. */
-const CheckMark: React.FC<{ status: TestStatus; draw: number }> = ({ status, draw }) => {
-  const tone = statusTone[status];
-  const d = status === 'removed' ? 'M 11 11 L 23 23 M 23 11 L 11 23' : 'M 9 17.5 L 14.5 23 L 25 11.5';
-  return (
-    <svg width={34} height={34} viewBox="0 0 34 34" style={{ flexShrink: 0 }}>
-      <circle cx={17} cy={17} r={15} fill={tone.bg} stroke={tone.color} strokeOpacity={0.55} strokeWidth={1.5} opacity={Math.min(1, draw * 3)} />
-      <path d={d} fill="none" stroke={tone.color} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
-    </svg>
-  );
-};
+const TAG_COLOR = { NEW: tones.good.color, CHANGED: colors.accent, unchecked: AMBER, REMOVED: colors.muted } as const;
 
-const StatusChip: React.FC<{ status: TestStatus }> = ({ status }) => {
-  const tone = statusTone[status];
-  return (
-    <div
-      style={{
-        padding: '5px 0',
-        width: STATUS_W,
-        textAlign: 'center',
-        boxSizing: 'border-box',
-        borderRadius: 999,
-        background: tone.bg,
-        border: `1px solid ${tone.color}77`,
-        color: tone.color,
-        fontSize: 15,
-        fontWeight: 800,
-        letterSpacing: 1.2,
-        textTransform: 'uppercase',
-      }}
-    >
-      {tone.label}
-    </div>
-  );
-};
-
-const CaseRow: React.FC<{ row: PlacedCase; layout: TestsLayout; at: number; frame: number; emphasis: Emphasis }> = ({ row, layout, at, frame, emphasis }) => {
-  const { fps } = useVideoConfig();
-  const matrix = layout.matrix!;
-  const status = row.test.status ?? 'added';
-  const removed = status === 'removed';
-  const land = spring({ frame: frame - at, fps, config: { damping: 17, stiffness: 120 } });
-  const draw = interpolate(frame, [at + 6, at + 18], [0, 1], clamp);
-  const flash = interpolate(frame, [at + 4, at + 10, at + 30], [0, 1, 0], clamp);
-  const tone = statusTone[status];
-  const centred = (text: Fit) => (row.h - text.lines.length * layout.lineHeight) / 2;
-
+const Cell: React.FC<{ placed: PlacedCell; layout: TestsLayout; land: number; emphasis: Emphasis }> = ({ placed, layout, land, emphasis }) => {
+  const { cell, value, was, tag } = placed;
+  const { padX, lineHeight, tagFont: small } = layout;
+  const checked = cell.state === 'checked';
+  const border =
+    checked ? `1.5px solid ${tones.good.color}${emphasis.glow > 0 ? '' : '88'}`
+    : cell.state === 'unchecked' ? `1.5px dashed ${AMBER}cc`
+    : cell.state === 'removed' ? `1.5px dashed ${colors.faint}`
+    : 'none';
+  const color = checked ? tones.good.color : cell.state === 'unchecked' ? AMBER : colors.faint;
+  const textH = (value ? value.lines.length * lineHeight : cell.state === 'none' ? lineHeight : 0) + (was ? Math.round(small * 1.25) : 0);
   return (
     <div
       style={{
         position: 'absolute',
-        left: row.x,
-        top: row.y,
-        width: row.w,
-        height: row.h,
-        borderRadius: 14,
-        background: emphasis.glow > 0 ? `rgba(124, 140, 255, ${0.025 + 0.1 * emphasis.glow})` : `rgba(255,255,255,${0.025 + 0.05 * flash})`,
-        boxShadow: `inset 0 0 0 ${emphasis.glow > 0 ? 2 : 1}px ${emphasis.glow > 0 ? colors.accent : colors.border}, 0 0 ${26 * flash + 34 * emphasis.glow}px ${tone.color}33`,
-        opacity: land * (removed ? 0.82 : 1) * emphasis.opacity,
-        transform: `translateX(${(1 - land) * -40}px) scale(${1 + 0.008 * emphasis.glow})`,
-      }}
-    >
-      {emphasis.bar > 0 ? <div style={{ position: 'absolute', left: 0, top: 8, bottom: 8, width: 5, borderRadius: 3, background: colors.accent, opacity: emphasis.bar }} /> : null}
-      <div style={{ position: 'absolute', left: ROW_PAD_X, top: 0, bottom: 0, width: CHECK_W, display: 'flex', alignItems: 'center' }}>
-        <CheckMark status={status} draw={draw} />
-      </div>
-      <div style={{ position: 'absolute', left: ROW_PAD_X + CHECK_W + COL_GAP, top: 0, bottom: 0, display: 'flex', alignItems: 'center' }}>
-        <StatusChip status={status} />
-      </div>
-      <FitText
-        fit={row.name}
-        style={{
-          position: 'absolute',
-          left: matrix.nameX,
-          width: matrix.nameW,
-          top: centred(row.name),
-          lineHeight: `${layout.lineHeight}px`,
-          color: removed ? colors.muted : colors.text,
-          textDecoration: removed ? 'line-through' : 'none',
-          textDecorationColor: colors.del,
-          textDecorationThickness: 2.5,
-        }}
-      />
-      <RowBadges badges={badgesOf(row.test)} size={ROW_BADGE} right={18} />
-      <FitText
-        fit={row.proves}
-        style={{
-          position: 'absolute',
-          left: matrix.provesX,
-          width: matrix.provesW,
-          top: centred(row.proves),
-          lineHeight: `${layout.lineHeight}px`,
-          color: removed ? colors.faint : '#c9cedb',
-        }}
-      />
-    </div>
-  );
-};
-
-const MatrixHeader: React.FC<{ scene: TestsScene; layout: TestsLayout; appear: number }> = ({ scene, layout, appear }) => {
-  const matrix = layout.matrix!;
-  const counts = STATUS_ORDER.map((s) => [s, scene.cases.filter((c) => (c.status ?? 'added') === s).length] as const).filter(([, n]) => n > 0);
-  const label: React.CSSProperties = { position: 'absolute', top: 8, fontSize: 17, fontWeight: 700, letterSpacing: 2.5, textTransform: 'uppercase', color: colors.faint };
-  return (
-    <div style={{ position: 'absolute', left: 0, top: 0, width: matrix.w, height: MATRIX_HEADER_H, opacity: appear }}>
-      <div style={{ ...label, left: ROW_PAD_X, display: 'flex', alignItems: 'center', gap: 10, color: colors.muted }}>
-        <FlaskConical size={20} strokeWidth={2.2} color={colors.accent} />
-        {scene.cases.length} {scene.cases.length === 1 ? 'test' : 'tests'}
-      </div>
-      <div style={{ ...label, left: matrix.nameX }}>Test</div>
-      <FitText fit={layout.titles.proves} style={{ position: 'absolute', top: 8, left: matrix.provesX, color: colors.faint, lineHeight: 'normal' }} />
-      <div style={{ ...label, right: ROW_PAD_X, display: 'flex', gap: 18, letterSpacing: 1.5 }}>
-        {counts.map(([s, n]) => (
-          <span key={s} style={{ color: statusTone[s].color }}>
-            {n} {statusTone[s].label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const EmptyCard: React.FC<{ layout: TestsLayout; titles: TestsTitles; frame: number }> = ({ layout, titles, frame }) => {
-  const { fps } = useVideoConfig();
-  const card = layout.emptyCard!;
-  const appear = spring({ frame: frame - START, fps, config: { damping: 14, stiffness: 120 } });
-  const glow = interpolate(frame, [START + 8, START + 16, START + 44], [0, 1, 0.35], clamp);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: card.x,
-        top: card.y,
-        width: card.w,
-        height: card.h,
+        left: placed.x,
+        top: placed.y,
+        width: placed.w,
+        height: placed.h,
         boxSizing: 'border-box',
-        borderRadius: 22,
-        background: `linear-gradient(120deg, ${colors.delBg}, rgba(255,107,122,0.04))`,
-        border: `2px solid ${colors.del}99`,
-        boxShadow: `0 0 ${56 * glow}px rgba(255,107,122,${0.3 * glow})`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 40,
-        padding: '0 52px',
-        opacity: appear,
-        transform: `scale(${0.94 + 0.06 * appear})`,
+        borderRadius: 10,
+        border,
+        background: checked ? tones.good.bg : 'transparent',
+        boxShadow: emphasis.glow > 0 ? `0 0 0 ${3 * emphasis.glow}px ${colors.accentSoft}, 0 0 ${28 * emphasis.glow}px ${colors.accentGlow}` : undefined,
+        opacity: land * emphasis.opacity,
+        transform: `translateY(${(1 - land) * 14}px)`,
       }}
     >
-      <div
-        style={{
-          width: 112,
-          height: 112,
-          borderRadius: 28,
-          background: 'rgba(255,107,122,0.14)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-        }}
-      >
-        <FlaskConicalOff size={64} strokeWidth={1.8} color={colors.del} />
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <FitText fit={layout.titles.none} style={{ color: colors.text, lineHeight: 'normal' }} />
-        {titles.none === DEFAULT_TITLES.none ? (
-          <div style={{ fontSize: 26, color: '#d7a0a7', marginTop: 10 }}>Nothing in this diff exercises the new code. The behaviors below ship unverified.</div>
+      <div style={{ position: 'absolute', left: padX, top: (placed.h - textH) / 2 - 1.5 }}>
+        {value ? <FitText fit={value} style={{ color, lineHeight: `${lineHeight}px` }} /> : cell.state === 'none' ? <div style={{ fontSize: layout.font, lineHeight: `${lineHeight}px`, color: colors.faint }}>–</div> : null}
+        {was ? (
+          <FitText
+            fit={was}
+            style={{ color: colors.muted, textDecoration: 'line-through', textDecorationColor: colors.del, textDecorationThickness: 2, lineHeight: `${Math.round(small * 1.25)}px` }}
+          />
         ) : null}
       </div>
-    </div>
-  );
-};
-
-const GapItem: React.FC<{ gap: PlacedGap; layout: TestsLayout; at: number; frame: number; emphasis: Emphasis }> = ({ gap, layout, at, frame, emphasis }) => {
-  const { fps } = useVideoConfig();
-  const appear = spring({ frame: frame - at, fps, config: { damping: 15, stiffness: 130 } }) * emphasis.opacity;
-  const pulse = Math.max(interpolate(frame, [at + 4, at + 12, at + 40], [0, 1, 0], clamp), 0.8 * emphasis.glow);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: gap.x,
-        top: gap.y,
-        width: gap.w,
-        height: gap.h,
-        boxSizing: 'border-box',
-        borderRadius: 12,
-        background: `rgba(251,191,36,${0.06 + 0.1 * pulse})`,
-        border: `1px solid rgba(251,191,36,${0.25 + 0.6 * pulse})`,
-        boxShadow: `0 0 ${30 * pulse}px rgba(251,191,36,${0.35 * pulse})`,
-        opacity: appear,
-        transform: `translateY(${(1 - appear) * 16}px) scale(${1 + 0.025 * pulse})`,
-      }}
-    >
-      <div style={{ position: 'absolute', left: 14, top: 0, bottom: 0, width: GAP_MARKER_W - 8, display: 'flex', alignItems: 'center' }}>
-        <TriangleAlert size={24} strokeWidth={2.2} color={AMBER} />
-      </div>
-      <FitText
-        fit={gap.text}
-        style={{
-          position: 'absolute',
-          left: GAP_MARKER_W + 14,
-          right: 14,
-          top: (gap.h - gap.text.lines.length * layout.lineHeight) / 2,
-          lineHeight: `${layout.lineHeight}px`,
-          color: '#f3e3bd',
-        }}
-      />
-    </div>
-  );
-};
-
-const GapsPanel: React.FC<{ layout: TestsLayout; titles: TestsTitles; at: number; gapAt: (i: number) => number; frame: number; gapEmphasis: (i: number) => Emphasis }> = ({
-  titles,
-  layout,
-  at,
-  gapAt,
-  frame,
-  gapEmphasis,
-}) => {
-  const { fps } = useVideoConfig();
-  const panel = layout.gapsPanel;
-  const appear = spring({ frame: frame - at, fps, config: { damping: 18, stiffness: 120 } });
-  const none = layout.gaps.length === 0;
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: panel.x,
-        top: panel.y,
-        width: panel.w,
-        height: panel.h,
-        boxSizing: 'border-box',
-        borderRadius: 18,
-        background: none ? 'rgba(255,255,255,0.025)' : AMBER_BG,
-        border: `1.5px solid ${none ? colors.border : 'rgba(251,191,36,0.45)'}`,
-        opacity: appear,
-        transform: `translateY(${(1 - appear) * 20}px)`,
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          left: GAPS_PAD,
-          top: 0,
-          height: GAPS_HEADER_H,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          fontSize: 20,
-          fontWeight: 800,
-          letterSpacing: 2.5,
-          textTransform: 'uppercase',
-          color: none ? colors.muted : AMBER,
-        }}
-      >
-        <TriangleAlert size={24} strokeWidth={2.4} />
-        <FitText fit={layout.titles.gaps} inline />
-        {none ? null : <span style={{ color: '#b9965a', fontWeight: 600, letterSpacing: 1.5 }}>· {layout.gaps.length}</span>}
-      </div>
-      {none ? (
-        <div style={{ position: 'absolute', left: GAPS_PAD, top: GAPS_HEADER_H - 6, fontSize: layout.font, color: colors.muted }}>
-          {titles.gaps === DEFAULT_TITLES.gaps ? 'No gaps found. Every important behavior in this change has a test.' : 'None.'}
+      {tag ? (
+        <div
+          style={{
+            position: 'absolute',
+            right: padX,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            fontFamily: fonts.sans,
+            fontSize: small,
+            fontWeight: tagFont(tag, small).weight,
+            letterSpacing: tagFont(tag, small).letterSpacing,
+            color: TAG_COLOR[tag],
+          }}
+        >
+          {tag}
         </div>
-      ) : (
-        layout.gaps.map((gap, i) => <GapItem key={i} gap={{ ...gap, y: gap.y - panel.y }} layout={layout} at={gapAt(i)} frame={frame} emphasis={gapEmphasis(i)} />)
-      )}
+      ) : null}
     </div>
   );
 };
 
-const Subject: React.FC<{ subject: NonNullable<TestsLayout['titles']['subject']> }> = ({ subject }) => (
-  <div style={{ maxWidth: 760, flexShrink: 0, textAlign: 'right', paddingBottom: 4 }}>
-    <FitText fit={subject.title} style={{ color: colors.faint, lineHeight: 'normal' }} />
-    <FitText fit={subject.text} align="right" style={{ color: colors.text, marginTop: 6, lineHeight: subject.text.lines.length > 1 ? undefined : 'normal' }} />
-  </div>
-);
+const Row: React.FC<{ placed: PlacedRow; layout: TestsLayout; land: number; emphasisOf: (key: string) => Emphasis }> = ({ placed, layout, land, emphasisOf }) => {
+  const { row, when, count, bar, names } = placed;
+  const own = emphasisOf(row.key);
+  const cells = placed.cells.map((c) => [c, asBrightAs(emphasisOf(c.cell.key), [own])] as const);
+  // A row header stays as bright as its brightest cell, so a lit cell never sits beside a dim situation.
+  const head = asBrightAs(own, cells.map(([, e]) => e));
+  const { padX, lineHeight } = layout;
+  const gapColor = colors.del;
+  const nameH = names.length ? Math.round(names[0]!.fit.size * 1.25) : 0;
+  return (
+    <>
+      <div style={{ position: 'absolute', left: 0, top: placed.y, width: layout.whenCol.w, height: placed.h, opacity: land * head.opacity }}>
+        {head.bar > 0 ? <div style={{ position: 'absolute', left: -14, top: 8, bottom: 8, width: 5, borderRadius: 3, background: colors.accent, opacity: head.bar }} /> : null}
+        <FitText
+          fit={when}
+          style={{ position: 'absolute', left: 0, top: (placed.h - when.lines.length * lineHeight) / 2, lineHeight: `${lineHeight}px`, color: row.gap ? gapColor : colors.text }}
+        />
+        {count ? (
+          <div style={{ position: 'absolute', right: padX, top: 0, bottom: 0, display: 'flex', alignItems: 'center', fontSize: layout.tagFont, fontWeight: 600, color: count === 'no test' ? AMBER : colors.faint }}>{count}</div>
+        ) : null}
+      </div>
+      {bar ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: bar.x,
+            top: bar.y,
+            width: bar.w,
+            height: bar.h,
+            boxSizing: 'border-box',
+            borderRadius: 10,
+            border: `2px dashed ${gapColor}`,
+            background: own.glow > 0 ? colors.delBg : 'transparent',
+            boxShadow: own.glow > 0 ? `0 0 ${30 * own.glow}px ${colors.delBg}` : undefined,
+            opacity: land * own.opacity,
+          }}
+        >
+          <FitText fit={bar.text} style={{ position: 'absolute', left: padX, top: (bar.h - bar.text.lines.length * lineHeight) / 2 - 2, lineHeight: `${lineHeight}px`, color: gapColor }} />
+        </div>
+      ) : null}
+      {cells.map(([c, e], i) => (
+        <Cell key={i} placed={c} layout={layout} land={land} emphasis={e} />
+      ))}
+      {layout.namesCol && names.length ? (
+        <div style={{ position: 'absolute', left: layout.namesCol.x + padX, top: placed.y + (placed.h - names.length * nameH) / 2, opacity: land * head.opacity }}>
+          {names.map(({ fit, removed }, i) => (
+            <FitText key={i} fit={fit} style={{ color: removed ? colors.faint : colors.muted, textDecoration: removed ? 'line-through' : undefined, lineHeight: `${nameH}px` }} />
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+};
 
 export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, durationInFrames, segments }) => {
-  const titles: TestsTitles = { ...DEFAULT_TITLES, ...scene.titles };
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
-  const box = contentBox(Boolean(scene.title));
+  const box = headerBox(scene);
   const layout = useMemo(() => layoutTests(scene, box.width, box.height), [scene, box.width, box.height]);
-  const timeline = useMemo(() => buildTimeline(layout), [layout]);
+  const at = useMemo(() => rowAt(layout), [layout]);
+  // The callout is the only thing a tests step changes: the names of the tests it focuses, or its own words.
+  const states = useMemo<SceneState[]>(
+    () => ['', ...(scene.steps ?? []).map((s) => s.callout ?? '')].map((callout) => ({ values: {}, places: {}, hidden: {}, tints: {}, callout })),
+    [scene.steps],
+  );
+  const s = stateFrame(states, segments, frame);
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
   const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
   const marks = useMemo(() => staged(testsBoxes(layout), { left: 0, top, scale: layout.scale }, box), [layout, top, box.width, box.height]);
+  const label: React.CSSProperties = { position: 'absolute', top: 0, height: HEAD_H, display: 'flex', alignItems: 'center', color: colors.muted };
+  const colLit = (col: number) => emphasisOf(`o:${col}`);
 
   return (
-    <SceneShell
-      scene={scene}
-      durationInFrames={durationInFrames}
-      aside={layout.titles.subject ? <Subject subject={layout.titles.subject} /> : undefined}
-    >
-      {/* A short matrix sits a little above centre rather than leaving the lower screen empty. */}
+    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
       <div
         style={{
           position: 'absolute',
@@ -364,11 +173,40 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
           transformOrigin: 'top left',
         }}
       >
-        {layout.matrix ? <MatrixHeader scene={scene} layout={layout} appear={headerIn} /> : <EmptyCard layout={layout} titles={titles} frame={frame} />}
-        {layout.rows.map((row, i) => (
-          <CaseRow key={i} row={row} layout={layout} at={timeline.rowAt(i)} frame={frame} emphasis={emphasisOf(`c:${i}`)} />
+        <div style={{ ...label, left: 0, width: layout.whenCol.w, opacity: headerIn }}>
+          <FitText fit={layout.whenCol.title} style={{ lineHeight: 'normal' }} />
+        </div>
+        {layout.cols.map((c, col) => (
+          <div key={col} style={{ ...label, left: c.x + layout.padX, width: c.w - layout.padX, opacity: headerIn * colLit(col).opacity, color: colLit(col).glow > 0 ? colors.text : colors.muted }}>
+            <FitText fit={c.title} style={{ lineHeight: 'normal' }} />
+          </div>
         ))}
-        <GapsPanel layout={layout} titles={titles} at={timeline.panelAt} gapAt={timeline.gapAt} frame={frame} gapEmphasis={(i) => emphasisOf(`g:${i}`)} />
+        {layout.namesCol ? (
+          <div style={{ ...label, left: layout.namesCol.x + layout.padX, opacity: headerIn }}>
+            <FitText fit={layout.namesCol.title} style={{ lineHeight: 'normal' }} />
+          </div>
+        ) : null}
+        {layout.rows.map((row, i) => (
+          <Row key={i} placed={row} layout={layout} land={spring({ frame: frame - at(i), fps, config: { damping: 18, stiffness: 140 } })} emphasisOf={emphasisOf} />
+        ))}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: layout.footY,
+            width: layout.width,
+            height: FOOT_H,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 24,
+            borderTop: `1px solid ${colors.border}`,
+            opacity: interpolate(frame, [at(layout.rows.length), at(layout.rows.length) + 10], [0, 1], clamp),
+          }}
+        >
+          {layout.subject ? <FitText fit={layout.subject} style={{ color: colors.muted, lineHeight: 'normal' }} /> : <span />}
+          <span style={{ fontSize: 18, color: colors.muted, whiteSpace: 'nowrap' }}>{layout.counts}</span>
+        </div>
       </div>
       <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
     </SceneShell>
