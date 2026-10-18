@@ -3,16 +3,18 @@
   "subtitle": "feature/rate-limit → main · simple style",
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Why this change",
+      "kicker": "Rate limiting for the Orders API, line by line",
       "narration": "This change does three things. It limits how many orders one address can send per minute. It prices each item from the pricing service. And it sends an event for every new order. There are no tests.",
-      "summary": "Limit POST /orders to 20 per minute per IP, price items from the pricing service, and publish order.created.",
+      "headline": "Limit POST /orders to 20 per minute per IP, price items from the pricing service, and publish order.created.",
       "risk": "medium",
-      "bullets": [
+      "items": [
         "If Redis is down, every order request fails",
         "The event is sent after the save, so a queue error fails a saved order",
         "No tests cover the limiter, the prices, or the event"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "graph",

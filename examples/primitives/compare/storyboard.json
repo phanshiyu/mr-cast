@@ -31,11 +31,12 @@
       ]
     },
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "What we picked",
+      "kicker": "Where to keep a signed-in session",
       "narration": "We picked the server session, because being able to sign someone out at once matters more than one fast read.",
-      "summary": "Keep sessions **on the server**, and give the browser only a random id",
-      "bullets": [
+      "headline": "Keep sessions **on the server**, and give the browser only a random id",
+      "items": [
         "Support can sign a user out of every device at once",
         "Each request reads its session from Redis, about one millisecond"
       ]

@@ -3,15 +3,17 @@
   "subtitle": "One search request when typing stops, instead of one per key",
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Why this change",
+      "kicker": "Debounce the search box",
       "narration": "Today the search box asks the server for results on every key you press. Typing one word sends seven requests, and the answers can come back out of order. This change waits until you stop typing, then searches once.",
-      "summary": "Search **once**, a quarter second after the last key, instead of on every key",
+      "headline": "Search **once**, a quarter second after the last key, instead of on every key",
       "risk": "low",
-      "bullets": [
+      "items": [
         "Results show a quarter second later than before",
         "A slow answer can no longer overwrite a newer one"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "code",

@@ -3,12 +3,28 @@
   "subtitle": "From a 4 GB upload to a video that plays on any screen",
   "scenes": [
     {
+      "type": "text",
+      "chapter": "The problem",
+      "narration": "People upload more than five hundred hours of video to YouTube every minute.",
+      "kicker": "Uploaded to YouTube",
+      "number": "500 hours",
+      "note": "of video, every minute",
+      "steps": [
+        {
+          "set": {
+            "number": "720,000 hours",
+            "note": "of video, every day"
+          },
+          "say": "Over a day, that is seven hundred and twenty thousand hours."
+        }
+      ]
+    },
+    {
       "type": "svg",
       "chapter": "The problem",
       "title": "Two different problems",
-      "narration": "People upload more than five hundred hours of video to YouTube every minute. Someone then watches it on a phone in a train, or on a 4K TV at home.",
+      "narration": "And someone then watches it on a phone in a train, or on a 4K TV at home.",
       "svg": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"ingest\"><rect x=\"20\" y=\"20\" width=\"360\" height=\"120\" rx=\"14\" class=\"tone-warn\" stroke-width=\"3\"/><text x=\"200\" y=\"68\" text-anchor=\"middle\" font-size=\"30\">Ingestion</text><text x=\"200\" y=\"110\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">any format, codec and size</text></g>\n<g id=\"storage\"><rect x=\"420\" y=\"20\" width=\"360\" height=\"120\" rx=\"14\" class=\"tone-warn\" stroke-width=\"3\"/><text x=\"600\" y=\"68\" text-anchor=\"middle\" font-size=\"30\">Storage</text><text x=\"600\" y=\"110\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">petabytes a day, hot and cold</text></g>\n<g id=\"streaming\"><rect x=\"820\" y=\"20\" width=\"360\" height=\"120\" rx=\"14\" class=\"tone-warn\" stroke-width=\"3\"/><text x=\"1000\" y=\"68\" text-anchor=\"middle\" font-size=\"30\">Streaming</text><text x=\"1000\" y=\"110\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">a 3G phone to a 4K TV, no stalls</text></g>\n<line id=\"divider\" x1=\"600\" y1=\"190\" x2=\"600\" y2=\"630\" stroke=\"var(--text)\" stroke-width=\"4\" stroke-dasharray=\"14 10\"/>\n<g id=\"control\"><text x=\"300\" y=\"230\" text-anchor=\"middle\" font-size=\"32\" class=\"tone-accent\">Control plane</text><text x=\"300\" y=\"268\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">small web requests</text>\n<rect x=\"80\" y=\"300\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"300\" y=\"337\" text-anchor=\"middle\" font-size=\"24\">titles and descriptions</text><rect x=\"80\" y=\"376\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"300\" y=\"413\" text-anchor=\"middle\" font-size=\"24\">search</text><rect x=\"80\" y=\"452\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"300\" y=\"489\" text-anchor=\"middle\" font-size=\"24\">likes, comments, view counts</text><rect x=\"80\" y=\"528\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"300\" y=\"565\" text-anchor=\"middle\" font-size=\"24\">accounts and channels</text></g>\n<g id=\"data\"><text x=\"900\" y=\"230\" text-anchor=\"middle\" font-size=\"32\" class=\"tone-good\">Data plane</text><text x=\"900\" y=\"268\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">huge files on the move</text>\n<rect x=\"680\" y=\"300\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"900\" y=\"337\" text-anchor=\"middle\" font-size=\"24\">raw uploads</text><rect x=\"680\" y=\"376\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"900\" y=\"413\" text-anchor=\"middle\" font-size=\"24\">transcoding</text><rect x=\"680\" y=\"452\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"900\" y=\"489\" text-anchor=\"middle\" font-size=\"24\">stored video chunks</text><rect x=\"680\" y=\"528\" width=\"440\" height=\"56\" rx=\"12\"/><text x=\"900\" y=\"565\" text-anchor=\"middle\" font-size=\"24\">CDN delivery</text></g>\n</svg>",
-      "callout": "500 h/min × 60 × 24 = **720,000 hours a day**",
       "labels": {
         "ingest": "formats",
         "storage": "storage",

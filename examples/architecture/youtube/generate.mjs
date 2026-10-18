@@ -137,12 +137,20 @@ const storyboard = {
   subtitle: 'From a 4 GB upload to a video that plays on any screen',
   scenes: [
     {
+      type: 'text',
+      chapter: 'The problem',
+      narration: 'People upload more than five hundred hours of video to YouTube every minute.',
+      kicker: 'Uploaded to YouTube',
+      number: '500 hours',
+      note: 'of video, every minute',
+      steps: [{ set: { number: `${fmt(hoursPerDay)} hours`, note: 'of video, every day' }, say: 'Over a day, that is seven hundred and twenty thousand hours.' }],
+    },
+    {
       type: 'svg',
       chapter: 'The problem',
       title: 'Two different problems',
-      narration: 'People upload more than five hundred hours of video to YouTube every minute. Someone then watches it on a phone in a train, or on a 4K TV at home.',
+      narration: 'And someone then watches it on a phone in a train, or on a 4K TV at home.',
       svg: planes,
-      callout: `500 h/min × 60 × 24 = **${fmt(hoursPerDay)} hours a day**`,
       labels: { ingest: 'formats', storage: 'storage', streaming: 'play', divider: 'line', control: 'control plane', data: 'data plane' },
       hidden: ['divider', 'control', 'data'],
       steps: [

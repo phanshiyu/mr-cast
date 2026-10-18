@@ -162,11 +162,7 @@ Storyboard: [examples/primitives/graph/storyboard.json](../examples/primitives/g
 
 ### intent
 
-A card with a one-line summary, an optional risk badge, and up to 6 bullets.
-
-![The intent demo's intent scene, at the end of its last step](assets/scenes/intent.png)
-
-Storyboard: [examples/primitives/intent/storyboard.json](../examples/primitives/intent/storyboard.json). Video: [primitives-intent.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-intent.mp4). Reference: [intent.md](../skill/mr-cast/references/scenes/intent.md).
+An older scene type, drawn as a [text](#text) scene; see [text.md](../skill/mr-cast/references/scenes/text.md).
 
 ### layers
 
@@ -255,6 +251,14 @@ Each test beside what it proves in plain words, and the gaps nothing tests liste
 ![The tests demo's tests scene, at the end of its last step](assets/scenes/tests.png)
 
 Storyboard: [examples/primitives/tests/storyboard.json](../examples/primitives/tests/storyboard.json). Video: [primitives-tests.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-tests.mp4). Reference: [tests.md](../skill/mr-cast/references/scenes/tests.md).
+
+### text
+
+Words as the picture: one lead drawn as its field says (a headline, a question, a number, a term or a quote), a kicker above it, a note under it, and a list or two sides under that. Steps rewrite, show and hide its parts.
+
+![The text demo's text scene, at the end of its last step](assets/scenes/text.png)
+
+Storyboard: [examples/primitives/text/storyboard.json](../examples/primitives/text/storyboard.json). Video: [primitives-text.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-text.mp4). Reference: [text.md](../skill/mr-cast/references/scenes/text.md).
 
 ### timeline
 

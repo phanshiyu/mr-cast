@@ -3,16 +3,18 @@
   "subtitle": "Scene gallery: files, state, table, chart, timeline, Mermaid and tests scenes",
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Why this change",
+      "kicker": "Order lifecycle overhaul",
       "narration": "Orders now start unpaid, and an unpaid order is cancelled after a day. Refunds are removed. The tests cover each new move between states, but not a payment that arrives just as the order times out.",
-      "summary": "Start orders as pending, cancel unpaid orders after 24 hours, and drop the refunded state.",
+      "headline": "Start orders as pending, cancel unpaid orders after 24 hours, and drop the refunded state.",
       "risk": "medium",
-      "bullets": [
+      "items": [
         "A payment that lands while the timeout job cancels the order",
         "Orders already refunded when the migration runs",
         "Clients that still read the refunded status"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "files",

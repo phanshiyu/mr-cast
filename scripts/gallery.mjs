@@ -20,11 +20,11 @@ const SCENE = {
   'algorithms-merge-sort': 3,
   'algorithms-dijkstra': 3,
   'algorithms-hash-table': 2,
-  'architecture-youtube': 1,
+  'architecture-youtube': 2,
   'architecture-react': 9,
   'architecture-oauth': 5,
   'architecture-h3': 6,
-  'explain-bitcoin': 7,
+  'explain-bitcoin': 8,
   'explain-gpt': 7,
 };
 
@@ -78,8 +78,15 @@ const examples = worked.map((e) => {
     `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}.`,
   ].join('\n');
 });
-const types = demos.map((e) =>
-  [
+// Scene types that older storyboards still use, each drawn as a current one.
+const ALIASES = { intent: 'text' };
+const aliases = Object.entries(ALIASES).map(([type, as]) => ({
+  type,
+  text: [`### ${type}`, '', `An older scene type, drawn as a [${as}](#${as}) scene; see [${as}.md](../skill/mr-cast/references/scenes/${as}.md).`].join('\n'),
+}));
+const typeEntries = demos.map((e) => ({
+  type: e.type,
+  text: [
     `### ${e.type}`,
     '',
     describe(e.type),
@@ -88,7 +95,8 @@ const types = demos.map((e) =>
     '',
     `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}. Reference: [${e.type}.md](../skill/mr-cast/references/scenes/${e.type}.md).`,
   ].join('\n'),
-);
+}));
+const types = [...typeEntries, ...aliases].sort((a, b) => a.type.localeCompare(b.type)).map((t) => t.text);
 const gallery = `# Gallery
 
 <!-- Written by scripts/gallery.mjs from examples/ and skill/mr-cast/references/scenes/; edit those and rerun it. -->
