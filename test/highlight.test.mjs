@@ -212,3 +212,28 @@ test('steps leaves out code scenes, which the audit does not check', () => {
   const hunks = { h1: { file: 'a.ts', lines: [{ type: 'add', newLine: 1, text: 'count++' }] } };
   assert.equal(formatSteps({ scenes: [code] }, hunks), '');
 });
+
+test('an array named a or b is not named by the article in "a two"; a row named by a word still is', async () => {
+  const rows = (name) => ({
+    type: 'array',
+    narration: 'Two numbers as bits.',
+    arrays: [
+      { name, values: [0, 1, 0, 1] },
+      { name: 'sum', values: [1, 0, 0, 0] },
+    ],
+    steps: [
+      { focus: [`${name}[1]`, `${name}[3]`], say: 'Five is a four plus a one.' },
+      { focus: [`${name}[2]`], say: 'Three is a two plus a one, and sum zero holds the carry.' },
+    ],
+  });
+  assert.deepEqual(await highlightWarnings(rows('a')), [
+    'scenes[0].steps[1]: says "sum 0" (sum[0] = 1), which is not lit; it lights a[2] = 0. Focus what the words name, or say only what is lit',
+  ]);
+  assert.deepEqual(await highlightWarnings(rows('b')), [
+    'scenes[0].steps[1]: says "sum 0" (sum[0] = 1), which is not lit; it lights b[2] = 0. Focus what the words name, or say only what is lit',
+  ]);
+  const explicit = { ...rows('a'), steps: [{ focus: ['a[2]'], say: 'Now look at a cell three.' }] };
+  assert.deepEqual(await highlightWarnings(explicit), [
+    'scenes[0].steps[0]: says "a cell 3" (a[3] = 1), which is not lit; it lights a[2] = 0. Focus what the words name, or say only what is lit',
+  ]);
+});

@@ -88,3 +88,30 @@ test('fourteen events, too many cards for one row, put every other card below th
   const through = events.flatMap((a) => events.filter((b) => b !== a && segments(a).some(([p, q]) => overlaps({ x: Math.min(p.x, q.x), y: Math.min(p.y, q.y), w: Math.abs(q.x - p.x) || 0.1, h: Math.abs(q.y - p.y) || 0.1 }, b.box))).map((b) => `${a.event.label} through ${b.event.label}`));
   assert.deepEqual(through, []);
 });
+
+test('a timeline counts in weeks, months or years, its ticks and stamps in that unit', async () => {
+  const { validateStoryboard } = await import('../bin/lib/validate.mjs');
+  const career = {
+    type: 'timeline',
+    unit: 'yr',
+    title: 'A mortgage',
+    narration: 'Thirty years of payments.',
+    events: [
+      { at: 0, label: 'Buy' },
+      { at: 12, label: 'Refinance' },
+      { at: 30, label: 'Paid off' },
+    ],
+    spans: [{ from: 0, to: 12, label: 'first loan' }],
+  };
+  const { errors } = await validateStoryboard({ title: 't', scenes: [career] }, {}, { mode: 'explain' });
+  assert.deepEqual(errors, []);
+  const layout = layoutTimeline(career, WIDTH);
+  assert.deepEqual(layout.ticks.map((t) => t.text), ['0 yr', '10 yr', '20 yr', '30 yr']);
+  assert.deepEqual(layout.events.map((e) => e.stamp), ['0 yr', '12 yr', '30 yr']);
+  for (const unit of ['wk', 'mo']) {
+    const { errors: unitErrors } = await validateStoryboard({ title: 't', scenes: [{ ...career, unit }] }, {}, { mode: 'explain' });
+    assert.deepEqual(unitErrors, [], unit);
+  }
+  const { errors: bad } = await validateStoryboard({ title: 't', scenes: [{ ...career, unit: 'years' }] }, {}, { mode: 'explain' });
+  assert.deepEqual(bad, ['scenes[0].unit: must be one of ms, s, min, h, d, wk, mo, yr']);
+});

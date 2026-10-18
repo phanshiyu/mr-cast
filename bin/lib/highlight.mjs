@@ -41,7 +41,10 @@ const ITEMS = {
       a.values.map((_, i) => {
         const key = cellKey(a.name, i);
         const value = state.values[key];
-        const where = a.name ? [`${a.name} ${i}`] : [`cell ${i}`, `index ${i}`, `position ${i}`];
+        // "sum three" names sum[3], but "a two" is the article: a row whose name prose uses as a word ("a", "b",
+        // "x") is named in words only as "a index 2", "a cell 2" or "a position 2".
+        const forms = a.name && matchable(tokens(a.name)) ? [`${a.name} ${i}`] : [];
+        const where = a.name ? [...forms, ...['index', 'cell', 'position'].map((w) => `${a.name} ${w} ${i}`)] : [`cell ${i}`, `index ${i}`, `position ${i}`];
         return { key, label: `${cellName(a.name, i)} = ${shown(value)}`, names: [text(value), ...where], hidden: a.name ? Boolean(state.hidden[rowKey(a.name)]) : false };
       }),
     ).filter((c) => !c.hidden);

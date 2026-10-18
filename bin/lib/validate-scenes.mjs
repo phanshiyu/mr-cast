@@ -15,7 +15,7 @@ const CHART_LABELS_MAX = 12;
 const CHART_SERIES_MAX = 4;
 // Past this many bars each one gets too thin to carry its value label.
 const CHART_BARS_MAX = 24;
-const TIME_UNITS = ['ms', 's', 'min', 'h', 'd'];
+const TIME_UNITS = ['ms', 's', 'min', 'h', 'd', 'wk', 'mo', 'yr'];
 const TIMELINE_EVENTS_MAX = 8;
 const FILES_MAX = 18;
 

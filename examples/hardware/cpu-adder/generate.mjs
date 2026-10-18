@@ -53,20 +53,20 @@ scenes.push({
   narration: 'Inside a computer, a number is a row of wires, each one on or off. Let\'s add five and three, in four bits.',
   arrays: [
     { name: 'worth', label: 'worth', values: place },
-    { name: 'five', label: '5', values: a },
-    { name: 'three', label: '3', values: b },
+    { name: 'a', label: '5', values: a },
+    { name: 'b', label: '3', values: b },
     { name: 'sum', label: 'sum', values: ['?', '?', '?', '?'], hidden: true },
   ],
   indexes: false,
   tint: { 'array:worth': 'dim' },
   steps: [
-    { tint: lit('five', a), focus: ['five[1]', 'five[3]', 'worth[1]', 'worth[3]'], say: 'Five is a four plus a one, so the four light and the one light are on.' },
-    { tint: lit('three', b), focus: ['three[2]', 'three[3]', 'worth[2]', 'worth[3]'], say: 'Three is a two plus a one.' },
+    { tint: lit('a', a), focus: ['a[1]', 'a[3]', 'worth[1]', 'worth[3]'], say: 'Five is a four plus a one, so the four light and the one light are on.' },
+    { tint: lit('b', b), focus: ['b[2]', 'b[3]', 'worth[2]', 'worth[3]'], say: 'Three is a two plus a one.' },
     {
       show: ['array:sum'],
-      focus: ['five[3]', 'three[3]', 'sum[3]'],
+      focus: ['a[3]', 'b[3]', 'sum[3]'],
       say: 'To add them, the computer works like you would on paper: one column at a time, starting from the right.',
-      draw: [{ box: ['five[3]', 'sum[3]'], when: 'one column' }],
+      draw: [{ box: ['a[3]', 'sum[3]'], when: 'one column' }],
     },
   ],
 });
@@ -269,12 +269,12 @@ scenes.push({
   narration: 'Read the sum lights from left to right.',
   arrays: [
     { name: 'worth', label: 'worth', values: place },
-    { name: 'five', label: '5', values: a },
-    { name: 'three', label: '3', values: b },
+    { name: 'a', label: '5', values: a },
+    { name: 'b', label: '3', values: b },
     { name: 'sum', label: 'sum', values: sum },
   ],
   indexes: false,
-  tint: { 'array:worth': 'dim', ...lit('five', a), ...lit('three', b) },
+  tint: { 'array:worth': 'dim', ...lit('a', a), ...lit('b', b) },
   callout: `${a.join('')} + ${b.join('')} = ?`,
   steps: [
     {
