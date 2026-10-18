@@ -1,0 +1,464 @@
+{
+  "title": "Why GPS needs relativity",
+  "subtitle": "Clocks in orbit gain 38.6 microseconds a day, and how GPS cancels it",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "The question",
+      "narration": "Here is a question that sounds too simple. Put a perfect clock on a satellite, and another on the ground. Do they keep the same time?",
+      "kicker": "Why GPS needs relativity",
+      "question": "Does a clock in orbit keep the same time as one on the ground?",
+      "note": "Most people say yes. A good clock is a good clock.",
+      "steps": [
+        {
+          "set": {
+            "note": "They don’t. And if nobody fixed it, GPS would stop working within a day."
+          },
+          "say": "Most people say yes. They don’t, and if nobody fixed it, your map would be useless within a day."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "The satellites",
+      "title": "A ring of clocks, 20,200 km up",
+      "narration": "Start with your phone, sitting on the ground.",
+      "svg": "<svg viewBox=\"390 50 1220 800\"><circle id=\"orbit\" cx=\"800\" cy=\"450\" r=\"350\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"3\" stroke-dasharray=\"10 12\"/><g id=\"earth\"><circle cx=\"800\" cy=\"450\" r=\"84\" fill=\"var(--accent)\" stroke=\"none\" opacity=\"0.6\"/><path d=\"M748 420 q30 -26 60 -6 q20 18 -6 34 q-26 12 -40 34 q-20 -30 -14 -62 Z\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.7\"/><path d=\"M820 468 q30 -10 44 14 q-10 30 -40 30 q-14 -20 -4 -44 Z\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.7\"/></g><circle id=\"you\" cx=\"800\" cy=\"366\" r=\"6\" fill=\"var(--bad)\" stroke=\"none\"/><text id=\"you-label\" x=\"800\" y=\"354\" text-anchor=\"middle\" font-size=\"16\">you</text><text id=\"earth-label\" x=\"800\" y=\"562\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--muted)\">Earth</text><g id=\"signals\" class=\"flow\" stroke=\"var(--warn)\" stroke-width=\"3\"><line x1=\"524.2\" y1=\"246.5\" x2=\"800\" y2=\"362\"/><line x1=\"691.8\" y1=\"129.1\" x2=\"800\" y2=\"362\"/><line x1=\"908.2\" y1=\"129.1\" x2=\"800\" y2=\"362\"/><line x1=\"1075.8\" y1=\"246.5\" x2=\"800\" y2=\"362\"/></g><g id=\"sat0\"><rect x=\"476.1962362376473\" y=\"224.5184836360196\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"540.1962362376473\" y=\"224.5184836360196\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"509.1962362376473\" y=\"219.5184836360196\" width=\"30\" height=\"30\" rx=\"5\" fill=\"var(--warn)\" stroke=\"none\"/></g><g id=\"sat1\"><rect x=\"643.8440519687684\" y=\"107.13021929669628\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"707.8440519687684\" y=\"107.13021929669628\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"676.8440519687684\" y=\"102.13021929669628\" width=\"30\" height=\"30\" rx=\"5\" fill=\"var(--warn)\" stroke=\"none\"/></g><g id=\"sat2\"><rect x=\"860.1559480312316\" y=\"107.13021929669628\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"924.1559480312316\" y=\"107.13021929669628\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"893.1559480312316\" y=\"102.13021929669628\" width=\"30\" height=\"30\" rx=\"5\" fill=\"var(--warn)\" stroke=\"none\"/></g><g id=\"sat3\"><rect x=\"1027.8037637623527\" y=\"224.5184836360196\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"1091.8037637623527\" y=\"224.5184836360196\" width=\"32\" height=\"20\" class=\"tone-accent\"/><rect x=\"1060.8037637623527\" y=\"219.5184836360196\" width=\"30\" height=\"30\" rx=\"5\" fill=\"var(--warn)\" stroke=\"none\"/></g><text id=\"height\" x=\"1190\" y=\"420\" font-size=\"36\">20,200 km up</text> <text id=\"speed\" x=\"1190\" y=\"470\" font-size=\"32\" fill=\"var(--muted)\">3.87 km a second</text><text id=\"lap\" x=\"1190\" y=\"516\" font-size=\"32\" fill=\"var(--muted)\">once round in 11 h 58 min</text></svg>",
+      "labels": {
+        "you": "phone",
+        "orbit": "ring",
+        "sat0": "satellite",
+        "signals": "signal",
+        "earth": "Earth"
+      },
+      "hidden": [
+        "you-label",
+        "orbit",
+        "sat0",
+        "sat1",
+        "sat2",
+        "sat3",
+        "signals",
+        "height",
+        "speed",
+        "lap"
+      ],
+      "steps": [
+        {
+          "camera": {
+            "on": "you",
+            "zoom": 5
+          },
+          "show": [
+            "you-label"
+          ],
+          "focus": "you",
+          "say": "Your phone has no idea where it is. It has to be told."
+        },
+        {
+          "camera": "all",
+          "hide": [
+            "you-label"
+          ],
+          "show": [
+            "orbit",
+            "sat0",
+            "sat1",
+            "sat2",
+            "sat3",
+            "height"
+          ],
+          "focus": [
+            "orbit",
+            "height"
+          ],
+          "say": "Twenty thousand kilometres up, a ring of satellites circles the planet. The drawing is to scale."
+        },
+        {
+          "move": {
+            "sat1": "rotate(360 800 450)"
+          },
+          "show": [
+            "speed",
+            "lap"
+          ],
+          "focus": [
+            "sat1",
+            "speed",
+            "lap"
+          ],
+          "say": "Each one moves at almost four kilometres a second, and goes all the way round in just under twelve hours."
+        },
+        {
+          "show": [
+            "signals"
+          ],
+          "focus": [
+            "sat0",
+            "sat1",
+            "sat2",
+            "sat3",
+            "signals",
+            "you"
+          ],
+          "callout": "the signal takes 67 ms to arrive",
+          "say": "Every satellite carries an atomic clock, and keeps sending out the time. The signal takes about a fifteenth of a second to reach you."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Time is distance",
+      "title": "How a phone finds itself",
+      "narration": "Your phone compares the time in each signal with when it arrived. The gap, times the speed of light, is how far away that satellite is.",
+      "svg": "<svg viewBox=\"200 0 1200 900\"><circle id=\"ring0\" cx=\"560\" cy=\"420\" r=\"277.8\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\"/><circle id=\"ring1\" cx=\"820\" cy=\"300\" r=\"260.8\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\"/><circle id=\"ring2\" cx=\"1060\" cy=\"430\" r=\"290.7\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\"/><circle id=\"late\" cx=\"820\" cy=\"300\" r=\"316.8\" fill=\"none\" stroke=\"var(--bad)\" stroke-width=\"4\" stroke-dasharray=\"14 10\"/><g id=\"s0\"><circle cx=\"560\" cy=\"420\" r=\"16\" fill=\"var(--warn)\" stroke=\"none\"/><text x=\"560\" y=\"392\" text-anchor=\"middle\" font-size=\"30\">satellite 1</text></g><g id=\"s1\"><circle cx=\"820\" cy=\"300\" r=\"16\" fill=\"var(--warn)\" stroke=\"none\"/><text x=\"820\" y=\"272\" text-anchor=\"middle\" font-size=\"30\">satellite 2</text></g><g id=\"s2\"><circle cx=\"1060\" cy=\"430\" r=\"16\" fill=\"var(--warn)\" stroke=\"none\"/><text x=\"1060\" y=\"402\" text-anchor=\"middle\" font-size=\"30\">satellite 3</text></g><g id=\"here\"><circle cx=\"800\" cy=\"560\" r=\"12\" fill=\"var(--bad)\" stroke=\"none\"/><text x=\"800\" y=\"612\" text-anchor=\"middle\" font-size=\"30\">you are here</text></g><text id=\"miss\" x=\"800\" y=\"800\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--bad)\">one clock 1 µs late: 300 m out</text></svg>",
+      "labels": {
+        "ring0": "first circle",
+        "ring1": "second circle",
+        "ring2": "third circle",
+        "here": "one point",
+        "late": "late clock",
+        "miss": "three hundred metres"
+      },
+      "hidden": [
+        "ring0",
+        "ring1",
+        "ring2",
+        "late",
+        "here",
+        "miss"
+      ],
+      "steps": [
+        {
+          "trace": [
+            {
+              "ref": "ring0",
+              "when": "somewhere"
+            }
+          ],
+          "focus": [
+            "s0",
+            "ring0"
+          ],
+          "say": "One distance puts you somewhere on a circle around the first satellite."
+        },
+        {
+          "trace": [
+            "ring1",
+            "ring2"
+          ],
+          "focus": [
+            "ring1",
+            "ring2"
+          ],
+          "say": "A second and a third circle cross at just one point."
+        },
+        {
+          "show": [
+            "here"
+          ],
+          "focus": "here",
+          "callout": "a fourth satellite fixes your phone’s own clock",
+          "say": "That point is you. Out in three dimensions, a fourth satellite also corrects the cheap clock in your phone."
+        },
+        {
+          "trace": [
+            "late"
+          ],
+          "show": [
+            "miss"
+          ],
+          "tint": {
+            "ring1": "dim"
+          },
+          "focus": [
+            "late",
+            "miss"
+          ],
+          "callout": "light: 300 m every microsecond",
+          "say": "Now make one satellite’s clock a millionth of a second late. Light goes three hundred metres in that time, so that circle lands three hundred metres off, and the crossing point moves."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Two effects",
+      "title": "What one day does to an orbiting clock",
+      "kind": "bar",
+      "horizontal": true,
+      "unit": "µs",
+      "narration": "So the satellite clocks must agree with the ground to within billionths of a second. And Einstein says they can’t, for two reasons that pull opposite ways.",
+      "labels": [
+        "gains: weaker gravity",
+        "loses: its speed",
+        "net: ahead each day"
+      ],
+      "series": [
+        {
+          "name": "microseconds a day",
+          "values": [
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "set": {
+            "microseconds a day@gains: weaker gravity": 45.7
+          },
+          "say": "Clocks run faster where gravity is weaker. Twenty thousand kilometres up, that makes the satellite clock gain about forty six microseconds a day."
+        },
+        {
+          "set": {
+            "microseconds a day@loses: its speed": 7.1
+          },
+          "say": "Moving clocks run slower. At almost four kilometres a second, that costs it about seven microseconds a day."
+        },
+        {
+          "set": {
+            "microseconds a day@net: ahead each day": 38.6
+          },
+          "say": "Gravity wins. Together, the clock in orbit runs ahead by 38.6 microseconds every day."
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "It depends on height",
+      "title": "Time gained each day, by orbit",
+      "narration": "Which effect wins depends on how high the orbit is. These axes show how much a clock gains each day against the ground, for an orbit of any size.",
+      "x": {
+        "from": 0,
+        "to": 45,
+        "ticks": 10,
+        "label": "distance from Earth’s centre, thousand km"
+      },
+      "y": {
+        "from": -40,
+        "to": 60,
+        "ticks": 20,
+        "label": "µs a day",
+        "grid": true
+      },
+      "params": {
+        "r": 6.791
+      },
+      "functions": [
+        {
+          "id": "gain",
+          "y": "60.2145 - 574.7796 / x",
+          "from": 6.371,
+          "to": 45,
+          "tone": "accent",
+          "hidden": true
+        }
+      ],
+      "points": [
+        {
+          "id": "iss",
+          "at": [
+            6.790000000000001,
+            -24.4
+          ],
+          "label": "space station, -24.4",
+          "side": "right",
+          "tone": "bad",
+          "hidden": true
+        },
+        {
+          "id": "cross",
+          "at": [
+            9.55,
+            0
+          ],
+          "label": "9,546 km: they cancel",
+          "side": "above",
+          "hidden": true
+        },
+        {
+          "id": "gps",
+          "at": [
+            26.56175,
+            38.6
+          ],
+          "label": "GPS, +38.6",
+          "side": "below",
+          "tone": "warn",
+          "hidden": true
+        },
+        {
+          "id": "geo",
+          "at": [
+            42.164,
+            46.6
+          ],
+          "label": "geostationary, +46.6",
+          "side": "below",
+          "hidden": true
+        },
+        {
+          "id": "clock",
+          "at": [
+            "r",
+            "60.2145 - 574.7796 / r"
+          ],
+          "guides": true,
+          "tone": "accent",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "trace": [
+            "gain"
+          ],
+          "focus": "gain",
+          "say": "Close to the Earth the curve is below zero. Low orbits are fast, so speed wins and the clock falls behind."
+        },
+        {
+          "show": [
+            "iss",
+            "clock"
+          ],
+          "focus": [
+            "iss",
+            "clock"
+          ],
+          "say": "A clock on the space station loses about 24 microseconds a day."
+        },
+        {
+          "set": {
+            "r": 9.54553641726681
+          },
+          "show": [
+            "cross"
+          ],
+          "focus": [
+            "cross",
+            "clock"
+          ],
+          "say": "At about nine and a half thousand kilometres from the centre, the two effects cancel exactly."
+        },
+        {
+          "set": {
+            "r": 26.56175
+          },
+          "show": [
+            "gps"
+          ],
+          "focus": [
+            "gps",
+            "clock"
+          ],
+          "say": "GPS orbits much higher, so gravity wins, by thirty eight point six."
+        },
+        {
+          "set": {
+            "r": 42.164
+          },
+          "show": [
+            "geo"
+          ],
+          "focus": [
+            "geo",
+            "clock"
+          ],
+          "say": "Further out the curve flattens, as both effects fade."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "The cost",
+      "narration": "Thirty eight microseconds sounds like nothing.",
+      "kicker": "Uncorrected, every day",
+      "number": "38.6 µs",
+      "note": "gained by each satellite clock",
+      "steps": [
+        {
+          "set": {
+            "number": "11.6 km",
+            "note": "how far light goes in that time"
+          },
+          "say": "But light goes 11.6 kilometres in that time. Every distance your phone measures would grow wrong by that much each day."
+        },
+        {
+          "set": {
+            "number": "81 km",
+            "note": "after one week"
+          },
+          "say": "After a week, it is 81 kilometres. The map would put you in the next town, then the next country."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "The fix",
+      "title": "Set it slow before launch",
+      "narration": "So the engineers do something strange. They make the satellite clocks wrong on purpose.",
+      "svg": "<svg viewBox=\"0 0 1600 800\"><g id=\"ground-face\"><circle cx=\"420\" cy=\"400\" r=\"190\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"5\"/><line x1=\"420.0\" y1=\"232.0\" x2=\"420.0\" y2=\"218.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"504.0\" y1=\"254.5\" x2=\"511.0\" y2=\"242.4\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"565.5\" y1=\"316.0\" x2=\"577.6\" y2=\"309.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"588.0\" y1=\"400.0\" x2=\"602.0\" y2=\"400.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"565.5\" y1=\"484.0\" x2=\"577.6\" y2=\"491.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"504.0\" y1=\"545.5\" x2=\"511.0\" y2=\"557.6\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"420.0\" y1=\"568.0\" x2=\"420.0\" y2=\"582.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"336.0\" y1=\"545.5\" x2=\"329.0\" y2=\"557.6\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"274.5\" y1=\"484.0\" x2=\"262.4\" y2=\"491.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"252.0\" y1=\"400.0\" x2=\"238.0\" y2=\"400.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"274.5\" y1=\"316.0\" x2=\"262.4\" y2=\"309.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"336.0\" y1=\"254.5\" x2=\"329.0\" y2=\"242.4\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"420\" y=\"660\" text-anchor=\"middle\" font-size=\"34\">clock on the ground</text></g><g id=\"ground-hand\"><line x1=\"420\" y1=\"400\" x2=\"420\" y2=\"250\" stroke=\"var(--accent)\" stroke-width=\"10\" stroke-linecap=\"round\"/><circle cx=\"420\" cy=\"400\" r=\"12\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"sat-face\"><circle cx=\"1180\" cy=\"400\" r=\"190\" fill=\"var(--surface)\" stroke=\"var(--border)\" stroke-width=\"5\"/><line x1=\"1180.0\" y1=\"232.0\" x2=\"1180.0\" y2=\"218.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1264.0\" y1=\"254.5\" x2=\"1271.0\" y2=\"242.4\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1325.5\" y1=\"316.0\" x2=\"1337.6\" y2=\"309.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1348.0\" y1=\"400.0\" x2=\"1362.0\" y2=\"400.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1325.5\" y1=\"484.0\" x2=\"1337.6\" y2=\"491.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1264.0\" y1=\"545.5\" x2=\"1271.0\" y2=\"557.6\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1180.0\" y1=\"568.0\" x2=\"1180.0\" y2=\"582.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1096.0\" y1=\"545.5\" x2=\"1089.0\" y2=\"557.6\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1034.5\" y1=\"484.0\" x2=\"1022.4\" y2=\"491.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1012.0\" y1=\"400.0\" x2=\"998.0\" y2=\"400.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1034.5\" y1=\"316.0\" x2=\"1022.4\" y2=\"309.0\" stroke=\"var(--muted)\" stroke-width=\"5\"/><line x1=\"1096.0\" y1=\"254.5\" x2=\"1089.0\" y2=\"242.4\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"1180\" y=\"660\" text-anchor=\"middle\" font-size=\"34\">clock in orbit</text></g><g id=\"sat-hand\"><line x1=\"1180\" y1=\"400\" x2=\"1180\" y2=\"250\" stroke=\"var(--warn)\" stroke-width=\"10\" stroke-linecap=\"round\"/><circle cx=\"1180\" cy=\"400\" r=\"12\" fill=\"var(--text)\" stroke=\"none\"/></g><text id=\"freq\" x=\"1180\" y=\"720\" text-anchor=\"middle\" font-size=\"30\" font-family=\"mono\" fill=\"var(--muted)\">ticks 10.23 MHz</text><text id=\"ahead\" x=\"1180\" y=\"160\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--bad)\">ahead (drawn much bigger)</text></svg>",
+      "labels": {
+        "sat-hand": "satellite clock",
+        "ground-hand": "ground clock",
+        "freq": "frequency",
+        "ahead": "ahead"
+      },
+      "hidden": [
+        "ahead"
+      ],
+      "steps": [
+        {
+          "move": {
+            "ground-hand": "rotate(360 420 400)",
+            "sat-hand": "rotate(400 1180 400)"
+          },
+          "show": [
+            "ahead"
+          ],
+          "focus": [
+            "sat-hand",
+            "ground-hand",
+            "ahead"
+          ],
+          "say": "Tuned like the ground clock, the satellite clock creeps ahead, a little more every day."
+        },
+        {
+          "move": {
+            "ground-hand": "",
+            "sat-hand": ""
+          },
+          "hide": [
+            "ahead"
+          ],
+          "set": {
+            "freq": "tuned to 10.229 999 995 43 MHz"
+          },
+          "focus": "freq",
+          "say": "So before launch, it is tuned a hair slow: four parts in ten billion."
+        },
+        {
+          "move": {
+            "ground-hand": "rotate(360 420 400)",
+            "sat-hand": "rotate(360 1180 400)"
+          },
+          "set": {
+            "freq": "seen from the ground: 10.23 MHz"
+          },
+          "focus": [
+            "sat-hand",
+            "ground-hand",
+            "freq"
+          ],
+          "say": "Up in orbit, relativity speeds it up by exactly that much, and seen from the ground it ticks in step."
+        },
+        {
+          "callout": "receivers add the rest: up to 23 ns",
+          "focus": "sat-face",
+          "say": "Orbits are not perfect circles, so your phone adds one last small correction, up to about twenty three billionths of a second. Relativity is not just a theory here. It is in your pocket."
+        }
+      ]
+    }
+  ]
+}
