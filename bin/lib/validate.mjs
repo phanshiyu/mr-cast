@@ -2,7 +2,7 @@
 
 import { expandLineRefs, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
-import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
+import { cueWord, FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkHighlight } from './highlight.mjs';
@@ -157,7 +157,15 @@ function checkCodeSteps(scene, hunk, p, errors, warnings) {
       else labelled++;
     }
     if (step.outcome !== undefined && typeof step.outcome !== 'string') errors.push(`${q}.outcome: must be a string`);
+    if (scene.typing === true && step.oldLines !== undefined) errors.push(`${q}.oldLines: a typing scene writes the new code and draws no removed lines; type new lines with lines, or drop typing`);
+    if (step.output !== undefined && typeof step.output !== 'string') errors.push(`${q}.output: must be a string, lines separated by "\n"`);
+    if (step.outputWhen !== undefined) {
+      if (typeof step.outputWhen !== 'string' || !step.outputWhen.trim()) errors.push(`${q}.outputWhen: must be words of the step's say`);
+      else if (step.output === undefined) errors.push(`${q}.outputWhen: the step has no output to print`);
+      else if (isStr(step.say) && cueWord(step.say, step.outputWhen) < 0) errors.push(`${q}.outputWhen: ${JSON.stringify(step.outputWhen)} is not in the step's say`);
+    }
   });
+  if (labelled && steps.some((step) => step?.output !== undefined)) errors.push(`${p}.steps: the output pane and the step diagram both sit beside the code; drop the labels or the output`);
   if (labelled && labelled < steps.length) errors.push(`${p}.steps: ${labelled} of ${steps.length} steps have a label; label every step to draw the flow diagram beside the code, or none`);
   else if (labelled > LABELLED_STEPS_MAX) warnings.push(`${p}.steps: ${labelled} labelled steps; the step diagram beside the code fits ${LABELLED_STEPS_MAX}, so split the scene or drop the labels`);
   if (!refsOk) return;
@@ -388,6 +396,10 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
         else if (!hunk) errors.push(`${p}.hunkId: "${s.hunkId}" not found in hunks.json`);
         if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
         if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
+        if (s.outputTitle !== undefined && typeof s.outputTitle !== 'string') errors.push(`${p}.outputTitle: must be a string`);
+        if (s.typing !== undefined && typeof s.typing !== 'boolean') errors.push(`${p}.typing: must be true or false`);
+        else if (s.typing === true && s.steps === undefined) errors.push(`${p}.typing: each step types its lines, so the scene needs steps`);
+        else if (s.typing === true && s.view === 'split') errors.push(`${p}.view: a typing scene draws its code in one column; drop view "split"`);
         if (s.steps !== undefined) {
           checkCodeSteps(s, hunk, p, errors, warnings);
           break;

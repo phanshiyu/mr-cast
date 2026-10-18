@@ -1,0 +1,144 @@
+{
+  "h1": {
+    "id": "h1",
+    "file": "src/retry.ts",
+    "oldFile": null,
+    "status": "modified",
+    "language": "ts",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 7,
+    "additions": 5,
+    "deletions": 1,
+    "beforeCode": "export async function fetchWithRetry(url: string) {\n  return fetch(url);\n}",
+    "afterCode": "export async function fetchWithRetry(url: string) {\n  for (let attempt = 1; attempt <= 3; attempt++) {\n    const res = await fetch(url);\n    if (res.status < 500) return res;\n  }\n  throw new Error(`${url} failed 3 times`);\n}",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "export async function fetchWithRetry(url: string) {"
+      },
+      {
+        "type": "del",
+        "oldLine": 2,
+        "newLine": null,
+        "text": "  return fetch(url);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 2,
+        "text": "  for (let attempt = 1; attempt <= 3; attempt++) {"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 3,
+        "text": "    const res = await fetch(url);"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 4,
+        "text": "    if (res.status < 500) return res;"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 5,
+        "text": "  }"
+      },
+      {
+        "type": "add",
+        "oldLine": null,
+        "newLine": 6,
+        "text": "  throw new Error(`${url} failed 3 times`);"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 7,
+        "text": "}"
+      }
+    ]
+  },
+  "s1": {
+    "id": "s1",
+    "file": "fizzbuzz.js",
+    "oldFile": null,
+    "status": "source",
+    "language": "js",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 10,
+    "additions": 0,
+    "deletions": 0,
+    "beforeCode": "function fizzbuzz(n) {\n  for (let i = 1; i <= n; i++) {\n    if (i % 15 === 0) console.log(\"FizzBuzz\");\n    else if (i % 3 === 0) console.log(\"Fizz\");\n    else if (i % 5 === 0) console.log(\"Buzz\");\n    else console.log(i);\n  }\n}\n\nfizzbuzz(15);",
+    "afterCode": "function fizzbuzz(n) {\n  for (let i = 1; i <= n; i++) {\n    if (i % 15 === 0) console.log(\"FizzBuzz\");\n    else if (i % 3 === 0) console.log(\"Fizz\");\n    else if (i % 5 === 0) console.log(\"Buzz\");\n    else console.log(i);\n  }\n}\n\nfizzbuzz(15);",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "function fizzbuzz(n) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "  for (let i = 1; i <= n; i++) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 3,
+        "text": "    if (i % 15 === 0) console.log(\"FizzBuzz\");"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 4,
+        "text": "    else if (i % 3 === 0) console.log(\"Fizz\");"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 5,
+        "text": "    else if (i % 5 === 0) console.log(\"Buzz\");"
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 6,
+        "text": "    else console.log(i);"
+      },
+      {
+        "type": "context",
+        "oldLine": 7,
+        "newLine": 7,
+        "text": "  }"
+      },
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 8,
+        "text": "}"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 9,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 10,
+        "text": "fizzbuzz(15);"
+      }
+    ]
+  }
+}

@@ -93,7 +93,9 @@ export interface Slot extends SplitRow {
  */
 function cropSlots(hunk: Hunk, view: View, scene: CodeScene): { slots: Slot[]; stepCount: number } {
   const rangeOf = lineFocusRanges(scene, hunk);
-  const rows = view === 'split' ? splitRows(hunk.lines) : hunk.lines.map((_, i) => ({ left: i, right: i }));
+  // Typing writes the new code, so removed lines are not drawn.
+  const lines = hunk.lines.flatMap((line, i) => (scene.typing && line.type === 'del' ? [] : [i]));
+  const rows = view === 'split' ? splitRows(hunk.lines) : lines.map((i) => ({ left: i, right: i }));
   const stepped = scene.steps?.length ?? 0;
   const order: number[] = [];
   const slots = rows.map((row) => {
@@ -122,6 +124,41 @@ function headerChrome(hunk: Hunk): number {
 
 type CalloutAt = 'beside' | 'below' | 'flow';
 
+/** The output pane steps print into, beside the code: its window and every step's lines, wrapped as a terminal wraps them. */
+export interface OutputPaneLayout {
+  x: number;
+  width: number;
+  title: Fit;
+  font: number;
+  rowH: number;
+  lines: { step: number; fit: Fit; y: number; h: number }[];
+}
+
+export const OUTPUT_CHROME_H = 46;
+export const OUTPUT_PAD = { x: 24, y: 18 };
+const OUTPUT_GAP = 40;
+/** With an output pane the code keeps this share of the width. */
+const OUTPUT_CODE_SHARE = 0.58;
+const OUTPUT_FONT = 22;
+
+function layoutOutput(scene: CodeScene, x: number, width: number): OutputPaneLayout {
+  const rowH = Math.round(OUTPUT_FONT * 1.5);
+  const inner = width - 2 * OUTPUT_PAD.x;
+  let y = OUTPUT_PAD.y;
+  const lines = (scene.steps ?? []).flatMap((step, k) =>
+    typeof step.output !== 'string'
+      ? []
+      : step.output.split('\n').map((raw) => {
+          const fit = fitText(raw.replace(/\t/g, '  ').trimEnd(), { ...sized(SLOTS.terminalOutput, inner), size: OUTPUT_FONT, min: OUTPUT_FONT }, `steps[${k}].output`);
+          // A terminal wraps a long line rather than shrink it, so only its markup can be wrong.
+          const placed = { step: k, fit: { ...fit, fits: true, styled: 0 }, y, h: Math.max(1, fit.lines.length) * rowH };
+          y += placed.h;
+          return placed;
+        }),
+  );
+  return { x, width, title: fitText(scene.outputTitle ?? 'Output', sized(SLOTS.terminalWindow, width - 140), 'outputTitle'), font: OUTPUT_FONT, rowH, lines };
+}
+
 export interface CodeLayout {
   view: View;
   flow: FlowSteps | null;
@@ -136,6 +173,7 @@ export interface CodeLayout {
   /** Where the callout goes: beside a morph, below a split, under a step diagram, or nowhere. */
   callout: { at: CalloutAt; text: Fit; height: number } | null;
   steps: StepLayout | null;
+  output: OutputPaneLayout | null;
   diagramLeft: number;
   diagramW: number;
   diagramTop: number;
@@ -149,12 +187,13 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
     ? steps.every((step) => step.label) ? steps.map((step) => ({ label: step.label!, outcome: step.outcome })) : null
     : scene.flow?.length ? scene.flow : null;
   const flowPath = (k: number) => (steps ? `steps[${k}]` : `flow[${k}]`);
-  const view: View = hunk.status === 'source' ? 'morph' : scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
+  const view: View = hunk.status === 'source' || scene.typing ? 'morph' : scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
   const { slots, stepCount } = cropSlots(hunk, view, scene);
   const calloutText = scene.calloutText?.trim() || null;
-  const at: CalloutAt | null = calloutText === null ? null : flow ? 'flow' : view === 'morph' ? 'beside' : 'below';
+  const printing = !flow && Boolean(steps?.some((step) => typeof step.output === 'string'));
+  const at: CalloutAt | null = calloutText === null ? null : flow ? 'flow' : view === 'morph' && !printing ? 'beside' : 'below';
 
-  const panelW = flow ? Math.round(box.width * FLOW_CODE_SHARE) : at === 'beside' ? box.width - CALLOUT_W - CALLOUT_GAP : box.width;
+  const panelW = flow ? Math.round(box.width * FLOW_CODE_SHARE) : printing ? Math.round(box.width * OUTPUT_CODE_SHARE) : at === 'beside' ? box.width - CALLOUT_W - CALLOUT_GAP : box.width;
   const panelH = box.height - HEADER_H - HEADER_GAP - (at === 'below' ? CALLOUT_BELOW_H + 28 : 0);
   const shown = slots.flatMap((slot) => [slot.left, slot.right]).flatMap((i) => (i === null ? [] : [hunk.lines[i]!.text]));
   const metrics = codeMetrics(hunk, [...new Set(shown)], view, panelW);
@@ -182,6 +221,7 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
     header: hunk.header ? fitText(hunk.header, sized(SLOTS.hunkHeader, textW), 'hunkId') : null,
     callout,
     steps: stepLayout,
+    output: printing ? layoutOutput(scene, panelW + OUTPUT_GAP, box.width - panelW - OUTPUT_GAP) : null,
     diagramLeft,
     diagramW,
     diagramTop: stepLayout ? Math.max(0, (panelH - stepLayout.height - flowCalloutBlock) / 2) : 0,

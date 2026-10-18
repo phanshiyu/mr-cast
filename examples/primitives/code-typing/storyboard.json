@@ -1,0 +1,38 @@
+{
+  "title": "Code that types itself",
+  "subtitle": "A snippet written line by line with its output beside it, then a change typed into a diff",
+  "skipped": [],
+  "scenes": [
+    {
+      "type": "code",
+      "chapter": "FizzBuzz",
+      "hunkId": "s1",
+      "typing": true,
+      "outputTitle": "zsh",
+      "narration": "Here is FizzBuzz, written from scratch.",
+      "steps": [
+        { "lines": "1-2", "say": "Make a function that counts from one to n." },
+        { "lines": 3, "say": "A number that divides by fifteen prints FizzBuzz." },
+        { "lines": "4-8", "say": "Otherwise three prints Fizz, five prints Buzz, and anything else prints the number." },
+        {
+          "lines": 10,
+          "say": "Call it with fifteen, run it, and it prints every line up to FizzBuzz.",
+          "output": "$ node fizzbuzz.js\n1\n2\nFizz\n4\nBuzz\nFizz\n7\n8\nFizz\nBuzz\n11\nFizz\n13\n14\n[FizzBuzz]{good}",
+          "outputWhen": "run it"
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "Retry",
+      "hunkId": "h1",
+      "typing": true,
+      "outputTitle": "npm test",
+      "narration": "The fetch now tries again when the server fails.",
+      "steps": [
+        { "lines": "2-4", "say": "Try up to three times, and return any answer that is not a server error.", "output": "$ npm test\n[✗ retries a 503]{bad} expected 1 call to be 3" },
+        { "lines": "5-6", "say": "After three failures, throw an error that names the address.", "output": "$ npm test\n[✓ retries a 503]{good}\n[✓ gives up after three tries]{good}" }
+      ]
+    }
+  ]
+}

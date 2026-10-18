@@ -361,6 +361,16 @@ export interface CodeStep extends PenMarks {
    * circle unless `mark` says otherwise, with `note` or else the finding's claim, under its severity.
    */
   flag?: string;
+  /**
+   * Text printed into an output pane beside the code during this step, like a terminal's output, lines separated by
+   * "\n"; each step's output goes under the last. Markup colours a line or a word, e.g. "[✓ 3 passed]{good}".
+   */
+  output?: DisplayText;
+  /**
+   * Words of the step's `say` at which its output starts printing, e.g. "and it prints". Without it the output prints
+   * once the step's lines are typed, or as its words start when the scene does not type.
+   */
+  outputWhen?: string;
 }
 
 export interface CodeScene extends SceneBase {
@@ -379,6 +389,14 @@ export interface CodeScene extends SceneBase {
   /** A short flow diagram beside the code: one step per focus range, in the same top-to-bottom order.
    *  Each step says in plain words what that range does, e.g. "count the request in Redis". */
   flow?: { label: string; outcome?: string }[];
+  /**
+   * Each step types its lines in, a character at a time behind a cursor, over its `say`, instead of lighting lines
+   * already on screen; lines no step names are there from the start. Removed lines are not drawn, so a diff hunk
+   * shows its new code being written. Needs `steps`, each on `lines`; the code is drawn in one column.
+   */
+  typing?: boolean;
+  /** The title bar of the output pane that steps' `output` prints into, e.g. "zsh" or "node index.js". Defaults to "Output". */
+  outputTitle?: string;
 }
 
 export interface FlowStep {
