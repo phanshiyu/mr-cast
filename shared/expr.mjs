@@ -30,9 +30,9 @@ const CONSTANTS = { pi: Math.PI, e: Math.E };
 const own = (record, name) => Object.hasOwn(record, name);
 /** Names an expression cannot give a parameter or a sum's index, since they mean something already. */
 export const RESERVED_NAMES = [...Object.keys(FUNCTIONS), 'sum', ...Object.keys(CONSTANTS)];
-export const FUNCTION_NAMES = [...Object.keys(FUNCTIONS), 'sum'];
+const FUNCTION_NAMES = [...Object.keys(FUNCTIONS), 'sum'];
 /** The most terms one sum adds; past it the sum has no value. */
-export const MAX_TERMS = 10000;
+const MAX_TERMS = 10000;
 
 const NUMBER = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*/;

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { exprOf } from '../shared/expr.mjs';
+import { plotAxes } from '../shared/plot.mjs';
 import { walkStates } from '../shared/state-steps.mjs';
 import { resolveRef } from '../shared/targets.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
@@ -110,6 +111,14 @@ test('validate warns when tick labels overlap, and fails on a step that would dr
   const axes = (ticks) => ({ type: 'plot', narration: 'n', x: { from: 0, to: 10000, ticks }, y: { from: 0, to: 1 }, points: [{ id: 'p', at: [1, 0.5] }] });
   assert.deepEqual((await check(axes(250))).warnings, ['scenes[0].x.ticks: the tick labels "250" and "500" overlap; use a larger step']);
   assert.deepEqual((await check(axes(100))).errors, ['scenes[0].x.ticks: a step of 100 draws 101 ticks; use a step of at least 250']);
+});
+
+test('equal units make a circle round, and the 0 where both axes cross is written once', () => {
+  const axes = (equal) => plotAxes({ x: { from: -2, to: 2, ticks: 1 }, y: { from: -1.5, to: 1.5 }, equal }, { width: 1712, height: 804 });
+  assert.deepEqual(axes(false).plot, { x: 16, y: 20, width: 1672, height: 764 });
+  assert.deepEqual(axes(true).plot, { x: 342.6666666666667, y: 20, width: 1018.6666666666666, height: 764 });
+  assert.deepEqual(axes(true).ticks.y.map((t) => t.text), ['−1.5', '−1.0', '−0.5', '0.5', '1.0', '1.5']);
+  assert.deepEqual(axes(true).ticks.x.map((t) => t.text), ['−2', '−1', '0', '1', '2']);
 });
 
 test('the steps dump says what each step sets and traces, and the highlight check reads plot labels', async () => {

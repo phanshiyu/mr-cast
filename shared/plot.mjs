@@ -72,7 +72,7 @@ export function labelPieces(label) {
   for (const m of label.matchAll(/\{([^{}]*)\}/g)) {
     if (m.index > at) pieces.push(label.slice(at, m.index));
     const spec = /^(.*?)(?::(\d))?$/s.exec(m[1]);
-    pieces.push({ expr: spec[1], digits: spec[2] === undefined ? null : Number(spec[2]), at: m.index + 1 });
+    pieces.push({ expr: spec[1], digits: spec[2] === undefined ? null : Number(spec[2]) });
     at = m.index + m[0].length;
   }
   if (at < label.length) pieces.push(label.slice(at));
@@ -97,7 +97,7 @@ export function labelText(label, scope) {
 
 const models = new WeakMap();
 /**
- * The parameters, each part's functions, and which parts read each parameter. Cached per scene object.
+ * The parameters' first values, and the ids of the parts that read each parameter. Cached per scene object.
  * @returns {{ params: Record<string, number>, dependents: Map<string, string[]> }}
  */
 export function plotModel(scene) {
@@ -234,6 +234,12 @@ export function plotAxes(scene, box) {
   const top = y ? 20 : 0;
   const bottom = y && !xAxisInside ? TICK_GAP + lineHeight(TICK_FONT) + 8 : 20;
   const plot = { x: left, y: top, width: Math.max(1, box.width - left - right), height: Math.max(1, box.height - top - bottom) };
+  // Equal units on both axes: the plot narrows (or shortens) to the smaller scale and sits centred, so a circle is round.
+  if (scene.equal === true && y && x.log !== true && y.log !== true) {
+    const unit = Math.min(plot.width / (x.to - x.from), plot.height / (y.to - y.from));
+    const [w, h] = [unit * (x.to - x.from), unit * (y.to - y.from)];
+    Object.assign(plot, { x: plot.x + (plot.width - w) / 2, y: plot.y + (plot.height - h) / 2, width: w, height: h });
+  }
   const sx = scaleOf(x, plot.x, plot.x + plot.width);
   const sy = y ? scaleOf(y, plot.y + plot.height, plot.y) : () => plot.y + plot.height / 2;
   const xAxisY = y ? (xAxisInside ? sy(0) : plot.y + plot.height) : plot.y + plot.height / 2;
@@ -242,8 +248,9 @@ export function plotAxes(scene, box) {
     x: xTicks.map((t) => ({ ...t, at: sx(t.value), box: textBox(t.text, TICK_FONT, sx(t.value), xAxisY + TICK_GAP, 'middle') })),
     y: yTicks.map((t) => ({ ...t, at: sy(t.value), box: textBox(t.text, TICK_FONT, yAxisX - TICK_GAP, sy(t.value) - lineHeight(TICK_FONT) / 2, 'end') })),
   };
-  // A y tick whose text lands on an x tick's, such as the two zeros at a corner, gives way.
-  ticks.y = ticks.y.filter((t) => !ticks.x.some((u) => overlaps(t.box, u.box)));
+  // A y tick whose text lands on an x tick's, such as the two zeros at a corner, gives way, as does the y axis's 0
+  // where the x axis crosses it, which the x axis's own 0 names.
+  ticks.y = ticks.y.filter((t) => !ticks.x.some((u) => overlaps(t.box, u.box)) && !(xAxisInside && yAxisInside && t.value === 0));
   const labels = {
     x: typeof x.label === 'string' && x.label ? { text: x.label, box: textBox(x.label, AXIS_FONT, plot.x + plot.width, xAxisY - 10 - lineHeight(AXIS_FONT), 'end') } : null,
     y: y && typeof y.label === 'string' && y.label ? { text: y.label, box: textBox(y.label, AXIS_FONT, yAxisX + 14, plot.y - 4) } : null,

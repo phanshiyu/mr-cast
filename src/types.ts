@@ -1159,6 +1159,8 @@ export interface PlotScene extends SceneBase {
   title?: string;
   x: PlotAxis;
   y?: PlotAxis;
+  /** One unit is as long on y as on x, so a circle is round: the plot narrows or shortens to fit and sits centred. Not with a log axis. */
+  equal?: boolean;
   /** Named numbers the expressions read, e.g. { "n": 1 }. A name is letters, digits and _, not x, t, pi, e or a function's. */
   params?: Record<string, number>;
   functions?: PlotFunction[];

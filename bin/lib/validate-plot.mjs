@@ -115,6 +115,8 @@ export function checkPlot(s, p, errors, warnings) {
   for (const k of ['title', 'callout']) if (s[k] !== undefined && !isStr(s[k])) errors.push(`${p}.${k}: must be a string`);
   checkAxis(s.x, `${p}.x`, errors);
   if (s.y !== undefined) checkAxis(s.y, `${p}.y`, errors);
+  if (s.equal !== undefined && typeof s.equal !== 'boolean') errors.push(`${p}.equal: must be true or false`);
+  if (s.equal === true && (s.y === undefined || s.x?.log === true || s.y?.log === true)) errors.push(`${p}.equal: needs a y axis, and neither axis on a log scale`);
   if (s.params !== undefined && !isRecord(s.params)) errors.push(`${p}.params: must be an object of name to number, e.g. { "n": 1 }`);
   const params = isRecord(s.params) ? paramNames(s) : [];
   for (const name of params) {

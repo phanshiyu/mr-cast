@@ -165,8 +165,10 @@ export const PlotDiagram: React.FC<SceneProps<PlotScene>> = ({ scene, hunks, dur
         <g style={tickText(LABEL_FONT)}>
           {labels.map((l) => {
             const { color, opacity } = look(l.id, order.findIndex((p) => p.id === l.id));
+            // A label waits for its line to finish drawing, rather than riding the pen across the plot.
+            const written = traced.has(l.id) ? interpolate(t, [0.85, 1], [0, 1], clamp) : 1;
             return (
-              <text key={l.id} x={l.box.x} y={l.box.y + l.box.height / 2} dominantBaseline="central" fill={color} opacity={opacity} stroke={colors.bg} strokeWidth={6} paintOrder="stroke">
+              <text key={l.id} x={l.box.x} y={l.box.y + l.box.height / 2} dominantBaseline="central" fill={color} opacity={opacity * written} stroke={colors.bg} strokeWidth={6} paintOrder="stroke">
                 {l.text}
               </text>
             );
