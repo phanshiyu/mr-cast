@@ -34,3 +34,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0024](0024-tests-scene-as-behaviour-matrix.md) | The tests scene is a behaviour matrix of situations, promised outcomes and the tests that check them | Accepted |
 | [0025](0025-ink-board.md) | Ink: a step's `draw` stays on the board until a step erases it, timed to the words and placed clear of the scene | Accepted |
 | [0026](0026-text-scene.md) | A text scene whose lead field says how it is drawn, with intent as its alias | Accepted |
+| [0029](0029-plot-scene.md) | A plot scene: numeric axes, parts placed by expressions in parameters, and steps that set and trace | Accepted |

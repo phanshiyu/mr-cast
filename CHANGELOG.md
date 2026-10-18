@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.28.0
+
+**A `plot` scene.** Numeric axes with lines, curves, data, points, arrows and shaded areas, whose numbers can be expressions in named parameters that steps change, so a curve reshapes and a point moves (ADR 0029).
+
+- **Axes.** `x` and `y` take `from`, `to`, `label`, `ticks` (a step, a list, or `"pi"` for π/2, π, 3π/2), `log`, `grid`, and a `prefix` or `suffix` such as `"$"`; tick numbers from ten thousand read as `20k`. `equal: true` gives both axes one unit, so a circle is round. Without `y` the scene is a number line.
+- **Parts.** `functions` (y in x, or a curve with x and y in t), `series` of `[x, y]` points as a line, dots or both, `points` with a label `side` and `guides` to the axes, `vectors`, and `areas` `under` a line or `between` two. Each has an id, a `label`, a `tone` and `hidden`.
+- **Expressions.** Numbers, names, `+ - * / ^`, unary minus, `pi`, `e`, `sin cos tan asin acos atan exp log ln log10 sqrt abs sign floor ceil round mod min max`, and `sum(k, from, to, term)`. They are parsed by `shared/expr.mjs` and evaluated from the tree, never run as code, and read only the scene's `params` and x or t. A label shows a value with `{expr}` or `{expr:0}`.
+- **Steps.** `set` changes parameters and every part that reads one moves through the values between; a sum's bound between two whole numbers adds its last term in part, so terms grow in. `trace` draws a line on across the step's words and moves the step's parameters with it, so a marker rides the line. `when` starts a step's changes at a cue word. `show`, `hide`, `tint`, `focus`, `callout` and ink work as on the other stepped scenes; a parameter's name lights the parts that read it.
+- **`validate`** fails on an expression that does not parse, at its column, on a name that is no parameter, on a trace of a point and on a `when` the step never says. It draws every step and warns on a line with no value in its range, a part off the plot, labels that overlap each other or the axis text or run off the stage, and tick labels that overlap. The highlight check reads part labels, and `mr-cast steps` lists what each step sets and traces.
+- **The demo,** `examples/primitives/plot/`, builds a square wave from 1, 3, 5 and 15 sine waves and then traces $10,000 at 7% against 3% inflation, with every number computed and checked in its `generate.mjs`.
+
 ## 0.27.0
 
 Four changes. mr-cast voices with Kitten TTS by default, the tests scene is a behaviour matrix, a new `text` scene puts words on screen as the picture, and Claude can write and draw on any stepped scene with ink that stays until a step erases it.
