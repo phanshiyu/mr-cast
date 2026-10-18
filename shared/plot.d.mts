@@ -29,7 +29,6 @@ export declare const TICK_LEN: number;
 export declare function plotParts(scene: PlotScene): PlotPart[];
 export declare function partOf(scene: PlotScene, id: unknown): PlotPart | undefined;
 export declare function paramNames(scene: PlotScene): string[];
-export declare function labelText(label: string, scope: Record<string, number>): string;
 export declare function formatNumber(v: number, digits?: number | null): string;
 export declare function stateParams(scene: PlotScene, state: SceneState | undefined): Record<string, number>;
 export declare function partTone(scene: PlotScene, part: PlotPart): Tone;

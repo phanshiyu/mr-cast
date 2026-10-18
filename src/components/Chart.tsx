@@ -96,7 +96,7 @@ const SlotGlow: React.FC<{ layout: ChartLayout; i: number; emphasis: Emphasis }>
     />
   ) : null;
 
-export const Grid: React.FC<{ layout: ChartLayout; affix: Affix; appear: number }> = ({ layout, affix, appear }) => {
+const Grid: React.FC<{ layout: ChartLayout; affix: Affix; appear: number }> = ({ layout, affix, appear }) => {
   const { x0, x1 } = layout.plot;
   return (
     <>

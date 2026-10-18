@@ -30,7 +30,7 @@ const NOISE_PATHSPEC = ['.', ...NOISE_GLOBS.map((g) => `:(exclude,glob)${g}`)];
 
 const BASE_CANDIDATES = ['main', 'master', 'origin/main', 'origin/master', 'develop', 'trunk'];
 
-export function git(cwd, args) {
+function git(cwd, args) {
   try {
     return execFileSync('git', ['-c', 'core.quotepath=off', ...args], {
       cwd,

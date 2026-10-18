@@ -12,7 +12,7 @@ function distance(a, b) {
 }
 
 /** Up to `limit` candidates close to `name`: a small edit away, or sharing a word with it, nearest first. */
-export function closest(name, candidates, limit = 3) {
+function closest(name, candidates, limit = 3) {
   const want = String(name).toLowerCase().trim();
   const words = want.split(/[\s\-_.:@>]+/).filter((w) => w.length > 2);
   const scored = [...new Set(candidates)].flatMap((candidate) => {

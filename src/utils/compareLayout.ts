@@ -7,7 +7,7 @@ import type { Box, LayoutBoxes } from './penGeometry';
 /** Height of a side's title band, above its first row. */
 export const HEADER_H = 66;
 /** Padding inside a side's frame, left and right of its cells. */
-export const PANEL_PAD = 26;
+const PANEL_PAD = 26;
 /** Room between the two sides, where each row's "=" or arrow sits. */
 const GUTTER = 88;
 const LABEL_GAP = 30;
@@ -203,7 +203,7 @@ export function layoutCompare(scene: CompareScene, width: number, height: number
 }
 
 /** A cell's text or code block, in layout units: where a pen mark draws and the note keeps off. */
-export function cellBox(layout: CompareLayout, row: PlacedCompareRow, side: 0 | 1): Box {
+function cellBox(layout: CompareLayout, row: PlacedCompareRow, side: 0 | 1): Box {
   const cell = row.cells[side];
   const width =
     cell.kind === 'text' ? cell.text.width : cell.kind === 'code' ? cell.lines.width + 2 * CODE_PAD : layout.cellW;

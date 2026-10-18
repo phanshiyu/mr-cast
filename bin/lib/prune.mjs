@@ -368,7 +368,7 @@ export function formatBytes(bytes) {
 const listed = (listing) => new Set(listing.map((a) => a.id));
 
 /** Bytes deletable now, counting a listed run's parts once (they are inside it) and skipping busy artifacts. */
-export function reclaimable(listing) {
+function reclaimable(listing) {
   const ids = listed(listing);
   return listing.filter((a) => !ids.has(a.parent) && !a.busy).reduce((n, a) => n + a.bytes, 0);
 }

@@ -1,7 +1,6 @@
 import type { Finding, HunkMap, Hunk, Plan, Storyboard } from '../src/types';
 
 export declare const READ_FIRST_MAX: number;
-export declare const CHECK_MAX: number;
 export declare const READING_HEADING: string;
 
 export interface ReadingEntry {

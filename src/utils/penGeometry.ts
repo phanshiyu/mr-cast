@@ -84,7 +84,7 @@ export const centredStage = (
 });
 
 /** A box in layout units as it lands in the content box. */
-export const onStage = ({ left, top, scale }: Stage, b: Box): Box => ({
+const onStage = ({ left, top, scale }: Stage, b: Box): Box => ({
   x: left + b.x * scale,
   y: top + b.y * scale,
   width: b.width * scale,

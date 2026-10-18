@@ -15,7 +15,6 @@ export declare function parseTransform(text: string | undefined): TransformFn[] 
 export declare function tweenTransform(from: string | undefined, to: string | undefined, t: number): string;
 export declare function pairShapes(fromD: string | undefined, toD: string | undefined): PairedShape;
 export declare function tweenShape(paired: PairedShape, t: number): string;
-export declare function pathLength(d: string | undefined): number;
 export declare function stateMotion(
   ids: Map<string, import('./svg.mjs').SvgNode>,
   state: { transforms?: Record<string, string>; shapes?: Record<string, string> },

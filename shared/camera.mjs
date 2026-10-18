@@ -12,7 +12,7 @@ import { aType } from './words.mjs';
  * Scene types whose steps take `camera`: the ones whose steps take ink, every scene with refs and code, but a map,
  * whose `view` is its camera: it zooms the geography and keeps its labels at their size.
  */
-export const CAMERA_TYPES = INK_TYPES.filter((type) => type !== 'map');
+const CAMERA_TYPES = INK_TYPES.filter((type) => type !== 'map');
 /** The most a camera zooms, by `zoom`. */
 const ZOOM_MAX = 40;
 /** The most a camera zooms when it fits its refs by itself, so one small item does not fill the screen. */

@@ -78,7 +78,6 @@ export declare const CODE_PAD: number;
 export declare function boldWeight(weight: number): number;
 export declare function measure(text: string, font: Font): number;
 export declare function runFont(run: Run, font: Font): Font;
-export declare function runsWidth(runs: readonly Run[], font: Font): number;
 export declare function wrapRuns(
   runs: readonly Run[],
   font: Font,

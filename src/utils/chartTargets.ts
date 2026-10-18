@@ -141,7 +141,7 @@ export function framed(scene: ChartScene, f: StateFrame) {
   return { before, now, values, shown, from, to, place: (i: number) => from[i]! + (to[i]! - from[i]!) * f.t };
 }
 
-export const settledFrame = (state: SceneState): StateFrame => ({ before: state, now: state, t: 1, lit: 0 });
+const settledFrame = (state: SceneState): StateFrame => ({ before: state, now: state, t: 1, lit: 0 });
 
 /** Angles are radians clockwise from twelve o'clock. */
 export const point = (cx: number, cy: number, r: number, a: number) =>

@@ -337,7 +337,7 @@ export function tweenShape(paired, t) {
 }
 
 /** About how long a path is, in its own units: each curve's chord and control polygon averaged. */
-export function pathLength(d) {
+function pathLength(d) {
   try {
     return cubicOutlines(d).reduce((sum, o) => {
       let from = o.start;

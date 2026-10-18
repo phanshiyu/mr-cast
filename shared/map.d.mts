@@ -45,7 +45,6 @@ export declare const MAP_SIDES: readonly string[];
 export declare const MIN_SPAN: number;
 export declare const LABEL_FONT: { family: 'sans'; weight: number; size: number };
 export declare const DOT_RADIUS: number;
-export declare const LABEL_GAP: number;
 export declare function loadWorld(): Promise<void>;
 export declare function worldLoaded(): boolean;
 export declare function needsWorld(storyboard: unknown): boolean;
@@ -54,7 +53,6 @@ export declare function countriesAt(detail: '110m' | '50m'): Map<string, Country
 export declare function countryCode(ref: unknown): string | null;
 export declare function countryNames(): string[];
 export declare function countryName(code: string): string;
-export declare function itemKey(field: 'places' | 'routes' | 'lines' | 'regions', id: string): string;
 export declare function mapRef(scene: MapScene, ref: unknown): string[] | null;
 export declare function mapRefNames(scene: MapScene): string[];
 export declare function placePoint(at: unknown): LngLat | null;
@@ -70,12 +68,6 @@ export declare function mapLayout(
   scene: MapScene,
   stage: Stage,
 ): { proj: MapProjection; cameras: Camera[]; detail: '110m' | '50m' };
-export declare function labelBox(
-  at: [number, number],
-  width: number,
-  side: string | null,
-  gap: number,
-): { x: number; y: number; width: number; height: number };
 /** An SVG path of a geometry through the projection at zoom 1, or "" when none of it shows. */
 export declare function geoPathOf(proj: MapProjection, geometry: object): string;
 export declare function tracedKeys(scene: MapScene): string[];

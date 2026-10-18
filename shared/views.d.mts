@@ -8,5 +8,4 @@ export interface View {
 }
 
 export declare const VIEWS: Record<ViewKey, View>;
-export declare const VIEW_KEYS: ViewKey[];
 export declare function isView(key: unknown): key is ViewKey;

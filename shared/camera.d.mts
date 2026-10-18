@@ -26,7 +26,6 @@ interface Rect extends Area {
   x: number;
   y: number;
 }
-export declare const CAMERA_TYPES: readonly Scene['type'][];
 export declare function cameraShots(
   scene: Scene,
   hunks?: HunkMap,

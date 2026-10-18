@@ -19,6 +19,4 @@ export const VIEWS = {
   code: { label: 'Just the code', scenes: ['code'] },
 };
 
-export const VIEW_KEYS = Object.keys(VIEWS);
-
 export const isView = (key) => typeof key === 'string' && Object.hasOwn(VIEWS, key);

@@ -12,8 +12,6 @@ import {
 import { FitText } from './FitText';
 import { colors } from './theme';
 
-export type { FlowSteps } from '../utils/stepsLayout';
-
 interface StepDiagramProps {
   layout: StepLayout;
   /** Where the code panel ends and the diagram column starts, in the shared panel coordinates. */

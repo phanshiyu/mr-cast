@@ -105,7 +105,7 @@ export function formatNumber(v, digits = null) {
 }
 
 /** A label's text with its holes filled from `scope`. */
-export function labelText(label, scope) {
+function labelText(label, scope) {
   return labelPieces(label)
     .map((p) => (typeof p === 'string' ? p : formatNumber(exprOf(p.expr).fn(scope), p.digits)))
     .join('');

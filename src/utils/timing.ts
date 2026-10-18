@@ -1,7 +1,7 @@
 import type { Scene, Storyboard, Voiceover } from '../types';
 import { FPS, sceneDurationInFrames, sceneSegments, type SpokenSegment } from '../../shared/timing.mjs';
 
-export { FPS, sceneDurationInFrames, spokenAt, wordCount } from '../../shared/timing.mjs';
+export { FPS, spokenAt } from '../../shared/timing.mjs';
 export type { SpokenSegment } from '../../shared/timing.mjs';
 export const WIDTH = 1920;
 export const HEIGHT = 1080;

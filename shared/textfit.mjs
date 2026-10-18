@@ -120,14 +120,6 @@ export function runFont(run, font) {
   return run.bold ? { ...font, weight: boldWeight(font.weight) } : font;
 }
 
-/** Width of styled runs in `font`, code chips with their padding. */
-export function runsWidth(runs, font) {
-  return runs.reduce(
-    (sum, run) => sum + measure(run.text, runFont(run, font)) + (run.code ? 2 * CODE_PAD * font.size : 0),
-    0,
-  );
-}
-
 /**
  * How a line may break after character i: 1 after a run of spaces, 2 (only inside a word too wide for its
  * line) after / _ - : or . before a letter, or between a lower-case letter or digit and an upper-case one

@@ -248,7 +248,7 @@ function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, pen: nu
 }
 
 /** An arc from `a` to `b` that bulges `bulge` px out (right of a downward run, above a sideways one), for close neighbours. */
-export function swing(a: Pt, b: Pt, bulge: number, seed: number, pen: number): Sketch {
+function swing(a: Pt, b: Pt, bulge: number, seed: number, pen: number): Sketch {
   const down = Math.abs(b.y - a.y) >= Math.abs(b.x - a.x);
   // A negative bulge swings the other way: left of a downward run, below a sideways one.
   const ctrl = down

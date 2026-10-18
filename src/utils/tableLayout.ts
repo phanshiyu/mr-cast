@@ -21,7 +21,6 @@ const ROW_GAP = 6;
 const ARROW = ' → ';
 /** Width of one header character: 17px uppercase with 2.5px letter spacing. */
 const HEADER_CHAR_W = 13;
-export const HEADER_FONT = 17;
 
 /**
  * Identifiers, paths, numbers with units and the like read as code, so they render in mono. Math, such as

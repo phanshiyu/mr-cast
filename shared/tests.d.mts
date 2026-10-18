@@ -45,7 +45,6 @@ export interface TestsMatrix {
   };
 }
 
-export declare const cellKey: (row: number, col: number) => string;
 export declare const outcomeKey: (col: number) => string;
 export declare const testKey: (n: number) => string;
 export declare function isGapRow(situation: TestSituation | undefined): boolean;

@@ -73,7 +73,7 @@ export interface ArrayLayout {
 const rowOf = (layout: ArrayLayout, name: string) => layout.rows.find((r) => r.name === name)!;
 
 /** Left edge of cell `i` of a row (-1 and `count` are the slots past either end). */
-export function cellX(layout: ArrayLayout, row: PlacedRow, i: number): number {
+function cellX(layout: ArrayLayout, row: PlacedRow, i: number): number {
   if (layout.hex) return row.x + i * layout.slotW + (row.hexRow % 2) * (layout.slotW / 2);
   const cuts = i < 0 ? 0 : i >= row.count ? (row.cutsBefore[row.count - 1] ?? 0) : row.cutsBefore[i]!;
   return row.x + (i + (row.ghosts.left ? 1 : 0)) * layout.slotW + cuts * SPLIT_GAP;

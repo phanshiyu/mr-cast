@@ -34,7 +34,7 @@ const LINE_STEP = 0.5;
 const EDGE_STEP = 1;
 export const LABEL_FONT = { family: 'sans', weight: 600, size: 26 };
 export const DOT_RADIUS = 9;
-export const LABEL_GAP = 10;
+const LABEL_GAP = 10;
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -106,9 +106,6 @@ const KINDS = [
   ['lines', 'ml:', 'line'],
   ['regions', 'mg:', 'region'],
 ];
-/** The item key of a place, route, line or region by its field and id. */
-export const itemKey = (field, id) => `${KINDS.find(([f]) => f === field)[1]}${id}`;
-
 /** The item keys a ref names: "map" for the whole map, a country by code or name, or a place, route, line or region id. */
 export function mapRef(scene, ref) {
   if (typeof ref !== 'string') return null;
@@ -473,7 +470,7 @@ export function mapLayout(scene, stage) {
 }
 
 /** Where a label sits beside its anchor: its box on the stage for a side, or centred on it with no side. */
-export function labelBox(at, width, side, gap) {
+function labelBox(at, width, side, gap) {
   const h = LABEL_FONT.size * 1.2;
   if (!side) return { x: at[0] - width / 2, y: at[1] - h / 2, width, height: h };
   if (side === 'left') return { x: at[0] - gap - width, y: at[1] - h / 2, width, height: h };

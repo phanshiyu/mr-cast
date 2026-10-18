@@ -8,8 +8,6 @@ import { lineSpan } from './review.mjs';
 
 /** Items the closing scene lists under "Read first"; the rest of the order is in reading.md. */
 export const READ_FIRST_MAX = 6;
-/** A check is one line a reviewer reads beside the file name. */
-export const CHECK_MAX = 80;
 /** The first line of reading.md, by which mr-cast knows a reading.md is its own. */
 export const READING_HEADING = '# Reading order: ';
 /** Words a review finding's severity is shown with on its reading item. */

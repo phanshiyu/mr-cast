@@ -7,7 +7,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
 const situationKey = (id) => `s:${id}`;
-export const cellKey = (row, col) => `x:${row}/${col}`;
+const cellKey = (row, col) => `x:${row}/${col}`;
 export const outcomeKey = (col) => `o:${col}`;
 export const testKey = (n) => `t:${n}`;
 

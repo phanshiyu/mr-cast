@@ -4,8 +4,6 @@ import { fitText, measure, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { Box, LayoutBoxes } from './penGeometry';
 
-export const LABEL_FONT = 23;
-export const DETAIL_FONT = 19;
 export const STAMP_FONT = 17;
 const STAMP_LINE = 24;
 const BOX_PAD_X = 18;

@@ -22,7 +22,7 @@ const LABEL_GAP = 6;
 const NOTE_GAP = 18;
 const NOTE_MAX_W = 460;
 const CHIP_PAD_X = 12;
-export const LABEL_LINE_HEIGHT = 1.35;
+const LABEL_LINE_HEIGHT = 1.35;
 /** Chip padding and border above and below the text. */
 const CHIP_PAD_Y = 3;
 

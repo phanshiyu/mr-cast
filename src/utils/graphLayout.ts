@@ -39,8 +39,8 @@ const BORDERED_GAP = 64;
 /** Between one group's box and the next band of nodes. */
 const BAND_GAP = 40;
 
-export const LABEL_FONT = 19;
-export const LABEL_LINE_HEIGHT = 1.3;
+const LABEL_FONT = 19;
+const LABEL_LINE_HEIGHT = 1.3;
 export const LABEL_PAD = { x: 12, y: 5 };
 const GROUP_FONT = 18;
 const MONO_ADVANCE = 0.61;
