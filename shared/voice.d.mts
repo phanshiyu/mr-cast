@@ -5,7 +5,6 @@ export interface Pace {
   pauses: number;
 }
 
-export declare const DEFAULT_VOICE: string;
 export declare const PACES: { slower: Pace; normal: Pace; faster: Pace };
 export declare function narrationKey(text: string | null | undefined, voice: string, speed?: number): string;
 export declare function paceOf(voiceover: Voiceover | null | undefined): Pace;

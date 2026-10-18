@@ -1,17 +1,15 @@
-// Voice-over: one Kokoro clip per distinct spoken text (a scene's narration or a code step's `say`),
-// cached in .mr-cast/audio under its narrationKey.
+// Voice-over: one clip per distinct spoken text (a scene's narration or a code step's `say`), cached in
+// .mr-cast/audio under its narrationKey, made by the voice's engine: Kitten TTS by default, or Kokoro.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { spokenTexts, wordCount } from '../../shared/timing.mjs';
 import { PACES, clipFor, narrationKey } from '../../shared/voice.mjs';
-import { cacheDir } from './cache.mjs';
 import { UserError } from './errors.mjs';
+import { KITTEN_REPO, downloadKitten, loadKitten } from './kitten.mjs';
 import { withLock } from './lock.mjs';
+import { ENGINES, KOKORO_MODEL_ID, voiceParts } from './voices.mjs';
 
-const MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-/** The weights transformers.js fetches for dtype q8; its absence means this load downloads them. */
-const MODEL_FILE = 'model_quantized.onnx';
 const VOICEOVER_FILE = 'voiceover.json';
 const AUDIO_DIR = 'audio';
 /** Clip file names; anything else under /data/audio is refused. */
@@ -67,32 +65,72 @@ export function readVoiceover(dataDir) {
   return { voice: raw.voice, speed: isSpeed(raw.speed) ? raw.speed : 1, pauses: isPauses(raw.pauses) ? raw.pauses : 1, clips };
 }
 
-let model = null;
+/** Each engine's loaded model, once per process. A failed load is forgotten so the next call retries. */
+const models = new Map();
 
 /**
- * Loads Kokoro once per process. A failed load is forgotten so the next call retries.
- * transformers.js writes each download straight to its final path in the cache, where another process
- * would take the partial file for a cached one, so loads hold a lock while the weights may be downloading.
+ * Each engine's loader. A loaded model's `speak(text, name, speed)` yields `text` in chunks, each { sentence, audio }
+ * at its `sampleRate`.
  */
-function loadModel(onProgress) {
-  model ??= (async () => {
-    const modelDir = cacheDir('models');
-    try {
-      const { env } = await import('@huggingface/transformers');
-      env.cacheDir = modelDir;
-      const { KokoroTTS, TextSplitterStream } = await import('./kokoro/kokoro.js');
-      fs.mkdirSync(modelDir, { recursive: true });
-      const tts = await withLock(`${modelDir}.lock`, () => {
-        if (!fs.existsSync(path.join(modelDir, MODEL_ID, 'onnx', MODEL_FILE))) onProgress?.({ type: 'download', cacheDir: modelDir });
-        return KokoroTTS.from_pretrained(MODEL_ID, { dtype: 'q8', device: 'cpu' });
-      }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish loading the voice model`));
-      return { tts, TextSplitterStream };
-    } catch (err) {
-      model = null;
-      throw new UserError(`could not load the Kokoro voice model (${err.message}); the first run downloads about 90 MB from huggingface.co into ${modelDir}`);
-    }
-  })();
-  return model;
+const LOADERS = {
+  /** Kitten's files download, checked against their pinned sha256, under a lock so two processes share one download. */
+  async kitten(onProgress) {
+    const dir = ENGINES.kitten.dir();
+    fs.mkdirSync(path.dirname(dir), { recursive: true });
+    await withLock(`${dir}.lock`, async () => {
+      if (ENGINES.kitten.downloaded()) return;
+      onProgress?.({ type: 'download', engine: 'kitten', mb: ENGINES.kitten.mb, cacheDir: dir });
+      await downloadKitten(dir);
+    }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading the voice model`));
+    return loadKitten(dir);
+  },
+  /**
+   * transformers.js writes each download straight to its final path in the cache, where another process would
+   * take the partial file for a cached one, so loads hold a lock while the weights may be downloading.
+   */
+  async kokoro(onProgress) {
+    const modelDir = ENGINES.kokoro.dir();
+    const { env } = await import('@huggingface/transformers');
+    env.cacheDir = modelDir;
+    const { KokoroTTS, TextSplitterStream } = await import('./kokoro/kokoro.js');
+    fs.mkdirSync(modelDir, { recursive: true });
+    const tts = await withLock(`${modelDir}.lock`, () => {
+      if (!ENGINES.kokoro.downloaded()) onProgress?.({ type: 'download', engine: 'kokoro', mb: ENGINES.kokoro.mb, cacheDir: modelDir });
+      return KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: 'q8', device: 'cpu' });
+    }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish loading the voice model`));
+    const { getVoiceData } = await import('./kokoro/voices.js');
+    return {
+      sampleRate: 24000,
+      async prepare(name) {
+        try {
+          await getVoiceData(name);
+        } catch (err) {
+          throw new UserError(`could not get voice "${name}" (${err.cause?.message ?? err.message}); the first use of a Kokoro voice downloads about 0.5 MB from huggingface.co into ${modelDir}`);
+        }
+      },
+      async* speak(text, name, speed) {
+        // generate() truncates past 510 tokens, so speak sentence by sentence. stream() never closes the splitter
+        // it builds from a string and hangs before the last sentence, so pass it a closed one.
+        const splitter = new TextSplitterStream();
+        splitter.push(text);
+        splitter.close();
+        for await (const { text: sentence, audio } of tts.stream(splitter, { voice: name, speed })) yield { sentence, audio: audio.audio };
+      },
+    };
+  },
+};
+
+const SOURCES = { kitten: `huggingface.co/${KITTEN_REPO}`, kokoro: `huggingface.co/${KOKORO_MODEL_ID}` };
+
+function loadEngine(engine, onProgress) {
+  if (!models.has(engine)) {
+    models.set(engine, LOADERS[engine](onProgress).catch((err) => {
+      models.delete(engine);
+      const { mb, dir } = ENGINES[engine];
+      throw new UserError(`could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${SOURCES[engine]} into ${dir()}`);
+    }));
+  }
+  return models.get(engine);
 }
 
 /** Samples quieter than this are silence when finding where a sentence's speech starts and ends. */
@@ -109,18 +147,10 @@ function soundBounds(chunk) {
 
 const roundMs = (seconds) => Math.round(seconds * 1000) / 1000;
 
-async function speak(tts, TextSplitterStream, text, voice, speed) {
-  // generate() truncates past 510 tokens, so speak sentence by sentence. stream() never closes the splitter
-  // it builds from a string and hangs before the last sentence, so pass it a closed one.
-  const splitter = new TextSplitterStream();
-  splitter.push(text);
-  splitter.close();
+async function speak(model, text, name, speed) {
   const chunks = [];
-  let sampleRate = 24000;
-  for await (const { text: sentence, audio } of tts.stream(splitter, { voice, speed })) {
-    chunks.push({ sentence, audio: audio.audio });
-    sampleRate = audio.sampling_rate;
-  }
+  for await (const chunk of model.speak(text, name, speed)) chunks.push(chunk);
+  const { sampleRate } = model;
   const samples = new Float32Array(chunks.reduce((n, c) => n + c.audio.length, 0));
   const sentences = [];
   let offset = 0;
@@ -184,20 +214,14 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
   }
 
   if (missing.size) {
-    const { tts, TextSplitterStream } = await loadModel(onProgress);
-    if (!Object.hasOwn(tts.voices, chosen)) {
-      throw new UserError(`unknown voice "${chosen}"; choose one of ${Object.keys(tts.voices).join(', ')}`);
-    }
-    try {
-      const { getVoiceData } = await import('./kokoro/voices.js');
-      await getVoiceData(chosen);
-    } catch (err) {
-      throw new UserError(`could not get voice "${chosen}" (${err.cause?.message ?? err.message}); the first use of a voice downloads about 0.5 MB from huggingface.co into ${cacheDir('models')}`);
-    }
+    const { engine, name } = voiceParts(chosen);
+    if (!Object.hasOwn(ENGINES, engine) || !Object.hasOwn(ENGINES[engine].voices, name)) throw new UserError(`unknown voice "${chosen}"; \`mr-cast voices\` lists them`);
+    const model = await loadEngine(engine, onProgress);
+    await model.prepare?.(name);
     fs.mkdirSync(path.join(dataDir, AUDIO_DIR), { recursive: true });
     let done = 0;
     for (const [key, text] of missing) {
-      const { samples, sampleRate, sentences } = await speak(tts, TextSplitterStream, text, chosen, speed);
+      const { samples, sampleRate, sentences } = await speak(model, text, name, speed);
       const src = `${AUDIO_DIR}/${key}.wav`;
       writeAtomic(path.join(dataDir, src), encodeWav(samples, sampleRate));
       clips[key] = { src, seconds: roundMs(samples.length / sampleRate), sentences, voice: chosen, speed };
@@ -221,4 +245,17 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
     if (OWNED_FILE.test(name) && !used.has(name)) fs.rmSync(path.join(dataDir, AUDIO_DIR, name), { force: true });
   }
   return voiceover;
+}
+
+/** The sentence `mr-cast voices --sample` reads. */
+export const SAMPLE_TEXT = 'Here is how this change works: the request takes a token, and an empty bucket makes it wait.';
+
+/** Voices SAMPLE_TEXT in `voice` at `speed` into the WAV file `out`; returns its length in seconds. */
+export async function sampleVoice({ voice, speed, out, onProgress }) {
+  const { engine, name } = voiceParts(voice);
+  const model = await loadEngine(engine, onProgress);
+  await model.prepare?.(name);
+  const { samples, sampleRate } = await speak(model, SAMPLE_TEXT, name, speed);
+  writeAtomic(out, encodeWav(samples, sampleRate));
+  return roundMs(samples.length / sampleRate);
 }

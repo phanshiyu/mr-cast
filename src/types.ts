@@ -1122,7 +1122,7 @@ export interface VoiceSentence {
 
 export interface Voiceover {
   voice: string;
-  /** Kokoro's speaking speed, 0.5 to 2 (1 when absent). Scales the reading pace of text without a clip too. */
+  /** The voice engine's speaking speed, 0.5 to 2 (1 when absent). Scales the reading pace of text without a clip too. */
   speed?: number;
   /** Factor on every pause around the voice (1 when absent): 1.5 at the slower pace. */
   pauses?: number;

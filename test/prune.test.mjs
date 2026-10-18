@@ -171,7 +171,7 @@ test('--choices groups the menu, and each option command removes exactly the ids
     ['Cache', [
       ['All cached downloads', 'prune --kind cache'],
       ['Player bundle', 'prune cache:bundle'],
-      ['Voice model', 'prune cache:models'],
+      ['Kokoro voice model', 'prune cache:models'],
     ]],
   ]);
   assert.equal(choices.groups[0].options[0].description, '3.0 KB in 2 items; the walkthrough stays, so render makes the video again');
