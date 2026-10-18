@@ -14,8 +14,8 @@ Numeric axes with lines of x, curves of t, data series, points, arrows and shade
   "y": { "from": 0, "to": 80000, "ticks": 20000, "prefix": "$", "grid": true },
   "params": { "year": 0 },
   "functions": [
-    { "id": "growth", "y": "10000 * 1.07^x", "label": "at 7%", "hidden": true },
-    { "id": "today", "y": "10000 * (1.07 / 1.03)^x", "label": "in today's dollars", "tone": "good", "hidden": true }
+    { "id": "growth", "y": "10000 * 1.07^x", "label": "at 7%" },
+    { "id": "today", "y": "10000 * (1.07 / 1.03)^x", "label": "in today's dollars", "tone": "good" }
   ],
   "areas": [{ "id": "gap", "between": ["growth", "today"], "tone": "warn", "hidden": true }],
   "points": [{ "id": "marker", "at": ["year", "10000 * 1.07^year"], "label": "${10000 * 1.07^year:0}", "side": "left", "guides": true, "hidden": true }],
@@ -36,7 +36,7 @@ Every part has an `id`, and may have a `label`, a `tone` and `hidden`. `function
 
 Any number a part is placed by can be an expression in the scene's `params`: numbers, names, `+ - * / ^`, unary minus, parentheses, `pi`, `e`, `sin cos tan asin acos atan exp log ln log10 sqrt abs sign floor ceil round mod min max`, and `sum(k, from, to, term)`. `log` is the natural log. A sum's `to` that is not whole adds its last term in part. A label shows a value with `{expr}`, or `{expr:0}` for the decimals.
 
-A step's `set` changes parameters by name, and every part that reads one reshapes or moves to it over the half second the step settles in. `trace` draws lines, series, vectors or areas on from left to right across the step's words, and moves the step's `set` parameters over the same time, so a point placed by one rides along the line. `when` starts the step's changes at those words of its `say`. `focus`, `show`, `hide` and `tint` take part ids; a parameter's name lights the parts that read it. `callout` is a boxed line at the right of the header that steps replace. Ink draws on parts by id.
+A step's `set` changes parameters by name, and every part that reads one reshapes or moves to it over the half second the step settles in. `trace` draws lines, series, vectors or areas on from left to right across the step's words, and moves the step's `set` parameters over the same time, so a point placed by one rides along the line. A part some step traces is undrawn until its first trace, as though `hidden`, so it never shows during the narration and then draws again; to show it earlier, `show` it in an earlier step. `when` starts the step's changes at those words of its `say`. `focus`, `show`, `hide` and `tint` take part ids; a parameter's name lights the parts that read it. `callout` is a boxed line at the right of the header that steps replace. Ink draws on parts by id. A step's `camera` zooms the plot like any stepped scene, and lines are drawn through points about two screen pixels apart wherever it looks, so a fast-wiggling line stays smooth at any zoom without narrowing the axes.
 
 `{{MR_CAST}}/bin/mr-cast validate` fails on an expression that does not parse, with its column, a name that is no parameter, a parameter named like a function or a constant, a step that sets no parameter, a trace on a point, an area between a curve or a missing line, and a `when` the step never says. It draws every step's state and warns on a line with no value inside its range, a line that draws nowhere on the plot, a point off the plot, labels that overlap each other or the axis text, a label that runs off the stage, and tick labels that overlap. `{{MR_CAST}}/bin/mr-cast still` shows the plot as the viewer sees it.
 

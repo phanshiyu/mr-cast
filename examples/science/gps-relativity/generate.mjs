@@ -185,7 +185,7 @@ scenes.push({
   x: { from: 0, to: 45, ticks: 10, label: 'distance from Earth’s centre, thousand km' },
   y: { from: -40, to: 60, ticks: 20, label: 'µs a day', grid: true },
   params: { r: iss },
-  functions: [{ id: 'gain', y: `${A.toFixed(4)} - ${B.toFixed(4)} / x`, from: rMean / 1e6, to: 45, tone: 'accent', hidden: true }],
+  functions: [{ id: 'gain', y: `${A.toFixed(4)} - ${B.toFixed(4)} / x`, from: rMean / 1e6, to: 45, tone: 'accent' }],
   points: [
     { id: 'iss', at: [r1(iss * 10) / 10, r1(fx(iss))], label: `space station, ${fmt(fx(iss))}`, side: 'right', tone: 'bad', hidden: true },
     { id: 'cross', at: [r1(cross * 10) / 10, 0], label: `${N(cross * 1000)} km: they cancel`, side: 'above', hidden: true },

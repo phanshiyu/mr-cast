@@ -128,8 +128,7 @@
         {
           "id": "growth",
           "y": "10000 * 1.07^x",
-          "label": "at 7%",
-          "hidden": true
+          "label": "at 7%"
         }
       ],
       "areas": [
@@ -299,8 +298,7 @@
           "id": "today",
           "y": "10000 * (1.07 / 1.03)^x",
           "label": "in today's dollars",
-          "tone": "good",
-          "hidden": true
+          "tone": "good"
         }
       ],
       "areas": [

@@ -31,8 +31,7 @@
         {
           "id": "wave",
           "y": "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))",
-          "label": "n = {n:0}",
-          "hidden": true
+          "label": "n = {n:0}"
         }
       ],
       "points": [
@@ -145,15 +144,13 @@
         {
           "id": "growth",
           "y": "10000 * 1.07^x",
-          "label": "at 7%",
-          "hidden": true
+          "label": "at 7%"
         },
         {
           "id": "today",
           "y": "10000 * (1.07 / 1.03)^x",
           "label": "in today's dollars",
-          "tone": "good",
-          "hidden": true
+          "tone": "good"
         }
       ],
       "areas": [

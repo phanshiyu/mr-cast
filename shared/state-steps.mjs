@@ -177,10 +177,12 @@ const MODELS = {
   },
   plot: {
     initial(scene) {
+      const traced = new Set(list(scene.steps).flatMap((step) => list(step?.trace)));
       return {
         values: Object.fromEntries(paramNames(scene).map((name) => [`k:${name}`, scene.params[name]])),
         places: {},
-        hidden: Object.fromEntries(plotParts(scene).flatMap((p) => (p.item?.hidden === true && typeof p.id === 'string' ? [[`p:${p.id}`, true]] : []))),
+        // A part some step traces starts undrawn, as a map's traced route does, so it first appears as it draws on.
+        hidden: Object.fromEntries(plotParts(scene).flatMap((p) => ((p.item?.hidden === true || traced.has(p.id)) && typeof p.id === 'string' ? [[`p:${p.id}`, true]] : []))),
       };
     },
     // A step sets a parameter by its name; a focus ref of the same name lights the parts it moves.

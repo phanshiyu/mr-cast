@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
-import { cameraShots, frameShot, tweenView, viewTransform } from '../../shared/camera.mjs';
+import { cameraShots, frameShot, tweenView, viewTransform, type View } from '../../shared/camera.mjs';
 import { SCENE_EXIT_FRAMES as EXIT_FRAMES } from '../../shared/timing.mjs';
 import { headerBox, shellFits } from '../fit/shell';
 import type { HunkMap, Scene } from '../types';
@@ -38,19 +38,26 @@ interface SceneShellProps {
   children: ReactNode;
 }
 
-/** The content as a step's camera shows it, easing to each step's shot as the step starts. A scene whose pen targets live
- * below SceneShell, such as code's, wraps its content in it there. */
-export const Camera: React.FC<{ scene: Scene; source: CameraSource; children: ReactNode }> = ({ scene, source, children }) => {
+/** Where a scene's camera looks this frame, or null when no step moves it. */
+export function useCameraView(scene: Scene, source: CameraSource): View | null {
   const frame = useCurrentFrame();
   const { shots, moves } = useMemo(() => cameraShots(scene, source.hunks), [scene, source.hunks]);
-  if (!moves) return <>{children}</>;
+  if (!moves) return null;
   const area = headerBox(scene);
   const viewAt = (state: number) => {
     const t = state > 0 ? source.targets(state - 1) : null;
     return frameShot(shots[state] ?? null, (key) => t?.boxes.get(key) ?? t?.boxOf?.(key) ?? null, area);
   };
   const k = currentStep(source.segments, frame);
-  const view = k < 0 || !source.segments[k + 1] ? viewAt(0) : tweenView(viewAt(k), viewAt(k + 1), stepMove(frame, source.segments[k + 1]!.from));
+  return k < 0 || !source.segments[k + 1] ? viewAt(0) : tweenView(viewAt(k), viewAt(k + 1), stepMove(frame, source.segments[k + 1]!.from));
+}
+
+/** The content as a step's camera shows it, easing to each step's shot as the step starts. A scene whose pen targets live
+ * below SceneShell, such as code's, wraps its content in it there. */
+export const Camera: React.FC<{ scene: Scene; source: CameraSource; children: ReactNode }> = ({ scene, source, children }) => {
+  const view = useCameraView(scene, source);
+  if (!view) return <>{children}</>;
+  const area = headerBox(scene);
   return (
     <div style={{ position: 'absolute', inset: -CAMERA_BLEED, ...EDGE_FADE }}>
       <div style={{ position: 'absolute', inset: CAMERA_BLEED, transformOrigin: '0 0', transform: viewTransform(view, area) }}>{children}</div>
