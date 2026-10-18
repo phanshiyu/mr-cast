@@ -209,7 +209,7 @@ const storyboard = {
 const here = (f) => new URL(f, import.meta.url);
 fs.writeFileSync(here('storyboard.json'), `${JSON.stringify(storyboard, null, 2)}\n`);
 fs.writeFileSync(here('hunks.json'), '{}\n');
-fs.writeFileSync(here('meta.json'), `${JSON.stringify({ mode: 'explain', audience: 'familiar' }, null, 2)}\n`);
+fs.writeFileSync(here('meta.json'), `${JSON.stringify({ mode: 'explain' })}\n`);
 console.log(`on paper at 10, 20, 30: ${paper.map(money).join(', ')}; today's dollars: ${buys.map(money).join(', ')}`);
 console.log(`doubling, rule vs exact: ${RATES.map((p, i) => `${p}% ${rule[i].toFixed(1)}/${exact[i].toFixed(2)}`).join(', ')}`);
 console.log(`real rate ${(realRate * 100).toFixed(2)}%, doubles in ${realDouble.toFixed(2)} years; inflation takes ${(lost(30) * 100).toFixed(1)}% by year 30`);
