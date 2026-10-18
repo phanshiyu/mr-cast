@@ -6,7 +6,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { phonemize as espeak } from 'phonemizer';
 
 export const KITTEN_REPO = 'KittenML/kitten-tts-mini-0.8';
 export const KITTEN_REVISION = 'c02725660cea441db4c383af69f1f26f5cd00947';
@@ -158,6 +157,8 @@ const MARKS_PATTERN = /(\s*(?:[;:!?¡¿—…"«»“”(){}[\]]|(?<![0-9])[,.]|
 
 /** The phonemes the model reads for `text`, as kittenml makes them before its tokenizer. */
 export async function kittenPhonemes(text) {
+  // Imported here, not at the top: its Emscripten module installs process-wide crash handlers that print its source.
+  const { phonemize: espeak } = await import('phonemizer');
   const parts = [];
   let prev = 0;
   for (const match of text.matchAll(MARKS_PATTERN)) {

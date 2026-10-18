@@ -119,3 +119,12 @@ test('the phonemes and token ids match the kittenml Python package', async () =>
   assert.deepEqual(kittenTokens(await kittenPhonemes(decimal)), [0, 102, 62, 16, 54, 156, 57, 135, 46, 68, 16, 102, 56, 16, 119, 123, 156, 51, 158, 16, 58, 76, 102, 56, 62, 16, 48, 156, 43, 102, 64, 16, 61, 156, 86, 53, 83, 56, 46, 68, 16, 1, 16, 81, 156, 86, 56, 16, 102, 62, 16, 61, 62, 156, 69, 158, 58, 61, 16, 5, 10, 0]);
   assert.deepEqual(chunkText('Dr. Smith left at 5 p.m. Then he came back. Is it done? Yes'), ['Dr. Smith left at 5 p.m.', 'Then he came back.', 'Is it done?', 'Yes,']);
 });
+
+test('a command that voices nothing loads no phonemizer, whose crash handlers would print its minified source', () => {
+  const home = tmp();
+  const probe = `data:text/javascript,process.on('exit',()=>process.stderr.write('handlers '+process.listenerCount('uncaughtException')+' '+process.listenerCount('unhandledRejection')))`;
+  const env = { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(home, 'config'), XDG_CACHE_HOME: path.join(home, 'cache'), CLAUDE_CONFIG_DIR: path.join(home, 'claude') };
+  const result = spawnSync(process.execPath, ['--import', probe, BIN, 'voices'], { cwd: home, env, encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, 'handlers 0 0');
+});
