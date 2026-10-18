@@ -4,13 +4,6 @@
   "scenes": [
     {
       "type": "text",
-      "chapter": "A shared list",
-      "narration": "What does it mean to own a bitcoin?",
-      "kicker": "How Bitcoin works",
-      "question": "What does it mean to own a bitcoin?"
-    },
-    {
-      "type": "text",
       "chapter": "The problem",
       "narration": "People upload more than five hundred hours of video to YouTube every minute.",
       "kicker": "Uploaded to YouTube",
@@ -25,6 +18,13 @@
           "say": "Over a day, that is seven hundred and twenty thousand hours."
         }
       ]
+    },
+    {
+      "type": "text",
+      "chapter": "A shared list",
+      "narration": "What does it mean to own a bitcoin?",
+      "kicker": "How Bitcoin works",
+      "question": "What does it mean to own a bitcoin?"
     },
     {
       "type": "text",
@@ -57,7 +57,15 @@
       "chapter": "The token",
       "narration": "An access token is a key with an expiry date.",
       "term": "Access token",
-      "note": "A key that lets the app read Alice's photos for **one hour**, and nothing else"
+      "note": "A key that lets the app read Alice's photos for **one hour**, and nothing else",
+      "steps": [
+        {
+          "focus": "note",
+          "mark": "underline",
+          "note": "then it stops working",
+          "say": "It works for one hour, then it stops."
+        }
+      ]
     },
     {
       "type": "text",

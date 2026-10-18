@@ -126,12 +126,12 @@ const Block: React.FC<BlockProps> = ({ block, before, t, figure, appear, lead, n
   return (
     <div style={{ position: 'relative', paddingLeft: block.indent }}>
       {block.kicker ? (
-        <div ref={refs?.('t:kicker')} style={{ marginBottom: GAP.kicker, opacity: appear(2) * kicker.opacity }}>
+        <div ref={refs?.('t:kicker')} style={{ width: 'fit-content', marginBottom: GAP.kicker, opacity: appear(2) * kicker.opacity }}>
           <Swap t={t} before={was(!sameFit(before?.kicker, block.kicker), before?.kicker ? <FitText fit={before.kicker} style={{ color: colors.muted }} /> : null)} after={<FitText fit={block.kicker} style={{ color: colors.muted }} />} />
         </div>
       ) : null}
       {l ? (
-        <div ref={refs?.('t:lead')} style={{ position: 'relative', ...enter(5, lead) }}>
+        <div ref={refs?.('t:lead')} style={{ position: 'relative', width: 'fit-content', ...enter(5, lead) }}>
           {l.kind === 'quote' ? (
             <div style={{ position: 'absolute', left: -block.indent, top: -l.main.size * 0.5, fontSize: l.main.size * QUOTE_MARK.scale, lineHeight: 1, fontWeight: 800, color: ink, opacity: 0.9 }}>“</div>
           ) : null}
@@ -139,8 +139,8 @@ const Block: React.FC<BlockProps> = ({ block, before, t, figure, appear, lead, n
         </div>
       ) : null}
       {block.note ? (
-        <div ref={refs?.('t:note')} style={{ marginTop: GAP.note, ...enter(14, note) }}>
-          <Swap t={t} before={was(!sameFit(before?.note, block.note), noteOf(before!))} after={noteOf(block)} />
+        <div ref={refs?.('t:note')} style={{ width: 'fit-content', marginTop: GAP.note, ...enter(14, note) }}>
+          <Swap t={t} before={was(!sameFit(before?.note, block.note), before ? noteOf(before) : null)} after={noteOf(block)} />
         </div>
       ) : null}
     </div>
