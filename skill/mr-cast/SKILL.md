@@ -36,7 +36,7 @@ When the IDE is connected, the lines the user highlights arrive with the prompt,
 {{MR_CAST}}/bin/mr-cast status
 ```
 
-`status` prints the branch, the commits and files ahead of its base, the uncommitted files, and the pace chosen last time. When the words name neither source, use the branch if it has changes and nothing was explained in this conversation, the explanation if one was, and ask which when both are there. When neither is, say in two sentences what `/mr-cast` makes and stop.
+`status` prints the branch, the commits and files ahead of its base, the uncommitted files, and the pace and voice chosen last time. When the words name neither source, use the branch if it has changes and nothing was explained in this conversation, the explanation if one was, and ask which when both are there. When neither is, say in two sentences what `/mr-cast` makes and stop.
 
 ## Start the run
 
@@ -64,7 +64,7 @@ To show source code that is not in the diff, add it as a snippet, at most 80 lin
 
 Each snippet gets an id (`s1`, `s2`, ...) and keeps the file's line numbers. A `code` scene shows a snippet by its id, like a hunk.
 
-The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <name>` or `--no-voice`. When the user names no pace, pass the last pace `status` printed: `--pace <it>`, or `--no-voice` for `silent`. A flag applies to its own command only, so pass the same flags to every command.
+The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <engine:name>` or `--no-voice`. When the user names no pace, pass the last pace `status` printed: `--pace <it>`, or `--no-voice` for `silent`. When the user names no voice, pass the last voice `status` printed, `--voice <it>`, unless it says `none yet`. A flag applies to its own command only, so pass the same flags to every command.
 
 ## Write the storyboard
 
@@ -127,7 +127,9 @@ Start the player as a background command:
 {{MR_CAST}}/bin/mr-cast play <flags>
 ```
 
-It prints `mr-cast player: <url>` at once, voices the narration, and opens the browser when the voice is ready; clips already made are reused. The first run downloads a voice model of about 90 MB. If it prints that voicing failed, the player plays silent with subtitles. The voices are `af_heart` (the default), `af_bella`, `am_michael`, `bf_emma` and `bm_george`.
+It prints `mr-cast player: <url>` at once, voices the narration, and opens the browser when the voice is ready; clips already made are reused. The first use of a voice engine downloads its model, about 82 MB for Kitten or 90 MB for Kokoro. If it prints that voicing failed, the player plays silent with subtitles.
+
+A voice is `engine:name`. The engines are `kitten` (the default, voice `kitten:luna`) and `kokoro` (voice `kokoro:af_heart`); `{{MR_CAST}}/bin/mr-cast voices` lists every voice with a description. Only when the user asks to change the voice, ask with AskUserQuestion for the engine, then for one of its voices from that list, and pass `--voice <engine:name>` to every command from then on. `{{MR_CAST}}/bin/mr-cast voices --sample <engine:name>` writes a sentence in that voice to a WAV file and prints its path, for a user who wants to hear one first.
 
 For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead, with a long timeout or in the background. `--out <path>` picks the location. It prints the MP4's path, then the paths of `review.md` and `reading.md` copies when it saves outside the run.
 

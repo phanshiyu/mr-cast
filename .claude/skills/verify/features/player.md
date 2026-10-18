@@ -43,7 +43,7 @@ Preconditions:
 
 ## Gotchas
 
-- Without `--no-voice`, `play-start` returns at once, but the page shows `Making the voice-over...` until Kokoro has voiced every scene. The 9-scene demo takes about a minute. Use `--no-voice` unless voice is the point.
+- Without `--no-voice`, `play-start` returns at once, but the page shows `Making the voice-over...` until the voice engine has voiced every scene. The 9-scene demo takes about a minute. Use `--no-voice` unless voice is the point.
 - Without `--no-open`, play opens the user's real browser. `play-start` always passes `--no-open`.
 - Two chapter keys sent back to back can land as one move, because the page's key handler reads the active chapter from its last render. `press:` waits 300 ms after each key for this reason. Read the time label (`0:27 / 1:53` for chapter 3) in the saved `.txt` to confirm where you are.
 - A silent walkthrough autoplays muted, so the frame moves between two screenshots. Navigate with `press:` and assert the highlighted chapter and the time label, not exact pixels.

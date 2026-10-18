@@ -1,6 +1,6 @@
 # 1. A local CLI and a Claude Code skill, rendered with Remotion and voiced with Kokoro
 
-- Status: Accepted
+- Status: Accepted; the voice superseded by 0023 (Kitten TTS by default, Kokoro as an option)
 - Date: 2026-10-15
 
 ## Context

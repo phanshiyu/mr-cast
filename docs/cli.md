@@ -10,7 +10,7 @@ Run the commands from inside the repository the video is about. Output goes to `
 | --- | --- |
 | `mr-cast install-skill` | Installs the `mr-cast`, `mr-cast-prune` and `mr-cast-upgrade` skills into `~/.claude`, or `$CLAUDE_CONFIG_DIR`, and removes what earlier versions installed there. |
 | `mr-cast uninstall-skill` | Removes every skill mr-cast installed. |
-| `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the pace you chose last time. The skill picks the video's source from it. |
+| `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the pace and voice you chose last time. The skill picks the video's source from it. |
 | `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Running it again on the same branch keeps the storyboard and the snippets. |
 | `mr-cast init --title text [--reset] [--quick]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/`, in the git repository or in the current directory outside one, and prints its path. A slug already in use gets a numbered suffix such as `-2`. The same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. `--quick` starts a quick video in `.mr-cast/quick-<title-slug>/`, and needs `--title`. The player ends a quick video on three phrases to say to Claude next: "go deeper", "the whole branch" and "save it". A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice, unless the full video already has a storyboard or snippets, or `--reset` is given. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Each snippet holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. A later `extract` keeps the snippets. |
@@ -25,6 +25,7 @@ Run the commands from inside the repository the video is about. Output goes to `
 | `mr-cast render [--out file.mp4]` | Voices the narration, then renders a 1920x1080, 30 fps MP4 with the voice, burned-in subtitles and chapter markers, and prints its path. See [Render](#render). |
 | `mr-cast prune [id...] [options]` | Lists what mr-cast stored, with sizes, or deletes exactly what you pick. See [Prune](#prune). |
 | `mr-cast upgrade [--check]` | Updates mr-cast to the latest version and reinstalls the skills. `--check` only reports the versions. See [Upgrade](#upgrade). |
+| `mr-cast voices [--sample engine:name] [--out file.wav]` | Lists the voice engines, whether each model is downloaded, and their voices. `--sample` voices one sentence into a WAV file. See [The voice](#the-voice). |
 | `mr-cast version` | Prints `mr-cast <version> (node <version>)`. Also `--version` and `-v`. |
 
 `extract` also takes `--context N` (context lines per hunk, default 4), `--max-lines N` (changed lines shown per hunk in the index, default 14) and `--all-files`. Without `--all-files`, `extract` skips lockfiles, minified files and build output.
@@ -47,24 +48,34 @@ Several runs can render at once, in one repository or in several, and they share
 | `--audience preread` | Makes a [pre-read](storyboard.md#pre-read): no code on screen, and the reading order in `reading.md`. |
 | `--pace slower\|normal\|faster` | The voice's speed and the pauses around it. The default is `normal`. |
 | `--speed x` | The voice's speed alone, from 0.5 to 2. It overrides the speed that `--pace` sets. |
-| `--voice name` | The Kokoro voice. The default is `af_heart`. |
+| `--voice engine:name` | The voice, such as `kitten:luna` (the default) or `kokoro:af_heart`. A name alone, such as `bruno` or `af_heart`, picks the engine that has it. `mr-cast voices` lists them. |
+| `--engine kitten\|kokoro` | The voice engine. Alone, it picks the engine's default voice: `kitten:luna` or `kokoro:af_heart`. |
 | `--no-voice` | A silent walkthrough, with subtitles timed for reading. |
 
 `--audience` also accepts `familiar`, `new` and `overview`, and these commands also accept `--simple`, so skills from before 0.25 keep working. All four make the plain video, the same as no flag. Any other `--audience` value is an error.
 
 Each of these commands records the audience it ran with in the run's `meta.json`, the plain video when no flag names one. The skill's hook validates `storyboard.json` with that audience, so it checks the run as its latest command did.
 
-mr-cast remembers your last pace in `~/.config/mr-cast/last-choices.json`, or under `$XDG_CONFIG_HOME` when that is set. `mr-cast status` prints it.
+mr-cast remembers your last pace and voice in `~/.config/mr-cast/last-choices.json`, or under `$XDG_CONFIG_HOME` when that is set. `mr-cast status` prints them.
 
 ## The voice
 
-`play`, `render` and `voice` read the narration aloud with [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), a small text-to-speech model that runs offline on the CPU. The first run downloads the model, about 90 MB, into `~/.cache/mr-cast/models`, and each voice, about 0.5 MB, the first time it is used.
+`play`, `render` and `voice` read the narration aloud with a small text-to-speech model that runs offline on the CPU. There are two engines, and each has its own voices:
 
-- `--voice <name>` picks the voice. Others besides `af_heart` include `af_bella`, `af_nicole`, `am_michael`, `am_fenrir`, `bf_emma` and `bm_george`.
+| Engine | Model | First use downloads | Voices |
+| --- | --- | --- | --- |
+| `kitten` (the default) | [Kitten TTS mini 0.8](https://huggingface.co/KittenML/kitten-tts-mini-0.8), Apache 2.0 | About 82 MB into `~/.cache/mr-cast/kitten`, checked against a pinned sha256 | `bella`, `luna` (the default), `rosie` and `kiki` (female); `jasper`, `bruno`, `hugo` and `leo` (male); all American English |
+| `kokoro` | [Kokoro 82M v1.0](https://huggingface.co/hexgrad/Kokoro-82M), Apache 2.0 | About 90 MB into `~/.cache/mr-cast/models`, and about 0.5 MB for each voice | 28 voices, such as `af_heart` (its default), `af_bella`, `am_michael`, `bf_emma` and `bm_george`, in American and British English |
+
+Only the engine you use is downloaded.
+
+- `mr-cast voices` lists each engine, its size and whether it is downloaded, then its voices with a description. It marks the default and the voice you chose last.
+- `mr-cast voices --sample <engine:name>` voices one sentence into a WAV file and prints its path, so you can hear a voice before you choose it. `--out <file.wav>` names the file, and `--pace` or `--speed` sets its speed. The first sample of an engine downloads its model.
+- `--voice <engine:name>` picks the voice, and `--engine <engine>` picks an engine's default voice. Voice names of mr-cast 0.26 and earlier, such as `af_heart`, still pick Kokoro.
 - `--pace slower` is speed 0.85 with pauses 1.5 times as long. `--pace faster` is speed 1.15 with pauses 0.85 times as long. `play` and `render` print `mr-cast: pace: slower` when the pace is not `normal`.
 - `--no-voice` makes every scene silent and timed for reading at 130 words a minute, scaled by the pace.
 
-Each spoken text, a scene's narration or a step's `say`, is one clip in the run's `audio/`, named by a hash of the voice, the speed and the text. A rerun speaks only the texts that changed, and each speed keeps its own clips. `voiceover.json` records when each sentence of a clip starts and ends, so the subtitles follow the voice through the pauses.
+Each spoken text, a scene's narration or a step's `say`, is one clip in the run's `audio/`, named by a hash of the voice with its engine, the speed and the text. A rerun speaks only the texts that changed, and each voice and speed keeps its own clips. `voiceover.json` records when each sentence of a clip starts and ends, so the subtitles follow the voice through the pauses.
 
 The voice reads a few written forms as words. "e.g." becomes "for example", "5s" becomes "5 seconds", "200 ms" becomes "200 milliseconds", an arrow becomes "to", and "v0.14.0" becomes "version 0 point 14 point 0". The subtitles show the same words.
 
@@ -100,7 +111,7 @@ Each scene names its topic in `topic`, and the storyboard records the picks it w
 | `run:.`, `explain:<name>` | A walkthrough from mr-cast 0.11 or earlier: the default run's files in `.mr-cast/` (other runs stay), or an explanation in `.mr-cast/explain/<name>/`. |
 | `video:<run>/<file>.mp4` | A rendered video. `<run>` is a run name, or `.` or `explain/<name>` for 0.11 data. |
 | `stills:<run>`, `audio:<run>` | A run's PNG stills, or its voice clips and `voiceover.json`. `still` and `voice` make them again. |
-| `cache:bundle`, `cache:remotion`, `cache:models` | The player bundle, Chrome Headless Shell (about 580 MB), or the Kokoro voice model (about 90 MB). The next render or voice-over rebuilds or downloads them. |
+| `cache:bundle`, `cache:remotion`, `cache:kitten`, `cache:models` | The player bundle, Chrome Headless Shell (about 580 MB), the Kitten voice model (about 82 MB), or the Kokoro voice model (about 90 MB). The next render or voice-over in that engine rebuilds or downloads them. |
 
 Selectors pick what to delete, and they combine:
 

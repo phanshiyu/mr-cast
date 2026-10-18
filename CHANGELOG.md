@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.0
+
+A new default voice. mr-cast now voices with Kitten TTS, which sounds more natural than Kokoro, and Kokoro stays as an option. A voice is named with its engine, such as `kitten:luna` (the new default) or `kokoro:af_heart`, and `mr-cast voices` lists them all (ADR 0023).
+
+- **Kitten TTS by default.** The voice is `kitten:luna` from KittenML's Kitten TTS mini 0.8 (80M parameters, Apache 2.0). It runs offline on the CPU in Node, like Kokoro, and its first use downloads about 82 MB into `~/.cache/mr-cast/kitten`. Each file is kept only when its sha256 matches the pinned one. Kitten has eight voices: bella, luna, rosie and kiki (female), and jasper, bruno, hugo and leo (male), all American English.
+- **Kokoro is still there.** `--voice kokoro:af_heart`, `--engine kokoro`, or a Kokoro name on its own, such as `--voice af_heart` or `--voice bm_george`, voices with Kokoro, so commands written for 0.26 keep their voice. Only the engine in use is downloaded: someone who keeps the default never downloads Kokoro.
+- **Choose a model, then a voice.** `--engine kitten|kokoro` picks an engine and its default voice, and `--voice` picks a voice by `engine:name` or by name. The voice chosen last is remembered with its engine beside the pace, `mr-cast status` prints it as `last voice`, and the skill passes it to every command.
+- **`mr-cast voices`** lists each engine with its download size and whether it is downloaded, then each voice with its description, marking the default and the last chosen. `mr-cast voices --sample kitten:bruno` voices one sentence into a WAV file to hear before choosing; `--out` names the file, and `--pace` or `--speed` sets its speed. Its first use of an engine downloads that engine's model.
+- **Clips are keyed by engine too**, so a Kokoro clip never voices a Kitten scene. Clips voiced in Kokoro before 0.27 are voiced again on the next voice-over.
+- **`mr-cast prune`** lists the Kitten model as `cache:kitten` beside the Kokoro model, `cache:models`.
+- Kitten speaks a little more slowly than Kokoro, so a video is about 10% longer at the same pace.
+
 ## 0.26.0
 
 Claude gets more ways to draw. A stepped scene can keep a formula with real numbers above the diagram, keep colours on what it has ruled in or out, grow a graph or a table a step at a time, show several arrays at once, and change a graph's numbers with a table beside it. A new `svg` scene draws anything Claude can write as SVG, and steps light, colour, show and hide its parts. The additions came from splitting eleven video ideas, from binary search to H3, into their visual beats and checking each against the scenes ([docs/primitives.md](docs/primitives.md), ADR 0020).

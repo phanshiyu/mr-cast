@@ -64,7 +64,7 @@ After Claude explains something, ask it to "animate that" to get a video of the 
 - A review mode that flags bugs and risks on the lines that hold them and writes them to `review.md`.
 - 20 scene types, among them graphs, sequence diagrams, state machines, code with line-by-line steps, arrays, memory, timelines and terminals.
 - `mr-cast validate` checks that the storyboard renders, that every text fits, and that what lights up matches the words.
-- An offline voice ([Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)) and a local render ([Remotion](https://www.remotion.dev)).
+- An offline voice, [Kitten TTS](https://github.com/KittenML/KittenTTS) by default or [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), and a local render ([Remotion](https://www.remotion.dev)). `mr-cast voices` lists the voices.
 
 ## Documentation
 
