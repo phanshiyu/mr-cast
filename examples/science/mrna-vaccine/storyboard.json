@@ -1,0 +1,359 @@
+{
+  "title": "How an mRNA vaccine works",
+  "subtitle": "A message that teaches your cells one shape, then disappears",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "The question",
+      "narration": "Your immune system is very good at fighting germs it has met before. The trouble is the first meeting.",
+      "kicker": "How an mRNA vaccine works",
+      "question": "How can a message teach your body to fight a virus it has never met?"
+    },
+    {
+      "type": "svg",
+      "chapter": "The virus",
+      "title": "What the body has to learn",
+      "narration": "This is the virus that causes COVID. A shell of fat, with its genes inside, and covered in spikes.",
+      "svg": "<svg viewBox=\"440 100 720 670\"><g id=\"virus\"><circle cx=\"800\" cy=\"470\" r=\"190\" class=\"tone-neutral\" stroke-width=\"6\"/><path d=\"M 680 430 Q 695 408 710 430 Q 725 452 740 430 Q 755 408 770 430 Q 785 452 800 430 Q 815 408 830 430 Q 845 452 860 430 Q 875 408 890 430 Q 905 452 920 430\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"5\"/><path d=\"M 700 510 Q 712.5 488 725 510 Q 737.5 532 750 510 Q 762.5 488 775 510 Q 787.5 532 800 510 Q 812.5 488 825 510 Q 837.5 532 850 510 Q 862.5 488 875 510 Q 887.5 532 900 510\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"5\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(882.4 298.8) rotate(25.7)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(948.5 351.5) rotate(51.4)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(985.2 427.7) rotate(77.1)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(985.2 512.3) rotate(102.9)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(948.5 588.5) rotate(128.6)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(882.4 641.2) rotate(154.3)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(800.0 660.0) rotate(180.0)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(717.6 641.2) rotate(-154.3)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(651.5 588.5) rotate(-128.6)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(614.8 512.3) rotate(-102.9)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(614.8 427.7) rotate(-77.1)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(651.5 351.5) rotate(-51.4)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(717.6 298.8) rotate(-25.7)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/></g><path id=\"spike\" class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(800.0 280.0) rotate(0.0)\" d=\"M -5 0 L -5 -30 C -26 -36 -26 -70 0 -74 C 26 -70 26 -36 5 -30 L 5 0 Z\"/><text id=\"genes\" x=\"800\" y=\"580\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--good)\">its genes</text><g id=\"spike-detail\" font-size=\"13\" fill=\"var(--text)\" text-anchor=\"middle\"><text x=\"800\" y=\"140\">spike protein</text><text x=\"800\" y=\"158\" fill=\"var(--muted)\">the key it uses to get into cells</text></g></svg>",
+      "labels": {
+        "spike": "spike",
+        "genes": "genes",
+        "virus": "whole virus"
+      },
+      "hidden": [
+        "spike-detail"
+      ],
+      "steps": [
+        {
+          "focus": "genes",
+          "say": "The genes are its instructions for making more viruses."
+        },
+        {
+          "camera": [
+            "spike",
+            "spike-detail"
+          ],
+          "show": [
+            "spike-detail"
+          ],
+          "focus": [
+            "spike",
+            "spike-detail"
+          ],
+          "say": "Each spike is a protein. It is the key the virus uses to get into your cells."
+        },
+        {
+          "camera": "all",
+          "hide": [
+            "spike-detail"
+          ],
+          "tint": {
+            "spike": "accent"
+          },
+          "callout": "a spike: 1,273 building blocks",
+          "focus": "spike",
+          "say": "It is a chain of 1,273 building blocks, folded into this shape. If your body knew this one shape, it could spot the virus at once."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Inside a cell",
+      "title": "The message, read and thrown away",
+      "narration": "The vaccine does not contain the virus. It holds only a message: the instructions for the spike, written in mRNA.",
+      "svg": "<svg viewBox=\"40 -10 1550 880\"><ellipse id=\"cell\" cx=\"920\" cy=\"470\" rx=\"620\" ry=\"370\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"8\"/><g id=\"nucleus\"><circle cx=\"1260\" cy=\"470\" r=\"150\" class=\"tone-accent\" stroke-width=\"5\"/><path d=\"M 1170 450 Q 1180 432 1190 450 Q 1200 468 1210 450 Q 1220 432 1230 450 Q 1240 468 1250 450 Q 1260 432 1270 450 Q 1280 468 1290 450 Q 1300 432 1310 450 Q 1320 468 1330 450 Q 1340 432 1350 450\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\"/><path d=\"M 1190 500 Q 1200 482 1210 500 Q 1220 518 1230 500 Q 1240 482 1250 500 Q 1260 518 1270 500 Q 1280 482 1290 500 Q 1300 518 1310 500 Q 1320 482 1330 500\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\"/></g><text id=\"nucleus-label\" x=\"1260\" y=\"664\" text-anchor=\"middle\" font-size=\"36\" fill=\"var(--accent)\">nucleus, with your DNA</text><path id=\"mrna\" d=\"M 480 500 Q 490 490 500 500 Q 510 510 520 500 Q 530 490 540 500 Q 550 510 560 500 Q 570 490 580 500 Q 590 510 600 500 Q 610 490 620 500 Q 630 510 640 500 Q 650 490 660 500 Q 670 510 680 500 Q 690 490 700 500 Q 710 510 720 500 Q 730 490 740 500 Q 750 510 760 500 Q 770 490 780 500 Q 790 510 800 500 Q 810 490 820 500 Q 830 510 840 500 Q 850 490 860 500 Q 870 510 880 500 Q 890 490 900 500 Q 910 510 920 500 Q 930 490 940 500 Q 950 510 960 500\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"5\"/><g id=\"bits\"><path d=\"M 500 494 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 552 530 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 604 494 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 656 530 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 708 494 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 760 530 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 812 494 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 864 530 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/><path d=\"M 916 494 q 8 -10 16 0 t 16 0\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"6\" opacity=\"0.85\"/></g><path id=\"chain\" d=\"M 500 454 L 520 440 L 540 454 L 560 440 L 580 454 L 600 440 L 620 454 L 640 440 L 660 454 L 680 440 L 700 454 L 720 440 L 740 454 L 760 440 L 780 454 L 800 440 L 820 454 L 840 440 L 860 454 L 880 440 L 900 454 L 920 440\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"5\" stroke-linejoin=\"round\"/><path id=\"spike-made\" d=\"M 827.2 104.1 L 824.0 65.3 C 796.1 59.8 792.4 15.7 825.7 7.7 C 859.8 10.1 863.5 54.1 836.9 64.2 L 840.2 103.1 Z\"/><g id=\"ribosome\"><ellipse cx=\"500\" cy=\"482\" rx=\"30\" ry=\"20\" fill=\"var(--neutral)\" stroke=\"var(--text)\" stroke-width=\"2\"/><ellipse cx=\"500\" cy=\"510\" rx=\"22\" ry=\"12\" fill=\"var(--neutral)\" stroke=\"var(--text)\" stroke-width=\"2\"/></g><g id=\"read-detail\" font-size=\"15\" fill=\"var(--text)\"><text x=\"470\" y=\"564\" fill=\"var(--good)\">A U G · U U U · G U U</text><text x=\"470\" y=\"586\" fill=\"var(--muted)\">3 letters, 1 building block</text></g><g id=\"surface\"><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(383.1 285.0) rotate(-45.9)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1230.0 149.6) rotate(19.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1502.6 343.5) rotate(58.6)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1230.0 790.4) rotate(161.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(658.0 805.3) rotate(-164.4)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(383.1 655.0) rotate(-134.1)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/></g><g id=\"lnp\"><g fill=\"var(--warn)\" stroke=\"none\" opacity=\"0.8\"><circle cx=\"202.0\" cy=\"470.0\" r=\"9\"/><circle cx=\"198.0\" cy=\"489.9\" r=\"9\"/><circle cx=\"186.8\" cy=\"506.8\" r=\"9\"/><circle cx=\"169.9\" cy=\"518.0\" r=\"9\"/><circle cx=\"150.0\" cy=\"522.0\" r=\"9\"/><circle cx=\"130.1\" cy=\"518.0\" r=\"9\"/><circle cx=\"113.2\" cy=\"506.8\" r=\"9\"/><circle cx=\"102.0\" cy=\"489.9\" r=\"9\"/><circle cx=\"98.0\" cy=\"470.0\" r=\"9\"/><circle cx=\"102.0\" cy=\"450.1\" r=\"9\"/><circle cx=\"113.2\" cy=\"433.2\" r=\"9\"/><circle cx=\"130.1\" cy=\"422.0\" r=\"9\"/><circle cx=\"150.0\" cy=\"418.0\" r=\"9\"/><circle cx=\"169.9\" cy=\"422.0\" r=\"9\"/><circle cx=\"186.8\" cy=\"433.2\" r=\"9\"/><circle cx=\"198.0\" cy=\"450.1\" r=\"9\"/></g><path d=\"M 120 470 Q 127.5 460 135 470 Q 142.5 480 150 470 Q 157.5 460 165 470 Q 172.5 480 180 470\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"5\"/></g><text id=\"lnp-label\" x=\"150\" y=\"570\" text-anchor=\"middle\" font-size=\"32\" fill=\"var(--warn)\">bubble of fat</text></svg>",
+      "labels": {
+        "cell": "whole cell",
+        "lnp": "bubble",
+        "mrna": "message",
+        "ribosome": "ribosome",
+        "chain": "chain",
+        "spike-made": "spike",
+        "surface": "surface",
+        "nucleus": "nucleus",
+        "bits": "pieces"
+      },
+      "hidden": [
+        "mrna",
+        "bits",
+        "chain",
+        "spike-made",
+        "read-detail",
+        "surface"
+      ],
+      "steps": [
+        {
+          "focus": [
+            "lnp",
+            "lnp-label"
+          ],
+          "say": "The message is fragile, so it travels wrapped in a tiny bubble of fat."
+        },
+        {
+          "move": {
+            "lnp": "translate(320 0)"
+          },
+          "hide": [
+            "lnp-label"
+          ],
+          "focus": [
+            "lnp",
+            "cell"
+          ],
+          "say": "The bubble merges with the outer skin of a cell near the shot, and slips inside."
+        },
+        {
+          "hide": [
+            "lnp"
+          ],
+          "show": [
+            "mrna"
+          ],
+          "focus": "mrna",
+          "say": "There it lets go of the message."
+        },
+        {
+          "camera": {
+            "on": "ribosome",
+            "zoom": 4
+          },
+          "show": [
+            "read-detail"
+          ],
+          "focus": "ribosome",
+          "say": "A ribosome, the cell’s protein maker, grabs it and reads it three letters at a time."
+        },
+        {
+          "camera": {
+            "on": [
+              "ribosome",
+              "chain"
+            ]
+          },
+          "move": {
+            "ribosome": "translate(420 0)"
+          },
+          "trace": [
+            {
+              "ref": "chain",
+              "when": "adds"
+            }
+          ],
+          "hide": [
+            "read-detail"
+          ],
+          "focus": [
+            "ribosome",
+            "chain"
+          ],
+          "callout": "1,273 blocks × 3 letters = 3,819 letters",
+          "say": "For every three letters it adds one building block to a chain, until the whole spike is built."
+        },
+        {
+          "camera": "all",
+          "morph": {
+            "chain": "spike-made"
+          },
+          "show": [
+            "surface"
+          ],
+          "tint": {
+            "chain": "warn"
+          },
+          "focus": [
+            "chain",
+            "surface"
+          ],
+          "say": "The cell folds the spikes and carries them out to its surface, where they stick out like flags."
+        },
+        {
+          "hide": [
+            "mrna",
+            "ribosome"
+          ],
+          "show": [
+            "bits"
+          ],
+          "focus": "bits",
+          "callout": "",
+          "say": "Then the cell breaks the message into pieces and gets rid of it. Its job is done."
+        },
+        {
+          "hide": [
+            "bits"
+          ],
+          "focus": "nucleus",
+          "draw": [
+            {
+              "write": "the message never\ngets in here",
+              "near": "nucleus",
+              "side": "left",
+              "when": "never"
+            }
+          ],
+          "say": "And notice where the message never went: into the nucleus, where your DNA is kept."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "Your DNA",
+      "narration": "That is the answer to the most common worry about these vaccines. In the words of the US Centers for Disease Control:",
+      "quote": "They do not enter the nucleus of the cell where our DNA is located, so they cannot change or influence our genes.",
+      "note": "CDC, COVID-19 Vaccine Basics, 2024",
+      "steps": [
+        {
+          "focus": "quote",
+          "say": "They do not enter the nucleus, where our DNA is kept, so they cannot change our genes."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Learning the shape",
+      "title": "An immune cell meets the spike",
+      "narration": "Now the spikes on that cell are something your body has never seen before.",
+      "svg": "<svg viewBox=\"0 0 1600 900\"><circle cx=\"1900\" cy=\"450\" r=\"560\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"8\"/><g id=\"flags\"><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1405.5 712.9) rotate(-118.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1356.6 585.5) rotate(-104.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1340.0 450.0) rotate(-90.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1356.6 314.5) rotate(-76.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/><path class=\"tone-warn\" stroke-width=\"2\" transform=\"translate(1405.5 187.1) rotate(-62.0)\" d=\"M -6.5 0 L -6.5 -39 C -33.800000000000004 -46.800000000000004 -33.800000000000004 -91 0 -96.2 C 33.800000000000004 -91 33.800000000000004 -46.800000000000004 6.5 -39 L 6.5 0 Z\"/></g><text x=\"1480\" y=\"440\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--muted)\">the cell</text><text x=\"1480\" y=\"478\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--muted)\">from before</text><g id=\"clone0\"><circle cx=\"820\" cy=\"450\" r=\"78\" class=\"tone-good\" stroke-width=\"4\"/><circle cx=\"830\" cy=\"456\" r=\"34\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.5\"/><g transform=\"translate(820.0 364.0) rotate(0)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(906.0 450.0) rotate(90)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(820.0 536.0) rotate(180)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(734.0 450.0) rotate(270)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 389.2) rotate(45)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 510.8) rotate(135)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 510.8) rotate(225)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 389.2) rotate(315)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g></g><g id=\"clone1\"><circle cx=\"820\" cy=\"450\" r=\"78\" class=\"tone-good\" stroke-width=\"4\"/><circle cx=\"830\" cy=\"456\" r=\"34\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.5\"/><g transform=\"translate(820.0 364.0) rotate(0)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(906.0 450.0) rotate(90)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(820.0 536.0) rotate(180)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(734.0 450.0) rotate(270)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 389.2) rotate(45)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 510.8) rotate(135)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 510.8) rotate(225)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 389.2) rotate(315)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g></g><g id=\"clone2\"><circle cx=\"820\" cy=\"450\" r=\"78\" class=\"tone-good\" stroke-width=\"4\"/><circle cx=\"830\" cy=\"456\" r=\"34\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.5\"/><g transform=\"translate(820.0 364.0) rotate(0)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(906.0 450.0) rotate(90)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(820.0 536.0) rotate(180)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(734.0 450.0) rotate(270)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 389.2) rotate(45)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 510.8) rotate(135)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 510.8) rotate(225)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 389.2) rotate(315)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g></g><g id=\"clone3\"><circle cx=\"820\" cy=\"450\" r=\"78\" class=\"tone-good\" stroke-width=\"4\"/><circle cx=\"830\" cy=\"456\" r=\"34\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.5\"/><g transform=\"translate(820.0 364.0) rotate(0)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(906.0 450.0) rotate(90)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(820.0 536.0) rotate(180)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(734.0 450.0) rotate(270)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 389.2) rotate(45)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 510.8) rotate(135)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 510.8) rotate(225)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 389.2) rotate(315)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g></g><g id=\"clone4\"><circle cx=\"820\" cy=\"450\" r=\"78\" class=\"tone-good\" stroke-width=\"4\"/><circle cx=\"830\" cy=\"456\" r=\"34\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.5\"/><g transform=\"translate(820.0 364.0) rotate(0)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(906.0 450.0) rotate(90)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(820.0 536.0) rotate(180)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(734.0 450.0) rotate(270)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 389.2) rotate(45)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(880.8 510.8) rotate(135)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 510.8) rotate(225)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(759.2 389.2) rotate(315)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g></g><g id=\"bcell\"><circle cx=\"260\" cy=\"450\" r=\"78\" class=\"tone-good\" stroke-width=\"4\"/><circle cx=\"270\" cy=\"456\" r=\"34\" fill=\"var(--good)\" stroke=\"none\" opacity=\"0.5\"/><g transform=\"translate(260.0 364.0) rotate(0)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(346.0 450.0) rotate(90)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(260.0 536.0) rotate(180)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(174.0 450.0) rotate(270)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(320.8 389.2) rotate(45)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(320.8 510.8) rotate(135)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(199.2 510.8) rotate(225)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g><g transform=\"translate(199.2 389.2) rotate(315)\"><path d=\"M 0 19.200000000000003 L 0 0 M 0 0 L -12.8 -16 M 0 0 L 12.8 -16\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4.800000000000001\" stroke-linecap=\"round\"/></g></g><text id=\"b-label\" x=\"260\" y=\"580\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--good)\">an immune cell</text><g id=\"ab0\" transform=\"translate(400 180) rotate(90)\"><path d=\"M 0 33.599999999999994 L 0 0 M 0 0 L -22.4 -28 M 0 0 L 22.4 -28\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"8.399999999999999\" stroke-linecap=\"round\"/></g><g id=\"ab1\" transform=\"translate(400 720) rotate(90)\"><path d=\"M 0 33.599999999999994 L 0 0 M 0 0 L -22.4 -28 M 0 0 L 22.4 -28\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"8.399999999999999\" stroke-linecap=\"round\"/></g><g id=\"ab2\" transform=\"translate(660 300) rotate(90)\"><path d=\"M 0 33.599999999999994 L 0 0 M 0 0 L -22.4 -28 M 0 0 L 22.4 -28\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"8.399999999999999\" stroke-linecap=\"round\"/></g><g id=\"ab3\" transform=\"translate(660 610) rotate(90)\"><path d=\"M 0 33.599999999999994 L 0 0 M 0 0 L -22.4 -28 M 0 0 L 22.4 -28\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"8.399999999999999\" stroke-linecap=\"round\"/></g><text id=\"memory\" x=\"300\" y=\"860\" text-anchor=\"middle\" font-size=\"30\" fill=\"var(--good)\">memory cells stay behind</text></svg>",
+      "labels": {
+        "bcell": "immune cell",
+        "flags": "spikes",
+        "clone0": "copies",
+        "ab0": "antibodies",
+        "memory": "memory cells"
+      },
+      "hidden": [
+        "clone0",
+        "clone1",
+        "clone2",
+        "clone3",
+        "clone4",
+        "ab0",
+        "ab1",
+        "ab2",
+        "ab3",
+        "memory"
+      ],
+      "steps": [
+        {
+          "move": {
+            "bcell": "translate(560 0)"
+          },
+          "hide": [
+            "b-label"
+          ],
+          "focus": [
+            "bcell",
+            "flags"
+          ],
+          "say": "An immune cell drifting past bumps into the spikes, and its sensors happen to fit their shape."
+        },
+        {
+          "show": [
+            "clone0",
+            "clone1",
+            "clone2",
+            "clone3",
+            "clone4"
+          ],
+          "move": {
+            "clone0": "translate(-520 -270)",
+            "clone1": "translate(-520 270)",
+            "clone2": "translate(-260 -150)",
+            "clone3": "translate(-260 160)",
+            "clone4": "translate(-640 0)"
+          },
+          "focus": [
+            "clone0",
+            "clone1",
+            "clone2",
+            "clone3",
+            "clone4"
+          ],
+          "say": "That match tells it to make copies of itself, again and again."
+        },
+        {
+          "show": [
+            "ab0",
+            "ab1",
+            "ab2",
+            "ab3"
+          ],
+          "move": {
+            "ab0": "translate(950.8 562.0)",
+            "ab1": "translate(896.5 -119.5)",
+            "ab2": "translate(618.0 150.0)",
+            "ab3": "translate(636.5 -310.5)"
+          },
+          "focus": [
+            "ab0",
+            "ab1",
+            "ab2",
+            "ab3",
+            "flags"
+          ],
+          "say": "Those new cells pour out antibodies: small Y shaped proteins that grab onto the spike and nothing else."
+        },
+        {
+          "show": [
+            "memory"
+          ],
+          "tint": {
+            "clone0": "accent",
+            "clone1": "accent"
+          },
+          "focus": [
+            "memory",
+            "clone0",
+            "clone1"
+          ],
+          "say": "And some of the copies become memory cells. They stay in your body, and remember the shape."
+        }
+      ]
+    },
+    {
+      "type": "flow",
+      "chapter": "The real thing",
+      "title": "When the virus arrives",
+      "narration": "Later, the real virus gets in. This time your body has met its spike before.",
+      "steps": [
+        {
+          "actor": "Virus",
+          "action": "gets into your nose",
+          "payload": "covered in spikes",
+          "icon": "bug",
+          "say": "The virus lands in your nose and starts looking for cells to enter."
+        },
+        {
+          "actor": "Memory cells",
+          "action": "recognise the spike",
+          "payload": "seen it before",
+          "icon": "brain",
+          "say": "Memory cells recognise its spikes straight away."
+        },
+        {
+          "actor": "Immune cells",
+          "action": "make antibodies fast",
+          "payload": "faster than the first time",
+          "icon": "factory",
+          "say": "They multiply and pour out antibodies much faster than the first time."
+        },
+        {
+          "actor": "Antibodies",
+          "action": "cover the spikes",
+          "payload": "the key is blocked",
+          "icon": "shield",
+          "tone": "good",
+          "say": "The antibodies stick to the spikes, so the key no longer fits a cell’s lock."
+        },
+        {
+          "actor": "You",
+          "action": "stay well, or less sick",
+          "payload": "the message is long gone",
+          "icon": "heart-pulse",
+          "tone": "good",
+          "say": "The virus is stopped before it can spread far. The message that taught your body is long gone. Only the memory stays."
+        }
+      ]
+    }
+  ]
+}
