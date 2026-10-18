@@ -233,7 +233,7 @@ function meridianOf(scene) {
  * it. A camera { k, x, y } then puts projected point p at p * k + [x, y].
  */
 export function mapProjection(scene, stage) {
-  const make = PROJECTIONS[scene.projection] ?? PROJECTIONS[DEFAULT_PROJECTION];
+  const make = PROJECTIONS[Object.hasOwn(PROJECTIONS, scene.projection) ? scene.projection : DEFAULT_PROJECTION];
   const meridian = meridianOf(scene);
   const mercator = make === geoMercator;
   const world = mercator ? { type: 'MultiPoint', coordinates: [[meridian - 179.9, -58], [meridian + 179.9, 84]] } : { type: 'Sphere' };

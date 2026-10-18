@@ -47,7 +47,7 @@ const FLOW_DASH = [10, 12];
 const FLOW_SPEED = 1.4;
 
 /** `var(--good)` as the palette colour it names. */
-const resolveVars = (value: string) => value.replace(/var\(\s*--([\w-]+)\s*\)/g, (m, name: string) => SVG_COLORS[name] ?? m);
+const resolveVars = (value: string) => value.replace(/var\(\s*--([\w-]+)\s*\)/g, (m, name: string) => (Object.hasOwn(SVG_COLORS, name) ? SVG_COLORS[name]! : m));
 
 /** The tones a class list names: `tone-good` for a tinted shape, `fill-good` and `stroke-good` for one solid colour. */
 function classTones(cls: string | undefined) {

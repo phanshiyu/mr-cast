@@ -19,7 +19,7 @@ export function parseTransform(text) {
   let rest = source;
   while (rest) {
     const m = /^(\w+)\s*\(([^)]*)\)\s*,?\s*/.exec(rest);
-    if (!m || !ARITY[m[1]]) return null;
+    if (!m || !Object.hasOwn(ARITY, m[1])) return null;
     const args = m[2].split(/[\s,]+/).filter(Boolean).map(Number);
     const [min, max] = ARITY[m[1]];
     if (args.length < min || args.length > max || (m[1] === 'rotate' && args.length === 2) || !args.every(Number.isFinite)) return null;

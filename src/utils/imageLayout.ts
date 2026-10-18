@@ -31,7 +31,8 @@ export function layoutImage(scene: ImageScene, box: { width: number; height: num
   const credit = scene.credit ? fitText(scene.credit, sized(SLOTS.imageCredit, box.width * 0.5), 'credit') : null;
   const below = Math.max(caption?.height ?? 0, credit?.height ?? 0);
   const frame = { x: 0, y: 0, width: box.width, height: box.height - (below ? below + CAPTION_GAP : 0) };
-  const natural = images?.[scene.src] ? { width: images[scene.src]!.width, height: images[scene.src]!.height } : null;
+  const entry = images && Object.hasOwn(images, scene.src) ? images[scene.src] : undefined;
+  const natural = entry ? { width: entry.width, height: entry.height } : null;
   const aspect = natural ? natural.width / natural.height : UNKNOWN_ASPECT;
   const wide = aspect > frame.width / frame.height;
   const containW = wide ? frame.width : frame.height * aspect;

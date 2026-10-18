@@ -70,7 +70,7 @@ const BUILD_SETTLE = 0.3;
 
 /** Frames a scene type takes to draw in; its narration's voice starts after them. */
 export function buildFrames(type) {
-  return Math.round((BUILD_SECONDS[type] ?? 0) * FPS);
+  return Math.round((Object.hasOwn(BUILD_SECONDS, type) ? BUILD_SECONDS[type] : 0) * FPS);
 }
 
 export function wordCount(text) {

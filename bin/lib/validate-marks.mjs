@@ -121,7 +121,7 @@ export function checkMarks(sb, hunks, mode, errors, warnings) {
   }
   sb.scenes.forEach((s, i) => {
     if (!s || typeof s !== 'object') return;
-    const items = ITEMS[s.type]?.(s, `scenes[${i}]`) ?? [];
+    const items = Object.hasOwn(ITEMS, s.type) ? ITEMS[s.type](s, `scenes[${i}]`) : [];
     for (const entry of items) checkShape(entry, errors);
     const marked = items.filter((e) => shownChange(e, explain));
     if (explain) {

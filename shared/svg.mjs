@@ -182,7 +182,7 @@ export function readSvg(markup) {
     }
     for (const v of Object.values(attrs)) {
       for (const [, name] of v.matchAll(/var\(\s*--([\w-]+)\s*\)/g)) {
-        if (!(name in SVG_COLORS)) problems.push(`${where}: var(--${name}) is no palette colour; they are ${Object.keys(SVG_COLORS).map((c) => `--${c}`).join(', ')}`);
+        if (!Object.hasOwn(SVG_COLORS, name)) problems.push(`${where}: var(--${name}) is no palette colour; they are ${Object.keys(SVG_COLORS).map((c) => `--${c}`).join(', ')}`);
       }
     }
     if (attrs.id !== undefined) {

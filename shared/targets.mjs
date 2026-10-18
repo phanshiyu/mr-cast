@@ -379,9 +379,12 @@ export const FOCUS_TYPES = Object.keys(TARGETS);
 
 export const focusRefs = (focus) => (Array.isArray(focus) ? focus : [focus]);
 
+/** The scene type's ref model, own keys only, so a type such as "constructor" has none. */
+const targetsOf = (scene) => (Object.hasOwn(TARGETS, scene?.type) ? TARGETS[scene.type] : undefined);
+
 /** The item keys a ref lights in a scene, or null when the scene has nothing it names. */
 export function resolveRef(scene, ref, hunks) {
-  const resolve = TARGETS[scene?.type]?.resolve;
+  const resolve = targetsOf(scene)?.resolve;
   if (!resolve) return null;
   // An index written as a string, "2", means the index when nothing in the scene is named "2".
   return resolve(scene, ref, hunks) ?? (typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) ? resolve(scene, Number(ref), hunks) : null);
@@ -401,7 +404,7 @@ export function ambiguousIndex(scene, ref) {
 
 /** Refs worth suggesting for a scene, for "did you mean" hints. */
 export function refNames(scene, hunks) {
-  return (TARGETS[scene?.type]?.names(scene, hunks) ?? []).filter((n) => typeof n === 'string' && n.length > 0);
+  return (targetsOf(scene)?.names(scene, hunks) ?? []).filter((n) => typeof n === 'string' && n.length > 0);
 }
 
 /** Each step's focus, as the item keys it lights; refs that name nothing light nothing. */

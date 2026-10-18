@@ -66,7 +66,7 @@ function checkItem(item, q, ids, errors) {
 export function checkMap(s, p, errors, warnings) {
   const before = errors.length;
   for (const k of ['title', 'callout']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
-  if (s.projection !== undefined && !(s.projection in PROJECTIONS)) errors.push(`${p}.projection: must be one of ${Object.keys(PROJECTIONS).join(', ')}`);
+  if (s.projection !== undefined && !Object.hasOwn(PROJECTIONS, s.projection)) errors.push(`${p}.projection: must be one of ${Object.keys(PROJECTIONS).join(', ')}`);
   if (s.meridian !== undefined && !(isNum(s.meridian) && Math.abs(s.meridian) <= 180)) errors.push(`${p}.meridian: must be a longitude from -180 to 180`);
   for (const f of FIELDS) if (s[f] !== undefined && !Array.isArray(s[f])) errors.push(`${p}.${f}: must be an array`);
   if (errors.length > before) return;

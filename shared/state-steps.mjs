@@ -406,7 +406,7 @@ function danglingPointers(state) {
  * @returns {{ states: import('./state-steps').SceneState[], problems: import('./state-steps').StateProblem[] }}
  */
 export function walkStates(scene) {
-  const model = MODELS[scene?.type];
+  const model = Object.hasOwn(MODELS, scene?.type) ? MODELS[scene.type] : undefined;
   if (!model) return { states: [], problems: [] };
   const problems = [];
   const reported = new Set();

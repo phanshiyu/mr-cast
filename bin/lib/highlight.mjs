@@ -289,7 +289,7 @@ export function stepViews(scene, hunks) {
   const targets = stepTargets({ ...scene, steps: focusSteps(scene) }, hunks);
   return steps.map((step, k) => {
     const state = states[k + 1] ?? states[0] ?? { values: {}, places: {}, hidden: {} };
-    const items = ITEMS[scene.type]?.(scene, state, hunks) ?? [];
+    const items = Object.hasOwn(ITEMS, scene.type) ? ITEMS[scene.type](scene, state, hunks) : [];
     const litKeys = withRelated(items, targets[k] ?? []);
     // The dump lists what a step names; in an array or memory it adds the cells and values that light with it.
     const listed = STATE_TYPES.includes(scene.type) && scene.type !== 'chart' ? litKeys : new Set(targets[k]);

@@ -29,5 +29,5 @@ export const DEFAULT_CHAPTERS = {
 export function sceneChapter(scene) {
   if (scene.chapter) return scene.chapter;
   if (scene.type === 'graph' && Array.isArray(scene.nodes) && scene.nodes.some((n) => n?.shape === 'decision')) return 'Flowchart';
-  return DEFAULT_CHAPTERS[scene.type] ?? scene.type;
+  return Object.hasOwn(DEFAULT_CHAPTERS, scene.type) ? DEFAULT_CHAPTERS[scene.type] : scene.type;
 }

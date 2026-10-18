@@ -31,7 +31,10 @@ const REF_HELP = {
 };
 
 /** The ref help for a scene, which for some types depends on its fields. */
-const refHelp = (s) => (typeof REF_HELP[s.type] === 'function' ? REF_HELP[s.type](s) : REF_HELP[s.type]);
+const refHelp = (s) => {
+  const help = Object.hasOwn(REF_HELP, s.type) ? REF_HELP[s.type] : undefined;
+  return typeof help === 'function' ? help(s) : help;
+};
 
 /** Items the steps reveal in order, so one no step names appears unnamed beside a neighbour. */
 const REVEALED = {
@@ -87,7 +90,7 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i]) && !drawsInk(s.steps[i]) && token[i] === token[i - 1]) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
   });
   if ((s.type === 'table' || s.type === 'files') && s.highlight !== undefined) warnings.push(`${p}.highlight: steps replace highlight, so remove it`);
-  const revealed = REVEALED[s.type];
+  const revealed = Object.hasOwn(REVEALED, s.type) ? REVEALED[s.type] : undefined;
   if (revealed) checkRevealed(scene, p, hunks, revealed, warnings);
 }
 

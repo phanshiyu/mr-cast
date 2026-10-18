@@ -42,7 +42,7 @@ export function upgradeScenes(storyboard) {
   const upgraded = (scene) => upgradeTests(renamed(scene));
   return storyboard.scenes.some((s) => upgraded(s) !== s) ? { ...storyboard, scenes: storyboard.scenes.map(upgraded) } : storyboard;
 }
-export const legacyFocusKeys = (type) => LEGACY_FOCUS[type] ?? [];
+export const legacyFocusKeys = (type) => (Object.hasOwn(LEGACY_FOCUS, type) ? LEGACY_FOCUS[type] : []);
 
 /** An explanation walks through unchanged source snippets; a diff walkthrough always has a changed hunk. */
 export const isExplanation = (hunks) => Object.values(hunks ?? {}).every((h) => h.status === 'source');

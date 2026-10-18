@@ -29,7 +29,7 @@ const STEPS_OF = {
 
 /** The steps a scene speaks, in order; empty for a scene without them. */
 export function sceneSteps(scene) {
-  const steps = STEPS_OF[scene?.type]?.(scene);
+  const steps = Object.hasOwn(STEPS_OF, scene?.type) ? STEPS_OF[scene.type](scene) : undefined;
   return Array.isArray(steps) ? steps : [];
 }
 

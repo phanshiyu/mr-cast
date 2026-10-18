@@ -15,7 +15,7 @@ export const useImages = () => useContext(ImagesContext).images;
  */
 export const Picture: React.FC<{ src: string; fit: ImageFit | 'fill'; style?: React.CSSProperties }> = ({ src, fit, style }) => {
   const { images, baseUrl } = useContext(ImagesContext);
-  const entry = images[src];
+  const entry = Object.hasOwn(images, src) ? images[src] : undefined;
   if (!entry || baseUrl === undefined) {
     return (
       <div style={{ ...style, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, boxSizing: 'border-box', border: `2px dashed ${colors.borderStrong}`, borderRadius: 14, color: colors.faint }}>
