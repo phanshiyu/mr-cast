@@ -85,7 +85,6 @@ export declare function wrapRuns(
   width: number,
   options?: { balanced?: boolean; force?: boolean },
 ): { lines: Run[][]; widths: number[]; ok: boolean };
-export declare function slotRuns(text: string, slot: Slot): { runs: Run[]; errors: MarkupError[] };
 export declare function fitText(text: string, slot: Slot, path: string): Fit;
 /** The same text and slot at one given size, such as one title size shared by every card. */
 export declare function fitTextAt(text: string, slot: Slot, path: string, size: number): Fit;

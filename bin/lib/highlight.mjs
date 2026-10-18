@@ -768,7 +768,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
-export const HIGHLIGHT_TYPES = [
+const HIGHLIGHT_TYPES = [
   'array',
   'memory',
   'graph',

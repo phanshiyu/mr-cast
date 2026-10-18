@@ -314,7 +314,7 @@ export function wrapRuns(runs, font, width, { balanced = false, force = false } 
 const slotWidth = (slot, lines, size) => (typeof slot.width === 'function' ? slot.width(lines, size) : slot.width);
 
 /** The runs `text` draws as in `slot`: its markup parsed, or the text as it is when the slot takes none. */
-export function slotRuns(text, slot) {
+function slotRuns(text, slot) {
   if (slot.markup === false) return { runs: [{ text: String(text ?? '') }], errors: [] };
   return parseMarkup(text);
 }

@@ -14,7 +14,7 @@ export const IMAGES_DIR = 'images';
 export const IMAGES_FILE = 'images.json';
 /** A copy's name: 16 hex digits of a hash, then the type's extension. The server serves nothing else from images/. */
 export const IMAGE_NAME = /^[0-9a-f]{16}\.(?:png|jpg|webp|gif)$/;
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 20_000;
 
 /** The types an image may be, by the extension its copy gets, with the content type a server sends for it. */
@@ -95,7 +95,7 @@ export function imageSize(buf, type) {
   return null;
 }
 
-export const isUrl = (src) => /^https?:\/\//i.test(src);
+const isUrl = (src) => /^https?:\/\//i.test(src);
 
 /** Bytes that are a picture mr-cast draws, with its type and size; or the reason they are not. */
 function checkBytes(buf) {

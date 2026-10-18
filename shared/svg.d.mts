@@ -7,7 +7,6 @@ export interface SvgBox {
 }
 export declare const SVG_COLORS: Record<string, string>;
 export declare const SVG_TONES: readonly string[];
-export declare const DEFAULT_FONT: number;
 /** A drawing cut down to what draws: the kept root, its viewBox, its elements by id, and what was cut or broken. */
 export declare function readSvg(markup: unknown): {
   root: SvgNode | null;
@@ -19,7 +18,6 @@ export declare function readSvg(markup: unknown): {
 export declare function svgOf(markup: unknown): ReturnType<typeof readSvg>;
 export declare function svgIds(markup: unknown): string[];
 export declare function textOf(node: SvgNode | null | undefined): string;
-export declare function transformOf(text: string | undefined): number[];
 /**
  * Every element's box in viewBox units, by id, and every text element with its box, its size in viewBox units, and
  * the ids of it and its groups. `motion` gives moved elements' transforms and morphed paths' `d`, by id.

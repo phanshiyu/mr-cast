@@ -324,8 +324,7 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
 }
 
 /** The sentence `mr-cast voices --sample` reads. */
-export const SAMPLE_TEXT =
-  'Here is how this change works: the request takes a token, and an empty bucket makes it wait.';
+const SAMPLE_TEXT = 'Here is how this change works: the request takes a token, and an empty bucket makes it wait.';
 
 /** Voices SAMPLE_TEXT in `voice` at `speed` into the WAV file `out`; returns its length in seconds. */
 export async function sampleVoice({ voice, speed, out, onProgress }) {

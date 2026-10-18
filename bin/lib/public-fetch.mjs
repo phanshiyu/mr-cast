@@ -7,7 +7,7 @@ import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
 
-export const MAX_REDIRECTS = 5;
+const MAX_REDIRECTS = 5;
 /** Lets loopback addresses through, so the test suite can download from a server on 127.0.0.1. */
 export const ALLOW_LOOPBACK_ENV = 'MR_CAST_IMAGES_ALLOW_LOOPBACK';
 

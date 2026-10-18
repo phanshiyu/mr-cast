@@ -86,7 +86,7 @@ const cellText = (cell: MatrixCell) =>
   cell.state === 'checked' ? `✓ ${cell.value ?? ''}`.trimEnd() : (cell.value ?? '');
 
 /** "7 tests · 4 new · 2 changed · 1 removed · 2 unchecked · 2 gaps": the counts under the matrix. */
-export function countsLine({ counts }: TestsMatrix): string {
+function countsLine({ counts }: TestsMatrix): string {
   const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
   const parts = [counts.tests ? n(counts.tests, 'test') : 'no tests'];
   if (counts.added && counts.added < counts.tests) parts.push(`${counts.added} new`);

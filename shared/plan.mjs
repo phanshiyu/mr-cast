@@ -7,7 +7,7 @@ export const DEPTHS = ['skip', 'brief', 'deep'];
 const TOPIC_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VIEWS_MAX = 3;
 // The opening text scene and the closing tests scene, which every video has whatever the picks.
-export const FIXED_SECONDS = 40;
+const FIXED_SECONDS = 40;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 const isSeconds = (v) => typeof v === 'number' && Number.isFinite(v) && v > 0;

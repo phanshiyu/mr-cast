@@ -9,7 +9,7 @@
 // before a non-space and close only after one, so `a ** b` and `x == y` stay literal, and `[` is
 // markup only when `]{tone}` follows. A backslash before * ` = [ ] { } or \ keeps that character literal.
 
-export const TONE_NAMES = ['good', 'bad', 'warn', 'accent', 'neutral'];
+const TONE_NAMES = ['good', 'bad', 'warn', 'accent', 'neutral'];
 
 const ESCAPABLE = '*`=[]{}\\';
 

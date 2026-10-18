@@ -36,7 +36,7 @@ export const sameValue = (a, b) => {
 };
 
 /** The colours a `tint` takes: a tone, "dim", or "clear" to take the colour off. */
-export const TINTS = ['neutral', 'accent', 'good', 'bad', 'warn', 'dim', 'clear'];
+const TINTS = ['neutral', 'accent', 'good', 'bad', 'warn', 'dim', 'clear'];
 
 /** A table's cells as [item key, value], for a table scene or the table beside a graph. */
 const tableCells = (table) =>
@@ -521,7 +521,7 @@ const SVG_TRACEABLE = ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 
 const TRACE_TYPES = Object.keys(MODELS).filter((type) => MODELS[type].trace);
 
 /** A trace entry as its ref and its cue: "route" or { "ref": "route", "when": "around the coast" }. */
-export const traceEntry = (entry) =>
+const traceEntry = (entry) =>
   entry && typeof entry === 'object' && !Array.isArray(entry)
     ? { ref: entry.ref, when: entry.when }
     : { ref: entry, when: undefined };

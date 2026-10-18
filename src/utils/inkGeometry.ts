@@ -95,7 +95,7 @@ export function braceSketch(t: Box, side: InkSide, seed: number, pen: number): S
 }
 
 /** A box of `size` centred beyond side `side` of `t`, `off` px away. */
-export function besideBox(t: Box, side: InkSide, size: Size, off: number): Box {
+function besideBox(t: Box, side: InkSide, size: Size, off: number): Box {
   const c = center(t);
   switch (side) {
     case 'below':
@@ -232,7 +232,7 @@ export function placeText(
 }
 
 /** A hand-drawn arrow from `tail` to just short of `target`, bowed out by at least `minBow` px so a short hop still reads. */
-export function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, pen: number, share?: number): Sketch {
+function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, pen: number, share?: number): Sketch {
   const rand = random(seed);
   const tip = edgeToward(target, tail);
   const len = Math.hypot(tip.x - tail.x, tip.y - tail.y) || 1;

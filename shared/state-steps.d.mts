@@ -44,9 +44,7 @@ export declare function sameValue(
   a: MemoryValue | TableCell | undefined,
   b: MemoryValue | TableCell | undefined,
 ): boolean;
-export declare const TINTS: readonly Tint[];
 export declare function walkStates(scene: Scene): { states: SceneState[]; problems: StateProblem[] };
 export declare function sceneStates(scene: Scene): SceneState[];
 export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | ChartStep | undefined): boolean;
 export declare function changedRefs(scene: Scene, step: ArrayStep | MemoryStep | GraphStep): string[];
-export declare function traceEntry(entry: unknown): { ref: unknown; when: unknown };

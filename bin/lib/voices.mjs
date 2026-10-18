@@ -10,7 +10,7 @@ import { VOICES as KOKORO_VOICES } from './kokoro/voice-list.js';
 
 export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 /** The weights transformers.js fetches for dtype q8; its absence means a load downloads them. */
-export const KOKORO_MODEL_FILE = 'model_quantized.onnx';
+const KOKORO_MODEL_FILE = 'model_quantized.onnx';
 
 const ACCENTS = { 'en-us': 'American English', 'en-gb': 'British English' };
 
@@ -52,7 +52,7 @@ export const ENGINES = {
     downloaded: () => fs.existsSync(path.join(cacheDir('models'), KOKORO_MODEL_ID, 'onnx', KOKORO_MODEL_FILE)),
   },
 };
-export const DEFAULT_ENGINE = 'kitten';
+const DEFAULT_ENGINE = 'kitten';
 export const DEFAULT_VOICE = `${DEFAULT_ENGINE}:${ENGINES[DEFAULT_ENGINE].defaultVoice}`;
 
 const engineNames = () => Object.keys(ENGINES).join(', ');

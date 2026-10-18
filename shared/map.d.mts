@@ -41,7 +41,6 @@ export type MapItem =
   | (ItemBase & { kind: 'region'; geometry: object; countries: string[] | null; center: LngLat });
 
 export declare const PROJECTIONS: Record<string, unknown>;
-export declare const DEFAULT_PROJECTION: string;
 export declare const MAP_SIDES: readonly string[];
 export declare const MIN_SPAN: number;
 export declare const LABEL_FONT: { family: 'sans'; weight: number; size: number };
@@ -61,16 +60,12 @@ export declare function mapRefNames(scene: MapScene): string[];
 export declare function placePoint(at: unknown): LngLat | null;
 export declare function antipodal(a: LngLat, b: LngLat): boolean;
 export declare function mapItems(scene: MapScene): Map<string, MapItem>;
-export declare function keyGeometry(scene: MapScene, key: string): object | null;
-export declare function viewBounds(scene: MapScene, view: MapView | undefined): [LngLat, LngLat] | null;
 export declare function viewSpan(scene: MapScene, view: MapView | undefined): [number, number] | null;
-export declare function mapViews(scene: MapScene): MapView[];
 export declare function mapProjection(scene: MapScene, stage: Stage): MapProjection;
 export declare function cameraOf(scene: MapScene, view: MapView | undefined, stage: Stage, proj: MapProjection): Camera;
 export declare function zoomBetween(a: Camera, b: Camera, t: number, stage: Stage): Camera;
 export declare function onScreen(proj: MapProjection, camera: Camera, point: LngLat): [number, number] | null;
 export declare function partialPath(path: LngLat[], t: number): LngLat[];
-export declare function mapDetail(scene: MapScene, cameras: Camera[]): '110m' | '50m';
 export declare function mapLayout(
   scene: MapScene,
   stage: Stage,
@@ -81,19 +76,8 @@ export declare function labelBox(
   side: string | null,
   gap: number,
 ): { x: number; y: number; width: number; height: number };
-export declare function pathAnchor(
-  proj: MapProjection,
-  camera: Camera,
-  path: LngLat[],
-  stage: Stage,
-): [number, number] | null;
 /** An SVG path of a geometry through the projection at zoom 1, or "" when none of it shows. */
 export declare function geoPathOf(proj: MapProjection, geometry: object): string;
-/** The box of a geometry through the projection at zoom 1. */
-export declare function geoBoxOf(
-  proj: MapProjection,
-  geometry: object,
-): { x0: number; y0: number; x1: number; y1: number } | null;
 export declare function tracedKeys(scene: MapScene): string[];
 export interface MapLabel {
   key: string;

@@ -21,7 +21,7 @@ const HEADLINE_PAD = 64;
 const STRIP_SHARE = 0.4;
 
 /** Pretty-printed JSON when the payload parses, otherwise the raw text. */
-export function formatPayload(payload: string): { text: string; language: string } {
+function formatPayload(payload: string): { text: string; language: string } {
   try {
     return { text: JSON.stringify(JSON.parse(payload), null, 2), language: 'json' };
   } catch {

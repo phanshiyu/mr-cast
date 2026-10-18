@@ -13,7 +13,6 @@ export interface PairedShape {
 }
 export declare function parseTransform(text: string | undefined): TransformFn[] | null;
 export declare function tweenTransform(from: string | undefined, to: string | undefined, t: number): string;
-export declare function cubicOutlines(d: string | undefined): CubicOutline[];
 export declare function pairShapes(fromD: string | undefined, toD: string | undefined): PairedShape;
 export declare function tweenShape(paired: PairedShape, t: number): string;
 export declare function pathLength(d: string | undefined): number;

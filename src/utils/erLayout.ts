@@ -67,7 +67,7 @@ export interface ErLayout {
   height: number;
 }
 
-export const cardHeight = (e: ErEntity) => HEADER_H + e.fields.length * ROW_H + CARD_PAD_BOTTOM;
+const cardHeight = (e: ErEntity) => HEADER_H + e.fields.length * ROW_H + CARD_PAD_BOTTOM;
 
 /** Width from character counts: no DOM measuring, so stills stay deterministic. */
 function cardWidth(entities: readonly ErEntity[]): number {
@@ -297,7 +297,7 @@ function entityText(entity: ErEntity, index: number, w: number): Pick<PlacedEnti
 const labelHalfHeight = (label: Fit | null) => Math.max(LABEL_HALF_H, label ? (label.height + 10) / 2 : 0);
 
 /** Matches the label pill in ErDiagram: 17px mono plus padding, capped at its max width. */
-export const labelHalfWidth = (text: string) => Math.min(170, 26 + text.length * 10.4) / 2;
+const labelHalfWidth = (text: string) => Math.min(170, 26 + text.length * 10.4) / 2;
 
 function sidesFor(a: PlacedEntity, b: PlacedEntity): [Side, Side] {
   if (a.col < b.col) return ['right', 'left'];

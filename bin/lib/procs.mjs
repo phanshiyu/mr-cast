@@ -113,7 +113,7 @@ const ownUid = () => process.getuid?.() ?? -1;
  * Null for anything else, such as a shell, `caffeinate` or `timeout` whose arguments name mr-cast. Arguments are split
  * on spaces, so a path holding a space never matches, which only hides that process.
  */
-export function mrCastCommand(command) {
+function mrCastCommand(command) {
   const [bin, ...args] = command.trim().split(/\s+/);
   if (!NODE.test(path.basename(bin ?? ''))) return null;
   const at = args.findIndex((a) => !a.startsWith('-'));
@@ -332,7 +332,7 @@ export function listProcesses({ ps = processTable } = {}) {
 const DURATION = { m: 60_000, h: 3_600_000, d: 86_400_000 };
 
 /** "90m", "2h" or "1d" in milliseconds. */
-export function parseDuration(text, flag) {
+function parseDuration(text, flag) {
   const m = String(text).match(/^(\d+)([mhd])$/);
   if (!m) throw new UserError(`${flag} takes a number and a unit, such as 30m, 2h or 1d (got "${text}")`);
   return Number(m[1]) * DURATION[m[2]];

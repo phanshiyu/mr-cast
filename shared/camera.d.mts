@@ -27,8 +27,6 @@ interface Rect extends Area {
   y: number;
 }
 export declare const CAMERA_TYPES: readonly Scene['type'][];
-export declare const ZOOM_MAX: number;
-export declare const FIT_ZOOM_MAX: number;
 export declare function cameraShots(
   scene: Scene,
   hunks?: HunkMap,

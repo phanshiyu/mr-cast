@@ -245,7 +245,7 @@ async function renderVideoUsingCaches({ hunks, storyboard, voiceover, images, da
 }
 
 /** One chapter per run of scenes with the same chapter title (the scene type without one), in milliseconds. */
-export function videoChapters(storyboard, voiceover) {
+function videoChapters(storyboard, voiceover) {
   const chapters = [];
   let from = 0;
   for (const scene of storyboard.scenes) {

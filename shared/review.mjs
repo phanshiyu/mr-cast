@@ -5,7 +5,7 @@ import { plainText } from './markup.mjs';
 
 /** Severities, worst first: the order the review scene and review.md list them in. */
 export const SEVERITIES = ['bug', 'risk', 'nit'];
-export const SEVERITY_TITLES = { bug: 'Bugs', risk: 'Risks', nit: 'Nits' };
+const SEVERITY_TITLES = { bug: 'Bugs', risk: 'Risks', nit: 'Nits' };
 
 /** The mark a flagged step draws when it names none. */
 export const FLAG_MARK = 'circle';

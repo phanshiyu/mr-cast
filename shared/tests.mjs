@@ -6,13 +6,13 @@
 const list = (v) => (Array.isArray(v) ? v : []);
 const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
-export const situationKey = (id) => `s:${id}`;
+const situationKey = (id) => `s:${id}`;
 export const cellKey = (row, col) => `x:${row}/${col}`;
 export const outcomeKey = (col) => `o:${col}`;
 export const testKey = (n) => `t:${n}`;
 
 /** The cell a check or ref such as "retry.Calls" names, as its row and column, or null. Ids and outcomes may hold dots. */
-export function cellOf(scene, ref) {
+function cellOf(scene, ref) {
   if (typeof ref !== 'string') return null;
   const outcomes = list(scene?.outcomes);
   const row = list(scene?.situations).findIndex(

@@ -9,18 +9,18 @@ import { headerBox } from '../fit/shell';
 import { cardTexts, sharedTitleSize, type CardText } from './nodeText';
 import { around, type Box, type LayoutBoxes } from './penGeometry';
 
-export const NODE_W = 320;
+const NODE_W = 320;
 /** Widest a card grows when the frame has room across, so long titles keep the full font. */
 const NODE_W_MAX = 440;
-export const NODE_H = 104;
+const NODE_H = 104;
 /** A start or end pill is lower than a card; a decision's diamond is taller, as tall as its question needs. */
-export const TERMINAL_H = 80;
+const TERMINAL_H = 80;
 const DECISION_HEIGHTS = [120, 140, 160, 180, 200];
 /** A decision's question keeps at least this size before its diamond grows. */
 const DECISION_COMFORT = 20;
 /** Room around a decision's question inside its diamond, and around a terminal's words inside its pill. */
 const DECISION_PAD = 10;
-export const TERMINAL_PAD_X = 40;
+const TERMINAL_PAD_X = 40;
 /** How far a card's badges rise above its top edge. */
 const BADGE_LIFT = 16;
 /** Largest scale a small graph is drawn at. */
@@ -32,8 +32,8 @@ const LANE_MARGIN = 14;
 /** Least room between a skip edge's lane and the edge of the graph. */
 const LANE_EDGE = 8;
 /** Room around a group's nodes inside its box, and the strip its name sits in. */
-export const GROUP_PAD = 26;
-export const GROUP_HEAD = 44;
+const GROUP_PAD = 26;
+const GROUP_HEAD = 44;
 /** Least gap between layers where a group's border crosses it, so edges have room on both sides of the border. */
 const BORDERED_GAP = 64;
 /** Between one group's box and the next band of nodes. */
@@ -56,7 +56,7 @@ export type GraphDirection = NonNullable<GraphScene['layout']>;
 export const shapeOf = (node: GraphNode): NodeShape => node.shape ?? 'card';
 
 /** A graph's direction: its own, or top to bottom when it branches at a decision, as a flowchart reads. */
-export const graphDirection = (scene: Pick<GraphScene, 'layout' | 'nodes'>): GraphDirection =>
+const graphDirection = (scene: Pick<GraphScene, 'layout' | 'nodes'>): GraphDirection =>
   scene.layout ?? (scene.nodes.some((n) => shapeOf(n) === 'decision') ? 'TB' : 'LR');
 
 /**
@@ -512,7 +512,7 @@ function overlap(a: Rect, b: Rect): number {
 export const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
 
 /** Widest a group's name may run: top to bottom it keeps to half the box, clear of edges entering at the middle. */
-export const groupNameMax = (g: { width: number }, direction: GraphDirection) =>
+const groupNameMax = (g: { width: number }, direction: GraphDirection) =>
   direction === 'TB' ? g.width / 2 - 34 : g.width - 44;
 
 /** What a label must stay clear of in a group: its four borders and its name. */
@@ -817,7 +817,7 @@ const fitScale = (layout: GraphLayout, box: { width: number; height: number }) =
  * smaller. Top to bottom the frame is wide for the layers, so a wider diamond, which holds its question
  * on fewer lines and so is lower, draws the whole flowchart larger; left to right a wider shape never does.
  */
-export function fitGraph(
+function fitGraph(
   nodes: readonly GraphNode[],
   edges: readonly GraphEdge[],
   direction: GraphDirection,

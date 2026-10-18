@@ -13,7 +13,7 @@ export const CHECK_MAX = 80;
 /** The first line of reading.md, by which mr-cast knows a reading.md is its own. */
 export const READING_HEADING = '# Reading order: ';
 /** Words a review finding's severity is shown with on its reading item. */
-export const FLAG_WORDS = { bug: 'likely bug', risk: 'risk', nit: 'nit' };
+const FLAG_WORDS = { bug: 'likely bug', risk: 'risk', nit: 'nit' };
 
 const oneLine = (text) => plainText(String(text)).replace(/\s+/g, ' ').trim();
 /** One line of Markdown: the markup's `code` stays code, and the rest is plain text. */
@@ -28,7 +28,7 @@ const mdLine = (text) =>
 const C0 = /[\u0000-\u001f\u007f]/g;
 
 /** The scene that holds the reading order, or undefined. */
-export const readingScene = (storyboard) => storyboard?.scenes?.find((s) => s?.type === 'reading');
+const readingScene = (storyboard) => storyboard?.scenes?.find((s) => s?.type === 'reading');
 
 /**
  * The side and lines of the file a hunk covers: new-file lines unless it only removes, as `{ file, side, range }`;
@@ -47,7 +47,7 @@ const spanText = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
  * "src/limiter.ts:12-30": the lines of the file a hunk covers, or the lines a reading item's `lines` names when
  * they lie inside them (`validate` reports any that do not).
  */
-export function hunkLocation(hunk, lines) {
+function hunkLocation(hunk, lines) {
   const { file, side, range } = hunkSpan(hunk);
   if (!range) return file;
   const own = lineSpan(lines);

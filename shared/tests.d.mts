@@ -45,11 +45,9 @@ export interface TestsMatrix {
   };
 }
 
-export declare const situationKey: (id: string) => string;
 export declare const cellKey: (row: number, col: number) => string;
 export declare const outcomeKey: (col: number) => string;
 export declare const testKey: (n: number) => string;
-export declare function cellOf(scene: TestsScene, ref: unknown): { row: number; col: number } | null;
 export declare function isGapRow(situation: TestSituation | undefined): boolean;
 export declare function isLive(test: TestEntry | undefined): boolean;
 export declare function testsMatrix(scene: TestsScene): TestsMatrix;

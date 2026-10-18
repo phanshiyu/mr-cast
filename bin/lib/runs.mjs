@@ -26,7 +26,7 @@ export const isRunName = (name) => NAME.test(name) && !RESERVED.has(name);
 /** Whether `name` (an entry of .mr-cast/explain/) can be a 0.11 explanation's directory. */
 export const isExplanationName = (name) => NAME.test(name);
 
-export function parseRunName(value) {
+function parseRunName(value) {
   if (!NAME.test(value) || value.length > NAME_MAX) {
     throw new UserError(
       `--name "${value}" must be lowercase letters, digits and single dashes, at most ${NAME_MAX} characters, e.g. rate-limit`,
@@ -40,7 +40,7 @@ export function parseRunName(value) {
 }
 
 /** A short kebab-case slug of `text`: its first few words, or '' when nothing usable is left. */
-export function slugify(text, maxWords = 6) {
+function slugify(text, maxWords = 6) {
   const words = String(text ?? '')
     .normalize('NFKD')
     .toLowerCase()

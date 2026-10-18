@@ -26,7 +26,7 @@ export const mainTone = (mix: TintMix): Tone | null =>
   )?.tone ?? null;
 
 /** Opacity a dimmed item keeps: ruled out, it recedes but stays readable. */
-export const DIM_KEEP = 0.5;
+const DIM_KEEP = 0.5;
 export const dimOpacity = (mix: TintMix) => 1 - (1 - DIM_KEEP) * mix.dim;
 
 /** A tone's fill on a tinted item, stronger than its soft background so the colour reads across the room. */

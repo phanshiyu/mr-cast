@@ -55,7 +55,7 @@ function playGroup(entries: readonly PlacedEntry[], from: number, budget: number
 }
 
 /** Per step, the last entry typed by its end: every entry up to the last one it or an earlier step names. */
-export function entryReach(scene: TerminalScene): number[] {
+function entryReach(scene: TerminalScene): number[] {
   let last = -1;
   return stepTargets(scene).map((keys) => {
     for (const key of keys)

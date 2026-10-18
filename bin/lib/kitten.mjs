@@ -9,9 +9,9 @@ import path from 'node:path';
 import { UserError } from './errors.mjs';
 
 export const KITTEN_REPO = 'KittenML/kitten-tts-mini-0.8';
-export const KITTEN_REVISION = 'c02725660cea441db4c383af69f1f26f5cd00947';
+const KITTEN_REVISION = 'c02725660cea441db4c383af69f1f26f5cd00947';
 /** What a first use downloads, pinned by revision and checked by size and sha256 before it is kept. */
-export const KITTEN_FILES = [
+const KITTEN_FILES = [
   {
     name: 'kitten_tts_mini_v0_8.onnx',
     bytes: 78268016,
@@ -20,7 +20,7 @@ export const KITTEN_FILES = [
   { name: 'voices.npz', bytes: 3278902, sha256: '40ad2638952b77b7b2f30127e2608e169fc69dd256b53bd8aaa3409a33193c42' },
 ];
 export const KITTEN_MB = Math.round(KITTEN_FILES.reduce((n, f) => n + f.bytes, 0) / 1e6);
-export const KITTEN_SAMPLE_RATE = 24000;
+const KITTEN_SAMPLE_RATE = 24000;
 
 /** The model's voice for each name its config.json gives (voice_aliases). */
 const VOICE_FILES = {
@@ -102,7 +102,7 @@ export async function downloadKitten(dir) {
 }
 
 /** The float32 arrays of an .npz whose entries are stored uncompressed, as numpy.savez writes them. */
-export function readNpz(buf) {
+function readNpz(buf) {
   let eocd = buf.length - 22;
   while (eocd >= 0 && buf.readUInt32LE(eocd) !== 0x06054b50) eocd--;
   if (eocd < 0) throw new Error('not a zip file');

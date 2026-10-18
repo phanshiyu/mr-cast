@@ -10,10 +10,10 @@ export interface Pt {
 }
 
 const STATE_H = 72;
-export const STATE_FONT = 26;
+const STATE_FONT = 26;
 export const BADGE_FONT = 14;
 export const LABEL_FONT = 18;
-export const LABEL_LINE_H = 22;
+const LABEL_LINE_H = 22;
 const LABEL_PAD_Y = 6;
 const LABEL_MAX_CHARS = 22;
 const MONO_ADVANCE = 0.61;

@@ -80,7 +80,7 @@ const cellText = (cell: TableCell) => (typeof cell === 'string' ? cell : `${cell
 /** Characters a cell takes on one line; a change cell's bold new value and gaps run about two wider. */
 const cellChars = (cell: TableCell) => (typeof cell === 'string' ? cell.length : cellText(cell).length + 2);
 /** Code-like cells render in mono a little smaller than the body text. */
-export const cellFont = (font: number, mono: boolean) => (mono ? Math.round(font * 0.92) : font);
+const cellFont = (font: number, mono: boolean) => (mono ? Math.round(font * 0.92) : font);
 const cellMono = (cell: TableCell) =>
   typeof cell === 'string' ? isCodeLike(cell) : isCodeLike(cell.before) && isCodeLike(cell.after);
 const advance = (mono: boolean) => (mono ? MONO_ADVANCE : SANS_ADVANCE);

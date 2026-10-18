@@ -15,7 +15,7 @@ import { clipFor, paceOf } from './voice.mjs';
 
 export const FPS = 30;
 /** Reading pace of a scene without a voice clip, at the normal pace. */
-export const WORDS_PER_MINUTE = 130;
+const WORDS_PER_MINUTE = 130;
 /** Pauses at the normal pace, in seconds. The pace multiplies each one. */
 const NARRATION_LEAD = 1.0;
 const STEP_LEAD = 0.5;
@@ -32,7 +32,7 @@ export const SCENE_EXIT_FRAMES = 8;
  * its base (lifelines, axes, every node) in this time, and each step shows or lights its own items.
  * Code and text scenes pace their entrance against the voice themselves, so they have none here.
  */
-export const BUILD_SECONDS = {
+const BUILD_SECONDS = {
   text: 0,
   code: 0,
   graph: 1.5,
@@ -64,7 +64,7 @@ export const BUILD_SECONDS = {
  */
 export const STEP_SETTLE_FRAMES = 15;
 /** Frames a step's pen mark takes to draw, between the settled items and the step's words. */
-export const PEN_FRAMES = 12;
+const PEN_FRAMES = 12;
 /** Pause between the end of the build and the narration's voice, at every pace. */
 const BUILD_SETTLE = 0.3;
 

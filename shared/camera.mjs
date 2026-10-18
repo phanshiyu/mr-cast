@@ -14,9 +14,9 @@ import { aType } from './words.mjs';
  */
 export const CAMERA_TYPES = INK_TYPES.filter((type) => type !== 'map');
 /** The most a camera zooms, by `zoom`. */
-export const ZOOM_MAX = 40;
+const ZOOM_MAX = 40;
 /** The most a camera zooms when it fits its refs by itself, so one small item does not fill the screen. */
-export const FIT_ZOOM_MAX = 6;
+const FIT_ZOOM_MAX = 6;
 /** Room left round framed refs: this share of their box's larger side, and at least MARGIN_PX. */
 const MARGIN_SHARE = 0.15;
 const MARGIN_PX = 48;

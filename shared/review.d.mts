@@ -2,7 +2,6 @@ import type { CodeStep, Finding, PenMark, Severity, Storyboard } from '../src/ty
 
 /** Severities, worst first: the order the review scene and review.md list them in. */
 export declare const SEVERITIES: readonly Severity[];
-export declare const SEVERITY_TITLES: Record<Severity, string>;
 /** The mark a flagged step draws when it names none. */
 export declare const FLAG_MARK: PenMark;
 export declare function isReviewed(storyboard: Storyboard): boolean;

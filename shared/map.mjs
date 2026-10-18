@@ -18,7 +18,7 @@ import { tintEntries } from './storyboard-json.mjs';
 import { measure } from './textfit.mjs';
 
 export const PROJECTIONS = { 'equal-earth': geoEqualEarth, 'natural-earth': geoNaturalEarth1, mercator: geoMercator };
-export const DEFAULT_PROJECTION = 'equal-earth';
+const DEFAULT_PROJECTION = 'equal-earth';
 export const MAP_SIDES = ['right', 'left', 'above', 'below'];
 /** The narrowest view, in degrees: the 1:50m outline shows no more detail inside it. */
 export const MIN_SPAN = 0.5;
@@ -250,7 +250,7 @@ export function tracedKeys(scene) {
 }
 
 /** The geometry an item key names, a country's at the 1:50m outline. */
-export function keyGeometry(scene, key) {
+function keyGeometry(scene, key) {
   if (key.startsWith('mc:')) return countriesAt('50m').get(key.slice(3))?.geometry ?? null;
   return mapItems(scene).get(key)?.geometry ?? null;
 }
@@ -259,7 +259,7 @@ export function keyGeometry(scene, key) {
  * What a view frames on the globe, as [[west, south], [east, north]] (west past east when it crosses 180°), or null
  * for the whole world: "world", refs it fits round, or { box: [[lat, lng], [lat, lng]] } from south-west to north-east.
  */
-export function viewBounds(scene, view) {
+function viewBounds(scene, view) {
   if (view === undefined || view === 'world') return null;
   let bounds = null;
   if (Array.isArray(view)) {
@@ -311,7 +311,7 @@ export function viewSpan(scene, view) {
 }
 
 /** The views each state shows: the scene's, then each step's from that step on. */
-export function mapViews(scene) {
+function mapViews(scene) {
   const views = [scene.view ?? 'world'];
   for (const step of list(scene.steps)) views.push(step?.view ?? views[views.length - 1]);
   return views;
@@ -460,7 +460,7 @@ export function namedCountries(scene) {
 }
 
 /** The detail a scene draws: 1:50m when a view zooms in far or it names a country only that outline has, else 1:110m. */
-export function mapDetail(scene, cameras) {
+function mapDetail(scene, cameras) {
   if (namedCountries(scene).some((code) => !countriesAt('110m').has(code))) return '50m';
   return cameras.some((c) => c.k > FINE_ZOOM) ? '50m' : '110m';
 }
@@ -483,7 +483,7 @@ export function labelBox(at, width, side, gap) {
 }
 
 /** The point a route or line writes its label at: the middle of the part of it on the stage, or null when none is. */
-export function pathAnchor(proj, camera, path, stage) {
+function pathAnchor(proj, camera, path, stage) {
   const shown = path
     .map((p) => onScreen(proj, camera, p))
     .filter((p) => p && p[0] >= 0 && p[1] >= 0 && p[0] <= stage.width && p[1] <= stage.height);
@@ -494,7 +494,7 @@ export function pathAnchor(proj, camera, path, stage) {
 export const geoPathOf = (proj, geometry) => geoPath(proj.projection)(geometry) ?? '';
 
 /** The box of a geometry through the projection at zoom 1. */
-export function geoBoxOf(proj, geometry) {
+function geoBoxOf(proj, geometry) {
   const [[x0, y0], [x1, y1]] = geoPath(proj.projection).bounds(geometry);
   return [x0, y0, x1, y1].every(isNum) ? { x0, y0, x1, y1 } : null;
 }

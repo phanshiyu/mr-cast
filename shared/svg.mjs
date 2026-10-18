@@ -130,7 +130,7 @@ export const SVG_COLORS = {
 export const SVG_TONES = ['accent', 'good', 'bad', 'warn', 'neutral'];
 
 /** The font size SVG text takes when nothing sets one, in viewBox units. */
-export const DEFAULT_FONT = 16;
+const DEFAULT_FONT = 16;
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 const decode = (s) =>
@@ -385,7 +385,7 @@ const multiply = (m, n) => [
 const apply = (m, [x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
 
 /** A `transform` attribute as one matrix. */
-export function transformOf(text) {
+function transformOf(text) {
   let m = IDENTITY;
   for (const [, fn, args] of String(text ?? '').matchAll(/(\w+)\s*\(([^)]*)\)/g)) {
     const a = args

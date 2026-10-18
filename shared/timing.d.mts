@@ -19,11 +19,8 @@ export interface SpokenSegment {
 }
 
 export declare const FPS: 30;
-export declare const WORDS_PER_MINUTE: number;
 export declare const SCENE_EXIT_FRAMES: number;
 export declare const STEP_SETTLE_FRAMES: number;
-export declare const PEN_FRAMES: number;
-export declare const BUILD_SECONDS: Record<Scene['type'], number>;
 export declare function buildFrames(type: Scene['type']): number;
 export declare function wordCount(text: string | null | undefined): number;
 export declare function spokenTexts(scene: Scene): string[];

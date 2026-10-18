@@ -95,7 +95,7 @@ class ParseError extends Error {
  * The expression's tree, or an error with its message and 0-based position.
  * @returns {{ ast: import('./expr').Expr } | { error: { message: string, at: number } }}
  */
-export function parseExpr(text) {
+function parseExpr(text) {
   if (typeof text !== 'string' || !text.trim()) return { error: { message: 'is empty', at: 0 } };
   const lexed = tokenize(text);
   if (lexed.error) return lexed;
@@ -256,7 +256,7 @@ function children(node, bound) {
 }
 
 /** Names the expression reads that it does not define itself (constants, and a sum's index inside its term), with where each first appears. */
-export function freeNames(ast) {
+function freeNames(ast) {
   const found = [];
   const stack = [[ast, new Set()]];
   while (stack.length) {
@@ -415,7 +415,7 @@ function evaluatorOf(ast) {
  * whole expression once its sums add more than MAX_EVAL_TERMS in one evaluation.
  * @returns {(scope: Record<string, number>) => number}
  */
-export function compileExpr(ast) {
+function compileExpr(ast) {
   const evaluate = evaluatorOf(ast);
   return (scope) => evaluate(scope).value;
 }

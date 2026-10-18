@@ -347,7 +347,7 @@ function sceneGist(scene, hunks, storyboard) {
 }
 
 /** "1 bug, 2 nits", or "nothing flagged". */
-export function formatFindings(findings = []) {
+function formatFindings(findings = []) {
   const counts = SEVERITIES.map((severity) => [
     severity,
     findings.filter((f) => f.severity === severity).length,

@@ -123,7 +123,7 @@ export function tweenTransform(from, to, t) {
  * a `d` that does not read.
  * @returns {{ start: [number, number], curves: number[][], closed: boolean }[]}
  */
-export function cubicOutlines(d) {
+function cubicOutlines(d) {
   const text = String(d ?? '');
   const tokens = text.match(/[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) ?? [];
   if (tokens.join('').length < text.replace(/[\s,]/g, '').length)

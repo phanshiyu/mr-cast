@@ -159,7 +159,7 @@ const NOTE_CLEAR = 12;
 const LABEL_RISE = 0.2;
 
 /** Rows a short sequence takes are at least this tall; past what fits the frame, the scene scrolls. */
-export const MIN_UNIT = 46;
+const MIN_UNIT = 46;
 
 /**
  * Lays a sequence out at a readable size. Rows share the frame's height down to MIN_UNIT and grow to

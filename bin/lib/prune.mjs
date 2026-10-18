@@ -417,7 +417,7 @@ export const listingJson = (listing, dataRoot) => ({
 });
 
 /** The CLI arguments that make `select` pick what `selector` picks. */
-export const pruneCommand = (selector) => [
+const pruneCommand = (selector) => [
   'prune',
   ...selector.ids,
   ...(selector.kinds ? ['--kind', selector.kinds.join(',')] : []),

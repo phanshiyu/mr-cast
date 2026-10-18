@@ -1,5 +1,5 @@
 /** Greedy word wrap by character budget; each line holds the indices of its words. */
-export function wrapWords(words: readonly string[], maxChars: number): number[][] {
+function wrapWords(words: readonly string[], maxChars: number): number[][] {
   const lines: number[][] = [];
   let current: number[] = [];
   let length = 0;

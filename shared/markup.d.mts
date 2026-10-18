@@ -1,7 +1,5 @@
 import type { Tone } from '../src/types';
 
-export declare const TONE_NAMES: readonly Tone[];
-
 /** A piece of text in one style. Bold and code may sit inside a mark or a tone. */
 export interface Run {
   text: string;

@@ -7,9 +7,9 @@ import { indexRange, sceneSteps } from './steps.mjs';
 import { FOCUS_TYPES, refNames, resolveRef } from './targets.mjs';
 import { cueWord, spokenTexts } from './timing.mjs';
 
-export const INK_SHAPES = ['circle', 'box', 'underline', 'strike', 'cross', 'tick'];
-export const INK_VERBS = [...INK_SHAPES, 'brace', 'arrow', 'write'];
-export const INK_SIDES = ['above', 'below', 'left', 'right'];
+const INK_SHAPES = ['circle', 'box', 'underline', 'strike', 'cross', 'tick'];
+const INK_VERBS = [...INK_SHAPES, 'brace', 'arrow', 'write'];
+const INK_SIDES = ['above', 'below', 'left', 'right'];
 const INK_TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
 const OPTIONS = ['note', 'when', 'tone', 'side', 'id', 'near', 'at'];
 /** Scene types whose steps take `draw`: every scene with focus refs, and code. */
@@ -21,7 +21,7 @@ const isFraction = (v) => typeof v === 'number' && v >= 0 && v <= 1;
 const isPoint = (v) => Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number');
 
 /** The verbs an item names; a well-formed item names exactly one. */
-export const inkVerbs = (item) => INK_VERBS.filter((verb) => item?.[verb] !== undefined);
+const inkVerbs = (item) => INK_VERBS.filter((verb) => item?.[verb] !== undefined);
 
 /**
  * Item keys a code step's ink ref names: a line number or an "a-b" range on the step's side ("ln:<hunk line>"), or text

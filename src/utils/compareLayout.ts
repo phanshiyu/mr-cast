@@ -9,7 +9,7 @@ export const HEADER_H = 66;
 /** Padding inside a side's frame, left and right of its cells. */
 export const PANEL_PAD = 26;
 /** Room between the two sides, where each row's "=" or arrow sits. */
-export const GUTTER = 88;
+const GUTTER = 88;
 const LABEL_GAP = 30;
 const LABEL_MIN = 200;
 const LABEL_MAX = 360;

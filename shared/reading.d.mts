@@ -1,9 +1,8 @@
-import type { Finding, HunkMap, Hunk, Plan, ReadingScene, Storyboard } from '../src/types';
+import type { Finding, HunkMap, Hunk, Plan, Storyboard } from '../src/types';
 
 export declare const READ_FIRST_MAX: number;
 export declare const CHECK_MAX: number;
 export declare const READING_HEADING: string;
-export declare const FLAG_WORDS: Record<Finding['severity'], string>;
 
 export interface ReadingEntry {
   hunkId: string;
@@ -40,13 +39,11 @@ export interface ReadingOrder {
   skim: ReadingGroup[];
 }
 
-export declare function readingScene(storyboard: Storyboard): ReadingScene | undefined;
 export declare function hunkSpan(hunk: Hunk): {
   file: string;
   side: 'newLine' | 'oldLine';
   range: [number, number] | null;
 };
-export declare function hunkLocation(hunk: Hunk, lines?: string | number): string;
 export declare function alsoText(item: ReadingEntry): string;
 export declare function readingOrder(storyboard: Storyboard, hunks: HunkMap, plan?: Plan | null): ReadingOrder | null;
 export declare function flagText(finding: Finding, line?: (text: string) => string): string;

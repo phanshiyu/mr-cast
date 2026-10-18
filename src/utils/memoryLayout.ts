@@ -11,7 +11,7 @@ export const HEAD_H = 50;
 const PAD = 18;
 const NAME_GAP = 20;
 const CARD_GAP = 24;
-export const PANEL_H = 46;
+const PANEL_H = 46;
 /** Room between the frames and the first column of objects, and between columns, where the arrows run. */
 const MAIN_GAP = 190;
 const COL_GAP = 150;
@@ -399,7 +399,7 @@ function beside(to: MemoryCard, side: string, offset: number, lane: number, ty: 
 }
 
 /** Points along an arrow's segments that move, for keeping notes off it. */
-export function arrowSamples({ points }: Arrow): Pt[] {
+function arrowSamples({ points }: Arrow): Pt[] {
   const out: Pt[] = [];
   for (let i = 0; i + 3 < points.length; i += 3) {
     const [p0, c1, c2, p1] = [points[i]!, points[i + 1]!, points[i + 2]!, points[i + 3]!];

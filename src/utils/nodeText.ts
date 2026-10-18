@@ -61,7 +61,7 @@ export interface CardText {
 }
 
 /** Width the title and caption have: the card less its padding and its icon tile. */
-export const cardTextWidth = (node: DiagramNode, width: number, size: CardSize) => {
+const cardTextWidth = (node: DiagramNode, width: number, size: CardSize) => {
   const m = CARD_METRICS[size];
   return width - 2 * m.pad - (node.icon ? m.icon + m.gap : 0) - 4;
 };

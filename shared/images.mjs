@@ -5,8 +5,7 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const isSrc = (v) => typeof v === 'string' && v.trim().length > 0;
 
 /** A compare cell that is a picture: `{ image, fit? }`. */
-export const isImageCell = (cell) =>
-  Boolean(cell) && typeof cell === 'object' && !Array.isArray(cell) && 'image' in cell;
+const isImageCell = (cell) => Boolean(cell) && typeof cell === 'object' && !Array.isArray(cell) && 'image' in cell;
 
 /** Every image source in the storyboard, in order, with the field that names it, e.g. "scenes[2].src". */
 export function imageSources(storyboard) {

@@ -20,7 +20,6 @@ export type Px = [number, number];
 
 export declare const PART_KINDS: Record<PartKind, string>;
 export declare const TRACEABLE: readonly PartKind[];
-export declare const LINE_TONES: readonly Tone[];
 export declare const TICK_FONT: Font;
 export declare const AXIS_FONT: Font;
 export declare const LABEL_FONT: Font;

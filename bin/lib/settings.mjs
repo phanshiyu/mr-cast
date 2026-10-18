@@ -15,7 +15,7 @@ import { resolveVoice } from './voices.mjs';
  * preread: a reviewer who reads the code next, so no code on screen, ending on the order in which to read it.
  * familiar, new and overview are accepted from skills before 0.25, which passed them, and mean the plain video.
  */
-export const AUDIENCES = ['familiar', 'new', 'overview', 'preread'];
+const AUDIENCES = ['familiar', 'new', 'overview', 'preread'];
 /** The audience a command runs with: a pre-read, or the plain video. */
 const audienceOf = (audience) => (audience === 'preread' ? 'preread' : 'familiar');
 
@@ -30,7 +30,7 @@ const audienceOf = (audience) => (audience === 'preread' ? 'preread' : 'familiar
  */
 
 // --simple was --audience new before 0.25; it is still accepted, and ignored.
-export const AUDIENCE_OPTIONS = { audience: { type: 'string' }, simple: { type: 'boolean', default: false } };
+const AUDIENCE_OPTIONS = { audience: { type: 'string' }, simple: { type: 'boolean', default: false } };
 export const SETTINGS_OPTIONS = {
   ...AUDIENCE_OPTIONS,
   pace: { type: 'string' },
@@ -57,8 +57,7 @@ export function settingsFrom(values) {
 }
 
 /** The audience the flags in `values` name, or undefined when they name none. */
-export const givenAudience = (values) =>
-  AUDIENCES.includes(values.audience) ? audienceOf(values.audience) : undefined;
+const givenAudience = (values) => (AUDIENCES.includes(values.audience) ? audienceOf(values.audience) : undefined);
 
 /** The settings flags `values` gave, as they would be typed again, such as " --audience preread --pace slower"; "" for none. */
 export function settingsArgs(values) {
@@ -76,7 +75,7 @@ export function settingsArgs(values) {
 }
 
 const configDir = () => path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'mr-cast');
-export const choicesFile = () => path.join(configDir(), 'last-choices.json');
+const choicesFile = () => path.join(configDir(), 'last-choices.json');
 
 /** The full voice name a stored `voice` names, a bare Kokoro name included, or undefined. */
 const storedVoice = (voice) => {

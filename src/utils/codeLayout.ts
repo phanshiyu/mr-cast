@@ -32,7 +32,7 @@ export const CALLOUT_BELOW_H = 112;
 const CALLOUT_PAD = { x: 52, y: 44 };
 /** With a flow the code keeps this share of the width; the step diagram takes the rest. */
 const FLOW_CODE_SHARE = 0.6;
-export const FLOW_GAP = 72;
+const FLOW_GAP = 72;
 export const FLOW_CALLOUT_GAP = 36;
 /** Unfocused rows kept above the first step and below the last; the rest of the hunk is cropped away. */
 const CONTEXT_ROWS = 3;
@@ -49,7 +49,7 @@ export const STATUS_LABEL: Record<Hunk['status'], string> = {
 export const morphGutterW = (hunk: Hunk) => (hunk.status === 'source' ? SPLIT_GUTTER_W : MORPH_GUTTER_W);
 
 /** A code line with its tabs turned into spaces at CODE_TAB_SIZE stops, as the code is drawn. */
-export function expandTabs(text: string): string {
+function expandTabs(text: string): string {
   let out = '';
   for (const ch of text) out += ch === '\t' ? ' '.repeat(CODE_TAB_SIZE - (out.length % CODE_TAB_SIZE)) : ch;
   return out;

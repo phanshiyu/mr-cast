@@ -20,7 +20,7 @@ export const PART_KINDS = {
 /** Parts a step can trace on: everything with a line or an extent. */
 export const TRACEABLE = ['functions', 'series', 'vectors', 'areas'];
 /** Line colours in the order parts without a tone take them. */
-export const LINE_TONES = ['accent', 'good', 'warn', 'bad', 'neutral'];
+const LINE_TONES = ['accent', 'good', 'warn', 'bad', 'neutral'];
 
 export const TICK_FONT = { family: 'sans', weight: 500, size: 22 };
 export const AXIS_FONT = { family: 'sans', weight: 600, size: 24 };
@@ -207,7 +207,7 @@ function tickText(v, step, axis) {
 }
 
 /** An axis's ticks as values and their text. At most 200, so a tiny step cannot stall a frame. */
-export function axisTicks(axis) {
+function axisTicks(axis) {
   const { from, to } = axis;
   const inRange = (v) => v >= Math.min(from, to) - 1e-9 && v <= Math.max(from, to) + 1e-9;
   if (Array.isArray(axis.ticks)) {

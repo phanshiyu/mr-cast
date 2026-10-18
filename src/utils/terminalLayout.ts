@@ -150,7 +150,7 @@ export function layoutTerminal(scene: TerminalScene, width: number, height: numb
 }
 
 /** An entry's rows, from its prompt to its last output line, in session units. */
-export const entryBox = (layout: TerminalLayout, e: PlacedEntry): Box => ({
+const entryBox = (layout: TerminalLayout, e: PlacedEntry): Box => ({
   x: PAD_X - 10,
   y: e.top - 4,
   width: Math.min(layout.innerW, e.textW) + 20,

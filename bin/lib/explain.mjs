@@ -3,7 +3,7 @@
 import { detectLanguage } from './diff.mjs';
 import { UserError } from './errors.mjs';
 
-export const SNIPPET_MAX_LINES = 80;
+const SNIPPET_MAX_LINES = 80;
 
 const RANGE = /^(\d+)(?:-(\d+))?$/;
 const FILE_AND_RANGE = /^(.+):(\d+)(?:-(\d+))?$/;

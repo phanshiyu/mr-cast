@@ -1,7 +1,6 @@
 import type { Depth, Plan, PlanTopic, TopicPick } from '../src/types';
 
 export declare const DEPTHS: Depth[];
-export declare const FIXED_SECONDS: number;
 export declare function suggestionOf(topic: PlanTopic): TopicPick;
 export declare function pickOf(topic: PlanTopic): TopicPick;
 export declare function samePick(a: TopicPick | undefined, b: TopicPick | undefined): boolean;
