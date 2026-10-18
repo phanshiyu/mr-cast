@@ -79,7 +79,7 @@ export const removeEntry = (pid) => fs.rmSync(entryFile(pid), { force: true });
  */
 export function processTable(pids = null) {
   const out = spawnSync('ps', [...(pids ? ['-p', pids.join(',')] : ['-A']), '-ww', '-o', 'pid=,ppid=,uid=,lstart=,command='], {
-    encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC0' },
+    encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC0' }, timeout: 5000,
   });
   // `ps -p` exits 1, printing nothing, when none of the pids runs: an answer, unlike any other failure.
   if (out.error || out.signal || out.stderr?.trim() || !(out.status === 0 || (pids && out.status === 1))) return null;
@@ -177,7 +177,7 @@ function readEntries() {
 /** The working directory and listening port of another process, from `lsof`; nulls where it cannot tell. */
 function lsofOf(pid) {
   const field = (args) => {
-    const out = spawnSync('lsof', ['-a', '-p', String(pid), ...args, '-Fn'], { encoding: 'utf8' }).stdout ?? '';
+    const out = spawnSync('lsof', ['-a', '-p', String(pid), ...args, '-Fn'], { encoding: 'utf8', timeout: 5000 }).stdout ?? '';
     return out.split('\n').find((l) => l.startsWith('n'))?.slice(1) ?? null;
   };
   const cwd = field(['-d', 'cwd']);
