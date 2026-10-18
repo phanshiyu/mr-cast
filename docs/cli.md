@@ -138,11 +138,13 @@ play, plan, render, and the voice and download children of play record themselve
 `mr-cast ps` lists them, from any directory:
 
 ```
-pid    kind      age  page                 url                                               run
-41234  play      12m  1 open               http://127.0.0.1:4747/#token=9f2c...             rate-limit · ~/code/shop
-41240    voice   12m                                                                         with pid 41234
-41300  plan      3h   none · exits in 18m  http://127.0.0.1:4748/plan#token=51ab...         retry · ~/code/shop
-39000  play      1d   ?                    http://127.0.0.1:4749                             unregistered · ~/code/api
+pid    kind     age  page                 url                                     run
+39000  play     26h  ?                    http://127.0.0.1:4749                   unregistered · ~/code/api
+41300  plan     3h   none · exits in 18m  http://127.0.0.1:4748/plan#token=51ab…  retry · ~/code/shop
+41234  play     12m  1 open               http://127.0.0.1:4747/#token=9f2c…      rate-limit · ~/code/shop
+41240    voice  12m                                                               with pid 41234
+
+stop with `mr-cast stop <pid|run|all>`; --idle and --older-than 2h narrow it, --dry-run only prints
 ```
 
 - `page` is the number of pages open on a server, or `none` with the time until it exits by itself. A process that wrote no record shows `?`.

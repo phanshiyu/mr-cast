@@ -66,8 +66,8 @@ Bad:
 - Two `play` commands of one run that start in the same moment can both start, since neither sees the other yet.
 - A page left open in a background tab keeps its server alive. That is the point of counting pages, but a tab
   forgotten for days keeps a player for days.
-- A render stopped with SIGTERM exits at once without its exit handler, so `stop` removes its entry. The Chrome that
-  Remotion started is left to Remotion's own cleanup.
+- A render stopped with SIGTERM exits at once without its exit handler, so `stop` removes its entry. The Chrome
+  Headless Shell processes it started exited with it on macOS; nothing in `stop` makes sure of that.
 - Tests that run `status` or `prune --choices` see mr-cast processes running anywhere on the machine, so they match
   lines by prefix and drop the `Running processes` group. They must never run a `stop` option.
 

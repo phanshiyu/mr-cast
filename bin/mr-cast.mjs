@@ -431,7 +431,8 @@ function ensureDist() {
 /** --idle-exit in milliseconds, or 0 to keep running. */
 function idleExitMs(value) {
   const minutes = Number(value);
-  if (value.trim() === '' || !Number.isFinite(minutes) || minutes < 0) throw new UserError(`--idle-exit takes minutes, 0 or more (got "${value}")`);
+  // A timer longer than 2^31 ms (24.8 days) fires at once, so longer limits are refused.
+  if (value.trim() === '' || !(minutes >= 0 && minutes <= 35_000)) throw new UserError(`--idle-exit takes minutes from 0 to 35000, where 0 never exits (got "${value}")`);
   return minutes * 60_000;
 }
 
