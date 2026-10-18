@@ -83,6 +83,7 @@ test('play records itself with its URL, run and pages, and removes the entry whe
     { kind: 'play', ppid: process.pid, url, dir, run: 'registry', repo: cwd, viewers: 0, idleExit: 30 },
   );
   assert.equal(entry.started, processTable([play.pid]).get(play.pid).started);
+  assert.ok(Date.parse(entry.exitsAt) > Date.now() + 29 * 60_000, 'a voiced player counts down from the start');
 
   const page = http.get(new URL('/events', url));
   await new Promise((resolve) => page.on('response', resolve));
@@ -140,7 +141,7 @@ const row = (pid, started, command) => ({ pid, ppid: 1, uid, started, command })
 const mrCast = (sub) => `${process.execPath} ${BIN} ${sub} --no-open`;
 const writeEntry = (entry) => {
   fs.mkdirSync(procsDir(), { recursive: true });
-  fs.writeFileSync(entryOf(entry.pid), JSON.stringify({ ppid: 1, version: '0.28.0', url: null, dir: null, run: null, repo: null, ...entry }));
+  fs.writeFileSync(entryOf(entry.pid), JSON.stringify({ ppid: 1, version: '0.27.1', url: null, dir: null, run: null, repo: null, ...entry }));
 };
 
 const self = (started) => [process.pid, row(process.pid, started, `${process.execPath} --test`)];
@@ -275,7 +276,7 @@ test('a play started with a relative script path is registered, listed and repla
 });
 
 const proc = (pid, kind, fields = {}) => ({
-  pid, ppid: 1, kind, started: 'x', command: 'x', version: '0.28.0', url: null, dir: null, run: null, repo: null, registered: true,
+  pid, ppid: 1, kind, started: 'x', command: 'x', version: '0.27.1', url: null, dir: null, run: null, repo: null, registered: true,
   startedAt: 0, viewers: kind === 'play' || kind === 'plan' ? 0 : null, idleSince: null, idleExit: 30, exitsAt: null, parent: null, ...fields,
 });
 const HOUR = 3_600_000;

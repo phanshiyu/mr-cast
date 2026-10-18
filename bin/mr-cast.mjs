@@ -596,6 +596,8 @@ async function play(argv) {
   };
 
   reportPace(serving.voiceover());
+  // Set before the server starts counting, so a storyboard voiced already counts from the start.
+  serving.ready.then(() => { ready = true; });
   const registered = registerServer('play', dir, idleMs);
   // Not while a voicing runs: the page opens only once the first is done, and an edit's reloads the page once voiced.
   const idle = idleMs ? {
@@ -622,7 +624,6 @@ async function play(argv) {
 
   serving.start();
   await serving.ready;
-  ready = true;
   if (!stopped && !values['no-open']) openBrowser(url);
 }
 
