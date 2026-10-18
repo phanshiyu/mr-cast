@@ -92,8 +92,8 @@ export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durati
   const f = stateFrame(states, segments, frame);
   const { values, shown, place } = framed(scene, f);
   const focus = focusSpotlight(scene, hunks, segments, frame);
-  const valueOf = emphasisOf(focus);
-  const seriesOpacity = (s: number) => Math.max(...scene.labels.map((_, i) => valueOf(s, i).opacity));
+  const emphasisAt = emphasisOf(focus);
+  const seriesOpacity = (s: number) => Math.max(...scene.labels.map((_, i) => emphasisAt(s, i).opacity));
   const k = scene.stacked ? 1 : scene.series.length;
   const ends = scene.labels.map((_, l) =>
     scene.stacked ? labelTotal(values, l) : Math.max(...values.map((row) => row[l]!)),
@@ -121,7 +121,7 @@ export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durati
           const grow = spring({ frame: frame - START - l * stagger, fps, config: { damping: 18, stiffness: 110 } });
           const label = layout.labels[l]!;
           const lit = focus(`l:${l}`);
-          const rowOpacity = Math.max(...scene.series.map((__, s) => valueOf(s, l).opacity));
+          const rowOpacity = Math.max(...scene.series.map((__, s) => emphasisAt(s, l).opacity));
           let run = 0;
           return (
             <div
@@ -154,7 +154,7 @@ export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durati
                 const w = (v / longest) * layout.barMax * grow;
                 const color = barColor(scene, s, l);
                 const y = rowBarY(layout, 0, scene.stacked ? 0 : s, k);
-                const e = valueOf(s, l);
+                const e = emphasisAt(s, l);
                 const ring =
                   e.glow > 0 ? `, 0 0 0 ${4 * e.glow}px ${colors.text}cc, 0 0 ${36 * e.glow}px ${color}` : '';
                 const last = !scene.stacked || s === scene.series.length - 1;
@@ -248,7 +248,7 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
     easing: (t) => 1 - (1 - t) ** 3,
   });
   const focus = focusSpotlight(scene, hunks, segments, frame);
-  const valueOf = emphasisOf(focus);
+  const emphasisAt = emphasisOf(focus);
   const legendIn = interpolate(frame, [START + 10, START + 26], [0, 1], clamp);
   const marks = useMemo(() => chartStepTargets(scene), [scene]);
   return (
@@ -264,7 +264,7 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
             const { from, span } = angles[i]!;
             const end = Math.min(from + span, sweep);
             if (end <= from || span <= 0) return null;
-            const e = valueOf(0, i);
+            const e = emphasisAt(0, i);
             const color = sliceColor(i);
             return (
               <path
@@ -297,7 +297,7 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
                 fontSize: 22,
                 fontWeight: 800,
                 color: colors.bg,
-                opacity: valueOf(0, i).opacity,
+                opacity: emphasisAt(0, i).opacity,
                 whiteSpace: 'nowrap',
               }}
             >
@@ -329,7 +329,7 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
         ) : null}
         {scene.labels.map((_, i) => {
           const top = layout.legendTop + place(i) * layout.rowH;
-          const e = valueOf(0, i);
+          const e = emphasisAt(0, i);
           const label = layout.labels[i]!;
           return (
             <div

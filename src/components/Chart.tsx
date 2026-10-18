@@ -232,8 +232,8 @@ const Bars: React.FC<{
   barAt: (i: number, s: number) => number;
   noted: Point | null;
   pulse: number;
-  valueOf: ValueEmphasis;
-}> = ({ scene, layout, shown, frame, barAt, noted, pulse, valueOf }) => {
+  emphasisAt: ValueEmphasis;
+}> = ({ scene, layout, shown, frame, barAt, noted, pulse, emphasisAt }) => {
   const { fps } = useVideoConfig();
   const k = scene.series.length;
   const values = new Map(valueLabels(scene, layout, shown).map((v) => [`${v.series}-${v.label}`, v]));
@@ -264,7 +264,7 @@ const Bars: React.FC<{
                   .toString(16)
                   .padStart(2, '0')}`
               : '';
-          const lit = valueOf(s, i);
+          const lit = emphasisAt(s, i);
           const focusRing =
             lit.glow > 0 ? `, 0 0 0 ${4 * lit.glow}px ${colors.text}cc, 0 0 ${36 * lit.glow}px ${tone.color}` : '';
           return (
@@ -347,9 +347,9 @@ const Lines: React.FC<{
   frame: number;
   drawAt: (s: number) => number;
   drawFrames: number;
-  valueOf: ValueEmphasis;
+  emphasisAt: ValueEmphasis;
   labelGlow: (i: number) => number;
-}> = ({ scene, layout, shown, frame, drawAt, drawFrames, valueOf, labelGlow }) => {
+}> = ({ scene, layout, shown, frame, drawAt, drawFrames, emphasisAt, labelGlow }) => {
   const { x0, x1, y1 } = layout.plot;
   const k = scene.series.length;
   return (
@@ -388,7 +388,7 @@ const Lines: React.FC<{
             <g
               key={s}
               clipPath={`url(#chart-reveal-${s})`}
-              opacity={Math.max(...series.values.map((_, i) => valueOf(s, i).opacity))}
+              opacity={Math.max(...series.values.map((_, i) => emphasisAt(s, i).opacity))}
             >
               {k === 1 || (k === 2 && s === 1) ? <path d={area} fill={`url(#chart-fill-${s})`} /> : null}
               <path
@@ -408,7 +408,7 @@ const Lines: React.FC<{
             const tone = tones[seriesTone(scene.series, s)];
             const at = drawAt(s) + drawFrames * ((layout.xs[i]! - layout.xs[0]!) / Math.max(1, x1 - x0));
             const pop = interpolate(frame, [at, at + 8], [0, 1], clamp);
-            const lit = valueOf(s, i);
+            const lit = emphasisAt(s, i);
             return (
               <circle
                 key={`${s}-${i}`}
@@ -432,7 +432,7 @@ const Lines: React.FC<{
             key={`${s}-${i}`}
             value={value}
             color={s === k - 1 ? colors.text : '#b9c0d0'}
-            appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * valueOf(s, i).opacity}
+            appear={interpolate(frame, [at, at + 8], [0, 1], clamp) * emphasisAt(s, i).opacity}
           />
         );
       })}
@@ -564,15 +564,15 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
   // Each step lights its labels, series or values while the rest dim. A label stays bright while any of its values is lit.
   const stepFroms = segments.slice(1).map((segment) => segment.from);
   const focus = focusSpotlight(scene, hunks, segments, frame);
-  const valueOf: ValueEmphasis = (s, i) => {
+  const emphasisAt: ValueEmphasis = (s, i) => {
     const own = brighter(focus(`s:${s}`), focus(`p:${s}/${i}`));
     return { ...own, opacity: Math.max(own.opacity, focus(`l:${i}`).opacity) };
   };
   const emphasisOf = (i: number): Emphasis => ({
     ...focus(`l:${i}`),
-    opacity: Math.max(...scene.series.map((_, s) => valueOf(s, i).opacity)),
+    opacity: Math.max(...scene.series.map((_, s) => emphasisAt(s, i).opacity)),
   });
-  const seriesOpacity = (s: number) => Math.max(...scene.labels.map((_, i) => valueOf(s, i).opacity));
+  const seriesOpacity = (s: number) => Math.max(...scene.labels.map((_, i) => emphasisAt(s, i).opacity));
   const gridIn = interpolate(frame, [START, START + 14], [0, 1], clamp);
   const point = annotationPoint(scene, layout);
   // The note lands with the build, or with the first step that focuses its label or its value.
@@ -632,7 +632,7 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
             barAt={timeline.barAt}
             noted={point}
             pulse={notePulse}
-            valueOf={valueOf}
+            emphasisAt={emphasisAt}
           />
         ) : (
           <Lines
@@ -642,7 +642,7 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
             frame={frame}
             drawAt={timeline.drawAt}
             drawFrames={timeline.drawFrames}
-            valueOf={valueOf}
+            emphasisAt={emphasisAt}
             labelGlow={(i) => emphasisOf(i).glow}
           />
         )}
