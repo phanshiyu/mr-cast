@@ -12,7 +12,7 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0002](0002-storyboard-json-checked-by-validate.md) | The storyboard is JSON written by the agent and checked by `mr-cast validate` | Accepted; schema delivery superseded by 0015 |
 | [0003](0003-diagrams-first-teaching-order.md) | Diagrams before code, top-down, in a teaching arc and the reviewer's order | Superseded by 0019 |
 | [0004](0004-plan-page.md) | A plan page of topics, with guarded writes and an explicit record of what was built | Accepted |
-| [0005](0005-quick-mode.md) | Quick mode: no questions, 1 to 3 scenes, a separate quick run | Accepted; warnings superseded by 0019 |
+| [0005](0005-quick-mode.md) | Quick mode: no questions, 1 to 3 scenes, a separate quick run | Accepted; warnings superseded by 0019; the intent scene by 0024 |
 | [0006](0006-play-at-once-voice-in-background.md) | Play at once and voice in the background | Superseded by 0007 |
 | [0007](0007-open-page-when-voice-ready.md) | Open the page only when the voice is ready | Accepted |
 | [0008](0008-preread-audience.md) | A pre-read audience: no code on screen, then the order to read it in | Accepted; advice superseded by 0019 |
@@ -26,7 +26,8 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0016](0016-picker-as-references.md) | The primitive picker lives in the mr-cast skill's references, not in a skill of its own | Superseded by 0019 |
 | [0017](0017-article-shape.md) | The article's shape: claim headings with ids, questions with answers, and scenes that name their section | Superseded by 0019 |
 | [0018](0018-validate-hook.md) | A PostToolUse hook in the skill runs the checks after every write | Accepted; article part superseded by 0019 |
-| [0019](0019-tools-not-opinions.md) | Tools, not opinions: the skill and `validate` give the model tools and leave the teaching to it | Accepted |
+| [0019](0019-tools-not-opinions.md) | Tools, not opinions: the skill and `validate` give the model tools and leave the teaching to it | Accepted; the intent scene superseded by 0024 |
 | [0020](0020-stepped-scene-additions-and-svg.md) | Callout, tint, growing diagrams, several arrays, changing tables, and an svg scene | Accepted |
 | [0021](0021-example-videos-as-release-assets.md) | Example videos are rendered in CI and attached to the GitHub release; stills are committed | Accepted; the single job superseded by 0022 |
 | [0022](0022-shard-the-example-renders.md) | Render the examples on six runners from their meta.json flags, and keep the release a draft until all finish | Accepted; amended: a draft is finished by a rerun, renders run read-only |
+| [0024](0024-text-scene.md) | A text scene whose lead field says how it is drawn, with intent as its alias | Accepted |
