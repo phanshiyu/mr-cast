@@ -6,8 +6,8 @@
       "type": "svg",
       "chapter": "Zoom into a detail",
       "title": "Where a protein is made",
-      "narration": "This is one cell. The big circle is its nucleus.",
-      "svg": "<svg viewBox=\"0 0 1600 800\">\n<ellipse id=\"cell\" cx=\"800\" cy=\"400\" rx=\"740\" ry=\"370\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"6\"/>\n<circle id=\"nucleus\" class=\"tone-accent\" cx=\"480\" cy=\"400\" r=\"170\" stroke-width=\"4\"/>\n<text x=\"480\" y=\"412\" text-anchor=\"middle\" font-size=\"36\" fill=\"var(--accent)\">nucleus</text>\n<g id=\"mito\"><ellipse class=\"tone-warn\" cx=\"1050\" cy=\"210\" rx=\"120\" ry=\"52\" stroke-width=\"3\"/><path d=\"M950 210 q25 -30 50 0 t50 0 t50 0 t50 0\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"3\"/></g>\n<text x=\"1050\" y=\"300\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--muted)\">mitochondrion</text>\n<g fill=\"var(--muted)\" stroke=\"none\"><circle cx=\"820\" cy=\"560\" r=\"7\"/><circle cx=\"900\" cy=\"300\" r=\"7\"/><circle cx=\"760\" cy=\"230\" r=\"7\"/><circle cx=\"980\" cy=\"640\" r=\"7\"/><circle cx=\"1350\" cy=\"420\" r=\"7\"/><circle cx=\"1300\" cy=\"600\" r=\"7\"/><circle cx=\"700\" cy=\"640\" r=\"7\"/><circle cx=\"1420\" cy=\"300\" r=\"7\"/></g>\n<path id=\"mrna\" d=\"M1130 532 C1170 522 1210 542 1250 532 S1300 522 1330 532\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"2.5\"/>\n<g id=\"ribosome\"><ellipse cx=\"1210\" cy=\"518\" rx=\"18\" ry=\"13\" fill=\"var(--neutral)\" stroke=\"var(--text)\" stroke-width=\"1.5\"/><ellipse cx=\"1210\" cy=\"541\" rx=\"13\" ry=\"8\" fill=\"var(--neutral)\" stroke=\"var(--text)\" stroke-width=\"1.5\"/></g>\n<path id=\"protein\" d=\"M1208 506 q-12 -10 0 -18 t0 -18 t0 -18 t0 -18\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n<g id=\"detail\" font-size=\"8\" fill=\"var(--text)\"><text x=\"1250\" y=\"510\">large subunit</text><text x=\"1244\" y=\"558\">small subunit</text><text x=\"1290\" y=\"526\" fill=\"var(--good)\">mRNA</text><text x=\"1220\" y=\"440\" fill=\"var(--warn)\">protein</text></g>\n</svg>",
+      "narration": "This is one cell. The big circle is its nucleus, which keeps the DNA, the cell's instructions.",
+      "svg": "<svg viewBox=\"0 0 1600 800\">\n<ellipse id=\"cell\" cx=\"800\" cy=\"400\" rx=\"740\" ry=\"370\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"6\"/>\n<circle id=\"nucleus\" class=\"tone-accent\" cx=\"480\" cy=\"400\" r=\"170\" stroke-width=\"4\"/>\n<text x=\"480\" y=\"412\" text-anchor=\"middle\" font-size=\"36\" fill=\"var(--accent)\">nucleus</text>\n<g id=\"mito\"><ellipse class=\"tone-warn\" cx=\"1050\" cy=\"210\" rx=\"120\" ry=\"52\" stroke-width=\"3\"/><path d=\"M950 210 q25 -30 50 0 t50 0 t50 0 t50 0\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"3\"/></g>\n<text x=\"1050\" y=\"300\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--muted)\">mitochondrion</text>\n<g fill=\"var(--muted)\" stroke=\"none\"><circle cx=\"820\" cy=\"560\" r=\"7\"/><circle cx=\"900\" cy=\"300\" r=\"7\"/><circle cx=\"760\" cy=\"230\" r=\"7\"/><circle cx=\"980\" cy=\"640\" r=\"7\"/><circle cx=\"1350\" cy=\"420\" r=\"7\"/><circle cx=\"1300\" cy=\"600\" r=\"7\"/><circle cx=\"700\" cy=\"640\" r=\"7\"/><circle cx=\"1420\" cy=\"300\" r=\"7\"/></g>\n<path id=\"mrna\" d=\"M1130 532 C1170 522 1210 542 1250 532 S1300 522 1330 532\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"2.5\"/>\n<g id=\"ribosome\"><ellipse cx=\"1210\" cy=\"518\" rx=\"18\" ry=\"13\" fill=\"var(--neutral)\" stroke=\"var(--text)\" stroke-width=\"1.5\"/><ellipse cx=\"1210\" cy=\"541\" rx=\"13\" ry=\"8\" fill=\"var(--neutral)\" stroke=\"var(--text)\" stroke-width=\"1.5\"/></g>\n<path id=\"protein\" d=\"M1208 506 q-12 -10 0 -18 t0 -18 t0 -18 t0 -18\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n<g id=\"detail\" font-size=\"8\" fill=\"var(--text)\"><text x=\"1250\" y=\"510\">large subunit</text><text x=\"1244\" y=\"558\">small subunit</text><text x=\"1296\" y=\"548\" fill=\"var(--good)\">mRNA</text><text x=\"1220\" y=\"440\" fill=\"var(--warn)\">protein</text></g>\n</svg>",
       "labels": {
         "nucleus": "nucleus",
         "ribosome": "ribosome",
@@ -20,8 +20,15 @@
       ],
       "steps": [
         {
-          "focus": "nucleus",
-          "say": "The nucleus keeps the DNA, the cell's instructions, and sends out copies as messages."
+          "camera": [
+            "nucleus",
+            "ribosome"
+          ],
+          "focus": [
+            "nucleus",
+            "ribosome"
+          ],
+          "say": "The nucleus sends copies of the instructions out as messages, to a ribosome far from it."
         },
         {
           "camera": [
@@ -35,11 +42,11 @@
             "ribosome",
             "mrna"
           ],
-          "say": "Zoom in on one ribosome, out in the body of the cell, where a message runs through its two halves.",
+          "say": "Zoom in on that ribosome, where a message runs through its two halves.",
           "draw": [
             {
               "circle": "ribosome",
-              "when": "ribosome"
+              "when": "that ribosome"
             }
           ]
         },
@@ -50,31 +57,11 @@
               "when": "one link"
             }
           ],
-          "say": "It reads the message and adds one link at a time to a growing protein chain.",
           "focus": [
             "protein",
             "mrna"
-          ]
-        },
-        {
-          "camera": [
-            "nucleus",
-            "ribosome"
           ],
-          "hide": [
-            "detail"
-          ],
-          "focus": [
-            "nucleus",
-            "ribosome"
-          ],
-          "say": "Pull back a little, and the nucleus sits far from where the work happens."
-        },
-        {
-          "camera": "all",
-          "erase": true,
-          "focus": "cell",
-          "say": "And this happens at thousands of ribosomes across the cell at once."
+          "say": "It reads the message and adds one link at a time to a growing protein chain."
         }
       ]
     },

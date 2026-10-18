@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28.0
+
+**A camera on every stepped scene.** A step's `camera` zooms and pans to what it names, a ref, a list of refs or `{ "on": refs, "zoom": 3 }`, and `"all"` pulls back to the whole scene (ADR 0028).
+
+- **It works on every scene whose steps take refs, and on code.** The view eases there as the step starts and follows its refs when a later step moves them, such as a pointer sliding along an array. Without `zoom` it fits the refs with a margin, enlarged at most 6 times; `zoom` runs from 1 to 40, and the view never shows past the scene or shrinks it. Ink and pen marks move with the content.
+- **`validate`** fails on a ref that names nothing, a zoom outside 1 to 40, an empty list, `"all"` in a list, an unknown field and a camera on a flow scene, and warns when a shot leaves a lit ref out of view. On an svg scene the small-text warning counts the zoom in every state a text is shown in, so detail text can be hidden until the camera zooms in on it. A state step that only moves the camera needs no `focus`.
+- er, files, layers and timeline scenes now give their boxes to `validate`, so the ink check for text written `at` a point covers them too.
+
+**Motion on svg.** An svg step can `move` elements by `translate`, `rotate` and `scale`, `trace` lines on from their start, timed to words of its `say`, and `morph` a path into the shape of another path; `class="flow"` marches dashes along a line, as a graph edge's do (ADR 0028).
+
+- A move goes outside the element's own transform and tweens function by function, so a needle turns about its pivot; `""` puts it back. A trace shows a hidden line and draws it at about 40 px a frame. A morph turns both paths into cubic curves and splits the shorter until they pair, so a circle of arcs becomes a square of lines; naming a path after itself restores it.
+- `validate` fails on a move of the root or with another function, a trace of something with no line or with a `when` the step does not say, a morph to or from anything but a path or between paths with a different number of outlines, and trace or morph on another scene type. A hidden path a morph borrows its shape from is not reported as never drawn.
+- Demos: `examples/primitives/motion` proves a² + b² = c² by sliding four triangles, and fills a tank; `examples/primitives/camera` zooms into a cell and follows a search. References: `camera.md` and `motion.md`.
+- Storyboards without a camera or motion render pixel for pixel as in 0.27.
+
 ## 0.27.0
 
 Four changes. mr-cast voices with Kitten TTS by default, the tests scene is a behaviour matrix, a new `text` scene puts words on screen as the picture, and Claude can write and draw on any stepped scene with ink that stays until a step erases it.

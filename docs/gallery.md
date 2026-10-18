@@ -270,6 +270,14 @@ Storyboard: [examples/primitives/timeline/storyboard.json](../examples/primitive
 
 ## On every scene
 
+### camera
+
+A camera on any stepped scene: a step's `camera` zooms and pans to what it names, and stays there until a later step's camera, or `"all"` pulls back to the whole scene.
+
+![The camera demo's svg scene, at the end of its last step](assets/scenes/camera.png)
+
+Storyboard: [examples/primitives/camera/storyboard.json](../examples/primitives/camera/storyboard.json). Video: [primitives-camera.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-camera.mp4). Reference: [camera.md](../skill/mr-cast/references/camera.md).
+
 ### ink
 
 A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `draw` lists what to draw; each item is written on as the voice reaches its cue words and stays until a later step's `erase`.
@@ -277,3 +285,11 @@ A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `
 ![The ink demo's array scene, at the end of its last step](assets/scenes/ink.png)
 
 Storyboard: [examples/primitives/ink/storyboard.json](../examples/primitives/ink/storyboard.json). Video: [primitives-ink.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-ink.mp4). Reference: [ink.md](../skill/mr-cast/references/ink.md).
+
+### motion
+
+Motion on an `svg` scene: a step's `move` slides, turns and scales elements, `trace` draws lines on from their start, `morph` turns one path into the shape of another, and `class="flow"` marches dashes along a line.
+
+![The motion demo's svg scene, at the end of its last step](assets/scenes/motion.png)
+
+Storyboard: [examples/primitives/motion/storyboard.json](../examples/primitives/motion/storyboard.json). Video: [primitives-motion.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-motion.mp4). Reference: [motion.md](../skill/mr-cast/references/motion.md).
