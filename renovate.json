@@ -49,6 +49,11 @@
       "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"]
     },
     {
+      "description": "The lint, format and unused-code tools move together, so one CI run shows what their new rules find",
+      "groupName": "Code quality tools",
+      "matchPackageNames": ["@biomejs/biome", "fallow"]
+    },
+    {
       "description": "validate patches Mermaid's own DOMPurify, so they move together",
       "groupName": "Mermaid",
       "matchPackageNames": ["mermaid", "dompurify"]
