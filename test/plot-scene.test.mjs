@@ -61,6 +61,13 @@ test('a step sets a parameter, traces a hidden line on, and a parameter\'s name 
   assert.deepEqual(resolveRef(growth, 'growth'), ['p:growth']);
 });
 
+test('a part some step traces starts undrawn without hidden, as a map route does, so it is not drawn during the narration', () => {
+  const scene = { ...growth, functions: [{ id: 'growth', y: '10000 * 1.07^x' }, { id: 'flat', y: '10000' }], points: [], steps: [{ say: 'First the flat line.' }, { trace: ['growth'], say: 'Then it grows.' }] };
+  const { states, problems } = walkStates(scene);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(states.map((s) => Object.keys(s.hidden)), [['p:growth'], ['p:growth'], []]);
+});
+
 test('validate fails on a parse error at its column, a name that is no parameter, and a point traced', async () => {
   const { errors } = await check({
     ...growth,

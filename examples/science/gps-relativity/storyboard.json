@@ -251,8 +251,7 @@
           "y": "60.2145 - 574.7796 / x",
           "from": 6.371,
           "to": 45,
-          "tone": "accent",
-          "hidden": true
+          "tone": "accent"
         }
       ],
       "points": [

@@ -41,7 +41,7 @@ const fourier = {
   params: { n: 1 },
   functions: [
     { id: 'square', y: 'sign(sin(x))', tone: 'neutral', dashed: true },
-    { id: 'wave', y: SUM, label: 'n = {n:0}', hidden: true },
+    { id: 'wave', y: SUM, label: 'n = {n:0}' },
   ],
   points: [
     { id: 'middle', at: ['pi/2', SUM.replaceAll('* x', '* pi/2')], label: '{' + SUM.replaceAll('* x', '* pi/2') + ':3}', side: 'above', hidden: true },
@@ -85,8 +85,8 @@ const interest = {
   y: { from: 0, to: 80000, ticks: 20000, prefix: '$', grid: true },
   params: { year: 0 },
   functions: [
-    { id: 'growth', y: GROW, label: 'at 7%', hidden: true },
-    { id: 'today', y: REAL, label: "in today's dollars", tone: 'good', hidden: true },
+    { id: 'growth', y: GROW, label: 'at 7%' },
+    { id: 'today', y: REAL, label: "in today's dollars", tone: 'good' },
   ],
   areas: [{ id: 'gap', between: ['growth', 'today'], tone: 'warn', hidden: true }],
   points: [{ id: 'marker', at: ['year', GROW.replaceAll('x', 'year')], label: '${' + GROW.replaceAll('x', 'year') + ':0}', side: 'left', guides: true, hidden: true }],

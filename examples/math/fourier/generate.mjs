@@ -102,7 +102,7 @@ const oneWave = {
   narration: 'The dashed grey line is our target, the square wave. It is one for half the time, then minus one.',
   ...AXES,
   params: { a: 1 },
-  functions: [{ ...SQUARE, label: 'square wave' }, { id: 'wave', y: 'a * sin(x)', label: '{a:2} × sin x', hidden: true }],
+  functions: [{ ...SQUARE, label: 'square wave' }, { id: 'wave', y: 'a * sin(x)', label: '{a:2} × sin x' }],
   points: [
     { id: 'middle', at: ['pi/2', 'a'], label: '{a:2}', side: 'above', hidden: true },
     { id: 'edge', at: [0.4, 'a * sin(0.4)'], label: '{a * sin(0.4):2}', side: 'right', tone: 'warn', hidden: true },
@@ -124,7 +124,7 @@ const addWaves = {
   params: { n: 1 },
   functions: [
     SQUARE,
-    { id: 'next', y: '4 / (pi * (2*n + 1)) * sin((2*n + 1) * x)', label: 'next wave', tone: 'accent', dashed: true, hidden: true },
+    { id: 'next', y: '4 / (pi * (2*n + 1)) * sin((2*n + 1) * x)', label: 'next wave', tone: 'accent', dashed: true },
     { id: 'wave', y: SUM, label: 'waves added: {n:0}' },
   ],
   points: [{ id: 'middle', at: ['pi/2', sumAt('pi/2')], label: '{' + sumAt('pi/2') + ':2}', side: 'above' }],

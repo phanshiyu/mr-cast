@@ -107,7 +107,7 @@ const thirtyYears = {
   params: { year: 0 },
   functions: [
     { id: 'simple', y: SIMPLE, label: 'no interest on interest', tone: 'neutral', dashed: true },
-    { id: 'growth', y: GROW, label: 'at 7%', hidden: true },
+    { id: 'growth', y: GROW, label: 'at 7%' },
   ],
   areas: [{ id: 'extra', between: ['growth', 'simple'], tone: 'accent', hidden: true }],
   points: [{ id: 'marker', at: ['year', GROW.replaceAll('x', 'year')], label: '${' + GROW.replaceAll('x', 'year') + ':0}', side: 'left', guides: true, hidden: true }],
@@ -149,7 +149,7 @@ const inflation = {
   params: { year: 0 },
   functions: [
     { id: 'growth', y: GROW, label: 'on paper' },
-    { id: 'today', y: REAL, label: "in today's dollars", tone: 'good', hidden: true },
+    { id: 'today', y: REAL, label: "in today's dollars", tone: 'good' },
   ],
   areas: [{ id: 'gap', between: ['growth', 'today'], tone: 'warn', hidden: true }],
   points: [
