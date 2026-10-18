@@ -1,0 +1,152 @@
+// The ink board: a step's `draw` stays until a step erases it, and validate names every ref, cue and id that does not
+// hold before anything renders.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { inkBoard } from '../shared/ink.mjs';
+import { cueFrame, cueWord, sceneSegments } from '../shared/timing.mjs';
+
+const errorsOf = async (scene, hunks = {}) => (await validateStoryboard({ title: 't', scenes: [scene] }, hunks, { mode: 'explain' })).errors;
+
+const graph = (steps) => ({
+  type: 'graph',
+  narration: 'Three places joined by roads.',
+  nodes: [
+    { id: 'S', label: 'S' },
+    { id: 'A', label: 'A' },
+    { id: 'B', label: 'B' },
+  ],
+  edges: [
+    { from: 'S', to: 'A' },
+    { from: 'S', to: 'B' },
+    { from: 'B', to: 'A' },
+  ],
+  steps,
+});
+
+const board = (scene) => inkBoard(scene).items.map((it) => ({ step: it.step, verb: it.verb, id: it.id, until: it.until }));
+
+test('ink stays on the board until a step erases it, by id or all at once', () => {
+  const scene = graph([
+    { focus: 'S', say: 'Start at S.', draw: [{ circle: 'S', id: 'start' }, { write: 'd = 0', near: 'S' }] },
+    { focus: 'A', say: 'A costs four.', draw: [{ underline: 'A', id: 'four' }] },
+    { focus: 'B', say: 'B costs two.', erase: ['start'], draw: [{ tick: 'B' }] },
+    { focus: 'A', say: 'A again.', erase: true },
+  ]);
+  assert.deepEqual(board(scene), [
+    { step: 0, verb: 'circle', id: 'start', until: 2 },
+    { step: 0, verb: 'write', id: undefined, until: 3 },
+    { step: 1, verb: 'underline', id: 'four', until: 3 },
+    { step: 2, verb: 'tick', id: undefined, until: 3 },
+  ]);
+});
+
+test('an erase lands before the step draws, so a step can redraw an id it erases', () => {
+  const scene = graph([
+    { focus: 'A', say: 'A is four.', draw: [{ write: '4', near: 'A', id: 'd' }] },
+    { focus: 'A', say: 'Now three.', erase: ['d'], draw: [{ write: '3', near: 'A', id: 'd' }] },
+  ]);
+  assert.deepEqual(inkBoard(scene).problems, []);
+  assert.deepEqual(board(scene), [
+    { step: 0, verb: 'write', id: 'd', until: 1 },
+    { step: 1, verb: 'write', id: 'd', until: Infinity },
+  ]);
+});
+
+test('targets resolve to scene keys, items on the board and stage points', () => {
+  const scene = graph([{ focus: 'B', say: 'Two plus one.', draw: [{ write: '2 + 1', near: 'B', id: 'sum' }, { arrow: ['sum', 'A'] }, { arrow: [[0.1, 0.9], 'B->A'] }] }]);
+  assert.deepEqual(
+    inkBoard(scene).items.map((it) => it.targets),
+    [[{ keys: ['n:B'] }], [{ ink: 'sum' }, { keys: ['n:A'] }], [{ point: [0.1, 0.9] }, { keys: ['e:2'] }]],
+  );
+});
+
+test('validate fails on a ref that names nothing, with the names close to it', async () => {
+  assert.deepEqual(await errorsOf(graph([{ focus: 'S', say: 'x', draw: [{ circle: 'Q' }, { box: ['S', 'BB'] }] }])), [
+    'scenes[0].steps[0].draw[0].circle: "Q" names nothing in this graph; did you mean "S", "A" or "B"?',
+    'scenes[0].steps[0].draw[1].box[1]: "BB" names nothing in this graph; did you mean "B", "S" or "A"?',
+  ]);
+});
+
+test('validate fails on a when the say does not contain, and matches words without case or punctuation', async () => {
+  assert.deepEqual(await errorsOf(graph([{ focus: 'S', say: 'Two plus one, which is three.', draw: [{ circle: 'S', when: 'which is THREE' }, { tick: 'A', when: 'is four' }] }])), [
+    'scenes[0].steps[0].draw[1].when: "is four" is not in the step\'s say; copy the words the item should start on',
+  ]);
+});
+
+test('validate fails on an erase of an id never drawn, or not on the board yet', async () => {
+  assert.deepEqual(
+    await errorsOf(
+      graph([
+        { focus: 'S', say: 'x', erase: ['later', 'nope'] },
+        { focus: 'A', say: 'y', draw: [{ circle: 'A', id: 'later' }] },
+      ]),
+    ),
+    [
+      'scenes[0].steps[0].erase[0]: "later" is not on the board at this step; it is drawn later or already erased',
+      'scenes[0].steps[0].erase[1]: no item has the id "nope"; give the item to erase an "id"',
+    ],
+  );
+});
+
+test('validate fails on an arrow from an id drawn later in the scene or later in the step', async () => {
+  assert.deepEqual(
+    await errorsOf(
+      graph([
+        { focus: 'S', say: 'x', draw: [{ arrow: ['sum', 'A'] }, { write: '2 + 1', near: 'B', id: 'sum' }] },
+        { focus: 'A', say: 'y', erase: true, draw: [{ arrow: ['sum', 'A'] }] },
+      ]),
+    ),
+    [
+      'scenes[0].steps[0].draw[0].arrow[0]: "sum" is an item id that is not on the board at this step; draw it in an earlier item or step',
+      'scenes[0].steps[1].draw[0].arrow[0]: "sum" is an item id that is not on the board at this step; draw it in an earlier item or step',
+    ],
+  );
+});
+
+test('validate fails on items that draw nothing, two things, or a write with no place', async () => {
+  assert.deepEqual(
+    await errorsOf(graph([{ focus: 'S', say: 'x', draw: [{ note: 'hi' }, { circle: 'S', box: 'A' }, { write: 'hi' }, { circle: 'S', colour: 'good', side: 'up', at: [0.5, 0.5] }] }])),
+    [
+      'scenes[0].steps[0].draw[0]: names nothing to draw; give it one of circle, box, underline, strike, cross, tick, brace, arrow, write',
+      'scenes[0].steps[0].draw[1]: names circle and box; an item draws one thing, so split it into 2 items',
+      'scenes[0].steps[0].draw[2].write: needs "near", a ref or item id to write beside, or "at", an [x, y] point on the stage; give one',
+      'scenes[0].steps[0].draw[3].colour: is not an ink field; an item takes one of circle, box, underline, strike, cross, tick, brace, arrow, write, and note, when, tone, side, id, near, at',
+      'scenes[0].steps[0].draw[3].at: only "write" takes it; a circle goes on what it names',
+      'scenes[0].steps[0].draw[3].side: must be one of above, below, left, right',
+    ],
+  );
+});
+
+test('validate fails on draw on a scene type without refs', async () => {
+  const flow = { type: 'flow', narration: 'x', steps: [{ actor: 'a', action: 'b', say: 'c', draw: [{ circle: 0 }] }] };
+  assert.ok((await errorsOf(flow)).includes('scenes[0].steps[0].draw: flow steps take no draw; ink goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, svg, intent, code'));
+});
+
+test('a code step names lines by number or range, and any other string as text on its own lines', () => {
+  const hunk = {
+    id: 'h1',
+    lines: [
+      { type: 'context', text: 'const max = 20;', oldLine: 1, newLine: 1 },
+      { type: 'add', text: 'if (count > max) return 429;', oldLine: null, newLine: 2 },
+      { type: 'add', text: 'count = count + 1;', oldLine: null, newLine: 3 },
+    ],
+  };
+  const scene = { type: 'code', hunkId: 'h1', narration: 'x', steps: [{ lines: '2-3', say: 'y', draw: [{ circle: '429' }, { underline: '2-3' }, { box: 'count' }, { tick: 'max = 20' }] }] };
+  const { items, problems } = inkBoard(scene, { h1: hunk });
+  assert.deepEqual(items.map((it) => it.targets), [[{ keys: ['tx:1:24:3'] }], [{ keys: ['ln:1', 'ln:2'] }]]);
+  assert.deepEqual(problems.map((p) => p.message), [
+    '"count" occurs 3 times on the step\'s lines; lengthen it until it names one place',
+    '"max = 20" is not on the step\'s lines; name a line number, an "a-b" range, or text copied exactly from the code',
+  ]);
+});
+
+test('a cue is found among the spoken words and timed where the voice says it', () => {
+  assert.equal(cueWord('But going S to B costs two plus one, which is three.', 'Two Plus one'), 6);
+  assert.equal(cueWord('two plus one', 'plus two'), -1);
+  const scene = graph([{ focus: 'S', say: 'one two three four five six seven eight nine ten' }]);
+  const step = sceneSegments(scene)[1];
+  // Ten words over the estimated reading time: "six" is word 5, halfway through, less the 3-frame lead.
+  assert.equal(cueFrame(step, 'six'), step.voiceFrom + Math.round(step.speakingFrames / 2) - 3);
+  assert.equal(cueFrame(step, 'eleven'), null);
+});

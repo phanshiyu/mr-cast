@@ -118,6 +118,56 @@ export interface PenMarks {
   mark?: PenMark;
   /** A short handwritten label beside the mark, up to 40 characters, e.g. "single point of failure". Needs `mark`. */
   note?: string;
+  /**
+   * Things the pen writes and draws on the scene at this step, which stay on the board until a step erases them,
+   * e.g. [{ "circle": "A", "note": "start" }, { "write": "2 + 1 = 3", "near": "A", "when": "two plus one" }].
+   * Items without `when` draw one after another from the step's start.
+   */
+  draw?: InkItem[];
+  /** Takes ink off the board when this step starts, before its own `draw`: `true` for all of it, or a list of item ids. */
+  erase?: true | string[];
+}
+
+/** A point on the stage, as fractions of its width and height from the top left, e.g. [0.5, 0.1]. */
+export type InkPoint = [x: number, y: number];
+
+/**
+ * One thing the pen draws, named by exactly one verb. A ref is what the step's `focus` takes; on a code step it is a
+ * line number, an "a-b" range, or text that occurs once on the step's lines.
+ */
+export interface InkItem {
+  /** A loop around it. */
+  circle?: FocusRef | FocusRef[];
+  /** A rectangle around it. */
+  box?: FocusRef | FocusRef[];
+  /** A line under it. */
+  underline?: FocusRef | FocusRef[];
+  /** One line through it. */
+  strike?: FocusRef | FocusRef[];
+  /** An X over it. */
+  cross?: FocusRef | FocusRef[];
+  /** A check mark to its right. */
+  tick?: FocusRef | FocusRef[];
+  /** A curly brace along the span the refs cover, below a wide span and right of a tall one unless `side` says. */
+  brace?: FocusRef | FocusRef[];
+  /** An arrow from one thing to another; either end is a ref, an earlier item's `id`, or an [x, y] point. */
+  arrow?: [from: FocusRef | InkPoint, to: FocusRef | InkPoint];
+  /** Handwritten text, up to 40 characters a line ("\n" breaks lines), placed `near` a ref or `at` a point. */
+  write?: string;
+  /** For `write`: the ref or item id to write beside, in the clearest spot unless `side` says. */
+  near?: FocusRef;
+  /** For `write`: the text's top left corner on the stage. */
+  at?: InkPoint;
+  /** Which side of its target a brace, a `write` with `near`, or a note goes. */
+  side?: 'above' | 'below' | 'left' | 'right';
+  /** A short handwritten label, up to 40 characters, beside a mark or brace, or along an arrow. */
+  note?: string;
+  /** Words of the step's `say` at which the item starts drawing, e.g. "two plus one". */
+  when?: string;
+  /** Pen colour. Defaults to the pen's yellow. */
+  tone?: Tone;
+  /** A name for the item, so a later arrow can point at it or `erase` can take it off. */
+  id?: string;
 }
 
 /** One beat of a diagram: what to light, and the words spoken while it is lit. */
