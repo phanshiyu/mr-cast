@@ -97,6 +97,20 @@ export function besideBox(t: Box, side: InkSide, size: Size, off: number): Box {
   }
 }
 
+/**
+ * A box of `size` on side `side` of `t`, `off` px out, and further out past what it would land on that is part of the
+ * target's own column or row and wider than it, such as the foot of a bar above its chart label. Level with `t`.
+ */
+export function besideClear(t: Box, side: InkSide, size: Size, off: number, obstacles: readonly Box[], area: Box): Box {
+  const across = side === 'left' || side === 'right';
+  const box = keepIn(besideBox(t, side, size, off), area);
+  const spans = (o: Box) => (across ? o.x < right(t) && right(o) > t.x : o.y < bottom(t) && bottom(o) > t.y);
+  const wider = obstacles.filter((o) => overlapArea(box, o) > 0 && overlapArea(o, t) === 0 && spans(o));
+  if (!wider.length) return box;
+  const past = union([t, ...wider])!;
+  return keepIn(besideBox(across ? { ...past, y: t.y, height: t.height } : { ...past, x: t.x, width: t.width }, side, size, off), area);
+}
+
 /** The target grown to take in what hangs off it on `side` within reach, such as index labels under cells, so a brace clears them. */
 export function clearOf(t: Box, side: InkSide, obstacles: readonly Box[]): Box {
   const reach = 46;

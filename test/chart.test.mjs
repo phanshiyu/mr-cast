@@ -69,7 +69,7 @@ export const delayRender = () => 0;
 export const continueRender = () => {};`;
 const root = new URL('..', import.meta.url).pathname;
 const player = await build({
-  stdin: { contents: `export { Chart } from './src/components/Chart.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`, resolveDir: root, loader: 'ts' },
+  stdin: { contents: `export { Chart } from './src/components/Chart.tsx'; export { chartStepTargets } from './src/utils/chartTargets.ts'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`, resolveDir: root, loader: 'ts' },
   bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent', loader: { '.woff2': 'empty' },
   banner: { js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});` },
   plugins: [{ name: 'remotion', setup: (b) => {
@@ -77,7 +77,7 @@ const player = await build({
     b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({ contents: REMOTION, loader: 'js', resolveDir: root }));
   } }],
 });
-const { Chart, renderToStaticMarkup, createElement } = await import(`data:text/javascript;base64,${Buffer.from(player.outputFiles[0].text).toString('base64')}`);
+const { Chart, chartStepTargets, renderToStaticMarkup, createElement } = await import(`data:text/javascript;base64,${Buffer.from(player.outputFiles[0].text).toString('base64')}`);
 const drawn = (scene) => renderToStaticMarkup(createElement(Chart, { scene, hunks: {}, durationInFrames: 300, segments: [{ text: 'x', from: 0, markFrom: 0, voiceFrom: 0, durationInFrames: 300, speakingFrames: 60, clip: undefined }] }));
 
 test('a drawn chart prints its prefix on the values and axis, and its legend names only the series', () => {
@@ -88,4 +88,16 @@ test('a drawn chart prints its prefix on the values and axis, and its legend nam
   const unit = drawn({ type: 'chart', kind: 'bar', unit: '×', narration: 'x', labels: ['Pi 4', 'Pi 5'], series: [{ name: 'times the Pi 4', values: [1, 3] }, { name: 'claim', values: [1, 2] }] });
   assert.match(unit, />3×</);
   assert.doesNotMatch(unit, /·/);
+});
+
+test('handwriting beside a chart label steps out past the foot of the bar above it, level with the label', () => {
+  const draw = [{ write: 'mostly the newer core,\nnot the clock', near: 'Pi 5', side: 'left' }];
+  const scene = { type: 'chart', kind: 'bar', unit: '×', narration: 'x', labels: ['Pi 4', 'Pi 5'], series: [{ name: 'times the Pi 4', values: [1, 3] }], steps: [{ focus: 'Pi 5', say: 'Most of it is the core.', draw }] };
+  const segments = [{ text: 'x', from: 0, markFrom: 0, voiceFrom: 0, durationInFrames: 30, speakingFrames: 20 }, { text: 'Most of it is the core.', from: 30, markFrom: 30, voiceFrom: 30, durationInFrames: 270, speakingFrames: 60 }];
+  const html = renderToStaticMarkup(createElement(Chart, { scene, hunks: {}, durationInFrames: 300, segments }));
+  const lines = [...html.matchAll(/left:([\d.]+)px;top:([\d.]+)px;height:\d+px;width:([\d.]+)px/g)].map((m) => ({ left: +m[1], top: +m[2], right: +m[1] + +m[3] - 20 }));
+  const [bar, label] = [chartStepTargets(scene)[0].obstacles[1], chartStepTargets(scene)[0].boxes.get('l:1')];
+  assert.deepEqual([bar.x, label.y], [1197.75, 767]);
+  // The first line ends 16px short of the bar's foot at 1197.75, not across it; the second is on the label's row.
+  assert.deepEqual(lines, [{ left: 782.75, top: 704, right: 1181.75 }, { left: 782.75, top: 754, right: 1022.75 }]);
 });

@@ -158,7 +158,7 @@ export interface InkItem {
   near?: FocusRef;
   /** For `write`: the text's top left corner on the stage. */
   at?: InkPoint;
-  /** Which side of its target a brace, a `write` with `near`, or a note goes. */
+  /** Which side of its target a brace, a `write` with `near`, or a note goes. A `write` steps past what stands on its target's column or row, such as the bar above a chart label. */
   side?: 'above' | 'below' | 'left' | 'right';
   /** A short handwritten label, up to 40 characters, beside a mark or brace, or along an arrow. */
   note?: string;
