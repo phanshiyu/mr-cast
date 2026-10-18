@@ -2,7 +2,7 @@
 
 ## 0.28.0
 
-Motion and three new scenes. Any stepped scene can zoom and pan with a step's `camera`, svg shapes move, trace and morph, charts move and sort into races, and code types itself beside its output. A `plot` scene draws numeric axes whose curves reshape, a `map` scene draws countries, places and routes on a real world map, and an `image` scene shows a photo or screenshot. Storyboards written for 0.27 draw as before.
+Motion, three new scenes and ten new worked examples. Any stepped scene can zoom and pan with a step's `camera`, svg shapes move, trace and morph, charts move and sort into races, and code types itself beside its output. A `plot` scene draws numeric axes whose curves reshape, a `map` scene draws countries, places and routes on a real world map, and an `image` scene shows a photo or screenshot. Storyboards written for 0.27 draw as before, apart from four small changes the fixes below list.
 
 **A camera on every stepped scene.** A step's `camera` zooms and pans to what it names, a ref, a list of refs or `{ "on": refs, "zoom": 3 }`, and `"all"` pulls back to the whole scene (ADR 0028).
 
@@ -15,7 +15,7 @@ Motion and three new scenes. Any stepped scene can zoom and pan with a step's `c
 - A move goes outside the element's own transform and tweens function by function, so a needle turns about its pivot; `""` puts it back. A trace shows a hidden line and draws it at about 40 px a frame. A morph turns both paths into cubic curves and splits the shorter until they pair, so a circle of arcs becomes a square of lines; naming a path after itself restores it.
 - `validate` fails on a move of the root or with another function, a trace of something with no line or with a `when` the step does not say, a morph to or from anything but a path or between paths with a different number of outlines, and trace or morph on another scene type. A hidden path a morph borrows its shape from is not reported as never drawn.
 - Demos: `examples/primitives/motion` proves a² + b² = c² by sliding four triangles, and fills a tank; `examples/primitives/camera` zooms into a cell and follows a search. References: `camera.md` and `motion.md`.
-- Storyboards without a camera or motion render pixel for pixel as in 0.27.
+- Storyboards without a camera or motion render as in 0.27, apart from the fixes below.
 
 **A `plot` scene.** Numeric axes with lines, curves, data, points, arrows and shaded areas, whose numbers can be expressions in named parameters that steps change, so a curve reshapes and a point moves (ADR 0029).
 
@@ -34,7 +34,7 @@ Motion and three new scenes. Any stepped scene can zoom and pan with a step's `c
 - **`validate`** fails on an unknown country (suggesting the code), a point out of range (naming a `[lng, lat]` swap), a route stop that is no place, an id named like a country, and a `when` the say lacks. It warns when labels overlap or run off the stage at a step's view, when a step lights something its view leaves off screen, and when a view is narrower than 0.5°. The highlight check reads map scenes, countries by name included.
 - `examples/primitives/map` flies Singapore to London on the great circle, then traces the 49th parallel from the Lake of the Woods to the coast and zooms on Point Roberts, with its facts and sources in its `generate.mjs`.
 
-**Charts that move.** A chart step's `set` gives new values, a series by name or one value `"series@label"`, and the bars, points and slices move to them as the step starts while the printed values count. `sort` orders bars and slices by value, on the scene or per step, and bars that change places slide past each other, so `horizontal` bars with a `callout` for the year make a bar chart race. New `kind`s `pie` and `donut` draw one series as slices with a legend of values and shares, and `stacked` stacks bar series with each stack's total above it. Chart scenes take a `callout`. Existing charts render pixel for pixel as in 0.27 (ADR 0031).
+**Charts that move.** A chart step's `set` gives new values, a series by name or one value `"series@label"`, and the bars, points and slices move to them as the step starts while the printed values count. `sort` orders bars and slices by value, on the scene or per step, and bars that change places slide past each other, so `horizontal` bars with a `callout` for the year make a bar chart race. New `kind`s `pie` and `donut` draw one series as slices with a legend of values and shares, and `stacked` stacks bar series with each stack's total above it. Chart scenes take a `callout`. Existing charts render as in 0.27 apart from the legend's unit, which the fixes below drop (ADR 0031).
 
 - **`validate`** fails on a set that names no series or value, a series set with the wrong number of values, a negative bar or slice, a pie or donut with other than one series or with every slice 0 at a step, `horizontal`, `stacked` or `sort` on a line, an `annotation` on a horizontal chart or a pie, and `show` or `hide` on a chart. It warns past 8 slices, and on value labels that run together in any step's values.
 - A chart step with no `focus` lights what it sets. `mr-cast steps` lists each step's new values and sorting.
@@ -55,6 +55,22 @@ New demos: `examples/primitives/chart-motion`, `examples/primitives/code-typing`
 - **One `trace`.** svg, plot and map steps trace the same way: an entry is an id, or `{ "ref": id, "when": words of the say }` on svg and map; a plot's entries are ids, timed by the step's own `when`. On svg the words are where the line starts drawing, and on a map where the route arrives. `validate` reports a trace the same way on each, and on any other scene says which scenes take it.
 - **The camera on the new scenes.** Plot, chart (every kind) and image steps take `camera`. A `camera` on a map step is refused with a pointer to `view`, and one on a picture with `kenBurns` is refused, since the picture already moves. Chart boxes now reach `validate`, so it warns when a camera crops a lit bar or slice, and the soft-picture warning counts how close a pan, zoom or camera brings the picture.
 - **Ink follows what it marks.** A circle round a bar slides with the bar when a sort moves it, and ink on a plot point, a moved svg shape or a map place moves with it as each later step settles.
+
+**Ten new worked examples, beyond software.** `math/fourier` (a square wave from sine waves), `money/compound-interest` (the rule of 72 against inflation), `science/gps-relativity`, `science/mrna-vaccine`, `tech/docker-100s`, `hardware/cpu-adder`, `geography/49th-parallel`, `product/raspberry-pi` (Pi 5 against Pi 4), `cooking/bread` (baker's percentages) and `language/ser-estar`. Each `generate.mjs` computes and checks its numbers and names its sources. The gallery groups the examples by subject, and the skill lists all twenty-one in `references/examples.md` with the scenes each uses, so SKILL.md stays inside its budget (ADR 0034).
+
+**Fixes the examples found** (ADR 0034). Each has a test that fails without it, and the examples dropped their workarounds.
+
+- **plot.** A part a step traces starts undrawn, as a traced map route does, so it no longer shows during the narration before its trace; `hidden` is no longer needed. Lines are drawn about every 2 screen pixels for the camera's view, so 50 sine waves at zoom 3 stay smooth; labels and ink stay where the plain samples put them.
+- **svg.** A `move` given as `{ "to": transform, "when"?: words }` plays evenly from its words to the end of the step's voice, so a full orbit no longer spins in half a second; a plain string tweens as before. A `<tspan id>` has its own box, laid out run by run in the player's font, so ink, the camera and focus can name one word of a sentence, and the space between two tspans is kept. `validate` fails on ink that names an element with nothing on the stage instead of drawing nothing.
+- **chart.** `prefix` prints before each value, after any minus sign, so `"$"` reads "$35" rather than "35 $". The legend no longer repeats the unit. A `write` beside a chart label steps out past the bar above it instead of landing in the bar's foot.
+- **text.** A question lead keeps the right fifth of the card for its question mark, so `sides` and items never run under it, and the fit check reports any text that would. A lone question's mark is at most 585 px tall.
+- **compare and every fitted text.** A written `"\n"` breaks the line and counts toward the slot's lines and height, so a compare row grows to hold it and the fit check reports too many lines.
+- **table.** A cell that is only a percentage, such as "100%", is drawn as text, not code.
+- **The highlight check.** "a two" in speech is no longer read as `a[2]` for a row named `a`: the spoken "name index" form needs a row name of three or more letters, and short names use "a cell 2" or "a index 2".
+- **code.** Dockerfiles are coloured (`language: "docker"` or `"dockerfile"`), from Prism's grammar copied into `src/utils/prismDocker.ts`.
+- **timeline.** `unit` also takes `wk`, `mo` and `yr`.
+- **What 0.27 storyboards see.** Every scene of every older example was rendered at 0.27 plus the new scenes and again with these fixes: 211 of 227 stills are pixel-identical. The 16 that differ are the four intended changes: ten charts lose the legend's "· unit", three question cards draw their mark a little smaller and further right, one table draws its percentages in the text font, and two plots draw their lines through more points.
+- CONTRIBUTING says to copy an example before running `voice`, `play` or `render` on it by hand, since they write `audio/` and `voiceover.json` into the directory.
 
 ## 0.27.0
 

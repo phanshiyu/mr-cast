@@ -34,6 +34,14 @@ Worked examples explain an idea with real numbers, such as Dijkstra's shortest p
   <img src="docs/assets/examples/explain-gpt.png" width="32%" alt="How a GPT picks the next word: a table of six candidate tokens with their scores, e to the score, and their chances.">
 </p>
 
+They work outside software too, such as a square wave built from sine waves, the 49th parallel and a loaf of bread:
+
+<p align="center">
+  <img src="docs/assets/examples/math-fourier.png" width="32%" alt="A square wave from sine waves: a plot where five sine waves added together almost make a square wave, its peak marked at 1.06.">
+  <img src="docs/assets/examples/geography-49th-parallel.png" width="32%" alt="The 49th parallel: a map of the Oregon Country, with the 54°40′ line crossed out and the 49th parallel drawn across.">
+  <img src="docs/assets/examples/cooking-bread.png" width="32%" alt="Bread by baker's percentages: a timeline of one loaf from mixing to baking, its two rises marked as 77% waiting.">
+</p>
+
 The [gallery](docs/gallery.md) has each example's still, storyboard and video, and a short demo of every scene type.
 
 ## Install
