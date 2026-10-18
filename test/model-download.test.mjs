@@ -8,6 +8,8 @@ import path from 'node:path';
 
 const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-model-download-')));
 after(() => fs.rmSync(root, { recursive: true, force: true }));
+// The voice children it starts record themselves in the process registry.
+process.env.XDG_STATE_HOME = path.join(root, 'state');
 
 const { ensureVoiceover } = await import('../bin/lib/voice.mjs');
 const { ensureVoiceoverInChild } = await import('../bin/lib/voice-child.mjs');

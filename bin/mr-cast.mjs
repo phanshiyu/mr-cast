@@ -16,6 +16,7 @@ import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsF
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { createServing } from './lib/serving.mjs';
+import { countLine, exitedPids, formatPs, formatStopChoices, listProcesses, procJson, procsDir, register, runFields, selectProcs, stopChoices, stopProcesses } from './lib/procs.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, plural, summarizeFiles } from './lib/summary.mjs';
@@ -51,6 +52,12 @@ commands under "Used by the Claude Code skills" for you.
                     list what mr-cast stored (walkthroughs, videos, voice clips, downloads) with sizes;
                     with ids, --kind or --all, delete exactly what they pick (--dry-run only prints it);
                     --choices prints a menu of common picks, each with the command that deletes it
+  ps [--json]       list the running mr-cast servers, renders and voicings, with their URL, run, age and
+                    whether a page is open
+  stop <pid|run|all> [--idle] [--older-than 2h] [--any-repo] [--dry-run] [--json]
+                    stop those processes and their children; a run is this repository's unless
+                    --any-repo; --idle only servers with no page open;
+                    --choices prints a menu of common picks, each with the command that stops it
   voices [--sample engine:name] [--out file.wav]
                     list the voice engines, whether each model is downloaded, and their voices;
                     --sample voices one sentence into a WAV file to hear before choosing
@@ -70,16 +77,18 @@ Used by the Claude Code skills:
                     quick one's scenes
   snippet <file>:<start>-<end> ...
                     add real source lines (at most 80 per snippet) to the run as code for scenes, ids s1, s2, ...
-  plan [--port N] [--no-open]
+  plan [--port N] [--no-open] [--idle-exit minutes]
                     check the run's plan.json and open the page where the user picks each topic's depth
-                    and view; the picks are written back into plan.json
+                    and view; the picks are written back into plan.json; replaces and exits like play
   schema [type|all] print the storyboard's TypeScript schema: with a scene type, such as array, that scene's
                     fields and every type they use; with none, the storyboard and what every scene shares
   validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
-  play [--port N] [--no-open]
+  play [--port N] [--no-open] [--idle-exit minutes]
                     serve the live player (default port 4747), voice the narration, then open the browser;
-                    the URL is printed at once, and its page waits for the voice
+                    the URL is printed at once, and its page waits for the voice; it replaces a player
+                    already running for the run, and exits once no page has been open for --idle-exit
+                    minutes (default 30; 0 never)
   render [--out file.mp4]
                     voice the narration and render an MP4 with chapter markers, named after the storyboard title
 
@@ -423,6 +432,48 @@ function ensureDist() {
   return dist;
 }
 
+/** --idle-exit in milliseconds, or 0 to keep running. */
+function idleExitMs(value) {
+  const minutes = Number(value);
+  // A timer longer than 2^31 ms (24.8 days) fires at once, so longer limits are refused.
+  if (value.trim() === '' || !(minutes >= 0 && minutes <= 35_000)) throw new UserError(`--idle-exit takes minutes from 0 to 35000, where 0 never exits (got "${value}")`);
+  return minutes * 60_000;
+}
+
+const SERVER_OPTIONS = { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, 'idle-exit': { type: 'string', default: '30' } };
+
+/** The signal a play or plan server gets from the next one of its run: it stops, but lets a model download finish. */
+const REPLACED = 'SIGUSR2';
+
+/**
+ * Stops the `kind` server already serving run `dir`, so a run has one player and one plan page: the new one is started
+ * with this command's flags and this mr-cast's code, and the run's clips are on disk already. The old server stops its
+ * own voicing; a model download it started runs on, and this one's download waits for it.
+ */
+async function replaceRunning(kind, dir) {
+  const old = listProcesses().filter((p) => p.registered && p.kind === kind && p.dir === path.resolve(dir));
+  if (old.length === 0) return;
+  for (const p of old) console.error(`mr-cast: stopping the ${kind} server already running for this run (pid ${p.pid}, ${p.url}); this one replaces it`);
+  const results = await stopProcesses(old, { signal: REPLACED });
+  for (const { proc, outcome } of results) if (outcome === 'failed') console.error(`mr-cast: warning: pid ${proc.pid} did not stop; both run until it does`);
+}
+
+/**
+ * Records a server in the registry before it starts, so it is there to hear the first deadline, then its URL, the
+ * pages open on it and when it exits for want of one, which `startServer`'s onViewers and idle.onDeadline keep current.
+ */
+function registerServer(kind, dir, idleMs) {
+  const since = () => new Date().toISOString();
+  const entry = register({ kind, url: null, ...runFields(dir), viewers: 0, idleSince: since(), idleExit: idleMs / 60_000, exitsAt: null });
+  return {
+    url: (url) => entry.update({ url }),
+    viewers: (viewers) => entry.update({ viewers, idleSince: viewers ? null : since() }),
+    deadline: (ms) => entry.update({ exitsAt: ms === null ? null : new Date(ms).toISOString() }),
+  };
+}
+
+const idleMessage = (what, ms) => `mr-cast: no page has been open for ${plural(ms / 60_000, 'minute')}, so the ${what} stopped (--idle-exit 0 keeps it running)`;
+
 function openBrowser(url) {
   const [cmd, args] = process.platform === 'darwin' ? ['open', [url]]
     : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
@@ -497,17 +548,17 @@ function voicingLine(storyboard, voiced) {
  * keeps the open page on its version, with its voice, until the edit is voiced, then reloads it once.
  */
 async function play(argv) {
-  const { values } = parseArgs({
-    args: argv,
-    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...RUN_OPTIONS },
-  });
+  const { values } = parseArgs({ args: argv, options: { ...SERVER_OPTIONS, ...RUN_OPTIONS } });
   const port = intOption(values.port, 'port', 1);
+  const idleMs = idleExitMs(values['idle-exit']);
   const { settings, ...run } = runFor(values);
   const { dir, raw, storyboard } = await loadValidProject(run.dir, settings);
   const distDir = ensureDist();
+  await replaceRunning('play', dir);
 
   let server = null;
   let stopped = false;
+  let ready = false;
   // The voicing line on screen, which the other output of play prints above.
   let line = null;
   const log = (msg) => (line ? line.log(msg) : console.error(msg));
@@ -548,21 +599,31 @@ async function play(argv) {
   };
 
   reportPace(serving.voiceover());
+  // Set before the server starts counting, so a storyboard voiced already counts from the start.
+  serving.ready.then(() => { ready = true; });
+  const registered = registerServer('play', dir, idleMs);
+  // Not while a voicing runs: the page opens only once the first is done, and an edit's reloads the page once voiced.
+  const idle = idleMs ? {
+    ms: idleMs, busy: () => !ready || serving.holding(), onDeadline: registered.deadline, onIdle: () => { log(idleMessage('player', idleMs)); shutdown(); },
+  } : null;
   server = await startServer({
     distDir, dataDir: dir, port, onDataChange, holding: serving.holding, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard, audience: settings.audience,
+    onViewers: registered.viewers, idle,
   });
   const url = `${server.url}/#token=${server.token}`;
+  registered.url(url);
   console.log(`mr-cast player: ${url}`);
 
   // Once a voice model has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
-  const shutdown = () => {
+  const shutdown = ({ keepDownloads = false } = {}) => {
     stopped = true;
-    stopVoicing();
+    stopVoicing({ keepDownloads });
     return server.close();
   };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', () => shutdown());
+  process.once('SIGTERM', () => shutdown());
+  process.once(REPLACED, () => shutdown({ keepDownloads: true }));
 
   serving.start();
   await serving.ready;
@@ -578,11 +639,9 @@ function planLines(planFile) {
 
 /** Serves the plan page, where the user picks each topic's depth and view before the storyboard is written. */
 async function plan(argv) {
-  const { values } = parseArgs({
-    args: argv,
-    options: { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, ...RUN_OPTIONS },
-  });
+  const { values } = parseArgs({ args: argv, options: { ...SERVER_OPTIONS, ...RUN_OPTIONS } });
   const port = intOption(values.port, 'port', 1);
+  const idleMs = idleExitMs(values['idle-exit']);
   const { dir, settings } = runFor(values);
   const preread = settings.audience === 'preread';
   const planFile = readPlan(dir, { preread });
@@ -602,13 +661,20 @@ async function plan(argv) {
     console.error('mr-cast: plan.json changed');
     for (const line of planLines(changed)) console.error(`  ${line}`);
   };
-  const server = await startServer({ distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings), audience: settings.audience });
+  await replaceRunning('plan', dir);
+  const registered = registerServer('plan', dir, idleMs);
+  const idle = idleMs ? { ms: idleMs, onDeadline: registered.deadline, onIdle: () => { console.error(idleMessage('plan page', idleMs)); shutdown(); } } : null;
+  const server = await startServer({
+    distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings), audience: settings.audience, onViewers: registered.viewers, idle,
+  });
   const url = `${server.url}/plan#token=${server.token}`;
+  registered.url(url);
   console.log(`mr-cast plan: ${url}`);
   if (!values['no-open']) openBrowser(url);
   const shutdown = () => server.close();
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
+  process.once(REPLACED, shutdown);
 }
 
 async function importRender() {
@@ -641,10 +707,16 @@ function progressReporter(label) {
 async function render(argv) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...RUN_OPTIONS } });
   const run = runFor(values);
+  register({ kind: 'render', url: null, ...runFields(run.dir) });
   const { dir, hunks, storyboard, images, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = await voiceoverFor(dir, storyboard, run.settings);
   reportPace(voiceover);
-  const { renderVideo } = await importRender();
+  const { renderVideo, closeBrowsers } = await importRender();
+  // `mr-cast stop` sends SIGTERM. Without a handler Node exits at once, and on Linux the Chrome it started runs on.
+  process.once('SIGTERM', async () => {
+    await closeBrowsers();
+    process.exit(143);
+  });
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   const progress = progressReporter('rendering');
@@ -891,6 +963,8 @@ function status(argv) {
   }
   const last = lastChoices();
   out.push(`last pace: ${last.pace ?? 'none yet'}`, `last voice: ${last.voice ?? `none yet (default ${DEFAULT_VOICE})`}`);
+  const running = countLine(listProcesses());
+  if (running) out.push(`running: ${running} · \`mr-cast ps\` lists them, \`mr-cast stop\` stops them`);
   console.log(out.join('\n'));
 }
 
@@ -920,6 +994,8 @@ async function prune(argv) {
   if (values.choices) {
     if (selecting || olderThanDays !== null || selector.except.length || values['dry-run']) throw new UserError('--choices takes only --json');
     const choices = pruneChoices(listing);
+    // Running processes are offered beside the files; their options' commands are `stop`, not `prune`.
+    choices.groups.push(...stopChoices(listProcesses()).groups);
     print(choices, formatChoices(choices));
     return;
   }
@@ -950,6 +1026,51 @@ async function prune(argv) {
   if (skipped.length) process.exitCode = 1;
 }
 
+function psCommand(argv) {
+  const { values } = parseArgs({ args: argv, options: { json: { type: 'boolean', default: false } } });
+  const list = listProcesses();
+  if (values.json) console.log(JSON.stringify({ stateDir: procsDir(), processes: list.map(procJson) }, null, 2));
+  else for (const line of formatPs(list)) console.log(line);
+}
+
+const STOPPED = { stopped: 'stopped', killed: 'killed (it ignored SIGTERM for 5 s)', gone: 'already gone', failed: 'could not stop' };
+
+async function stop(argv) {
+  const { values, positionals } = parseArgs({
+    args: argv, allowPositionals: true,
+    options: {
+      'older-than': { type: 'string' }, idle: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false },
+      choices: { type: 'boolean', default: false }, json: { type: 'boolean', default: false }, 'any-repo': { type: 'boolean', default: false },
+    },
+  });
+  const print = (json, lines) => (values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l)));
+  const list = listProcesses();
+  if (values.choices) {
+    if (positionals.length || values.idle || values['older-than'] !== undefined || values['dry-run'] || values['any-repo']) throw new UserError('--choices takes only --json');
+    const choices = stopChoices(list);
+    print(choices, formatStopChoices(choices));
+    return;
+  }
+  const repo = values['any-repo'] ? null : findRepoRoot() ?? process.cwd();
+  // A menu's pids can exit before the user answers; the rest are still stopped.
+  const exited = exitedPids(list, positionals);
+  const targets = positionals.filter((t) => !exited.includes(t));
+  const chosen = exited.length && targets.length === 0 ? [] : selectProcs(list, { targets, olderThan: values['older-than'] ?? null, idle: values.idle, repo });
+  const describe = (p) => `${p.kind} ${p.pid}${p.parent === null ? [p.run, p.url].filter(Boolean).map((x) => ` · ${x}`).join('') : ` (with ${p.parent})`}`;
+  const skipped = exited.map((pid) => `skipped pid ${pid}: it has exited already`);
+  const lines = (done) => [...skipped, ...(done.length || skipped.length ? done : ['nothing matched'])];
+  if (values['dry-run']) {
+    print({ dryRun: true, processes: chosen.map(procJson), exited: exited.map(Number) }, lines(chosen.map((p) => `would stop ${describe(p)}`)));
+    return;
+  }
+  const results = await stopProcesses(chosen);
+  print(
+    { dryRun: false, processes: results.map(({ proc, outcome }) => ({ ...procJson(proc), outcome })), exited: exited.map(Number) },
+    lines(results.map(({ proc, outcome }) => `${STOPPED[outcome]} ${describe(proc)}`)),
+  );
+  if (results.some((r) => r.outcome === 'failed')) process.exitCode = 1;
+}
+
 async function voices(argv) {
   const { values } = parseArgs({ args: argv, options: { sample: { type: 'string' }, out: { type: 'string' }, ...SETTINGS_OPTIONS } });
   if (values.sample === undefined) {
@@ -963,7 +1084,7 @@ async function voices(argv) {
   console.log(`✓ ${voice} · ${seconds.toFixed(1)}s · ${out}`);
 }
 
-const COMMANDS = { hook, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, voices, upgrade: upgradeCommand };
+const COMMANDS = { hook, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, ps: psCommand, stop, voices, upgrade: upgradeCommand };
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);

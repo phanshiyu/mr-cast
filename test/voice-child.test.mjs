@@ -4,7 +4,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { narrationKey } from '../shared/voice.mjs';
-import { ensureVoiceoverInChild, stopVoicing } from '../bin/lib/voice-child.mjs';
+
+// The voice children it starts record themselves in the process registry.
+process.env.XDG_STATE_HOME = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-voice-child-state-'));
+const { ensureVoiceoverInChild, stopVoicing } = await import('../bin/lib/voice-child.mjs');
 
 /** A run whose every clip is already on disk, so the child only reads and returns the voice-over. */
 function voicedRun(count) {

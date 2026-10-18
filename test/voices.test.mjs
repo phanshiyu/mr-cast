@@ -21,7 +21,7 @@ function cli(...args) {
   const home = tmp();
   const env = {
     ...process.env, MR_CAST_NO_UPDATE_CHECK: '1',
-    XDG_CONFIG_HOME: path.join(home, 'config'), XDG_CACHE_HOME: path.join(home, 'cache'), CLAUDE_CONFIG_DIR: path.join(home, 'claude'),
+    XDG_CONFIG_HOME: path.join(home, 'config'), XDG_CACHE_HOME: path.join(home, 'cache'), XDG_STATE_HOME: path.join(home, 'state'), CLAUDE_CONFIG_DIR: path.join(home, 'claude'), MR_CAST_PROCS_SCAN: '0',
   };
   const run = (...more) => spawnSync(process.execPath, [BIN, ...more], { cwd: home, env, encoding: 'utf8' });
   return { home, env, run, result: run(...args) };
@@ -50,18 +50,20 @@ test('settings carry the full voice name, and --no-voice refuses --engine as it 
 
 test('the voice chosen last is remembered with its engine, and a stored bare Kokoro name reads back as Kokoro', () => {
   const { run, env } = cli('voices', '--sample', 'nope');
-  assert.equal(run('status').stdout.split('\n').at(-2), 'last voice: none yet (default kitten:luna)');
+  // Not the last line: a running mr-cast anywhere on the machine adds a `running:` line after it.
+  const lastVoice = () => run('status').stdout.split('\n').find((l) => l.startsWith('last voice:'));
+  assert.equal(lastVoice(), 'last voice: none yet (default kitten:luna)');
   // validate needs a run; a run of an explanation needs no git.
   assert.equal(run('init', '--title', 'Voices', '--engine', 'kokoro').status, 0);
-  assert.equal(run('status').stdout.split('\n').at(-2), 'last voice: kokoro:af_heart');
+  assert.equal(lastVoice(), 'last voice: kokoro:af_heart');
   assert.equal(run('init', '--title', 'Voices', '--voice', 'bruno').status, 0);
-  assert.equal(run('status').stdout.split('\n').at(-2), 'last voice: kitten:bruno');
+  assert.equal(lastVoice(), 'last voice: kitten:bruno');
   const file = path.join(env.XDG_CONFIG_HOME, 'mr-cast', 'last-choices.json');
   assert.equal(JSON.parse(fs.readFileSync(file, 'utf8')).voice, 'kitten:bruno');
   fs.writeFileSync(file, JSON.stringify({ voice: 'bf_emma' }));
-  assert.equal(run('status').stdout.split('\n').at(-2), 'last voice: kokoro:bf_emma');
+  assert.equal(lastVoice(), 'last voice: kokoro:bf_emma');
   fs.writeFileSync(file, JSON.stringify({ voice: 'kitten:af_heart' }));
-  assert.equal(run('status').stdout.split('\n').at(-2), 'last voice: none yet (default kitten:luna)');
+  assert.equal(lastVoice(), 'last voice: none yet (default kitten:luna)');
 });
 
 test('mr-cast voices lists each engine with its download, then its voices, marking the default and the last chosen', () => {

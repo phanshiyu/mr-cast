@@ -82,6 +82,12 @@ The player then has a **Plan** tab with the same picks. A pick you change there 
 
 Ask Claude to "prune mr-cast" or "clean up old mr-cast videos". The `mr-cast-prune` skill shows a menu that the CLI builds, with sizes, and runs the command the CLI gives for each pick. Claude never chooses files or deletes them itself. To do it yourself, see [`mr-cast prune`](cli.md#prune).
 
+## Stop servers left running
+
+Agents start players and plan pages in the background, and these keep running after the conversation ends. Ask Claude "which mr-cast servers are running" or "stop the mr-cast servers". The `mr-cast-prune` skill shows them in its menu, and runs the `mr-cast stop` command the CLI gives for each pick. To do it yourself, run `mr-cast ps` to list them and `mr-cast stop <pid>`, `mr-cast stop <run>` or `mr-cast stop all` to stop them. See [Running processes](cli.md#running-processes).
+
+A player or plan page with no page open exits by itself after 30 minutes. A second player of the same walkthrough replaces the first.
+
 ## Upgrade
 
 Ask Claude to "upgrade mr-cast", or run `mr-cast upgrade`. Then start a new Claude Code session, because an open session keeps the skills it loaded. See [Upgrade](cli.md#upgrade) in the command reference.

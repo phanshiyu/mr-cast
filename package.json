@@ -1,6 +1,6 @@
 {
   "name": "@shiyuphan/mr-cast",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "description": "Turn a branch, or something Claude Code explained, into a narrated, animated video.",
   "keywords": [
     "git",
@@ -96,5 +96,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@12.11.2"
+  "packageManager": "pnpm@12.13.0"
 }

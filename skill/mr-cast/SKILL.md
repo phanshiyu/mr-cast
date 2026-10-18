@@ -117,6 +117,8 @@ Start the player as a background command:
 
 It prints `mr-cast player: <url>` at once, voices the narration, and opens the browser when the voice is ready; clips already made are reused. The first use of a voice engine downloads its model, about 82 MB for Kitten or 90 MB for Kokoro. If it prints that voicing failed, the player plays silent with subtitles.
 
+A second `play` of the same run replaces the first, and a player with no page open exits after 30 minutes. `{{MR_CAST}}/bin/mr-cast ps` lists the mr-cast servers running, and `{{MR_CAST}}/bin/mr-cast stop <pid>` stops one.
+
 A voice is `engine:name`. The engines are `kitten` (the default, voice `kitten:luna`) and `kokoro` (voice `kokoro:af_heart`); `{{MR_CAST}}/bin/mr-cast voices` lists every voice with a description. Only when the user asks to change the voice, ask with AskUserQuestion for the engine, then for one of its voices from that list, and pass `--voice <engine:name>` to every command from then on. `{{MR_CAST}}/bin/mr-cast voices --sample <engine:name>` writes a sentence in that voice to a WAV file and prints its path, for a user who wants to hear one first.
 
 For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead, with a long timeout or in the background. `--out <path>` picks the location. It prints the MP4's path, then the paths of `review.md` and `reading.md` copies when it saves outside the run.
