@@ -759,7 +759,7 @@ async function play(argv) {
 
   reportPace(serving.voiceover());
   // Set before the server starts counting, so a storyboard voiced already counts from the start.
-  serving.ready.then(() => {
+  void serving.ready.then(() => {
     ready = true;
   });
   const registered = registerServer('play', dir, idleMs);
@@ -853,7 +853,7 @@ async function plan(argv) {
         onDeadline: registered.deadline,
         onIdle: () => {
           console.error(idleMessage('plan page', idleMs));
-          shutdown();
+          void shutdown();
         },
       }
     : null;
