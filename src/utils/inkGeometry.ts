@@ -175,7 +175,10 @@ export function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, 
 /** An arc from `a` to `b` that bulges `bulge` px out (right of a downward run, above a sideways one), for close neighbours. */
 export function swing(a: Pt, b: Pt, bulge: number, seed: number, pen: number): Sketch {
   const down = Math.abs(b.y - a.y) >= Math.abs(b.x - a.x);
-  const ctrl = down ? { x: Math.max(a.x, b.x) + bulge * 1.6, y: (a.y + b.y) / 2 } : { x: (a.x + b.x) / 2, y: Math.min(a.y, b.y) - bulge * 1.6 };
+  // A negative bulge swings the other way: left of a downward run, below a sideways one.
+  const ctrl = down
+    ? { x: (bulge >= 0 ? Math.max(a.x, b.x) : Math.min(a.x, b.x)) + bulge * 1.6, y: (a.y + b.y) / 2 }
+    : { x: (a.x + b.x) / 2, y: (bulge >= 0 ? Math.min(a.y, b.y) : Math.max(a.y, b.y)) - bulge * 1.6 };
   return headed(a, ctrl, b, 24, random(seed), pen);
 }
 
@@ -197,23 +200,33 @@ function headed(a: Pt, ctrl: Pt, b: Pt, n: number, rand: () => number, pen: numb
 const hits = (points: readonly Pt[], obstacles: readonly Box[]) => points.filter((p) => obstacles.some((o) => p.x > o.x && p.x < right(o) && p.y > o.y && p.y < bottom(o))).length;
 
 /**
- * The arrow from one box to another: a swing round the outside for close neighbours, else a bowed arrow that bends
- * whichever way, and as far, as crosses the fewest `obstacles` on its way.
+ * The arrow from one box to another: a swing round the outside for close neighbours; otherwise whichever bowed arrow,
+ * or swing round the side of both boxes, crosses the fewest `obstacles` on its way, the shallowest on a tie.
  */
 export function linkSketch(source: Box | null, tail: Pt, target: Box, obstacles: readonly Box[], seed: number, pen: number): Sketch {
   const tip = edgeToward(target, tail);
   const len = Math.hypot(tip.x - tail.x, tip.y - tail.y) || 1;
-  if (source && len < 140) {
-    const vertical = Math.abs(center(source).y - center(target).y) > Math.abs(center(source).x - center(target).x);
-    return vertical
-      ? swing({ x: right(source) + 12, y: center(source).y }, { x: right(target) + 12, y: center(target).y }, 70, seed, pen)
-      : swing({ x: center(source).x, y: source.y - 12 }, { x: center(target).x, y: target.y - 12 }, 60, seed, pen);
-  }
+  const vertical = source !== null && Math.abs(center(source).y - center(target).y) > Math.abs(center(source).x - center(target).x);
+  const round = (side: 1 | -1, bulge: number): Sketch | null => {
+    if (!source) return null;
+    if (vertical) {
+      const x = (b: Box) => (side > 0 ? right(b) + 12 : b.x - 12);
+      return swing({ x: x(source), y: center(source).y }, { x: x(target), y: center(target).y }, side * bulge, seed, pen);
+    }
+    const y = (b: Box) => (side > 0 ? b.y - 12 : bottom(b) + 12);
+    return swing({ x: center(source).x, y: y(source) }, { x: center(target).x, y: y(target) }, side * bulge, seed, pen);
+  };
+  if (source && len < 140) return round(1, vertical ? 70 : 60)!;
   const others = obstacles.filter((o) => overlapArea(o, grow(target, 2)) < o.width * o.height * 0.5 && (!source || overlapArea(o, grow(source, 2)) < o.width * o.height * 0.5));
+  const candidates: [Sketch | null, number][] = [
+    ...[0.15, -0.15, 0.3, -0.3, 0.5, -0.5, 0.75, -0.75].map((bow): [Sketch, number] => [bowedArrow(tail, target, seed, 34, pen, bow), Math.abs(bow) * 40]),
+    [round(1, 70), 40],
+    [round(-1, 70), 45],
+  ];
   let best: { sketch: Sketch; score: number } | null = null;
-  for (const bow of [0.15, -0.15, 0.3, -0.3, 0.45, -0.45]) {
-    const sketch = bowedArrow(tail, target, seed, 34, pen, bow);
-    const score = 100 * hits(sketch.strokes[0]!.points, others) + Math.abs(bow) * 40;
+  for (const [sketch, cost] of candidates) {
+    if (!sketch) continue;
+    const score = 100 * hits(sketch.strokes[0]!.points, others) + cost;
     if (!best || score < best.score) best = { sketch, score };
   }
   return best!.sketch;
