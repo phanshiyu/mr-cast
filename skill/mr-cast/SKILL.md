@@ -90,6 +90,16 @@ Longer explanations with real numbers, each `{{MR_CAST}}/examples/<path>/storybo
 - `architecture/h3`: `svg` maps and tilings, a `table` of resolutions, a 64-bit index as `array` cells, a k-ring on a hex grid.
 - `explain/bitcoin`: a ledger `table` whose rows arrive and get rejected, real proof of work, a `graph` chain of blocks.
 - `explain/gpt`: tokens as `array` cells, an `svg` vector plot, softmax `table`s and `chart`s at three temperatures.
+- `math/fourier`: sine waves summed on a `plot` with `trace` and `set`, a `chart` of the recipe, the camera zoomed on the jump, a `table` of the overshoot.
+- `money/compound-interest`: a year-by-year `table`, growth `trace`d on a `plot`, the rule of 72 in a `chart` with the camera, inflation drawn against it.
+- `science/gps-relativity`: satellites that `move` in an `svg` orbit, a signal `trace`d, a `chart` of the two clock effects, a `plot` of drift by height.
+- `science/mrna-vaccine`: `svg` cells whose parts `move`, `trace` and `morph`, the camera on each, a `flow` of the immune response.
+- `tech/docker-100s`: a container against a VM in `compare`, a Dockerfile in `code` with its output, `layers` of an image, a `terminal` run.
+- `hardware/cpu-adder`: bits as `array` cells, a truth `table`, a full adder and a ripple carry `trace`d through `svg` gates with the camera.
+- `geography/49th-parallel`: a border `trace`d across a `map` treaty by treaty, ink on the map, a zoomed `view` of Point Roberts.
+- `product/raspberry-pi`: a spec scorecard `table` with `tint`, `chart`s of speed and price, `compare` of what is new, ink on the verdict.
+- `cooking/bread`: a baker's formula `table`, hydration in `text` with `set`, `compare` of wet and dry dough, a scaling `chart`, a `timeline` of the bake.
+- `language/ser-estar`: two verbs in `compare`, the choice as a decision `graph`, an `svg` of the trap, ink on each.
 
 Write every narration and `say` in plain words. Stop using jargon and speak coherently. State it more simply and concisely, like one human talking to another.
 

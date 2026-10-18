@@ -33,6 +33,16 @@ const SCENE = {
   'architecture-h3': 6,
   'explain-bitcoin': 8,
   'explain-gpt': 7,
+  'math-fourier': 2,
+  'money-compound-interest': 4,
+  'science-gps-relativity': 4,
+  'science-mrna-vaccine': 2,
+  'tech-docker-100s': 2,
+  'hardware-cpu-adder': 2,
+  'geography-49th-parallel': 2,
+  'product-raspberry-pi': 1,
+  'cooking-bread': 5,
+  'language-ser-estar': 3,
 };
 
 const all = findExamples();
@@ -77,11 +87,11 @@ const describe = (type) =>
 const storyboardLink = (e) => `[examples/${e.rel}/storyboard.json](../examples/${e.rel}/storyboard.json)`;
 const videoLink = (e) => `[${e.name}.mp4](${VIDEO(e.name)})`;
 
-const examples = worked.map((e) => {
+const exampleSection = (e) => {
   const { title, subtitle, scenes } = storyboard(e);
   const scene = scenes[SCENE[e.name]];
   return [
-    `### ${title}`,
+    `#### ${title}`,
     '',
     `${subtitle}.`,
     '',
@@ -89,7 +99,12 @@ const examples = worked.map((e) => {
     '',
     `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}.`,
   ].join('\n');
-});
+};
+// Grouped by the directory under examples/ each one sits in, its domain.
+const domainOf = (e) => e.rel.split(path.sep)[0];
+const examples = [...new Set(worked.map(domainOf))].map((d) =>
+  [`### ${d[0].toUpperCase()}${d.slice(1)}`, ...worked.filter((e) => domainOf(e) === d).map(exampleSection)].join('\n\n'),
+);
 // Scene types that older storyboards still use, each drawn as a current one.
 const ALIASES = { intent: 'text' };
 const aliases = Object.entries(ALIASES).map(([type, as]) => ({
@@ -114,7 +129,7 @@ const gallery = `# Gallery
 
 <!-- Written by scripts/gallery.mjs from examples/ and skill/mr-cast/references/scenes/; edit those and rerun it. -->
 
-Worked examples, then one short demo per scene type, then a demo of the ink any stepped scene can draw. Each still is one scene at the end of its last step, from \`mr-cast still\`. Each video is the whole storyboard, rendered by CI and attached to the latest release.
+Worked examples grouped by subject, then one short demo per scene type, then a demo of the ink any stepped scene can draw. Each still is one scene at the end of its last step, from \`mr-cast still\`. Each video is the whole storyboard, rendered by CI and attached to the latest release.
 
 ## Examples
 
