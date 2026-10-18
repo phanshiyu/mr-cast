@@ -312,7 +312,7 @@ Storyboard: [examples/primitives/timeline/storyboard.json](../examples/primitive
 
 ### camera
 
-A camera on any stepped scene: a step's `camera` zooms and pans to what it names, and stays there until a later step's camera, or `"all"` pulls back to the whole scene.
+A camera on any stepped scene but a map: a step's `camera` zooms and pans to what it names, and stays there until a later step's camera, or `"all"` pulls back to the whole scene.
 
 ![The camera demo's svg scene, at the end of its last step](assets/scenes/camera.png)
 
@@ -320,7 +320,7 @@ Storyboard: [examples/primitives/camera/storyboard.json](../examples/primitives/
 
 ### ink
 
-A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `draw` lists what to draw; each item is written on as the voice reaches its cue words and stays until a later step's `erase`.
+A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `draw` lists what to draw; each item is written on as the voice reaches its cue words and stays until a later step's `erase`. An item on refs moves with them when a later step moves them, such as a bar a sort slides.
 
 ![The ink demo's array scene, at the end of its last step](assets/scenes/ink.png)
 
