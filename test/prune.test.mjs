@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-prune-')));
 process.env.XDG_CACHE_HOME = path.join(tmp, 'never-used');
-const { listArtifacts, pruneChoices, removalPlan, select } = await import('../bin/lib/prune.mjs');
+const { listArtifacts, removalPlan, select } = await import('../bin/lib/prune.mjs');
 
 const BIN = fileURLToPath(new URL('../bin/mr-cast.mjs', import.meta.url));
 const NOW = Date.now();

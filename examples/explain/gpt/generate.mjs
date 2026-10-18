@@ -95,7 +95,6 @@ function build() {
   const p1 = softmax(z, 1);
   const temps = [0.2, 1, 2];
   const pT = temps.map((T) => softmax(z, T));
-  const name = (t) => `\`${show(t[0])}\``;
 
   const scenes = [
     {

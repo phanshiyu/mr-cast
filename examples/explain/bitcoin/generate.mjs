@@ -172,7 +172,6 @@ const sayPay = [
   'Alice pays David twenty. She has plenty.',
 ];
 pays.forEach(([from, to, amt], i) => {
-  const row = `row:${i + 1}`;
   if (bal[from] >= amt) {
     bal[from] -= amt;
     bal[to] += amt;

@@ -110,7 +110,6 @@ const MAX_LINE_RANGE = 10000;
 const LABELLED_STEPS_MAX = 6;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
-const plural = (n, word) => (n === 1 ? word : `${word}s`);
 
 /** @returns {boolean} whether `ref` is a line number or an "a-b" range of reasonable size */
 function checkLineRef(ref, path, errors) {

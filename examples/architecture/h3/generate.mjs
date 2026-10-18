@@ -211,7 +211,6 @@ function tilings() {
       cy = 260;
     const side = [],
       corner = [];
-    let cells = '';
     for (let j = -1; j <= 1; j++)
       for (let i = -1; i <= 1; i++) {
         if (!i && !j) continue;
@@ -382,11 +381,6 @@ function aperture7() {
   parts.push(
     `<polygon id="parent" points="${pts(hexPts(cx, cy, R, 0))}" fill="none" stroke="var(--text)" stroke-width="5" stroke-linejoin="round"/>`,
   );
-  const a0 = [cx + (R + 20) * Math.cos(0), cy];
-  const a1 = [
-    cx + (R / Math.sqrt(7)) * Math.cos((rotC * Math.PI) / 180),
-    cy + (R / Math.sqrt(7)) * Math.sin((rotC * Math.PI) / 180),
-  ];
   const arcR = 120;
   parts.push(
     `<g id="angle" stroke="var(--warn)" stroke-width="3" fill="none"><line x1="${cx}" y1="${cy}" x2="${f1(cx + 200)}" y2="${cy}"/><line x1="${cx}" y1="${cy}" x2="${f1(cx + 200 * Math.cos((rotC * Math.PI) / 180))}" y2="${f1(cy + 200 * Math.sin((rotC * Math.PI) / 180))}"/><path d="M ${cx + arcR} ${cy} A ${arcR} ${arcR} 0 0 1 ${f1(cx + arcR * Math.cos((rotC * Math.PI) / 180))} ${f1(cy + arcR * Math.sin((rotC * Math.PI) / 180))}"/></g>`,

@@ -75,7 +75,6 @@ export function inkBoard(scene, hunks = {}) {
     return { items, problems };
   }
   const code = scene.type === 'code';
-  const hunk = code ? hunks[scene.hunkId] : undefined;
   const said = spokenTexts(scene);
   const live = () => items.filter((it) => it.until === Infinity);
   const allIds = new Set(

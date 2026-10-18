@@ -201,7 +201,6 @@ const rows = (t, name, label, hidden) =>
     values: depth(t, d),
     ...(hidden ? { hidden } : {}),
   }));
-const cellsOf = (t, name) => t.flatMap((ks, i) => ks.map((_, d) => `${name}${d}[${i}]`));
 const tintChains = (t, name) =>
   Object.fromEntries(t.flatMap((ks, i) => ks.map((_, d) => [`${name}${d}[${i}]`, ks.length > 1 ? 'bad' : 'good'])));
 const oldRows = rows(t8, 'old', '8 slots');
