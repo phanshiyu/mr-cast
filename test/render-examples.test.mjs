@@ -21,7 +21,9 @@ test('render-examples takes each example audience from its meta.json', () => {
 test('render-examples shards split every example once', () => {
   const shards = [1, 2, 3, 4, 5, 6].map((i) => list('--shard', `${i}/6`));
   assert.deepEqual(shards.flat().sort(), list().sort());
-  for (const shard of shards) assert.ok(shard.length >= 5 && shard.length <= 8, `shard of ${shard.length}`);
+  // Shards balance spoken words, not counts, so each holds roughly a sixth of the examples.
+  const sixth = list().length / 6;
+  for (const shard of shards) assert.ok(shard.length >= sixth / 2 && shard.length <= sixth * 1.5, `shard of ${shard.length}, against a sixth of ${sixth}`);
 });
 
 test('render-examples refuses a shard past the count', () => {
