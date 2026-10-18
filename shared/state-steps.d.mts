@@ -36,5 +36,4 @@ export declare function walkStates(scene: Scene): { states: SceneState[]; proble
 export declare function sceneStates(scene: Scene): SceneState[];
 export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | undefined): boolean;
 export declare function changedRefs(scene: Scene, step: ArrayStep | MemoryStep | GraphStep): string[];
-export declare const TRACEABLE: readonly string[];
 export declare function traceEntry(entry: unknown): { id: unknown; when: unknown };

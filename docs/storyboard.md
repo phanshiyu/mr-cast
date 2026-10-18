@@ -27,10 +27,11 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them; with `arrays`, several rows that share one cell size, each with its label at its left; with `cells: "hex"`, a hex grid. Each step can `set` cell values, `move` a pointer or range, `show` or `hide` one, and `tint` cells. A changed value slides out and the new one slides in, briefly lit. |
 | `memory` | Call frames with their variables on the left and objects with their fields on the right. Variables and fields keep the order written. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object; an arrow that is not into the next column runs through the gaps and under the cards, never behind one. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
 | `svg` | A drawing in SVG markup: a map, a tiling, a geometric figure, points on a plane. Steps light, `tint`, `show`, `hide` and rewrite its elements by id, and [move, trace and morph](#motion-on-a-drawing) them. `validate` cuts nothing silently: it fails on anything that is not a drawing element or attribute. |
+| `plot` | Numeric axes with lines of x, curves of t, data series, points, arrows and shaded areas, or a number line without `y`. A part's numbers can be expressions in named `params`; a step's `set` changes one and every part that reads it reshapes or moves, and `trace` draws a line on across the step's words. See [Plots](#plots). |
 | `review` | In [review mode](#review-findings), every finding, worst first, with its severity, file, line and claim, under "Claude's review". |
 | `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. |
 
-The stepped scenes (`array`, `memory`, `graph`, `table` and `svg`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
+The stepped scenes (`array`, `memory`, `graph`, `table`, `svg` and `plot`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
 
 A `tests` scene written before 0.27, with `cases` and `gaps`, still validates and renders: each case reads as a situation named by its test, with one outcome, "Proves" (or its `titles.proves`), and each gap as a situation drawn as a gap. A case's `badge` and `tone` and the `subject` and `none` titles are not drawn. A decision `graph` with `tint` can show the paths tests take through the code: see `examples/primitives/tests-map/`.
 
@@ -77,6 +78,7 @@ A diagram's steps each name what to light in `focus`, one ref or a list, and wha
 | `array` | A cell index, an `"a-b"` range of cells, a pointer `"ptr:lo"`, or a range `"range:window"`; with `arrays`, a cell `"left[0]"`, cells `"left[0-1]"`, or a whole array `"array:left"`. A step that changes something and has no `focus` focuses what it changes, except what it only dims. |
 | `memory` | A frame `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. A step that changes something and has no `focus` focuses what it changes. |
 | `svg` | An element id. A lit group lights everything in it. A step that changes something and has no `focus` focuses what it changes. |
+| `plot` | A part's id, or a parameter's name, which lights every part that reads it. A step that changes something and has no `focus` focuses what it changes. |
 | `text` | An item index or an `"a-b"` range of them, `"note"`, `"kicker"`, the lead's field name such as `"number"`, or a side `"left"` or `"right"`. A step that changes something and has no `focus` focuses what it changes. |
 | `compare` | A row index, an `"a-b"` range of them, a side `"side:After"` (by title, or `"side:0"`), or one cell `"2@After"` (row, then side). A step shows every row up to the last one it focuses. |
 | `terminal` | An entry index, an `"a-b"` range of them, or one output line `"2:3"` (entry, then line, from 0). A step types every entry up to the last one it focuses, and scrolls back to an earlier one. |
@@ -188,6 +190,24 @@ On-screen text takes inline markup for the one word or value a sentence is about
 | `[words]{tone}` | The words in a tone: `good`, `bad`, `warn`, `accent` or `neutral`. |
 
 Bold and code can go inside a mark or a tone, and nothing else nests. `**` and `==` open only before a word and close only after one, so `a ** b` stays literal. `[` is markup only when `]{tone}` follows. A backslash makes `*`, `` ` ``, `=`, `[`, `]`, `{` or `}` literal. `validate` fails on unclosed markup or an unknown tone, with its column. Narration, `say` and pen notes are spoken, so mr-cast drops their markup before the voice and the subtitles, with a warning.
+
+## Plots
+
+A `plot` scene draws numbers on axes. `x` and `y` each have `from` and `to`, and optionally a `label`, `ticks` (a step, a list of values, or `"pi"` for multiples of π/2), `log` for powers of ten, `grid`, and a `prefix` or `suffix` such as `"$"` or `"%"`. Tick numbers from ten thousand read as `20k` and `1.5M`. `equal: true` gives both axes the same unit, so a circle is round. Without `y`, the scene is a number line with points and vectors.
+
+Each part has an `id`, a `label`, a `tone` and `hidden`:
+
+- `functions` draw `y` as an expression in x between `from` and `to`, or a curve with `x` and `y` in t over `t`. A line breaks where it has no value.
+- `series` draw `[x, y]` `points` as a line, dots or both.
+- `points` sit `at` `[x, y]`, with their label on a `side` and dashed `guides` to the axes.
+- `vectors` are arrows `from` (default the origin) `to`.
+- `areas` shade `under` a line down to y = 0, or `between` two lines.
+
+Any number a part is placed by can be an expression in the scene's `params`, such as `"10000 * 1.07^year"`. Expressions take numbers, names, `+ - * / ^`, unary minus, parentheses, `pi`, `e`, the common functions (`log` is the natural log), `min`, `max`, `mod` and `sum(k, from, to, term)`. They are parsed, never run as code, and read nothing but the parameters and x or t. A label shows a value with `{expr}`, or `{expr:0}` for its decimals.
+
+A step's `set` changes parameters, and every part that reads one reshapes or moves to the new value over the half second the step settles in. A sum whose upper bound is between two whole numbers adds its last term in part, so adding terms grows the curve smoothly. `trace` draws lines, series, vectors or areas on from left to right across the step's words and moves that step's parameters over the same time, so a point placed by a parameter rides along the line as it draws. A traced line's label appears once it is drawn. `when` starts a step's changes at those words of its `say`.
+
+`validate` fails on an expression that does not parse, at its column, and on a name that is no parameter. It draws every step and warns on a line with no value inside its range, a line or point off the plot, labels that overlap each other or the axis text or run off the stage, and tick labels that overlap.
 
 ## Diagram nodes
 

@@ -1,6 +1,7 @@
 // Pure formatting for CLI output. No IO: callers pass data in, get strings back.
 
 import { svgIds } from '../../shared/svg.mjs';
+import { PART_KINDS } from '../../shared/plot.mjs';
 import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
@@ -257,6 +258,11 @@ function sceneGist(scene, hunks, storyboard) {
     case 'svg': {
       const changes = (scene.steps ?? []).filter(changesState).length;
       return titled(`a drawing of ${count(svgIds(scene.svg), 'named part')}${changes ? `, ${changes} changing` : ''}`);
+    }
+    case 'plot': {
+      const changes = (scene.steps ?? []).filter(changesState).length;
+      const kinds = Object.keys(PART_KINDS).filter((k) => scene[k]?.length).map((k) => count(scene[k], PART_KINDS[k]));
+      return titled(`${scene.y ? 'a plot' : 'a number line'} of ${kinds.join(', ')}${changes ? `, ${changes} changing` : ''}`);
     }
     case 'memory': {
       const changes = (scene.steps ?? []).filter(changesState).length;

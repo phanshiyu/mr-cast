@@ -1,0 +1,230 @@
+{
+  "title": "Plot scene",
+  "subtitle": "Curves that reshape as a parameter changes, and a marker that rides a growing line",
+  "scenes": [
+    {
+      "type": "plot",
+      "chapter": "Fourier",
+      "title": "A square wave from sine waves",
+      "narration": "The grey line jumps between one and minus one. We will build it out of smooth sine waves.",
+      "x": {
+        "from": 0,
+        "to": 6.283185307179586,
+        "ticks": "pi"
+      },
+      "y": {
+        "from": -1.5,
+        "to": 1.5,
+        "ticks": 0.5,
+        "grid": true
+      },
+      "params": {
+        "n": 1
+      },
+      "functions": [
+        {
+          "id": "square",
+          "y": "sign(sin(x))",
+          "tone": "neutral",
+          "dashed": true
+        },
+        {
+          "id": "wave",
+          "y": "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))",
+          "label": "n = {n:0}",
+          "hidden": true
+        }
+      ],
+      "points": [
+        {
+          "id": "middle",
+          "at": [
+            "pi/2",
+            "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * pi/2))"
+          ],
+          "label": "{sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * pi/2)):3}",
+          "side": "above",
+          "hidden": true
+        },
+        {
+          "id": "peak",
+          "at": [
+            "pi/(2*n)",
+            "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * pi/(2*n)))"
+          ],
+          "label": "{sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * pi/(2*n))):3}",
+          "side": "right",
+          "tone": "warn",
+          "hidden": true
+        }
+      ],
+      "callout": "sin x + sin 3x / 3 + sin 5x / 5 + …",
+      "steps": [
+        {
+          "trace": [
+            "wave"
+          ],
+          "say": "One sine wave already rises and falls in step with the square wave."
+        },
+        {
+          "show": [
+            "middle"
+          ],
+          "focus": [
+            "middle"
+          ],
+          "say": "In the middle it reaches 1.27, too high."
+        },
+        {
+          "set": {
+            "n": 3
+          },
+          "focus": [
+            "wave",
+            "middle"
+          ],
+          "say": "Add the next two odd waves and the shoulders flatten. The middle drops to 1.10."
+        },
+        {
+          "set": {
+            "n": 5
+          },
+          "focus": [
+            "wave",
+            "middle"
+          ],
+          "say": "Five waves, and the sides get steeper."
+        },
+        {
+          "set": {
+            "n": 15
+          },
+          "focus": [
+            "wave",
+            "middle"
+          ],
+          "say": "With fifteen it hugs the square wave, 1.021 in the middle."
+        },
+        {
+          "hide": [
+            "middle"
+          ],
+          "show": [
+            "peak"
+          ],
+          "focus": [
+            "peak"
+          ],
+          "callout": "peak 1.179: 9% of the jump",
+          "say": "Except right at the jump, where it overshoots to 1.18. More waves move that bump closer to the jump, but never shrink it."
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "Compound interest",
+      "title": "$10,000 at 7% a year",
+      "narration": "Put ten thousand dollars somewhere that grows seven percent a year, and leave it alone.",
+      "x": {
+        "from": 0,
+        "to": 30,
+        "ticks": 5,
+        "label": "years"
+      },
+      "y": {
+        "from": 0,
+        "to": 80000,
+        "ticks": 20000,
+        "prefix": "$",
+        "grid": true
+      },
+      "params": {
+        "year": 0
+      },
+      "functions": [
+        {
+          "id": "growth",
+          "y": "10000 * 1.07^x",
+          "label": "at 7%",
+          "hidden": true
+        },
+        {
+          "id": "today",
+          "y": "10000 * (1.07 / 1.03)^x",
+          "label": "in today's dollars",
+          "tone": "good",
+          "hidden": true
+        }
+      ],
+      "areas": [
+        {
+          "id": "gap",
+          "between": [
+            "growth",
+            "today"
+          ],
+          "tone": "warn",
+          "hidden": true
+        }
+      ],
+      "points": [
+        {
+          "id": "marker",
+          "at": [
+            "year",
+            "10000 * 1.07^year"
+          ],
+          "label": "${10000 * 1.07^year:0}",
+          "side": "left",
+          "guides": true,
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "trace": [
+            "growth"
+          ],
+          "set": {
+            "year": 30
+          },
+          "show": [
+            "marker"
+          ],
+          "say": "Year by year it bends upward, to $76,123 after thirty years."
+        },
+        {
+          "set": {
+            "year": 10
+          },
+          "focus": [
+            "marker"
+          ],
+          "callout": "72 ÷ 7 = 10.3 years · exact 10.24",
+          "say": "It doubles in about ten years, to $19,672. The rule of seventy two says the same."
+        },
+        {
+          "trace": [
+            "today"
+          ],
+          "focus": [
+            "today"
+          ],
+          "callout": "",
+          "say": "But prices rise three percent a year. In today's money the thirty year total is worth $31,361."
+        },
+        {
+          "show": [
+            "gap"
+          ],
+          "focus": [
+            "gap",
+            "growth",
+            "today"
+          ],
+          "say": "The shaded gap is what inflation takes."
+        }
+      ]
+    }
+  ]
+}

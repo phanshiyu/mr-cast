@@ -13,6 +13,7 @@ import { compareTitles } from '../../shared/compare.mjs';
 import { outputLines } from '../../shared/terminal.mjs';
 import { arrayRows, cellKey, cellName, markerRow, rowKey, splitCellKey } from '../../shared/arrays.mjs';
 import { svgOf, textOf } from '../../shared/svg.mjs';
+import { PART_KINDS, labelPieces, plotParts } from '../../shared/plot.mjs';
 import { outcomeKey, testKey, testKeys, testsMatrix } from '../../shared/tests.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -145,6 +146,14 @@ const ITEMS = {
       return [{ key, label: `${node.tag} ${id}${words ? ` "${words}"` : ''}`, names: [text(labels[id] ?? '')].filter(Boolean), terms: [id, words], parts: inside }];
     });
   },
+  plot(scene, state) {
+    // A label's words name its part; the {…} holes in it are values, which read differently each step.
+    return plotParts(scene).flatMap((p) => {
+      if (typeof p.id !== 'string' || state?.hidden[`p:${p.id}`]) return [];
+      const words = labelPieces(p.item?.label).filter((x) => typeof x === 'string').join(' ').trim().replace(/^[^a-z]*$/i, '');
+      return [{ key: `p:${p.id}`, label: `${PART_KINDS[p.kind]} ${p.id}${words ? ` "${text(words)}"` : ''}`, terms: [p.id, text(words)] }];
+    });
+  },
   compare(scene) {
     const titles = compareTitles(scene);
     const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
@@ -210,6 +219,7 @@ function changesOf(scene, before, after) {
       : key.startsWith('b:') ? `badge of ${key.slice(2)}`
       : key.startsWith('x:') ? `cell ${key.slice(2)}`
       : key.startsWith('s:') ? `text ${key.slice(2)}`
+      : key.startsWith('k:') ? key.slice(2)
       : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
@@ -219,7 +229,7 @@ function changesOf(scene, before, after) {
   });
   const shows = [...new Set([...keysOf(before.hidden), ...keysOf(after.hidden)])].flatMap((key) => {
     const [was, is] = [Boolean(before.hidden[key]), Boolean(after.hidden[key])];
-    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
+    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a|p):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
   });
   const tints = [...new Set([...keysOf(before.tints), ...keysOf(after.tints)])].flatMap((key) => (before.tints?.[key] === after.tints?.[key] ? [] : [`tints ${key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key)) : key.replace(/^\w+:/, '')} ${after.tints?.[key] ?? 'clear'}`]));
   const callout = before.callout === after.callout ? [] : [`callout ${after.callout ? JSON.stringify(plainText(after.callout)) : 'off'}`];
@@ -261,7 +271,7 @@ export function stepViews(scene, hunks) {
     return {
       say: text(step?.say),
       lit: items.filter((it) => listed.has(it.key)).map((it) => it.label),
-      changes: [...(states.length ? changesOf(scene, states[k], state) : []), ...cameraOf(step)],
+      changes: [...(states.length ? changesOf(scene, states[k], state) : []), ...(scene.type === 'plot' ? list(step?.trace).map((id) => `traces ${id}`) : []), ...cameraOf(step)],
       items,
       litKeys,
     };
@@ -387,7 +397,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'tests'];
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'plot', 'tests'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:

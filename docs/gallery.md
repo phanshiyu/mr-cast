@@ -188,6 +188,14 @@ A static Mermaid diagram, for a shape no other primitive draws.
 
 Storyboard: [examples/primitives/mermaid/storyboard.json](../examples/primitives/mermaid/storyboard.json). Video: [primitives-mermaid.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-mermaid.mp4). Reference: [mermaid.md](../skill/mr-cast/references/scenes/mermaid.md).
 
+### plot
+
+Numeric axes with lines of x, curves of t, data series, points, arrows and shaded areas. Numbers can be expressions in named parameters that steps set, so a curve reshapes and a point moves; a step can trace a line on.
+
+![The plot demo's plot scene, at the end of its last step](assets/scenes/plot.png)
+
+Storyboard: [examples/primitives/plot/storyboard.json](../examples/primitives/plot/storyboard.json). Video: [primitives-plot.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-plot.mp4). Reference: [plot.md](../skill/mr-cast/references/scenes/plot.md).
+
 ### reading
 
 The order in which to read the code, each item with its file, lines and what to check there.
