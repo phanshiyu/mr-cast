@@ -3,9 +3,10 @@
 
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
+import { plotAxes, plotGeometry, plotLabels, stateParams } from '../../shared/plot.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
+import type { ArrayScene, GraphScene, MemoryScene, PlotScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
 import { layoutMemory, memoryBoxes } from './memoryLayout';
@@ -56,6 +57,20 @@ export function svgTargets(scene: SvgScene): MarkTargets[] {
   const { boxes } = svgGeometry(root);
   const targets = staged({ boxes: new Map([...boxes].map(([id, b]) => [`s:${id}`, b])) }, stage, box);
   return sceneStates(scene).slice(1).map(() => targets);
+}
+
+/** A plot's parts where each step leaves them, with every label kept clear of. */
+export function plotTargets(scene: PlotScene): MarkTargets[] {
+  const box = headerBox(scene);
+  const axes = plotAxes(scene, box);
+  return sceneStates(scene).slice(1).map((state) => {
+    const scope = stateParams(scene, state);
+    const geometry = plotGeometry(scene, axes, scope);
+    const shown = (id: string) => !state.hidden[`p:${id}`];
+    const boxes = new Map([...geometry].flatMap(([id, g]) => (g.box && g.visible && shown(id) ? [[`p:${id}`, g.box] as const] : [])));
+    const labels = plotLabels(scene, axes, geometry, scope, shown).map((l) => l.box);
+    return staged({ boxes, obstacles: [...boxes.values(), ...labels, ...axes.ticks.x.map((t) => t.box), ...axes.ticks.y.map((t) => t.box)] }, { left: 0, top: 0, scale: 1 }, box);
+  });
 }
 
 /** A state diagram does not change between steps, so every step has the same targets. */
