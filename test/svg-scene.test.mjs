@@ -36,3 +36,8 @@ test('the svg scene draws no class and no paint it has not allowed', () => {
   assert.doesNotMatch(html, /class=|https:/);
   assert.match(html, /<rect width="5" height="5" fill="#3ddc9740" stroke="#3ddc97"><\/rect>/);
 });
+
+test('the svg scene keeps the space between two tspans, so their words stay apart', () => {
+  const html = drawn('<svg viewBox="0 0 400 100"><text x="10" y="50">Ana <tspan id="verb">es</tspan> <tspan id="rest">alta.</tspan></text></svg>');
+  assert.match(html, />Ana <tspan id="[^"]*verb">es<\/tspan> <tspan id="[^"]*rest">alta.<\/tspan><\/text>/);
+});

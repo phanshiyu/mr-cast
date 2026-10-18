@@ -76,7 +76,10 @@
         },
         {
           "move": {
-            "sat1": "rotate(360 800 450)"
+            "sat1": {
+              "to": "rotate(360 800 450)",
+              "when": "goes all the way round"
+            }
           },
           "show": [
             "speed",
@@ -410,8 +413,12 @@
       "steps": [
         {
           "move": {
-            "ground-hand": "rotate(360 420 400)",
-            "sat-hand": "rotate(400 1180 400)"
+            "ground-hand": {
+              "to": "rotate(360 420 400)"
+            },
+            "sat-hand": {
+              "to": "rotate(400 1180 400)"
+            }
           },
           "show": [
             "ahead"
@@ -439,8 +446,12 @@
         },
         {
           "move": {
-            "ground-hand": "rotate(360 420 400)",
-            "sat-hand": "rotate(360 1180 400)"
+            "ground-hand": {
+              "to": "rotate(360 420 400)"
+            },
+            "sat-hand": {
+              "to": "rotate(360 1180 400)"
+            }
           },
           "set": {
             "freq": "seen from the ground: 10.23 MHz"

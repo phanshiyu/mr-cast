@@ -150,7 +150,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const at = useMemo(() => rowAt(layout), [layout]);
   // The callout is the only thing a tests step changes: the names of the tests it focuses, or its own words.
   const states = useMemo<SceneState[]>(
-    () => ['', ...(scene.steps ?? []).map((s) => s.callout ?? '')].map((callout) => ({ values: {}, places: {}, hidden: {}, tints: {}, callout, transforms: {}, shapes: {}, traces: {} })),
+    () => ['', ...(scene.steps ?? []).map((s) => s.callout ?? '')].map((callout) => ({ values: {}, places: {}, hidden: {}, tints: {}, callout, transforms: {}, shapes: {}, traces: {}, spans: {} })),
     [scene.steps],
   );
   const s = stateFrame(states, segments, frame);

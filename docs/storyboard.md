@@ -179,7 +179,7 @@ An `svg` step can move its elements, draw lines on, and change one shape into an
 
 | Field | Does |
 | --- | --- |
-| `move` | Gives elements a transform of `translate`, `rotate` and `scale`, outside their own, tweened from the last one. `""` puts an element back. Moves with the same functions tween argument by argument, so a rotation turns about its pivot. |
+| `move` | Gives elements a transform of `translate`, `rotate` and `scale`, outside their own, tweened from the last one. `""` puts an element back. Moves with the same functions tween argument by argument, so a rotation turns about its pivot. `{ "to": transform, "when": words }` plays the move at an even pace from those words to the end of the `say`, and `{ "to": transform }` across the whole say, so an orbit takes as long as the sentence. |
 | `trace` | Draws a path, line, polyline, polygon, rect, circle, ellipse or group of them on from its start, at about 40 px a frame, from its `when` cue or as the step settles. A hidden element is shown. |
 | `morph` | Gives a path the shape of another path, usually hidden, tweened point for point; naming the path itself restores it. Any two paths with the same number of outlines morph: each is turned into cubic curves, and the shorter list is split until they pair. |
 

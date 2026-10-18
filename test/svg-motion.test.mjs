@@ -48,6 +48,19 @@ test('a move tweens a rotation about its pivot, outside the element\'s own trans
   assert.equal(attr(drawnAt(100 + 7.5, scene), 'needle', 'transform'), 'rotate(60 200 200) rotate(-60 200 200)');
 });
 
+test('a move given as { to, when } plays evenly from its words to the end of the step\'s say, and { to } across the whole say', () => {
+  const svg = '<svg viewBox="0 0 400 400"><g id="sat"><circle cx="200" cy="40" r="10"/></g><g id="hand"><line x1="200" y1="200" x2="200" y2="80"/></g></svg>';
+  const scene = svgScene(svg, [{ move: { sat: { to: 'rotate(360 200 200)', when: 'all the way round' }, hand: { to: 'rotate(90 200 200)' } }, say: 'It goes all the way round in twelve hours.' }]);
+  // The voice runs from frame 115 for 150 frames; "all" is the third of nine words, so its cue is frame 145.
+  assert.equal(attr(drawnAt(140, scene), 'sat', 'transform'), '');
+  assert.equal(attr(drawnAt(205, scene), 'sat', 'transform'), 'rotate(180 200 200)');
+  assert.equal(attr(drawnAt(265, scene), 'sat', 'transform'), 'rotate(360 200 200)');
+  assert.equal(attr(drawnAt(115 + 75, scene), 'hand', 'transform'), 'rotate(45 200 200)');
+  const { states, problems } = walkStates(scene);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(states[1].transforms, { 's:sat': 'rotate(360 200 200)', 's:hand': 'rotate(90 200 200)' });
+});
+
 test('two transforms of different functions tween through a move, a turn and a scale', () => {
   assert.equal(tweenTransform('translate(100 0)', 'rotate(90)', 0.5), 'translate(50 0) rotate(45 0 0) scale(1 1)');
   assert.equal(tweenTransform('translate(100 0)', 'rotate(90)', 1), 'rotate(90 0 0)');
@@ -103,7 +116,7 @@ const check = async (scene) => {
 test('validate names a move, trace or morph it cannot draw', async () => {
   const svg = '<svg viewBox="0 0 400 300" id="all"><path id="a" d="M0 0 L10 0 L10 10 Z"/><path id="two" d="M0 0 L1 1 M5 5 L6 6"/><text id="t" x="10" y="20" font-size="30">hi</text><rect id="r" width="10" height="10"/></svg>';
   const { errors } = await check(svgScene(svg, [
-    { move: { all: 'translate(1 0)', a: 'skewX(10)', ghost: 'translate(1 0)' }, say: 'Move.' },
+    { move: { all: 'translate(1 0)', a: 'skewX(10)', ghost: 'translate(1 0)', r: { to: 'translate(1 0)', when: 'later' }, two: { to: 'translate(1 0)', over: 2 } }, say: 'Move.' },
     { trace: ['t', { ref: 'a', when: 'nowhere' }, 'nope'], say: 'Trace it.' },
     { morph: { a: 'two', r: 'a', t: 'r' }, say: 'Morph.' },
   ]));
@@ -111,6 +124,8 @@ test('validate names a move, trace or morph it cannot draw', async () => {
     'scenes[0].steps[0].move["all"]: is the root <svg>, which the scene places on its stage; wrap what moves in a <g id="..."> and move that',
     'scenes[0].steps[0].move["a"]: "skewX(10)" is no transform; a move is translate(x y), rotate(degrees cx cy) and scale(s), alone or in a row, such as "translate(300 0) rotate(90 50 50)", or "" to put it back',
     'scenes[0].steps[0].move["ghost"]: names no element id; it can be "all", "a", "two", "t", "r"',
+    'scenes[0].steps[0].move["r"]: has "when": "later", which is not in the step\'s say; copy the words the move should start on',
+    'scenes[0].steps[0].move["two"]: must be a transform, or { "to": transform, "when": words of the say } to play the move from those words to the end of the say',
     'scenes[0].steps[1].trace["t"]: is a <text>, which has no line to draw on; trace a path, line, polyline, polygon, rect, circle, ellipse, or a <g> of them',
     'scenes[0].steps[1].trace["a"]: has "when": "nowhere", which is not in the step\'s say; copy the words the line should start drawing on',
     'scenes[0].steps[1].trace["nope"]: names no element id in the drawing; it can be "all", "a", "two", "t", "r"',

@@ -3,6 +3,7 @@
 // human/LLM-readable strings onto `errors` and `warnings`.
 
 import { cameraShots, frameShot, viewRect } from '../../shared/camera.mjs';
+import { inkBoard } from '../../shared/ink.mjs';
 import { walkStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
 import { stateMotion } from '../../shared/svg-motion.mjs';
@@ -40,6 +41,7 @@ export function checkSvg(s, p, errors, warnings) {
   if (errors.length > before) return;
   checkStateSteps(s, p, errors, warnings);
   if (errors.length > before) return;
+  checkInkPlaces(s, p, root, ids, errors);
 
   const [vx, vy, vw, vh] = viewBox;
   const texts = svgGeometry(root).texts;
@@ -49,6 +51,23 @@ export function checkSvg(s, p, errors, warnings) {
     if (px < READABLE_PX) warnings.push(`${what} draws about ${tenths(px)} px tall on screen${at === null ? '' : at < 0 ? ' during the narration' : ` at step ${at}`}, too small to read; make its font-size at least ${Math.ceil(READABLE_PX / scale)} in viewBox units, or shrink the viewBox${at === null ? '' : ", or hide it until a step's camera zooms in on it"}`);
     const { x, y, width, height } = t.box;
     if (x < vx - 1 || y < vy - 1 || x + width > vx + vw + 1 || y + height > vy + vh + 1) warnings.push(`${what} runs past the viewBox (${vx} ${vy} ${vw} ${vh}), so part of it is cut off; move it in, or widen the viewBox`);
+  }
+}
+
+/** Ink on an element with no place on the stage, such as a gradient, a `<stop>` or an empty group, which draws nothing. */
+function checkInkPlaces(s, p, root, ids, errors) {
+  const { items } = inkBoard(s);
+  if (!items.length) return;
+  const states = walkStates(s).states;
+  for (const { step, index, item, verb, targets } of items) {
+    const { boxes } = svgGeometry(root, stateMotion(ids, states[step + 1]));
+    targets.forEach((target, j) => {
+      const lost = (target.keys ?? []).find((key) => key.startsWith('s:') && !boxes.has(key.slice(2)));
+      if (!lost) return;
+      const field = verb === 'arrow' ? `arrow[${j}]` : verb === 'write' ? 'near' : Array.isArray(item[verb]) ? `${verb}[${j}]` : verb;
+      const id = lost.slice(2);
+      errors.push(`${p}.steps[${step}].draw[${index}].${field}: "${id}" is a <${ids.get(id)?.tag}> with nothing drawn on the stage, so ink has no place to draw; name a shape, a text or a tspan, or a group with one in it`);
+    });
   }
 }
 

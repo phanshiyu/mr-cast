@@ -19,6 +19,11 @@ export interface SceneState {
    * on a map the words a route arrives on; a plot's trace is timed by the step's own `when`. Only the step's own.
    */
   traces: Record<string, string | null>;
+  /**
+   * svg: what this step's `move` plays across its words, by key, with the words it starts on, or null to start with
+   * the voice. Only the step's own.
+   */
+  spans: Record<string, string | null>;
   /** A chart's bars or slices are ordered by value. */
   sort?: boolean;
 }
