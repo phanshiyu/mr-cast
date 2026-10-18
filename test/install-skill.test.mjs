@@ -13,6 +13,7 @@ const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const SCENES = ['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'intent', 'layers', 'memory', 'mermaid', 'reading', 'review', 'sequence', 'state', 'svg', 'table', 'terminal', 'tests', 'timeline'];
 const EXPECTED = [
   'skills/mr-cast/SKILL.md',
+  'skills/mr-cast/references/ink.md',
   'skills/mr-cast/references/plan.md',
   ...SCENES.map((t) => `skills/mr-cast/references/scenes/${t}.md`),
   'skills/mr-cast-prune/SKILL.md',

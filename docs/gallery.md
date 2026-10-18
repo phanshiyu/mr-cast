@@ -2,7 +2,7 @@
 
 <!-- Written by scripts/gallery.mjs from examples/ and skill/mr-cast/references/scenes/; edit those and rerun it. -->
 
-Worked examples, then one short demo per scene type. Each still is one scene at the end of its last step, from `mr-cast still`. Each video is the whole storyboard, rendered by CI and attached to the latest release.
+Worked examples, then one short demo per scene type, then a demo of the ink any stepped scene can draw. Each still is one scene at the end of its last step, from `mr-cast still`. Each video is the whole storyboard, rendered by CI and attached to the latest release.
 
 ## Examples
 
@@ -263,3 +263,13 @@ Events at their real times on one axis, with spans for waits and windows, and a 
 ![The timeline demo's timeline scene, at the end of its last step](assets/scenes/timeline.png)
 
 Storyboard: [examples/primitives/timeline/storyboard.json](../examples/primitives/timeline/storyboard.json). Video: [primitives-timeline.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-timeline.mp4). Reference: [timeline.md](../skill/mr-cast/references/scenes/timeline.md).
+
+## On every scene
+
+### ink
+
+A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `draw` lists what to draw; each item is written on as the voice reaches its cue words and stays until a later step's `erase`.
+
+![The ink demo's array scene, at the end of its last step](assets/scenes/ink.png)
+
+Storyboard: [examples/primitives/ink/storyboard.json](../examples/primitives/ink/storyboard.json). Video: [primitives-ink.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-ink.mp4). Reference: [ink.md](../skill/mr-cast/references/ink.md).

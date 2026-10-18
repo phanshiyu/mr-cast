@@ -299,7 +299,7 @@
           "say": "Sixteen boxes went down to half, and now just three are left, after only two looks.",
           "draw": [
             {
-              "box": "8-10",
+              "brace": "8-10",
               "note": "still in play",
               "when": "three are left"
             }

@@ -174,3 +174,15 @@ test('a step that only draws ink is not reported as moving nothing', async () =>
   assert.deepEqual(await same(graph(steps({}))), ['scenes[0].steps[1]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere']);
   assert.deepEqual(await same(graph(steps({ draw: [{ write: 'd = 0', near: 'S' }] }))), []);
 });
+
+test('the ink reference example validates with no errors and no warnings', async () => {
+  const text = (await import('node:fs')).readFileSync(new URL('../skill/mr-cast/references/ink.md', import.meta.url), 'utf8');
+  const scene = JSON.parse(/^```json\n([\s\S]*?)^```$/m.exec(text)[1]);
+  const { errors, warnings } = await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
+  assert.deepEqual({ errors, warnings }, { errors: [], warnings: [] });
+});
+
+test('validate warns that markup in handwritten ink is dropped', async () => {
+  const { warnings } = await validateStoryboard({ title: 't', scenes: [graph([{ focus: 'S', say: 'Start.', draw: [{ write: '**d** = 0', near: 'S' }, { circle: 'A', note: 'plain' }] }])] }, {}, { mode: 'explain' });
+  assert.deepEqual(warnings.filter((w) => w.includes('handwritten')), ['scenes[0].steps[0].draw[0].write: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup']);
+});

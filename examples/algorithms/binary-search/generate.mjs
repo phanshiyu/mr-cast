@@ -69,7 +69,7 @@ const story = {
         { move: { mid: 11 }, erase: true, callout: 'mid = 8 + ⌊(15 − 8) / 2⌋ = 11', say: 'Find the new middle. It is index eleven.' },
         { focus: 11, say: 'It holds seventy nine. The target is smaller.', draw: [{ circle: 11 }, { write: `72 < ${values[11]}`, near: 11, when: 'smaller' }] },
         { focus: ['11-15', 'ptr:R'], tint: { '11-15': 'dim' }, move: { R: 10 }, callout: 'R = mid − 1 = 10', say: 'So index eleven and everything right of it are out. R moves to index ten.', draw: [{ brace: '11-15', note: 'out', when: 'everything right' }] },
-        { focus: '8-10', erase: true, callout: '16 → 8 → 3 left', say: 'Sixteen boxes went down to half, and now just three are left, after only two looks.', draw: [{ box: '8-10', note: 'still in play', when: 'three are left' }] },
+        { focus: '8-10', erase: true, callout: '16 → 8 → 3 left', say: 'Sixteen boxes went down to half, and now just three are left, after only two looks.', draw: [{ brace: '8-10', note: 'still in play', when: 'three are left' }] },
       ],
     },
     {

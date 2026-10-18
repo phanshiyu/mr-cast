@@ -137,5 +137,8 @@ export function checkSpokenMarkup(scene, p, warnings) {
   if (!Array.isArray(scene.steps)) return;
   scene.steps.forEach((step, j) => {
     if (typeof step?.note === 'string' && hasMarkup(step.note)) warnings.push(`${p}.steps[${j}].note: a pen note is handwritten, so its markup is dropped and the words drawn plain; remove the markup`);
+    (Array.isArray(step?.draw) ? step.draw : []).forEach((item, k) => {
+      for (const field of ['note', 'write']) if (typeof item?.[field] === 'string' && hasMarkup(item[field])) warnings.push(`${p}.steps[${j}].draw[${k}].${field}: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup`);
+    });
   });
 }
