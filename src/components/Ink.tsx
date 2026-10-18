@@ -11,6 +11,7 @@ import { cueFrame } from '../../shared/timing.mjs';
 import type { HunkMap, InkItem, Scene } from '../types';
 import { besideBox, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, rowEnd, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
 import { center, grow, seedOf, sketchMark, strokeLength, strokePath, union, type Box, type MarkTargets, type Pt, type Sketch, type Stroke } from '../utils/penGeometry';
+import { currentStep, stepMove } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { clamp, colors } from './theme';
 import { tones } from './tones';
@@ -286,6 +287,34 @@ const InkItemView: React.FC<{ p: Placed; frame: number; area: Box; shift: Pt | u
   );
 };
 
+/** The box round `keys` at one step, or null when one is not drawn then or the step scrolls its scene instead. */
+function boxAt(t: MarkTargets | null, keys: readonly string[]): Box | null {
+  if (!t || t.shift) return null;
+  const boxes = keys.map((key) => t.boxes.get(key) ?? t.boxOf?.(key) ?? null);
+  return boxes.every(Boolean) ? union(boxes) : null;
+}
+
+/**
+ * How far an item has moved with the parts it marks since its step, as a later step slides a bar, a point or a
+ * shape: the centre of its parts at each later step, eased in as that step settles. Null when nothing it marks moves.
+ */
+function follow(p: Placed, frame: number, segments: readonly SpokenSegment[], targets: (k: number) => MarkTargets | null): Pt | null {
+  const keys = p.item.targets.flatMap((target) => ('keys' in target ? target.keys : []));
+  const k = currentStep(segments, frame);
+  const home = keys.length && k > p.item.step ? boxAt(targets(p.item.step), keys) : null;
+  if (!home) return null;
+  const from = center(home);
+  let [was, now] = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+  for (let j = p.item.step + 1; j <= k; j++) {
+    was = now;
+    const box = boxAt(targets(j), keys);
+    if (box) now = { x: center(box).x - from.x, y: center(box).y - from.y };
+  }
+  const t = stepMove(frame, segments[k + 1]!.from);
+  const at = { x: was.x + (now.x - was.x) * t, y: was.y + (now.y - was.y) * t };
+  return Math.abs(at.x) < 0.01 && Math.abs(at.y) < 0.01 ? null : at;
+}
+
 /** Every ink item on the board at this frame. Draws nothing for a scene whose steps draw nothing. */
 export const InkLayer: React.FC<{ scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: (k: number) => MarkTargets | null }> = ({ scene, hunks, segments, targets }) => {
   const frame = useCurrentFrame();
@@ -298,7 +327,7 @@ export const InkLayer: React.FC<{ scene: Scene; hunks: HunkMap; segments: readon
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', clipPath: clip ? `inset(${clip.y}px 0 ${area.height - clip.y - clip.height}px 0)` : undefined }}>
       {shown.map((p) => (
-        <InkItemView key={`${p.item.step}:${p.item.index}`} p={p} frame={frame} area={area} shift={targets(p.item.step)?.shift} />
+        <InkItemView key={`${p.item.step}:${p.item.index}`} p={p} frame={frame} area={area} shift={targets(p.item.step)?.shift ?? follow(p, frame, segments, targets) ?? undefined} />
       ))}
     </div>
   );
