@@ -310,13 +310,13 @@ const GRACE_MS = 5_000;
 const POLL_MS = 100;
 
 /**
- * Stops `procs`: SIGTERM, then SIGKILL for any still running after `graceMs`. Each signal goes only to a pid that `ps`
+ * Stops `procs`: SIGTERM, or `signal`, then SIGKILL for any still running after `graceMs`. Each signal goes only to a pid that `ps`
  * still shows as the same mr-cast process. Returns each process with its outcome: `stopped` after SIGTERM, `killed`
  * after SIGKILL, `gone` when it had exited already, or `failed` when it outlived both. Throws, signalling nothing, when
  * `ps` gives no answer before the first signal; a pid it cannot check later is not signalled again.
  * @returns {Promise<{ proc: Proc, outcome: 'stopped' | 'killed' | 'gone' | 'failed' }[]>}
  */
-export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTable } = {}) {
+export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTable, signal: first = 'SIGTERM' } = {}) {
   if (procs.length === 0) return [];
   const outcome = new Map();
   const alive = (table) => procs.filter((p) => !outcome.has(p.pid) && same(table?.get(p.pid), p));
@@ -341,11 +341,11 @@ export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTab
   };
   const before = ps(procs.map((p) => p.pid));
   if (!before) throw new UserError('could not run `ps` to check the processes before signalling them; nothing was stopped');
-  const first = alive(before);
-  for (const p of procs) if (!first.includes(p)) outcome.set(p.pid, 'gone');
-  signal(first, 'SIGTERM');
-  const stubborn = await waitFor(first, graceMs);
-  for (const p of first) if (!stubborn.includes(p)) outcome.set(p.pid, 'stopped');
+  const running = alive(before);
+  for (const p of procs) if (!running.includes(p)) outcome.set(p.pid, 'gone');
+  signal(running, first);
+  const stubborn = await waitFor(running, graceMs);
+  for (const p of running) if (!stubborn.includes(p)) outcome.set(p.pid, 'stopped');
   const again = ps(stubborn.map((p) => p.pid));
   const toKill = again ? alive(again) : [];
   for (const p of stubborn) if (!toKill.includes(p)) outcome.set(p.pid, again ? 'stopped' : 'failed');

@@ -9,13 +9,25 @@ import { register, removeEntry, runFields } from './procs.mjs';
 import { downloadVoice, ensureVoiceover } from './voice.mjs';
 import { ENGINES, voiceParts } from './voices.mjs';
 
-const children = new Set();
+/** Each child process running, with its task. */
+const children = new Map();
 let stopping = false;
 
-/** Stops every voicing and download in progress, so a stopped player exits at once. A clip half made is not written. */
-export function stopVoicing() {
+/**
+ * Stops every voicing and download in progress, so a stopped player exits at once. A clip half made is not written.
+ * With `keepDownloads`, as when a new play of the run replaces this one, a model download is let go instead: it
+ * finishes on its own, and the new play's download waits for it on the engine's lock rather than starting over.
+ */
+export function stopVoicing({ keepDownloads = false } = {}) {
   stopping = true;
-  for (const child of children) child.kill('SIGKILL');
+  for (const [child, task] of children) {
+    if (keepDownloads && task === 'download') {
+      child.disconnect();
+      child.unref();
+    } else {
+      child.kill('SIGKILL');
+    }
+  }
 }
 
 /** `task` with `args` in a child process: its result, or null when `signal` aborted it or stopVoicing stopped it. */
@@ -23,7 +35,7 @@ function inChild(task, args, onProgress, signal) {
   return new Promise((resolve, reject) => {
     if (stopping || signal?.aborted) return resolve(null);
     const child = fork(fileURLToPath(import.meta.url), ['--voice-child'], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
-    children.add(child);
+    children.set(child, task);
     const abort = () => child.kill('SIGKILL');
     signal?.addEventListener('abort', abort, { once: true });
     child.on('message', (msg) => {
@@ -81,8 +93,10 @@ if (process.argv[2] === '--voice-child') {
   const orphaned = () => process.kill(process.pid, 'SIGKILL');
   process.once('disconnect', orphaned);
   process.once('message', async ({ task, args }) => {
+    // A download outlives a player that lets it go, since it fills the shared cache that the next play waits on.
+    if (task === 'download') process.off('disconnect', orphaned);
     register({ kind: task === 'download' ? 'download' : 'voice', url: null, ...runFields(args.dataDir) });
-    const onProgress = (event) => process.send({ type: 'progress', event });
+    const onProgress = (event) => process.connected && process.send({ type: 'progress', event });
     let reply;
     try {
       const result = task === 'download' ? await downloadVoice(args.voice, onProgress) : await ensureVoiceover({ ...args, onProgress });
@@ -90,6 +104,7 @@ if (process.argv[2] === '--voice-child') {
     } catch (err) {
       reply = { type: 'error', message: err.message, user: err instanceof UserError };
     }
+    if (!process.connected) return;
     // Disconnecting before the send is written drops a large reply.
     process.send(reply, () => {
       process.off('disconnect', orphaned);

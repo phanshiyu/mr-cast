@@ -439,16 +439,19 @@ function idleExitMs(value) {
 
 const SERVER_OPTIONS = { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, 'idle-exit': { type: 'string', default: '30' } };
 
+/** The signal a play or plan server gets from the next one of its run: it stops, but lets a model download finish. */
+const REPLACED = 'SIGUSR2';
+
 /**
- * Stops the `kind` server already serving run `dir`, with its children, so a run has one player and one plan page:
- * the new one is started with this command's flags and this mr-cast's code, and the run's clips are on disk already.
+ * Stops the `kind` server already serving run `dir`, so a run has one player and one plan page: the new one is started
+ * with this command's flags and this mr-cast's code, and the run's clips are on disk already. The old server stops its
+ * own voicing; a model download it started runs on, and this one's download waits for it.
  */
 async function replaceRunning(kind, dir) {
-  const list = listProcesses();
-  const old = list.filter((p) => p.registered && p.kind === kind && p.dir === path.resolve(dir));
+  const old = listProcesses().filter((p) => p.registered && p.kind === kind && p.dir === path.resolve(dir));
   if (old.length === 0) return;
   for (const p of old) console.error(`mr-cast: stopping the ${kind} server already running for this run (pid ${p.pid}, ${p.url}); this one replaces it`);
-  const results = await stopProcesses(selectProcs(list, { targets: old.map((p) => String(p.pid)), olderThan: null, idle: false }));
+  const results = await stopProcesses(old, { signal: REPLACED });
   for (const { proc, outcome } of results) if (outcome === 'failed') console.error(`mr-cast: warning: pid ${proc.pid} did not stop; both run until it does`);
 }
 
@@ -608,13 +611,14 @@ async function play(argv) {
 
   // Once a voice model has loaded, process.exit() aborts in onnxruntime's thread pool ("mutex lock failed"),
   // so stop everything holding the event loop and let Node exit on its own.
-  const shutdown = () => {
+  const shutdown = ({ keepDownloads = false } = {}) => {
     stopped = true;
-    stopVoicing();
+    stopVoicing({ keepDownloads });
     return server.close();
   };
-  process.once('SIGINT', shutdown);
-  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', () => shutdown());
+  process.once('SIGTERM', () => shutdown());
+  process.once(REPLACED, () => shutdown({ keepDownloads: true }));
 
   serving.start();
   await serving.ready;
@@ -666,6 +670,7 @@ async function plan(argv) {
   const shutdown = () => server.close();
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
+  process.once(REPLACED, shutdown);
 }
 
 async function importRender() {

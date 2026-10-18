@@ -484,6 +484,26 @@ test('an idle play does not exit while an edit is being voiced, and ps says so',
   assert.match(play.output, /no page has been open for 0\.02 minutes, so the player stopped/);
 });
 
+test('a play that replaces one downloading the voice model leaves that download running and waits for it', async () => {
+  const { cwd } = runIn('first-run');
+  const hub = await stalledHub();
+  const more = { HF_ENDPOINT: hub.url, XDG_CACHE_HOME: path.join(tmp, 'cache-first-run') };
+  const first = await startCli(cwd, ['play', '--no-open', '--port', '5820'], /mr-cast player:/, more);
+  await within(hub.firstRequest, 5000);
+  const download = listProcesses().find((p) => p.kind === 'download' && p.ppid === first.pid);
+  assert.ok(download, 'the first play has a download child');
+  const second = await within(startCli(cwd, ['play', '--no-open', '--port', '5850'], new RegExp(`waiting for another mr-cast \\(pid ${download.pid}\\) to finish downloading`), more), 10_000);
+  assert.notEqual(second, 'timeout', 'the second play waits for the first one\'s download');
+  assert.deepEqual(await within(first.exited, 2000), { code: 0, signal: null });
+  assert.equal(processTable([download.pid]).get(download.pid)?.command, download.command, 'the download runs on');
+  assert.deepEqual([hub.requests.length, hub.requests[0].socket.destroyed], [1, false], 'one download, never restarted');
+  await hub.close();
+  for (let i = 0; i < 100 && processTable([download.pid]).has(download.pid); i++) await new Promise((r) => setTimeout(r, 50));
+  assert.equal(processTable([download.pid]).has(download.pid), false, 'the download ends once it fails');
+  second.kill('SIGTERM');
+  await second.exited;
+});
+
 test('play with --idle-exit stops by itself when no page opens, and removes its entry', async () => {
   const { cwd } = runIn('idle');
   const play = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5340', '--idle-exit', '0.01'], /mr-cast player:/);
