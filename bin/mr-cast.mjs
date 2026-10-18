@@ -53,8 +53,9 @@ commands under "Used by the Claude Code skills" for you.
                     --choices prints a menu of common picks, each with the command that deletes it
   ps [--json]       list the running mr-cast servers, renders and voicings, with their URL, run, age and
                     whether a page is open
-  stop <pid|run|all> [--idle] [--older-than 2h] [--dry-run] [--json]
-                    stop those processes and their children; --idle only servers with no page open;
+  stop <pid|run|all> [--idle] [--older-than 2h] [--any-repo] [--dry-run] [--json]
+                    stop those processes and their children; a run is this repository's unless
+                    --any-repo; --idle only servers with no page open;
                     --choices prints a menu of common picks, each with the command that stops it
   voices [--sample engine:name] [--out file.wav]
                     list the voice engines, whether each model is downloaded, and their voices;
@@ -1016,18 +1017,19 @@ async function stop(argv) {
     args: argv, allowPositionals: true,
     options: {
       'older-than': { type: 'string' }, idle: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false },
-      choices: { type: 'boolean', default: false }, json: { type: 'boolean', default: false },
+      choices: { type: 'boolean', default: false }, json: { type: 'boolean', default: false }, 'any-repo': { type: 'boolean', default: false },
     },
   });
   const print = (json, lines) => (values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l)));
   const list = listProcesses();
   if (values.choices) {
-    if (positionals.length || values.idle || values['older-than'] !== undefined || values['dry-run']) throw new UserError('--choices takes only --json');
+    if (positionals.length || values.idle || values['older-than'] !== undefined || values['dry-run'] || values['any-repo']) throw new UserError('--choices takes only --json');
     const choices = stopChoices(list);
     print(choices, formatStopChoices(choices));
     return;
   }
-  const chosen = selectProcs(list, { targets: positionals, olderThan: values['older-than'] ?? null, idle: values.idle });
+  const repo = values['any-repo'] ? null : findRepoRoot() ?? process.cwd();
+  const chosen = selectProcs(list, { targets: positionals, olderThan: values['older-than'] ?? null, idle: values.idle, repo });
   const describe = (p) => `${p.kind} ${p.pid}${p.parent === null ? [p.run, p.url].filter(Boolean).map((x) => ` · ${x}`).join('') : ` (with ${p.parent})`}`;
   if (values['dry-run']) {
     print({ dryRun: true, processes: chosen.map(procJson) }, chosen.length ? chosen.map((p) => `would stop ${describe(p)}`) : ['nothing matched']);

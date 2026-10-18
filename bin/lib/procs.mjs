@@ -264,8 +264,10 @@ export function parseDuration(text, flag) {
 }
 
 /**
- * @typedef {{ targets: string[], olderThan: string | null, idle: boolean }} StopSelector  `targets` are pids, run
- *   names or `all`; `olderThan` a duration such as "2h"; `idle` keeps only servers with no page open.
+ * @typedef {{ targets: string[], olderThan: string | null, idle: boolean, repo?: string | null }} StopSelector
+ *   `targets` are pids, run names or `all`; `olderThan` a duration such as "2h"; `idle` keeps only servers with no
+ *   page open. A run name matches only a process of repository `repo`, or of any repository when it is null or absent,
+ *   since run names such as `rate-limiter` repeat across repositories.
  */
 
 /**
@@ -274,14 +276,18 @@ export function parseDuration(text, flag) {
  */
 export function selectProcs(list, selector, now = Date.now()) {
   const { targets } = selector;
+  const repo = selector.repo ?? null;
   if (targets.length === 0) throw new UserError('name what to stop: a pid, a run name, or all; `mr-cast ps` lists them');
-  const unknown = targets.filter((t) => t !== 'all' && !list.some((p) => String(p.pid) === t || p.run === t));
+  const ofRun = (p, t) => p.run === t && (repo === null || p.repo === repo);
+  const unknown = targets.filter((t) => t !== 'all' && !list.some((p) => String(p.pid) === t || ofRun(p, t)));
   if (unknown.length) {
-    const why = (t) => (/^\d+$/.test(t) ? `pid ${t} is not a running mr-cast process of yours` : `no running mr-cast process has run "${t}"`);
+    const why = (t) => (/^\d+$/.test(t) ? `pid ${t} is not a running mr-cast process of yours`
+      : repo === null ? `no running mr-cast process has run "${t}"`
+        : `no running mr-cast process of this repository has run "${t}"${list.some((p) => p.run === t) ? ' (--any-repo stops it in other repositories)' : ''}`);
     throw new UserError(`not stopping anything: ${unknown.map(why).join('; ')}; \`mr-cast ps\` lists them`);
   }
   const olderThanMs = selector.olderThan === null ? null : parseDuration(selector.olderThan, '--older-than');
-  const named = (p) => targets.includes('all') || targets.includes(String(p.pid)) || (p.run !== null && targets.includes(p.run));
+  const named = (p) => targets.includes('all') || targets.includes(String(p.pid)) || targets.some((t) => ofRun(p, t));
   const fits = (p) => (olderThanMs === null || now - p.startedAt >= olderThanMs) && (!selector.idle || p.viewers === 0);
   const picked = new Set(list.filter((p) => named(p) && fits(p)).map((p) => p.pid));
   return list.filter((p) => picked.has(p.pid) || (p.parent !== null && picked.has(p.parent)));

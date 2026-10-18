@@ -42,9 +42,8 @@ after(() => {
 
 const cli = (cwd, ...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8' });
 
-/** A directory holding one valid walkthrough, the current run. */
-function runIn(name) {
-  const cwd = path.join(tmp, name);
+/** A directory holding one valid walkthrough, the current run, named after `name`. */
+function runIn(name, cwd = path.join(tmp, name)) {
   fs.mkdirSync(cwd, { recursive: true });
   const dir = cli(cwd, 'init', '--title', name).stdout.trim();
   fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify({ title: name, scenes: [{ type: 'text', narration: 'Requests over the limit wait.', headline: 'Requests wait' }] }));
@@ -298,6 +297,27 @@ test('stop picks pids, runs or all, narrows by --idle and --older-than, and take
   assert.throws(() => pick([]), /name what to stop: a pid, a run name, or all/);
   assert.throws(() => pick(['1', '77', 'nope']), /not stopping anything: pid 77 is not a running mr-cast process of yours; no running mr-cast process has run "nope"/);
   assert.throws(() => pick(['all'], { olderThan: '2' }), /--older-than takes a number and a unit, such as 30m, 2h or 1d \(got "2"\)/);
+});
+
+test('stop <run> stops that run of this repository only, unless --any-repo', async () => {
+  const here = runIn('shared-name', path.join(tmp, 'repo-a'));
+  const there = runIn('shared-name', path.join(tmp, 'repo-b'));
+  const a = await startCli(here.cwd, ['play', '--no-voice', '--no-open', '--port', '5700'], /mr-cast player:/);
+  const b = await startCli(there.cwd, ['play', '--no-voice', '--no-open', '--port', '5730'], /mr-cast player:/);
+  const wouldStop = (...args) => {
+    const out = cli(here.cwd, 'stop', 'shared-name', '--dry-run', '--json', ...args);
+    assert.equal(out.status, 0, out.stderr);
+    return JSON.parse(out.stdout).processes.map((p) => p.pid).sort();
+  };
+  assert.deepEqual(wouldStop(), [a.pid]);
+  assert.deepEqual(wouldStop('--any-repo'), [a.pid, b.pid].sort());
+  const repoC = path.join(tmp, 'repo-c');
+  fs.mkdirSync(repoC);
+  const elsewhere = cli(repoC, 'stop', 'shared-name', '--dry-run');
+  assert.equal(elsewhere.status, 1);
+  assert.match(elsewhere.stderr, /no running mr-cast process of this repository has run "shared-name" \(--any-repo stops it in other repositories\)/);
+  for (const p of [a, b]) p.kill('SIGTERM');
+  await Promise.all([a.exited, b.exited]);
 });
 
 test('stop --choices offers every process, the narrowing picks, and each process, with the command that stops it', () => {
