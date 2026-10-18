@@ -136,7 +136,7 @@ function cityMap() {
 // ---------- Scene 2: three tilings ----------
 function tilings() {
   const parts = [];
-  const lines = (cx, cy, targets, tone, dash) =>
+  const lines = (cx, cy, targets, dash) =>
     targets
       .map(
         ([x, y]) =>
