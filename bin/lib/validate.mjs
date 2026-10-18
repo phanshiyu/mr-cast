@@ -13,7 +13,7 @@ import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
-import { isGapRow } from '../../shared/tests.mjs';
+import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
 import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
@@ -277,18 +277,54 @@ async function checkMermaid(diagrams, errors, warnings) {
  */
 export async function validateStoryboard(raw, hunks, meta = {}) {
   // An older `arch` scene is a `graph`, an older tests scene a matrix, and an `intent` scene a `text` scene: every
-  // check below sees one shape.
+  // check below sees one shape, and messages about the older shapes are put back in their own field names.
   const upgraded = upgradeScenes(raw);
-  if (!Array.isArray(upgraded?.scenes) || !upgraded.scenes.some((s) => s?.type === 'intent')) return validateScenes(upgraded, hunks, meta);
+  const olderTests = new Map();
+  if (Array.isArray(raw?.scenes)) raw.scenes.forEach((s, i) => {
+    if (s?.type === 'tests' && upgradeTests(s) !== s) olderTests.set(i, Array.isArray(s.cases) ? s.cases.length : 0);
+  });
   const intents = new Map();
   const shapeErrors = [];
-  upgraded.scenes.forEach((s, i) => {
+  const scenes = Array.isArray(upgraded?.scenes) ? upgraded.scenes : [];
+  scenes.forEach((s, i) => {
     if (s?.type === 'intent') intents.set(i, checkIntent(s, `scenes[${i}]`, shapeErrors));
   });
-  const sb = { ...upgraded, scenes: upgraded.scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) };
+  const sb = intents.size ? { ...upgraded, scenes: scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) } : upgraded;
   const result = await validateScenes(sb, hunks, meta);
-  const said = (messages) => messages.flatMap((m) => intentMessage(m, intents));
+  if (!intents.size && !olderTests.size) return result;
+  const said = (messages) => [...new Set(messages.flatMap((m) => intentMessage(m, intents)).flatMap((m) => olderTestsMessage(m, olderTests)))];
   return { ...result, errors: [...shapeErrors, ...said(result.errors)], warnings: said(result.warnings) };
+}
+
+const SCENE_MESSAGE = /^scenes\[(\d+)\]((?: \("(?:[^"\\]|\\.)*"\))?)([^:\s]*)([\s\S]*)$/;
+
+/**
+ * A message about a tests scene written before 0.27, checked as the matrix it reads as, in its own fields: the first
+ * situations and the tests are its `cases`, the situations after them its `gaps`, and the one outcome its
+ * `titles.proves`. `olderTests` maps each such scene's index to its number of cases.
+ */
+function olderTestsMessage(message, olderTests) {
+  const m = SCENE_MESSAGE.exec(message);
+  const cases = m ? olderTests.get(Number(m[1])) : undefined;
+  if (cases === undefined) return [message];
+  const [, scene, label, field, rest] = m;
+  const at = (path, text = rest) => [`scenes[${scene}]${label}${path}${text}`];
+  const inRow = (noun) => rest.replace(/the situation in plain words$/, `the ${noun}`).replace(/its situation, (.*?); shorten the situation.*$/, `its row, $1; shorten the ${noun}`);
+  const row = /^\.situations\[(\d+)\](\.[^.]+)?(.*)$/.exec(field);
+  if (row) {
+    const k = Number(row[1]);
+    if (k >= cases) return at(row[2] === '.gap' ? '.titles.gaps' : `.gaps[${k - cases}]`, inRow('gap'));
+    // A case's name is its test's name too, and the message about the test says what to fix.
+    if (row[2] === '.when' && /^: required/.test(rest)) return [];
+    if (row[2] === '.when') return at(`.cases[${k}].name`, inRow('name'));
+    if (row[2] === '.expect') return at(`.cases[${k}].proves`);
+    return at(`.cases[${k}]${row[2] ?? ''}${row[3]}`);
+  }
+  const test = /^\.tests\[(\d+)\](\.was)?(.*)$/.exec(field);
+  if (test) return at(`.cases[${test[1]}]${test[2] ? '.proves' : test[3]}`, test[2] ? rest.replace(/its old value, (.*?); shorten the old value in was$/, 'its row, $1; shorten what it proves') : rest);
+  if (field.startsWith('.outcomes[0]')) return at('.titles.proves');
+  if (field.startsWith('.steps')) return at(field, rest.replace(/where a ref is a situation id, .*$/, 'where a ref is a case\'s index or name, or "gap:0" for the first gap'));
+  return [message];
 }
 
 /** An intent scene's own fields; whether they are well formed, so it can be checked as the text scene it draws as. */
@@ -309,7 +345,7 @@ const INTENT_WORDS = { items: 'bullets', item: 'bullet', 'an item': 'a bullet', 
  * messages about them as text are dropped, since its own errors say what to fix.
  */
 function intentMessage(message, intents) {
-  const m = /^scenes\[(\d+)\]((?: \("(?:[^"\\]|\\.)*"\))?)([^:\s]*)([\s\S]*)$/.exec(message);
+  const m = SCENE_MESSAGE.exec(message);
   if (!m || !intents.has(Number(m[1]))) return [message];
   if (!intents.get(Number(m[1])) && /^(?:$|\.(?:headline|items|risk|kicker)\b)/.test(m[3])) return [];
   const words = (text) => text.split(/("(?:[^"\\]|\\.)*")/).map((part, i) => (i % 2 ? part : part.replace(/\b(items|an item|item|headline|kicker|this text)\b/g, (w) => INTENT_WORDS[w]))).join('');

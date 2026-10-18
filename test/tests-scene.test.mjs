@@ -201,3 +201,25 @@ test('short test names fit under the TESTS header, in the matrix and in an older
   const old = { type: 'tests', narration: 'Two tests cover delivery.', cases: [{ name: 'a', proves: 'Retries' }, { name: 'ok', proves: 'Delivers' }] };
   assert.deepEqual((await run(old)).errors, []);
 });
+
+test('an older scene is reported in its own fields: cases, gaps and titles, not the matrix it reads as', async () => {
+  const long = Array(40).fill('word').join(' ');
+  const old = {
+    type: 'tests', narration: 'Some tests cover delivery.', titles: { proves: 'Checks' },
+    cases: [{ name: 'retries a 503', proves: 'delivered', hunkId: 'nope' }, { proves: 'unnamed', status: 'odd' }, { name: 'throws', proves: long, status: 'removed' }],
+    gaps: [long, 7],
+    steps: [{ focus: 9, say: 'Nothing.' }],
+  };
+  assert.deepEqual((await run(old)).errors, [
+    'scenes[0].gaps[1]: required string, the gap',
+    'scenes[0].cases[0].hunkId: "nope" not found in hunks.json',
+    "scenes[0].cases[1].name: required string, the test's name as written in code",
+    'scenes[0].cases[1].status: must be one of added, modified, removed, existing',
+    'scenes[0].steps[0].focus: 9 names nothing in this scene, where a ref is a case\'s index or name, or "gap:0" for the first gap',
+  ]);
+  const fitting = { ...old, cases: [old.cases[0], { name: 'waits', proves: 'p' }, old.cases[2]].map(({ hunkId, ...c }) => c), gaps: [`${long} ${long}`], steps: undefined };
+  assert.deepEqual((await run(fitting)).errors.map((m) => m.replace(`${long} ${long}`, 'LONGER').replace(long, 'LONG')), [
+    'scenes[0].cases[2].proves: "LONG" does not fit its row, even at 15px; shorten what it proves',
+    'scenes[0].gaps[0]: "LONGER" does not fit its row, even at 15px; shorten the gap',
+  ]);
+});
