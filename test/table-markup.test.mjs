@@ -23,6 +23,11 @@ test('big-O and other math in a table cell reads as text, with spaces or without
   assert.equal(firstCell('max_retries').mono, true);
 });
 
+test('a percentage in a table cell reads as text, while an identifier with digits stays code', () => {
+  assert.deepEqual(['100%', '66%', '1.2%', '−3.5%', '10,000%'].map((cell) => [firstCell(cell).mono, firstCell(cell).text.font.family]), Array(5).fill([false, 'sans']));
+  assert.deepEqual(['http2', 'v1.2', '50%_off'].map((cell) => firstCell(cell).mono), [true, true, true]);
+});
+
 test('a table header is upper-cased unless it holds a formula or code', () => {
   const headers = layoutTable(['Hit rate', 'SHA-256', 'Latency (ms)', 'e^z', 'maxRetries', 'f(x)', 'a = b', '`id`', 'max_len'], [{ cells: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'] }], 1712, 700).headers;
   assert.deepEqual(headers.map((h) => h.font.upper), [true, true, true, false, false, false, false, false, false]);

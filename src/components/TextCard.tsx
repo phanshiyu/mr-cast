@@ -167,7 +167,6 @@ export const TextCard: React.FC<SceneProps<TextScene>> = ({ scene, hunks, durati
   const nowAt = k >= 0 && layouts[k + 1] ? k + 1 : 0;
   const layout = layouts[nowAt]!;
   const before = nowAt > 0 ? layouts[nowAt - 1]!.block : null;
-  const isQuestion = layout.block.lead?.kind === 'question';
 
   // A number counts up from 0 as the scene opens, and from the figure before when a step sets a new one.
   const lead = layout.block.lead;
@@ -219,9 +218,9 @@ export const TextCard: React.FC<SceneProps<TextScene>> = ({ scene, hunks, durati
       }
     >
       <div ref={root} style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%', paddingBottom: GAP.bottom, boxSizing: 'border-box' }}>
-        {isQuestion ? (
+        {layout.mark ? (
           <div style={{ position: 'absolute', right: 0, top: '50%', width: `${QUESTION_ROOM * 100}%`, display: 'flex', justifyContent: 'center', transform: `translateY(-50%) scale(${0.9 + 0.1 * pop(10)})`, opacity: pop(10) * emphasis('t:lead').opacity }}>
-            <div style={{ fontSize: Math.min(640, layout.height * 1.25 + 160), fontWeight: 800, lineHeight: 0.8, background: `linear-gradient(160deg, ${colors.accent} 0%, rgba(124,140,255,0.08) 85%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>?</div>
+            <div style={{ fontSize: layout.mark.size, fontWeight: 800, lineHeight: 0.8, background: `linear-gradient(160deg, ${colors.accent} 0%, rgba(124,140,255,0.08) 85%)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>?</div>
           </div>
         ) : null}
         <Block block={layout.block} before={changing ? before : null} t={s.t} figure={figure} appear={pop} lead={emphasis('t:lead')} note={emphasis('t:note')} kicker={emphasis('t:kicker')} refs={refs} />
@@ -243,7 +242,7 @@ export const TextCard: React.FC<SceneProps<TextScene>> = ({ scene, hunks, durati
           </div>
         ) : null}
         {layout.sides ? (
-          <div style={{ marginTop: layout.block.height ? GAP.list : 0, display: 'grid', gridTemplateColumns: `1fr ${SIDE_GUTTER * 2}px 1fr`, alignItems: 'start' }}>
+          <div style={{ marginTop: layout.block.height ? GAP.list : 0, width: layout.mark ? `${(1 - QUESTION_ROOM) * 100}%` : undefined, display: 'grid', gridTemplateColumns: `1fr ${SIDE_GUTTER * 2}px 1fr`, alignItems: 'start' }}>
             {layout.sides.map((side, i) => {
               const own = scene.sides![i]!;
               const ink = own.tone ? tones[own.tone].color : i === 0 ? tones.neutral.color : colors.accent;

@@ -25,13 +25,14 @@ export const HEADER_FONT = 17;
 
 /**
  * Identifiers, paths, numbers with units and the like read as code, so they render in mono. Math, such as
- * "O(n²)" or "n × m", reads as text whether or not it has spaces. A cell with markup (`` `pollIntervalMs` ``)
- * says how it reads itself, so it renders its markup like any other text.
+ * "O(n²)" or "n × m", and a percentage, such as "66%", read as text whether or not they have spaces. A cell
+ * with markup (`` `pollIntervalMs` ``) says how it reads itself, so it renders its markup like any other text.
  */
 const CODE_LIKE = /^[^\s]+$/;
 const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
 const MATH = /^[OΘΩ]\(|[¹²³⁰-₟×÷∀-⋿]/u;
-const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !MATH.test(text) && !hasMarkup(text);
+const PERCENT = /^[~≈<>+\-−±]?\d[\d,]*(\.\d+)?%$/;
+const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !MATH.test(text) && !PERCENT.test(text.trim()) && !hasMarkup(text);
 /**
  * A header is upper-cased unless it holds a formula or code, whose case means something: an operator, a backtick,
  * a brace or bracket, an underscore, a call such as "f(x)", or camelCase. "Latency (ms)" is upper-cased.

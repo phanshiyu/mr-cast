@@ -76,8 +76,7 @@ const scenes = [
     chapter: 'Two verbs',
     narration: 'In English, "is" is just "is". In Spanish you have to choose between two verbs, and learners pick the wrong one all the time.',
     kicker: 'Spanish has two verbs for “is”',
-    // A `question` lead draws a big question mark that lands on the right side's note, so the marks are typed.
-    headline: '¿Es o está?',
+    question: '¿Es o está?',
     sides: [
       { label: 'ser', term: 'es', note: 'what something **is**', tone: TONE.ser },
       { label: 'estar', term: 'está', note: 'where it is, and how it is **right now**', tone: TONE.estar },
