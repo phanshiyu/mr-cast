@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { RenderInternals, ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
-import { FPS, sceneDurationInFrames, settledFrame } from '../../shared/timing.mjs';
+import { FPS, sceneDurationInFrames, sceneSegments, settledFrame } from '../../shared/timing.mjs';
 import { cacheDir } from './cache.mjs';
 import { whileUsing, withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
@@ -245,10 +245,21 @@ async function addChapters(file, chapters) {
   }
 }
 
-/** Each still shows its scene's settled end state. Stills take scene timing from `voiceover` but play no audio. */
+/**
+ * Each still shows its scene's settled end state, or with `step` the scene just before that step gives way to the
+ * next. Stills take scene timing from `voiceover` but play no audio.
+ */
 export const renderStills = (options) => usingCaches(() => renderStillsUsingCaches(options));
 
-async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, scenes }) {
+/** The frame of a scene a still shows: its settled end, or the end of step `step`, two frames before the next starts. */
+export function stillFrame(scene, voiceover, step) {
+  if (step === undefined) return settledFrame(sceneDurationInFrames(scene, voiceover));
+  const segment = sceneSegments(scene, voiceover)[step + 1];
+  if (!segment) throw new Error(`the ${scene.type} scene has no step ${step}`);
+  return segment.from + segment.durationInFrames - 2;
+}
+
+async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, scenes, step }) {
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
   const starts = [];
@@ -265,13 +276,13 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, s
     for (const index of indices) {
       const timing = starts[index];
       if (!timing) throw new Error(`scene ${index} does not exist (storyboard has ${starts.length} scenes)`);
-      const output = path.join(dir, `scene-${String(index + 1).padStart(2, '0')}-${storyboard.scenes[index].type}.png`);
+      const output = path.join(dir, `scene-${String(index + 1).padStart(2, '0')}-${storyboard.scenes[index].type}${step === undefined ? '' : `-step-${step}`}.png`);
       await renderStill({
         composition,
         serveUrl,
         inputProps,
         output,
-        frame: timing.from + settledFrame(timing.duration),
+        frame: timing.from + stillFrame(storyboard.scenes[index], voiceover, step),
         puppeteerInstance: browser,
       });
       written.push(output);

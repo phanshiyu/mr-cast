@@ -47,6 +47,10 @@ export interface MarkTargets {
   area: Box;
   /** How far the boxes have yet to move to where step k settles, such as a code scene's camera catching up. */
   shift?: Pt;
+  /** The box of an item key that `boxes` does not list, such as a code line or text on it. */
+  boxOf?: (key: string) => Box | null;
+  /** Where ink shows, when content scrolls out of part of the area, such as a code scene's viewport. */
+  clip?: Box;
 }
 
 /** A layout's item boxes in its own units, as its layout code knows them. */

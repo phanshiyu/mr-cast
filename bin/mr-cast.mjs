@@ -20,6 +20,7 @@ import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, plural, summarizeFiles } from './lib/summary.mjs';
 import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
+import { sceneSteps } from '../shared/steps.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { formatSteps } from './lib/highlight.mjs';
 import { formatSchema } from './lib/schema.mjs';
@@ -88,8 +89,9 @@ const USAGE_ALL = `${USAGE}
 
 More commands and options:
   voice             voice the narration into the run's audio/ without playing it
-  still [sceneIndex...] [--out dir]
-                    render PNG stills of scenes (0-based; default all, into the run's stills/)
+  still [sceneIndex...] [--out dir] [--step k]
+                    render PNG stills of scenes (0-based; default all, into the run's stills/); with
+                    --step, each scene as step k ends instead of the scene's end
   steps [sceneIndex...]
                     print each step's words beside what it lights and what it changes, with the
                     highlight warnings, for checking that the lit part matches the words; code scenes are left out
@@ -649,7 +651,7 @@ async function render(argv) {
 }
 
 async function still(argv) {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, ...RUN_OPTIONS } });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, step: { type: 'string' }, ...RUN_OPTIONS } });
   const run = runFor(values);
   const { dir, hunks, storyboard } = await loadValidProject(run.dir, run.settings);
   const count = storyboard.scenes.length;
@@ -658,11 +660,19 @@ async function still(argv) {
     if (!Number.isInteger(n) || n < 0 || n >= count) throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${count - 1}`);
     return n;
   });
+  const step = values.step === undefined ? undefined : Number(values.step);
+  if (step !== undefined) {
+    if (!Number.isInteger(step) || step < 0) throw new UserError(`--step "${values.step}" is not a step index; steps start at 0`);
+    for (const i of scenes.length ? scenes : storyboard.scenes.map((_, i) => i)) {
+      const have = sceneSteps(storyboard.scenes[i]).length;
+      if (step >= have) throw new UserError(`scene ${i} has ${have ? `steps 0-${have - 1}` : 'no steps'}, so no step ${step}; name the scenes that have it`);
+    }
+  }
   const { renderStills } = await importRender();
   const outDir = path.resolve(values.out ?? path.join(dir, 'stills'));
   fs.mkdirSync(outDir, { recursive: true });
   const voiceover = timingVoiceover(dir, run.settings);
-  const files = await renderStills({ hunks, storyboard, voiceover, outDir, scenes: scenes.length ? scenes : undefined });
+  const files = await renderStills({ hunks, storyboard, voiceover, outDir, scenes: scenes.length ? scenes : undefined, step });
   for (const f of files) console.log(path.resolve(f));
 }
 

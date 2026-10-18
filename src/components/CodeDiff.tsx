@@ -275,7 +275,18 @@ function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, row
     boxes.set('token', { x, y: at.y + (metrics.rowH - textH) / 2, width: codeColumns(step.token!) * advance, height: textH });
   }
   const visible = textBoxes.filter((t) => t.box.y + t.box.height > g.viewportTop && t.box.y < g.viewportTop + (area.height - g.viewportTop));
-  return { boxes, obstacles: [...visible.map((t) => t.box), ...extra], area: areaOf(area) };
+  // Ink names a line "ln:<hunk line>" and text on it "tx:<hunk line>:<offset>:<length>" (shared/ink.mjs).
+  const boxOf = (key: string): Box | null => {
+    const [kind, line, at, length] = key.split(':');
+    const row = textBoxes.find((t) => t.line === Number(line));
+    if (!row || (kind !== 'ln' && kind !== 'tx')) return null;
+    if (kind === 'ln') return row.box;
+    const text = hunk.lines[row.line]!.text;
+    const textH = Math.round(metrics.fontSize * 1.3);
+    const from = Number(at);
+    return { x: row.x + codeColumns(text.slice(0, from)) * advance, y: row.y + (metrics.rowH - textH) / 2, width: codeColumns(text.slice(from, from + Number(length))) * advance, height: textH };
+  };
+  return { boxes, obstacles: [...visible.map((t) => t.box), ...extra], area: areaOf(area), boxOf };
 }
 
 const MissingHunk: React.FC<{ hunkId: string }> = ({ hunkId }) => (
@@ -436,7 +447,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
     const first = slots.findIndex((slot) => slot.step === k);
     const settled = first < 0 ? 0 : rowTops(k)[first]! - (stops[k] ?? 0);
     const live = first < 0 ? 0 : placed[first]!.top - scroll;
-    return { ...targets, shift: { x: 0, y: live - settled } };
+    return { ...targets, shift: { x: 0, y: live - settled }, clip: { x: 0, y: panelTop + PANEL_PAD, width: box.width, height: viewportH } };
   };
 
   /** Panel y of a step's code range as the camera shows it, kept inside the viewport. */
