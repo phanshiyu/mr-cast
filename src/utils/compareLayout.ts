@@ -1,7 +1,7 @@
 import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { fitBlock, fitLines, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { CompareCell, CompareRow, CompareScene, Tone, Verdict } from '../types';
+import type { CompareCell, CompareRow, CompareScene, ImageFit, Tone, Verdict } from '../types';
 import type { Box, LayoutBoxes } from './penGeometry';
 
 /** Height of a side's title band, above its first row. */
@@ -21,7 +21,7 @@ const BOTTOM_PAD = 14;
 const MAX_FONT = 30;
 const MIN_FONT = 18;
 
-export type PlacedCompareCell = ({ kind: 'text'; text: Fit } | { kind: 'code'; code: string; lang: string; lines: Fit }) & {
+export type PlacedCompareCell = ({ kind: 'text'; text: Fit } | { kind: 'code'; code: string; lang: string; lines: Fit } | { kind: 'image'; src: string; fit: ImageFit }) & {
   verdict: Verdict | null;
   /** Height of its text or code block, in layout pixels. */
   h: number;
@@ -67,6 +67,8 @@ function fitCell(cell: CompareCell, width: number, font: number, path: string): 
     const text = fitTextAt(cell.trim(), sized(SLOTS.compareCell, width), path, font);
     return { kind: 'text', text, verdict: null, h: text.height };
   }
+  // A picture takes a 16:9 box the cell's width, the same on both sides whatever each picture's shape.
+  if ('image' in cell) return { kind: 'image', src: cell.image, fit: cell.fit ?? 'contain', verdict: null, h: Math.round((width * 9) / 16) };
   const slot = { ...sized(SLOTS.compareCode, width - 2 * CODE_PAD), size: Math.min(SLOTS.compareCode.size, Math.round(font * 0.8)) };
   const lines = fitLines(codeLines(cell.code), slot, Infinity, `${path}.code`);
   return { kind: 'code', code: codeLines(cell.code).join('\n'), lang: cell.lang ?? 'plain', lines, verdict: null, h: lines.height + 2 * CODE_PAD };
@@ -116,7 +118,7 @@ function attempt(scene: CompareScene, width: number, font: number) {
       path,
     ).map((c, k) => ({ ...c, verdict: row.verdict?.[k] ?? null }));
     const label = typeof row.label === 'string' && row.label.trim() ? fitTextAt(row.label, sized(SLOTS.compareLabel, labelW), `${path}.label`, labelFont) : null;
-    fits &&= fitted.every((c) => (c.kind === 'text' ? c.text.fits : c.lines.fits)) && (label?.fits ?? true);
+    fits &&= fitted.every((c) => (c.kind === 'text' ? c.text.fits : c.kind === 'code' ? c.lines.fits : true)) && (label?.fits ?? true);
     const h = Math.max(label?.height ?? 0, ...fitted.map((c) => c.h)) + 2 * pad;
     const placed = { row, index: i, same: compareRowSame(row), label, cells: fitted as PlacedCompareRow['cells'], y, h };
     y += h;
@@ -144,7 +146,7 @@ export function layoutCompare(scene: CompareScene, width: number, height: number
 /** A cell's text or code block, in layout units: where a pen mark draws and the note keeps off. */
 export function cellBox(layout: CompareLayout, row: PlacedCompareRow, side: 0 | 1): Box {
   const cell = row.cells[side];
-  const width = cell.kind === 'text' ? cell.text.width : cell.lines.width + 2 * CODE_PAD;
+  const width = cell.kind === 'text' ? cell.text.width : cell.kind === 'code' ? cell.lines.width + 2 * CODE_PAD : layout.cellW;
   return { x: layout.sides[side].x + layout.cellX, y: row.y + (row.h - cell.h) / 2, width: Math.max(24, Math.min(layout.cellW, width)), height: cell.h };
 }
 

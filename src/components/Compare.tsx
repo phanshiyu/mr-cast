@@ -18,6 +18,7 @@ import { plainCodeColor, tokenColor, tokenizeLines } from '../utils/highlight';
 import { staged } from '../utils/penGeometry';
 import { focusSpotlight, revealStarts, stepSpring, type Emphasis } from '../utils/spotlight';
 import { FitText } from './FitText';
+import { Picture } from './Picture';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -116,7 +117,13 @@ const Cell: React.FC<{ layout: CompareLayout; row: PlacedCompareRow; side: 0 | 1
           transform: `translateY(${(1 - appear) * 10}px)`,
         }}
       >
-        {cell.kind === 'text' ? <FitText fit={cell.text} style={{ color: colors.text }} /> : <CodeBlock cell={cell} />}
+        {cell.kind === 'text' ? (
+          <FitText fit={cell.text} style={{ color: colors.text }} />
+        ) : cell.kind === 'code' ? (
+          <CodeBlock cell={cell} />
+        ) : (
+          <Picture src={cell.src} fit={cell.fit} style={{ width: '100%', height: cell.h, borderRadius: 12, background: colors.raised }} />
+        )}
       </div>
       {Icon && verdict ? (
         <div style={{ position: 'absolute', right: layout.cellX - 6, width: VERDICT_W - 8, top: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

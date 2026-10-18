@@ -26,6 +26,7 @@ const REF_HELP = {
   array: (s) => (Array.isArray(s.arrays) ? 'a cell "left[0]", cells "left[0-1]", an array "array:left", a pointer "ptr:name", or a range "range:name"' : 'a cell index, an "a-b" range of cells, a pointer "ptr:name", or a range "range:name"'),
   memory: 'a frame "frame:name", a variable "frame.var", an object id, or a field "object.field"',
   svg: 'an element id in the drawing',
+  image: 'a region id',
 };
 
 /** The ref help for a scene, which for some types depends on its fields. */

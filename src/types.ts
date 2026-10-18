@@ -1121,8 +1121,11 @@ export interface FilesScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-/** One side's cell in a compare row: display text, or a short code snippet of a few lines drawn with syntax colours. */
-export type CompareCell = DisplayText | { code: string; lang?: string };
+/**
+ * One side's cell in a compare row: display text, a short code snippet of a few lines drawn with syntax colours, or a
+ * picture, such as a screenshot of each side, in a 16:9 box (see ImageScene for what `image` may be).
+ */
+export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit };
 
 /** Which side of a compare row is better: a green check, a red cross, or an amber warning on that side's cell. */
 export type Verdict = 'good' | 'bad' | 'warn';
@@ -1205,7 +1208,55 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene;
+/** "contain" shows all of the picture, with bands of the background beside or above it; "cover" fills the box and crops the edges. */
+export type ImageFit = 'contain' | 'cover';
+
+/** A box on a picture, as fractions of its width and height from its top left: [x, y, width, height], e.g. [0.1, 0.2, 0.3, 0.25]. */
+export type ImageBox = [x: number, y: number, width: number, height: number];
+
+/** A part of the picture that steps light and ink draws on, such as a face, a button or a building. */
+export interface ImageRegion {
+  /** Named by steps' `focus`, ink, and `kenBurns`. */
+  id: string;
+  box: ImageBox;
+  /** A short name drawn beside the region while a step lights it, e.g. "the load balancer"; a step's `say` may name the region by it. */
+  label?: string;
+}
+
+/**
+ * A picture: a photo, a screenshot, a diagram from elsewhere. mr-cast does not make or change images; it shows the
+ * file given, and whoever makes the video owns the right to use it. `validate` copies a local file into the run, or
+ * downloads a URL once, and the player and renders read only that copy.
+ */
+export interface ImageScene extends SceneBase {
+  type: 'image';
+  title?: string;
+  /**
+   * A path relative to the run directory or the repository, or an http(s) URL. A PNG, JPEG, WebP or GIF file of up to
+   * 10 MB; an SVG file is refused, since it can carry scripts (draw it in an svg scene instead).
+   */
+  src: string;
+  /** Defaults to "contain". */
+  fit?: ImageFit;
+  /** A line under the picture. */
+  caption?: DisplayText;
+  /** Where the picture comes from, e.g. "Photo: NASA, public domain", drawn small under its right edge. */
+  credit?: string;
+  /**
+   * A slow pan and zoom over the whole scene. `true` moves in a little toward the centre; `from` and `to` frame a
+   * region id or a box at the scene's start and end, each the whole picture when left out.
+   */
+  kenBurns?: boolean | { from?: string | ImageBox; to?: string | ImageBox };
+  /** Parts of the picture that steps light and ink draws on. */
+  regions?: ImageRegion[];
+  /**
+   * Each step lights the regions it focuses just before its `say` is spoken, and the rest of the picture dims. A ref
+   * is a region id. `narration` is then the intro.
+   */
+  steps?: FocusStep[];
+}
+
+export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | ImageScene;
 
 export interface Storyboard {
   title: string;
@@ -1313,6 +1364,11 @@ export interface Voiceover {
   failed?: boolean;
 }
 
+// ─── images.json (written by `mr-cast validate`) ─────────────────────────────
+
+/** Each image source of the storyboard, by its `src` as written, as the copy in the run's images/ folder. */
+export type ImageManifest = Record<string, { file: string; width: number; height: number }>;
+
 // ─── Composition props ───────────────────────────────────────────────────────
 
 export interface WalkthroughProps {
@@ -1324,5 +1380,9 @@ export interface WalkthroughProps {
   voiceover?: Voiceover | null;
   /** URL prefix for clip `src` paths: "./data/" in the player, a local server in renders. Without it no audio plays (stills). */
   audioBaseUrl?: string;
+  /** The run's images.json, so image scenes and cells find their local copies. */
+  images?: ImageManifest;
+  /** URL prefix for an image's `file`: "./data/" in the player, a local server in renders. Without it pictures draw as placeholders. */
+  imageBaseUrl?: string;
   [key: string]: unknown;
 }

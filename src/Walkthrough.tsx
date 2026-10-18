@@ -10,6 +10,8 @@ import { DataTable } from './components/DataTable';
 import { ErDiagram } from './components/ErDiagram';
 import { FileTree } from './components/FileTree';
 import { GraphDiagram } from './components/GraphDiagram';
+import { ImageFrame } from './components/ImageFrame';
+import { ImagesContext } from './components/Picture';
 import { TextCard } from './components/TextCard';
 import { LayerStack } from './components/LayerStack';
 import { MemoryDiagram } from './components/MemoryDiagram';
@@ -27,7 +29,7 @@ import { SAFE, colors, fonts } from './components/theme';
 import { FitText } from './components/FitText';
 import { sourceFit } from './fit/source';
 import './fonts';
-import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, TextScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, SvgScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
+import type { ImageScene, ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, TextScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, SvgScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -52,6 +54,7 @@ interface SceneByType {
   array: ArrayScene;
   memory: MemoryScene;
   svg: SvgScene;
+  image: ImageScene;
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
@@ -76,6 +79,7 @@ const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>>
   array: ArrayDiagram,
   memory: MemoryDiagram,
   svg: SvgDiagram,
+  image: ImageFrame,
 };
 
 function renderScene<K extends keyof SceneByType>(type: K, props: SceneProps<SceneByType[K]>): ReactNode {
@@ -104,7 +108,8 @@ const Backdrop: React.FC = () => (
   />
 );
 
-export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl }) => (
+export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl, images, imageBaseUrl }) => (
+  <ImagesContext.Provider value={{ images: images ?? {}, baseUrl: imageBaseUrl }}>
   <AbsoluteFill style={{ backgroundColor: colors.bg, fontFamily: fonts.sans }}>
     <Backdrop />
     {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, segments }) => (
@@ -131,4 +136,5 @@ export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, sho
       </Sequence>
     ))}
   </AbsoluteFill>
+  </ImagesContext.Provider>
 );

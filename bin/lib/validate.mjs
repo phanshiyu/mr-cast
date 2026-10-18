@@ -17,6 +17,7 @@ import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
 import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
+import { checkImage } from './validate-image.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
@@ -26,7 +27,7 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
+const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg', 'image'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEXT_ITEMS_MAX = 6;
@@ -276,11 +277,12 @@ async function checkMermaid(diagrams, errors, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null }} meta  The mode from meta.json:
+ * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null, images?: object | null }} meta  The mode from meta.json:
  *   "explain" (`mr-cast init`) narrates source snippets instead of a diff, so it has no coverage, risk or `skipped`.
  *   A pre-read (`audience` "preread") shows no code and lists the diff in its reading order; any other audience
  *   is a plain video. The run's plan.json as `readPlan` read it, when it has one: each scene's topic must name one
- *   of its topics. Errors are what would not render or name something that does not exist; warnings report what
+ *   of its topics. `images` is what bin/lib/images.mjs found making the pictures local: `manifest`, their copies and
+ *   sizes, and `problems`, one for each picture that cannot be shown. Errors are what would not render or name something that does not exist; warnings report what
  *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
  */
 export async function validateStoryboard(raw, hunks, meta = {}) {
@@ -361,7 +363,7 @@ function intentMessage(message, intents) {
   return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
 }
 
-async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null } = {}) {
+async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null, images = null } = {}) {
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -521,6 +523,10 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
         checkSvg(s, p, errors, warnings);
         break;
 
+      case 'image':
+        checkImage(s, p, errors);
+        break;
+
       case 'reading':
         break;
 
@@ -544,12 +550,14 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
 
   const preread = audience === 'preread';
   const listed = checkPreread(sb, hunks ?? {}, { preread, mode }, errors, warnings);
+  // Whether each picture can be shown, as bin/lib/images.mjs found when it made them local.
+  for (const { path: at, message, level } of images?.problems ?? []) (level === 'warning' ? warnings : errors).push(`${at}: ${message}`);
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   checkTopics(sb, plan, errors, warnings, { preread });
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
-  if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);
+  if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings, images?.manifest ?? {});
   checkSpokenCounts(sb.scenes, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');

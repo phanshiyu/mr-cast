@@ -23,6 +23,7 @@ import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { sceneSteps } from '../shared/steps.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
+import { IMAGES_FILE, resolveImages } from './lib/images.mjs';
 import { formatSteps } from './lib/highlight.mjs';
 import { formatSchema } from './lib/schema.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
@@ -166,13 +167,15 @@ async function loadProject(dir, settings, { write = true } = {}) {
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
   const meta = readRunMeta(dir);
   const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
-  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, plan });
+  // Pictures are made local before the check, which reports any that cannot be shown; the hook's check writes nothing.
+  const images = await resolveImages(dir, raw, { write });
+  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, plan, images });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length || !write ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
   const reading = result.errors.length || !write ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
-  return { dir, hunks, raw, storyboard, plan, result, review, reading, lines: formatValidation(result, { storyboard, hunks, seconds }) };
+  return { dir, hunks, raw, storyboard, plan, result, review, reading, images: images.manifest, lines: formatValidation(result, { storyboard, hunks, seconds }) };
 }
 
 /** Whether `file` is absent or a file mr-cast wrote under `heading`, so mr-cast may replace or remove it. */
@@ -530,7 +533,7 @@ async function play(argv) {
   // An edit still being voiced reloads the page once it is voiced, with every change made meanwhile: the server asks
   // serving.holding() after each batch.
   const onDataChange = async (file) => {
-    if (file === 'meta.json' || file === BUILT_FILE) return;
+    if (file === 'meta.json' || file === BUILT_FILE || file === IMAGES_FILE) return;
     let project;
     try {
       project = await loadProject(dir, settings);
@@ -638,14 +641,14 @@ function progressReporter(label) {
 async function render(argv) {
   const { values } = parseArgs({ args: argv, options: { out: { type: 'string' }, ...RUN_OPTIONS } });
   const run = runFor(values);
-  const { dir, hunks, storyboard, plan: planFile } = await loadValidProject(run.dir, run.settings);
+  const { dir, hunks, storyboard, images, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = await voiceoverFor(dir, storyboard, run.settings);
   reportPace(voiceover);
   const { renderVideo } = await importRender();
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   const progress = progressReporter('rendering');
-  const written = await renderVideo({ hunks, storyboard, voiceover, dataDir: dir, outFile, onProgress: progress.update });
+  const written = await renderVideo({ hunks, storyboard, voiceover, images, dataDir: dir, outFile, onProgress: progress.update });
   progress.done();
   const video = written ?? outFile;
   // review.md and reading.md are in the run's directory; a video saved elsewhere gets its own copies beside it.
@@ -660,7 +663,7 @@ async function render(argv) {
 async function still(argv) {
   const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, step: { type: 'string' }, ...RUN_OPTIONS } });
   const run = runFor(values);
-  const { dir, hunks, storyboard } = await loadValidProject(run.dir, run.settings);
+  const { dir, hunks, storyboard, images } = await loadValidProject(run.dir, run.settings);
   const count = storyboard.scenes.length;
   const scenes = positionals.map((p) => {
     const n = Number(p);
@@ -679,7 +682,7 @@ async function still(argv) {
   const outDir = path.resolve(values.out ?? path.join(dir, 'stills'));
   fs.mkdirSync(outDir, { recursive: true });
   const voiceover = timingVoiceover(dir, run.settings);
-  const files = await renderStills({ hunks, storyboard, voiceover, outDir, scenes: scenes.length ? scenes : undefined, step });
+  const files = await renderStills({ hunks, storyboard, voiceover, images, dataDir: dir, outDir, scenes: scenes.length ? scenes : undefined, step });
   for (const f of files) console.log(path.resolve(f));
 }
 

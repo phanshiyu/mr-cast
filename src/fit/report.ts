@@ -1,6 +1,7 @@
 import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
-import type { HunkMap, Scene, Storyboard } from '../types';
+import type { HunkMap, ImageManifest, Scene, Storyboard } from '../types';
+import { layoutImage } from '../utils/imageLayout';
 import { contentBox } from '../components/theme';
 import { calloutFits } from './callout';
 import { fitSceneGraph, graphAreas } from '../utils/graphLayout';
@@ -39,7 +40,7 @@ class Scaled {
 const scaledTables = (name: string, tables: readonly { scale: number }[]) => tables.map((t) => new Scaled(name, t.scale, t));
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
-type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap) => unknown };
+type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap, images: ImageManifest) => unknown };
 
 const SCENE_FITS: SceneFits = {
   text: (scene) => textStates(scene).map((state) => layoutText(scene, state.values, state.paths)),
@@ -116,6 +117,7 @@ const SCENE_FITS: SceneFits = {
   },
   // A drawing's text is checked against its viewBox in bin/lib/validate-svg.mjs; nothing here wraps it.
   svg: () => null,
+  image: (scene, _storyboard, _hunks, images) => layoutImage(scene, headerBox(scene), images),
   terminal: (scene) => {
     const box = contentBox(Boolean(scene.title));
     return layoutTerminal(scene, box.width, box.height);
@@ -156,12 +158,12 @@ export interface FitReport {
 }
 
 /** Every text each scene draws, fitted exactly as the player fits it. Expects a normalized, valid storyboard. */
-export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
+export function fitReport(storyboard: Storyboard, hunks: HunkMap, images: ImageManifest = {}): FitReport[] {
   return storyboard.scenes.map((scene, i) => {
     const out: Fit[] = [];
     const scaled: ScaledFits[] = [];
-    const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap) => unknown;
-    collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks)], out, scaled, new Set());
+    const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap, i: ImageManifest) => unknown;
+    collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks, images)], out, scaled, new Set());
     return { scene: i, fits: out, scaled };
   });
 }
@@ -188,5 +190,15 @@ export function inkStages(storyboard: Storyboard): (InkStage[] | null)[] {
   return storyboard.scenes.map((scene) => {
     const targets = (STEP_TARGETS[scene.type] as ((s: Scene) => MarkTargets[]) | undefined)?.(scene);
     return targets ? targets.map((t) => ({ area: t.area, boxes: [...t.boxes] })) : null;
+  });
+}
+
+/** Pictures drawn more than twice their own size, which look soft: the scene, the picture's size, and its drawn size. */
+export function imageScales(storyboard: Storyboard, images: ImageManifest): { scene: number; natural: { width: number; height: number }; drawn: { width: number; height: number }; scale: number }[] {
+  return storyboard.scenes.flatMap((scene, i) => {
+    if (scene.type !== 'image') return [];
+    const layout = layoutImage(scene, headerBox(scene), images);
+    if (!layout.natural || layout.upscale <= 2) return [];
+    return [{ scene: i, natural: layout.natural, drawn: { width: Math.round(layout.base.width), height: Math.round(layout.base.height) }, scale: layout.upscale }];
   });
 }

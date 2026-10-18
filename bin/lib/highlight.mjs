@@ -133,6 +133,9 @@ const ITEMS = {
       ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${valueAt(s, k, i)}`, terms: [text(String(valueAt(s, k, i) ?? ''))], with: [`l:${i}`] }))),
     ];
   },
+  image(scene) {
+    return list(scene.regions).map((r) => ({ key: `im:${r?.id}`, label: `region ${r?.id}${r?.label ? ` "${text(r.label)}"` : ''}`, names: [text(r?.label), r?.id] }));
+  },
   table(scene, state) {
     return tableItems(scene, state, '');
   },
@@ -149,7 +152,7 @@ const ITEMS = {
   },
   compare(scene) {
     const titles = compareTitles(scene);
-    const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
+    const cell = (c) => (c && typeof c === 'object' ? ('image' in c ? `image: ${c.image}` : `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}`) : text(c));
     return [
       ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i}${r?.label ? ` "${text(r.label)}"` : ''}: ${list(r?.cells).map(cell).join(' | ')}`, terms: [text(r?.label)], parts: titles.map((_, s) => `x:${i}/${s}`) })),
       ...titles.map((t, s) => ({ key: `s:${s}`, label: `side ${t}`, terms: [text(t)], parts: list(scene.rows).map((_, i) => `x:${i}/${s}`) })),
@@ -378,7 +381,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'tests'];
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'tests', 'image'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:

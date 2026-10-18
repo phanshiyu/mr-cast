@@ -1,6 +1,7 @@
 // Checks for the compare scene, mirroring src/types.ts. Pushes human/LLM-readable strings onto `errors`
 // and `warnings`, like the checks in validate.mjs.
 
+import { checkImageFit, checkImageSrc } from './validate-image.mjs';
 import { TONES } from './validate-scenes.mjs';
 
 const COMPARE_ROWS_MAX = 6;
@@ -12,8 +13,12 @@ const isStr = (v) => typeof v === 'string' && v.trim().length > 0;
 
 function checkCell(cell, q, errors, warnings) {
   if (typeof cell === 'string') return;
+  if (cell && typeof cell === 'object' && !Array.isArray(cell) && 'image' in cell) {
+    checkImageSrc(cell.image, `${q}.image`, errors);
+    return checkImageFit(cell.fit, `${q}.fit`, errors);
+  }
   if (!cell || typeof cell !== 'object' || Array.isArray(cell) || !isStr(cell.code)) {
-    return errors.push(`${q}: must be text, or { code, lang? } for a short snippet`);
+    return errors.push(`${q}: must be text, { code, lang? } for a short snippet, or { image, fit? } for a picture`);
   }
   if (cell.lang !== undefined && typeof cell.lang !== 'string') errors.push(`${q}.lang: must be a string, e.g. "ts" or "json"`);
   const lines = cell.code.split('\n').length;
