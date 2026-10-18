@@ -104,6 +104,32 @@ const rowCount = (scene: TestsScene, row: MatrixRow) => {
 /** Whether rows list the names of the tests that check them, in a column of their own, when every value still fits one line beside it. */
 const NAMES_ENABLED = true;
 
+/**
+ * Column widths for `room`: every column its natural width and an equal part of what is left; when they do not
+ * all fit, the narrow ones keep theirs and the wide ones share the rest equally, so one long value never starves
+ * the others.
+ */
+function shareWidths(natural: readonly number[], room: number): number[] {
+  const total = natural.reduce((a, b) => a + b, 0);
+  if (total <= room) return natural.map((n) => n + (room - total) / natural.length);
+  const out = natural.map(() => 0);
+  let open = natural.map((_, i) => i);
+  let left = room;
+  for (;;) {
+    const share = left / open.length;
+    const fitting = open.filter((i) => natural[i]! <= share);
+    if (!fitting.length) break;
+    for (const i of fitting) {
+      out[i] = natural[i]!;
+      left -= natural[i]!;
+    }
+    open = open.filter((i) => !fitting.includes(i));
+    if (!open.length) return out;
+  }
+  for (const i of open) out[i] = left / open.length;
+  return out;
+}
+
 function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: number, maxLines = 2): Omit<TestsLayout, 'scale' | 'room'> & { fits: boolean } {
   const lineHeight = Math.round(font * 1.25);
   const padX = Math.round(font * 0.6);
@@ -135,7 +161,7 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
   const namesFit = Math.round(Math.min(namesNat, width * 0.3));
   const namesW = NAMES_ENABLED && namesNat && outcomeRoom(namesFit) >= natSum ? namesFit : 0;
   const room = outcomeRoom(namesW);
-  const colW = colNat.map((n) => (natSum <= room ? n + (room - natSum) / outcomes.length : (room * n) / natSum));
+  const colW = shareWidths(colNat, room);
 
   let fits = true;
   const fitAt = (text: string, slot: Slot, w: number, path: string, size: number, lines = maxLines) => {

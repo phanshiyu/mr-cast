@@ -11,7 +11,7 @@ const isObject = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v)
 
 /** The situation and outcome a check names, or what is wrong with it. */
 function readCheck(ref, situations, outcomes) {
-  const ids = situations.map((s) => s?.id).filter(isStr);
+  const ids = [...new Set(situations.map((s) => s?.id).filter(isStr))];
   const id = ids.filter((i) => ref.startsWith(`${i}.`)).sort((a, b) => b.length - a.length)[0];
   if (!id) return { error: `names no situation; a check is "situation.Outcome", with a situation id of ${ids.map((i) => JSON.stringify(i)).join(', ') || '(none)'}${didYouMean(ref.split('.')[0], ids)}` };
   const outcome = ref.slice(id.length + 1);
