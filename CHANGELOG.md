@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.27.0
+
+Claude can write and draw on a scene the way a teacher works at a whiteboard. Any stepped scene's step takes a `draw` list: circles, boxes, underlines, strikes, crosses, ticks, braces, arrows and handwritten text, each written on as the voice reaches its words and kept on the board until a later step erases it (ADR 0025).
+
+- **`draw` on any step with focus refs, and on code steps.** Each item names one verb: `circle`, `box`, `underline`, `strike`, `cross`, `tick` or `brace` on a ref, a list of refs or an earlier item's `id`; `arrow: [from, to]` between refs, ids or `[x, y]` stage points; `write` with `near` a ref or `at` a point. Options: `note`, `when` (words of the say at which it starts), `tone`, `side` and `id`. On a code step a ref is a line number, an `"a-b"` range, or text on the step's lines.
+- **The board persists.** Items stay until a step's `erase`, `true` for everything or a list of ids, applied as the step starts. Strokes draw with a moving pen tip, arrows more slowly, and handwriting reveals left to right at about 2.2 frames a character.
+- **Placement keeps clear.** Each item avoids everything the scene shows from its step on, pointers that move later and ink already up included. Text with no clear spot goes to free space with a leader arrow, and a long arrow bends or swings round what lies between its ends. Ink moves with a code, terminal or sequence camera, and code clips it to its viewport.
+- **`mark` and `note` are unchanged.** They are the shorthand for one item that clears at the next step; old storyboards and review flags render as in 0.26.
+- **`validate`** fails on an unknown ref, a `when` the say does not contain, an `erase` id never drawn, an arrow from an id not yet drawn, an id that is also a ref, and malformed items, and warns when text written `at` a point lands on a graph, table, array, memory, svg or state box, and on markup in ink text. A step that draws ink is no longer reported as moving nothing.
+- **`mr-cast still --step k`** renders each scene as step k ends, to see the board mid-scene.
+- **Examples.** Dijkstra writes each relaxation's sum along its road, binary search circles each look and braces the half it rules out, and `examples/primitives/ink` is a short demo with a still in [docs/gallery.md](docs/gallery.md). The skill's [ink reference](skill/mr-cast/references/ink.md) and [docs/storyboard.md](docs/storyboard.md) describe it.
+- **Under the hood.** The graph, table, array, memory, svg and state scenes take their pen targets from `src/utils/sceneTargets.ts`, which `validate` also reads. Tests cover every validate rule, the persistence and erase model, cue timing, and the reference example.
+
 ## 0.26.0
 
 Claude gets more ways to draw. A stepped scene can keep a formula with real numbers above the diagram, keep colours on what it has ruled in or out, grow a graph or a table a step at a time, show several arrays at once, and change a graph's numbers with a table beside it. A new `svg` scene draws anything Claude can write as SVG, and steps light, colour, show and hide its parts. The additions came from splitting eleven video ideas, from binary search to H3, into their visual beats and checking each against the scenes ([docs/primitives.md](docs/primitives.md), ADR 0020).
