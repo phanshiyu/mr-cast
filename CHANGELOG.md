@@ -2,7 +2,13 @@
 
 ## 0.28.0
 
-Motion, three new scenes and ten new worked examples. Any stepped scene can zoom and pan with a step's `camera`, svg shapes move, trace and morph, charts move and sort into races, and code types itself beside its output. A `plot` scene draws numeric axes whose curves reshape, a `map` scene draws countries, places and routes on a real world map, and an `image` scene shows a photo or screenshot. Storyboards written for 0.27 draw as before, apart from four small changes the fixes below list.
+Motion, three new scenes and ten new worked examples. Any stepped scene can zoom and pan with a step's `camera`, svg shapes move, trace and morph, charts move and sort into races, and code types itself beside its output. A `plot` scene draws numeric axes whose curves reshape, a `map` scene draws countries, places and routes on a real world map, and an `image` scene shows a photo or screenshot. Most storyboards written for 0.27 validate and draw as before; **Upgrading from 0.27** below lists the three changes that can fail one or move its text, and the fixes list four small changes to how some scenes look.
+
+**Upgrading from 0.27.**
+
+- **Ink on an svg element with nothing drawn is an error.** A `draw` that names an empty `<g>`, a gradient or `<stop>`, or a `<use>` drew nothing in 0.27 and passed `validate`. It now fails, naming the element, so the ink is not silently missing. Name a shape, a text or a tspan, or a group with one in it.
+- **The space between two `<tspan>`s is kept.** `<tspan>a</tspan> <tspan>b</tspan>` read "ab" in 0.27 and reads "a b" now, so such a line is wider by a space for each gap, and the fit and small-text checks measure it that way.
+- **A table step that names its row with the older `row` key lights that row.** In 0.27 a table step with `row` and no `focus` ignored the key and lit what the step changed. The key now works as `focus` does on a table, as it always did on the other scenes that take older focus keys.
 
 **A camera on every stepped scene.** A step's `camera` zooms and pans to what it names, a ref, a list of refs or `{ "on": refs, "zoom": 3 }`, and `"all"` pulls back to the whole scene (ADR 0028).
 
@@ -57,6 +63,14 @@ New demos: `examples/primitives/chart-motion`, `examples/primitives/code-typing`
 - **Ink follows what it marks.** A circle round a bar slides with the bar when a sort moves it, and ink on a plot point, a moved svg shape or a map place moves with it as each later step settles.
 
 **Ten new worked examples, beyond software.** `math/fourier` (a square wave from sine waves), `money/compound-interest` (the rule of 72 against inflation), `science/gps-relativity`, `science/mrna-vaccine`, `tech/docker-100s`, `hardware/cpu-adder`, `geography/49th-parallel`, `product/raspberry-pi` (Pi 5 against Pi 4), `cooking/bread` (baker's percentages) and `language/ser-estar`. Each `generate.mjs` computes and checks its numbers and names its sources. The gallery groups the examples by subject, and the skill lists all twenty-one in `references/examples.md` with the scenes each uses, so SKILL.md stays inside its budget (ADR 0034).
+
+**Bounds from the review** (ADR 0035). Each has a test that fails without it.
+
+- **Picture URLs download from public hosts only.** `validate` resolves the host and refuses a URL when any of its addresses is loopback, private, link-local (such as 169.254.169.254), ULA, `0.0.0.0`, `::` or another reserved block, IPv4-mapped forms included. It connects to the address it checked, follows at most 5 redirects and checks each again. A local path that is a link leading out of the run directory and the repository is refused. A server may send a picture as `application/octet-stream`, `binary/octet-stream` or `image/jpg`, since the first bytes decide its type. `MR_CAST_IMAGES_ALLOW_LOOPBACK=1` is a testing switch for mr-cast's own tests (docs/cli.md).
+- **Plot expressions are finite.** Parentheses, minus signs, powers and calls nest at most 200 deep, a parse error at the column. Sums whose bounds are numbers add at most 10,000 terms at a point, nested ones multiplied, or the expression does not parse; every value draws its sums from one budget of 100,000 terms, past which it is empty and `validate` says the line ran out of terms. A 200,000-term `+` chain computes instead of overflowing the stack.
+- **A route leg between opposite points of the globe fails** `validate`, naming the stop, since every great circle joins them; a stop between them picks the way.
+- **Names such as `constructor`, `toString` and `__proto__`** as a scene type, a projection, a move's function or a palette colour are reported as unknown; `validate` threw on some and accepted others.
+- **The world outline loads only for a storyboard with a map.** The player's main chunk is 417 kB smaller (2,408 to 1,992 kB, 770 to 611 kB gzipped); a map fetches the outline as two chunks.
 
 **Fixes the examples found** (ADR 0034). Each has a test that fails without it, and the examples dropped their workarounds.
 
