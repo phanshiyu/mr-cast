@@ -140,14 +140,14 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   const order = scene.events.map((event, index) => ({ event, index })).sort((a, b) => a.event.at - b.event.at || a.index - b.index);
   const wanted = order.map(({ event }) => {
     const one = (text: string, slot: typeof SLOTS.eventLabel) => fitText(text, sized(slot, Infinity), '').width;
-    const stampW = measure(formatValue(event.at, scene.unit), { family: 'mono', weight: 700, size: STAMP_FONT }) * 1.2;
+    const stampW = measure(formatValue(event.at, scene), { family: 'mono', weight: 700, size: STAMP_FONT }) * 1.2;
     const text = Math.max(one(event.label, SLOTS.eventLabel), event.detail ? one(event.detail, SLOTS.eventDetail) : 0, stampW);
     return Math.max(BOX_MIN_W, Math.min(BOX_MAX_W, text + 2 * BOX_PAD_X));
   });
   // One row of cards above the axis while their narrowest widths fit; else every other event's card goes below it.
   const fitsOneRow = order.length * BOX_MIN_W + BOX_GAP * (order.length - 1) <= width;
   const rows = fitsOneRow ? [order.map((_, i) => i)] : [0, 1].map((r) => order.flatMap((_, i) => (i % 2 === r ? [i] : [])));
-  const boxes = order.map(({ event, index }) => ({ event, index, cx: x(event.at), stamp: formatValue(event.at, scene.unit) }));
+  const boxes = order.map(({ event, index }) => ({ event, index, cx: x(event.at), stamp: formatValue(event.at, scene) }));
   const rowLayouts = rows.map((members) => {
     const widths = capWidths(members.map((i) => wanted[i]!), width - BOX_GAP * Math.max(0, members.length - 1));
     const cards = members.map((i, k) => {
@@ -205,7 +205,7 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   return {
     axisY,
     x,
-    ticks: ticks.map((t) => ({ x: x(t), text: formatValue(t, scene.unit) })),
+    ticks: ticks.map((t) => ({ x: x(t), text: formatValue(t, scene) })),
     events,
     spans: placedSpans,
     width,

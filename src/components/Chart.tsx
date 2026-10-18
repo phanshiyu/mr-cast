@@ -5,7 +5,7 @@ import { targetSteps } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import { headerBox } from '../fit/shell';
 import type { ChartScene } from '../types';
-import { ANNOTATION_BAND, barX, delta, formatValue, labelTotal, layoutChart, VALUE_FONT, valueLabels, type ChartLayout, type Direction, type ValueLabel as Value } from '../utils/chartLayout';
+import { ANNOTATION_BAND, barX, delta, formatValue, labelTotal, layoutChart, VALUE_FONT, valueLabels, type Affix, type ChartLayout, type Direction, type ValueLabel as Value } from '../utils/chartLayout';
 import { brighter, focusSpotlight, stepSpring, type Emphasis } from '../utils/spotlight';
 import { stateFrame } from '../utils/stateTrack';
 import { BADGE_H, chartAt, chartStepTargets, showsBadges, slotTop } from '../utils/chartTargets';
@@ -71,7 +71,7 @@ const SlotGlow: React.FC<{ layout: ChartLayout; i: number; emphasis: Emphasis }>
     />
   ) : null;
 
-export const Grid: React.FC<{ layout: ChartLayout; unit: string | undefined; appear: number }> = ({ layout, unit, appear }) => {
+export const Grid: React.FC<{ layout: ChartLayout; affix: Affix; appear: number }> = ({ layout, affix, appear }) => {
   const { x0, x1 } = layout.plot;
   return (
     <>
@@ -106,7 +106,7 @@ export const Grid: React.FC<{ layout: ChartLayout; unit: string | undefined; app
             opacity: appear,
           }}
         >
-          {formatValue(t, unit)}
+          {formatValue(t, affix)}
         </div>
       ))}
     </>
@@ -231,7 +231,7 @@ const Bars: React.FC<{ scene: ChartScene; layout: ChartLayout; shown: number[][]
                   boxShadow: `0 0 28px ${tone.color}33, inset 0 1px 0 rgba(255,255,255,0.25)${ring}${focusRing}`,
                 }}
               />
-              {scene.stacked ? <SegmentValue x={x} width={layout.barW} top={base - h} height={h} text={formatValue(shown[s]![i]!, scene.unit)} appear={label} /> : null}
+              {scene.stacked ? <SegmentValue x={x} width={layout.barW} top={base - h} height={h} text={formatValue(shown[s]![i]!, scene)} appear={label} /> : null}
               {values.has(`${s}-${i}`) ? <ValueLabel value={values.get(`${s}-${i}`)!} color={s === k - 1 ? colors.text : '#b9c0d0'} appear={label} /> : null}
             </div>
           );
@@ -430,7 +430,7 @@ const ColumnChart: React.FC<SceneProps<ChartScene>> = ({ scene: source, hunks, d
         {scene.labels.map((_, i) => (
           <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />
         ))}
-        <Grid layout={layout} unit={scene.unit} appear={gridIn} />
+        <Grid layout={layout} affix={scene} appear={gridIn} />
         <XLabels layout={layout} appear={gridIn} emphasisOf={emphasisOf} />
         {note && point ? (
           <Leader note={note} point={point} end={leaderEnd} appear={noteIn} pulse={notePulse} color={tones[seriesTone(scene.series, point.series)].color} ring={scene.kind === 'line'} />

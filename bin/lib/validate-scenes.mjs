@@ -69,7 +69,7 @@ export function checkTable(s, p, errors, warnings) {
 
 export function checkChart(s, p, errors, warnings) {
   const before = errors.length;
-  for (const k of ['title', 'unit', 'callout']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
+  for (const k of ['title', 'unit', 'prefix', 'callout']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
   if (!CHART_KINDS.includes(s.kind)) errors.push(`${p}.kind: must be one of ${CHART_KINDS.join(', ')}`);
   const pie = s.kind === 'pie' || s.kind === 'donut';
   if (s.better !== undefined && !['lower', 'higher'].includes(s.better)) errors.push(`${p}.better: must be "lower" or "higher"`);

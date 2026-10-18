@@ -121,9 +121,9 @@ const scenes = [
   {
     type: 'chart',
     chapter: 'Price',
-    // No `unit`: the chart prints it after the value, which reads "35 $"; the title names the currency instead.
     title: 'List price in US dollars, by memory size',
     kind: 'bar',
+    prefix: '$',
     better: 'lower',
     narration: 'So what does it cost? Here are the list prices for the memory sizes both boards come in.',
     labels: shared.map(GB),

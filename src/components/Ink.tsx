@@ -9,7 +9,7 @@ import { plainText } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { cueFrame } from '../../shared/timing.mjs';
 import type { HunkMap, InkItem, Scene } from '../types';
-import { besideBox, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, rowEnd, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
+import { besideClear, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, rowEnd, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
 import { center, grow, seedOf, sketchMark, strokeLength, strokePath, union, type Box, type MarkTargets, type Pt, type Sketch, type Stroke } from '../utils/penGeometry';
 import { currentStep, stepMove } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
@@ -139,7 +139,7 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
       else {
         const target = boxOf(it.targets[0]!);
         if (!target) continue;
-        if (item.side) box = keepIn(besideBox(target, item.side, blockSize, 16), t.area);
+        if (item.side) box = besideClear(target, item.side, blockSize, 16, obstacles, t.area);
         else {
           const near = placeText(grow(target, 6), target, blockSize, obstacles, t.area);
           const end = near.crowded ? rowEnd(grow(target, 6), blockSize, obstacles, t.area) : null;

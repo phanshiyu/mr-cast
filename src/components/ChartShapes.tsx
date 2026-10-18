@@ -32,7 +32,6 @@ export const Legend: React.FC<{ scene: ChartScene; legend: readonly Fit[]; serie
         </div>
       );
     })}
-    {scene.unit ? <span style={{ fontFamily: fonts.mono, fontSize: 19, color: colors.faint }}>· {scene.unit}</span> : null}
   </div>
 );
 
@@ -130,7 +129,7 @@ export const BarRows: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durati
                           opacity: interpolate(grow, [0.6, 1], [0, 1], clamp),
                         }}
                       >
-                        {formatValue(printed, scene.unit)}
+                        {formatValue(printed, scene)}
                       </div>
                     ) : null}
                   </div>
@@ -218,7 +217,7 @@ export const PieChart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, durat
         })}
         {layout.hole ? (
           <div style={{ position: 'absolute', left: layout.cx - layout.hole, top: layout.cy - layout.hole, width: layout.hole * 2, height: layout.hole * 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: legendIn }}>
-            <div style={{ fontFamily: fonts.mono, fontSize: 40, fontWeight: 800, color: colors.text }}>{formatValue(sum(shown[0]!), scene.unit)}</div>
+            <div style={{ fontFamily: fonts.mono, fontSize: 40, fontWeight: 800, color: colors.text }}>{formatValue(sum(shown[0]!), scene)}</div>
             {layout.centre ? <FitText fit={layout.centre} align="center" style={{ color: colors.muted }} /> : null}
           </div>
         ) : null}

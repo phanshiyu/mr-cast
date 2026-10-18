@@ -49,7 +49,7 @@ export function layoutBarRows(scene: ChartScene, width: number, height: number):
   const labelFont = Math.min(...scene.labels.map((l) => fitText(l, slot, '').size));
   const labels = scene.labels.map((l, i) => fitTextAt(l, slot, `labels[${i}]`, labelFont));
   const values = chartStates(scene).flatMap((state) => printedValues(scene, state));
-  const valueW = Math.max(...values.map((v) => measure(formatValue(v, scene.unit), valueStyle(valueFont))));
+  const valueW = Math.max(...values.map((v) => measure(formatValue(v, scene), valueStyle(valueFont))));
   const x0 = labelW;
   return { width, labelW, x0, barMax: Math.max(40, width - x0 - valueW - VALUE_GAP - 8), rowH, top, barH, barGap, labels, labelFont, valueFont, legend: legendFits(scene) };
 }
@@ -91,7 +91,7 @@ const SWATCH_GAP = 18;
 export function sliceText(scene: ChartScene, value: number, total: number): string {
   const share = total > 0 ? (value / total) * 100 : 0;
   const pct = `${share >= 10 || share === 0 ? Math.round(share) : Math.round(share * 10) / 10}%`;
-  return scene.unit === '%' ? formatValue(value, '%') : `${formatValue(value, scene.unit)} · ${pct}`;
+  return scene.unit === '%' ? formatValue(value, scene) : `${formatValue(value, scene)} · ${pct}`;
 }
 
 export function layoutPie(scene: ChartScene, width: number, height: number): PieLayout {
