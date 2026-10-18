@@ -4,7 +4,7 @@ import { TEXT_LEADS } from '../../shared/targets.mjs';
 import { contentBox } from '../components/theme';
 import type { TextLead, TextScene } from '../types';
 
-export type LeadKind = (typeof TEXT_LEADS)[number] & keyof TextLead;
+type LeadKind = (typeof TEXT_LEADS)[number] & keyof TextLead;
 
 const SANS = { family: 'sans', balanced: true } as const;
 
@@ -15,7 +15,7 @@ export const RULE = { width: 120, height: 7 };
 export const QUESTION_ROOM = 0.2;
 export const SIDE_GUTTER = 64;
 /** Items sit after their dot, its gap and the shift a lit item takes. */
-export const BULLET_INDENT = 12 + 22 + 12;
+const BULLET_INDENT = 12 + 22 + 12;
 /** A quote's opening mark, as a multiple of the quote's size, and the gap between it and the quote. */
 export const QUOTE_MARK = { scale: 3.2, gap: 0.35 };
 
@@ -42,7 +42,7 @@ const NOTE_TYPE: Record<LeadKind | 'none', { size: number; side: number; weight:
 };
 
 /** A figure to count to, and how to write it on the way. */
-export interface Count {
+interface Count {
   value: number;
   decimals: number;
   grouped: boolean;
@@ -69,7 +69,7 @@ export interface TextBlock {
   height: number;
 }
 
-export interface SideLayout {
+interface SideLayout {
   label: Fit | null;
   block: TextBlock;
   items: Fit[];
@@ -85,10 +85,10 @@ export interface TextLayout {
   room: Fit;
 }
 
-export const leadKind = (o: TextLead): LeadKind | null => (TEXT_LEADS.find((f) => (o as Record<string, unknown>)[f] !== undefined) as LeadKind | undefined) ?? null;
+const leadKind = (o: TextLead): LeadKind | null => (TEXT_LEADS.find((f) => (o as Record<string, unknown>)[f] !== undefined) as LeadKind | undefined) ?? null;
 
 /** "500 hours" as its figure "500" and its words "hours"; "1.5×" stays whole. Null when it does not start with a figure. */
-export function splitNumber(text: string): { figure: string; unit: string } | null {
+function splitNumber(text: string): { figure: string; unit: string } | null {
   const m = /^\s*([~≈<>+\-−$€£]?\s?\d[\d,.]*\s?[%×x]?)(?:\s+(.+))?$/.exec(text);
   if (!m || /[*`=[\]{}]/.test(m[1]!)) return null;
   return { figure: m[1]!.trim(), unit: (m[2] ?? '').trim() };
@@ -114,7 +114,7 @@ export function countText(to: Count, t: number, from: Count | null = null): stri
   return `${to.prefix}${grouped}${dec ? `.${dec}` : ''}${to.suffix}`;
 }
 
-export type Where = 'alone' | 'list' | 'side';
+type Where = 'alone' | 'list' | 'side';
 
 /** Where each text a state draws came from: the scene's own field, or the step that last set it. */
 export type TextPaths = Partial<Record<'t:lead' | 't:note' | 't:kicker', string>>;
@@ -142,7 +142,7 @@ const quoteIndent = (where: Where, scale: number) => {
   return Math.round(measure('“', { family: 'sans', weight: 800, size: size * QUOTE_MARK.scale }) + size * QUOTE_MARK.gap);
 };
 
-export function fitBlockOf(o: { kicker?: string; note?: string } & TextLead, values: Record<string, unknown> | null, paths: TextPaths, full: number, where: Where, scale: number, prefix: string): TextBlock {
+function fitBlockOf(o: { kicker?: string; note?: string } & TextLead, values: Record<string, unknown> | null, paths: TextPaths, full: number, where: Where, scale: number, prefix: string): TextBlock {
   const kind = leadKind(o);
   const text = (key: string, own: string | undefined) => (values && typeof values[key] === 'string' ? (values[key] as string) : own);
   const path = (key: keyof TextPaths, own: string) => paths[key] ?? `${prefix}${own}`;
@@ -164,7 +164,7 @@ export function fitBlockOf(o: { kicker?: string; note?: string } & TextLead, val
 }
 
 /** Items at one size, from `start` down to `min`: the largest at which each fits its two lines and `room` holds them all. */
-export function fitItems(items: readonly string[], width: number, start: number, min: number, gap: number, room: number, prefix: string): Fit[] {
+function fitItems(items: readonly string[], width: number, start: number, min: number, gap: number, room: number, prefix: string): Fit[] {
   const slot = { ...SANS, balanced: false, name: 'item', weight: 600, size: start, min, lines: 2, lineHeight: 1.3, width: width - BULLET_INDENT, fix: 'shorten the item or split it in two' };
   let fits: Fit[] = [];
   for (let size = start; size >= min; size--) {
@@ -174,7 +174,7 @@ export function fitItems(items: readonly string[], width: number, start: number,
   return fits;
 }
 
-export const itemsHeight = (items: Fit[], gap: number) => items.reduce((s, b) => s + b.height, 0) + Math.max(0, items.length - 1) * gap;
+const itemsHeight = (items: Fit[], gap: number) => items.reduce((s, b) => s + b.height, 0) + Math.max(0, items.length - 1) * gap;
 
 /**
  * A text scene's layout at one state: `values` holds the lead, note and kicker a step may have set, and `paths`

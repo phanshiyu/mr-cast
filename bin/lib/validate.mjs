@@ -30,7 +30,6 @@ const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
 const TEST_CASES_MAX = 10;
 const TEXT_ITEMS_MAX = 6;
-const INTENT_BULLETS_MAX = TEXT_ITEMS_MAX;
 const TEXT_SIDE_ITEMS_MAX = 4;
 
 /** A text scene: at most one lead, items or sides but not both, and the state its steps walk. */
@@ -297,7 +296,7 @@ function checkIntent(s, p, errors) {
   if (!isStr(s.summary)) errors.push(`${p}.summary: required string`);
   if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
   if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
-  else if (s.bullets.length > INTENT_BULLETS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${INTENT_BULLETS_MAX}, so keep the ones that matter most and say the rest`);
+  else if (s.bullets.length > TEXT_ITEMS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${TEXT_ITEMS_MAX}, so keep the ones that matter most and say the rest`);
   return errors.length === before;
 }
 
