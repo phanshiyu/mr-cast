@@ -120,7 +120,7 @@ const Backdrop: React.FC = () => (
  * map; a render loads it here, holding the frame until it is in.
  */
 function useWorld(storyboard: WalkthroughProps['storyboard']): boolean {
-  const [, loaded] = useState(0);
+  const [, rerender] = useState(0);
   const { delayRender, continueRender, cancelRender } = useDelayRender();
   const ready = !needsWorld(storyboard) || worldLoaded();
   useEffect(() => {
@@ -129,7 +129,7 @@ function useWorld(storyboard: WalkthroughProps['storyboard']): boolean {
     const handle = delayRender('Loading the world outline for a map scene');
     loadWorld().then(
       () => {
-        if (live) loaded((n) => n + 1);
+        if (live) rerender((n) => n + 1);
       },
       (err: unknown) => cancelRender(err),
     );

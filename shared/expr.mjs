@@ -31,14 +31,15 @@ const own = (record, name) => Object.hasOwn(record, name);
 /** Names an expression cannot give a parameter or a sum's index, since they mean something already. */
 export const RESERVED_NAMES = [...Object.keys(FUNCTIONS), 'sum', ...Object.keys(CONSTANTS)];
 const FUNCTION_NAMES = [...Object.keys(FUNCTIONS), 'sum'];
-/** The most terms one sum adds; past it the sum has no value. */
+/**
+ * The most terms one sum adds; past it the sum has no value. Sums whose bounds are numbers, nested ones multiplied,
+ * may add no more at one point, or the expression does not parse.
+ */
 const MAX_TERMS = 10000;
-/** The most terms nested sums whose bounds are numbers may add at one point; past it the expression does not parse. */
-export const MAX_STATIC_TERMS = 10000;
 /** The most terms one evaluation adds across all its sums, nested ones included; past it the value is NaN. */
 export const MAX_EVAL_TERMS = 100000;
 /** How deep parentheses, minus signs, powers and calls may nest. */
-export const MAX_DEPTH = 200;
+const MAX_DEPTH = 200;
 
 const NUMBER = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*/;
@@ -236,7 +237,7 @@ function staticTerms(node) {
   return Number.isFinite(a) && Number.isFinite(b) ? Math.max(0, b - a + 1) : null;
 }
 
-/** Throws when sums whose bounds are numbers, nested inside each other, would add more than MAX_STATIC_TERMS terms at one point. */
+/** Throws when sums whose bounds are numbers, nested inside each other, would add more than MAX_TERMS terms at one point. */
 function checkSumSizes(ast) {
   const stack = [[ast, 1, []]];
   while (stack.length) {
@@ -246,9 +247,9 @@ function checkSumSizes(ast) {
       const n = staticTerms(node);
       if (n !== null) {
         [inner, path] = [product * n, [...counts, n]];
-        if (inner > MAX_STATIC_TERMS) {
+        if (inner > MAX_TERMS) {
           const many = path.length > 1 ? `these nested sums add ${path.join(' × ')} = ${inner} terms` : `this sum adds ${inner} terms`;
-          throw new ParseError(`${many} at every point; at most ${MAX_STATIC_TERMS} in all, so use fewer terms`, node.at);
+          throw new ParseError(`${many} at every point; at most ${MAX_TERMS} in all, so use fewer terms`, node.at);
         }
       }
       stack.push([node.from, product, counts], [node.to, product, counts], [node.term, inner, path]);
