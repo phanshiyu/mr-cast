@@ -106,11 +106,19 @@ Storyboard: [examples/primitives/array/storyboard.json](../examples/primitives/a
 
 ### chart
 
-A bar or line chart of real numbers, with a change badge on each label when there are two series.
+A bar, line, pie or donut chart of real numbers, with a change badge on each label when there are two series. Steps can change the values, which move to their new sizes, and sort the bars into a race.
 
 ![The chart demo's chart scene, at the end of its last step](assets/scenes/chart.png)
 
 Storyboard: [examples/primitives/chart/storyboard.json](../examples/primitives/chart/storyboard.json). Video: [primitives-chart.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-chart.mp4). Reference: [chart.md](../skill/mr-cast/references/scenes/chart.md).
+
+### chart-motion
+
+A bar chart race, a donut whose slices change, and stacked bars, with made-up numbers.
+
+![The chart-motion demo's chart scene, at the end of its last step](assets/scenes/chart-motion.png)
+
+Storyboard: [examples/primitives/chart-motion/storyboard.json](../examples/primitives/chart-motion/storyboard.json). Video: [primitives-chart-motion.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-chart-motion.mp4). Reference: [chart.md](../skill/mr-cast/references/scenes/chart.md).
 
 ### code
 
@@ -119,6 +127,14 @@ The lines of one hunk or snippet, the rest dimmed, walked a range at a time, wit
 ![The code demo's code scene, at the end of its last step](assets/scenes/code.png)
 
 Storyboard: [examples/primitives/code/storyboard.json](../examples/primitives/code/storyboard.json). Video: [primitives-code.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-code.mp4). Reference: [code.md](../skill/mr-cast/references/scenes/code.md).
+
+### code-typing
+
+A snippet written line by line with its output beside it, then a change typed into a diff.
+
+![The code-typing demo's code scene, at the end of its last step](assets/scenes/code-typing.png)
+
+Storyboard: [examples/primitives/code-typing/storyboard.json](../examples/primitives/code-typing/storyboard.json). Video: [primitives-code-typing.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-code-typing.mp4). Reference: [code.md](../skill/mr-cast/references/scenes/code.md).
 
 ### compare
 
@@ -159,6 +175,14 @@ Cards and the lines between them, laid out automatically. With `decision`, `term
 ![The graph demo's graph scene, at the end of its last step](assets/scenes/graph.png)
 
 Storyboard: [examples/primitives/graph/storyboard.json](../examples/primitives/graph/storyboard.json). Video: [primitives-graph.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-graph.mp4). Reference: [graph.md](../skill/mr-cast/references/scenes/graph.md).
+
+### image
+
+A picture, such as a photo, a screenshot or a figure from a paper, with a caption and credit, a slow pan and zoom, and regions that steps light and ink draws on.
+
+![The image demo's image scene, at the end of its last step](assets/scenes/image.png)
+
+Storyboard: [examples/primitives/image/storyboard.json](../examples/primitives/image/storyboard.json). Video: [primitives-image.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-image.mp4). Reference: [image.md](../skill/mr-cast/references/scenes/image.md).
 
 ### intent
 

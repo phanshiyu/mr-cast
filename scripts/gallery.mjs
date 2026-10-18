@@ -13,8 +13,11 @@ import { ROOT, copyExample, findExamples } from './lib/examples.mjs';
 
 const SCENES = path.join(ROOT, 'skill/mr-cast/references/scenes');
 const REFERENCES = path.join(ROOT, 'skill/mr-cast/references');
+// Demos of what a scene type can also do, each listed under its own name with its type's reference.
+const VARIANTS = { 'chart-motion': 'chart', 'code-typing': 'code' };
+const baseType = (type) => VARIANTS[type] ?? type;
 /** A demo's reference: its scene type's file, or for a tool on every scene, such as ink, the tool's own file. */
-const reference = (type) => (fs.existsSync(path.join(SCENES, `${type}.md`)) ? `scenes/${type}.md` : `${type}.md`);
+const reference = (type) => (fs.existsSync(path.join(SCENES, `${baseType(type)}.md`)) ? `scenes/${baseType(type)}.md` : `${type}.md`);
 const isScene = (type) => reference(type).startsWith('scenes/');
 const VIDEO = (name) => `https://github.com/phanshiyu/mr-cast/releases/latest/download/${name}.mp4`;
 // The scene each worked example's still shows, at the end of its last step.
@@ -42,7 +45,7 @@ const demos = all
   .map((e) => ({ ...e, type: path.basename(e.rel) }));
 const stills = [
   ...worked.map((e) => ({ example: e, key: e.name, scene: SCENE[e.name], out: `assets/examples/${e.name}.png` })),
-  ...demos.map((e) => ({ example: e, key: e.type, scene: isScene(e.type) ? storyboard(e).scenes.findIndex((s) => s.type === e.type) : 0, out: `assets/scenes/${e.type}.png` })),
+  ...demos.map((e) => ({ example: e, key: e.type, scene: isScene(e.type) ? storyboard(e).scenes.findIndex((s) => s.type === baseType(e.type)) : 0, out: `assets/scenes/${e.type}.png` })),
 ];
 const wanted = process.argv.slice(2);
 for (const w of wanted) if (!stills.some((s) => s.key === w)) throw new Error(`no example or demo "${w}"; they are ${stills.map((s) => s.key).join(', ')}`);
@@ -68,8 +71,9 @@ try {
   fs.rmSync(work, { recursive: true, force: true });
 }
 
-/** The scene reference's one-line description: the first paragraph under its heading. */
-const describe = (type) => fs.readFileSync(path.join(REFERENCES, reference(type)), 'utf8').split('\n\n')[1].trim();
+/** The scene reference's one-line description: the first paragraph under its heading; a variant's storyboard subtitle. */
+const describe = (type) =>
+  VARIANTS[type] ? `${storyboard(demos.find((e) => e.type === type)).subtitle}.` : fs.readFileSync(path.join(REFERENCES, reference(type)), 'utf8').split('\n\n')[1].trim();
 const storyboardLink = (e) => `[examples/${e.rel}/storyboard.json](../examples/${e.rel}/storyboard.json)`;
 const videoLink = (e) => `[${e.name}.mp4](${VIDEO(e.name)})`;
 
@@ -98,9 +102,9 @@ const demoSection = (e) =>
     '',
     describe(e.type),
     '',
-    `![The ${e.type} demo's ${isScene(e.type) ? e.type : storyboard(e).scenes[0].type} scene, at the end of its last step](assets/scenes/${e.type}.png)`,
+    `![The ${e.type} demo's ${isScene(e.type) ? baseType(e.type) : storyboard(e).scenes[0].type} scene, at the end of its last step](assets/scenes/${e.type}.png)`,
     '',
-    `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}. Reference: [${e.type}.md](../skill/mr-cast/references/${reference(e.type)}).`,
+    `Storyboard: ${storyboardLink(e)}. Video: ${videoLink(e)}. Reference: [${baseType(e.type)}.md](../skill/mr-cast/references/${reference(e.type)}).`,
   ].join('\n');
 const types = [...demos.filter((e) => isScene(e.type)).map((e) => ({ type: e.type, text: demoSection(e) })), ...aliases]
   .sort((a, b) => a.type.localeCompare(b.type))
