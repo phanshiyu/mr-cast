@@ -28,9 +28,22 @@ pnpm install-skill      # points the Claude Code skills at this clone
 | Command | What it checks |
 | --- | --- |
 | `pnpm test` | The unit tests in `test/`. |
+| `pnpm check` | `typecheck`, `lint`, `format:check` and `fallow`, in that order. Every commit must pass it. |
 | `pnpm typecheck` | The TypeScript types, and `scripts/check-text.mjs`, which fails on text clipping or an ellipsis under `src/`. |
+| `pnpm lint` | [Biome](https://biomejs.dev)'s lint rules, set in `biome.jsonc`. A warning fails it too. |
+| `pnpm format:check` | That the code is formatted as Biome formats it. `pnpm format` rewrites the files. |
+| `pnpm fallow` | [fallow](https://fallow.tools): no unused file, export, dependency or type, and no import cycle. |
 | `pnpm build` | The player build. |
 | `pnpm validate:examples` | `mr-cast validate` on every storyboard under `examples/`. |
+
+`biome.jsonc` says why each rule it turns off is off. To keep a finding that is right for one line, put
+`// biome-ignore <rule>: <reason>` above it. When fallow reports an export that only a test bundle or a dynamic
+import uses, list it under `ignoreExports` in `.fallowrc.jsonc` with the reason; a new entry point goes under
+`entry`. `pnpm exec fallow dupes` and `pnpm exec fallow health` report duplication and complexity, which CI shows
+in the job summary without failing. [ADR 36](docs/adr/0036-biome-and-fallow.md) says why these tools.
+
+To run `pnpm check` before every commit, run `git config core.hooksPath scripts/git-hooks` once in your clone.
+To skip `git blame` past the formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
 CI runs all of them on every push and pull request, with the unit tests on Node 22, 24 and 26. It also runs `pnpm audit`, a render, voice and player smoke test on Linux (`scripts/smoke.sh`), and an npm install of the packed tarball. The `ci-ok` check passes only when every job passes.
 

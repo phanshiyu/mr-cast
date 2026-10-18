@@ -1,6 +1,7 @@
 # mr-cast
 
 - Record each big decision as an ADR in docs/adr/ before or with the change that makes it; supersede rather than edit an accepted ADR.
+- Every commit must pass `pnpm check` (typecheck, lint, format check and fallow); run `pnpm format` to fix formatting.
 - Commits are small, with a plain-prose subject, and end with the model's line, such as `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Never commit an MP4 (for example `examples/explain-webhooks.mp4`). Stills and storyboards are fine.
 - Never `npm publish` locally. npm publishes only from `.github/workflows/publish.yml` (see docs/adr/0012-publish-from-ci.md).
