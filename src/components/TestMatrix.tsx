@@ -150,7 +150,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const at = useMemo(() => rowAt(layout), [layout]);
   // The callout is the only thing a tests step changes: the names of the tests it focuses, or its own words.
   const states = useMemo<SceneState[]>(
-    () => ['', ...(scene.steps ?? []).map((s) => s.callout ?? '')].map((callout) => ({ values: {}, places: {}, hidden: {}, tints: {}, callout })),
+    () => ['', ...(scene.steps ?? []).map((s) => s.callout ?? '')].map((callout) => ({ values: {}, places: {}, hidden: {}, tints: {}, callout, transforms: {}, shapes: {}, traces: {} })),
     [scene.steps],
   );
   const s = stateFrame(states, segments, frame);
@@ -161,7 +161,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const colLit = (col: number) => emphasisOf(`o:${col}`);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<HeaderCallout scene={scene} s={s} />}>
       <div
         style={{
           position: 'absolute',

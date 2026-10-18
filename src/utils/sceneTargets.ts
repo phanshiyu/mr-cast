@@ -3,6 +3,7 @@
 
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
+import { stateMotion } from '../../shared/svg-motion.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
 import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
@@ -49,13 +50,15 @@ export function memoryTargets(scene: MemoryScene): MarkTargets[] {
   return sceneStates(scene).slice(1).map((state) => staged(memoryBoxes(layout, state), stage, box));
 }
 
+/** A drawing's boxes as each step leaves it, with its moves and morphs. */
 export function svgTargets(scene: SvgScene): MarkTargets[] {
   const box = headerBox(scene);
-  const { root, viewBox } = svgOf(scene.svg);
+  const { root, viewBox, ids } = svgOf(scene.svg);
   const stage = viewBox ? svgStage(viewBox, box) : { scale: 1, left: 0, top: 0 };
-  const { boxes } = svgGeometry(root);
-  const targets = staged({ boxes: new Map([...boxes].map(([id, b]) => [`s:${id}`, b])) }, stage, box);
-  return sceneStates(scene).slice(1).map(() => targets);
+  return sceneStates(scene).slice(1).map((state) => {
+    const { boxes } = svgGeometry(root, stateMotion(ids, state));
+    return staged({ boxes: new Map([...boxes].map(([id, b]) => [`s:${id}`, b])) }, stage, box);
+  });
 }
 
 /** A state diagram does not change between steps, so every step has the same targets. */

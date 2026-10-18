@@ -58,6 +58,8 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     if (legacy.length > 1) return errors.push(`${q}: set one of ${legacy.join(' or ')}, or use focus`);
     const key = focusKey(step, s.type);
     const value = step[key];
+    // A step that only moves the camera lights what it changes, or nothing.
+    if (value === undefined && STATE_TYPES.includes(s.type) && step.camera !== undefined) return;
     if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) {
       if (changedRefs(s, step).length) return;
       const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : 'changes nothing';
@@ -75,8 +77,8 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     });
   });
   const scene = { ...s, steps: focusSteps(s) };
-  // A step that draws or erases ink moves something even when it lights what the step before lit.
-  const drawsInk = (step) => Boolean(step?.draw?.length) || step?.erase !== undefined;
+  // A step that draws or erases ink, or moves the camera, moves something even when it lights what the step before lit.
+  const drawsInk = (step) => Boolean(step?.draw?.length) || step?.erase !== undefined || step?.camera !== undefined;
   const lit = stepTargets(scene, hunks).map((keys) => [...keys].sort().join(' '));
   const token = s.type === 'layers' ? tokenSteps(scene, hunks).positions : [];
   lit.forEach((keys, i) => {

@@ -235,7 +235,7 @@ export const DataTable: React.FC<SceneProps<TableScene>> = ({ scene, hunks, dura
   const used = new Set<Change>(layout.rows.flatMap((r) => (r.change ? [r.change] : [])));
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<><ChangeLegend used={used} /><HeaderCallout scene={scene} s={s} /></>}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<><ChangeLegend used={used} /><HeaderCallout scene={scene} s={s} /></>}>
       <TableView layout={layout} before={before} s={s} left={0} top={top} frame={frame} headerIn={headerIn} rowAt={rowAt} rowEmphasis={rowEmphasis} cellEmphasis={cellEmphasis} headerGlow={(i) => focus(`c:${i}`).glow} />
       <PenMarks scene={scene} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />
     </SceneShell>

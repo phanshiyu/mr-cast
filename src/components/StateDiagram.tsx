@@ -228,7 +228,7 @@ export const StateDiagram: React.FC<SceneProps<StateScene>> = ({ scene, hunks, d
   const entryDraw = interpolate(frame, [timeline.entryAt + 4, timeline.entryAt + 14], [0, 1], clamp);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<ChangeLegend used={usedChanges(scene)} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }} aside={<ChangeLegend used={usedChanges(scene)} />}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>

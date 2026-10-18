@@ -30,7 +30,7 @@ import {
 import type { Fit } from '../../shared/textfit.mjs';
 import { areaOf, union, type Box, type MarkTargets } from '../utils/penGeometry';
 import { PenMarks, type Ink, type InkOf } from './PenMarks';
-import { SceneShell } from './SceneShell';
+import { Camera, SceneShell } from './SceneShell';
 import { FitText } from './FitText';
 import { StepDiagram } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
@@ -476,7 +476,9 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
     };
   };
 
+  const hunkMap = useMemo(() => ({ [hunk.id]: hunk }), [hunk]);
   return (
+    <Camera scene={scene} source={{ hunks: hunkMap, segments, targets: markTargets }}>
     <div style={{ position: 'absolute', inset: 0 }}>
       <FileHeader hunk={hunk} layout={layout} />
       <div style={{ position: 'absolute', top: HEADER_H + HEADER_GAP, left: 0, width: box.width, height: panelH }}>
@@ -603,8 +605,9 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
           </div>
         ) : null}
       </div>
-      <PenMarks scene={scene} hunks={{ [hunk.id]: hunk }} segments={segments} targets={markTargets} inkOf={inkOf} />
+      <PenMarks scene={scene} hunks={hunkMap} segments={segments} targets={markTargets} inkOf={inkOf} />
     </div>
+    </Camera>
   );
 };
 

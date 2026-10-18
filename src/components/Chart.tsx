@@ -452,7 +452,7 @@ export const Chart: React.FC<SceneProps<ChartScene>> = ({ scene, hunks, duration
   const leaderEnd = point ? (scene.kind === 'bar' ? point.y - VALUE_FONT * 1.25 - 18 : point.y - 15) : 0;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Legend scene={scene} layout={layout} seriesOpacity={seriesOpacity} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }} aside={<Legend scene={scene} layout={layout} seriesOpacity={seriesOpacity} />}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: box.height }}>
         {scene.labels.map((_, i) => (
           <SlotGlow key={i} layout={layout} i={i} emphasis={emphasisOf(i)} />

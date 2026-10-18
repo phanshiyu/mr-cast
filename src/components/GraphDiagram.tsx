@@ -206,7 +206,7 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
   const tableBefore = tables?.[states.indexOf(s.before)];
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<>{changes.size ? <ChangeLegend used={changes} /> : null}<HeaderCallout scene={scene} s={s} /></>}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<>{changes.size ? <ChangeLegend used={changes} /> : null}<HeaderCallout scene={scene} s={s} /></>}>
       <div style={{ position: 'absolute', left: 0, top: 0, width: graphBox.width, height: graphBox.height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
           {layout.groups.map((group) => (

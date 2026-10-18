@@ -239,7 +239,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
   const right = ticks[ticks.length - 1]!.x;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }}>
       <div
         style={{
           position: 'absolute',

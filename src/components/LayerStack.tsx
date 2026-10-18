@@ -165,7 +165,7 @@ export const LayerStack: React.FC<SceneProps<LayersScene>> = ({ scene, hunks, du
   const turnBar = turnBand ? { y: turnBand.y + turnBand.h + BAND_GAP / 2 } : null;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }}>
       <div style={{ position: 'absolute', left: stage.left, top: stage.top, width: layout.width, height: layout.height, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
         {layout.layers.map((placed) => (
           <Band

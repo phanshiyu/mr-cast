@@ -239,7 +239,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   };
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: markTargets }}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: camera.scrolls ? 'flex-start' : 'center', justifyContent: 'center' }}>
         <div
           style={{

@@ -170,8 +170,23 @@ export interface InkItem {
   id?: string;
 }
 
+/**
+ * Where a step points the camera, from this step on: "all" for the whole scene, a ref or a list of refs to frame with
+ * a margin round them, or { "on": refs, "zoom": 3 } to show them at that many times the whole scene's scale (1 to 40;
+ * without it the camera fits the refs, up to 6). A ref is what the step's `focus` takes, or on a code step a line, a
+ * range or text on its lines. The view eases there as the step starts and follows the refs as later steps move them;
+ * ink and pen marks move with the content. The narration before the first step shows the whole scene.
+ */
+export type Camera = 'all' | FocusRef | FocusRef[] | { on: FocusRef | FocusRef[]; zoom?: number };
+
+/** A step's camera, on every scene whose steps take refs, and on code. */
+export interface Framing {
+  /** Zooms and pans to what it names until a later step's camera, e.g. { "on": "cache", "zoom": 3 }, then "all". */
+  camera?: Camera;
+}
+
 /** One beat of a diagram: what to light, and the words spoken while it is lit. */
-export interface FocusStep extends PenMarks {
+export interface FocusStep extends PenMarks, Framing {
   /** One ref, or several lit together, such as a node and the edge leaving it. */
   focus: FocusRef | FocusRef[];
   /** Spoken while it is lit. The light lands half a second before the words. */
@@ -343,7 +358,7 @@ export interface GraphScene extends SceneBase {
 export type LineRef = number | string;
 
 /** One step of a code scene: the lines it highlights and the words spoken while they are highlighted. */
-export interface CodeStep extends PenMarks {
+export interface CodeStep extends PenMarks, Framing {
   /** New-file line number or "a-b" range to highlight (the + numbers in the index). Set this or `oldLines`. */
   lines?: LineRef;
   /** Old-file line number or range, for removed code. */
@@ -999,6 +1014,28 @@ export interface MemoryScene extends SceneBase {
 export interface SvgStep extends StateStep {
   /** New text for `<text>` elements by id, e.g. { "total": "312" }. */
   set?: Record<string, string>;
+  /**
+   * New transforms by element id, tweened from the old as the step starts, e.g. { "t1": "translate(300 0)", "needle":
+   * "rotate(40 200 200)" }: translate(x y), rotate(degrees cx cy) and scale(s), alone or in a row. A move goes outside
+   * the element's own transform, so it moves the element from where the drawing puts it; it lasts until a later move,
+   * and "" puts the element back. Two moves of the same functions in the same order tween argument by argument, so a
+   * rotate about a pivot turns about it.
+   */
+  move?: Record<string, string>;
+  /**
+   * Lines drawn on from their start at this step: a path, line, polyline, polygon, rect, circle or ellipse, or a group,
+   * whose lines all draw at once; one that is hidden is shown. An entry is an id, or { "id": "route", "when": "around
+   * the coast" } to start on those words of the `say`; without `when` it starts as the step's changes settle. A line
+   * draws at about 40 px a frame, so a long one takes longer, up to two and a half seconds.
+   */
+  trace?: (string | { id: string; when?: string })[];
+  /**
+   * Paths that take the shape of another path from this step on, tweened as the step starts, e.g. { "blob": "square" }.
+   * The other path, usually hidden, lends only its `d`, read in this path's own coordinates. Name a path after itself
+   * to give it its own shape back. Any two paths morph when they have the same number of outlines (M parts); each is
+   * turned into curves and split until the two line up point for point.
+   */
+  morph?: Record<string, string>;
   /** Elements to colour from this step on, by id, e.g. { "ring1": "good" }. A group's tint colours every shape in it. */
   tint?: Tints;
 }
@@ -1020,7 +1057,8 @@ export interface SvgStep extends StateStep {
  * ellipse or polygon draws in --surface with a --border edge, a line, polyline or path draws as a --muted line
  * with no fill, and text draws in --text. Text draws in the player's sans font, or its mono with
  * font-family="mono". A lit element glows and the rest dim; a tint gives a shape the tone's border and soft
- * fill, and text the tone's colour; "dim" fades it.
+ * fill, and text the tone's colour; "dim" fades it. A class `flow` gives a line, or the lines in a group, marching
+ * dashes along its direction as a graph edge has, over a faint copy of itself.
  */
 export interface SvgScene extends SceneBase {
   type: 'svg';
@@ -1036,8 +1074,8 @@ export interface SvgScene extends SceneBase {
   /** A boxed line in the top right, such as a formula. Steps replace it with `callout`. */
   callout?: DisplayText;
   /**
-   * Each step changes what it `set`s, `show`s, `hide`s and `tint`s at its start, then lights its focus while
-   * its `say` is spoken. A ref is an element id; a lit group lights everything in it.
+   * Each step changes what it `set`s, `show`s, `hide`s, `tint`s, `move`s, `trace`s and `morph`s at its start, then
+   * lights its focus while its `say` is spoken. A ref is an element id; a lit group lights everything in it.
    */
   steps?: SvgStep[];
 }

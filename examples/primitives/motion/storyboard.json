@@ -1,0 +1,131 @@
+{
+  "title": "Motion on a drawing",
+  "subtitle": "Shapes that slide, turn and change shape, lines that draw on, and lines that flow",
+  "scenes": [
+    {
+      "type": "svg",
+      "chapter": "Move and trace",
+      "title": "Why a² + b² = c²",
+      "narration": "Four copies of one right triangle, with short sides a and b and long side c, sit inside a square whose side is a plus b.",
+      "svg": "<svg viewBox=\"0 0 1500 830\">\n<rect id=\"frame\" x=\"80\" y=\"70\" width=\"700\" height=\"700\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<rect id=\"a-sq\" class=\"tone-warn\" x=\"80\" y=\"70\" width=\"300\" height=\"300\"/>\n<rect id=\"b-sq\" class=\"tone-good\" x=\"380\" y=\"370\" width=\"400\" height=\"400\"/>\n<path id=\"c-sq\" class=\"tone-accent\" stroke-width=\"4\" d=\"M380,70 L780,370 L480,770 L80,470 Z\"/>\n<polygon id=\"t1\" class=\"tone-neutral\" stroke-width=\"2\" points=\"80,70 380,70 80,470\"/>\n<polygon id=\"t2\" class=\"tone-neutral\" stroke-width=\"2\" points=\"380,70 780,70 780,370\"/>\n<polygon id=\"t3\" class=\"tone-neutral\" stroke-width=\"2\" points=\"780,370 780,770 480,770\"/>\n<polygon id=\"t4\" class=\"tone-neutral\" stroke-width=\"2\" points=\"480,770 80,770 80,470\"/>\n<text id=\"c-label\" x=\"430.0\" y=\"442.0\" text-anchor=\"middle\" font-size=\"64\" fill=\"var(--accent)\">c²</text>\n<text id=\"a-label\" x=\"230.0\" y=\"240.0\" text-anchor=\"middle\" font-size=\"56\" fill=\"var(--warn)\">a²</text>\n<text id=\"b-label\" x=\"580.0\" y=\"590.0\" text-anchor=\"middle\" font-size=\"64\" fill=\"var(--good)\">b²</text>\n<g font-size=\"34\" fill=\"var(--muted)\" text-anchor=\"middle\"><text x=\"230.0\" y=\"54\">a</text><text x=\"580.0\" y=\"54\">b</text><text x=\"56\" y=\"282.0\">b</text><text x=\"56\" y=\"632.0\">a</text></g>\n<text id=\"area\" x=\"900\" y=\"320\" font-size=\"40\">(a + b)² = c² + 4 triangles</text>\n<text id=\"area2\" x=\"900\" y=\"400\" font-size=\"40\" fill=\"var(--muted)\">(a + b)² = a² + b² + 4 triangles</text>\n</svg>",
+      "labels": {
+        "c-sq": "tilted square",
+        "t1": "triangle",
+        "a-sq": "square on side a",
+        "b-sq": "square on side b"
+      },
+      "hidden": [
+        "a-sq",
+        "b-sq",
+        "c-sq",
+        "c-label",
+        "a-label",
+        "b-label",
+        "area",
+        "area2"
+      ],
+      "steps": [
+        {
+          "trace": [
+            {
+              "id": "c-sq",
+              "when": "tilted square"
+            }
+          ],
+          "show": [
+            "c-label",
+            "area"
+          ],
+          "say": "The space they leave in the middle is a tilted square on the long side, so its area is c squared."
+        },
+        {
+          "move": {
+            "t1": "translate(0 300)",
+            "t3": "translate(-400 0)",
+            "t4": "translate(300 -400)"
+          },
+          "hide": [
+            "c-sq",
+            "c-label"
+          ],
+          "focus": [
+            "t1",
+            "t3",
+            "t4"
+          ],
+          "say": "Now slide three of the triangles. None of them turns, and the big square stays the same."
+        },
+        {
+          "show": [
+            "a-sq",
+            "b-sq",
+            "a-label",
+            "b-label",
+            "area2"
+          ],
+          "say": "The space left is now two squares, one on side a and one on side b."
+        },
+        {
+          "callout": "c² = a² + b²",
+          "focus": [
+            "area",
+            "area2"
+          ],
+          "say": "The same four triangles left both spaces, so c squared equals a squared plus b squared."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Morph and flow",
+      "title": "Filling a tank",
+      "narration": "A pipe fills a tank, and a gauge beside it reads the level.",
+      "svg": "<svg viewBox=\"0 0 1400 700\">\n<path id=\"pipe\" class=\"flow\" stroke=\"var(--accent)\" stroke-width=\"10\" stroke-linecap=\"round\" d=\"M60 140 H360 Q420 140 420 200 V230\"/>\n<rect id=\"tank\" x=\"380\" y=\"220\" width=\"400\" height=\"420\" rx=\"18\"/>\n<path id=\"water\" class=\"tone-accent\" d=\"M392 580 H768 V628 H392 Z\"/>\n<path id=\"water-full\" d=\"M392 300 Q486 280 580 300 T768 300 V628 H392 Z\"/>\n<circle cx=\"1080\" cy=\"420\" r=\"190\"/>\n<g stroke=\"var(--muted)\" stroke-width=\"5\" stroke-linecap=\"round\"><line x1=\"1080\" y1=\"250\" x2=\"1080\" y2=\"280\" transform=\"rotate(-60 1080 420)\"/><line x1=\"1080\" y1=\"250\" x2=\"1080\" y2=\"280\"/><line x1=\"1080\" y1=\"250\" x2=\"1080\" y2=\"280\" transform=\"rotate(60 1080 420)\"/></g>\n<text x=\"880\" y=\"300\" font-size=\"34\" fill=\"var(--muted)\" text-anchor=\"middle\">empty</text><text x=\"1280\" y=\"300\" font-size=\"34\" fill=\"var(--muted)\" text-anchor=\"middle\">full</text>\n<g id=\"needle\" transform=\"rotate(-60 1080 420)\"><line x1=\"1080\" y1=\"420\" x2=\"1080\" y2=\"270\" stroke=\"var(--warn)\" stroke-width=\"10\" stroke-linecap=\"round\"/><circle cx=\"1080\" cy=\"420\" r=\"18\" fill=\"var(--warn)\" stroke=\"none\"/></g>\n</svg>",
+      "labels": {
+        "pipe": "pipe",
+        "water": "level",
+        "needle": "needle"
+      },
+      "hidden": [
+        "pipe",
+        "water-full"
+      ],
+      "steps": [
+        {
+          "trace": [
+            {
+              "id": "pipe",
+              "when": "runs in"
+            }
+          ],
+          "say": "Water runs in along the pipe."
+        },
+        {
+          "morph": {
+            "water": "water-full"
+          },
+          "move": {
+            "needle": "rotate(120 1080 420)"
+          },
+          "say": "The level rises, and the needle swings round to full."
+        },
+        {
+          "morph": {
+            "water": "water"
+          },
+          "move": {
+            "needle": ""
+          },
+          "hide": [
+            "pipe"
+          ],
+          "focus": [
+            "water",
+            "needle"
+          ],
+          "say": "Shut the pipe and drain the tank, and both go back."
+        }
+      ]
+    }
+  ]
+}

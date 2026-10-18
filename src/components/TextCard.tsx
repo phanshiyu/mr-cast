@@ -204,6 +204,7 @@ export const TextCard: React.FC<SceneProps<TextScene>> = ({ scene, hunks, durati
     <SceneShell
       scene={scene}
       durationInFrames={durationInFrames}
+      camera={{ hunks, segments, targets: () => marks }}
       aside={
         scene.diffstat && stats.files ? (
           <div style={{ display: 'flex', gap: 12, opacity: interpolate(frame, [10, 22], [0, 1], clamp) }}>

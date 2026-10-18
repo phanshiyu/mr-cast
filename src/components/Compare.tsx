@@ -199,7 +199,7 @@ export const Compare: React.FC<SceneProps<CompareScene>> = ({ scene, hunks, dura
   const right = layout.sides[1].x + layout.sides[1].w;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: markTargets }}>
       <div style={{ position: 'absolute', left: 0, top, width: layout.width, height: layout.height, transform: `scale(${layout.scale})`, transformOrigin: 'top left' }}>
         <Panel layout={layout} side={0} appear={panelIn(0)} titleIn={titleIn} emphasis={sideE[0]} />
         <Panel layout={layout} side={1} appear={panelIn(1)} titleIn={titleIn} emphasis={sideE[1]} />

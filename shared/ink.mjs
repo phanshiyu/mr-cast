@@ -47,6 +47,12 @@ function codeKeys(hunk, step, ref) {
 }
 
 /**
+ * The item keys a ref names on a step, as ink and the camera resolve it: a scene's ref, or on a code step a line, a
+ * range or text on its lines. Null when it names nothing; on code, the count of places when the text occurs more than once.
+ */
+export const stepRefKeys = (scene, hunks, step, ref) => (scene?.type === 'code' ? codeKeys(hunks?.[scene.hunkId], step, ref) : resolveRef(scene, ref, hunks));
+
+/**
  * Walks the scene's steps in order and returns every item drawn, with what each points at and the step that erases it
  * (`until`, Infinity while it stays), and the problems found on the way. A target is `{ keys }` (scene item keys),
  * `{ ink: id }` (an item already on the board) or `{ point: [x, y] }` (a fraction of the stage).
@@ -69,7 +75,7 @@ export function inkBoard(scene, hunks = {}) {
   const live = () => items.filter((it) => it.until === Infinity);
   const allIds = new Set(steps.flatMap((step) => list(step?.draw).flatMap((item) => (isText(item?.id) ? [item.id] : []))));
   const names = code ? [] : refNames(scene, hunks);
-  const sceneKeys = (step, ref) => (code ? codeKeys(hunk, step, ref) : resolveRef(scene, ref, hunks));
+  const sceneKeys = (step, ref) => stepRefKeys(scene, hunks, step, ref);
 
   steps.forEach((step, k) => {
     if (!step || typeof step !== 'object') return;

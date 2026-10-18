@@ -205,7 +205,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
     scene.steps?.length ? focus(`f:${path}`) : emphasis(path !== null && walked.includes(path) ? [walked.indexOf(path)] : []);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<Totals files={files} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }} aside={<Totals files={files} />}>
       <div
         style={{
           position: 'absolute',

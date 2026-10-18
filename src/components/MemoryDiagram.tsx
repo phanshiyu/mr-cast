@@ -210,7 +210,7 @@ export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks,
   const panelIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<HeaderCallout scene={scene} s={s} />}>
       <div style={{ position: 'absolute', left: stage.left, top: stage.top, width: layout.width, height: layout.height, transform: `scale(${layout.scale})`, transformOrigin: 'top left' }}>
         {layout.panels.frames ? <FitText fit={layout.panels.frames} style={{ position: 'absolute', left: 4, top: 4, color: colors.faint, opacity: panelIn }} /> : null}
         {layout.panels.objects ? <FitText fit={layout.panels.objects} style={{ position: 'absolute', left: layout.panels.objectsX + 4, top: 4, color: colors.faint, opacity: panelIn }} /> : null}

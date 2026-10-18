@@ -202,8 +202,8 @@ test('readSvg keeps only tone classes, and cuts what would move the root off its
   assert.deepEqual(problems, [
     '<svg> transform: the scene places the drawing on its stage, so transform on the root <svg> is cut; put it on a <g> inside',
     '<svg> x: the scene places the drawing on its stage, so x on the root <svg> is cut; put it on a <g> inside',
-    '<svg> <rect> class: "absolute", "inset-0" are no tone classes, so they are cut; a class is tone-, fill- or stroke- and one of accent, good, bad, warn, neutral, such as tone-good',
-    '<svg> <rect> class: "bg-red-500" is no tone class, so it is cut; a class is tone-, fill- or stroke- and one of accent, good, bad, warn, neutral, such as tone-good',
+    '<svg> <rect> class: "absolute", "inset-0" are no tone classes, so they are cut; a class is tone-, fill- or stroke- and one of accent, good, bad, warn, neutral, such as tone-good, or flow for marching dashes along a line',
+    '<svg> <rect> class: "bg-red-500" is no tone class, so it is cut; a class is tone-, fill- or stroke- and one of accent, good, bad, warn, neutral, such as tone-good, or flow for marching dashes along a line',
   ]);
   assert.deepEqual(root.attrs, { viewBox: '0 0 10 10', fill: 'var(--text)' });
   assert.deepEqual(root.children.map((n) => n.attrs), [{ class: 'tone-good fill-bad' }, {}]);

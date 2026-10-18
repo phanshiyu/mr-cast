@@ -29,7 +29,7 @@ test('every type a printed declaration names is printed with it, from anywhere i
 
 test('a scene type prints its interface with its doc comments and the types it uses, once each', () => {
   const out = formatSchema(root, 'array');
-  assert.deepEqual(declared(out), ['DisplayText', 'SceneBase', 'FocusRef', 'PenMark', 'PenMarks', 'InkPoint', 'InkItem', 'FocusStep', 'Tone', 'StateValue', 'StateStep', 'Tint', 'Tints', 'ArrayPointer', 'ArrayRange', 'ArrayStep', 'ArrayRow', 'ArrayScene']);
+  assert.deepEqual(declared(out), ['DisplayText', 'SceneBase', 'FocusRef', 'PenMark', 'PenMarks', 'InkPoint', 'InkItem', 'Camera', 'Framing', 'FocusStep', 'Tone', 'StateValue', 'StateStep', 'Tint', 'Tints', 'ArrayPointer', 'ArrayRange', 'ArrayStep', 'ArrayRow', 'ArrayScene']);
   assert.match(out, /\/\*\*[\s\S]*\*\/\ninterface ArrayScene extends SceneBase \{\n  type: 'array';/);
   assert.equal(out.includes('export '), false);
 });
