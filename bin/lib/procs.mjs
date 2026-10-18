@@ -46,16 +46,19 @@ const entryFile = (pid) => path.join(procsDir(), `${pid}.json`);
 export const removeEntry = (pid) => fs.rmSync(entryFile(pid), { force: true });
 
 /**
- * The processes `ps` shows, by pid: every process, or only `pids`. Empty where there is no `ps` (Windows), so nothing
- * is verified there and nothing is stopped.
- * @returns {Map<number, Row>}
+ * The processes `ps` shows, by pid: every process, or only `pids`. Null when `ps` gave no answer, as where there is
+ * no `ps` (Windows), so nothing is verified there and nothing is stopped. Start times are in UTC, so a process that
+ * recorded itself under another TZ still matches.
+ * @returns {Map<number, Row> | null}
  */
 export function processTable(pids = null) {
   const out = spawnSync('ps', [...(pids ? ['-p', pids.join(',')] : ['-A']), '-ww', '-o', 'pid=,ppid=,uid=,lstart=,command='], {
-    encoding: 'utf8', env: { ...process.env, LC_ALL: 'C' },
+    encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC0' },
   });
+  // `ps -p` exits 1, printing nothing, when none of the pids runs: an answer, unlike any other failure.
+  if (out.error || out.signal || out.stderr?.trim() || !(out.status === 0 || (pids && out.status === 1))) return null;
   const rows = new Map();
-  for (const line of (out.stdout ?? '').split('\n')) {
+  for (const line of out.stdout.split('\n')) {
     const m = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\w{3} \w{3} [ \d]\d \d\d:\d\d:\d\d \d{4})\s+(.*)$/);
     if (m) rows.set(Number(m[1]), { pid: Number(m[1]), ppid: Number(m[2]), uid: Number(m[3]), started: m[4], command: m[5] });
   }
@@ -81,7 +84,7 @@ export const runFields = (dir) => {
  * @param {Omit<Entry, 'pid' | 'ppid' | 'started' | 'version'>} fields
  */
 export function register(fields) {
-  const row = processTable([process.pid]).get(process.pid);
+  const row = processTable([process.pid])?.get(process.pid);
   if (!row) return { update() {}, remove() {} };
   const file = entryFile(process.pid);
   let entry = { pid: process.pid, ppid: process.ppid, started: row.started, version: VERSION, ...fields };
@@ -99,6 +102,8 @@ export function register(fields) {
 }
 
 const parseTime = (text) => (text ? Date.parse(text) : NaN);
+/** A start time as `ps` prints it, in UTC. */
+const parseStarted = (text) => Date.parse(`${text} GMT`);
 
 function readEntries(dir) {
   let names = [];
@@ -145,7 +150,7 @@ function unregistered(row) {
   return {
     pid: row.pid, ppid: row.ppid, kind, started: row.started, version: null, registered: false,
     url: port && SERVERS.has(kind) ? `http://127.0.0.1:${port}${kind === 'plan' ? '/plan' : ''}` : null,
-    dir: null, run: name, repo: main ? cwd : null, startedAt: parseTime(row.started),
+    dir: null, run: name, repo: main ? cwd : null, startedAt: parseStarted(row.started),
     viewers: null, idleSince: null, idleExit: null, parent: null,
   };
 }
@@ -159,28 +164,31 @@ function ordered(procs) {
 
 /**
  * Every running mr-cast process of this user: the verified registry entries, and the processes of older versions
- * that `ps` shows. Stale entries are removed. Entries are read before `ps` runs, so a process that registers
- * meanwhile is in the table.
+ * that `ps` shows. Entries are read before `ps` runs, so a process that registers meanwhile is in the table. An entry
+ * is removed only when that table is whole, which it is when it shows this process: then a pid it lacks has exited,
+ * and one it shows with another start time was reused. When `ps` fails nothing is listed and nothing is removed.
  * @returns {Proc[]}
  */
 export function listProcesses({ ps = processTable } = {}) {
   const read = readEntries(procsDir());
   const table = ps();
+  if (!table?.has(process.pid)) return [];
   /** @type {Proc[]} */
   const procs = [];
   for (const { file, entry } of read) {
-    if (!entry || !same(table.get(entry.pid), entry)) {
+    const row = entry && table.get(entry.pid);
+    if (row && same(row, entry)) {
+      procs.push({
+        ...entry, registered: true, startedAt: parseStarted(entry.started),
+        url: entry.url ?? null, dir: entry.dir ?? null, run: entry.run ?? null, repo: entry.repo ?? null, version: entry.version ?? null,
+        viewers: SERVERS.has(entry.kind) ? entry.viewers ?? 0 : null,
+        idleSince: SERVERS.has(entry.kind) ? parseTime(entry.idleSince) || null : null,
+        idleExit: SERVERS.has(entry.kind) ? entry.idleExit ?? null : null,
+        parent: null,
+      });
+    } else if (!row || row.started !== entry.started) {
       fs.rmSync(file, { force: true });
-      continue;
     }
-    procs.push({
-      ...entry, registered: true, startedAt: parseTime(entry.started),
-      url: entry.url ?? null, dir: entry.dir ?? null, run: entry.run ?? null, repo: entry.repo ?? null, version: entry.version ?? null,
-      viewers: SERVERS.has(entry.kind) ? entry.viewers ?? 0 : null,
-      idleSince: SERVERS.has(entry.kind) ? parseTime(entry.idleSince) || null : null,
-      idleExit: SERVERS.has(entry.kind) ? entry.idleExit ?? null : null,
-      parent: null,
-    });
   }
   const known = new Set(procs.map((p) => p.pid));
   for (const row of table.values()) {
@@ -231,13 +239,14 @@ const POLL_MS = 100;
 /**
  * Stops `procs`: SIGTERM, then SIGKILL for any still running after `graceMs`. Each signal goes only to a pid that `ps`
  * still shows as the same mr-cast process. Returns each process with its outcome: `stopped` after SIGTERM, `killed`
- * after SIGKILL, `gone` when it had exited already, or `failed` when it outlived both.
+ * after SIGKILL, `gone` when it had exited already, or `failed` when it outlived both. Throws, signalling nothing, when
+ * `ps` gives no answer before the first signal; a pid it cannot check later is not signalled again.
  * @returns {Promise<{ proc: Proc, outcome: 'stopped' | 'killed' | 'gone' | 'failed' }[]>}
  */
 export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTable } = {}) {
   if (procs.length === 0) return [];
   const outcome = new Map();
-  const alive = (table) => procs.filter((p) => !outcome.has(p.pid) && same(table.get(p.pid), p));
+  const alive = (table) => procs.filter((p) => !outcome.has(p.pid) && same(table?.get(p.pid), p));
   const signal = (list, sig) => {
     for (const p of list) {
       try {
@@ -253,17 +262,20 @@ export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTab
     while (left.length && Date.now() < deadline) {
       await sleep(POLL_MS);
       const table = ps(left.map((p) => p.pid));
-      left = left.filter((p) => same(table.get(p.pid), p));
+      if (table) left = left.filter((p) => same(table.get(p.pid), p));
     }
     return left;
   };
-  const first = alive(ps(procs.map((p) => p.pid)));
+  const before = ps(procs.map((p) => p.pid));
+  if (!before) throw new UserError('could not run `ps` to check the processes before signalling them; nothing was stopped');
+  const first = alive(before);
   for (const p of procs) if (!first.includes(p)) outcome.set(p.pid, 'gone');
   signal(first, 'SIGTERM');
   const stubborn = await waitFor(first, graceMs);
   for (const p of first) if (!stubborn.includes(p)) outcome.set(p.pid, 'stopped');
-  const toKill = alive(ps(stubborn.map((p) => p.pid)));
-  for (const p of stubborn) if (!toKill.includes(p)) outcome.set(p.pid, 'stopped');
+  const again = ps(stubborn.map((p) => p.pid));
+  const toKill = again ? alive(again) : [];
+  for (const p of stubborn) if (!toKill.includes(p)) outcome.set(p.pid, again ? 'stopped' : 'failed');
   signal(toKill, 'SIGKILL');
   const survivors = await waitFor(toKill, graceMs);
   for (const p of toKill) outcome.set(p.pid, survivors.includes(p) ? 'failed' : 'killed');

@@ -39,8 +39,8 @@ function runIn(name) {
 }
 
 /** Starts `mr-cast <args>` in `cwd` and resolves once it prints a line matching `ready`. */
-function startCli(cwd, args, ready) {
-  const child = spawn(process.execPath, [BIN, ...args], { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+function startCli(cwd, args, ready, more = {}) {
+  const child = spawn(process.execPath, [BIN, ...args], { cwd, env: { ...env, ...more }, stdio: ['ignore', 'pipe', 'pipe'] });
   started.add(child);
   child.output = '';
   child.exited = new Promise((resolve) => child.on('exit', (code, signal) => resolve({ code, signal })));
@@ -91,7 +91,9 @@ const writeEntry = (entry) => {
   fs.writeFileSync(entryOf(entry.pid), JSON.stringify({ ppid: 1, version: '0.28.0', url: null, dir: null, run: null, repo: null, ...entry }));
 };
 
-test('an entry counts only while ps shows the same mr-cast process of this user; any other is stale and removed', () => {
+const self = (started) => [process.pid, row(process.pid, started, `${process.execPath} --test`)];
+
+test('an entry counts only while ps shows the same mr-cast process of this user; one ps shows exited or reused is removed', () => {
   const T = 'Sun Oct 18 10:00:00 2026';
   writeEntry({ pid: 90001, kind: 'play', started: T, run: 'live' });
   writeEntry({ pid: 90002, kind: 'play', started: T, run: 'dead' });
@@ -100,6 +102,7 @@ test('an entry counts only while ps shows the same mr-cast process of this user;
   writeEntry({ pid: 90005, kind: 'plan', started: T, run: 'other-user' });
   writeEntry({ pid: 90006, kind: 'voice', started: T, ppid: 90001, run: 'live' });
   const table = new Map([
+    self(T),
     [90001, row(90001, T, mrCast('play'))],
     [90003, row(90003, 'Sun Oct 18 10:05:00 2026', mrCast('play'))],
     [90004, row(90004, T, '/bin/sleep 600')],
@@ -116,8 +119,39 @@ test('an entry counts only while ps shows the same mr-cast process of this user;
     // The reused pid runs mr-cast, so it is listed, but as a process that wrote no entry.
     [90003, 'play', false, null],
   ]);
-  assert.deepEqual(fs.readdirSync(procsDir()).sort(), ['90001.json', '90006.json']);
-  for (const pid of [90001, 90006]) fs.rmSync(entryOf(pid));
+  // 90004 and 90005 are not listed, but ps shows those pids started then, so their entries go only once they exit.
+  assert.deepEqual(fs.readdirSync(procsDir()).sort(), ['90001.json', '90004.json', '90005.json', '90006.json']);
+  for (const pid of [90001, 90004, 90005, 90006]) fs.rmSync(entryOf(pid));
+});
+
+test('a failed, empty or partial ps lists nothing and removes no entry', () => {
+  const T = 'Sun Oct 18 10:00:00 2026';
+  writeEntry({ pid: 90011, kind: 'play', started: T, run: 'kept' });
+  for (const ps of [() => null, () => new Map(), () => new Map([[90012, row(90012, T, '/bin/sleep 600')]])]) {
+    assert.deepEqual(listProcesses({ ps }), []);
+    assert.equal(fs.existsSync(entryOf(90011)), true);
+  }
+  assert.deepEqual(listProcesses({ ps: () => new Map([self(T)]) }), []);
+  assert.equal(fs.existsSync(entryOf(90011)), false, 'a whole table without the pid means it exited');
+});
+
+test('a play started under another TZ stays listed and is replaced by the next play of its run', async () => {
+  const { cwd, dir } = runIn('zones');
+  const first = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5460'], /mr-cast player:/, { TZ: 'America/Los_Angeles' });
+  const tz = process.env.TZ;
+  process.env.TZ = 'Asia/Tokyo';
+  try {
+    assert.deepEqual(listProcesses().filter((p) => p.kind === 'play' && p.dir === dir).map((p) => [p.pid, p.registered]), [[first.pid, true]]);
+    assert.equal(fs.existsSync(entryOf(first.pid)), true);
+  } finally {
+    if (tz === undefined) delete process.env.TZ;
+    else process.env.TZ = tz;
+  }
+  const second = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5490'], /mr-cast player:/, { TZ: 'Europe/Berlin' });
+  assert.match(second.output, new RegExp(`stopping the play server already running for this run \\(pid ${first.pid}, `));
+  assert.deepEqual(await within(first.exited, 2000), { code: 0, signal: null });
+  second.kill('SIGTERM');
+  await second.exited;
 });
 
 const proc = (pid, kind, fields = {}) => ({
@@ -176,7 +210,6 @@ test('stop never signals a pid that is not a verified mr-cast process, even with
   assert.equal(refused.status, 1);
   assert.equal(refused.stderr.trim(), `mr-cast: not stopping anything: pid ${other.pid} is not a running mr-cast process of yours; \`mr-cast ps\` lists them`);
   assert.equal(cli(tmp, 'stop', 'forged').status, 1);
-  assert.equal(fs.existsSync(entryOf(other.pid)), false, 'the forged entry is dropped as stale');
 
   // A process that stopped being mr-cast after it was listed is not signalled either.
   const outcome = await stopProcesses([proc(other.pid, 'play', { started: processTable([other.pid]).get(other.pid).started })]);
@@ -184,6 +217,9 @@ test('stop never signals a pid that is not a verified mr-cast process, even with
   assert.equal(other.exitCode, null);
   assert.equal(other.signalCode, null);
   other.kill('SIGKILL');
+  await new Promise((resolve) => other.on('exit', resolve));
+  listProcesses();
+  assert.equal(fs.existsSync(entryOf(other.pid)), false, 'the forged entry goes once its pid has exited');
 });
 
 test('the server reports pages coming and going, and calls onIdle once none has been open for idle.ms', async () => {
