@@ -92,7 +92,7 @@ interface Draw {
   /** How far the step's trace has drawn an element, by key, or null when the step does not trace it. */
   traced: (key: string) => number | null;
   /** A path's `d` partway through a morph, or its own. */
-  shape: (key: string, id: string, own: string | undefined) => string | undefined;
+  shape: (key: string, own: string | undefined) => string | undefined;
 }
 
 /** Ids an attribute points at, url(#id) anywhere and an href's #id, as their prefixed ids. */
@@ -158,7 +158,7 @@ function draw(node: SvgNode, key: string, d: Draw, up: Inherited): ReactNode {
   if (own) {
     const [was, is] = [d.s.before.transforms[own], d.s.now.transforms[own]];
     if (was !== undefined || is !== undefined) props.transform = `${tweenTransform(was ?? '', is ?? '', d.s.t)} ${a.transform ?? ''}`.trim();
-    if (node.tag === 'path') props.d = d.shape(own, id!, a.d);
+    if (node.tag === 'path') props.d = d.shape(own, a.d);
   }
   const trace = (own ? d.traced(own) : null) ?? up.trace;
   const flow = up.flow || (a.class ?? '').split(/\s+/).includes('flow');
@@ -247,7 +247,7 @@ export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durat
   const focus = focusSpotlight(scene, hunks, segments, frame);
   if (!root || !viewBox || !('tag' in root)) return <SceneShell scene={scene} durationInFrames={durationInFrames}>{null}</SceneShell>;
   const dOf = (state: SceneState, key: string, own: string | undefined) => (state.shapes[key] ? elementOf(ids, state.shapes[key])?.attrs.d : own);
-  const shape = (key: string, _id: string, own: string | undefined) => {
+  const shape = (key: string, own: string | undefined) => {
     const [was, is] = [dOf(s.before, key, own), dOf(s.now, key, own)];
     return was === is || !was || !is ? is : s.t >= 1 ? is : tweenShape(paired(was, is), s.t);
   };
