@@ -9,11 +9,11 @@ import {
   CARD_H,
   layoutSequence,
   type PlacedMessage,
-  type Pt,
   type SequenceLayout,
   sequenceBoxes,
   sequenceScale,
 } from '../utils/sequenceLayout';
+import type { Pt } from '../utils/penGeometry';
 import { centredStage, staged, type MarkTargets, type Stage } from '../utils/penGeometry';
 import { sequenceCamera } from '../utils/sequenceCamera';
 import { markedKeys } from '../../shared/pen-marks.mjs';

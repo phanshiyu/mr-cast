@@ -2,12 +2,7 @@ import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import { badgeWords } from './marks';
 import type { StateNode, StateTransition } from '../types';
-import { around, type Box, type LayoutBoxes } from './penGeometry';
-
-export interface Pt {
-  x: number;
-  y: number;
-}
+import { around, type Box, type LayoutBoxes, type Pt } from './penGeometry';
 
 const STATE_H = 72;
 const STATE_FONT = 26;

@@ -3,7 +3,7 @@ import { SLOTS } from '../fit/slots';
 import type { MessageKind, SequenceMessage, SequenceParticipant } from '../types';
 import { badgeWords } from './marks';
 import { cardTexts, type CardText } from './nodeText';
-import type { Box, LayoutBoxes } from './penGeometry';
+import type { Box, LayoutBoxes, Pt } from './penGeometry';
 
 export const CARD_H = 84;
 /** Room above the cards for the "changed" pill. */
@@ -25,11 +25,6 @@ const CHIP_PAD_X = 12;
 const LABEL_LINE_HEIGHT = 1.35;
 /** Chip padding and border above and below the text. */
 const CHIP_PAD_Y = 3;
-
-export interface Pt {
-  x: number;
-  y: number;
-}
 
 export interface PlacedParticipant {
   participant: SequenceParticipant;

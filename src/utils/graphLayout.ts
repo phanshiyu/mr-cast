@@ -7,7 +7,7 @@ import { contentBox } from '../components/theme';
 import { hasCallout } from '../fit/callout';
 import { headerBox } from '../fit/shell';
 import { cardTexts, sharedTitleSize, type CardText } from './nodeText';
-import { around, type Box, type LayoutBoxes } from './penGeometry';
+import { around, type Box, type LayoutBoxes, type Pt } from './penGeometry';
 
 const NODE_W = 320;
 /** Widest a card grows when the frame has room across, so long titles keep the full font. */
@@ -156,11 +156,6 @@ function axesFor(direction: GraphDirection, nodeW: number, cellH: number): Axes 
         labelV: (b) => b.width,
         xy: (u, v) => ({ x: v, y: u }),
       };
-}
-
-export interface Pt {
-  x: number;
-  y: number;
 }
 
 export interface PositionedNode {

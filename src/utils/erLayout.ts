@@ -1,7 +1,7 @@
 import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import { badgesWidth, badgeWords } from './marks';
-import { around, type Box, type LayoutBoxes } from './penGeometry';
+import { around, type Box, type LayoutBoxes, type Pt } from './penGeometry';
 import type { ErEntity, ErField, ErRelation } from '../types';
 
 export const HEADER_H = 64;
@@ -18,11 +18,6 @@ const FAN = 12;
 const MAX_ALIGN_SHIFT = 3 * ROW_H;
 /** Above this many entities the slot search gets slow, so cards keep input order. */
 const MAX_SEARCH = 8;
-
-export interface Pt {
-  x: number;
-  y: number;
-}
 
 export type Side = 'left' | 'right' | 'top' | 'bottom';
 

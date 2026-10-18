@@ -8,11 +8,11 @@ import {
   BADGE_FONT,
   layoutState,
   type PlacedState,
-  type Pt,
   type RoutedTransition,
   type StateLayout,
   stateScale,
 } from '../utils/stateLayout';
+import type { Pt } from '../utils/penGeometry';
 import { PenMarks } from './PenMarks';
 import { stateTargets } from '../utils/sceneTargets';
 import { focusSpotlight, asBrightAs, type Emphasis } from '../utils/spotlight';
