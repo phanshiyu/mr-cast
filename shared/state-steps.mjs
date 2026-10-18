@@ -9,6 +9,7 @@ import { ambiguousIndex, memberKey, resolveRef, splitMemberKey, TEXT_LEADS } fro
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
 import { memoryMembers, tintEntries } from './storyboard-json.mjs';
+import { PART_KINDS, TRACEABLE, paramNames, partOf, plotParts } from './plot.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const isText = (v) => typeof v === 'string' || (typeof v === 'number' && Number.isFinite(v));
@@ -151,6 +152,41 @@ const MODELS = {
     move: null,
     moveNames: () => [],
   },
+  plot: {
+    initial(scene) {
+      return {
+        values: Object.fromEntries(paramNames(scene).map((name) => [`k:${name}`, scene.params[name]])),
+        places: {},
+        hidden: Object.fromEntries(plotParts(scene).flatMap((p) => (p.item?.hidden === true && typeof p.id === 'string' ? [[`p:${p.id}`, true]] : []))),
+      };
+    },
+    // A step sets a parameter by its name; a focus ref of the same name lights the parts it moves.
+    set: {
+      prefixes: ['k:'],
+      what: 'parameter',
+      help: (scene) => (paramNames(scene).length ? `a parameter name: ${paramNames(scene).map((n) => JSON.stringify(n)).join(', ')}` : 'a parameter name, and the scene has no params'),
+      resolve: (scene, ref) => (typeof ref === 'string' && paramNames(scene).includes(ref) ? `k:${ref}` : null),
+      names: (scene) => paramNames(scene),
+    },
+    show: { prefixes: ['p:'], what: 'part', help: () => 'the id of a function, series, point, vector or area' },
+    tint: { prefixes: ['p:'], what: 'part', help: () => 'the id of a function, series, point, vector or area', expand: (_scene, key) => [key] },
+    callout: true,
+    checkValue: (value) => (typeof value === 'number' && Number.isFinite(value) ? null : 'must be a number'),
+    // `trace` draws a line on over the step, and shows it if it was hidden.
+    step(scene, step, next, problem) {
+      if (step?.trace === undefined) return;
+      if (!Array.isArray(step.trace) || !step.trace.every((r) => typeof r === 'string')) return problem('trace', '', 'must be an array of part ids, such as ["growth"]');
+      const traceable = plotParts(scene).filter((p) => TRACEABLE.includes(p.kind) && typeof p.id === 'string').map((p) => p.id);
+      for (const ref of step.trace) {
+        const part = partOf(scene, ref);
+        if (!part) problem('trace', ref, `names no part; trace takes the id of a ${TRACEABLE.map((k) => PART_KINDS[k]).join(', ')}`, traceable);
+        else if (!TRACEABLE.includes(part.kind)) problem('trace', ref, `is a ${PART_KINDS[part.kind]}, which has no line to trace; show it instead`);
+        else delete next.hidden[`p:${ref}`];
+      }
+    },
+    move: null,
+    moveNames: () => [],
+  },
   text: {
     initial(scene) {
       const lead = TEXT_LEADS.find((f) => scene[f] !== undefined);
@@ -273,7 +309,7 @@ export function walkStates(scene) {
       return [];
     };
     for (const [ref, value] of record('set')) {
-      const named = oneKey(scene, ref, model.set.prefixes);
+      const named = model.set.resolve ? model.set.resolve(scene, ref) : oneKey(scene, ref, model.set.prefixes);
       if (!named) {
         problem('set', ref, `names no ${model.set.what}; a set key is ${model.set.help(scene)}`, setNames(scene, model));
         continue;
@@ -302,6 +338,7 @@ export function walkStates(scene) {
         else next.hidden[key] = true;
       }
     }
+    model.step?.(scene, step, next, problem);
     applyTints(step?.tint, next, problem);
     if (step?.callout !== undefined) {
       if (!model.callout) problem('callout', '', `${aType(scene.type)} scene draws no callout`);
@@ -343,10 +380,11 @@ function hiddenField(scene, key) {
     fr: () => at('frames', scene.frames, (f) => f?.name === name),
     o: () => at('objects', scene.objects, (o) => o?.id === name),
     s: () => `hidden[${list(scene.hidden).indexOf(name)}]`,
+    p: () => `${plotParts(scene).find((part) => part.id === name)?.path}.hidden`,
   }[kind]();
 }
 
-const setNames = (scene, model) => refNamesOf(scene, model.set.prefixes);
+const setNames = (scene, model) => model.set.names?.(scene) ?? refNamesOf(scene, model.set.prefixes);
 const showNames = (scene, model) => refNamesOf(scene, model.show.prefixes);
 /** Refs of the scene that name one item of a kind in `prefixes`, for "did you mean" hints. */
 function refNamesOf(scene, prefixes) {
@@ -361,6 +399,7 @@ function refNamesOf(scene, prefixes) {
     ...(Array.isArray(scene.arrays) ? scene.arrays.map((a) => `array:${a?.name}`) : []),
     ...(scene.type === 'graph' ? list(scene.nodes).map((n) => n?.id) : []),
     ...(scene.type === 'svg' ? svgOf(scene.svg).ids.keys() : []),
+    ...(scene.type === 'plot' ? plotParts(scene).flatMap((p) => (typeof p.id === 'string' ? [p.id] : [])) : []),
   ];
   return names.filter((ref) => oneKey(scene, ref, prefixes));
 }
@@ -369,7 +408,7 @@ function refNamesOf(scene, prefixes) {
 export const sceneStates = (scene) => walkStates(scene).states;
 
 /** Whether a step changes anything. */
-export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout'].some((field) => step?.[field] !== undefined);
+export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace'].some((field) => step?.[field] !== undefined);
 
 /**
  * The refs a step changes, as focus refs: what it sets, the pointers and ranges it moves, what it shows
@@ -378,7 +417,7 @@ export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'c
 export function changedRefs(scene, step) {
   const moved = Object.keys(step?.move ?? {}).map((name) => (list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
   const tints = tintEntries(step?.tint);
-  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
+  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...list(step?.trace), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
   // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
   return [...new Set(refs.length ? refs : tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : [])))];
 }

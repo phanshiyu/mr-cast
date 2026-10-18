@@ -1042,6 +1042,141 @@ export interface SvgScene extends SceneBase {
   steps?: SvgStep[];
 }
 
+/**
+ * A number, or an expression that computes one from the scene's parameters, such as "n" or "10000 * 1.07^t".
+ * Expressions take numbers, names, + - * / ^ (power), unary minus, parentheses, pi, e, and the functions sin, cos,
+ * tan, asin, acos, atan, exp, log (natural), ln, log10, sqrt, abs, sign, floor, ceil, round, mod(a, b), min and
+ * max with any number of arguments, and sum(k, from, to, term), which adds term for each whole k from `from` to
+ * `to`. A sum whose `to` is not whole adds its last term in part, so a tweened bound grows it smoothly.
+ */
+export type PlotNumber = number | string;
+
+/** One axis: its range, and how its ticks and label are drawn. */
+export interface PlotAxis {
+  /** The value at the left (x) or bottom (y) end. */
+  from: number;
+  /** The value at the right or top end. Greater than `from`. */
+  to: number;
+  /** Words at the axis's far end: right of the x axis, above the y axis. */
+  label?: string;
+  /**
+   * Where ticks go: a step between them (e.g. 5), the values themselves (e.g. [0, 10, 20]), or "pi" for multiples of
+   * π/2 labelled "π/2", "π", "3π/2" (of π past twelve halves). Defaults to a round step giving about six ticks;
+   * [] draws none. A log axis puts them at powers of ten, and at 2 and 5 times them across fewer than three.
+   */
+  ticks?: number | number[] | 'pi';
+  /** Powers of ten along the axis. `from` must be over 0. */
+  log?: boolean;
+  /** Faint lines across the plot at each tick. */
+  grid?: boolean;
+  /** Text before and after each tick's number, e.g. "$" or "%". Numbers from ten thousand read as "20k" and "1.5M". */
+  prefix?: string;
+  suffix?: string;
+}
+
+/**
+ * Text drawn beside a part, in plain words. `{expr}` shows an expression's value, with up to 2 decimals and
+ * thousands commas; `{expr:0}` gives the decimals, e.g. "${10000 * 1.07^t:0}" reads "$19,672" at t = 10.
+ */
+export type PlotLabel = string;
+
+interface PlotPartBase {
+  /** Named by `focus`, `show`, `hide`, `tint`, `trace` and the ink. Different from every other part's id and every parameter. */
+  id: string;
+  label?: PlotLabel;
+  tone?: Tone;
+  /** Not drawn until a step shows or traces it. */
+  hidden?: boolean;
+}
+
+/**
+ * A line: `y` as an expression in x and the parameters, drawn across `from` to `to` (default the x axis), or a
+ * curve when `x` is given too: `x` and `y` in t, drawn for t across `t`. A line breaks where it has no value.
+ */
+export interface PlotFunction extends PlotPartBase {
+  y: PlotNumber;
+  /** For a curve, x as an expression in t. */
+  x?: PlotNumber;
+  /** For a curve, t's range, e.g. [0, "2*pi"]. */
+  t?: [PlotNumber, PlotNumber];
+  /** Where a line starts and stops, inside the x axis. */
+  from?: PlotNumber;
+  to?: PlotNumber;
+  dashed?: boolean;
+}
+
+/** Data points, as a line through them ("line", the default), dots ("points"), or both. */
+export interface PlotSeries extends PlotPartBase {
+  points: [x: number, y: number][];
+  style?: 'line' | 'points' | 'both';
+  dashed?: boolean;
+}
+
+/** A dot, with its label beside it. `at` is [x, y], or x alone on a number line. */
+export interface PlotPoint extends PlotPartBase {
+  at: [PlotNumber, PlotNumber] | PlotNumber;
+  /** Where its label goes. Defaults to the first of above, right, left and below that is clear. */
+  side?: 'above' | 'below' | 'left' | 'right';
+  /** Dashed lines from the dot to both axes. */
+  guides?: boolean;
+}
+
+/** An arrow from `from` (default the origin) to `to`, its label past the tip. */
+export interface PlotVector extends PlotPartBase {
+  to: [PlotNumber, PlotNumber] | PlotNumber;
+  from?: [PlotNumber, PlotNumber] | PlotNumber;
+}
+
+/** A shaded area between a line and y = 0 (`under`), or between two lines (`between`), across `from` to `to`. Give one of `under` and `between`; they name lines of x, not curves. */
+export interface PlotArea extends PlotPartBase {
+  under?: string;
+  between?: [string, string];
+  from?: PlotNumber;
+  to?: PlotNumber;
+}
+
+export interface PlotStep extends StateStep {
+  /** New parameter values, e.g. { "n": 3 }. Every part that reads one moves or reshapes to it over the step's start. */
+  set?: Record<string, number>;
+  /**
+   * Lines, series, vectors or areas to draw on from left to right, by id, over the step's words; a hidden one shows.
+   * A step that traces moves its `set` parameters over the same time, so a point placed by one rides along the line.
+   */
+  trace?: string[];
+  /** Words of the step's `say` at which its changes start, instead of the step's start. */
+  when?: string;
+  tint?: Tints;
+}
+
+/**
+ * Numeric axes with lines, curves, data, points, arrows and shaded areas: how one quantity depends on another, what a
+ * parameter does to a curve, a sum converging, growth over time. Without `y` it is a number line, with points and
+ * vectors only. Each part has an id. Its numbers can be expressions in the `params`, which a step's `set` changes,
+ * so a curve reshapes and a point moves.
+ */
+export interface PlotScene extends SceneBase {
+  type: 'plot';
+  title?: string;
+  x: PlotAxis;
+  y?: PlotAxis;
+  /** Named numbers the expressions read, e.g. { "n": 1 }. A name is letters, digits and _, not x, t, pi, e or a function's. */
+  params?: Record<string, number>;
+  functions?: PlotFunction[];
+  series?: PlotSeries[];
+  points?: PlotPoint[];
+  vectors?: PlotVector[];
+  areas?: PlotArea[];
+  /** Parts coloured from the start, by id. Steps change them with `tint`. */
+  tint?: Tints;
+  /** A boxed line in the top right, such as the formula. Steps replace it with `callout`. */
+  callout?: DisplayText;
+  /**
+   * Each step changes what it `set`s, `show`s, `hide`s, `trace`s and `tint`s, then lights its focus while its `say` is
+   * spoken. A ref is a part's id, or a parameter's name, which lights the parts that read it.
+   */
+  steps?: PlotStep[];
+}
+
 export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Repository-relative path. */
   path: string;
@@ -1156,7 +1291,7 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene;
+export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene;
 
 export interface Storyboard {
   title: string;

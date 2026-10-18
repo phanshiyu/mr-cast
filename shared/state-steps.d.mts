@@ -15,7 +15,7 @@ export interface SceneState {
 export interface StateProblem {
   /** The step's index, or -1 for the initial state. */
   step: number;
-  field: 'set' | 'move' | 'show' | 'hide' | 'objects' | 'tint' | 'callout';
+  field: 'set' | 'move' | 'show' | 'hide' | 'objects' | 'tint' | 'callout' | 'trace';
   ref: string | number;
   message: string;
   names: string[];
