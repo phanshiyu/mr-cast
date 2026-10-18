@@ -1,15 +1,15 @@
 import { createElement, useMemo, type ReactNode } from 'react';
 import { spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneStates } from '../../shared/state-steps.mjs';
-import { SVG_COLORS, SVG_TONES, svgGeometry, svgOf, svgStage, type SvgNode } from '../../shared/svg.mjs';
+import { SVG_COLORS, SVG_TONES, svgOf, svgStage, type SvgNode } from '../../shared/svg.mjs';
 import { headerBox } from '../fit/shell';
 import type { SvgScene, Tone } from '../types';
-import { staged } from '../utils/penGeometry';
 import { brighter, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { shownOf, stateFrame, type StateFrame } from '../utils/stateTrack';
 import { dimOpacity, mainTone, tintFill, tintMix, type TintMix } from '../utils/tint';
 import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
+import { svgTargets } from '../utils/sceneTargets';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { colors, fonts } from './theme';
@@ -145,11 +145,7 @@ export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durat
   const { root, viewBox } = svgOf(scene.svg);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = viewBox ? svgStage(viewBox, box) : { scale: 1, left: 0, top: 0 };
-  const marks = useMemo(() => {
-    const { boxes } = svgGeometry(root);
-    const targets = staged({ boxes: new Map([...boxes].map(([id, b]) => [`s:${id}`, b])) }, stage, box);
-    return states.slice(1).map(() => targets);
-  }, [root, states, stage.scale, stage.left, stage.top]);
+  const marks = useMemo(() => svgTargets(scene), [scene]);
   const s = stateFrame(states, segments, frame);
   const focus = focusSpotlight(scene, hunks, segments, frame);
   if (!root || !viewBox || !('tag' in root)) return <SceneShell scene={scene} durationInFrames={durationInFrames}>{null}</SceneShell>;

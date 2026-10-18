@@ -150,3 +150,27 @@ test('a cue is found among the spoken words and timed where the voice says it', 
   assert.equal(cueFrame(step, 'six'), step.voiceFrom + Math.round(step.speakingFrames / 2) - 3);
   assert.equal(cueFrame(step, 'eleven'), null);
 });
+
+test('validate warns when text written at a point lands on what the scene draws, and not when it is clear', async () => {
+  const array = (at) => ({
+    type: 'array',
+    narration: 'Four cells.',
+    values: [1, 2, 3, 4],
+    steps: [{ focus: 0, say: 'The first cell.', draw: [{ write: 'start here', at }] }],
+  });
+  const warningsOf = async (scene) => (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('.at:'));
+  assert.deepEqual(await warningsOf(array([0.02, 0.9])), []);
+  const onCells = await warningsOf(array([0.3, 0.42]));
+  assert.equal(onCells.length, 1);
+  assert.match(onCells[0], /^scenes\[0\]\.steps\[0\]\.draw\[0\]\.at: the text lands on "0"; move it to free space, or write it near a ref$/);
+});
+
+test('a step that only draws ink is not reported as moving nothing', async () => {
+  const steps = (draw) => [
+    { focus: 'S', say: 'Start at S.' },
+    { focus: 'S', say: 'It costs nothing.', ...draw },
+  ];
+  const same = async (scene) => (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('nothing moves'));
+  assert.deepEqual(await same(graph(steps({}))), ['scenes[0].steps[1]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere']);
+  assert.deepEqual(await same(graph(steps({ draw: [{ write: 'd = 0', near: 'S' }] }))), []);
+});

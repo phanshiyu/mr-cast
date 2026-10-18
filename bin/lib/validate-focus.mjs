@@ -75,10 +75,12 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     });
   });
   const scene = { ...s, steps: focusSteps(s) };
+  // A step that draws or erases ink moves something even when it lights what the step before lit.
+  const drawsInk = (step) => Boolean(step?.draw?.length) || step?.erase !== undefined;
   const lit = stepTargets(scene, hunks).map((keys) => [...keys].sort().join(' '));
   const token = s.type === 'layers' ? tokenSteps(scene, hunks).positions : [];
   lit.forEach((keys, i) => {
-    if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i]) && token[i] === token[i - 1]) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
+    if (i > 0 && keys && keys === lit[i - 1] && !changesState(s.steps[i]) && !drawsInk(s.steps[i]) && token[i] === token[i - 1]) warnings.push(`${p}.steps[${i}]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere`);
   });
   if ((s.type === 'table' || s.type === 'files') && s.highlight !== undefined) warnings.push(`${p}.highlight: steps replace highlight, so remove it`);
   const revealed = REVEALED[s.type];
