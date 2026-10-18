@@ -181,11 +181,11 @@ scenes.push({
   type: 'plot',
   chapter: 'It depends on height',
   title: 'Time gained each day, by orbit',
-  narration: 'Which effect wins depends on how high the orbit is. This curve is a clock’s daily gain against the ground, for orbits of every size.',
+  narration: 'Which effect wins depends on how high the orbit is. These axes show how much a clock gains each day against the ground, for an orbit of any size.',
   x: { from: 0, to: 45, ticks: 10, label: 'distance from Earth’s centre, thousand km' },
   y: { from: -40, to: 60, ticks: 20, label: 'µs a day', grid: true },
   params: { r: iss },
-  functions: [{ id: 'gain', y: `${A.toFixed(4)} - ${B.toFixed(4)} / x`, from: rMean / 1e6, to: 45, tone: 'accent' }],
+  functions: [{ id: 'gain', y: `${A.toFixed(4)} - ${B.toFixed(4)} / x`, from: rMean / 1e6, to: 45, tone: 'accent', hidden: true }],
   points: [
     { id: 'iss', at: [r1(iss * 10) / 10, r1(fx(iss))], label: `space station, ${fmt(fx(iss))}`, side: 'right', tone: 'bad', hidden: true },
     { id: 'cross', at: [r1(cross * 10) / 10, 0], label: `${N(cross * 1000)} km: they cancel`, side: 'above', hidden: true },

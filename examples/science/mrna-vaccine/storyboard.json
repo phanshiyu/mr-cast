@@ -134,10 +134,7 @@
             "ribosome": "translate(420 0)"
           },
           "trace": [
-            {
-              "ref": "chain",
-              "when": "adds"
-            }
+            "chain"
           ],
           "hide": [
             "read-detail"

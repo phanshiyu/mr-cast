@@ -228,7 +228,7 @@
       "type": "plot",
       "chapter": "It depends on height",
       "title": "Time gained each day, by orbit",
-      "narration": "Which effect wins depends on how high the orbit is. This curve is a clock’s daily gain against the ground, for orbits of every size.",
+      "narration": "Which effect wins depends on how high the orbit is. These axes show how much a clock gains each day against the ground, for an orbit of any size.",
       "x": {
         "from": 0,
         "to": 45,
@@ -251,7 +251,8 @@
           "y": "60.2145 - 574.7796 / x",
           "from": 6.371,
           "to": 45,
-          "tone": "accent"
+          "tone": "accent",
+          "hidden": true
         }
       ],
       "points": [
