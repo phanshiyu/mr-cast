@@ -54,7 +54,7 @@ function fixture() {
   write(path.join(cache, 'mr-cast', 'models', 'kokoro.onnx'), 4000);
   write(path.join(cache, 'mr-cast', 'remotion.users', String(process.pid)), 0);
   process.env.XDG_CACHE_HOME = cache;
-  const env = { ...process.env, XDG_CACHE_HOME: cache, XDG_CONFIG_HOME: path.join(root, 'config'), CLAUDE_CONFIG_DIR: path.join(root, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1' };
+  const env = { ...process.env, XDG_CACHE_HOME: cache, XDG_CONFIG_HOME: path.join(root, 'config'), XDG_STATE_HOME: path.join(root, 'state'), CLAUDE_CONFIG_DIR: path.join(root, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1' };
   const cwd = path.join(root, 'repo');
   const run = (...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8' });
   return { data, cache, run, list: () => listArtifacts(data) };
@@ -150,6 +150,8 @@ test('--choices groups the menu, and each option command removes exactly the ids
   const out = run('prune', '--choices', '--json');
   assert.equal(out.status, 0, out.stderr);
   const choices = JSON.parse(out.stdout);
+  // mr-cast processes running on this machine add a group of `stop` options, which this test must never run.
+  choices.groups = choices.groups.filter((g) => g.name !== 'Running processes');
   assert.deepEqual(choices.groups.map((g) => [g.name, g.options.map((o) => [o.label, o.command.join(' ')])]), [
     ['Rendered videos', [
       ['All rendered videos', 'prune --kind video'],

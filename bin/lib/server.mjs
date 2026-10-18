@@ -118,13 +118,27 @@ function listen(server, port) {
  * `audience` is the command's
  * --audience, served as settings.json so the plan page can word its depths for a pre-read.
  * The plan page changes plan.json through POST /plan/choice, with the returned `token` in TOKEN_HEADER.
+ * Each open page holds one /events stream, so their number is the pages open: `onViewers(count)` hears each change.
+ * With `idle.ms`, `idle.onIdle()` runs once no page has been open for that long, counted from the last one leaving or
+ * from the start; while `idle.busy?.()` is true the count starts over.
  */
-export async function startServer({ distDir, dataDir, port, onDataChange, holding, getVoiceover, getStoryboard, audience = 'familiar' }) {
+export async function startServer({ distDir, dataDir, port, onDataChange, holding, getVoiceover, getStoryboard, audience = 'familiar', onViewers, idle }) {
   const root = path.resolve(distDir);
   const token = randomBytes(16).toString('hex');
   const tokenBytes = Buffer.from(token);
   const clients = new Set();
   let allowedHosts = new Set();
+  let idleTimer = null;
+  let closing = false;
+  const countDown = () => {
+    clearTimeout(idleTimer);
+    if (!idle?.ms || clients.size) return;
+    idleTimer = setTimeout(() => (idle.busy?.() ? countDown() : idle.onIdle()), idle.ms);
+  };
+  const viewersChanged = () => {
+    onViewers?.(clients.size);
+    countDown();
+  };
 
   const server = http.createServer((req, res) => {
     // Binding to 127.0.0.1 does not stop DNS rebinding: a page on evil.example can resolve
@@ -141,7 +155,11 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
       res.write(': connected\n\n');
       clients.add(res);
-      req.on('close', () => clients.delete(res));
+      viewersChanged();
+      req.on('close', () => {
+        clients.delete(res);
+        if (!closing) viewersChanged();
+      });
       return;
     }
 
@@ -189,6 +207,7 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
   }
   if (!bound) throw new Error(`ports ${port}-${port + PORT_ATTEMPTS - 1} are all in use; pass --port`);
   allowedHosts = new Set([`${HOST}:${bound}`, `localhost:${bound}`]);
+  countDown();
 
   const broadcast = (msg) => { for (const c of clients) c.write(msg); };
   const keepalive = setInterval(() => broadcast(': keepalive\n\n'), KEEPALIVE_MS);
@@ -221,6 +240,8 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
   watcher.on('error', (err) => console.error(`mr-cast: stopped watching ${dataDir} (${err.message}); restart play to resume live reload`));
 
   const close = () => new Promise((resolve) => {
+    closing = true;
+    clearTimeout(idleTimer);
     clearInterval(keepalive);
     clearTimeout(timer);
     watcher.close();

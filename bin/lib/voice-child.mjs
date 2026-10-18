@@ -5,6 +5,7 @@
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { UserError } from './errors.mjs';
+import { register, removeEntry, runFields } from './procs.mjs';
 import { downloadVoice, ensureVoiceover } from './voice.mjs';
 import { ENGINES, voiceParts } from './voices.mjs';
 
@@ -34,6 +35,8 @@ function inChild(task, args, onProgress, signal) {
     // 'close', not 'exit': a large result can still be arriving when the child exits.
     child.on('close', (code, killedBy) => {
       children.delete(child);
+      // A child killed mid-clip cannot remove its own registry entry.
+      removeEntry(child.pid);
       signal?.removeEventListener('abort', abort);
       if (stopping || signal?.aborted) resolve(null);
       reject(new Error(`the voice process stopped (${killedBy ?? `exit ${code}`})`));
@@ -78,6 +81,7 @@ if (process.argv[2] === '--voice-child') {
   const orphaned = () => process.kill(process.pid, 'SIGKILL');
   process.once('disconnect', orphaned);
   process.once('message', async ({ task, args }) => {
+    register({ kind: task === 'download' ? 'download' : 'voice', url: null, ...runFields(args.dataDir) });
     const onProgress = (event) => process.send({ type: 'progress', event });
     let reply;
     try {
