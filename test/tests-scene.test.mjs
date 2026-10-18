@@ -193,3 +193,11 @@ test('an older scene with cases and gaps reads as a matrix with one outcome, and
   const current = matrix();
   assert.equal(upgradeTests(current), current);
 });
+
+test('short test names fit under the TESTS header, in the matrix and in an older scene', async () => {
+  const short = matrix({ tests: [{ name: 'a', checks: ['retry.Result'] }, { name: 'ok', checks: ['ok.Result'] }] });
+  assert.deepEqual((await run(short)).errors, []);
+  assert.equal(layoutTests(short, 1712, 700).namesCol.title.fits, true);
+  const old = { type: 'tests', narration: 'Two tests cover delivery.', cases: [{ name: 'a', proves: 'Retries' }, { name: 'ok', proves: 'Delivers' }] };
+  assert.deepEqual((await run(old)).errors, []);
+});

@@ -136,6 +136,7 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
   const { outcomes, rows } = matrix;
   const valueFont: Font = { family: 'sans', weight: 700, size: font };
   const whenFont: Font = { family: 'sans', weight: 600, size: font };
+  const headFont: Font = { family: 'sans', weight: 700, size: HEAD_SLOT.size, letterSpacing: HEAD_SLOT.letterSpacing, upper: true };
   const counted = rows.some((r) => r.tests.filter((n) => isLive(scene.tests[n])).length > 1);
   const countW = counted ? measure('99 tests', { family: 'sans', weight: 600, size: small }) + TAG_GAP : 0;
 
@@ -143,7 +144,7 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
   const whenW = Math.round(Math.min(Math.max(whenNat, width * 0.16), width * 0.34));
   const colNat = outcomes.map((o, col) =>
     Math.max(
-      measure(o, { family: 'sans', weight: 700, size: HEAD_SLOT.size, letterSpacing: HEAD_SLOT.letterSpacing, upper: true }) + 2 * padX,
+      measure(o, headFont) + 2 * padX,
       ...rows.filter((r) => !r.gap).map((r) => {
         const cell = r.cells[col]!;
         return measure(plainText(cellText(cell)), valueFont) + tagWidth(TAG_OF[cell.state](cell), small) + 2 * padX;
@@ -152,7 +153,7 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
   );
 
   const nameFont: Font = { family: 'mono', weight: 500, size: Math.max(MIN_FONT, Math.round(font * 0.76)) };
-  const namesNat = scene.tests.length ? Math.max(...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX : 0;
+  const namesNat = scene.tests.length ? Math.max(measure('Tests', headFont), ...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX : 0;
   const outcomeRoom = (namesW: number) => width - whenW - namesW - COL_GAP * (outcomes.length + (namesW ? 1 : 0));
   const natSum = colNat.reduce((a, b) => a + b, 0);
   const namesFit = Math.round(Math.min(namesNat, width * 0.3));
