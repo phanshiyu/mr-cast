@@ -1,5 +1,5 @@
-// Checks pen marks: a step's `mark`, its `note`, a code step's `token`, and the ink a step draws and erases. What a mark draws on lives in
-// shared/pen-marks.mjs, which the scenes use to draw it.
+// Checks pen marks: a step's `mark`, its `note`, a code step's `token`, and the ink a step draws and erases. What a
+// mark draws on lives in shared/pen-marks.mjs and the ink board in shared/ink.mjs, which the scenes draw from.
 
 import { inkBoard } from '../../shared/ink.mjs';
 import { NOTE_MAX, PEN_MARKS, tokenHits } from '../../shared/pen-marks.mjs';
