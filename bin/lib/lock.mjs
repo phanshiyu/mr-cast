@@ -96,3 +96,16 @@ export function usersOf(dir) {
   try { names = fs.readdirSync(usersDir(dir)); } catch { /* nobody has used it */ }
   return names.map(Number).filter((pid) => Number.isInteger(pid) && pid > 0 && alive(pid));
 }
+
+/** A download's partial file, named for the pid writing it: ours `<name>.tmp-<pid>`, transformers.js's `<name>.tmp.<pid>.<random>`. */
+const PARTIAL = /\.tmp(?:-(\d+)|\.(\d+)\.[0-9a-z]+)$/;
+
+/** Removes the partial files under `dir` whose writer is gone, as a process killed mid-download leaves them. */
+export function removeDeadPartials(dir) {
+  let found = [];
+  try { found = fs.readdirSync(dir, { recursive: true, withFileTypes: true }); } catch { /* nothing downloaded yet */ }
+  for (const entry of found) {
+    const match = entry.name.match(PARTIAL);
+    if (entry.isFile() && match && !alive(Number(match[1] ?? match[2]))) fs.rmSync(path.join(entry.parentPath, entry.name), { force: true });
+  }
+}

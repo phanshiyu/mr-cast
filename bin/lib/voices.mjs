@@ -3,7 +3,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { cacheDir } from './cache.mjs';
+import { cacheDir, cacheLock } from './cache.mjs';
 import { UserError } from './errors.mjs';
 import { KITTEN_MB, kittenDir, kittenDownloaded } from './kitten.mjs';
 import { VOICES as KOKORO_VOICES } from './kokoro/voice-list.js';
@@ -17,8 +17,9 @@ const ACCENTS = { 'en-us': 'American English', 'en-gb': 'British English' };
 /**
  * @typedef {{
  *   label: string, mb: number, defaultVoice: string, voices: Record<string, string>,
- *   dir: () => string, downloaded: () => boolean,
- * }} Engine  `voices` maps each voice's name to its line in `mr-cast voices`, as the model card describes it.
+ *   dir: () => string, lock: () => string, downloaded: () => boolean,
+ * }} Engine  `voices` maps each voice's name to its line in `mr-cast voices`, as the model card describes it. `lock`
+ *   is held while the model downloads into `dir`; prune holds it to delete the engine's cache.
  */
 /** @type {Record<'kitten' | 'kokoro', Engine>} */
 export const ENGINES = {
@@ -30,6 +31,7 @@ export const ENGINES = {
       name, `${i % 2 ? 'male' : 'female'}, American English`,
     ])),
     dir: () => kittenDir(cacheDir('kitten')),
+    lock: () => cacheLock('kitten'),
     downloaded: () => kittenDownloaded(kittenDir(cacheDir('kitten'))),
   },
   kokoro: {
@@ -40,6 +42,7 @@ export const ENGINES = {
       name, `${v.gender.toLowerCase()}, ${ACCENTS[v.language] ?? v.language}, model card grade ${v.overallGrade}`,
     ])),
     dir: () => cacheDir('models'),
+    lock: () => cacheLock('models'),
     downloaded: () => fs.existsSync(path.join(cacheDir('models'), KOKORO_MODEL_ID, 'onnx', KOKORO_MODEL_FILE)),
   },
 };

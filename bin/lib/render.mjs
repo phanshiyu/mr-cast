@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
 import { RenderInternals, ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
 import { FPS, sceneDurationInFrames, sceneSegments, settledFrame } from '../../shared/timing.mjs';
-import { cacheDir } from './cache.mjs';
+import { cacheDir, cacheLock } from './cache.mjs';
 import { whileUsing, withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
@@ -140,7 +140,7 @@ async function serveAudio(dataDir) {
  */
 async function ensureChrome() {
   await mkdir(BROWSER_CACHE, { recursive: true });
-  return withLock(`${BROWSER_CACHE}.lock`, async () => {
+  return withLock(cacheLock('remotion'), async () => {
     const pkg = path.join(BROWSER_CACHE, 'package.json');
     if (!existsSync(pkg)) await writeFile(pkg, '{ "private": true }\n');
     const cwd = process.cwd();

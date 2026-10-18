@@ -6,8 +6,8 @@ import path from 'node:path';
 import { spokenTexts, wordCount } from '../../shared/timing.mjs';
 import { PACES, clipFor, narrationKey } from '../../shared/voice.mjs';
 import { UserError } from './errors.mjs';
-import { KITTEN_REPO, downloadKitten, loadKitten } from './kitten.mjs';
-import { withLock } from './lock.mjs';
+import { KITTEN_REPO, downloadKitten, hubUrl, loadKitten } from './kitten.mjs';
+import { removeDeadPartials, withLock } from './lock.mjs';
 import { ENGINES, KOKORO_MODEL_ID, voiceParts } from './voices.mjs';
 
 const VOICEOVER_FILE = 'voiceover.json';
@@ -68,36 +68,46 @@ export function readVoiceover(dataDir) {
 /** Each engine's loaded model, once per process. A failed load is forgotten so the next call retries. */
 const models = new Map();
 
+const waitingFor = (what) => (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish ${what} the voice model`);
+
+/** Kitten's files, each checked against its pinned sha256, downloaded under the engine's lock so two processes share one download. */
+async function downloadKittenFiles(onProgress) {
+  const dir = ENGINES.kitten.dir();
+  if (ENGINES.kitten.downloaded()) return;
+  fs.mkdirSync(path.dirname(dir), { recursive: true });
+  await withLock(ENGINES.kitten.lock(), async () => {
+    removeDeadPartials(dir);
+    if (ENGINES.kitten.downloaded()) return;
+    onProgress?.({ type: 'download', engine: 'kitten', mb: ENGINES.kitten.mb, cacheDir: dir });
+    await downloadKitten(dir);
+  }, waitingFor('downloading'));
+}
+
 /**
  * Each engine's loader. A loaded model's `speak(text, name, speed)` yields `text` in chunks, each { sentence, audio }
  * at its `sampleRate`.
  */
 const LOADERS = {
-  /** Kitten's files download, checked against their pinned sha256, under a lock so two processes share one download. */
   async kitten(onProgress) {
-    const dir = ENGINES.kitten.dir();
-    fs.mkdirSync(path.dirname(dir), { recursive: true });
-    await withLock(`${dir}.lock`, async () => {
-      if (ENGINES.kitten.downloaded()) return;
-      onProgress?.({ type: 'download', engine: 'kitten', mb: ENGINES.kitten.mb, cacheDir: dir });
-      await downloadKitten(dir);
-    }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading the voice model`));
-    return loadKitten(dir);
+    await downloadKittenFiles(onProgress);
+    return loadKitten(ENGINES.kitten.dir());
   },
   /**
-   * transformers.js writes each download straight to its final path in the cache, where another process would
-   * take the partial file for a cached one, so loads hold a lock while the weights may be downloading.
+   * transformers.js downloads as it loads, so a load holds the engine's lock while the weights may be downloading:
+   * prune must not delete them meanwhile, and two processes share one download.
    */
   async kokoro(onProgress) {
     const modelDir = ENGINES.kokoro.dir();
     const { env } = await import('@huggingface/transformers');
     env.cacheDir = modelDir;
+    if (process.env.HF_ENDPOINT) env.remoteHost = `${hubUrl()}/`;
     const { KokoroTTS, TextSplitterStream } = await import('./kokoro/kokoro.js');
     fs.mkdirSync(modelDir, { recursive: true });
-    const tts = await withLock(`${modelDir}.lock`, () => {
+    const tts = await withLock(ENGINES.kokoro.lock(), () => {
+      removeDeadPartials(modelDir);
       if (!ENGINES.kokoro.downloaded()) onProgress?.({ type: 'download', engine: 'kokoro', mb: ENGINES.kokoro.mb, cacheDir: modelDir });
       return KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: 'q8', device: 'cpu' });
-    }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish loading the voice model`));
+    }, waitingFor('loading'));
     const { getVoiceData } = await import('./kokoro/voices.js');
     return {
       sampleRate: 24000,
@@ -122,15 +132,33 @@ const LOADERS = {
 
 const SOURCES = { kitten: `huggingface.co/${KITTEN_REPO}`, kokoro: `huggingface.co/${KOKORO_MODEL_ID}` };
 
+const loadFailure = (engine, err) => {
+  const { mb, dir } = ENGINES[engine];
+  return new UserError(`could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${SOURCES[engine]} into ${dir()}`);
+};
+
 function loadEngine(engine, onProgress) {
   if (!models.has(engine)) {
     models.set(engine, LOADERS[engine](onProgress).catch((err) => {
       models.delete(engine);
-      const { mb, dir } = ENGINES[engine];
-      throw new UserError(`could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${SOURCES[engine]} into ${dir()}`);
+      throw loadFailure(engine, err);
     }));
   }
   return models.get(engine);
+}
+
+/**
+ * Downloads what voicing in `voice` needs, so play can run the download where an edit does not stop it. Kitten's
+ * files download without loading the model; Kokoro downloads as it loads.
+ */
+export async function downloadVoice(voice, onProgress) {
+  const { engine, name } = voiceParts(voice);
+  if (engine !== 'kitten') return (await loadEngine(engine, onProgress)).prepare?.(name);
+  try {
+    await downloadKittenFiles(onProgress);
+  } catch (err) {
+    throw loadFailure(engine, err);
+  }
 }
 
 /** Samples quieter than this are silence when finding where a sentence's speech starts and ends. */

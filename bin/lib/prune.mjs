@@ -11,7 +11,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { cacheDir, cacheRoot } from './cache.mjs';
+import { cacheDir, cacheLock, cacheRoot } from './cache.mjs';
 import { UserError } from './errors.mjs';
 import { liveHolder, usersOf, withLock } from './lock.mjs';
 import { CURRENT_FILE, clearCurrent, isExplanationName, isRunName, readCurrent, readRunMeta } from './runs.mjs';
@@ -143,8 +143,8 @@ function listRuns(dataRoot) {
 }
 
 /** Why a cache directory must not be deleted now, or null. */
-function cacheBusy(dir, lock) {
-  const holder = lock ? liveHolder(`${dir}.lock`) : null;
+function cacheBusy(name, dir, lock) {
+  const holder = lock ? liveHolder(cacheLock(name)) : null;
   if (holder) return `mr-cast pid ${holder} is downloading into it`;
   const users = usersOf(dir);
   return users.length ? `a render (pid ${users.join(', ')}) is using it` : null;
@@ -156,7 +156,7 @@ function listCache() {
     .filter(({ dir }) => fs.existsSync(dir))
     .map(({ dir, name, label, detail, lock }) => artifact({
       id: `cache:${name}`, kind: 'cache', at: dir, remove: [dir], label, detail,
-      busy: cacheBusy(dir, lock), lock: lock ? `${dir}.lock` : null,
+      busy: cacheBusy(name, dir, lock), lock: lock ? cacheLock(name) : null,
     }));
 }
 

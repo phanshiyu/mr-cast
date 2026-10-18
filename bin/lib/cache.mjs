@@ -6,3 +6,6 @@ import path from 'node:path';
 export const cacheRoot = () => path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'mr-cast');
 
 export const cacheDir = (name) => path.join(cacheRoot(), name);
+
+/** The lock held while a download writes into cacheDir(name), and while prune deletes it. */
+export const cacheLock = (name) => `${cacheDir(name)}.lock`;
