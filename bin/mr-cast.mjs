@@ -16,7 +16,7 @@ import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsF
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { createServing } from './lib/serving.mjs';
-import { countLine, formatPs, formatStopChoices, listProcesses, procJson, procsDir, register, runFields, selectProcs, stopChoices, stopProcesses } from './lib/procs.mjs';
+import { countLine, exitedPids, formatPs, formatStopChoices, listProcesses, procJson, procsDir, register, runFields, selectProcs, stopChoices, stopProcesses } from './lib/procs.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
 import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, plural, summarizeFiles } from './lib/summary.mjs';
@@ -1029,16 +1029,21 @@ async function stop(argv) {
     return;
   }
   const repo = values['any-repo'] ? null : findRepoRoot() ?? process.cwd();
-  const chosen = selectProcs(list, { targets: positionals, olderThan: values['older-than'] ?? null, idle: values.idle, repo });
+  // A menu's pids can exit before the user answers; the rest are still stopped.
+  const exited = exitedPids(list, positionals);
+  const targets = positionals.filter((t) => !exited.includes(t));
+  const chosen = exited.length && targets.length === 0 ? [] : selectProcs(list, { targets, olderThan: values['older-than'] ?? null, idle: values.idle, repo });
   const describe = (p) => `${p.kind} ${p.pid}${p.parent === null ? [p.run, p.url].filter(Boolean).map((x) => ` · ${x}`).join('') : ` (with ${p.parent})`}`;
+  const skipped = exited.map((pid) => `skipped pid ${pid}: it has exited already`);
+  const lines = (done) => [...skipped, ...(done.length || skipped.length ? done : ['nothing matched'])];
   if (values['dry-run']) {
-    print({ dryRun: true, processes: chosen.map(procJson) }, chosen.length ? chosen.map((p) => `would stop ${describe(p)}`) : ['nothing matched']);
+    print({ dryRun: true, processes: chosen.map(procJson), exited: exited.map(Number) }, lines(chosen.map((p) => `would stop ${describe(p)}`)));
     return;
   }
   const results = await stopProcesses(chosen);
   print(
-    { dryRun: false, processes: results.map(({ proc, outcome }) => ({ ...procJson(proc), outcome })) },
-    results.length ? results.map(({ proc, outcome }) => `${STOPPED[outcome]} ${describe(proc)}`) : ['nothing matched'],
+    { dryRun: false, processes: results.map(({ proc, outcome }) => ({ ...procJson(proc), outcome })), exited: exited.map(Number) },
+    lines(results.map(({ proc, outcome }) => `${STOPPED[outcome]} ${describe(proc)}`)),
   );
   if (results.some((r) => r.outcome === 'failed')) process.exitCode = 1;
 }

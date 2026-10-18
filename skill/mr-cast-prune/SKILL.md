@@ -19,7 +19,7 @@ The CLI is `{{MR_CAST}}/bin/mr-cast`. Run it from the user's repository, because
 {{MR_CAST}}/bin/mr-cast prune --choices --json
 ```
 
-The output has `groups` and `inUse`. Each group has a `name` and up to 4 `options`. Each option has a `label`, a `description` (its size and what deleting it means), a `command` (the exact arguments to pass to the CLI), and the `ids` it deletes. When mr-cast processes are running, the last group is `Running processes`: its options' commands start with `stop`, and their `ids` are the pids each one stops.
+The output has `groups` and `inUse`. Each group has a `name` and up to 4 `options`. Each option has a `label`, a `description` (its size and what deleting it means), a `command` (the exact arguments to pass to the CLI), and the `ids` it deletes. When mr-cast processes are running, the last group is `Running processes`: each option's command is `stop` followed by the pids it stops, and its `ids` are those pids. A process's voice and download children are not in `ids`; `stop` takes them with it.
 
 If `groups` is empty, tell the user there is nothing to prune and nothing running, and stop. Each entry of `inUse` is busy, such as the Chrome cache while a render runs. Name it as in use and say it can be pruned once the render finishes.
 
@@ -75,8 +75,8 @@ For processes, such as "stop the idle servers" or "stop everything older than a 
 - `--idle`: only servers with no page open.
 - `--older-than <30m|2h|1d>`: only processes started longer ago than that.
 
-A process's voice and download children always go with it. Run it with `--dry-run` first, show its `would stop` lines, and ask the user to confirm as above.
+A run name matches only this repository's processes; add `--any-repo` only when the user asks for that run in every repository. A process's voice and download children always go with it. Run it with `--dry-run` first, show its `would stop` lines, and ask the user to confirm as above.
 
 ## 5. Report
 
-`prune` prints one `removed <id>` line per artifact and `freed <size>` at the end. A part inside a chosen walkthrough prints as `removed <id> (with <walkthrough id>)`. An `in use, not removed` line names a busy artifact it left alone. It rejects an unknown id, or a busy one named by id, and then deletes nothing. In that case run step 1 again, tell the user what changed, and ask again. A `kept <id>` line means a render started using that cache after the listing. Tell the user to prune it after the render finishes. Report what was removed and the space freed. `stop` prints one line per process: `stopped`, `killed` when it had to be forced, `already gone`, or `could not stop`, with its kind, pid, run and URL. It rejects a pid or run that is not running, and then stops nothing; run step 1 again in that case. Report what was stopped.
+`prune` prints one `removed <id>` line per artifact and `freed <size>` at the end. A part inside a chosen walkthrough prints as `removed <id> (with <walkthrough id>)`. An `in use, not removed` line names a busy artifact it left alone. It rejects an unknown id, or a busy one named by id, and then deletes nothing. In that case run step 1 again, tell the user what changed, and ask again. A `kept <id>` line means a render started using that cache after the listing. Tell the user to prune it after the render finishes. Report what was removed and the space freed. `stop` prints one line per process: `stopped`, `killed` when it had to be forced, `already gone`, or `could not stop`, with its kind, pid, run and URL. A `skipped pid <pid>: it has exited already` line names a chosen process that ended before the command ran; the others are still stopped. It rejects a pid that runs something other than mr-cast, or a run with nothing running, and then stops nothing; run step 1 again in that case. Report what was stopped and what had already exited.

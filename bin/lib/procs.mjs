@@ -293,6 +293,17 @@ export function selectProcs(list, selector, now = Date.now()) {
   return list.filter((p) => picked.has(p.pid) || (p.parent !== null && picked.has(p.parent)));
 }
 
+/**
+ * The pid targets that name no process at all any more: they exited since a listing or menu showed them, so `stop`
+ * skips them rather than refusing the rest. A pid that runs something other than a listed mr-cast is not among them.
+ */
+export function exitedPids(list, targets, ps = processTable) {
+  const unlisted = targets.filter((t) => /^\d+$/.test(t) && !list.some((p) => String(p.pid) === t));
+  if (unlisted.length === 0) return [];
+  const table = ps(unlisted.map(Number));
+  return table ? unlisted.filter((t) => !table.has(Number(t))) : [];
+}
+
 const GRACE_MS = 5_000;
 const POLL_MS = 100;
 
@@ -392,11 +403,6 @@ export function countLine(list) {
   return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0] ?? '';
 }
 
-/** The CLI arguments that make `selectProcs` pick what `selector` picks. */
-export const stopCommand = (selector) => [
-  'stop', ...selector.targets, ...(selector.idle ? ['--idle'] : []), ...(selector.olderThan === null ? [] : ['--older-than', selector.olderThan]),
-];
-
 const OLD = '2h';
 const MAX_OPTIONS = 4;
 
@@ -411,7 +417,9 @@ const CONSEQUENCE = {
 
 /**
  * The stop menu, shaped like prune's: one group with up to 4 options, each with the exact `command` that stops what its
- * description counts and the pids it stops as `ids`. No group when nothing runs.
+ * description counts, `stop <pids>`, and those pids as `ids`. Only the processes listed now, not what `all` would
+ * name when the user answers; and no children, which `stop` takes with their parent and which come and go with each
+ * voicing. No group when nothing runs.
  */
 export function stopChoices(list, now = Date.now()) {
   const tops = list.filter((p) => p.parent === null);
@@ -420,7 +428,8 @@ export function stopChoices(list, now = Date.now()) {
     const chosen = selectProcs(list, selector, now);
     const top = chosen.filter((p) => p.parent === null);
     const consequences = [...new Set(top.map((p) => SHORT[p.kind]))].join(', and ');
-    return { label, description: `${top.length} processes; ${note}; ${consequences}`, command: stopCommand(selector), ids: chosen.map((p) => String(p.pid)) };
+    const ids = top.map((p) => String(p.pid));
+    return { label, description: `${top.length} processes; ${note}; ${consequences}`, command: ['stop', ...ids], ids };
   };
   const all = { targets: ['all'], olderThan: null, idle: false };
   const options = [];
@@ -434,8 +443,7 @@ export function stopChoices(list, now = Date.now()) {
       const page = p.viewers === null ? null : p.viewers === 0 ? 'no page open' : plural(p.viewers, 'page') + ' open';
       const facts = [`pid ${p.pid}`, `up ${formatAge(now - p.startedAt)}`, page, !p.registered && 'unregistered'].filter(Boolean).join(', ');
       const label = `${NOUNS[p.kind][0].toUpperCase()}${NOUNS[p.kind].slice(1)}${p.run ? ` of ${p.run}` : ''}${p.repo ? ` in ${path.basename(p.repo)}` : ''}`;
-      const selector = { targets: [String(p.pid)], olderThan: null, idle: false };
-      options.push({ label, description: `${facts}; ${CONSEQUENCE[p.kind]}`, command: stopCommand(selector), ids: selectProcs(list, selector, now).map((q) => String(q.pid)) });
+      options.push({ label, description: `${facts}; ${CONSEQUENCE[p.kind]}`, command: ['stop', String(p.pid)], ids: [String(p.pid)] });
     }
   }
   return { groups: [{ name: 'Running processes', options }] };

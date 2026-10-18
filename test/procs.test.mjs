@@ -326,18 +326,32 @@ test('stop --choices offers every process, the narrowing picks, and each process
     groups: [{
       name: 'Running processes',
       options: [
-        { label: 'Every running mr-cast process', description: '3 processes; everything `mr-cast ps` lists; their pages stop working', command: ['stop', 'all'], ids: ['1', '2', '3', '4'] },
-        { label: 'Servers with no page open', description: '2 processes; nobody is watching them; their pages stop working', command: ['stop', 'all', '--idle'], ids: ['1', '2', '4'] },
-        { label: 'Running for over 2 hours', description: '2 processes; started more than 2 hours ago; their pages stop working', command: ['stop', 'all', '--older-than', '2h'], ids: ['1', '2', '3'] },
+        { label: 'Every running mr-cast process', description: '3 processes; everything `mr-cast ps` lists; their pages stop working', command: ['stop', '1', '3', '4'], ids: ['1', '3', '4'] },
+        { label: 'Servers with no page open', description: '2 processes; nobody is watching them; their pages stop working', command: ['stop', '1', '4'], ids: ['1', '4'] },
+        { label: 'Running for over 2 hours', description: '2 processes; started more than 2 hours ago; their pages stop working', command: ['stop', '1', '3'], ids: ['1', '3'] },
       ],
     }],
   });
   assert.deepEqual(stopChoices([LIST[0], LIST[1], LIST[4]], NOW).groups[0].options, [
-    { label: 'Every running mr-cast process', description: '2 processes; everything `mr-cast ps` lists; their pages stop working, and a render writes no MP4', command: ['stop', 'all'], ids: ['1', '2', '5'] },
-    { label: 'Player of limiter', description: 'pid 1, up 3h, no page open; its page stops working; `mr-cast play` starts it again', command: ['stop', '1'], ids: ['1', '2'] },
+    { label: 'Every running mr-cast process', description: '2 processes; everything `mr-cast ps` lists; their pages stop working, and a render writes no MP4', command: ['stop', '1', '5'], ids: ['1', '5'] },
+    { label: 'Player of limiter', description: 'pid 1, up 3h, no page open; its page stops working; `mr-cast play` starts it again', command: ['stop', '1'], ids: ['1'] },
     { label: 'Render', description: 'pid 5, up 5m, unregistered; the render stops and writes no MP4', command: ['stop', '5'], ids: ['5'] },
   ]);
   assert.deepEqual(stopChoices([], NOW), { groups: [] });
+});
+
+test('stop skips a pid that has exited since the menu listed it, and stops the rest', async () => {
+  const { cwd } = runIn('menu');
+  const play = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5760'], /mr-cast player:/);
+  const gone = spawn(process.execPath, ['-e', '0']);
+  await new Promise((resolve) => gone.on('exit', resolve));
+  const out = cli(cwd, 'stop', String(gone.pid), String(play.pid));
+  assert.equal(out.status, 0, out.stderr);
+  assert.deepEqual(out.stdout.trim().split('\n').map((l) => l.replace(/ · .*/, '')), [`skipped pid ${gone.pid}: it has exited already`, `stopped play ${play.pid}`]);
+  assert.deepEqual(await within(play.exited, 2000), { code: 0, signal: null });
+  const alone = cli(cwd, 'stop', String(gone.pid), '--json');
+  assert.equal(alone.status, 0, alone.stderr);
+  assert.deepEqual(JSON.parse(alone.stdout), { dryRun: false, processes: [], exited: [gone.pid] });
 });
 
 test('stop never signals a pid that is not a verified mr-cast process, even with a forged entry', async () => {
