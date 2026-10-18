@@ -329,7 +329,7 @@ const copy = (state) => ({ values: { ...state.values }, places: { ...state.place
 const SVG_TRACEABLE = ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'g'];
 
 /** Scene types whose steps take `trace`. */
-const TRACE_TYPES = () => Object.keys(MODELS).filter((type) => MODELS[type].trace);
+const TRACE_TYPES = Object.keys(MODELS).filter((type) => MODELS[type].trace);
 
 /** A trace entry as its ref and its cue: "route" or { "ref": "route", "when": "around the coast" }. */
 export const traceEntry = (entry) => (entry && typeof entry === 'object' && !Array.isArray(entry) ? { ref: entry.ref, when: entry.when } : { ref: entry, when: undefined });
@@ -341,7 +341,7 @@ export const traceEntry = (entry) => (entry && typeof entry === 'object' && !Arr
  */
 function applyTrace(scene, model, step, next, problem) {
   const trace = model.trace;
-  if (!trace) return problem('trace', '', `${aType(scene.type)} scene has nothing to trace; trace goes on the steps of ${TRACE_TYPES().join(', ')}`);
+  if (!trace) return problem('trace', '', `${aType(scene.type)} scene has nothing to trace; trace goes on the steps of ${TRACE_TYPES.join(', ')}`);
   const shape = trace.when ? `${trace.what}, or { "ref": "...", "when": "words of the say" }` : `${trace.what}; the step's own "when" times the trace`;
   if (!Array.isArray(step.trace)) return problem('trace', '', `must be a list, each ${shape}`);
   step.trace.forEach((entry, j) => {
