@@ -1,0 +1,472 @@
+{
+  "title": "Compound interest against inflation",
+  "subtitle": "Why money grows faster every year, the rule of 72, and what three percent inflation takes back",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "The question",
+      "narration": "Say you put ten thousand dollars away today, in something that grows seven percent a year, and you do not touch it.",
+      "kicker": "Put away today",
+      "number": "$10,000",
+      "note": "growing 7% a year, untouched",
+      "steps": [
+        {
+          "set": {
+            "number": "$76,123",
+            "note": "thirty years later, on paper"
+          },
+          "say": "Thirty years later, the statement says $76,123. More than seven times what you put in."
+        },
+        {
+          "set": {
+            "kicker": "But what will it buy?"
+          },
+          "focus": [
+            "kicker"
+          ],
+          "say": "That sounds great. But prices rise too. So how much of that is real? Let us work it out, one piece at a time."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Interest on interest",
+      "title": "The first three years at 7%",
+      "narration": "First, where the growth comes from. Here are the first three years, worked out by hand.",
+      "columns": [
+        "year",
+        "start",
+        "interest",
+        "end"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "1",
+            "$10,000.00",
+            "$700.00",
+            "$10,700.00"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "2",
+            "$10,700.00",
+            "$749.00",
+            "$11,449.00"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "3",
+            "$11,449.00",
+            "$801.43",
+            "$12,250.43"
+          ],
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "show": [
+            0
+          ],
+          "say": "In year one, seven percent of ten thousand is $700. You end the year with $10,700."
+        },
+        {
+          "show": [
+            1
+          ],
+          "focus": [
+            "interest@1"
+          ],
+          "say": "In year two you earn seven percent of the new total, which is $749. Forty nine dollars more, because last year's interest is earning too."
+        },
+        {
+          "show": [
+            2
+          ],
+          "focus": [
+            "interest@2"
+          ],
+          "say": "Year three pays $801.43. Each year's interest is bigger than the last.",
+          "callout": "interest earns interest"
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "Interest on interest",
+      "title": "Thirty years of growth",
+      "narration": "Now stretch that over thirty years. The dashed line is what you would get if only the first ten thousand earned interest, seven hundred dollars every year.",
+      "x": {
+        "from": 0,
+        "to": 30,
+        "ticks": 5,
+        "label": "years"
+      },
+      "y": {
+        "from": 0,
+        "to": 80000,
+        "ticks": 20000,
+        "prefix": "$",
+        "grid": true
+      },
+      "params": {
+        "year": 0
+      },
+      "functions": [
+        {
+          "id": "simple",
+          "y": "10000 + 700 * x",
+          "label": "no interest on interest",
+          "tone": "neutral",
+          "dashed": true
+        },
+        {
+          "id": "growth",
+          "y": "10000 * 1.07^x",
+          "label": "at 7%",
+          "hidden": true
+        }
+      ],
+      "areas": [
+        {
+          "id": "extra",
+          "between": [
+            "growth",
+            "simple"
+          ],
+          "tone": "accent",
+          "hidden": true
+        }
+      ],
+      "points": [
+        {
+          "id": "marker",
+          "at": [
+            "year",
+            "10000 * 1.07^year"
+          ],
+          "label": "${10000 * 1.07^year:0}",
+          "side": "left",
+          "guides": true,
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "simple"
+          ],
+          "say": "That straight line ends at $31,000."
+        },
+        {
+          "trace": [
+            "growth"
+          ],
+          "set": {
+            "year": 30
+          },
+          "show": [
+            "marker"
+          ],
+          "focus": [
+            "growth",
+            "marker"
+          ],
+          "say": "Compounding bends the line upward. It starts slow, then climbs faster every year, to $76,123."
+        },
+        {
+          "show": [
+            "extra"
+          ],
+          "focus": [
+            "extra"
+          ],
+          "say": "The shaded gap, $45,123, is interest earned on interest."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "The rule of 72",
+      "title": "Years to double your money",
+      "kind": "bar",
+      "unit": " yr",
+      "badges": false,
+      "narration": "There is a shortcut for how fast this grows. Divide seventy two by the growth rate, and you get roughly how many years it takes to double.",
+      "labels": [
+        "2%",
+        "4%",
+        "7%",
+        "10%",
+        "12%"
+      ],
+      "series": [
+        {
+          "name": "rule of 72",
+          "values": [
+            36,
+            18,
+            10.3,
+            7.2,
+            6
+          ],
+          "tone": "accent"
+        },
+        {
+          "name": "exact",
+          "values": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "tone": "good"
+        }
+      ],
+      "callout": "years to double ≈ 72 ÷ rate",
+      "steps": [
+        {
+          "focus": [
+            "rule of 72@7%"
+          ],
+          "callout": "72 ÷ 7 = 10.3 years",
+          "camera": {
+            "on": "7%",
+            "zoom": 2
+          },
+          "say": "At seven percent, seventy two divided by seven is 10.3 years."
+        },
+        {
+          "set": {
+            "exact": [
+              35,
+              17.7,
+              10.2,
+              7.3,
+              6.1
+            ]
+          },
+          "focus": [
+            "exact@7%"
+          ],
+          "callout": "exact: 10.24 years",
+          "say": "The exact answer is 10.24 years. Less than a month apart."
+        },
+        {
+          "camera": "all",
+          "focus": [
+            "series:exact"
+          ],
+          "callout": "years to double ≈ 72 ÷ rate",
+          "say": "The green bars are the exact answers. At every rate here, the shortcut lands within a year of them."
+        }
+      ]
+    },
+    {
+      "type": "plot",
+      "chapter": "Inflation",
+      "title": "The same money in today's dollars",
+      "narration": "Now the catch. If prices rise three percent a year, something that costs a dollar today costs $2.43 in thirty years.",
+      "x": {
+        "from": 0,
+        "to": 30,
+        "ticks": 5,
+        "label": "years"
+      },
+      "y": {
+        "from": 0,
+        "to": 80000,
+        "ticks": 20000,
+        "prefix": "$",
+        "grid": true
+      },
+      "params": {
+        "year": 0
+      },
+      "functions": [
+        {
+          "id": "growth",
+          "y": "10000 * 1.07^x",
+          "label": "on paper"
+        },
+        {
+          "id": "today",
+          "y": "10000 * (1.07 / 1.03)^x",
+          "label": "in today's dollars",
+          "tone": "good",
+          "hidden": true
+        }
+      ],
+      "areas": [
+        {
+          "id": "gap",
+          "between": [
+            "growth",
+            "today"
+          ],
+          "tone": "warn",
+          "hidden": true
+        }
+      ],
+      "points": [
+        {
+          "id": "marker",
+          "at": [
+            "year",
+            "10000 * (1.07 / 1.03)^year"
+          ],
+          "label": "${10000 * (1.07 / 1.03)^year:0}",
+          "side": "left",
+          "hidden": true
+        },
+        {
+          "id": "top",
+          "at": [
+            30,
+            "10000 * 1.07^30"
+          ],
+          "label": "${10000 * 1.07^30:0}",
+          "side": "left",
+          "tone": "accent",
+          "hidden": true
+        }
+      ],
+      "steps": [
+        {
+          "trace": [
+            "today"
+          ],
+          "set": {
+            "year": 30
+          },
+          "show": [
+            "marker"
+          ],
+          "focus": [
+            "today",
+            "marker"
+          ],
+          "say": "So divide each year's balance by how much prices have risen. In today's money, the thirty year total is worth $31,361."
+        },
+        {
+          "show": [
+            "gap",
+            "top"
+          ],
+          "focus": [
+            "gap",
+            "top",
+            "marker"
+          ],
+          "say": "The shaded gap is what inflation takes: 59 percent of the final balance.",
+          "draw": [
+            {
+              "brace": [
+                "top",
+                "marker"
+              ],
+              "note": "$44,761",
+              "side": "right",
+              "when": "inflation takes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Inflation",
+      "title": "What the balance buys, in dollars",
+      "kind": "bar",
+      "better": "higher",
+      "narration": "Here is the same story as bars. Each pair starts out as the balance on your statement.",
+      "labels": [
+        "10 years",
+        "20 years",
+        "30 years"
+      ],
+      "series": [
+        {
+          "name": "on paper",
+          "values": [
+            19672,
+            38697,
+            76123
+          ],
+          "tone": "accent"
+        },
+        {
+          "name": "in today's dollars",
+          "values": [
+            19672,
+            38697,
+            76123
+          ],
+          "tone": "good"
+        }
+      ],
+      "steps": [
+        {
+          "set": {
+            "in today's dollars": [
+              14637,
+              21426,
+              31361
+            ]
+          },
+          "say": "Now take inflation out. After ten years, $19,672 buys what $14,637 buys today."
+        },
+        {
+          "focus": [
+            "in today's dollars@30 years"
+          ],
+          "say": "After thirty, $76,123 buys what $31,361 does now. Still three times what you started with. Just not seven."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "The takeaway",
+      "narration": "So here is the one habit worth keeping. Before you use the rule of seventy two, take inflation out of the rate.",
+      "kicker": "Years to double",
+      "headline": "Use the rule of 72 on the rate after inflation",
+      "sides": [
+        {
+          "label": "on paper",
+          "number": "7%",
+          "note": "doubles in about 10 years",
+          "tone": "accent"
+        },
+        {
+          "label": "what it buys",
+          "number": "3.9%",
+          "note": "doubles in about 18 years",
+          "tone": "good"
+        }
+      ],
+      "hidden": [
+        "right"
+      ],
+      "steps": [
+        {
+          "focus": [
+            "left"
+          ],
+          "say": "On paper, seven percent doubles your money in about 10 years."
+        },
+        {
+          "show": [
+            "right"
+          ],
+          "say": "But seven percent growth with three percent inflation is about 3.9 percent of real growth. Seventy two divided by that is about 19 years, and the exact answer is 18.2. That is how long it takes to double what your money can actually buy."
+        }
+      ]
+    }
+  ]
+}
