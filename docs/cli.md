@@ -14,16 +14,18 @@ Run the commands from inside the repository the video is about. Output goes to `
 | `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Running it again on the same branch keeps the storyboard and the snippets. |
 | `mr-cast init --title text [--reset] [--quick]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/`, in the git repository or in the current directory outside one, and prints its path. A slug already in use gets a numbered suffix such as `-2`. The same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. `--quick` starts a quick video in `.mr-cast/quick-<title-slug>/`, and needs `--title`. The player ends a quick video on three phrases to say to Claude next: "go deeper", "the whole branch" and "save it". A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice, unless the full video already has a storyboard or snippets, or `--reset` is given. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Each snippet holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. A later `extract` keeps the snippets. |
-| `mr-cast plan [--port N] [--no-open]` | Checks the run's `plan.json`, serves the plan page at `http://127.0.0.1:4747/plan`, and opens the browser. The page writes each pick into `plan.json`, and reloads when `plan.json` changes. See [The plan](#the-plan). |
+| `mr-cast plan [--port N] [--no-open] [--idle-exit minutes]` | Checks the run's `plan.json`, serves the plan page at `http://127.0.0.1:4747/plan`, and opens the browser. The page writes each pick into `plan.json`, and reloads when `plan.json` changes. It replaces a plan server already running for the run, and exits like `play` when no page is open. See [The plan](#the-plan). |
 | `mr-cast schema [type\|all]` | Prints the storyboard's TypeScript schema from `src/types.ts`. With a scene type such as `array`, it prints that scene and every type it uses. Alone, it prints the storyboard and what every scene shares. `all` prints everything. |
 | `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against `plan.json` when the run has one. Prints the length. Exits 1 on errors. `--read-only` writes nothing: no `review.md`, `reading.md` or plan picks, and no remembered choice. |
 | `mr-cast outline` | Prints a short plan of a valid storyboard to show before rendering: the title, one line per scene with its type, chapter and contents, and the length. |
 | `mr-cast steps [sceneIndex...]` | Prints each step's words beside what it lights and what it changes on screen, with the highlight warnings. Code scenes are left out. |
 | `mr-cast still [sceneIndex...] [--out dir] [--step k]` | Renders a PNG of each scene's end state, just before it fades out, into the run's `stills/`. Scene indexes start at 0. With `--step k`, it renders each scene as its step k ends, just before the next step starts, into `scene-NN-type-step-k.png`; every scene it renders must have that step. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
-| `mr-cast play [--port N] [--no-open]` | Serves the player at `http://127.0.0.1:4747` and prints its URL at once, voices the narration with its progress on one line, then opens the browser. See [The player](#the-player). |
+| `mr-cast play [--port N] [--no-open] [--idle-exit minutes]` | Serves the player at `http://127.0.0.1:4747` and prints its URL at once, voices the narration with its progress on one line, then opens the browser. See [The player](#the-player). |
 | `mr-cast render [--out file.mp4]` | Voices the narration, then renders a 1920x1080, 30 fps MP4 with the voice, burned-in subtitles and chapter markers, and prints its path. See [Render](#render). |
 | `mr-cast prune [id...] [options]` | Lists what mr-cast stored, with sizes, or deletes exactly what you pick. See [Prune](#prune). |
+| `mr-cast ps [--json]` | Lists the mr-cast processes running: players, plan pages, renders, and their voice children. See [Running processes](#running-processes). |
+| `mr-cast stop <pid\|run\|all> [options]` | Stops the processes you pick, with their children. See [Running processes](#running-processes). |
 | `mr-cast upgrade [--check]` | Updates mr-cast to the latest version and reinstalls the skills. `--check` only reports the versions. See [Upgrade](#upgrade). |
 | `mr-cast voices [--sample engine:name] [--out file.wav]` | Lists the voice engines, whether each model is downloaded, and their voices. `--sample` voices one sentence into a WAV file. See [The voice](#the-voice). |
 | `mr-cast version` | Prints `mr-cast <version> (node <version>)`. Also `--version` and `-v`. |
@@ -85,6 +87,8 @@ If the model cannot load, for example offline on the first run, `play` and `rend
 
 `mr-cast play` prints the URL at once and opens the browser when the voice is ready. A page opened earlier waits for the voice. If the voice fails, the page opens silent and says so.
 
+A second `play` of the same run stops the first player and its voicing, then starts, so it runs with the new command's flags. A player exits by itself once no page has been open for 30 minutes, counted from the last page closing, or from the start when none opened. It does not count while the first voicing runs. `--idle-exit <minutes>` changes the limit, and `--idle-exit 0` keeps it running until stopped.
+
 When `storyboard.json` changes, the page keeps playing its version and shows "Updating..." until the changed narration is voiced, then reloads once. The speed control goes from 0.75x to 1.5x. With a `plan.json`, the player has a **Plan** tab. For a pre-read, it has a **Reading order** panel.
 
 ## Render
@@ -126,6 +130,37 @@ Selectors pick what to delete, and they combine:
 `--dry-run` prints exactly what would be removed and the bytes, and removes nothing. `--json` prints the listing as JSON. With `--json`, a dry run or a deletion prints `dryRun`, the `artifacts` with their bytes, `inUse`, and the total `bytes`.
 
 `mr-cast prune --choices --json` prints the menu the prune skill shows. It has up to four groups (rendered videos, stills and voice clips, walkthroughs, and cache), each with at most 4 options, and leaves out empty groups. Each option has a `label`, a `description` with its size and what deleting it means, the `ids` it deletes, and a `command`: the exact arguments that delete it, such as `["prune", "--kind", "video"]`.
+
+## Running processes
+
+play, plan, render, and the voice and download children of play record themselves while they run in `~/.local/state/mr-cast/procs`, or `$XDG_STATE_HOME/mr-cast/procs` when that is set. Each one removes its record as it exits.
+
+`mr-cast ps` lists them, from any directory:
+
+```
+pid    kind      age  page                 url                                               run
+41234  play      12m  1 open               http://127.0.0.1:4747/#token=9f2c...             rate-limit · ~/code/shop
+41240    voice   12m                                                                         with pid 41234
+41300  plan      3h   none · exits in 18m  http://127.0.0.1:4748/plan#token=51ab...         retry · ~/code/shop
+39000  play      1d   ?                    http://127.0.0.1:4749                             unregistered · ~/code/api
+```
+
+- `page` is the number of pages open on a server, or `none` with the time until it exits by itself. A process that wrote no record shows `?`.
+- A process counts only while `ps` shows its pid owned by you, started at the recorded time and running mr-cast. Any other record is stale, for example from a process that was killed, and the listing removes it. A reused pid is never taken for the process that had it.
+- `unregistered` marks an mr-cast process with no record: one started by mr-cast 0.27 or older, or one that records itself under another `XDG_STATE_HOME`. `ps` finds these in the process list, with their port and working directory from `lsof`.
+- `--json` prints `stateDir` and `processes`, each with `pid`, `ppid`, `kind`, `registered`, `parent`, `startedAt`, `url`, `repo`, `run`, `dir`, `version`, `viewers`, `idleSince` and `idleExit`.
+
+`mr-cast stop` stops what its targets pick, and they combine:
+
+- A pid, a run name such as `rate-limit`, or `all`. Several can be given.
+- `--idle` keeps only servers with no page open.
+- `--older-than <30m|2h|1d>` keeps only processes started longer ago than that.
+
+A process's voice and download children always go with it. `stop` sends SIGTERM, waits up to 5 seconds, and sends SIGKILL only to a process still running. Before each signal it checks the pid again, and it never signals a process that is not an mr-cast process of yours. A pid or run that matches nothing stops nothing and exits 1. Each line it prints says `stopped`, `killed` (SIGKILL was needed), `already gone` or `could not stop`.
+
+`--dry-run` prints `would stop` lines and stops nothing. `--json` prints `dryRun` and the `processes`, each with its `outcome`. `mr-cast stop --choices --json` prints a menu in the shape of prune's: one group, `Running processes`, with up to 4 options, such as every process, the servers with no page open, those running for over 2 hours, or each process. Each option has the exact `command` that stops it and the pids it stops as `ids`. `mr-cast prune --choices` adds the same group after its own.
+
+`mr-cast status` adds a line such as `running: 2 players and 1 render` when anything is running.
 
 ## Upgrade
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.28.0
+
+mr-cast can list and stop the servers it left running. Agents start `mr-cast play` and `mr-cast plan` in the background and forget them, so players piled up on ports 4747, 4748 and on, with nothing to say which run each served (ADR 0027).
+
+- **`mr-cast ps`** lists every running mr-cast process of yours, from any directory: players, plan pages, renders, and play's voice and model download children under their player. Each line has the pid, age, the pages open or the time until an idle server exits, the URL with its token, and the run and repository. `--json` prints the same as JSON.
+- **`mr-cast stop <pid|run|all>`** stops them, with their children. `--idle` keeps only servers with no page open, `--older-than 2h` (or `30m`, `1d`) only older ones, and `--dry-run` prints what it would stop. It sends SIGTERM, then SIGKILL after 5 seconds only to what still runs. `stop --choices --json` prints a menu with the command for each option, like `prune --choices`.
+- **Only mr-cast processes are stopped.** play, plan, render and the voice children record themselves in `~/.local/state/mr-cast/procs` (`$XDG_STATE_HOME`), with the start time `ps` shows. A record counts only while that pid is still yours, started then, and running mr-cast; any other is removed, so a reused pid is never stopped. `stop` checks again just before each signal, and refuses any pid that is not a running mr-cast process of yours.
+- **Processes of 0.27 and older** recorded nothing. `ps` finds them in the process list, with their port and directory, and marks them `unregistered`; `stop` stops them by pid or with `all`.
+- **Idle servers exit.** A player or plan page with no page open exits by itself after 30 minutes, counted from the last page closing, or from the start if none opened. A player does not count while its first voicing runs. `--idle-exit <minutes>` changes it, and `--idle-exit 0` keeps it running.
+- **One player per run.** A second `play` of a run stops the player already running for it, and its voicing, then starts with its own flags. A second `plan` does the same for the plan page. The old one is stopped only once the storyboard or plan validates.
+- **The prune skill** offers running processes as a last group, `Running processes`, and stops the picked ones only through `mr-cast stop`. `prune --choices` includes that group. `mr-cast status` prints `running: 2 players and 1 render` when anything runs, and the mr-cast skill says that `ps` lists the servers and `stop` stops them.
+- Tests cover the record and its removal, stale and reused pids, a forged record for a process that is not mr-cast, the selection and menu, idle exit at the server and from `play`, and a second `play` replacing the first.
+
 ## 0.27.0
 
 Four changes. mr-cast voices with Kitten TTS by default, the tests scene is a behaviour matrix, a new `text` scene puts words on screen as the picture, and Claude can write and draw on any stepped scene with ink that stays until a step erases it.
