@@ -96,6 +96,45 @@ test('play records itself with its URL, run and pages, and removes the entry whe
   assert.equal(fs.existsSync(entryOf(play.pid)), false);
 });
 
+test('the registry is a 0700 directory of this user; a symlink in its place is neither written nor read', async () => {
+  const { cwd } = runIn('private');
+  fs.mkdirSync(procsDir(), { recursive: true });
+  fs.chmodSync(procsDir(), 0o755);
+  const play = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5640'], /mr-cast player:/);
+  assert.equal(fs.statSync(procsDir()).mode & 0o777, 0o700);
+  assert.equal(fs.existsSync(entryOf(play.pid)), true);
+  play.kill('SIGTERM');
+  await play.exited;
+
+  const state = path.join(tmp, 'state-link');
+  const target = path.join(tmp, 'planted');
+  fs.mkdirSync(path.join(state, 'mr-cast'), { recursive: true });
+  fs.mkdirSync(target);
+  fs.symlinkSync(target, path.join(state, 'mr-cast', 'procs'));
+  const linked = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5670'], /mr-cast player:/, { XDG_STATE_HOME: state });
+  assert.deepEqual(fs.readdirSync(target), [], 'nothing written through the symlink');
+  fs.writeFileSync(path.join(target, `${linked.pid}.json`), JSON.stringify({ pid: linked.pid }));
+  const listed = spawnSync(process.execPath, [BIN, 'ps', '--json'], { cwd, env: { ...env, XDG_STATE_HOME: state }, encoding: 'utf8' });
+  assert.equal(listed.status, 0, listed.stderr);
+  assert.deepEqual(JSON.parse(listed.stdout).processes, []);
+  assert.deepEqual(fs.readdirSync(target), [`${linked.pid}.json`], 'nothing read or removed through it either');
+  linked.kill('SIGTERM');
+  await linked.exited;
+});
+
+test('a listing removes a temp file a writer left a minute ago, and keeps a fresh one', () => {
+  fs.mkdirSync(procsDir(), { recursive: true });
+  const old = path.join(procsDir(), '90031.json.0a1b2c3d4e5f.tmp');
+  const fresh = path.join(procsDir(), '90032.json.0a1b2c3d4e5f.tmp');
+  fs.writeFileSync(old, '{');
+  fs.writeFileSync(fresh, '{');
+  const past = new Date(Date.now() - 120_000);
+  fs.utimesSync(old, past, past);
+  listProcesses();
+  assert.deepEqual([fs.existsSync(old), fs.existsSync(fresh)], [false, true]);
+  fs.rmSync(fresh);
+});
+
 const uid = process.getuid();
 const row = (pid, started, command) => ({ pid, ppid: 1, uid, started, command });
 const mrCast = (sub) => `${process.execPath} ${BIN} ${sub} --no-open`;

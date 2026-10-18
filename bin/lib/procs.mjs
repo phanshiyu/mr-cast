@@ -5,6 +5,7 @@
 // mr-cast. `mr-cast stop` signals only processes that pass the same check again just before each signal.
 
 import { spawnSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -45,6 +46,26 @@ const OLD_KINDS = new Set(['play', 'plan', 'render']);
 export const procsDir = () => path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'mr-cast', 'procs');
 
 const entryFile = (pid) => path.join(procsDir(), `${pid}.json`);
+
+/**
+ * procsDir() when it is a directory of this user's and not a symlink, so no other user can plant or read entries;
+ * made 0700 where it is missing or wider. Null otherwise, and then nothing is recorded or read.
+ */
+function ownDir({ create }) {
+  const dir = procsDir();
+  try {
+    if (create) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    const st = fs.lstatSync(dir);
+    if (!st.isDirectory() || st.uid !== ownUid()) return null;
+    if (st.mode & 0o077) fs.chmodSync(dir, 0o700);
+    return dir;
+  } catch {
+    return null;
+  }
+}
+
+/** A temp file a writer leaves behind only when it dies between writing and renaming; older than this, it is junk. */
+const STALE_TMP_MS = 60_000;
 
 /** Removes the entry of `pid`, as play does for a child it killed. */
 export const removeEntry = (pid) => fs.rmSync(entryFile(pid), { force: true });
@@ -110,11 +131,16 @@ export function register(fields) {
   const file = entryFile(process.pid);
   let entry = { pid: process.pid, ppid: process.ppid, started: row.started, command: row.command, version: VERSION, ...fields };
   const write = () => {
+    const dir = ownDir({ create: true });
+    if (!dir) return;
+    const tmp = path.join(dir, `${process.pid}.json.${randomBytes(6).toString('hex')}.tmp`);
     try {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(`${file}.tmp`, `${JSON.stringify(entry, null, 2)}\n`, { mode: 0o600 });
-      fs.renameSync(`${file}.tmp`, file);
-    } catch { /* a registry it cannot write only hides this process from `mr-cast ps` */ }
+      fs.writeFileSync(tmp, `${JSON.stringify(entry, null, 2)}\n`, { mode: 0o600, flag: 'wx' });
+      fs.renameSync(tmp, file);
+    } catch {
+      // A registry it cannot write only hides this process from `mr-cast ps`.
+      fs.rmSync(tmp, { force: true });
+    }
   };
   const remove = () => fs.rmSync(file, { force: true });
   write();
@@ -126,10 +152,17 @@ const parseTime = (text) => (text ? Date.parse(text) : NaN);
 /** A start time as `ps` prints it, in UTC. */
 const parseStarted = (text) => Date.parse(`${text} GMT`);
 
-function readEntries(dir) {
+function readEntries() {
+  const dir = ownDir({ create: false });
   let names = [];
-  try { names = fs.readdirSync(dir).filter((n) => /^\d+\.json$/.test(n)); } catch { /* none yet */ }
-  return names.map((name) => {
+  try { names = dir ? fs.readdirSync(dir) : []; } catch { /* none yet */ }
+  for (const name of names.filter((n) => n.endsWith('.tmp'))) {
+    const file = path.join(dir, name);
+    try {
+      if (Date.now() - fs.lstatSync(file).mtimeMs > STALE_TMP_MS) fs.rmSync(file, { force: true });
+    } catch { /* gone meanwhile */ }
+  }
+  return names.filter((n) => /^\d+\.json$/.test(n)).map((name) => {
     const file = path.join(dir, name);
     try {
       const entry = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -190,7 +223,7 @@ function ordered(procs) {
  * @returns {Proc[]}
  */
 export function listProcesses({ ps = processTable } = {}) {
-  const read = readEntries(procsDir());
+  const read = readEntries();
   const table = ps();
   if (!table?.has(process.pid)) return [];
   /** @type {Proc[]} */
