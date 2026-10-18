@@ -72,7 +72,8 @@ function parse(markup) {
     const top = stack[stack.length - 1];
     if (stray) throw new Error(`the tag at character ${m.index} does not parse ("${markup.slice(m.index, m.index + 30)}"); every attribute needs a quoted value`);
     if (text !== undefined) {
-      if (text.trim()) top.children.push({ text: decode(text) });
+      // A space between two tspans is a word break the text draws; elsewhere whitespace is only layout.
+      if (text.trim() || top.tag === 'text' || top.tag === 'tspan') top.children.push({ text: decode(text) });
       continue;
     }
     if (close) {
@@ -302,14 +303,66 @@ const fontOf = (node, inherited) => ({
   anchor: node.attrs['text-anchor'] ?? inherited.anchor,
 });
 
-/** A text element's box, from its x, y, font and anchor, measured in the player's own font. */
-function textBox(node, font) {
-  const text = textOf(node);
-  const width = measure(text, { family: font.family, weight: Math.min(800, Math.max(400, font.weight)), size: font.size });
-  const x = num(String(node.attrs.x ?? '').split(/[\s,]+/)[0]) + num(node.attrs.dx);
-  const y = num(String(node.attrs.y ?? '').split(/[\s,]+/)[0]) + num(node.attrs.dy);
-  const left = font.anchor === 'middle' ? x - width / 2 : font.anchor === 'end' ? x - width : x;
-  return [[left, y - 0.8 * font.size], [left + width, y + 0.25 * font.size]];
+/** The first number of an x or y list, or none. */
+const firstOf = (v) => (v === undefined ? undefined : num(String(v).trim().split(/[\s,]+/)[0]));
+
+/**
+ * A text element laid out run by run, measured in the player's own font: its box, the box of each `<tspan>` with an id,
+ * and its smallest font size. Whitespace collapses across the runs as SVG collapses it. A tspan's own `x` or `y` starts
+ * a new chunk, which its `text-anchor` places; `dx` and `dy` shift the pen.
+ */
+function textLayout(node, font) {
+  const chunks = [];
+  const pen = { x: 0, y: 0 };
+  let chunk = null;
+  let smallest = font.size;
+  const runs = [];
+  const width = (text, f) => measure(text, { family: f.family, weight: Math.min(800, Math.max(400, f.weight)), size: f.size });
+  const start = (n, f) => {
+    const [x, y] = [firstOf(n.attrs.x), firstOf(n.attrs.y)];
+    if (x !== undefined || y !== undefined || !chunk) {
+      chunk = { anchor: f.anchor, from: (pen.x = x ?? pen.x) };
+      chunks.push(chunk);
+      pen.y = y ?? pen.y;
+    }
+    pen.x += num(n.attrs.dx);
+    pen.y += num(n.attrs.dy);
+  };
+  const walk = (n, f, owners) => {
+    for (const child of n.children) {
+      if (child.tag === 'tspan') {
+        const g = fontOf(child, f);
+        start(child, g);
+        walk(child, g, child.attrs.id !== undefined ? [...owners, child.attrs.id] : owners);
+      } else if (!child.tag) {
+        let text = child.text.replace(/\s+/g, ' ');
+        if (!runs.length || runs.at(-1).text.endsWith(' ')) text = text.replace(/^ /, '');
+        if (!text) continue;
+        runs.push({ text, chunk, x: pen.x, y: pen.y, width: width(text, f), f, owners });
+        smallest = Math.min(smallest, f.size);
+        pen.x += runs.at(-1).width;
+      }
+    }
+  };
+  start(node, font);
+  walk(node, font, []);
+  // A space at the very end of the text is not drawn.
+  const last = runs.at(-1);
+  if (last?.text.endsWith(' ')) last.width = width(last.text.trimEnd(), last.f);
+  const all = [];
+  const spans = new Map();
+  for (const c of chunks) {
+    const mine = runs.filter((r) => r.chunk === c);
+    if (!mine.length) continue;
+    const span = Math.max(...mine.map((r) => r.x + r.width)) - c.from;
+    const shift = c.anchor === 'middle' ? -span / 2 : c.anchor === 'end' ? -span : 0;
+    for (const r of mine) {
+      const corners = [[r.x + shift, r.y - 0.8 * r.f.size], [r.x + shift + r.width, r.y + 0.25 * r.f.size]];
+      all.push(...corners);
+      for (const id of r.owners) spans.set(id, [...(spans.get(id) ?? []), ...corners]);
+    }
+  }
+  return { local: all, spans, smallest };
 }
 
 /**
@@ -338,23 +391,27 @@ export function svgGeometry(root, motion = {}) {
     else if (node.tag === 'line') local = [[num(a.x1), num(a.y1)], [num(a.x2), num(a.y2)]];
     else if (node.tag === 'polyline' || node.tag === 'polygon') local = pairs(a.points);
     else if (node.tag === 'path') local = pathPoints((id !== undefined && shapes[id]) || a.d);
-    else if (node.tag === 'text') local = textBox(node, f);
-    let pts = [];
-    if (local.length) {
-      // A box's four corners, so a rotation keeps the whole of it.
-      const xs = local.map((p) => p[0]);
-      const ys = local.map((p) => p[1]);
-      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-      pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map((p) => apply(mm, p));
-    }
+    const laid = node.tag === 'text' ? textLayout(node, f) : null;
+    if (laid) local = laid.local;
+    const pts = placed(local, mm);
     if (node.tag !== 'text') for (const child of node.children) pts.push(...visit(child, mm, f, mine));
     const box = boxOf(pts);
-    if (node.tag === 'text' && box) texts.push({ id: a.id, text: textOf(node), size: f.size * Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])), box, owners: mine });
+    for (const [span, corners] of laid?.spans ?? []) boxes.set(span, boxOf(placed(corners, mm)));
+    if (node.tag === 'text' && box) texts.push({ id: a.id, text: textOf(node), size: laid.smallest * Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])), box, owners: mine });
     if (a.id !== undefined && box) boxes.set(a.id, box);
     return pts;
   };
   if (root) for (const child of root.children) visit(child, IDENTITY, { size: DEFAULT_FONT, weight: 400, family: 'sans', anchor: 'start' }, []);
   return { boxes, texts };
+}
+
+/** The four corners of the box round some points, through a matrix, so a rotation keeps the whole of it. */
+function placed(local, m) {
+  if (!local.length) return [];
+  const xs = local.map((p) => p[0]);
+  const ys = local.map((p) => p[1]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  return [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map((p) => apply(m, p));
 }
 
 function boxOf(pts) {

@@ -49,20 +49,12 @@ const shifts = [
   { word: 'rico', ser: 'rich', estar: 'tasty' },
 ];
 
-// The svg scene: each sentence is three <text> pieces, so the pen can circle the verb (ink on a <tspan> id draws
-// nothing). The verbs line up on the centre line, so only the verb's own width is estimated, at 0.56 em a letter.
+// The svg scene: each sentence is one <text>, its verb and the words after it tspans the pen can circle and write beside.
 const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const MID = 800;
-const line = (s, id, y) => {
-  const size = 60;
-  const half = Math.round((form(s).length * 0.56 * size) / 2) + Math.round(size * 0.25);
-  return (
-    `<text id="${id}" x="${MID - half}" y="${y}" font-size="${size}" text-anchor="end">${esc(s.before)}</text>` +
-    `<text id="${id}-verb" x="${MID}" y="${y}" font-size="${size}" text-anchor="middle" class="fill-${TONE[s.verb]}">${form(s)}</text>` +
-    `<text id="${id}-after" x="${MID + half}" y="${y}" font-size="${size}">${esc(s.after)}</text>` +
-    `<text id="${id}-en" x="${MID}" y="${y + 68}" font-size="30" text-anchor="middle" fill="var(--muted)">${esc(s.en)}</text>`
-  );
-};
+const line = (s, id, y) =>
+  `<text id="${id}" x="${MID}" y="${y}" font-size="60" text-anchor="middle">${esc(s.before)} <tspan id="${id}-verb" class="fill-${TONE[s.verb]}">${form(s)}</tspan> <tspan id="${id}-after">${esc(s.after)}</tspan></text>` +
+  `<text id="${id}-en" x="${MID}" y="${y + 68}" font-size="30" text-anchor="middle" fill="var(--muted)">${esc(s.en)}</text>`;
 const svg =
   '<svg viewBox="0 0 1600 760">' +
   `<g id="party">${line(party, 's1', 140)}</g>` +

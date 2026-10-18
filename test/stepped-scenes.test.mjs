@@ -217,6 +217,30 @@ test('svgGeometry boxes each element through its transforms, and a group around 
   assert.deepEqual(texts.map((t) => [t.id, t.size]), [['total', 24]]);
 });
 
+test('svgGeometry lays a text out run by run, so a tspan has its own box, centred with its text', () => {
+  const sentence = (anchor) => `<svg viewBox="0 0 1000 200"><text id="s" x="400" y="100" font-size="50"${anchor}>Ana <tspan id="verb">es</tspan> <tspan id="rest" font-size="30">alta.</tspan></text><text id="two" x="10" y="180" font-size="20">a<tspan id="next" x="600" dy="-10">b</tspan></text></svg>`;
+  const box = (g, id) => Object.fromEntries(Object.entries(g.boxes.get(id)).map(([k, v]) => [k, Math.round(v * 1000) / 1000]));
+  const left = svgGeometry(readSvg(sentence('')).root);
+  assert.deepEqual(box(left, 'verb'), { x: 498.405, y: 60, width: 50.535, height: 52.5 });
+  assert.deepEqual(box(left, 'rest'), { x: 561.44, y: 76, width: 55.509, height: 31.5 });
+  assert.deepEqual(box(left, 's'), { x: 400, y: 60, width: 216.949, height: 52.5 });
+  assert.deepEqual(box(left, 'next'), { x: 600, y: 154, width: 11.934, height: 21 });
+  assert.deepEqual(left.texts.map((t) => [t.id, t.size]), [['s', 30], ['two', 20]]);
+  const centred = svgGeometry(readSvg(sentence(' text-anchor="middle"')).root);
+  assert.deepEqual(box(centred, 'verb'), { x: 389.931, y: 60, width: 50.535, height: 52.5 });
+  assert.deepEqual(box(centred, 's'), { x: 291.526, y: 60, width: 216.949, height: 52.5 });
+});
+
+test('validate fails on ink on an svg element with nothing on the stage, and passes ink on a tspan', async () => {
+  const svg = '<svg viewBox="0 0 1000 200"><defs><linearGradient id="sky"><stop offset="0" stop-color="var(--good)"/></linearGradient></defs><g id="empty"/><text id="s" x="100" y="100" font-size="50">Ana <tspan id="verb">es</tspan> alta.</text></svg>';
+  const scene = (draw) => ({ type: 'svg', narration: 'A sentence.', svg, steps: [{ focus: 's', say: 'Ana es alta.', draw }] });
+  assert.deepEqual(await errorsOf(scene([{ circle: 'verb' }, { arrow: ['s', 'verb'] }])), []);
+  assert.deepEqual(await errorsOf(scene([{ circle: ['verb', 'sky'] }, { arrow: [[0.1, 0.1], 'empty'] }])), [
+    'scenes[0].steps[0].draw[0].circle[1]: "sky" is a <linearGradient> with nothing drawn on the stage, so ink has no place to draw; name a shape, a text or a tspan, or a group with one in it',
+    'scenes[0].steps[0].draw[1].arrow[1]: "empty" is a <g> with nothing drawn on the stage, so ink has no place to draw; name a shape, a text or a tspan, or a group with one in it',
+  ]);
+});
+
 const svgScene = {
   type: 'svg',
   title: 'A drawing',
