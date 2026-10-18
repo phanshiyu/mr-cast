@@ -83,6 +83,7 @@ export const PlotDiagram: React.FC<SceneProps<PlotScene>> = ({ scene, hunks, dur
   const { fps } = useVideoConfig();
   const box = headerBox(scene);
   const states = useMemo(() => sceneStates(scene), [scene]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const axes = useMemo(() => plotAxes(scene, box), [scene, box.width, box.height]);
   const marks = useMemo(() => plotTargets(scene), [scene]);
   const camera: CameraSource = { hunks, segments, targets: (step) => marks[step] ?? null };

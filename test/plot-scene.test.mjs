@@ -22,6 +22,7 @@ const growth = {
   params: { year: 0 },
   functions: [{ id: 'growth', y: '10000 * 1.07^x', label: 'seven percent growth', hidden: true }],
   points: [
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: a label's ${...} is mr-cast's value syntax, not a template
     { id: 'marker', at: ['year', '10000 * 1.07^year'], label: '${10000 * 1.07^year:0}', side: 'left', hidden: true },
   ],
   steps: [

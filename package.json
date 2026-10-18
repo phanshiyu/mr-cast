@@ -56,7 +56,7 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit && node scripts/check-text.mjs",
-    "lint": "biome lint",
+    "lint": "biome lint --error-on-warnings",
     "format": "biome format --write",
     "format:check": "biome format",
     "fallow": "fallow dead-code",

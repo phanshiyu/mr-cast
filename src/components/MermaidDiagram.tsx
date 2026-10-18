@@ -219,6 +219,7 @@ export const MermaidDiagram: React.FC<SceneProps<MermaidScene>> = ({ scene, dura
           opacity: enter,
           transform: `scale(${interpolate(enter, [0, 1], [0.94, 1], clamp)})`,
         }}
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: Mermaid renders with securityLevel strict, which sanitizes the svg with DOMPurify
         dangerouslySetInnerHTML={{ __html: rendered.svg }}
       />
     );

@@ -24,6 +24,7 @@ const mdLine = (text) =>
     .replace(/\s+/g, ' ')
     .trim();
 // A file name from git may hold control characters, which would garble the terminal and reading.md.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point
 const C0 = /[\u0000-\u001f\u007f]/g;
 
 /** The scene that holds the reading order, or undefined. */

@@ -48,6 +48,7 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
           </p>
           <textarea
             readOnly
+            // biome-ignore lint/a11y/noAutofocus: the box appears only after the copy button failed, so focus goes to the text to copy
             autoFocus
             onFocus={(e) => e.currentTarget.select()}
             value={`${readingChecklist(order)}\n`}

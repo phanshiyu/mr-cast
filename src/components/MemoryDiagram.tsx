@@ -298,6 +298,7 @@ export const MemoryDiagram: React.FC<SceneProps<MemoryScene>> = ({ scene, hunks,
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = headerBox(scene);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const layout = useMemo(() => layoutMemory(scene, box), [scene, box.width, box.height]);
   const states = useMemo(() => sceneStates(scene), [scene]);
   const stage = centredStage(box, layout, layout.scale);

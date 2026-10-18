@@ -261,6 +261,7 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const layout = useMemo(
     () => layoutSequence(scene.participants, scene.messages, box),
     [scene.participants, scene.messages, box.width, box.height],

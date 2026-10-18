@@ -248,6 +248,7 @@ export const GraphDiagram: React.FC<SceneProps<GraphScene>> = ({ scene, hunks, d
   const { fps } = useVideoConfig();
   const { full, graphBox, tableW } = graphAreas(scene);
   const states = useMemo(() => sceneStates(scene), [scene]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const { layout, scale } = useMemo(
     () => fitSceneGraph(scene, states, graphBox),
     [scene, states, graphBox.width, graphBox.height],

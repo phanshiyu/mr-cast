@@ -61,6 +61,7 @@ const col = (h) => NODES.map((n) => `${h}@${n}`);
 const merge = (...parts) =>
   parts.reduce(
     (a, p) => ({
+      // biome-ignore lint/performance/noAccumulatingSpread: a step merges two or three parts
       ...a,
       ...p,
       set: { ...(a.set ?? {}), ...(p.set ?? {}) },

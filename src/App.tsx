@@ -245,6 +245,7 @@ export const App: React.FC = () => {
   const voiced = chapters.some((c) => c.segments.some((s) => s.clip));
   const [ended, setEnded] = useState(false);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the Player mounts only while a storyboard is shown, so the listeners go on again when shown changes
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
@@ -526,6 +527,7 @@ const PlanView: React.FC<{
 const RATES = [0.75, 1, 1.25, 1.5];
 
 const PlaybackRate: React.FC<{ rate: number; onChange: (rate: number) => void }> = ({ rate, onChange }) => (
+  // biome-ignore lint/a11y/useSemanticElements: a row of rate buttons, not form fields, so a fieldset adds nothing
   <div role="group" aria-label="Playback speed" className="flex items-center gap-1">
     <span className="mr-1">Speed</span>
     {RATES.map((r) => (

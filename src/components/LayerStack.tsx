@@ -181,6 +181,7 @@ export const LayerStack: React.FC<SceneProps<LayersScene>> = ({ scene, hunks, du
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const layout = useMemo(() => layoutLayers(scene, box), [scene, box.width, box.height]);
   const scale = layersScale(layout, box);
   const stage = centredStage(box, layout, scale);

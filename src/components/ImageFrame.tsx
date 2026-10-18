@@ -24,6 +24,7 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
   const frame = useCurrentFrame();
   const images = useImages();
   const box = headerBox(scene);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const layout = useMemo(() => layoutImage(scene, box, images), [scene, box.width, box.height, images]);
   const cameraAt = (f: number) => cameraFor(layout, viewAt(scene, f / Math.max(1, durationInFrames)));
   const camera = cameraAt(frame);

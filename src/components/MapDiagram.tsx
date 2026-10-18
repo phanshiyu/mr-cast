@@ -82,6 +82,7 @@ export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durat
   const { fps } = useVideoConfig();
   const stage = headerBox(scene);
   const states = useMemo(() => sceneStates(scene), [scene]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new box object comes each render; the layout depends only on its size
   const layout = useMemo(() => mapLayout(scene, stage), [scene, stage.width, stage.height]);
   const items = useMemo(() => mapItems(scene), [scene]);
   const land = useMemo(() => {

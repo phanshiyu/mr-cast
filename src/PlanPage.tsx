@@ -419,6 +419,7 @@ const DepthControl: React.FC<{
     className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5"
   >
     {DEPTHS.map((depth) => (
+      // biome-ignore lint/a11y/useSemanticElements: a segmented control; role radio and aria-checked make each segment a radio
       <button
         type="button"
         key={depth}
@@ -466,6 +467,7 @@ const ViewPicker: React.FC<{
         const Icon = viewIcon[view];
         const on = view === value;
         return (
+          // biome-ignore lint/a11y/useSemanticElements: a card with an icon and a hint; role radio and aria-checked make it a radio
           <button
             type="button"
             key={view}
