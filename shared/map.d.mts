@@ -11,9 +11,7 @@ export interface Stage {
   height: number;
 }
 /** A d3-geo projection, used only through this module. */
-export interface GeoProjection {
-  (point: LngLat): [number, number] | null;
-}
+export type GeoProjection = (point: LngLat) => [number, number] | null;
 export interface MapProjection {
   projection: GeoProjection;
   meridian: number;

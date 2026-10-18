@@ -56,7 +56,7 @@ let firstRepoCall = null,
   diffCalls = 0;
 const repoAbs = path.resolve(repo);
 const packetAbs = packet ? path.resolve(packet) : null;
-const pathLike = /[\w@~.\/-]+\.(?:ts|tsx|js|mjs|py|sql|md|json|png|sh)\b/g;
+const pathLike = /[\w@~./-]+\.(?:ts|tsx|js|mjs|py|sql|md|json|png|sh)\b/g;
 const tracked = (p) => {
   if (path.isAbsolute(p)) {
     if (packetAbs && p.startsWith(packetAbs + path.sep)) return ['packet', path.relative(packetAbs, p)];

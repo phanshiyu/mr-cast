@@ -63,7 +63,7 @@ test('a scene type prints its interface with its doc comments and the types it u
     'ArrayRow',
     'ArrayScene',
   ]);
-  assert.match(out, /\/\*\*[\s\S]*\*\/\ninterface ArrayScene extends SceneBase \{\n  type: 'array';/);
+  assert.match(out, /\/\*\*[\s\S]*\*\/\ninterface ArrayScene extends SceneBase \{\n {2}type: 'array';/);
   assert.equal(out.includes('export '), false);
 });
 

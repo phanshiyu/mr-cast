@@ -7,7 +7,7 @@ export interface PlotPart {
   kind: PartKind;
   index: number;
   id: string;
-  item: Record<string, any>;
+  item: Record<string, unknown>;
   path: string;
 }
 export interface Box {

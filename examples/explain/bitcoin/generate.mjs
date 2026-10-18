@@ -447,7 +447,7 @@ const catchUp = (q, z) => {
   for (let k = 0; k <= z; k++) {
     let po = Math.exp(-lam);
     for (let i = 1; i <= k; i++) po *= lam / i;
-    s -= po * (1 - Math.pow(q / p, z - k));
+    s -= po * (1 - (q / p) ** (z - k));
   }
   return s;
 };

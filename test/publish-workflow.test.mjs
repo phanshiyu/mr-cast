@@ -10,7 +10,7 @@ const workflow = fs.readFileSync(new URL('../.github/workflows/publish.yml', imp
 const jobs = Object.fromEntries(
   workflow
     .slice(workflow.indexOf('\njobs:\n'))
-    .split(/\n(?=  [\w-]+:\n)/)
+    .split(/\n(?= {2}[\w-]+:\n)/)
     .slice(1)
     .map((text) => [text.match(/^ {2}([\w-]+):/)[1], text]),
 );

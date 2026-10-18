@@ -109,7 +109,7 @@ function boxIn(el: HTMLElement, root: HTMLElement): Box {
 /** The old and the new of a part a step rewrote, crossfading in one place; just the new when nothing changed. */
 const Swap: React.FC<{ before: ReactNode; after: ReactNode; t: number }> = ({ before, after, t }) =>
   before === null || t >= 1 ? (
-    <>{after}</>
+    after
   ) : (
     <div style={{ display: 'grid' }}>
       <div style={{ gridArea: '1 / 1', opacity: 1 - t, transform: `translateY(${-20 * t}px)` }}>{before}</div>

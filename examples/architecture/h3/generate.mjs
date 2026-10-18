@@ -558,7 +558,7 @@ function build() {
           show: ['ray'],
           focus: ['ray', 'zone-1'],
           callout: 'odd number of crossings = inside',
-          say: `To learn if a point is inside Old Town, draw a line out from it and count how often it crosses Old Town\'s outline. It crosses ${map.crossings === 1 ? 'once' : map.crossings + ' times'}, an odd number, so the car is inside.`,
+          say: `To learn if a point is inside Old Town, draw a line out from it and count how often it crosses Old Town's outline. It crosses ${map.crossings === 1 ? 'once' : map.crossings + ' times'}, an odd number, so the car is inside.`,
         },
         {
           focus: ['query'],
