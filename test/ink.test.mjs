@@ -186,3 +186,16 @@ test('validate warns that markup in handwritten ink is dropped', async () => {
   const { warnings } = await validateStoryboard({ title: 't', scenes: [graph([{ focus: 'S', say: 'Start.', draw: [{ write: '**d** = 0', near: 'S' }, { circle: 'A', note: 'plain' }] }])] }, {}, { mode: 'explain' });
   assert.deepEqual(warnings.filter((w) => w.includes('handwritten')), ['scenes[0].steps[0].draw[0].write: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup']);
 });
+
+test('a step still shows the frame before the next step starts, and the last step its settled frame', async () => {
+  const { stillFrame } = await import('../bin/lib/render.mjs');
+  const scene = graph([
+    { focus: 'S', say: 'Start at S.' },
+    { focus: 'A', say: 'Then A.' },
+  ]);
+  const [, , last] = sceneSegments(scene);
+  assert.equal(stillFrame(scene, null, 0), last.from - 2);
+  assert.equal(stillFrame(scene, null, 1), last.from + last.durationInFrames - 8 - 2);
+  assert.equal(stillFrame(scene, null, undefined), stillFrame(scene, null, 1));
+  assert.throws(() => stillFrame(scene, null, 2), /the graph scene has no step 2/);
+});
