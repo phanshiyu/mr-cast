@@ -19,6 +19,7 @@ import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './val
 import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
 import { checkPlot } from './validate-plot.mjs';
+import { checkMap } from './validate-map.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
@@ -28,7 +29,7 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg', 'plot'];
+const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg', 'plot', 'map'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEXT_ITEMS_MAX = 6;
@@ -513,6 +514,10 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
 
       case 'plot':
         checkPlot(s, p, errors, warnings);
+        break;
+
+      case 'map':
+        checkMap(s, p, errors, warnings);
         break;
 
       case 'reading':

@@ -14,7 +14,10 @@ export interface SceneState {
   transforms: Record<string, string>;
   /** svg: each morphed path's key and the id of the path whose shape it has. */
   shapes: Record<string, string>;
-  /** svg: what this step traces, by key, with its `when` cue (null to start as the step settles). Empty on every other state. */
+  /**
+   * What this step traces, by key, with its `when` cue, or null for none: on svg the words a line starts drawing on,
+   * on a map the words a route arrives on; a plot's trace is timed by the step's own `when`. Only the step's own.
+   */
   traces: Record<string, string | null>;
 }
 
@@ -36,4 +39,4 @@ export declare function walkStates(scene: Scene): { states: SceneState[]; proble
 export declare function sceneStates(scene: Scene): SceneState[];
 export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | undefined): boolean;
 export declare function changedRefs(scene: Scene, step: ArrayStep | MemoryStep | GraphStep): string[];
-export declare function traceEntry(entry: unknown): { id: unknown; when: unknown };
+export declare function traceEntry(entry: unknown): { ref: unknown; when: unknown };

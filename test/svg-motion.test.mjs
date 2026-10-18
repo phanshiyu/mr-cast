@@ -77,7 +77,7 @@ test('a morphed path draws the other path\'s shape once the step settles, and it
 });
 
 test('a trace shows a hidden line and draws it on from its cue, then leaves it whole', () => {
-  const scene = svgScene('<svg viewBox="0 0 1000 500"><line id="route" x1="0" y1="250" x2="1000" y2="250" stroke="var(--good)"/></svg>', [{ trace: [{ id: 'route', when: 'south' }], say: 'The route runs south round the coast.' }], { hidden: ['route'] });
+  const scene = svgScene('<svg viewBox="0 0 1000 500"><line id="route" x1="0" y1="250" x2="1000" y2="250" stroke="var(--good)"/></svg>', [{ trace: [{ ref: 'route', when: 'south' }], say: 'The route runs south round the coast.' }], { hidden: ['route'] });
   const offset = (frame) => attr(drawnAt(frame, scene), 'route', 'stroke-dashoffset');
   // "south" is the fourth of seven words, about 64 frames into the voice, which starts at 115; the stroke starts 3 frames early.
   assert.equal(offset(170), '1');
@@ -104,7 +104,7 @@ test('validate names a move, trace or morph it cannot draw', async () => {
   const svg = '<svg viewBox="0 0 400 300" id="all"><path id="a" d="M0 0 L10 0 L10 10 Z"/><path id="two" d="M0 0 L1 1 M5 5 L6 6"/><text id="t" x="10" y="20" font-size="30">hi</text><rect id="r" width="10" height="10"/></svg>';
   const { errors } = await check(svgScene(svg, [
     { move: { all: 'translate(1 0)', a: 'skewX(10)', ghost: 'translate(1 0)' }, say: 'Move.' },
-    { trace: ['t', { id: 'a', when: 'nowhere' }, 'nope'], say: 'Trace it.' },
+    { trace: ['t', { ref: 'a', when: 'nowhere' }, 'nope'], say: 'Trace it.' },
     { morph: { a: 'two', r: 'a', t: 'r' }, say: 'Morph.' },
   ]));
   assert.deepEqual(errors, [
@@ -119,7 +119,7 @@ test('validate names a move, trace or morph it cannot draw', async () => {
     'scenes[0].steps[2].morph["t"]: is a <text>; only a <path> morphs, so draw it as one',
   ]);
   const other = await check({ type: 'array', narration: 'n', values: [1, 2], steps: [{ trace: ['0'], focus: 0, say: 'Trace.' }] });
-  assert.deepEqual(other.errors, ['scenes[0].steps[0].trace: an array scene takes no trace; trace and morph are steps of an svg scene']);
+  assert.deepEqual(other.errors, ['scenes[0].steps[0].trace: an array scene has nothing to trace; trace goes on the steps of svg, plot, map']);
 });
 
 test('a hidden path that lends a morph its shape is not reported as never drawn', async () => {
@@ -133,7 +133,7 @@ test('mr-cast steps lists what a step moves, traces and morphs, and where its ca
   const { stepViews } = await import('../bin/lib/highlight.mjs');
   const svg = '<svg viewBox="0 0 100 100"><path id="a" d="M0 0 L10 0 L10 10 Z"/><path id="b" d="M0 0 H50 V50 H0 Z"/><line id="l" x1="0" y1="0" x2="9" y2="9"/></svg>';
   const scene = svgScene(svg, [
-    { move: { a: 'translate(5 0)' }, trace: [{ id: 'l', when: 'draws' }], say: 'It slides and the line draws.' },
+    { move: { a: 'translate(5 0)' }, trace: [{ ref: 'l', when: 'draws' }], say: 'It slides and the line draws.' },
     { morph: { a: 'b' }, move: { a: '' }, camera: { on: ['a', 'l'], zoom: 3 }, say: 'Closer.' },
     { camera: 'all', focus: 'a', say: 'Back.' },
   ], { hidden: ['b'] });

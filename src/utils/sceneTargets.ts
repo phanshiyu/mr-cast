@@ -3,12 +3,14 @@
 
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
+import { mapBoxes, mapLabels, mapLayout } from '../../shared/map.mjs';
+import { stepTargets } from '../../shared/targets.mjs';
 import { stateMotion } from '../../shared/svg-motion.mjs';
 import { plotAxes, plotGeometry, plotLabels, stateParams } from '../../shared/plot.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
 import { sceneFiles } from '../../shared/files.mjs';
-import type { ArrayScene, ErScene, FilesScene, GraphScene, HunkMap, LayersScene, MemoryScene, PlotScene, StateScene, SvgScene, TableScene, TestsScene, TimelineScene } from '../types';
+import type { ArrayScene, ErScene, FilesScene, GraphScene, HunkMap, LayersScene, MapScene, MemoryScene, PlotScene, StateScene, SvgScene, TableScene, TestsScene, TimelineScene } from '../types';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { erBoxes, erScale, layoutEr } from './erLayout';
 import { filesBoxes, layoutFiles, treeRows } from './filesLayout';
@@ -16,7 +18,7 @@ import { layersBoxes, layersScale, layoutLayers } from './layersLayout';
 import { layoutTimeline, timelineBoxes, timelineScale } from './timelineLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
 import { layoutMemory, memoryBoxes } from './memoryLayout';
-import { centredStage, staged, type MarkTargets } from './penGeometry';
+import { areaOf, centredStage, staged, type MarkTargets } from './penGeometry';
 import { layoutState, stateBoxes, stateScale } from './stateLayout';
 import { layoutTableStates, stateRows, tableBoxes } from './tableLayout';
 import { layoutTests, testsBoxes } from './testsLayout';
@@ -78,6 +80,22 @@ export function plotTargets(scene: PlotScene): MarkTargets[] {
     const boxes = new Map([...geometry].flatMap(([id, g]) => (g.box && g.visible && shown(id) ? [[`p:${id}`, g.box] as const] : [])));
     const labels = plotLabels(scene, axes, geometry, scope, shown).map((l) => l.box);
     return staged({ boxes, obstacles: [...boxes.values(), ...labels, ...axes.ticks.x.map((t) => t.box), ...axes.ticks.y.map((t) => t.box)] }, { left: 0, top: 0, scale: 1 }, box);
+  });
+}
+
+/**
+ * A map's items where each step's view settles: places by their dot and label, routes, lines and regions by the part
+ * of them on the stage, and the countries a step lights. Notes keep off the labels and dots.
+ */
+export function mapTargets(scene: MapScene): MarkTargets[] {
+  const box = headerBox(scene);
+  const { proj, cameras } = mapLayout(scene, box);
+  const countries = [...new Set(stepTargets(scene).flat())].filter((key) => key.startsWith('mc:'));
+  return sceneStates(scene).slice(1).map((state, k) => {
+    const camera = cameras[k + 1]!;
+    const obstacles = mapLabels(scene, proj, camera, box, state).flatMap((l) => [l.dot, l.box].filter((b) => b !== null));
+    const boxOf = (key: string) => (key.startsWith('mc:') ? (mapBoxes(scene, proj, camera, box, state, [key]).get(key) ?? null) : null);
+    return { boxes: mapBoxes(scene, proj, camera, box, state, countries), obstacles, area: areaOf(box), boxOf };
   });
 }
 

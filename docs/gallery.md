@@ -172,6 +172,14 @@ Bands stacked top to bottom in their real order, each holding a few cards, with 
 
 Storyboard: [examples/primitives/layers/storyboard.json](../examples/primitives/layers/storyboard.json). Video: [primitives-layers.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-layers.mp4). Reference: [layers.md](../skill/mr-cast/references/scenes/layers.md).
 
+### map
+
+A real world map: countries by code, places at a latitude and longitude, great-circle routes, parallels and meridians, and shaded regions, with steps that move the view, trace routes on, and light, colour, show and hide.
+
+![The map demo's map scene, at the end of its last step](assets/scenes/map.png)
+
+Storyboard: [examples/primitives/map/storyboard.json](../examples/primitives/map/storyboard.json). Video: [primitives-map.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/primitives-map.mp4). Reference: [map.md](../skill/mr-cast/references/scenes/map.md).
+
 ### memory
 
 Call frames with their variables on the left, objects on the right, and an arrow for every reference.

@@ -14,6 +14,7 @@ import { outputLines } from '../../shared/terminal.mjs';
 import { arrayRows, cellKey, cellName, markerRow, rowKey, splitCellKey } from '../../shared/arrays.mjs';
 import { svgOf, textOf } from '../../shared/svg.mjs';
 import { PART_KINDS, labelPieces, plotParts } from '../../shared/plot.mjs';
+import { countryName, countriesAt, mapItems, namedCountries } from '../../shared/map.mjs';
 import { outcomeKey, testKey, testKeys, testsMatrix } from '../../shared/tests.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -154,6 +155,18 @@ const ITEMS = {
       return [{ key: `p:${p.id}`, label: `${PART_KINDS[p.kind]} ${p.id}${words ? ` "${text(words)}"` : ''}`, terms: [p.id, text(words)] }];
     });
   },
+  map(scene, state) {
+    const routes = list(scene.routes);
+    const items = [...mapItems(scene)].flatMap(([key, item]) => {
+      if (state?.hidden[key]) return [];
+      const label = text(state?.values[key] ?? item.label);
+      const stops = item.kind === 'route' ? list(routes.find((r) => r?.id === item.id)?.stops).flatMap((s) => (typeof s === 'string' ? [`mp:${s}`] : [])) : [];
+      return [{ key, label: `${item.kind} ${item.id}${label ? ` "${label}"` : ''}`, names: [label].filter(Boolean), terms: [item.id], with: stops }];
+    });
+    // The countries the scene names anywhere, by their names.
+    const codes = [...new Set(namedCountries(scene))];
+    return [...items, ...codes.map((code) => ({ key: `mc:${code}`, label: `country ${code} ${countryName(code)}`, names: countriesAt('50m').get(code)?.names ?? [], terms: [] }))];
+  },
   compare(scene) {
     const titles = compareTitles(scene);
     const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
@@ -220,6 +233,7 @@ function changesOf(scene, before, after) {
       : key.startsWith('x:') ? `cell ${key.slice(2)}`
       : key.startsWith('s:') ? `text ${key.slice(2)}`
       : key.startsWith('k:') ? key.slice(2)
+      : /^m[prlg]:/.test(key) ? `label of ${key.slice(3)}`
       : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
@@ -229,12 +243,13 @@ function changesOf(scene, before, after) {
   });
   const shows = [...new Set([...keysOf(before.hidden), ...keysOf(after.hidden)])].flatMap((key) => {
     const [was, is] = [Boolean(before.hidden[key]), Boolean(after.hidden[key])];
-    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a|p):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
+    return was === is ? [] : [`${is ? 'hides' : 'shows'} ${key.replace(/^(fr|o|ptr|rg|n|s|a|p|mp|mr|ml|mg):/, '').replace(/^r:/, 'row ').replace(/^e:/, 'edge ')}`];
   });
   const tints = [...new Set([...keysOf(before.tints), ...keysOf(after.tints)])].flatMap((key) => (before.tints?.[key] === after.tints?.[key] ? [] : [`tints ${key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key)) : key.replace(/^\w+:/, '')} ${after.tints?.[key] ?? 'clear'}`]));
   const callout = before.callout === after.callout ? [] : [`callout ${after.callout ? JSON.stringify(plainText(after.callout)) : 'off'}`];
   const moves = [...new Set([...keysOf(before.transforms), ...keysOf(after.transforms)])].flatMap((key) => ((before.transforms?.[key] ?? '') === (after.transforms?.[key] ?? '') ? [] : [`moves ${key.slice(2)} ${after.transforms?.[key] ? JSON.stringify(after.transforms[key]) : 'back'}`]));
-  const traces = Object.entries(after.traces ?? {}).map(([key, cue]) => `traces ${key.slice(2)}${cue ? ` from "${cue}"` : ''}`);
+  // An svg line starts drawing on its cue; a map route arrives on it.
+  const traces = Object.entries(after.traces ?? {}).map(([key, cue]) => `traces ${key.replace(/^[a-z]+:/, '')}${cue ? ` ${scene.type === 'map' ? 'until' : 'from'} "${cue}"` : ''}`);
   const morphs = [...new Set([...keysOf(before.shapes), ...keysOf(after.shapes)])].flatMap((key) => (before.shapes?.[key] === after.shapes?.[key] ? [] : [`morphs ${key.slice(2)} into ${after.shapes?.[key] ?? 'its own shape'}`]));
   return [...values, ...places, ...shows, ...tints, ...callout, ...moves, ...traces, ...morphs];
 }
@@ -271,7 +286,7 @@ export function stepViews(scene, hunks) {
     return {
       say: text(step?.say),
       lit: items.filter((it) => listed.has(it.key)).map((it) => it.label),
-      changes: [...(states.length ? changesOf(scene, states[k], state) : []), ...(scene.type === 'plot' ? list(step?.trace).map((id) => `traces ${id}`) : []), ...cameraOf(step)],
+      changes: [...(states.length ? changesOf(scene, states[k], state) : []), ...cameraOf(step)],
       items,
       litKeys,
     };
@@ -397,7 +412,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'plot', 'tests'];
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'plot', 'map', 'tests'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:

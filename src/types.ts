@@ -1011,6 +1011,13 @@ export interface MemoryScene extends SceneBase {
   steps?: MemoryStep[];
 }
 
+/**
+ * A `trace` entry on svg and map steps: the id of a line, or { "ref": id, "when": words of the step's `say` }. On svg
+ * the words are where the line starts drawing; on a map, where the route arrives. A plot step's trace takes ids alone,
+ * timed by the step's own `when`.
+ */
+export type TraceEntry = string | { ref: string; when?: string };
+
 export interface SvgStep extends StateStep {
   /** New text for `<text>` elements by id, e.g. { "total": "312" }. */
   set?: Record<string, string>;
@@ -1024,11 +1031,11 @@ export interface SvgStep extends StateStep {
   move?: Record<string, string>;
   /**
    * Lines drawn on from their start at this step: a path, line, polyline, polygon, rect, circle or ellipse, or a group,
-   * whose lines all draw at once; one that is hidden is shown. An entry is an id, or { "id": "route", "when": "around
+   * whose lines all draw at once; one that is hidden is shown. An entry is an id, or { "ref": "route", "when": "around
    * the coast" } to start on those words of the `say`; without `when` it starts as the step's changes settle. A line
    * draws at about 40 px a frame, so a long one takes longer, up to two and a half seconds.
    */
-  trace?: (string | { id: string; when?: string })[];
+  trace?: TraceEntry[];
   /**
    * Paths that take the shape of another path from this step on, tweened as the step starts, e.g. { "blob": "square" }.
    * The other path, usually hidden, lends only its `d`, read in this path's own coordinates. Name a path after itself
@@ -1217,6 +1224,117 @@ export interface PlotScene extends SceneBase {
   steps?: PlotStep[];
 }
 
+/** A point on the globe as [latitude, longitude] in degrees: north and east positive, e.g. [1.36, 103.99] for Singapore Changi. */
+export type LatLng = [lat: number, lng: number];
+
+/**
+ * What a map frames: "world", the refs it fits round (countries, places, routes, lines, regions), or a box from its
+ * south-west corner to its north-east one, e.g. { "box": [[48.7, -123.6], [49.3, -122.6]] }. A view narrower than 0.5°
+ * is widened to 0.5°, since the outline shows no finer detail.
+ */
+export type MapView = 'world' | string[] | { box: [southWest: LatLng, northEast: LatLng] };
+
+export interface MapPlace {
+  /** The ref steps name it by, e.g. "sin". Not a country code. */
+  id: string;
+  /** Where: [lat, lng], or a country code or name for that country's label point (to name a country on the map). */
+  at: LatLng | string;
+  /** Drawn beside its dot, as plain text. A step's `set` rewrites it. */
+  label?: string;
+  /** A dot at the point. Defaults to true at [lat, lng], and false at a country, whose label is centred. */
+  dot?: boolean;
+  /** Which side of the dot its label sits: right (the default), left, above or below. */
+  side?: 'right' | 'left' | 'above' | 'below';
+  tone?: Tone;
+  /** Not drawn until a step shows it. */
+  hidden?: boolean;
+}
+
+export interface MapRoute {
+  id: string;
+  /** Where it goes, in order: place ids or [lat, lng] points, two or more. Each leg follows the great circle, the shortest path on the globe. */
+  stops: (string | LatLng)[];
+  /** Written at the middle of the part of it on screen, as plain text. */
+  label?: string;
+  tone?: Tone;
+  /** Not drawn until a step shows or traces it. */
+  hidden?: boolean;
+}
+
+/** A parallel (give `lat`) or a meridian (give `lng`), whole or between `from` and `to`, which a trace draws in that order. */
+export interface MapLine {
+  id: string;
+  /** The latitude of a parallel, such as 49. */
+  lat?: number;
+  /** The longitude of a meridian, such as 0. */
+  lng?: number;
+  /** Where it starts and ends: longitudes for a parallel (default -180 to 180), latitudes for a meridian (-90 to 90). */
+  from?: number;
+  to?: number;
+  label?: string;
+  tone?: Tone;
+  hidden?: boolean;
+}
+
+/** An area to shade: an outline of your own, or a group of countries drawn and lit as one. */
+export interface MapRegion {
+  id: string;
+  /** Its corners as [lat, lng], in order, three or more; it closes itself. */
+  outline?: LatLng[];
+  /** Or the countries it covers, by code or name. */
+  countries?: string[];
+  /** Written at its centre, as plain text. */
+  label?: string;
+  /** Its colour; defaults to accent. */
+  tone?: Tone;
+  hidden?: boolean;
+}
+
+export interface MapStep extends StateStep {
+  /** Where the camera goes from this step on, eased there at the step's start. */
+  view?: MapView;
+  /** Countries, places, routes, lines and regions to colour from this step on, e.g. { "CAN": "accent" }. */
+  tint?: Tints;
+  /**
+   * Routes and lines to draw on from their first stop, from when the view settles until the step's words end, or
+   * until its `when` words are spoken. A traced item is shown from then on.
+   */
+  trace?: TraceEntry[];
+  /** New labels by id, e.g. { "sin": "Singapore, 23:55" }. */
+  set?: Record<string, string>;
+}
+
+/**
+ * A map of the world from Natural Earth's public-domain outline (1:110m, or 1:50m when a view zooms in or a step names
+ * a country too small for 1:110m), with places, great-circle routes, parallels and meridians, and shaded regions. The
+ * steps move the view, trace routes and lines on, and light, colour, show and hide what is on it.
+ *
+ * A ref is a country by its ISO 3166-1 alpha-3 code ("CAN", "USA", "GBR") or its name ("Canada"); the id of a place,
+ * route, line or region; or "map" for all of it. A few places without an ISO code use Natural Earth's: KOS Kosovo, SOL
+ * Somaliland, CYN Northern Cyprus. Every country is drawn; a step that lights some dims the rest. Labels are 26 px,
+ * and `validate` warns when two overlap, when one runs off the stage, and when a step lights something its view leaves
+ * off screen.
+ */
+export interface MapScene extends SceneBase {
+  type: 'map';
+  title?: string;
+  /** How the globe is flattened: "equal-earth" (the default; areas true), "natural-earth" or "mercator" (shapes true, the poles stretched). */
+  projection?: 'equal-earth' | 'natural-earth' | 'mercator';
+  /** The longitude at the map's centre. Defaults to the middle of what the views frame, or 0 when one is the world. */
+  meridian?: number;
+  /** What the map frames during the narration. Defaults to "world". */
+  view?: MapView;
+  places?: MapPlace[];
+  routes?: MapRoute[];
+  lines?: MapLine[];
+  regions?: MapRegion[];
+  /** Coloured from the start, by ref. */
+  tint?: Tints;
+  /** A boxed line in the top right. Steps replace it with `callout`. */
+  callout?: DisplayText;
+  steps?: MapStep[];
+}
+
 export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Repository-relative path. */
   path: string;
@@ -1331,7 +1449,7 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene;
+export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene | MapScene;
 
 export interface Storyboard {
   title: string;

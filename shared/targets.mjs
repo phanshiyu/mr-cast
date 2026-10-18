@@ -6,6 +6,7 @@ import { arrayRows, cellKey } from './arrays.mjs';
 import { plainText } from './markup.mjs';
 import { svgIds } from './svg.mjs';
 import { paramNames, plotModel, plotParts, resolvePlotRef } from './plot.mjs';
+import { mapRef, mapRefNames } from './map.mjs';
 import { sceneFiles } from './files.mjs';
 import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
@@ -328,6 +329,10 @@ const TARGETS = {
   plot: {
     resolve: (scene, ref) => resolvePlotRef(scene, ref),
     names: (scene) => [...plotParts(scene).map((p) => p.id), ...paramNames(scene).filter((n) => plotModel(scene).dependents.has(n))],
+  },
+  map: {
+    resolve: mapRef,
+    names: mapRefNames,
   },
   text: {
     resolve(scene, ref) {

@@ -60,6 +60,7 @@
     "@remotion/bundler": "4.0.535",
     "@remotion/player": "4.0.535",
     "@remotion/renderer": "4.0.535",
+    "d3-geo": "3.1.1",
     "dompurify": "^3.4.17",
     "esbuild": "0.28.2",
     "lucide-react": "^1.57.0",

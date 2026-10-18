@@ -10,6 +10,7 @@ import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
 import { pairShapes, parseTransform } from './svg-motion.mjs';
 import { cueWord } from './timing.mjs';
+import { mapRefNames, tracedKeys } from './map.mjs';
 import { memoryMembers, tintEntries } from './storyboard-json.mjs';
 import { PART_KINDS, TRACEABLE, paramNames, partOf, plotParts } from './plot.mjs';
 
@@ -162,6 +163,17 @@ const MODELS = {
     moveNames: (scene) => [...svgOf(scene.svg).ids.keys()],
     moveWhat: 'element id',
     motion: true,
+    trace: {
+      what: 'element id',
+      when: 'the line should start drawing on',
+      resolve(scene, ref) {
+        const { ids } = svgOf(scene.svg);
+        const node = typeof ref === 'string' ? ids.get(ref) : undefined;
+        if (!node) return { problem: 'names no element id in the drawing', names: [...ids.keys()] };
+        if (!SVG_TRACEABLE.includes(node.tag)) return { problem: `is a <${node.tag}>, which has no line to draw on; trace a ${SVG_TRACEABLE.filter((t) => t !== 'g').join(', ')}, or a <g> of them` };
+        return { key: `s:${ref}` };
+      },
+    },
   },
   plot: {
     initial(scene) {
@@ -183,18 +195,45 @@ const MODELS = {
     tint: { prefixes: ['p:'], what: 'part', help: () => 'the id of a function, series, point, vector or area', expand: (_scene, key) => [key] },
     callout: true,
     checkValue: (value) => (typeof value === 'number' && Number.isFinite(value) ? null : 'must be a number'),
-    // `trace` draws a line on over the step, and shows it if it was hidden.
-    step(scene, step, next, problem) {
-      if (step?.trace === undefined) return;
-      if (!Array.isArray(step.trace) || !step.trace.every((r) => typeof r === 'string')) return problem('trace', '', 'must be an array of part ids, such as ["growth"]');
-      const traceable = plotParts(scene).filter((p) => TRACEABLE.includes(p.kind) && typeof p.id === 'string').map((p) => p.id);
-      for (const ref of step.trace) {
+    // A plot traces across the step's words, its changes with it, so the cue is the step's own `when`.
+    trace: {
+      what: 'part id',
+      when: null,
+      resolve(scene, ref) {
         const part = partOf(scene, ref);
-        if (!part) problem('trace', ref, `names no part; trace takes the id of a ${TRACEABLE.map((k) => PART_KINDS[k]).join(', ')}`, traceable);
-        else if (!TRACEABLE.includes(part.kind)) problem('trace', ref, `is a ${PART_KINDS[part.kind]}, which has no line to trace; show it instead`);
-        else delete next.hidden[`p:${ref}`];
-      }
+        if (!part) return { problem: `names no part; trace takes the id of a ${TRACEABLE.map((k) => PART_KINDS[k]).join(', ')}`, names: plotParts(scene).filter((p) => TRACEABLE.includes(p.kind) && typeof p.id === 'string').map((p) => p.id) };
+        if (!TRACEABLE.includes(part.kind)) return { problem: `is a ${PART_KINDS[part.kind]}, which has no line to trace; show it instead` };
+        return { key: `p:${ref}` };
+      },
     },
+    move: null,
+    moveNames: () => [],
+  },
+  map: {
+    initial(scene) {
+      const items = ['places', 'routes', 'lines', 'regions'].flatMap((field) => list(scene[field]).map((item) => [field, item]));
+      const keyOf = (field, item) => `${{ places: 'mp', routes: 'mr', lines: 'ml', regions: 'mg' }[field]}:${item?.id}`;
+      return {
+        values: Object.fromEntries(items.flatMap(([field, item]) => (typeof item?.label === 'string' ? [[keyOf(field, item), item.label]] : []))),
+        places: {},
+        hidden: Object.fromEntries([...items.flatMap(([field, item]) => (item?.hidden === true ? [[keyOf(field, item), true]] : [])), ...tracedKeys(scene).map((key) => [key, true])]),
+      };
+    },
+    // A step can rewrite the label of a place, route, line or region.
+    set: { prefixes: ['mp:', 'mr:', 'ml:', 'mg:'], what: 'labelled place, route, line or region', help: () => 'the id of a place, route, line or region' },
+    show: { prefixes: ['mp:', 'mr:', 'ml:', 'mg:'], what: 'place, route, line or region', help: () => 'the id of a place, route, line or region' },
+    tint: { prefixes: ['mc:', 'mp:', 'mr:', 'ml:', 'mg:'], what: 'country, place, route, line or region', help: () => 'a country code such as "CAN", or the id of a place, route, line or region', expand: (_scene, key) => [key] },
+    // A traced route or line is shown, and draws on from its first stop until its `when` words.
+    trace: {
+      what: 'route or line id',
+      when: 'the route should arrive on',
+      resolve(scene, ref) {
+        const key = oneKey(scene, ref, ['mr:', 'ml:']);
+        return key ? { key } : { problem: 'names no route or line; trace takes the id of a route or a line', names: refNamesOf(scene, ['mr:', 'ml:']) };
+      },
+    },
+    callout: true,
+    checkValue: (value) => (typeof value === 'string' ? null : 'must be text'),
     move: null,
     moveNames: () => [],
   },
@@ -254,24 +293,32 @@ const copy = (state) => ({ values: { ...state.values }, places: { ...state.place
 /** Elements a step can `trace`: lines and outlines, and a group, which traces every one inside it. */
 const SVG_TRACEABLE = ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'g'];
 
-/** A trace entry as its id and its cue: "route" or { "id": "route", "when": "around the coast" }. */
-export const traceEntry = (entry) => (typeof entry === 'string' ? { id: entry, when: undefined } : { id: entry?.id, when: entry?.when });
+/** Scene types whose steps take `trace`. */
+const TRACE_TYPES = () => Object.keys(MODELS).filter((type) => MODELS[type].trace);
 
-/** A step's `trace`: each element drawn on from its start, shown if it was hidden. */
-function applyTrace(scene, step, next, problem) {
-  const { ids } = svgOf(scene.svg);
-  if (!Array.isArray(step.trace)) return problem('trace', '', 'must be a list of element ids, such as ["route"], or of { "id": "route", "when": "words of the say" }');
+/** A trace entry as its ref and its cue: "route" or { "ref": "route", "when": "around the coast" }. */
+export const traceEntry = (entry) => (entry && typeof entry === 'object' && !Array.isArray(entry) ? { ref: entry.ref, when: entry.when } : { ref: entry, when: undefined });
+
+/**
+ * A step's `trace`, on any scene whose model takes one: each line it names is shown and drawn on during this step,
+ * recorded in `traces` by key with its `when` cue. What the cue means is the scene's: where an svg line starts
+ * drawing, where a map route arrives; a plot's lines take the step's own `when`, so its entries are ids alone.
+ */
+function applyTrace(scene, model, step, next, problem) {
+  const trace = model.trace;
+  if (!trace) return problem('trace', '', `${aType(scene.type)} scene has nothing to trace; trace goes on the steps of ${TRACE_TYPES().join(', ')}`);
+  const shape = trace.when ? `an ${trace.what}, or { "ref": "...", "when": "words of the say" }` : `an ${trace.what}; the step's own "when" times the trace`;
+  if (!Array.isArray(step.trace)) return problem('trace', '', `must be a list, each ${shape}`);
   step.trace.forEach((entry, j) => {
-    const { id, when } = traceEntry(entry);
-    const node = typeof id === 'string' ? ids.get(id) : undefined;
-    const known = [...ids.keys()];
-    if (typeof entry !== 'string' && (!entry || typeof entry !== 'object' || Array.isArray(entry) || Object.keys(entry).some((k) => k !== 'id' && k !== 'when'))) problem(`trace[${j}]`, '', 'must be an element id, or { "id": "route", "when": "words of the say" }');
-    else if (!ids.has(id)) problem('trace', String(id), 'names no element id in the drawing', known);
-    else if (!SVG_TRACEABLE.includes(node?.tag)) problem('trace', id, `is a <${node?.tag}>, which has no line to draw on; trace a ${SVG_TRACEABLE.filter((t) => t !== 'g').join(', ')}, or a <g> of them`);
-    else if (when !== undefined && (typeof when !== 'string' || cueWord(step.say, when) < 0)) problem('trace', id, `has "when": ${JSON.stringify(when)}, which is not in the step's say; copy the words the line should start drawing on`);
+    const object = Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry);
+    if (typeof entry !== 'string' && !(trace.when && object && Object.keys(entry).every((k) => k === 'ref' || k === 'when'))) return problem(`trace[${j}]`, '', `must be ${shape}`);
+    const { ref, when } = traceEntry(entry);
+    const found = trace.resolve(scene, ref);
+    if (found.problem) problem('trace', typeof ref === 'string' ? ref : '', found.problem, found.names ?? []);
+    else if (when !== undefined && (typeof when !== 'string' || cueWord(step.say, when) < 0)) problem('trace', ref, `has "when": ${JSON.stringify(when)}, which is not in the step's say; copy the words ${trace.when}`);
     else {
-      next.traces[`s:${id}`] = when ?? null;
-      delete next.hidden[`s:${id}`];
+      next.traces[found.key] = when ?? null;
+      delete next.hidden[found.key];
     }
   });
 }
@@ -403,12 +450,11 @@ export function walkStates(scene) {
         else next.hidden[key] = true;
       }
     }
-    model.step?.(scene, step, next, problem);
     applyTints(step?.tint, next, problem);
-    for (const field of ['trace', 'morph']) {
-      if (step?.[field] === undefined || (field === 'trace' && model.step)) continue;
-      if (!model.motion) problem(field, '', `${aType(scene.type)} scene takes no ${field}; trace and morph are steps of an svg scene`);
-      else (field === 'trace' ? applyTrace : applyMorph)(scene, step, next, problem);
+    if (step?.trace !== undefined) applyTrace(scene, model, step, next, problem);
+    if (step?.morph !== undefined) {
+      if (!model.motion) problem('morph', '', `${aType(scene.type)} scene takes no morph; morph is a step of an svg scene`);
+      else applyMorph(scene, step, next, problem);
     }
     if (step?.callout !== undefined) {
       if (!model.callout) problem('callout', '', `${aType(scene.type)} scene draws no callout`);
@@ -453,6 +499,10 @@ function hiddenField(scene, key) {
     o: () => at('objects', scene.objects, (o) => o?.id === name),
     s: () => `hidden[${list(scene.hidden).indexOf(name)}]`,
     p: () => `${plotParts(scene).find((part) => part.id === name)?.path}.hidden`,
+    mp: () => at('places', scene.places, (m) => m?.id === name),
+    mr: () => at('routes', scene.routes, (m) => m?.id === name),
+    ml: () => at('lines', scene.lines, (m) => m?.id === name),
+    mg: () => at('regions', scene.regions, (m) => m?.id === name),
   }[kind]();
 }
 
@@ -472,6 +522,7 @@ function refNamesOf(scene, prefixes) {
     ...(scene.type === 'graph' ? list(scene.nodes).map((n) => n?.id) : []),
     ...(scene.type === 'svg' ? svgOf(scene.svg).ids.keys() : []),
     ...(scene.type === 'plot' ? plotParts(scene).flatMap((p) => (typeof p.id === 'string' ? [p.id] : [])) : []),
+    ...(scene.type === 'map' ? mapRefNames(scene) : []),
   ];
   return names.filter((ref) => oneKey(scene, ref, prefixes));
 }
@@ -480,7 +531,7 @@ function refNamesOf(scene, prefixes) {
 export const sceneStates = (scene) => walkStates(scene).states;
 
 /** Whether a step changes anything. */
-export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace', 'morph'].some((field) => step?.[field] !== undefined);
+export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace', 'morph', 'view'].some((field) => step?.[field] !== undefined);
 
 /**
  * The refs a step changes, as focus refs: what it sets, the pointers and ranges it moves, what it shows
@@ -489,8 +540,12 @@ export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'c
 export function changedRefs(scene, step) {
   const moved = Object.keys(step?.move ?? {}).map((name) => (scene.type === 'svg' ? name : list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
   const tints = tintEntries(step?.tint);
-  const motion = scene.type === 'svg' ? [...list(step?.trace).map((e) => traceEntry(e).id), ...Object.keys(step?.morph && typeof step.morph === 'object' ? step.morph : {})].filter((id) => typeof id === 'string') : list(step?.trace);
-  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...motion, ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
+  const traced = list(step?.trace).map((entry) => traceEntry(entry).ref);
+  const morphed = scene.type === 'svg' && step?.morph && typeof step.morph === 'object' ? Object.keys(step.morph) : [];
+  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...[...traced, ...morphed].filter((ref) => typeof ref === 'string'), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
   // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
-  return [...new Set(refs.length ? refs : tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : [])))];
+  const dimmed = tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : []));
+  // A map step that only moves the view lights what it frames, or the whole map.
+  const framed = scene?.type === 'map' && step?.view !== undefined ? (Array.isArray(step.view) ? step.view : ['map']) : [];
+  return [...new Set(refs.length ? refs : dimmed.length ? dimmed : framed)];
 }

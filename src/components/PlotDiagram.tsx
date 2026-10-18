@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react';
 import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { plotAxes, plotGeometry, plotLabels, plotParts, partTone, stateParams, AXIS_FONT, LABEL_FONT, POINT_R, TICK_FONT, TICK_LEN, type PartGeometry, type Px } from '../../shared/plot.mjs';
-import { sceneStates } from '../../shared/state-steps.mjs';
+import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { cueFrame, STEP_SETTLE_FRAMES } from '../../shared/timing.mjs';
 import { headerBox } from '../fit/shell';
 import type { PlotScene, PlotStep } from '../types';
@@ -25,17 +25,17 @@ const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
  * When a step's changes play: from its start, or from its `when` words, for the half second every step settles in;
  * a step that traces plays them across its words instead, at an even pace, so the line and the points it moves keep up.
  */
-function stepWindow(step: PlotStep | undefined, segment: SpokenSegment) {
+function stepWindow(step: PlotStep | undefined, state: SceneState, segment: SpokenSegment) {
   const start = (step?.when ? cueFrame(segment, step.when) : null) ?? segment.from;
-  const traces = Array.isArray(step?.trace) && step.trace.length > 0;
+  const traces = Object.keys(state.traces).length > 0;
   const end = traces ? Math.max(start + STEP_SETTLE_FRAMES, segment.voiceFrom + segment.speakingFrames) : start + STEP_SETTLE_FRAMES;
   return { start, end, traces };
 }
 
-function stepProgress(scene: PlotScene, segments: readonly SpokenSegment[], frame: number): { k: number; t: number } {
+function stepProgress(scene: PlotScene, states: readonly SceneState[], segments: readonly SpokenSegment[], frame: number): { k: number; t: number } {
   const k = currentStep(segments, frame);
   if (k < 0) return { k, t: 1 };
-  const { start, end, traces } = stepWindow(scene.steps?.[k], segments[k + 1]!);
+  const { start, end, traces } = stepWindow(scene.steps?.[k], states[k + 1]!, segments[k + 1]!);
   const t = interpolate(frame, [start, end], [0, 1], { ...clamp, easing: traces ? Easing.linear : Easing.bezier(0.25, 0.1, 0.25, 1) });
   return { k, t };
 }
@@ -59,12 +59,12 @@ export const PlotDiagram: React.FC<SceneProps<PlotScene>> = ({ scene, hunks, dur
   const states = useMemo(() => sceneStates(scene), [scene]);
   const axes = useMemo(() => plotAxes(scene, box), [scene, box.width, box.height]);
   const marks = useMemo(() => plotTargets(scene), [scene]);
-  const { k, t } = stepProgress(scene, segments, frame);
+  const { k, t } = stepProgress(scene, states, segments, frame);
   const s: StateFrame = { ...stateFrame(states, segments, frame), t };
   const focus = focusSpotlight(scene, hunks, segments, frame);
   const [was, now] = [stateParams(scene, s.before), stateParams(scene, s.now)];
   const scope = Object.fromEntries(Object.keys(now).map((name) => [name, was[name]! + (now[name]! - was[name]!) * t]));
-  const traced = new Set(k >= 0 ? (scene.steps?.[k]?.trace ?? []) : []);
+  const traced = new Set(k >= 0 ? Object.keys(states[k + 1]!.traces).map((key) => key.slice(2)) : []);
   const geometry = plotGeometry(scene, axes, scope, (id) => (traced.has(id) ? t : 1));
   const order = plotParts(scene);
   const appear = (i: number) => Math.min(1, spring({ frame: frame - START - i * STAGGER, fps, config: { damping: 18, stiffness: 140 } }));

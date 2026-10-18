@@ -28,10 +28,11 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `memory` | Call frames with their variables on the left and objects with their fields on the right. Variables and fields keep the order written. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object; an arrow that is not into the next column runs through the gaps and under the cards, never behind one. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
 | `svg` | A drawing in SVG markup: a map, a tiling, a geometric figure, points on a plane. Steps light, `tint`, `show`, `hide` and rewrite its elements by id, and [move, trace and morph](#motion-on-a-drawing) them. `validate` cuts nothing silently: it fails on anything that is not a drawing element or attribute. |
 | `plot` | Numeric axes with lines of x, curves of t, data series, points, arrows and shaded areas, or a number line without `y`. A part's numbers can be expressions in named `params`; a step's `set` changes one and every part that reads it reshapes or moves, and `trace` draws a line on across the step's words. See [Plots](#plots). |
+| `map` | A real world map from Natural Earth's public-domain outline: countries by ISO 3166-1 alpha-3 code or name, `places` at `[lat, lng]` with labels, `routes` that follow the great circle between their stops, `lines` along a parallel or meridian, and shaded `regions`. A step's `view` eases the camera to a box or round some refs, `trace` draws a route or line on from its first stop, and `show`, `hide`, `tint`, `set` and `callout` work as on the other stepped scenes. Projections: `equal-earth` (the default), `natural-earth` and `mercator`. |
 | `review` | In [review mode](#review-findings), every finding, worst first, with its severity, file, line and claim, under "Claude's review". |
 | `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. |
 
-The stepped scenes (`array`, `memory`, `graph`, `table`, `svg` and `plot`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
+The stepped scenes (`array`, `memory`, `graph`, `table`, `svg`, `plot` and `map`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
 
 A `tests` scene written before 0.27, with `cases` and `gaps`, still validates and renders: each case reads as a situation named by its test, with one outcome, "Proves" (or its `titles.proves`), and each gap as a situation drawn as a gap. A case's `badge` and `tone` and the `subject` and `none` titles are not drawn. A decision `graph` with `tint` can show the paths tests take through the code: see `examples/primitives/tests-map/`.
 
@@ -79,6 +80,7 @@ A diagram's steps each name what to light in `focus`, one ref or a list, and wha
 | `memory` | A frame `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. A step that changes something and has no `focus` focuses what it changes. |
 | `svg` | An element id. A lit group lights everything in it. A step that changes something and has no `focus` focuses what it changes. |
 | `plot` | A part's id, or a parameter's name, which lights every part that reads it. A step that changes something and has no `focus` focuses what it changes. |
+| `map` | A country code such as `"CAN"` or its name, the id of a place, route, line or region, or `"map"` for all of it. A lit route lights its stops. A step that changes something and has no `focus` focuses what it changes, or what its `view` frames, or the whole map. |
 | `text` | An item index or an `"a-b"` range of them, `"note"`, `"kicker"`, the lead's field name such as `"number"`, or a side `"left"` or `"right"`. A step that changes something and has no `focus` focuses what it changes. |
 | `compare` | A row index, an `"a-b"` range of them, a side `"side:After"` (by title, or `"side:0"`), or one cell `"2@After"` (row, then side). A step shows every row up to the last one it focuses. |
 | `terminal` | An entry index, an `"a-b"` range of them, or one output line `"2:3"` (entry, then line, from 0). A step types every entry up to the last one it focuses, and scrolls back to an earlier one. |
@@ -158,7 +160,7 @@ An `svg` step can move its elements, draw lines on, and change one shape into an
 
 ```json
 { "move": { "t1": "translate(0 300)", "needle": "rotate(120 1080 420)" },
-  "trace": [{ "id": "route", "when": "around the coast" }],
+  "trace": [{ "ref": "route", "when": "around the coast" }],
   "morph": { "blob": "square" }, "say": "..." }
 ```
 

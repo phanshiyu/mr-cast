@@ -28,7 +28,7 @@
         {
           "trace": [
             {
-              "id": "c-sq",
+              "ref": "c-sq",
               "when": "tilted square"
             }
           ],
@@ -94,7 +94,7 @@
         {
           "trace": [
             {
-              "id": "pipe",
+              "ref": "pipe",
               "when": "runs in"
             }
           ],

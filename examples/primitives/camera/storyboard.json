@@ -53,7 +53,7 @@
         {
           "trace": [
             {
-              "id": "protein",
+              "ref": "protein",
               "when": "one link"
             }
           ],

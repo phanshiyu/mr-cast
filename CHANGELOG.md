@@ -24,6 +24,14 @@
 - **`validate`** fails on an expression that does not parse, at its column, on a name that is no parameter, on a trace of a point and on a `when` the step never says. It draws every step and warns on a line with no value in its range, a part off the plot, labels that overlap each other or the axis text or run off the stage, and tick labels that overlap. The highlight check reads part labels, and `mr-cast steps` lists what each step sets and traces.
 - **The demo,** `examples/primitives/plot/`, builds a square wave from 1, 3, 5 and 15 sine waves and then traces $10,000 at 7% against 3% inflation, with every number computed and checked in its `generate.mjs`.
 
+**A `map` scene.** A real world map for where things are and how they move: countries filled as the voice names them, borders drawn on, and routes that grow from origin to destination (ADR 0030).
+
+- **The outline.** Natural Earth 5.1.2's admin-0 countries, public domain, bundled at 1:110m (82 KB) and 1:50m simplified to 0.02° (329 KB) by `scripts/world-data.mjs`. The scene draws 1:50m when a view zooms in or names a country too small for 1:110m, such as Singapore. Nothing is fetched at runtime; `d3-geo` 3.1.1 projects it.
+- **What goes on it.** Countries by ISO 3166-1 alpha-3 code or name; `places` at `[lat, lng]` or on a country's label point; `routes` through place ids or points, each leg a great circle; `lines` along a parallel or meridian between two longitudes or latitudes; `regions` from an outline or a group of countries. `projection` is `equal-earth`, `natural-earth` or `mercator`.
+- **Steps.** `view` moves the camera to `"world"`, a box, or round some refs, along a smooth zoom that pulls out and back in on long moves. `trace` draws a route or line on from its first stop, arriving when the step's words end or at its `when` words. `show`, `hide`, `tint`, `set` (a label) and `callout` work as on the other stepped scenes, and ink draws on a map like any other.
+- **`validate`** fails on an unknown country (suggesting the code), a point out of range (naming a `[lng, lat]` swap), a route stop that is no place, an id named like a country, and a `when` the say lacks. It warns when labels overlap or run off the stage at a step's view, when a step lights something its view leaves off screen, and when a view is narrower than 0.5°. The highlight check reads map scenes, countries by name included.
+- `examples/primitives/map` flies Singapore to London on the great circle, then traces the 49th parallel from the Lake of the Woods to the coast and zooms on Point Roberts, with its facts and sources in its `generate.mjs`.
+
 ## 0.27.0
 
 Four changes. mr-cast voices with Kitten TTS by default, the tests scene is a behaviour matrix, a new `text` scene puts words on screen as the picture, and Claude can write and draw on any stepped scene with ink that stays until a step erases it.

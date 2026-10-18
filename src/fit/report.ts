@@ -26,7 +26,7 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
-import { arrayTargets, erTargets, filesTargets, graphTargets, layersTargets, memoryTargets, plotTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
+import { arrayTargets, erTargets, filesTargets, graphTargets, layersTargets, mapTargets, memoryTargets, plotTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
@@ -116,6 +116,8 @@ const SCENE_FITS: SceneFits = {
   svg: () => null,
   // A plot's labels are placed and checked in bin/lib/validate-plot.mjs, from shared/plot.mjs.
   plot: () => null,
+  // A map's labels are one line at one size; bin/lib/validate-map.mjs checks where they land.
+  map: () => null,
   terminal: (scene) => {
     const box = contentBox(Boolean(scene.title));
     return layoutTerminal(scene, box.width, box.height);
@@ -177,6 +179,7 @@ const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { typ
   memory: memoryTargets,
   svg: svgTargets,
   plot: plotTargets,
+  map: mapTargets,
   state: (scene) => everyStep(scene.steps, () => stateTargets(scene)),
   tests: testsTargets,
   er: (scene) => everyStep(scene.steps, () => erTargets(scene)),
