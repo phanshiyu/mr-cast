@@ -67,17 +67,17 @@ function normalizeNode(raw, explain) {
 
 /** A scene's steps with each older focus key renamed to `focus`, and a step that changes state and names no focus focusing what it changes. */
 export function focusSteps(scene) {
-  if (STATE_TYPES.includes(scene.type) && Array.isArray(scene.steps)) {
-    return scene.steps.map((step) => (step && typeof step === 'object' && step.focus === undefined ? { ...step, focus: changedRefs(scene, step) } : step));
-  }
   const keys = legacyFocusKeys(scene.type);
-  if (!Array.isArray(scene.steps) || !keys.length) return scene.steps;
+  const state = STATE_TYPES.includes(scene.type);
+  if (!Array.isArray(scene.steps) || (!keys.length && !state)) return scene.steps;
   return scene.steps.map((step) => {
-    if (step?.focus !== undefined) return step;
-    const key = keys.find((k) => step?.[k] !== undefined);
-    if (!key) return step;
-    const { [key]: focus, ...rest } = step;
-    return { ...rest, focus };
+    if (!step || typeof step !== 'object' || step.focus !== undefined) return step;
+    const key = keys.find((k) => step[k] !== undefined);
+    if (key) {
+      const { [key]: focus, ...rest } = step;
+      return { ...rest, focus };
+    }
+    return state ? { ...step, focus: changedRefs(scene, step) } : step;
   });
 }
 

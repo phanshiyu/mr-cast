@@ -1,4 +1,4 @@
-import type { ArrayStep, GraphStep, MemoryStep, MemoryValue, Scene, TableCell, Tint } from '../src/types';
+import type { ArrayStep, ChartStep, GraphStep, MemoryStep, MemoryValue, Scene, TableCell, Tint } from '../src/types';
 
 /**
  * What a scene shows at one step: values by item key, places of pointers and ranges, hidden items, the
@@ -10,12 +10,14 @@ export interface SceneState {
   hidden: Record<string, true>;
   tints: Record<string, Exclude<Tint, 'clear'>>;
   callout: string;
+  /** A chart's bars or slices are ordered by value. */
+  sort?: boolean;
 }
 
 export interface StateProblem {
   /** The step's index, or -1 for the initial state. */
   step: number;
-  field: 'set' | 'move' | 'show' | 'hide' | 'objects' | 'tint' | 'callout';
+  field: 'set' | 'move' | 'show' | 'hide' | 'objects' | 'tint' | 'callout' | 'sort';
   ref: string | number;
   message: string;
   names: string[];
@@ -28,5 +30,5 @@ export declare function sameValue(a: MemoryValue | TableCell | undefined, b: Mem
 export declare const TINTS: readonly Tint[];
 export declare function walkStates(scene: Scene): { states: SceneState[]; problems: StateProblem[] };
 export declare function sceneStates(scene: Scene): SceneState[];
-export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | undefined): boolean;
+export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | ChartStep | undefined): boolean;
 export declare function changedRefs(scene: Scene, step: ArrayStep | MemoryStep | GraphStep): string[];

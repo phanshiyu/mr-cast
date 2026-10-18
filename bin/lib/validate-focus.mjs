@@ -60,7 +60,7 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     const value = step[key];
     if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) {
       if (changedRefs(s, step).length) return;
-      const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : 'changes nothing';
+      const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : step.sort !== undefined ? 'only sorts, which lights nothing' : 'changes nothing';
       return errors.push(`${q}.focus: required, ${refHelp(s)}, or an array of them, since this step ${what}, so it lights nothing`);
     }
     if (value === undefined) return errors.push(`${q}.focus: required, ${refHelp(s)}, or an array of them${STATE_TYPES.includes(s.type) ? ', unless the step changes something, which it then focuses' : ''}`);

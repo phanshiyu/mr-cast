@@ -122,13 +122,15 @@ const ITEMS = {
       ...list(scene.spans).map((s, i) => ({ key: `sp:${i}`, label: `span "${text(s?.label)}" ${s?.from}-${s?.to}`, terms: [text(s?.label)] })),
     ];
   },
-  chart(scene) {
+  chart(scene, state) {
     const labels = list(scene.labels);
+    // A value reads as the step leaves it, after any set.
+    const valueAt = (s, k, i) => state?.values?.[`p:${k}/${i}`] ?? list(s?.values)[i];
     return [
       ...labels.map((l, i) => ({ key: `l:${i}`, label: `label ${l}`, terms: [text(l)] })),
       // A lit series is read against its labels, so they light with it.
       ...list(scene.series).map((s, k) => ({ key: `s:${k}`, label: `series ${s?.name}`, terms: [text(s?.name)], parts: labels.map((_, i) => `p:${k}/${i}`), with: labels.map((_, i) => `l:${i}`) })),
-      ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${list(s?.values)[i]}`, terms: [text(String(list(s?.values)[i] ?? ''))], with: [`l:${i}`] }))),
+      ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${valueAt(s, k, i)}`, terms: [text(String(valueAt(s, k, i) ?? ''))], with: [`l:${i}`] }))),
     ];
   },
   table(scene, state) {
@@ -210,6 +212,7 @@ function changesOf(scene, before, after) {
       : key.startsWith('b:') ? `badge of ${key.slice(2)}`
       : key.startsWith('x:') ? `cell ${key.slice(2)}`
       : key.startsWith('s:') ? `text ${key.slice(2)}`
+      : key.startsWith('p:') ? (([k, i]) => `${list(scene.series)[k]?.name}@${list(scene.labels)[i]}`)(key.slice(2).split('/').map(Number))
       : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
@@ -223,7 +226,8 @@ function changesOf(scene, before, after) {
   });
   const tints = [...new Set([...keysOf(before.tints), ...keysOf(after.tints)])].flatMap((key) => (before.tints?.[key] === after.tints?.[key] ? [] : [`tints ${key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key)) : key.replace(/^\w+:/, '')} ${after.tints?.[key] ?? 'clear'}`]));
   const callout = before.callout === after.callout ? [] : [`callout ${after.callout ? JSON.stringify(plainText(after.callout)) : 'off'}`];
-  return [...values, ...places, ...shows, ...tints, ...callout];
+  const sort = before.sort === after.sort ? [] : [after.sort ? 'sorts by value' : 'puts the labels back in order'];
+  return [...values, ...places, ...shows, ...tints, ...callout, ...sort];
 }
 
 /**
@@ -244,7 +248,7 @@ export function stepViews(scene, hunks) {
     const items = ITEMS[scene.type]?.(scene, state, hunks) ?? [];
     const litKeys = withRelated(items, targets[k] ?? []);
     // The dump lists what a step names; in an array or memory it adds the cells and values that light with it.
-    const listed = STATE_TYPES.includes(scene.type) ? litKeys : new Set(targets[k]);
+    const listed = STATE_TYPES.includes(scene.type) && scene.type !== 'chart' ? litKeys : new Set(targets[k]);
     return {
       say: text(step?.say),
       lit: items.filter((it) => listed.has(it.key)).map((it) => it.label),

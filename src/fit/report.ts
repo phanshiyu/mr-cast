@@ -6,6 +6,7 @@ import { calloutFits } from './callout';
 import { fitSceneGraph, graphAreas } from '../utils/graphLayout';
 import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
+import { layoutBarRows, layoutPie } from '../utils/chartShapes';
 import { layoutCompare } from '../utils/compareLayout';
 import { layoutCode } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
@@ -75,8 +76,9 @@ const SCENE_FITS: SceneFits = {
     return scaledTables('table', layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, sceneStates(scene)), box.width, box.height));
   },
   chart: (scene) => {
-    const box = contentBox(Boolean(scene.title));
-    return layoutChart(scene, box.width, box.height);
+    const box = headerBox(scene);
+    if (scene.kind === 'pie' || scene.kind === 'donut') return layoutPie(scene, box.width, box.height);
+    return scene.horizontal ? layoutBarRows(scene, box.width, box.height) : layoutChart(scene, box.width, box.height);
   },
   timeline: (scene) => {
     const box = contentBox(Boolean(scene.title));

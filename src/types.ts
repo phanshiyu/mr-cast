@@ -691,36 +691,67 @@ export type Tone = 'neutral' | 'accent' | 'good' | 'bad' | 'warn';
 export interface ChartSeries {
   /** Shown in the legend, e.g. "before" and "after". */
   name: string;
-  /** One number per label, in the same order. Bars need values of 0 or more. */
+  /** One number per label, in the same order. Bars and slices need values of 0 or more. */
   values: number[];
   /** Defaults: one series is accent; two are neutral then accent (before, after); more cycle through the tones. */
   tone?: Tone;
 }
 
+export interface ChartStep extends Omit<StateStep, 'show' | 'hide'> {
+  /**
+   * New values from this step on, which the bars, points or slices move to as the step starts: a series name to
+   * one number per label, e.g. { "share": [35, 32, 18, 15] }, or one value "series@label" to a number.
+   */
+  set?: Record<string, number[] | number>;
+  /** From this step on, `true` orders the bars or slices by value and `false` puts them back in the order of `labels`; they slide to their new places. */
+  sort?: boolean;
+}
+
 export interface ChartScene extends SceneBase {
   type: 'chart';
-  /** "bar" for categories (p50, p95, p99), "line" for a trend over ordered labels (dates, versions, load). */
-  kind: 'bar' | 'line';
+  /**
+   * "bar" for categories (p50, p95, p99), "line" for a trend over ordered labels (dates, versions, load), "pie" or
+   * "donut" for the shares of one whole, one slice per label from one series. A donut prints the total in its hole.
+   */
+  kind: 'bar' | 'line' | 'pie' | 'donut';
   title?: string;
   /** Unit printed after each value, e.g. "ms", "MB", "%", "req/s". */
   unit?: string;
-  /** X-axis categories, left to right. Up to 12. */
+  /** Categories: the x axis left to right, a horizontal chart's rows top to bottom, or a pie's slices clockwise from the top. Up to 12. */
   labels: string[];
-  /** Up to 4. With exactly two, each label gets a badge with the change from the first to the second, e.g. "−42%". */
+  /** Up to 4; a pie or donut takes exactly one. With exactly two, each label of a bar or line chart gets a badge with the change from the first to the second, e.g. "−42%". */
   series: ChartSeries[];
+  /**
+   * Bars run left to right from their labels, one row per label, with each value printed at the end of its bar and
+   * no axis. Each bar is as long as its value against the largest value on screen at that moment, so the bars fill
+   * the width as values change.
+   */
+  horizontal?: boolean;
+  /** Bar series stack on one bar per label, in the order of `series`, with the label's total above (or after) it. */
+  stacked?: boolean;
+  /**
+   * Bars or slices are ordered by value, largest first: the leftmost bar, the top row, or the first slice clockwise
+   * from the top. A stacked chart orders by each label's total, otherwise by the last series. Steps change it with
+   * `sort`; with steps that `set` values, bars overtake each other as a bar chart race.
+   */
+  sort?: boolean;
   /** `false` hides the change badges of a two-series chart. Default true. */
   badges?: boolean;
   /** Which direction is an improvement, so the change badges read green or red. Without it they stay neutral. */
   better?: 'lower' | 'higher';
-  /** Calls out one point: the value at label `at` of series `series` (a series name, default the last series). */
+  /** Calls out one point of a vertical bar or line chart: the value at label `at` of series `series` (a series name, default the last series). */
   annotation?: { at: string; series?: string; text: string };
+  /** A boxed line in the top right, such as the year a race has reached. Steps replace it with `callout`. */
+  callout?: DisplayText;
   /**
    * Move the viewer's attention as the voice explains: the whole chart draws first, then each step lights
    * what it focuses just before its `say` is spoken while the rest dims; the annotation appears with the
    * first step that focuses its point or label. `narration` is then the intro.
    * A ref is a label, a series "series:after", or one value "series@label", e.g. "after@p99".
+   * A step can also change the chart at its start: `set` values, `sort` the bars, and replace the `callout`; a
+   * step with no `focus` lights what it sets.
    */
-  steps?: FocusStep[];
+  steps?: ChartStep[];
 }
 
 export interface TimelineEvent extends Pick<Marks, 'highlight' | 'badge'> {
