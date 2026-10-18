@@ -256,7 +256,8 @@ export function stillFrame(scene, voiceover, step) {
   if (step === undefined) return settledFrame(sceneDurationInFrames(scene, voiceover));
   const segment = sceneSegments(scene, voiceover)[step + 1];
   if (!segment) throw new Error(`the ${scene.type} scene has no step ${step}`);
-  return segment.from + segment.durationInFrames - 2;
+  // The last step ends as the scene fades out, so its still is the settled frame before the fade.
+  return Math.min(segment.from + segment.durationInFrames - 2, settledFrame(sceneDurationInFrames(scene, voiceover)));
 }
 
 async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, scenes, step }) {

@@ -160,13 +160,14 @@ export function placeText(mark: Box, target: Box, size: Size, obstacles: readonl
 }
 
 /** A hand-drawn arrow from `tail` to just short of `target`, bowed out by at least `minBow` px so a short hop still reads. */
-export function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, pen: number): Sketch {
+export function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, pen: number, share?: number): Sketch {
   const rand = random(seed);
   const tip = edgeToward(target, tail);
   const len = Math.hypot(tip.x - tail.x, tip.y - tail.y) || 1;
   const nx = -(tip.y - tail.y) / len;
   const ny = (tip.x - tail.x) / len;
-  const bow = Math.max(minBow, len * 0.15) * (nx >= 0 ? 1 : -1);
+  // `share` of the length, signed to bend left or right of travel; by default 0.15, bending to the right of a downward run.
+  const bow = share === undefined ? Math.max(minBow, len * 0.15) * (nx >= 0 ? 1 : -1) : Math.sign(share) * Math.max(minBow, len * Math.abs(share));
   const ctrl = { x: (tail.x + tip.x) / 2 + nx * bow, y: (tail.y + tip.y) / 2 + ny * bow };
   return headed(tail, ctrl, tip, 20, rand, pen);
 }
@@ -192,22 +193,39 @@ function headed(a: Pt, ctrl: Pt, b: Pt, n: number, rand: () => number, pen: numb
   return { strokes, bounds: boundsOf(strokes, pen) };
 }
 
-/** The arrow from one box to another: a swing round the outside for close neighbours, else a bowed arrow. */
-export function linkSketch(source: Box | null, tail: Pt, target: Box, seed: number, pen: number): Sketch {
+/** How many of `points` fall inside an obstacle. */
+const hits = (points: readonly Pt[], obstacles: readonly Box[]) => points.filter((p) => obstacles.some((o) => p.x > o.x && p.x < right(o) && p.y > o.y && p.y < bottom(o))).length;
+
+/**
+ * The arrow from one box to another: a swing round the outside for close neighbours, else a bowed arrow that bends
+ * whichever way, and as far, as crosses the fewest `obstacles` on its way.
+ */
+export function linkSketch(source: Box | null, tail: Pt, target: Box, obstacles: readonly Box[], seed: number, pen: number): Sketch {
   const tip = edgeToward(target, tail);
-  if (!source || Math.hypot(tip.x - tail.x, tip.y - tail.y) >= 140) return bowedArrow(tail, target, seed, 34, pen);
-  const vertical = Math.abs(center(source).y - center(target).y) > Math.abs(center(source).x - center(target).x);
-  return vertical
-    ? swing({ x: right(source) + 12, y: center(source).y }, { x: right(target) + 12, y: center(target).y }, 70, seed, pen)
-    : swing({ x: center(source).x, y: source.y - 12 }, { x: center(target).x, y: target.y - 12 }, 60, seed, pen);
+  const len = Math.hypot(tip.x - tail.x, tip.y - tail.y) || 1;
+  if (source && len < 140) {
+    const vertical = Math.abs(center(source).y - center(target).y) > Math.abs(center(source).x - center(target).x);
+    return vertical
+      ? swing({ x: right(source) + 12, y: center(source).y }, { x: right(target) + 12, y: center(target).y }, 70, seed, pen)
+      : swing({ x: center(source).x, y: source.y - 12 }, { x: center(target).x, y: target.y - 12 }, 60, seed, pen);
+  }
+  const others = obstacles.filter((o) => overlapArea(o, grow(target, 2)) < o.width * o.height * 0.5 && (!source || overlapArea(o, grow(source, 2)) < o.width * o.height * 0.5));
+  let best: { sketch: Sketch; score: number } | null = null;
+  for (const bow of [0.15, -0.15, 0.3, -0.3, 0.45, -0.45]) {
+    const sketch = bowedArrow(tail, target, seed, 34, pen, bow);
+    const score = 100 * hits(sketch.strokes[0]!.points, others) + Math.abs(bow) * 40;
+    if (!best || score < best.score) best = { sketch, score };
+  }
+  return best!.sketch;
 }
 
 /** The point of a shaft furthest from the straight line between its ends: where a note along the arrow sits. */
 export function shaftBulge(sketch: Sketch): Pt {
   const pts = sketch.strokes[0]!.points;
   const [a, b] = [pts[0]!, pts[pts.length - 1]!];
-  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-  return pts.reduce((m, p) => (Math.hypot(p.x - mid.x, p.y - mid.y) > Math.hypot(m.x - mid.x, m.y - mid.y) ? p : m), pts[Math.floor(pts.length / 2)]!);
+  const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const off = (p: Pt) => Math.abs((b.x - a.x) * (a.y - p.y) - (a.x - p.x) * (b.y - a.y)) / len;
+  return pts.reduce((m, p) => (off(p) > off(m) ? p : m), pts[Math.floor(pts.length / 2)]!);
 }
 
 /** Text put where `placeText` found no clear spot: off in the nearest free space, with a leader arrow back to the mark. */

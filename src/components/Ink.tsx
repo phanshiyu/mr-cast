@@ -9,7 +9,7 @@ import { plainText } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { cueFrame } from '../../shared/timing.mjs';
 import type { HunkMap, InkItem, Scene } from '../types';
-import { besideBox, BRACE_REACH, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
+import { besideBox, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
 import { center, grow, seedOf, sketchMark, strokeLength, strokePath, union, type Box, type MarkTargets, type Pt, type Sketch, type Stroke } from '../utils/penGeometry';
 import type { SpokenSegment } from '../utils/timing';
 import { clamp, colors } from './theme';
@@ -115,10 +115,16 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
       const target = boxOf(to);
       if (!source || !target) continue;
       const tail = 'point' in from ? center(source) : edgeToward(source, center(target));
-      sketch = linkSketch('point' in from ? null : source, tail, target, seed, PEN);
+      sketch = linkSketch('point' in from ? null : source, tail, target, obstacles, seed, PEN);
       if (block) {
-        const dot = grow({ ...shaftBulge(sketch), width: 0, height: 0 }, 6);
-        box = placeText(dot, dot, blockSize, [...obstacles, source, target], t.area, ['right', 'left', 'above', 'below']).box;
+        // The note sits on the outside of the bend, off the shaft.
+        const bulge = shaftBulge(sketch);
+        const ends = sketch.strokes[0]!.points;
+        const out = { x: bulge.x - (ends[0]!.x + ends[ends.length - 1]!.x) / 2, y: bulge.y - (ends[0]!.y + ends[ends.length - 1]!.y) / 2 };
+        const outward: InkSide = Math.abs(out.y) >= Math.abs(out.x) ? (out.y > 0 ? 'below' : 'above') : out.x > 0 ? 'right' : 'left';
+        const dot = grow({ ...bulge, width: 0, height: 0 }, 8);
+        const sides = [outward, ...(['right', 'left', 'above', 'below'] as const).filter((side) => side !== outward)];
+        box = placeText(dot, dot, blockSize, [...obstacles, source, target], t.area, sides).box;
       }
     } else if (it.verb === 'brace') {
       const span = union(it.targets.map(boxOf));
@@ -126,7 +132,7 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
       const side = item.side ?? (span.width >= span.height ? 'below' : 'right');
       const target = clearOf(span, side, obstacles);
       sketch = braceSketch(target, side, seed, PEN);
-      if (block) box = keepIn(besideBox(target, side, blockSize, BRACE_REACH), t.area);
+      if (block) box = placeText(grow(target, BRACE_REACH - 12), target, blockSize, obstacles, t.area, SIDE_ONLY[side]).box;
     } else if (it.verb === 'write') {
       if (item.at) box = keepIn({ x: t.area.x + item.at[0] * t.area.width, y: t.area.y + item.at[1] * t.area.height, ...blockSize }, t.area);
       else {

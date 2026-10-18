@@ -1,0 +1,140 @@
+{
+  "title": "Ink on the board",
+  "subtitle": "Circles, sums, arrows and braces written on a scene as the voice reaches them",
+  "scenes": [
+    {
+      "type": "array",
+      "chapter": "Two pointers",
+      "title": "Which two add up to 11?",
+      "label": "sorted",
+      "narration": "The list is sorted. We want two numbers that add up to eleven.",
+      "values": [
+        1,
+        3,
+        4,
+        6,
+        8,
+        11
+      ],
+      "pointers": [
+        {
+          "name": "lo",
+          "at": 0,
+          "tone": "good"
+        },
+        {
+          "name": "hi",
+          "at": 5,
+          "tone": "accent"
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            "ptr:lo",
+            "ptr:hi"
+          ],
+          "say": "Start with a pointer at each end. One plus eleven is twelve, which is too big.",
+          "draw": [
+            {
+              "write": "want 11",
+              "at": [
+                0.04,
+                0.06
+              ],
+              "id": "goal"
+            },
+            {
+              "arrow": [
+                0,
+                5
+              ],
+              "note": "1 + 11 = 12",
+              "when": "one plus eleven",
+              "id": "first"
+            }
+          ]
+        },
+        {
+          "move": {
+            "hi": 4
+          },
+          "say": "Eleven only makes every sum bigger, so we cross it out and move the right pointer in.",
+          "draw": [
+            {
+              "cross": 5,
+              "when": "cross it out"
+            }
+          ]
+        },
+        {
+          "focus": [
+            0,
+            4
+          ],
+          "erase": [
+            "first"
+          ],
+          "say": "One plus eight is nine. That is too small, and one only makes sums smaller, so one goes too.",
+          "draw": [
+            {
+              "arrow": [
+                0,
+                4
+              ],
+              "note": "1 + 8 = 9",
+              "when": "one plus eight",
+              "id": "second"
+            },
+            {
+              "cross": 0,
+              "when": "one goes too"
+            }
+          ]
+        },
+        {
+          "focus": [
+            1,
+            4
+          ],
+          "move": {
+            "lo": 1
+          },
+          "erase": [
+            "second"
+          ],
+          "say": "Four boxes are still in play. Three plus eight gives exactly the sum we want, so that is the pair, found in three looks.",
+          "draw": [
+            {
+              "brace": "1-4",
+              "note": "still in play",
+              "when": "still in play"
+            },
+            {
+              "circle": 1,
+              "when": "three plus eight",
+              "id": "three"
+            },
+            {
+              "circle": 4,
+              "id": "eight"
+            },
+            {
+              "write": "3 + 8 = 11",
+              "near": "eight",
+              "tone": "good",
+              "when": "exactly the sum"
+            },
+            {
+              "arrow": [
+                "goal",
+                "three"
+              ],
+              "when": "found"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
