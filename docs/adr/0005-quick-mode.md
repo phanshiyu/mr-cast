@@ -1,6 +1,6 @@
 # 5. Quick mode: no questions, 1 to 3 scenes, a separate quick run
 
-- Status: Accepted; its scene and length warnings superseded by 0019
+- Status: Accepted; its scene and length warnings superseded by 0019; the intent scene superseded by 0026
 - Date: 2026-10-17
 
 ## Context

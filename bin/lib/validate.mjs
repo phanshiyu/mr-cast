@@ -12,9 +12,10 @@ import { checkPenMarks } from './validate-pen-marks.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
-import { normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
+import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { isGapRow } from '../../shared/tests.mjs';
-import { checkArray, checkGraphState, checkMemory } from './validate-state.mjs';
+import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
+import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
@@ -25,10 +26,43 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
+const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
-const INTENT_BULLETS_MAX = 6;
+const TEXT_ITEMS_MAX = 6;
+const TEXT_SIDE_ITEMS_MAX = 4;
+
+/** A text scene: at most one lead, items or sides but not both, and the state its steps walk. */
+function checkText(s, p, errors, warnings) {
+  const strings = (v) => Array.isArray(v) && v.every(isStr);
+  const leadOf = (o, at) => {
+    const leads = TEXT_LEADS.filter((f) => o[f] !== undefined);
+    for (const f of leads) if (!isStr(o[f])) errors.push(`${at}.${f}: must be a non-empty string`);
+    if (leads.length > 1) errors.push(`${at}: sets ${leads.join(' and ')}; a text scene draws one lead, so keep one`);
+    return leads;
+  };
+  const leads = leadOf(s, p);
+  if (!leads.length && !s.sides) errors.push(`${p}: needs a lead (${TEXT_LEADS.join(', ')}) or two sides`);
+  for (const f of ['kicker', 'note']) if (s[f] !== undefined && typeof s[f] !== 'string') errors.push(`${p}.${f}: must be a string`);
+  if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
+  if (s.items !== undefined && !strings(s.items)) errors.push(`${p}.items: must be an array of strings`);
+  else if (s.items?.length > TEXT_ITEMS_MAX) errors.push(`${p}.items: ${s.items.length} items; the scene holds ${TEXT_ITEMS_MAX}`);
+  if (s.sides !== undefined) {
+    if (!Array.isArray(s.sides) || s.sides.length !== 2 || !s.sides.every((x) => x && typeof x === 'object')) errors.push(`${p}.sides: must be two objects, left then right`);
+    else {
+      if (s.items !== undefined) errors.push(`${p}: has items and sides; the sides take the room items would, so put the items in a side`);
+      s.sides.forEach((side, i) => {
+        const at = `${p}.sides[${i}]`;
+        if (!leadOf(side, at).length && side.label === undefined) errors.push(`${at}: needs a lead (${TEXT_LEADS.join(', ')}) or a label`);
+        if (side.items !== undefined && !strings(side.items)) errors.push(`${at}.items: must be an array of strings`);
+        else if (side.items?.length > TEXT_SIDE_ITEMS_MAX) errors.push(`${at}.items: ${side.items.length} items; a side holds ${TEXT_SIDE_ITEMS_MAX}`);
+      });
+    }
+  }
+  if (s.hidden !== undefined && !(Array.isArray(s.hidden) && s.hidden.every((r) => typeof r === 'string' || Number.isInteger(r)))) errors.push(`${p}.hidden: must be an array of refs`);
+  else for (const ref of s.hidden ?? []) if (!resolveRef(s, ref)) errors.push(`${p}.hidden: ${JSON.stringify(ref)} names nothing in the scene`);
+  checkStateSteps(s, p, errors, warnings);
+}
 const MAX_LINE_RANGE = 10000;
 // The step diagram beside the code fits this many labelled nodes above the callout at its smallest font.
 const LABELLED_STEPS_MAX = 6;
@@ -241,9 +275,49 @@ async function checkMermaid(diagrams, errors, warnings) {
  *   of its topics. Errors are what would not render or name something that does not exist; warnings report what
  *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
  */
-export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, plan = null } = {}) {
-  // An older `arch` scene is a `graph`, and an older tests scene a matrix: upgraded here so every check below sees one shape.
-  const sb = upgradeScenes(raw);
+export async function validateStoryboard(raw, hunks, meta = {}) {
+  // An older `arch` scene is a `graph`, an older tests scene a matrix, and an `intent` scene a `text` scene: every
+  // check below sees one shape.
+  const upgraded = upgradeScenes(raw);
+  if (!Array.isArray(upgraded?.scenes) || !upgraded.scenes.some((s) => s?.type === 'intent')) return validateScenes(upgraded, hunks, meta);
+  const intents = new Map();
+  const shapeErrors = [];
+  upgraded.scenes.forEach((s, i) => {
+    if (s?.type === 'intent') intents.set(i, checkIntent(s, `scenes[${i}]`, shapeErrors));
+  });
+  const sb = { ...upgraded, scenes: upgraded.scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) };
+  const result = await validateScenes(sb, hunks, meta);
+  const said = (messages) => messages.flatMap((m) => intentMessage(m, intents));
+  return { ...result, errors: [...shapeErrors, ...said(result.errors)], warnings: said(result.warnings) };
+}
+
+/** An intent scene's own fields; whether they are well formed, so it can be checked as the text scene it draws as. */
+function checkIntent(s, p, errors) {
+  const before = errors.length;
+  if (!isStr(s.summary)) errors.push(`${p}.summary: required string`);
+  if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
+  if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
+  else if (s.bullets.length > TEXT_ITEMS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${TEXT_ITEMS_MAX}, so keep the ones that matter most and say the rest`);
+  return errors.length === before;
+}
+
+const INTENT_WORDS = { items: 'bullets', item: 'bullet', 'an item': 'a bullet', headline: 'summary', kicker: 'title' };
+
+/**
+ * A message about an intent scene, checked as a text scene, in the intent's own words: `items[2]` is `bullets[2]`,
+ * the headline its summary, and the kicker the storyboard's title. When the intent's own fields are malformed, the
+ * messages about them as text are dropped, since its own errors say what to fix.
+ */
+function intentMessage(message, intents) {
+  const m = /^scenes\[(\d+)\]((?: \("(?:[^"\\]|\\.)*"\))?)([^:\s]*)([\s\S]*)$/.exec(message);
+  if (!m || !intents.has(Number(m[1]))) return [message];
+  if (!intents.get(Number(m[1])) && /^(?:$|\.(?:headline|items|risk|kicker)\b)/.test(m[3])) return [];
+  const words = (text) => text.split(/("(?:[^"\\]|\\.)*")/).map((part, i) => (i % 2 ? part : part.replace(/\b(items|an item|item|headline|kicker)\b/g, (w) => INTENT_WORDS[w]))).join('');
+  if (m[3].startsWith('.kicker')) return [`title${words(m[4])}`];
+  return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
+}
+
+async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null } = {}) {
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -263,11 +337,8 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, 
     if (s.chapter !== undefined && typeof s.chapter !== 'string') errors.push(`${p}.chapter: must be a string`);
 
     switch (s.type) {
-      case 'intent':
-        if (!isStr(s.summary)) errors.push(`${p}.summary: required string`);
-        if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
-        if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
-        else if (s.bullets.length > INTENT_BULLETS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${INTENT_BULLETS_MAX}, so keep the ones that matter most and say the rest`);
+      case 'text':
+        checkText(s, p, errors, warnings);
         break;
 
       case 'graph':

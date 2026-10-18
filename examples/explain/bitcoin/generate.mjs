@@ -33,10 +33,18 @@ const sig16 = (s) => `\`${s.slice(0, 16)}…\``;
 const scenes = [];
 
 scenes.push({
+  type: 'text',
+  chapter: 'The question',
+  narration: 'What does it mean to own a bitcoin?',
+  kicker: 'How Bitcoin works',
+  question: 'What does it mean to own a bitcoin?',
+});
+
+scenes.push({
   type: 'table',
   chapter: 'A shared list',
   title: 'Who paid whom',
-  narration: 'What does it mean to own a bitcoin? Start with something simpler. A few friends pay for each other’s dinners, and they keep one shared list of who paid whom.',
+  narration: 'Start with something simpler. A few friends pay for each other’s dinners, and they keep one shared list of who paid whom.',
   columns: ['Who', 'Pays whom', 'Amount'],
   rows: [
     { cells: ['Alice', 'Bob', '$20'] },

@@ -3,16 +3,18 @@
   "subtitle": "A pre-read: the idea first, then the order to read the code in",
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Why this change",
+      "kicker": "Sign out idle sessions",
       "narration": "Today a session lasts thirty days, even on a shared computer nobody has touched in a week. This change also ends a session after thirty minutes without a request.",
-      "summary": "End a session after **30 minutes** without a request, and still after 30 days at most",
+      "headline": "End a session after **30 minutes** without a request, and still after 30 days at most",
       "risk": "medium",
-      "bullets": [
+      "items": [
         "Every request now pushes the idle limit back, which is one more Redis call",
         "Saving a session resets its start time, which may stretch the 30-day cap",
         "A stale cookie is now cleared from the browser"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "timeline",

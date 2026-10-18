@@ -338,10 +338,11 @@ const storyboard = {
       ],
     },
     {
-      type: 'intent',
+      type: 'text',
       chapter: 'Why it is safer',
-      summary: 'The app gets a small key that runs out, never the password',
-      bullets: [
+      kicker: 'How OAuth 2.0 actually works',
+      headline: 'The app gets a small key that runs out, never the password',
+      items: [
         'The password only ever goes to Google’s own page',
         'The scope asks for photos and nothing else',
         'An access token stops working after an hour',

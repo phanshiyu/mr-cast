@@ -3,10 +3,11 @@
   "subtitle": "From a customer's message to a fix and back",
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "The idea",
-      "summary": "A customer's problem travels through three teams before it comes back as an answer.",
-      "bullets": [
+      "kicker": "How a support ticket gets resolved",
+      "headline": "A customer's problem travels through three teams before it comes back as an answer.",
+      "items": [
         "The customer writes in once and never has to repeat the story",
         "A support agent owns the ticket from start to finish",
         "Engineering joins only when the agent finds a real bug",

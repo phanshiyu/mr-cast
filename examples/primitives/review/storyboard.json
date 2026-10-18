@@ -9,16 +9,18 @@
   ],
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Why this change",
+      "kicker": "Cursor pages for the events list",
       "narration": "The events list used page numbers. When new events arrive while someone pages through, every page shifts and they see repeats. This change pages by the time of the last event seen instead.",
-      "summary": "Page the events list by the **last event's time**, not by page number",
+      "headline": "Page the events list by the **last event's time**, not by page number",
       "risk": "medium",
-      "bullets": [
+      "items": [
         "Two events at the same moment, at the edge of a page",
         "Requests that leave out the page size",
         "Clients that expect a plain list back"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "code",

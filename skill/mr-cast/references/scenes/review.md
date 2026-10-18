@@ -11,7 +11,7 @@ A recap of what looks wrong, grouped by severity, each with its file and line.
     { "id": "proxy-ip", "severity": "risk", "file": "src/api/rate-limit.ts", "line": 11, "claim": "`req.ip` is the proxy's address", "evidence": "behind a load balancer every visitor shares one count, so twenty requests in total lock everyone out" }
   ],
   "scenes": [
-    { "type": "intent", "narration": "Each visitor now gets twenty requests a minute.", "summary": "Limit each visitor to 20 requests a minute", "risk": "medium", "bullets": ["Who counts as one visitor"] },
+    { "type": "text", "narration": "Each visitor now gets twenty requests a minute.", "headline": "Limit each visitor to 20 requests a minute", "risk": "medium", "items": ["Who counts as one visitor"] },
     { "type": "code", "hunkId": "h2", "narration": "So how does the limiter tell visitors apart?", "steps": [
       { "lines": 11, "flag": "proxy-ip", "note": "proxy address?", "say": "I think this looks off. The key uses the address the server sees, which behind a load balancer is the balancer's own." },
       { "lines": "12-17", "say": "The count then decides whether the request goes through." }

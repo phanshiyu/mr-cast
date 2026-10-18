@@ -173,8 +173,8 @@ const ITEMS = {
       ...outputLines(e).map((line, l) => ({ key: `ln:${i}/${l}`, label: `entry ${i} output line ${l}: ${text(line)}` })),
     ]);
   },
-  intent(scene) {
-    return list(scene.bullets).map((b, i) => ({ key: `b:${i}`, label: `bullet ${i} "${text(b)}"`, terms: [] }));
+  text(scene) {
+    return list(scene.items).map((b, i) => ({ key: `b:${i}`, label: `item ${i} "${text(b)}"`, terms: [] }));
   },
 };
 
@@ -373,7 +373,7 @@ function namedIn(say, items) {
   return found;
 }
 
-/** The scene types whose words the highlight check reads. Code, terminal and intent have no names it can match. */
+/** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
 export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'tests'];
 
 /**

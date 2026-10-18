@@ -34,11 +34,12 @@
       ]
     },
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "What to remember",
+      "kicker": "Signing in with Google",
       "narration": "Three things make this safe.",
-      "summary": "Your password goes **only to Google**; the shop gets a code it trades for your email",
-      "bullets": [
+      "headline": "Your password goes **only to Google**; the shop gets a code it trades for your email",
+      "items": [
         "The code works once, and only for a few minutes",
         "The random state ties the answer to the browser that asked",
         "The shop swaps the code server to server, so it never passes through scripts on the page"

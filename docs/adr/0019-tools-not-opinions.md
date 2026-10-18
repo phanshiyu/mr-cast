@@ -1,6 +1,6 @@
 # 19. Tools, not opinions
 
-- Status: Accepted
+- Status: Accepted; the 10-test-case warning superseded by 0024; the intent scene superseded by 0026
 - Date: 2026-10-17
 - Supersedes: 0003, 0010, 0014, 0016, 0017; parts of 0005, 0008, 0009, 0015 and 0018 (see Consequences)
 

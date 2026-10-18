@@ -4,6 +4,10 @@ To upgrade, run `mr-cast upgrade` or ask Claude to "upgrade mr-cast". See [Upgra
 
 Storyboards from older versions keep working. Steps from 0.10 that named `messages`, `events`, `entity` and so on, and nodes with `kind` and `modified: true` from 0.10 and earlier, are rewritten where the storyboard enters.
 
+## From 0.26
+
+- The `intent` scene is now drawn as a `text` scene: its `summary` as the `headline`, its `bullets` as the `items`, and the storyboard's title line as the `kicker`. Old storyboards need no change, and `validate` reports them by their own field names. New storyboards write `text`; `mr-cast schema intent` no longer prints a schema.
+
 ## From 0.24
 
 0.25 gives Claude tools and leaves the teaching to Claude. [ADR 19](adr/0019-tools-not-opinions.md) says why.

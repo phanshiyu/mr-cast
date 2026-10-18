@@ -11,7 +11,7 @@ import { layoutCode } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
-import { layoutIntent } from '../utils/intentLayout';
+import { layoutText, textStates } from '../utils/textLayout';
 import { layersScale, layoutLayers } from '../utils/layersLayout';
 import { layoutMemory } from '../utils/memoryLayout';
 import { layoutSequence, sequenceScale } from '../utils/sequenceLayout';
@@ -39,7 +39,7 @@ const scaledTables = (name: string, tables: readonly { scale: number }[]) => tab
 type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap) => unknown };
 
 const SCENE_FITS: SceneFits = {
-  intent: (scene, storyboard) => layoutIntent(scene, storyboard),
+  text: (scene) => textStates(scene).map((state) => layoutText(scene, state.values, state.paths)),
   graph: (scene) => {
     const { full, graphBox, tableW } = graphAreas(scene);
     const states = sceneStates(scene);

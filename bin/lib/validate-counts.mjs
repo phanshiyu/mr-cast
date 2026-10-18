@@ -1,5 +1,5 @@
 // Counts the voice says that the screen contradicts: "seven tests" over a matrix of nine tests, or "three things to
-// check" over two bullets. Only a count right before the noun is read, so "the second of four tests" is never
+// check" over two items. Only a count right before the noun is read, so "the second of four tests" is never
 // guessed at. Of the plain counts in one text only the largest is taken as the total, so "Nine tests cover it; one
 // test checks the reset" is read as nine, and a bare "one" is never checked; "one new test" is. Each warning names both numbers.
 
@@ -14,8 +14,8 @@ const countOf = (word) => (/^\d+$/.test(word) ? Number(word) : NUMBER_WORDS.inde
 
 /** "Seven tests", "two new tests", "one existing test", "nine cases": the count, and which cases it means. */
 const TESTS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(new|added|existing|changed|removed)\\s+)?(?:tests?|test cases?|cases?)\\b`, 'gi');
-/** "three things to check", "two risks": the intent scene's bullets. */
-const BULLETS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(?:main|key|big)\\s+)?(?:things|points|risks|questions|issues)\\b`, 'gi');
+/** "three things to check", "two risks": a text scene's items. */
+const ITEMS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(?:main|key|big)\\s+)?(?:things|points|risks|questions|issues)\\b`, 'gi');
 
 const QUALIFIED = { new: 'added', added: 'added', existing: 'existing', changed: 'changed', removed: 'removed' };
 
@@ -68,20 +68,20 @@ function checkTests(scene, p, warnings) {
   });
 }
 
-function checkIntent(scene, p, warnings) {
+function checkItems(scene, p, warnings) {
   const texts = [['narration', scene.narration ?? ''], ...sceneSteps(scene).map((step, j) => [`steps[${j}].say`, (isStep(step) && step.say) || ''])];
   for (const [where, text] of texts) {
-    for (const { phrase, said } of counts(text, BULLETS_COUNT)) {
-      if (said !== scene.bullets.length) warnings.push(`${p}.${where}: says "${phrase}", but the scene has ${scene.bullets.length} bullets; say the number on screen`);
+    for (const { phrase, said } of counts(text, ITEMS_COUNT)) {
+      if (said !== scene.items.length) warnings.push(`${p}.${where}: says "${phrase}", but the scene has ${scene.items.length} items; say the number on screen`);
     }
   }
 }
 
-/** Warns when the narration states a count of tests or of intent bullets that differs from what the scene shows. */
+/** Warns when the narration states a count of tests or of a text scene's items that differs from what the scene shows. */
 export function checkSpokenCounts(scenes, warnings) {
   scenes.forEach((scene, i) => {
     const p = `scenes[${i}]`;
     if (scene?.type === 'tests' && Array.isArray(scene.tests) && Array.isArray(scene.situations)) checkTests(scene, p, warnings);
-    if (scene?.type === 'intent' && Array.isArray(scene.bullets) && scene.bullets.length) checkIntent(scene, p, warnings);
+    if (scene?.type === 'text' && Array.isArray(scene.items) && scene.items.length) checkItems(scene, p, warnings);
   });
 }

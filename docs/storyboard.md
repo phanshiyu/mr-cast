@@ -8,7 +8,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 
 | Scene | Shows |
 | --- | --- |
-| `intent` | A summary, an optional risk badge, bullets and diff stats. |
+| `text` | Words as the picture: one lead, which is a `headline`, a `question` beside a large question mark, a `number` whose figure counts up, a `term` over a rule and its meaning, or a `quote` after a large quote mark; a `kicker` above it and a `note` under it; then up to 6 `items`, or two `sides` each with its own lead, note and items. `risk` adds a badge and `diffstat` the diff's size. Steps `set` new text for the lead, note or kicker, and `show` or `hide` parts. An `intent` scene from an older storyboard draws as a text scene. |
 | `graph` | Nodes and edges laid out left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons), or flowchart shapes. With `steps`, the voice walks the graph node by node and edge by edge, and steps can show nodes and edges that start `hidden`, `set` a node's badge, and `tint` nodes, edges and groups. A `table` beside the graph changes in the same steps. An edge that skips over nodes in a line takes a lane of its own beside them. |
 | `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. |
 | `flow` | A step-by-step trace with the payload at each step. With a `say` on each step, the current step follows the voice. |
@@ -77,7 +77,7 @@ A diagram's steps each name what to light in `focus`, one ref or a list, and wha
 | `array` | A cell index, an `"a-b"` range of cells, a pointer `"ptr:lo"`, or a range `"range:window"`; with `arrays`, a cell `"left[0]"`, cells `"left[0-1]"`, or a whole array `"array:left"`. A step that changes something and has no `focus` focuses what it changes, except what it only dims. |
 | `memory` | A frame `"frame:main"`, a variable `"main.cart"`, an object id, or a field `"c1.items"`. A step that changes something and has no `focus` focuses what it changes. |
 | `svg` | An element id. A lit group lights everything in it. A step that changes something and has no `focus` focuses what it changes. |
-| `intent` | A bullet index. |
+| `text` | An item index or an `"a-b"` range of them, `"note"`, `"kicker"`, the lead's field name such as `"number"`, or a side `"left"` or `"right"`. A step that changes something and has no `focus` focuses what it changes. |
 | `compare` | A row index, an `"a-b"` range of them, a side `"side:After"` (by title, or `"side:0"`), or one cell `"2@After"` (row, then side). A step shows every row up to the last one it focuses. |
 | `terminal` | An entry index, an `"a-b"` range of them, or one output line `"2:3"` (entry, then line, from 0). A step types every entry up to the last one it focuses, and scrolls back to an earlier one. |
 

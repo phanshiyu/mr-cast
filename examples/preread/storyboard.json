@@ -13,16 +13,18 @@
   },
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Why this change",
+      "kicker": "Rate limiting for the orders API",
       "narration": "A visitor can send hundreds of order requests a minute today, and every one goes through. This change caps each visitor at twenty a minute. It also prices orders with real prices, and announces each new order.",
-      "summary": "Cap each visitor at **20 order requests a minute**, price orders for real, and announce each new order.",
+      "headline": "Cap each visitor at **20 order requests a minute**, price orders for real, and announce each new order.",
       "risk": "medium",
-      "bullets": [
+      "items": [
         "A Redis outage now **fails every order request**, because the limiter has no fallback",
         "`publish` runs after the insert, so a queue outage errors on a saved order",
         "No tests cover the limiter, the pricing lookup, or the new event"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "graph",

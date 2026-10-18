@@ -89,7 +89,21 @@ function flagSteps(steps, storyboard) {
   });
 }
 
-function normalizeScene(scene, explain, storyboard) {
+/** Markup characters written as themselves, so a storyboard title draws as written. */
+const literal = (text) => String(text ?? '').replace(/[\\*`=[\]{}]/g, (c) => `\\${c}`);
+
+/**
+ * An intent scene is a text scene: its summary the headline, its bullets the items, the storyboard's title line
+ * above, and the diff's size at the top right.
+ */
+export function intentAsText(scene, storyboard) {
+  const { type, summary, bullets, ...rest } = scene;
+  const kicker = storyboard.subtitle ? `${literal(storyboard.title)} · [${literal(storyboard.subtitle)}]{neutral}` : literal(storyboard.title);
+  return { ...rest, type: 'text', kicker, headline: summary, items: bullets, diffstat: true };
+}
+
+function normalizeScene(raw, explain, storyboard) {
+  const scene = raw.type === 'intent' ? intentAsText(raw, storyboard) : raw;
   const steps = focusSteps(scene);
   const out = steps === scene.steps ? { ...scene } : { ...scene, steps };
   if (scene.type === 'code' && Array.isArray(out.steps)) out.steps = flagSteps(out.steps, storyboard);

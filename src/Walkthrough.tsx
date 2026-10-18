@@ -10,7 +10,7 @@ import { DataTable } from './components/DataTable';
 import { ErDiagram } from './components/ErDiagram';
 import { FileTree } from './components/FileTree';
 import { GraphDiagram } from './components/GraphDiagram';
-import { IntentCard } from './components/IntentCard';
+import { TextCard } from './components/TextCard';
 import { LayerStack } from './components/LayerStack';
 import { MemoryDiagram } from './components/MemoryDiagram';
 import { SvgDiagram } from './components/SvgDiagram';
@@ -27,11 +27,11 @@ import { SAFE, colors, fonts } from './components/theme';
 import { FitText } from './components/FitText';
 import { sourceFit } from './fit/source';
 import './fonts';
-import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, IntentScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, SvgScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
+import type { ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, TextScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, SequenceScene, StateScene, SvgScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
-  intent: IntentScene;
+  text: TextScene;
   graph: GraphScene;
   code: CodeScene;
   flow: FlowScene;
@@ -55,7 +55,7 @@ interface SceneByType {
 }
 
 const registry: { [K in keyof SceneByType]: React.FC<SceneProps<SceneByType[K]>> } = {
-  intent: IntentCard,
+  text: TextCard,
   graph: GraphDiagram,
   code: CodeDiff,
   flow: DataFlow,

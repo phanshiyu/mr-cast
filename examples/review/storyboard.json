@@ -29,16 +29,18 @@
   ],
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "Overview",
+      "kicker": "Password reset tokens",
       "narration": "Users who forget their password can now reset it. The service mails a one time token that is good for fifteen minutes, and the token lets the user set a new password.",
-      "summary": "Reset a forgotten password with a one-time token",
+      "headline": "Reset a forgotten password with a one-time token",
       "risk": "high",
-      "bullets": [
+      "items": [
         "A used token must stop working",
         "The token is a secret: nothing may log it",
         "A weak new password is refused"
-      ]
+      ],
+      "diffstat": true
     },
     {
       "type": "files",

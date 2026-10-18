@@ -3,11 +3,12 @@
   "subtitle": "Letting git bisect search a hundred commits in seven steps",
   "scenes": [
     {
-      "type": "intent",
+      "type": "text",
       "chapter": "The problem",
+      "kicker": "Finding the commit that broke checkout",
       "narration": "Checkout totals were right last Monday and wrong today, with a hundred and twenty commits in between. Git can search those commits for us, halving the list each time.",
-      "summary": "Find the one commit, out of **120**, that broke the checkout total",
-      "bullets": [
+      "headline": "Find the one commit, out of **120**, that broke the checkout total",
+      "items": [
         "Last Monday's release, v4.2, was fine",
         "Today's main is wrong",
         "One test, `checkout.test.ts`, shows the bug"

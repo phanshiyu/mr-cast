@@ -15,7 +15,7 @@ const STEPS_OF = {
   layers: own,
   files: own,
   tests: own,
-  intent: own,
+  text: own,
   compare: own,
   terminal: own,
   array: own,

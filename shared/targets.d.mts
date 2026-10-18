@@ -15,3 +15,5 @@ export declare function targetSteps(scene: Scene, hunks?: HunkMap): Map<string, 
 export declare function memberKey(kind: 'v' | 'f', owner: string, name: string): string;
 /** A member key's owner, its owner's item key ("fr:name" or "o:id"), and its name. */
 export declare function splitMemberKey(key: string): { owner: string; ownerKey: string; name: string };
+/** The fields that hold a text scene's big line, one of which it sets. */
+export declare const TEXT_LEADS: readonly ['headline', 'question', 'number', 'term', 'quote'];

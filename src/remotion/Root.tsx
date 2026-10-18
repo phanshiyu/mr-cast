@@ -10,11 +10,10 @@ const defaultProps: WalkthroughProps = {
     title: 'mr-cast preview',
     scenes: [
       {
-        type: 'intent',
+        type: 'text',
         narration: 'Render props replace these defaults with a real storyboard and hunks.',
-        summary: 'Pass storyboard and hunks as input props to render a walkthrough.',
-        risk: 'low',
-        bullets: ['storyboard.json drives the scenes', 'hunks.json supplies the code'],
+        headline: 'Pass storyboard and hunks as input props to render a walkthrough.',
+        items: ['storyboard.json drives the scenes', 'hunks.json supplies the code'],
       },
     ],
   },
