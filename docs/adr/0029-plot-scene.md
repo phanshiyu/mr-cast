@@ -1,6 +1,6 @@
 # 29. A plot scene: numeric axes, parts placed by expressions in parameters, and steps that set and trace
 
-- Status: Accepted
+- Status: Accepted; amended by [0033](0033-one-trace-camera-and-ink-across-scenes.md)
 - Date: 2026-10-18
 
 ## Context

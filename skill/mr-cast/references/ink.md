@@ -1,6 +1,6 @@
 # ink
 
-A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `draw` lists what to draw; each item is written on as the voice reaches its cue words and stays until a later step's `erase`.
+A pen that writes and draws on any stepped scene, as on a whiteboard. A step's `draw` lists what to draw; each item is written on as the voice reaches its cue words and stays until a later step's `erase`. An item on refs moves with them when a later step moves them, such as a bar a sort slides.
 
 ## Example
 

@@ -2,9 +2,11 @@
 
 ## 0.28.0
 
+Motion and three new scenes. Any stepped scene can zoom and pan with a step's `camera`, svg shapes move, trace and morph, charts move and sort into races, and code types itself beside its output. A `plot` scene draws numeric axes whose curves reshape, a `map` scene draws countries, places and routes on a real world map, and an `image` scene shows a photo or screenshot. Storyboards written for 0.27 draw as before.
+
 **A camera on every stepped scene.** A step's `camera` zooms and pans to what it names, a ref, a list of refs or `{ "on": refs, "zoom": 3 }`, and `"all"` pulls back to the whole scene (ADR 0028).
 
-- **It works on every scene whose steps take refs, and on code.** The view eases there as the step starts and follows its refs when a later step moves them, such as a pointer sliding along an array. Without `zoom` it fits the refs with a margin, enlarged at most 6 times; `zoom` runs from 1 to 40, and the view never shows past the scene or shrinks it. Ink and pen marks move with the content.
+- **It works on every scene whose steps take refs but the map, and on code.** A map's camera is its `view`, which zooms the geography and keeps labels their size. The view eases there as the step starts and follows its refs when a later step moves them, such as a pointer sliding along an array. Without `zoom` it fits the refs with a margin, enlarged at most 6 times; `zoom` runs from 1 to 40, and the view never shows past the scene or shrinks it. Ink and pen marks move with the content.
 - **`validate`** fails on a ref that names nothing, a zoom outside 1 to 40, an empty list, `"all"` in a list, an unknown field and a camera on a flow scene, and warns when a shot leaves a lit ref out of view. On an svg scene the small-text warning counts the zoom in every state a text is shown in, so detail text can be hidden until the camera zooms in on it. A state step that only moves the camera needs no `focus`.
 - er, files, layers and timeline scenes now give their boxes to `validate`, so the ink check for text written `at` a point covers them too.
 
@@ -47,6 +49,12 @@
 - mr-cast does not make or change pictures; it shows the file given, and whoever makes the video owns the right to use it.
 
 New demos: `examples/primitives/chart-motion`, `examples/primitives/code-typing` and `examples/primitives/image`, whose pictures its own `make-pictures.mjs` draws.
+
+**The new parts work together.**
+
+- **One `trace`.** svg, plot and map steps trace the same way: an entry is an id, or `{ "ref": id, "when": words of the say }` on svg and map; a plot's entries are ids, timed by the step's own `when`. On svg the words are where the line starts drawing, and on a map where the route arrives. `validate` reports a trace the same way on each, and on any other scene says which scenes take it.
+- **The camera on the new scenes.** Plot, chart (every kind) and image steps take `camera`. A `camera` on a map step is refused with a pointer to `view`, and one on a picture with `kenBurns` is refused, since the picture already moves. Chart boxes now reach `validate`, so it warns when a camera crops a lit bar or slice, and the soft-picture warning counts how close a pan, zoom or camera brings the picture.
+- **Ink follows what it marks.** A circle round a bar slides with the bar when a sort moves it, and ink on a plot point, a moved svg shape or a map place moves with it as each later step settles.
 
 ## 0.27.0
 
