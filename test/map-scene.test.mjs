@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { geoArea } from 'd3-geo';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
-import { cameraOf, countriesAt, countryCode, mapLayout, mapProjection, onScreen, partialPath, zoomBetween } from '../shared/map.mjs';
+import { execFileSync } from 'node:child_process';
+import { cameraOf, countriesAt, countryCode, loadWorld, mapLayout, mapProjection, onScreen, partialPath, zoomBetween } from '../shared/map.mjs';
 import { walkStates } from '../shared/state-steps.mjs';
+
+await loadWorld();
 
 const check = async (scene) => validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
 const errorsOf = async (scene) => (await check(scene)).errors;
@@ -126,7 +129,7 @@ const root = new URL('..', import.meta.url).pathname;
 
 test('the map scene draws every country, the traced route and its labels', async () => {
   const bundled = await build({
-    stdin: { contents: `export { MapDiagram } from './src/components/MapDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react'; export { sceneSegments } from './shared/timing.mjs';`, resolveDir: root, loader: 'ts' },
+    stdin: { contents: `export { MapDiagram } from './src/components/MapDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react'; export { sceneSegments } from './shared/timing.mjs'; export { loadWorld } from './shared/map.mjs';`, resolveDir: root, loader: 'ts' },
     bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent', loader: { '.woff2': 'empty' },
     banner: { js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});` },
     plugins: [{ name: 'remotion', setup: (b) => {
@@ -134,7 +137,8 @@ test('the map scene draws every country, the traced route and its labels', async
       b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({ contents: REMOTION, loader: 'js', resolveDir: root }));
     } }],
   });
-  const { MapDiagram, renderToStaticMarkup, createElement, sceneSegments } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+  const { MapDiagram, renderToStaticMarkup, createElement, sceneSegments, loadWorld: loadBundledWorld } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+  await loadBundledWorld();
   const scene = { ...flight, steps: [flight.steps[0]] };
   const html = renderToStaticMarkup(createElement(MapDiagram, { scene, hunks: {}, durationInFrames: 300, segments: sceneSegments(scene) }));
   // Every 1:110m country, the sphere, and the route.
@@ -142,4 +146,14 @@ test('the map scene draws every country, the traced route and its labels', async
   assert.match(html, />Singapore<\/text>/);
   assert.match(html, />London<\/text>/);
   assert.doesNotMatch(html, /NaN/);
+});
+
+test('the outline is its own chunk, read only by loadWorld, so a player without a map scene never parses it', async () => {
+  const bundled = await build({ entryPoints: [`${root}shared/state-steps.mjs`], bundle: true, splitting: true, write: false, format: 'esm', outdir: '/out', platform: 'neutral', mainFields: ['module', 'main'], logLevel: 'silent' });
+  const [entry, ...chunks] = bundled.outputFiles;
+  assert.match(entry.path, /state-steps\.js$/);
+  assert.doesNotMatch(entry.text, /"Kosovo"/);
+  assert.equal(chunks.filter((c) => c.text.includes('"Kosovo"')).length, 2);
+  const before = execFileSync(process.execPath, ['--input-type=module', '-e', `const m = await import(${JSON.stringify(`${root}shared/map.mjs`)}); try { m.countryCode('Canada'); } catch (e) { console.log(e.message); } await m.loadWorld(); console.log(m.countryCode('Canada'));`], { encoding: 'utf8' });
+  assert.equal(before, 'the world outline is not loaded; await loadWorld() before reading a map scene\nCAN\n');
 });

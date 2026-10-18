@@ -1,4 +1,6 @@
 import { sceneFiles } from '../../shared/files.mjs';
+// validate bundles this file with its own copy of shared/map.mjs, whose outline it loads through these.
+export { loadWorld, needsWorld } from '../../shared/map.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, ImageManifest, Scene, Storyboard } from '../types';
 import { cameraFor, layoutImage, viewAt } from '../utils/imageLayout';

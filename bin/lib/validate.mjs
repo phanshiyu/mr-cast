@@ -20,6 +20,7 @@ import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
 import { checkPlot } from './validate-plot.mjs';
 import { checkMap } from './validate-map.mjs';
+import { loadWorld, needsWorld } from '../../shared/map.mjs';
 import { checkImage } from './validate-image.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
@@ -289,6 +290,7 @@ async function checkMermaid(diagrams, errors, warnings) {
  *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
  */
 export async function validateStoryboard(raw, hunks, meta = {}) {
+  if (needsWorld(raw)) await loadWorld();
   // An older `arch` scene is a `graph`, an older tests scene a matrix, and an `intent` scene a `text` scene: every
   // check below sees one shape, and messages about the older shapes are put back in their own field names.
   const upgraded = upgradeScenes(raw);

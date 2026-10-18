@@ -2,6 +2,7 @@ import { Player, type PlayerRef } from '@remotion/player';
 import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, ChartSpline, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, Earth, FlaskConical, Image as ImageIcon, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, PenTool, Play, Sheet, Table2, Type, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
+import { loadWorld, needsWorld } from '../shared/map.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { checkPlan } from '../shared/plan.mjs';
@@ -102,6 +103,7 @@ async function loadAll(): Promise<LoadState> {
       fetchJson<HunkMap>('hunks.json'),
       fetchJson<Voiceover>('voiceover.json').catch(() => null),
       fetchOptional<ImageManifest>('images.json').catch(() => null),
+      needsWorld(storyboard) ? loadWorld() : null,
     ]);
     return {
       status: 'ready',

@@ -44,7 +44,8 @@ export async function checkFit(storyboard, hunks, errors, warnings, images = {})
   let stages;
   let upscaled;
   try {
-    const { fitReport, imageScales, inkStages } = await reportModule();
+    const { fitReport, imageScales, inkStages, loadWorld, needsWorld } = await reportModule();
+    if (needsWorld(storyboard)) await loadWorld();
     reports = fitReport(storyboard, hunks, images);
     stages = inkStages(storyboard, hunks, images);
     upscaled = imageScales(storyboard, images);

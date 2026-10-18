@@ -26,6 +26,7 @@ import { sceneSteps } from '../shared/steps.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { IMAGES_FILE, resolveImages } from './lib/images.mjs';
 import { formatSteps } from './lib/highlight.mjs';
+import { loadWorld, needsWorld } from '../shared/map.mjs';
 import { formatSchema } from './lib/schema.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
@@ -772,6 +773,7 @@ async function steps(argv) {
     if (!Number.isInteger(n) || n < 0 || n >= storyboard.scenes.length) throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${storyboard.scenes.length - 1}`);
     return n;
   });
+  if (needsWorld(storyboard)) await loadWorld();
   console.log(formatSteps(storyboard, hunks, scenes) || 'no scene other than code has steps');
 }
 

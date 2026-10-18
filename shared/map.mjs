@@ -3,8 +3,6 @@
 // which checks them. A storyboard writes points as [lat, lng]; everything here keeps GeoJSON's [lng, lat].
 
 import { geoArea, geoBounds, geoCentroid, geoDistance, geoEqualEarth, geoInterpolate, geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
-import coarse from './world/ne-110m.mjs';
-import fine from './world/ne-50m.mjs';
 import { plainText } from './markup.mjs';
 import { tintEntries } from './storyboard-json.mjs';
 import { measure } from './textfit.mjs';
@@ -50,11 +48,27 @@ function decode(data) {
   };
   return new Map(data.countries.map(([code, names, label, polygons]) => [code, { code, names, label, geometry: { type: 'MultiPolygon', coordinates: polygons.map((p) => p.map(ring)) } }]));
 }
+/** The bundled outline once loadWorld has read it: { coarse, fine }, the 1:110m and 1:50m countries. */
+let world = null;
+/**
+ * Reads the bundled outline, once. Every function here that names or draws a country needs it, so a caller with a map
+ * scene awaits this first. It is a dynamic import, so the player's main chunk carries no outline and a storyboard
+ * without a map never parses it.
+ */
+export async function loadWorld() {
+  if (world) return;
+  const [coarse, fine] = await Promise.all([import('./world/ne-110m.mjs'), import('./world/ne-50m.mjs')]);
+  world = { coarse: coarse.default, fine: fine.default };
+}
+export const worldLoaded = () => world !== null;
+/** Whether a storyboard has a map scene, so its reader must loadWorld first. */
+export const needsWorld = (storyboard) => list(storyboard?.scenes).some((s) => s?.type === 'map');
 const decoded = {};
 /** The countries at a detail, "110m" or "50m", by code. */
-export const countriesAt = (detail) => (decoded[detail] ??= decode(detail === '110m' ? coarse : fine));
-/** The outline's source, for a reference or a credit. */
-export const WORLD_SOURCE = `Natural Earth ${fine.version}, public domain`;
+export function countriesAt(detail) {
+  if (!world) throw new Error('the world outline is not loaded; await loadWorld() before reading a map scene');
+  return (decoded[detail] ??= decode(detail === '110m' ? world.coarse : world.fine));
+}
 
 /** The code a ref names a country by: its code ("CAN") or one of its names, any case ("Canada"); null otherwise. */
 export function countryCode(ref) {

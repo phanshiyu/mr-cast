@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
-import { AbsoluteFill, Html5Audio, Sequence } from 'remotion';
+import { useEffect, useState, type ReactNode } from 'react';
+import { AbsoluteFill, Html5Audio, Sequence, useDelayRender } from 'remotion';
+import { loadWorld, needsWorld, worldLoaded } from '../shared/map.mjs';
 import { ArrayDiagram } from './components/ArrayDiagram';
 import { Captions } from './components/Captions';
 import { Chart } from './components/Chart';
@@ -114,7 +115,36 @@ const Backdrop: React.FC = () => (
   />
 );
 
-export const Walkthrough: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl, images, imageBaseUrl }) => (
+/**
+ * Whether the world outline a map scene draws is loaded. The player page loads it before it shows a storyboard with a
+ * map; a render loads it here, holding the frame until it is in.
+ */
+function useWorld(storyboard: WalkthroughProps['storyboard']): boolean {
+  const [, loaded] = useState(0);
+  const { delayRender, continueRender, cancelRender } = useDelayRender();
+  const ready = !needsWorld(storyboard) || worldLoaded();
+  useEffect(() => {
+    if (ready) return;
+    let live = true;
+    const handle = delayRender('Loading the world outline for a map scene');
+    loadWorld().then(
+      () => {
+        if (live) loaded((n) => n + 1);
+      },
+      (err: unknown) => cancelRender(err),
+    );
+    // Runs once the scenes have rendered with the outline, or when the walkthrough unmounts first.
+    return () => {
+      live = false;
+      continueRender(handle);
+    };
+  }, [ready, delayRender, continueRender, cancelRender]);
+  return ready;
+}
+
+export const Walkthrough: React.FC<WalkthroughProps> = (props) => (useWorld(props.storyboard) ? <Scenes {...props} /> : null);
+
+const Scenes: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl, images, imageBaseUrl }) => (
   <ImagesContext.Provider value={{ images: images ?? {}, baseUrl: imageBaseUrl }}>
   <AbsoluteFill style={{ backgroundColor: colors.bg, fontFamily: fonts.sans }}>
     <Backdrop />
