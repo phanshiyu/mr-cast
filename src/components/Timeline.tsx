@@ -4,12 +4,12 @@ import { stepTargets } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { TimelineScene } from '../types';
 import { formatValue } from '../utils/chartLayout';
-import { SPAN_H, STAMP_FONT, layoutTimeline, timelineScale, type PlacedEvent, type PlacedSpan, type TimelineLayout, timelineBoxes } from '../utils/timelineLayout';
-import { staged } from '../utils/penGeometry';
+import { SPAN_H, STAMP_FONT, layoutTimeline, timelineScale, type PlacedEvent, type PlacedSpan, type TimelineLayout } from '../utils/timelineLayout';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, revealStarts, stepSpring, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { SceneShell } from './SceneShell';
+import { timelineTargets } from '../utils/sceneTargets';
 import type { SceneProps } from './sceneProps';
 import { measure } from '../../shared/textfit.mjs';
 import { FitText } from './FitText';
@@ -229,7 +229,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
   const playhead = useMemo(() => buildPlayhead(scene, layout, segments), [scene, layout, segments]);
   const scale = timelineScale(layout, box);
   const stage = { left: (box.width - layout.width * scale) / 2, top: Math.max(0, box.height - layout.height * scale) * 0.4, scale };
-  const marks = useMemo(() => staged(timelineBoxes(layout), stage, box), [layout, stage.left, stage.top, scale, box.width, box.height]);
+  const marks = useMemo(() => timelineTargets(scene), [scene]);
   const playX = playhead.playX(frame);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const axisIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
@@ -239,7 +239,7 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
   const right = ticks[ticks.length - 1]!.x;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }}>
       <div
         style={{
           position: 'absolute',

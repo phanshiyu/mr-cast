@@ -2,7 +2,10 @@
 // scene draws from), the ids its fields name, and the size its text lands at on screen. Each pushes
 // human/LLM-readable strings onto `errors` and `warnings`.
 
+import { cameraShots, frameShot, viewRect } from '../../shared/camera.mjs';
+import { walkStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
+import { stateMotion } from '../../shared/svg-motion.mjs';
 import { READABLE_PX } from '../../shared/textfit.mjs';
 import { tenths } from './validate-fit.mjs';
 import { checkStateSteps } from './validate-state.mjs';
@@ -36,14 +39,42 @@ export function checkSvg(s, p, errors, warnings) {
   }
   if (errors.length > before) return;
   checkStateSteps(s, p, errors, warnings);
+  if (errors.length > before) return;
 
-  const { scale } = svgStage(viewBox, stageOf(s));
   const [vx, vy, vw, vh] = viewBox;
-  for (const t of svgGeometry(root).texts) {
+  const texts = svgGeometry(root).texts;
+  for (const [n, { at, px, scale }] of [...smallestTexts(s, root, ids, viewBox)].sort((a, b) => a[0] - b[0])) {
+    const t = texts[n];
     const what = `${p}.svg: text "${t.text.slice(0, 40)}"${t.id ? ` (id "${t.id}")` : ''}`;
-    const px = t.size * scale;
-    if (px < READABLE_PX) warnings.push(`${what} draws about ${tenths(px)} px tall on screen, too small to read; make its font-size at least ${Math.ceil(READABLE_PX / scale)} in viewBox units, or shrink the viewBox`);
+    if (px < READABLE_PX) warnings.push(`${what} draws about ${tenths(px)} px tall on screen${at === null ? '' : at < 0 ? ' during the narration' : ` at step ${at}`}, too small to read; make its font-size at least ${Math.ceil(READABLE_PX / scale)} in viewBox units, or shrink the viewBox${at === null ? '' : ", or hide it until a step's camera zooms in on it"}`);
     const { x, y, width, height } = t.box;
     if (x < vx - 1 || y < vy - 1 || x + width > vx + vw + 1 || y + height > vy + vh + 1) warnings.push(`${what} runs past the viewBox (${vx} ${vy} ${vw} ${vh}), so part of it is cut off; move it in, or widen the viewBox`);
   }
+}
+
+const meets = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/**
+ * Each text's smallest size on screen, in document order: at every state it is drawn in, shown and in the camera's
+ * view, its size with the moves of that state, times the drawing's scale and the camera's zoom. `at` is the step
+ * (-1 for the narration) where it is smallest, or null when no step has a camera, so the size is the drawing's own.
+ * `scale` is the stage scale times the zoom there. A text that is never drawn is not measured.
+ */
+function smallestTexts(s, root, ids, viewBox) {
+  const area = stageOf(s);
+  const stage = svgStage(viewBox, area);
+  const { shots, moves } = cameraShots(s);
+  const onStage = (b) => ({ x: stage.left + b.x * stage.scale, y: stage.top + b.y * stage.scale, width: b.width * stage.scale, height: b.height * stage.scale });
+  const out = new Map();
+  walkStates(s).states.forEach((state, n) => {
+    const { boxes, texts } = svgGeometry(root, stateMotion(ids, state));
+    const view = frameShot(n > 0 && moves ? shots[n] : null, (key) => (boxes.has(key.slice(2)) ? onStage(boxes.get(key.slice(2))) : null), area);
+    const shown = viewRect(view, area);
+    texts.forEach((t, i) => {
+      if (t.owners.some((id) => state.hidden[`s:${id}`]) || !meets(onStage(t.box), shown)) return;
+      const px = t.size * stage.scale * view.zoom;
+      if (!out.has(i) || px < out.get(i).px) out.set(i, { at: moves ? n - 1 : null, px, scale: stage.scale * view.zoom });
+    });
+  });
+  return out;
 }

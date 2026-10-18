@@ -174,7 +174,7 @@ export const Terminal: React.FC<SceneProps<TerminalScene>> = ({ scene, hunks, du
   const mask = `linear-gradient(to bottom, ${scroll > 1 ? 'transparent' : '#000'} 0px, #000 ${scroll > 1 ? FADE : 0}px, #000 ${more ? layout.viewH - FADE : layout.viewH}px, ${more ? 'transparent' : '#000'} ${layout.viewH}px)`;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: markTargets }}>
       <div
         style={{
           position: 'absolute',

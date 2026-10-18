@@ -26,7 +26,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `layers` | Stacked bands in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply. `skip` answers early at one stop, turns the token back there, and fades the stops it never reached. |
 | `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them; with `arrays`, several rows that share one cell size, each with its label at its left; with `cells: "hex"`, a hex grid. Each step can `set` cell values, `move` a pointer or range, `show` or `hide` one, and `tint` cells. A changed value slides out and the new one slides in, briefly lit. |
 | `memory` | Call frames with their variables on the left and objects with their fields on the right. Variables and fields keep the order written. A value `{ "ref": "c1" }` draws an arrow to that object, so aliasing shows as two arrows into one object; an arrow that is not into the next column runs through the gaps and under the cards, never behind one. Each step can `set` a variable or field, which re-routes its arrow, and `show` or `hide` a frame or object. |
-| `svg` | A drawing in SVG markup: a map, a tiling, a geometric figure, points on a plane. Steps light, `tint`, `show`, `hide` and rewrite its elements by id. `validate` cuts nothing silently: it fails on anything that is not a drawing element or attribute. |
+| `svg` | A drawing in SVG markup: a map, a tiling, a geometric figure, points on a plane. Steps light, `tint`, `show`, `hide` and rewrite its elements by id, and [move, trace and morph](#motion-on-a-drawing) them. `validate` cuts nothing silently: it fails on anything that is not a drawing element or attribute. |
 | `review` | In [review mode](#review-findings), every finding, worst first, with its severity, file, line and claim, under "Claude's review". |
 | `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. |
 
@@ -137,6 +137,36 @@ Each item goes where it covers least of what the scene shows from its step on, i
 A step's `mark` and `note` are the shorthand for one item on the first focus ref, drawn in the half second before the words and cleared at the next step. They draw as before. Ink is not lit: the highlight check reads only `focus` and what a step changes.
 
 `validate` fails on an item with no verb or two, an unknown field, a ref that names nothing, an id not on the board at that step (an `arrow` from an item drawn later, an `erase` of an id never drawn), an id that is also a ref, a `when` the step's `say` does not contain, and a note or a line of text over 40 characters. It warns when text written `at` a point lands on what a graph, table, array, memory, svg, state or tests scene draws while the text is up, and when ink text has markup, which is dropped. `mr-cast still <scene> --step <k>` renders the board as step k ends. The full reference is [skill/mr-cast/references/ink.md](../skill/mr-cast/references/ink.md), and [examples/primitives/ink](../examples/primitives/ink/storyboard.json) is a short demo.
+
+## Camera
+
+A step's `camera` zooms and pans the scene to what it names, on every scene whose steps take refs, and on code. It stays until a later step's camera; `"all"` pulls back to the whole scene, which is also what the narration shows.
+
+```json
+{ "camera": { "on": "ribosome", "zoom": 4 }, "focus": "ribosome", "say": "Zoom in on one ribosome." }
+```
+
+The value is `"all"`, a ref, a list of refs, or `{ "on": refs, "zoom": z }`. Without `zoom` the camera fits the refs with a margin, enlarged at most 6 times; `zoom` runs from 1, the whole scene's scale, to 40. The view keeps inside the scene and never shrinks it. It eases there as the step starts, with the step's other changes, and grows or shrinks about one still point, as a camera moving straight in does. When a later step moves its refs, such as a pointer that slides, the camera follows. Ink and pen marks move with the content, and the view fades out over 32 px at its edges. A state step (`array`, `memory`, `graph`, `table`, `svg`, `text`) that only moves the camera needs no `focus`.
+
+`validate` fails on a ref that names nothing, a zoom outside 1 to 40, an empty list, `"all"` inside a list, an unknown field, and a camera on a `flow` scene. It warns when a shot leaves a lit ref out of view on a graph, table, array, memory, svg, state, tests, er, files, layers or timeline scene. On an svg scene the small-text warning measures each text at the zoom of every state it is shown in, so detail text too small for the whole scene passes when it shows only while the camera is zoomed in on it. The full reference is [skill/mr-cast/references/camera.md](../skill/mr-cast/references/camera.md), and [examples/primitives/camera](../examples/primitives/camera/storyboard.json) is a short demo.
+
+## Motion on a drawing
+
+An `svg` step can move its elements, draw lines on, and change one shape into another:
+
+```json
+{ "move": { "t1": "translate(0 300)", "needle": "rotate(120 1080 420)" },
+  "trace": [{ "id": "route", "when": "around the coast" }],
+  "morph": { "blob": "square" }, "say": "..." }
+```
+
+| Field | Does |
+| --- | --- |
+| `move` | Gives elements a transform of `translate`, `rotate` and `scale`, outside their own, tweened from the last one. `""` puts an element back. Moves with the same functions tween argument by argument, so a rotation turns about its pivot. |
+| `trace` | Draws a path, line, polyline, polygon, rect, circle, ellipse or group of them on from its start, at about 40 px a frame, from its `when` cue or as the step settles. A hidden element is shown. |
+| `morph` | Gives a path the shape of another path, usually hidden, tweened point for point; naming the path itself restores it. Any two paths with the same number of outlines morph: each is turned into cubic curves, and the shorter list is split until they pair. |
+
+`class="flow"` on a line or group gives it marching dashes over a faint copy of itself, as a graph edge has. A step's `focus` defaults to what it moves, traces or morphs. `validate` fails on a move of the root `<svg>` or with another function, a trace of something with no line, a `when` the step does not say, a morph to or from anything but a path or between paths with a different number of outlines, and trace or morph on another scene type. The full reference is [skill/mr-cast/references/motion.md](../skill/mr-cast/references/motion.md), and [examples/primitives/motion](../examples/primitives/motion/storyboard.json) proves a² + b² = c² by sliding four triangles.
 
 ## Text on screen
 

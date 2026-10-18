@@ -223,7 +223,20 @@ function changesOf(scene, before, after) {
   });
   const tints = [...new Set([...keysOf(before.tints), ...keysOf(after.tints)])].flatMap((key) => (before.tints?.[key] === after.tints?.[key] ? [] : [`tints ${key.startsWith('c:') ? (({ name, index }) => cellName(name, index))(splitCellKey(key)) : key.replace(/^\w+:/, '')} ${after.tints?.[key] ?? 'clear'}`]));
   const callout = before.callout === after.callout ? [] : [`callout ${after.callout ? JSON.stringify(plainText(after.callout)) : 'off'}`];
-  return [...values, ...places, ...shows, ...tints, ...callout];
+  const moves = [...new Set([...keysOf(before.transforms), ...keysOf(after.transforms)])].flatMap((key) => ((before.transforms?.[key] ?? '') === (after.transforms?.[key] ?? '') ? [] : [`moves ${key.slice(2)} ${after.transforms?.[key] ? JSON.stringify(after.transforms[key]) : 'back'}`]));
+  const traces = Object.entries(after.traces ?? {}).map(([key, cue]) => `traces ${key.slice(2)}${cue ? ` from "${cue}"` : ''}`);
+  const morphs = [...new Set([...keysOf(before.shapes), ...keysOf(after.shapes)])].flatMap((key) => (before.shapes?.[key] === after.shapes?.[key] ? [] : [`morphs ${key.slice(2)} into ${after.shapes?.[key] ?? 'its own shape'}`]));
+  return [...values, ...places, ...shows, ...tints, ...callout, ...moves, ...traces, ...morphs];
+}
+
+/** A step's camera as words: "camera on ribosome", "camera on a, b at 3x", "camera on the whole scene". */
+function cameraOf(step) {
+  const value = step?.camera;
+  if (value === undefined) return [];
+  if (value === 'all') return ['camera on the whole scene'];
+  const on = value && typeof value === 'object' && !Array.isArray(value) ? value.on : value;
+  const zoom = value && typeof value === 'object' && !Array.isArray(value) && value.zoom !== undefined ? ` at ${value.zoom}x` : '';
+  return [`camera on ${(Array.isArray(on) ? on : [on]).join(', ')}${zoom}`];
 }
 
 /**
@@ -248,7 +261,7 @@ export function stepViews(scene, hunks) {
     return {
       say: text(step?.say),
       lit: items.filter((it) => listed.has(it.key)).map((it) => it.label),
-      changes: states.length ? changesOf(scene, states[k], state) : [],
+      changes: [...(states.length ? changesOf(scene, states[k], state) : []), ...cameraOf(step)],
       items,
       litKeys,
     };

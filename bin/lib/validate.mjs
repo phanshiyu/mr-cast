@@ -9,6 +9,7 @@ import { checkHighlight } from './highlight.mjs';
 import { checkLayers } from './validate-layers.mjs';
 import { checkMarks } from './validate-marks.mjs';
 import { checkInk, checkPenMarks } from './validate-pen-marks.mjs';
+import { checkCamera } from './validate-camera.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
@@ -527,6 +528,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
     if (errors.length === errorsBefore) checkHighlight(s, p, hunks ?? {}, warnings);
     checkPenMarks(s, p, hunks ?? {}, errors, warnings);
     checkInk(s, p, hunks ?? {}, errors);
+    checkCamera(s, p, hunks ?? {}, errors);
     checkSpokenMarkup(s, p, warnings);
   });
 

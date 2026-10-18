@@ -10,12 +10,18 @@ export interface SceneState {
   hidden: Record<string, true>;
   tints: Record<string, Exclude<Tint, 'clear'>>;
   callout: string;
+  /** svg: each moved element's key and the transform its step's `move` gives it, outside its own. */
+  transforms: Record<string, string>;
+  /** svg: each morphed path's key and the id of the path whose shape it has. */
+  shapes: Record<string, string>;
+  /** svg: what this step traces, by key, with its `when` cue (null to start as the step settles). Empty on every other state. */
+  traces: Record<string, string | null>;
 }
 
 export interface StateProblem {
   /** The step's index, or -1 for the initial state. */
   step: number;
-  field: 'set' | 'move' | 'show' | 'hide' | 'objects' | 'tint' | 'callout';
+  field: string;
   ref: string | number;
   message: string;
   names: string[];
@@ -30,3 +36,5 @@ export declare function walkStates(scene: Scene): { states: SceneState[]; proble
 export declare function sceneStates(scene: Scene): SceneState[];
 export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | undefined): boolean;
 export declare function changedRefs(scene: Scene, step: ArrayStep | MemoryStep | GraphStep): string[];
+export declare const TRACEABLE: readonly string[];
+export declare function traceEntry(entry: unknown): { id: unknown; when: unknown };

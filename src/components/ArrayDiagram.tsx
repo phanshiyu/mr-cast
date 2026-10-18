@@ -147,7 +147,7 @@ export const ArrayDiagram: React.FC<SceneProps<ArrayScene>> = ({ scene, hunks, d
   const rightEdge = (box.width + layout.width) / 2;
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<HeaderCallout scene={scene} s={s} />}>
       <div style={{ position: 'absolute', left: stage.left, top: stage.top, width: layout.width, height: layout.height }}>
         {layout.rows.map((row) => {
           const shown = rowShown.get(row.name)!;

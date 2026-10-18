@@ -101,8 +101,8 @@ const REFERENCES = new Set(['clip-path', 'marker-start', 'marker-mid', 'marker-e
 /** A colour: hex, a keyword such as `none`, `currentColor` or `white`, rgb() or hsl() of numbers, or a palette `var(--name)`. */
 const COLOUR = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|[a-z]+|(?:rgba?|hsla?)\(\s*[-+\d.%\s,/]*\)|var\(\s*--[\w-]+\s*\))$/i;
 const LOCAL_REF = /^url\(\s*(['"]?)#([\w.:-]+)\1\s*\)$/i;
-/** The classes the scene reads; the player's own classes never reach a drawing. */
-const TONE_CLASS = new RegExp(`^(?:tone|fill|stroke)-(?:${SVG_TONES.join('|')})$`);
+/** The classes the scene reads, tones and `flow`; the player's own classes never reach a drawing. */
+const TONE_CLASS = new RegExp(`^(?:(?:tone|fill|stroke)-(?:${SVG_TONES.join('|')})|flow)$`);
 /** Attributes the scene sets itself on the root `<svg>`, where the drawing is placed on its stage. */
 const PLACED = new Set(['transform', 'x', 'y']);
 
@@ -165,7 +165,7 @@ export function readSvg(markup) {
       else if (name === 'class') {
         const [kept, cut] = [[], []];
         for (const c of value.split(/\s+/).filter(Boolean)) (TONE_CLASS.test(c) ? kept : cut).push(c);
-        if (cut.length) problems.push(`${where} class: ${cut.map((c) => `"${c}"`).join(', ')} ${cut.length === 1 ? 'is no tone class, so it is' : 'are no tone classes, so they are'} cut; a class is tone-, fill- or stroke- and one of ${SVG_TONES.join(', ')}, such as tone-good`);
+        if (cut.length) problems.push(`${where} class: ${cut.map((c) => `"${c}"`).join(', ')} ${cut.length === 1 ? 'is no tone class, so it is' : 'are no tone classes, so they are'} cut; a class is tone-, fill- or stroke- and one of ${SVG_TONES.join(', ')}, such as tone-good, or flow for marching dashes along a line`);
         if (kept.length) attrs.class = kept.join(' ');
       } else if (name === 'href' || name === 'xlink:href') {
         if (!/^#[\w.:-]+$/.test(value)) problems.push(`${where} ${name}: "${value}" points outside the drawing, so it is cut; point at an element's id, "#arrow"`);
@@ -313,16 +313,22 @@ function textBox(node, font) {
 }
 
 /**
- * Every element's box in viewBox units, by id, and every text element with its box and its size on screen at
- * `scale`: what the scene's pen marks circle and what `validate` measures.
- * @returns {{ boxes: Map<string, {x:number,y:number,width:number,height:number}>, texts: { id?: string, text: string, size: number, box: {x:number,y:number,width:number,height:number} }[] }}
+ * Every element's box in viewBox units, by id, and every text element with its box, its size in viewBox units and
+ * the ids of it and the groups it is in: what the scene's pen marks circle and what `validate` measures. `motion`
+ * places the drawing as a step leaves it: a moved element's transform (outside its own) and a morphed path's `d`, by id.
+ * @returns {{ boxes: Map<string, {x:number,y:number,width:number,height:number}>, texts: { id?: string, text: string, size: number, box: {x:number,y:number,width:number,height:number}, owners: string[] }[] }}
  */
-export function svgGeometry(root) {
+export function svgGeometry(root, motion = {}) {
   const boxes = new Map();
   const texts = [];
-  const visit = (node, m, font) => {
+  const moves = motion.transforms ?? {};
+  const shapes = motion.shapes ?? {};
+  const visit = (node, m, font, owners) => {
     if (!node?.tag || ['defs', 'marker', 'clipPath', 'linearGradient', 'radialGradient', 'title', 'desc'].includes(node.tag)) return [];
-    const mm = multiply(m, transformOf(node.attrs.transform));
+    const id = node.attrs.id;
+    const moved = id !== undefined && moves[id] ? `${moves[id]} ` : '';
+    const mm = multiply(m, transformOf(`${moved}${node.attrs.transform ?? ''}`));
+    const mine = id !== undefined ? [...owners, id] : owners;
     const f = fontOf(node, font);
     const a = node.attrs;
     let local = [];
@@ -331,7 +337,7 @@ export function svgGeometry(root) {
     else if (node.tag === 'ellipse') local = [[num(a.cx) - num(a.rx), num(a.cy) - num(a.ry)], [num(a.cx) + num(a.rx), num(a.cy) + num(a.ry)]];
     else if (node.tag === 'line') local = [[num(a.x1), num(a.y1)], [num(a.x2), num(a.y2)]];
     else if (node.tag === 'polyline' || node.tag === 'polygon') local = pairs(a.points);
-    else if (node.tag === 'path') local = pathPoints(a.d);
+    else if (node.tag === 'path') local = pathPoints((id !== undefined && shapes[id]) || a.d);
     else if (node.tag === 'text') local = textBox(node, f);
     let pts = [];
     if (local.length) {
@@ -341,13 +347,13 @@ export function svgGeometry(root) {
       const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
       pts = [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map((p) => apply(mm, p));
     }
-    if (node.tag !== 'text') for (const child of node.children) pts.push(...visit(child, mm, f));
+    if (node.tag !== 'text') for (const child of node.children) pts.push(...visit(child, mm, f, mine));
     const box = boxOf(pts);
-    if (node.tag === 'text' && box) texts.push({ id: a.id, text: textOf(node), size: f.size * Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])), box });
+    if (node.tag === 'text' && box) texts.push({ id: a.id, text: textOf(node), size: f.size * Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])), box, owners: mine });
     if (a.id !== undefined && box) boxes.set(a.id, box);
     return pts;
   };
-  if (root) for (const child of root.children) visit(child, IDENTITY, { size: DEFAULT_FONT, weight: 400, family: 'sans', anchor: 'start' });
+  if (root) for (const child of root.children) visit(child, IDENTITY, { size: DEFAULT_FONT, weight: 400, family: 'sans', anchor: 'start' }, []);
   return { boxes, texts };
 }
 

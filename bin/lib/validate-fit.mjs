@@ -10,6 +10,7 @@ import { hasMarkup } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { refNames, resolveRef } from '../../shared/targets.mjs';
 import { READABLE_PX } from '../../shared/textfit.mjs';
+import { checkCameraCrops } from './validate-camera.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/fit/report.ts');
@@ -44,12 +45,13 @@ export async function checkFit(storyboard, hunks, errors, warnings) {
   try {
     const { fitReport, inkStages } = await reportModule();
     reports = fitReport(storyboard, hunks);
-    stages = inkStages(storyboard);
+    stages = inkStages(storyboard, hunks);
   } catch (err) {
     warnings.push(`could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`);
     return;
   }
   checkInkPoints(storyboard, hunks, stages, warnings);
+  checkCameraCrops(storyboard, hunks, stages, warnings);
   for (const { scene: i, fits, scaled } of reports) {
     const scene = storyboard.scenes[i];
     for (const part of scaled) {

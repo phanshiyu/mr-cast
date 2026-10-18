@@ -8,6 +8,8 @@ import { indexRange } from './steps.mjs';
 import { ambiguousIndex, memberKey, resolveRef, splitMemberKey, TEXT_LEADS } from './targets.mjs';
 import { aType } from './words.mjs';
 import { svgOf, textOf } from './svg.mjs';
+import { pairShapes, parseTransform } from './svg-motion.mjs';
+import { cueWord } from './timing.mjs';
 import { memoryMembers, tintEntries } from './storyboard-json.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -148,8 +150,17 @@ const MODELS = {
       if (svgOf(scene.svg).ids.get(key.slice(2))?.tag !== 'text') return 'names an element that is not <text>; only text can be set';
       return typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? null : 'must be text';
     },
-    move: null,
-    moveNames: () => [],
+    // A move's transform goes outside the element's own, so it moves the element from where the drawing puts it.
+    move(scene, name, value) {
+      const { root, ids } = svgOf(scene.svg);
+      if (!ids.has(name)) return null;
+      if (ids.get(name) === root) return { problem: 'is the root <svg>, which the scene places on its stage; wrap what moves in a <g id="..."> and move that' };
+      if (typeof value !== 'string' || !parseTransform(value)) return { problem: `${JSON.stringify(value)} is no transform; a move is translate(x y), rotate(degrees cx cy) and scale(s), alone or in a row, such as "translate(300 0) rotate(90 50 50)", or "" to put it back` };
+      return { key: `s:${name}`, transform: value.trim() };
+    },
+    moveNames: (scene) => [...svgOf(scene.svg).ids.keys()],
+    moveWhat: 'element id',
+    motion: true,
   },
   text: {
     initial(scene) {
@@ -201,7 +212,58 @@ function oneKey(scene, ref, prefixes) {
   return keys?.length === 1 && prefixes.some((p) => keys[0].startsWith(p)) ? keys[0] : null;
 }
 
-const copy = (state) => ({ values: { ...state.values }, places: { ...state.places }, hidden: { ...state.hidden }, tints: { ...state.tints }, callout: state.callout });
+// A trace draws during its own step only, so the next state starts with none.
+const copy = (state) => ({ values: { ...state.values }, places: { ...state.places }, hidden: { ...state.hidden }, tints: { ...state.tints }, callout: state.callout, transforms: { ...state.transforms }, shapes: { ...state.shapes }, traces: {} });
+
+/** Elements a step can `trace`: lines and outlines, and a group, which traces every one inside it. */
+export const TRACEABLE = ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'g'];
+
+/** A trace entry as its id and its cue: "route" or { "id": "route", "when": "around the coast" }. */
+export const traceEntry = (entry) => (typeof entry === 'string' ? { id: entry, when: undefined } : { id: entry?.id, when: entry?.when });
+
+/** A step's `trace`: each element drawn on from its start, shown if it was hidden. */
+function applyTrace(scene, step, next, problem) {
+  const { ids } = svgOf(scene.svg);
+  if (!Array.isArray(step.trace)) return problem('trace', '', 'must be a list of element ids, such as ["route"], or of { "id": "route", "when": "words of the say" }');
+  step.trace.forEach((entry, j) => {
+    const { id, when } = traceEntry(entry);
+    const node = typeof id === 'string' ? ids.get(id) : undefined;
+    const known = [...ids.keys()];
+    if (typeof entry !== 'string' && (!entry || typeof entry !== 'object' || Array.isArray(entry) || Object.keys(entry).some((k) => k !== 'id' && k !== 'when'))) problem(`trace[${j}]`, '', 'must be an element id, or { "id": "route", "when": "words of the say" }');
+    else if (!ids.has(id)) problem('trace', String(id), 'names no element id in the drawing', known);
+    else if (!TRACEABLE.includes(node?.tag)) problem('trace', id, `is a <${node?.tag}>, which has no line to draw on; trace a ${TRACEABLE.filter((t) => t !== 'g').join(', ')}, or a <g> of them`);
+    else if (when !== undefined && (typeof when !== 'string' || cueWord(step.say, when) < 0)) problem('trace', id, `has "when": ${JSON.stringify(when)}, which is not in the step's say; copy the words the line should start drawing on`);
+    else {
+      next.traces[`s:${id}`] = when ?? null;
+      delete next.hidden[`s:${id}`];
+    }
+  });
+}
+
+/** A step's `morph`: each path takes the shape of another path, or its own again when named after itself. */
+function applyMorph(scene, step, next, problem) {
+  const { ids } = svgOf(scene.svg);
+  const known = [...ids.keys()];
+  const paths = known.filter((id) => ids.get(id)?.tag === 'path');
+  if (!step.morph || typeof step.morph !== 'object' || Array.isArray(step.morph)) return problem('morph', '', 'must be an object of path id to the id of the path whose shape it takes, such as { "blob": "square" }');
+  for (const [id, target] of Object.entries(step.morph)) {
+    const key = `s:${id}`;
+    if (!ids.has(id)) problem('morph', id, 'names no element id in the drawing', known);
+    else if (ids.get(id).tag !== 'path') problem('morph', id, `is a <${ids.get(id).tag}>; only a <path> morphs, so draw it as one`);
+    else if (typeof target !== 'string' || !ids.has(target)) problem('morph', id, `${JSON.stringify(target)} names no element id; give the id of the path whose shape it takes${paths.length ? `, one of ${paths.map((n) => JSON.stringify(n)).join(', ')}` : ''}`);
+    else if (ids.get(target).tag !== 'path') problem('morph', id, `"${target}" is a <${ids.get(target).tag}>; a morph takes the shape of a <path>${paths.length > 1 ? `, one of ${paths.filter((n) => n !== id).map((n) => JSON.stringify(n)).join(', ')}` : ''}`);
+    else {
+      const from = ids.get(next.shapes[key] ?? id).attrs.d;
+      try {
+        pairShapes(from, ids.get(target).attrs.d);
+        if (target === id) delete next.shapes[key];
+        else next.shapes[key] = target;
+      } catch (e) {
+        problem('morph', id, `cannot turn into "${target}": ${next.shapes[key] ? `its shape at this step ("${next.shapes[key]}")` : 'it'} ${e.message}`);
+      }
+    }
+  }
+}
 
 /** Variables and fields shown in `state` that point at an object hidden in it, by key, ref and the object's id. */
 function danglingPointers(state) {
@@ -232,7 +294,7 @@ export function walkStates(scene) {
       problems.push({ step, field: step < 0 ? 'objects' : 'set', ref, level: 'error', names: [], message: `points at "${target}" ${when}, but "${target}" is hidden then; show it in this step or an earlier one, or start it shown` });
     }
   };
-  let state = { ...model.initial(scene), tints: {}, callout: typeof scene.callout === 'string' ? scene.callout : '' };
+  let state = { ...model.initial(scene), tints: {}, callout: typeof scene.callout === 'string' ? scene.callout : '', transforms: {}, shapes: {}, traces: {} };
   if (scene.callout !== undefined && !model.callout) problems.push({ step: -1, field: 'callout', ref: '', message: `${aType(scene.type)} scene draws no callout`, names: [], level: 'error' });
   const applyTints = (record, next, problem) => {
     if (record === undefined) return;
@@ -288,8 +350,11 @@ export function walkStates(scene) {
       const moved = model.move?.(scene, name, value);
       if (!moved) {
         const names = model.moveNames(scene);
-        problem('move', name, model.move ? `names no pointer or range; ${names.length ? `they are ${names.map((n) => JSON.stringify(n)).join(', ')}` : 'the scene has none'}` : `${aType(scene.type)} scene has nothing to move; use set`, names);
-      } else if (moved.error) problem('move', name, `${JSON.stringify(value)} is no place; ${moved.error}`);
+        const what = model.moveWhat ? `names no ${model.moveWhat}` : `names no pointer or range; ${names.length ? `they are ${names.map((n) => JSON.stringify(n)).join(', ')}` : 'the scene has none'}`;
+        problem('move', name, model.move ? what : `${aType(scene.type)} scene has nothing to move; use set`, names);
+      } else if (moved.problem) problem('move', name, moved.problem);
+      else if (moved.error) problem('move', name, `${JSON.stringify(value)} is no place; ${moved.error}`);
+      else if (moved.transform !== undefined) next.transforms[moved.key] = moved.transform;
       else next.places[moved.key] = moved.place;
     }
     for (const field of ['show', 'hide']) {
@@ -303,6 +368,11 @@ export function walkStates(scene) {
       }
     }
     applyTints(step?.tint, next, problem);
+    for (const field of ['trace', 'morph']) {
+      if (step?.[field] === undefined) continue;
+      if (!model.motion) problem(field, '', `${aType(scene.type)} scene takes no ${field}; trace and morph are steps of an svg scene`);
+      else (field === 'trace' ? applyTrace : applyMorph)(scene, step, next, problem);
+    }
     if (step?.callout !== undefined) {
       if (!model.callout) problem('callout', '', `${aType(scene.type)} scene draws no callout`);
       else if (typeof step.callout !== 'string') problem('callout', '', 'must be text; "" takes the callout away');
@@ -322,8 +392,10 @@ export function walkStates(scene) {
       if (never.length) problems.push({ step: -1, field: `hidden[${i}]`, ref: '', message: `${JSON.stringify(ref)} starts hidden and no step shows ${which}, so it is never drawn`, names: [], level: 'warning' });
     });
   } else {
+    // A hidden path that lends a morph its shape is drawn through the path that takes it.
+    const lent = new Set(states.flatMap((st) => Object.values(st.shapes).map((id) => `s:${id}`)));
     for (const key of Object.keys(states[0].hidden)) {
-      if (neverShown(key)) problems.push({ step: -1, field: hiddenField(scene, key), ref: '', message: 'starts hidden and no step shows it, so it is never drawn', names: [], level: 'warning' });
+      if (neverShown(key) && !lent.has(key)) problems.push({ step: -1, field: hiddenField(scene, key), ref: '', message: 'starts hidden and no step shows it, so it is never drawn', names: [], level: 'warning' });
     }
   }
   return { states, problems };
@@ -369,16 +441,17 @@ function refNamesOf(scene, prefixes) {
 export const sceneStates = (scene) => walkStates(scene).states;
 
 /** Whether a step changes anything. */
-export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout'].some((field) => step?.[field] !== undefined);
+export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace', 'morph'].some((field) => step?.[field] !== undefined);
 
 /**
  * The refs a step changes, as focus refs: what it sets, the pointers and ranges it moves, what it shows
  * and what it tints a tone. A step without `focus` focuses these, or what it dims when it changes nothing else.
  */
 export function changedRefs(scene, step) {
-  const moved = Object.keys(step?.move ?? {}).map((name) => (list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
+  const moved = Object.keys(step?.move ?? {}).map((name) => (scene.type === 'svg' ? name : list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
   const tints = tintEntries(step?.tint);
-  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
+  const motion = scene.type === 'svg' ? [...list(step?.trace).map((e) => traceEntry(e).id), ...Object.keys(step?.morph && typeof step.morph === 'object' ? step.morph : {})].filter((id) => typeof id === 'string') : [];
+  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...motion, ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
   // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
   return [...new Set(refs.length ? refs : tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : [])))];
 }
