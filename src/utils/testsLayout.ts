@@ -258,7 +258,10 @@ export function testsBoxes(layout: TestsLayout): LayoutBoxes {
       obstacles.push(boxOf(c));
     }
     if (row.bar) obstacles.push(boxOf(row.bar));
+    if (layout.namesCol && row.names.length) obstacles.push({ x: layout.namesCol.x, y: row.y, width: layout.namesCol.w, height: row.h });
   }
+  // The column titles above the rows and the counts under them.
+  obstacles.push({ x: 0, y: 0, width: layout.width, height: HEAD_H }, { x: 0, y: layout.footY, width: layout.width, height: FOOT_H });
   const last = layout.rows.at(-1);
   layout.cols.forEach((c, col) => boxes.set(`o:${col}`, { x: c.x, y: 0, width: c.w, height: last ? last.y + last.h : HEAD_H }));
   return { boxes, obstacles };

@@ -301,7 +301,7 @@ function checkIntent(s, p, errors) {
   return errors.length === before;
 }
 
-const INTENT_WORDS = { items: 'bullets', item: 'bullet', 'an item': 'a bullet', headline: 'summary', kicker: 'title' };
+const INTENT_WORDS = { items: 'bullets', item: 'bullet', 'an item': 'a bullet', headline: 'summary', kicker: 'title', 'this text': 'this intent' };
 
 /**
  * A message about an intent scene, checked as a text scene, in the intent's own words: `items[2]` is `bullets[2]`,
@@ -312,7 +312,7 @@ function intentMessage(message, intents) {
   const m = /^scenes\[(\d+)\]((?: \("(?:[^"\\]|\\.)*"\))?)([^:\s]*)([\s\S]*)$/.exec(message);
   if (!m || !intents.has(Number(m[1]))) return [message];
   if (!intents.get(Number(m[1])) && /^(?:$|\.(?:headline|items|risk|kicker)\b)/.test(m[3])) return [];
-  const words = (text) => text.split(/("(?:[^"\\]|\\.)*")/).map((part, i) => (i % 2 ? part : part.replace(/\b(items|an item|item|headline|kicker)\b/g, (w) => INTENT_WORDS[w]))).join('');
+  const words = (text) => text.split(/("(?:[^"\\]|\\.)*")/).map((part, i) => (i % 2 ? part : part.replace(/\b(items|an item|item|headline|kicker|this text)\b/g, (w) => INTENT_WORDS[w]))).join('');
   if (m[3].startsWith('.kicker')) return [`title${words(m[4])}`];
   return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
 }

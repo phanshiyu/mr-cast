@@ -26,7 +26,7 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
-import { arrayTargets, graphTargets, memoryTargets, stateTargets, svgTargets, tableTargets } from '../utils/sceneTargets';
+import { arrayTargets, graphTargets, memoryTargets, stateTargets, svgTargets, tableTargets, testsTargets } from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
@@ -172,6 +172,7 @@ const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { typ
   memory: memoryTargets,
   svg: svgTargets,
   state: (scene) => (scene.steps ?? []).map(() => stateTargets(scene)),
+  tests: testsTargets,
 };
 
 export interface InkStage {

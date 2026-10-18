@@ -199,3 +199,49 @@ test('a step still shows the frame before the next step starts, and the last ste
   assert.equal(stillFrame(scene, null, undefined), stillFrame(scene, null, 1));
   assert.throws(() => stillFrame(scene, null, 2), /the graph scene has no step 2/);
 });
+
+test('ink on a text scene names its items, its lead by field name, its note and its kicker', async () => {
+  const text = (draw) => ({ type: 'text', narration: 'Three rules.', kicker: 'Rules', headline: 'Keep it small', note: 'and true', items: ['one', 'two', 'three'], steps: [{ focus: 1, say: 'The second rule.', draw }] });
+  const scene = text([{ circle: 1 }, { underline: 'headline' }, { write: 'why?', near: 'note' }, { box: ['0-1', 'kicker'] }]);
+  assert.deepEqual(inkBoard(scene).items.map((it) => it.targets), [[{ keys: ['b:1'] }], [{ keys: ['t:lead'] }], [{ keys: ['t:note'] }], [{ keys: ['b:0', 'b:1'] }, { keys: ['t:kicker'] }]]);
+  assert.deepEqual(await errorsOf(text([{ box: 'nope' }])), ['scenes[0].steps[0].draw[0].box: "nope" names nothing in this text; did you mean "note"?']);
+});
+
+test('ink on an intent scene draws on its bullets, and validate names the scene as an intent', async () => {
+  const intent = { type: 'intent', narration: 'Two changes.', summary: 'Retry webhooks', bullets: ['backoff', 'a cap'], steps: [{ focus: 1, say: 'And a cap.', draw: [{ circle: 1 }, { circle: 'zzz' }] }] };
+  assert.deepEqual(await errorsOf(intent), ['scenes[0].steps[0].draw[1].circle: "zzz" names nothing in this intent']);
+});
+
+const matrix = (draw) => ({
+  type: 'tests',
+  narration: 'Retries.',
+  outcomes: ['Result', 'Calls'],
+  situations: [
+    { id: 'ok', when: 'it answers 200', expect: { Result: 'sent', Calls: '1' } },
+    { id: 'retry', when: 'it answers 500', expect: { Result: 'retried', Calls: '3' } },
+    { id: 'down', when: 'it never answers', gap: 'nothing checks it' },
+  ],
+  tests: [
+    { name: 'retries three times', status: 'added', checks: ['retry.Calls', 'retry.Result'] },
+    { name: 'sends once', status: 'existing', checks: ['ok.Calls'] },
+  ],
+  steps: [{ focus: 'retry', say: 'On a 500 it retries.', draw }],
+});
+
+test('ink on a tests matrix names a cell, a situation, an outcome, a gap and a test by the cells it checks', async () => {
+  const scene = matrix([{ circle: 'retry.Calls', note: '3 calls' }, { box: 'ok' }, { tick: 'Calls' }, { cross: 'down' }, { underline: 'retries three times' }]);
+  assert.deepEqual(inkBoard(scene).items.map((it) => it.targets), [
+    [{ keys: ['x:1/1'] }],
+    [{ keys: ['s:ok', 'x:0/0', 'x:0/1'] }],
+    [{ keys: ['o:1', 'x:0/1', 'x:1/1'] }],
+    [{ keys: ['s:down'] }],
+    [{ keys: ['t:0', 'x:1/1', 'x:1/0'] }],
+  ]);
+  assert.deepEqual(await errorsOf(matrix([{ circle: 'retry.Waits' }])), ['scenes[0].steps[0].draw[0].circle: "retry.Waits" names nothing in this tests; did you mean "retry"?']);
+});
+
+test('validate warns when text written at a point lands on a tests matrix, and not below it', async () => {
+  const warningsOf = async (scene) => (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('.at:'));
+  assert.deepEqual(await warningsOf(matrix([{ write: 'here', at: [0.5, 0.3] }])), ['scenes[0].steps[0].draw[0].at: the text lands on "ok"; move it to free space, or write it near a ref']);
+  assert.deepEqual(await warningsOf(matrix([{ write: 'here', at: [0.02, 0.97] }])), []);
+});

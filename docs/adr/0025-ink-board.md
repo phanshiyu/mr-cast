@@ -39,8 +39,8 @@ any step whose items stay on the board, and B, a separate whiteboard scene. The 
 - **`validate`** fails on an unknown ref, a `when` the say does not contain, an `erase` id never drawn or not on the
   board, an arrow or `near` from an id not yet drawn, an id that is also a ref, and malformed items. It warns when text
   written `at` a point lands on a scene box while it is up; the boxes come from the scenes' own step targets, now in
-  `src/utils/sceneTargets.ts`, which the graph, table, array, memory, svg and state scenes draw from and the fit report
-  hands to `validate`. A step that draws or erases ink is not reported as moving nothing. The highlight check is
+  `src/utils/sceneTargets.ts`, which the graph, table, array, memory, svg, state and tests scenes draw from and the
+  fit report hands to `validate`. A step that draws or erases ink is not reported as moving nothing. The highlight check is
   unchanged: ink is not lit.
 - **`mr-cast still --step k`** renders each scene as step k ends, so a model can see the board mid-scene. It replaces
   the prototype's `MR_CAST_PROTO_AT` environment variable, which is not shipped.
@@ -57,8 +57,12 @@ any step whose items stay on the board, and B, a separate whiteboard scene. The 
 ## Consequences
 
 - Ink works on every scene with focus refs and on code: graph, table, array, memory, svg, state, sequence, er, chart,
-  timeline, files, tests, compare, terminal, layers, intent and code. Flow steps have no refs, so `validate` rejects
+  timeline, files, tests, compare, terminal, layers, text and code. Flow steps have no refs, so `validate` rejects
   `draw` there.
+- On a text scene (ADR 0026) a ref is an item, the lead by its field name, `note`, `kicker` or a side; an intent
+  scene draws as one. On a tests matrix (ADR 0024) a ref is a situation, a cell, an outcome or a test, and ink goes
+  on the cells it covers, kept off the names column, the column titles and the counts. The text scene measures its
+  boxes as it renders, so the `at` warning does not cover it.
 - Placement is a heuristic. It can still cross an edge or sit tight against a chip; `mr-cast still --step` shows it.
 - Dijkstra and binary search use ink, from their `generate.mjs`; `examples/primitives/ink` is a short demo, and the
   gallery lists it under "On every scene".

@@ -185,7 +185,7 @@ export const TextCard: React.FC<SceneProps<TextScene>> = ({ scene, hunks, durati
     else els.current.delete(key);
   };
   const [marks, setMarks] = useState<MarkTargets | null>(null);
-  const marked = scene.steps?.some((step) => step.mark) ?? false;
+  const marked = scene.steps?.some((step) => step.mark || step.draw) ?? false;
   useLayoutEffect(() => {
     if (!marked || !root.current) return;
     const area = { x: 0, y: 0, width: root.current.offsetWidth, height: root.current.offsetHeight };

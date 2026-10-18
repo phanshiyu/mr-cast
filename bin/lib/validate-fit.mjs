@@ -79,7 +79,7 @@ const overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b
 
 /**
  * Text written `at` a point that lands on something the scene draws while the text is up. Only the scene types whose
- * layout gives each step's boxes without rendering are checked: graph, table, array, memory, svg and state.
+ * layout gives each step's boxes without rendering are checked: graph, table, array, memory, svg, state and tests.
  */
 function checkInkPoints(storyboard, hunks, stages, warnings) {
   storyboard.scenes.forEach((scene, i) => {

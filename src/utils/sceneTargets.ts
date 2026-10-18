@@ -5,13 +5,14 @@ import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene } from '../types';
+import type { ArrayScene, GraphScene, MemoryScene, StateScene, SvgScene, TableScene, TestsScene } from '../types';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
 import { layoutMemory, memoryBoxes } from './memoryLayout';
 import { centredStage, staged, type MarkTargets } from './penGeometry';
 import { layoutState, stateBoxes, stateScale } from './stateLayout';
 import { layoutTableStates, stateRows, tableBoxes } from './tableLayout';
+import { layoutTests, testsBoxes } from './testsLayout';
 
 /** Two sets of mark targets in one content box, such as a graph's and its table's. */
 const merged = (a: MarkTargets, b: MarkTargets | null): MarkTargets =>
@@ -62,4 +63,12 @@ export function stateTargets(scene: StateScene): MarkTargets {
   const layout = layoutState(scene.states, scene.transitions, scene.initial);
   const box = contentBox(Boolean(scene.title));
   return staged(stateBoxes(layout), centredStage(box, layout, stateScale(layout, box)), box);
+}
+
+/** A tests matrix does not move between steps: its rows, cells and outcome columns, the same for every step. */
+export function testsTargets(scene: TestsScene): MarkTargets[] {
+  const box = headerBox(scene);
+  const layout = layoutTests(scene, box.width, box.height);
+  const targets = staged(testsBoxes(layout), { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale }, box);
+  return (scene.steps ?? []).map(() => targets);
 }

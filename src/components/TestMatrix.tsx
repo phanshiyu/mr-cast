@@ -4,10 +4,10 @@ import type { SceneState } from '../../shared/state-steps.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import { headerBox } from '../fit/shell';
 import type { TestsScene } from '../types';
-import { staged } from '../utils/penGeometry';
 import { asBrightAs, focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { stateFrame } from '../utils/stateTrack';
-import { FOOT_H, HEAD_H, layoutTests, tagFont, testsBoxes, type PlacedCell, type PlacedRow, type TestsLayout } from '../utils/testsLayout';
+import { testsTargets } from '../utils/sceneTargets';
+import { FOOT_H, HEAD_H, layoutTests, tagFont, type PlacedCell, type PlacedRow, type TestsLayout } from '../utils/testsLayout';
 import { FitText } from './FitText';
 import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
@@ -156,7 +156,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const s = stateFrame(states, segments, frame);
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
   const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
-  const marks = useMemo(() => staged(testsBoxes(layout), { left: 0, top, scale: layout.scale }, box), [layout, top, box.width, box.height]);
+  const marks = useMemo(() => testsTargets(scene), [scene]);
   const label: React.CSSProperties = { position: 'absolute', top: 0, height: HEAD_H, display: 'flex', alignItems: 'center', color: colors.muted };
   const colLit = (col: number) => emphasisOf(`o:${col}`);
 
@@ -208,7 +208,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
           <span style={{ fontSize: 18, color: colors.muted, whiteSpace: 'nowrap' }}>{layout.counts}</span>
         </div>
       </div>
-      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={() => marks} />
+      <PenMarks scene={scene} hunks={hunks} segments={segments} targets={(k) => marks[k] ?? null} />
     </SceneShell>
   );
 };
