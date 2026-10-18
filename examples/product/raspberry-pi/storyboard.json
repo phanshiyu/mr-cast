@@ -1,0 +1,440 @@
+{
+  "title": "Raspberry Pi 5 against Pi 4",
+  "subtitle": "Is the upgrade worth it? A spec-by-spec scorecard from the product briefs",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "The question",
+      "narration": "The Raspberry Pi five is out, and plenty of people still run a Pi four. So is the upgrade worth it?",
+      "kicker": "Raspberry Pi 5 against Raspberry Pi 4",
+      "question": "Is the upgrade worth it?",
+      "note": "Every number here is from Raspberry Pi’s own product briefs",
+      "hidden": [
+        "note"
+      ],
+      "steps": [
+        {
+          "show": [
+            "note"
+          ],
+          "say": "Every number in this video comes from the two boards’ official product briefs. No rumours."
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "Scorecard",
+      "title": "Spec by spec",
+      "narration": "Let’s go down the spec sheet one row at a time, and give each row to whichever board wins it.",
+      "columns": [
+        "Spec",
+        "Pi 4",
+        "Pi 5"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "Processor",
+            "Cortex-A72 at 1.8 GHz",
+            "Cortex-A76 at 2.4 GHz"
+          ]
+        },
+        {
+          "cells": [
+            "Graphics",
+            "OpenGL ES 3.0",
+            "VideoCore VII, Vulkan 1.2"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Memory",
+            "LPDDR4, 1 GB to 8 GB",
+            "LPDDR4X-4267, 1 GB to 16 GB"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Camera and display",
+            "one 2-lane camera, one 2-lane display",
+            "two 4-lane, camera or display"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "USB and network",
+            "2 × USB 3.0, 2 × USB 2.0, Gigabit",
+            "2 × USB 3.0, 2 × USB 2.0, Gigabit"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Power supply",
+            "5 V, 3 A",
+            "5 V, 5 A"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Works up to",
+            "50 °C",
+            "70 °C"
+          ],
+          "hidden": true
+        },
+        {
+          "cells": [
+            "Made until at least",
+            "January 2034",
+            "January 2036"
+          ],
+          "hidden": true
+        }
+      ],
+      "callout": "Pi 4: **0** · Pi 5: **0**",
+      "steps": [
+        {
+          "focus": 0,
+          "tint": {
+            "Pi 5@0": "good"
+          },
+          "callout": "Pi 4: **0** · Pi 5: **1**",
+          "say": "The processor. The Pi five has a newer core, the A seventy six, and runs it at 2.4 gigahertz instead of 1.8. First point goes to the five."
+        },
+        {
+          "show": [
+            1,
+            2
+          ],
+          "focus": [
+            1,
+            2
+          ],
+          "tint": {
+            "Pi 5@1": "good",
+            "Pi 5@2": "good"
+          },
+          "callout": "Pi 4: **0** · Pi 5: **3**",
+          "say": "Graphics and memory both go to the five as well: a new graphics chip that runs Vulkan, newer memory, and up to sixteen gigabytes of it."
+        },
+        {
+          "show": [
+            3
+          ],
+          "focus": 3,
+          "tint": {
+            "Pi 5@3": "good"
+          },
+          "callout": "Pi 4: **0** · Pi 5: **4**",
+          "say": "The two camera and display ports are now twice as wide, and each one takes either a camera or a screen."
+        },
+        {
+          "show": [
+            4
+          ],
+          "focus": 4,
+          "tint": {
+            "4": "dim"
+          },
+          "say": "USB and networking are the same on both. That one is a tie."
+        },
+        {
+          "show": [
+            5
+          ],
+          "focus": 5,
+          "tint": {
+            "Pi 4@5": "good"
+          },
+          "callout": "Pi 4: **1** · Pi 5: **4**",
+          "say": "Power is where the four wins. The five wants a five amp supply, so your old 3 amp charger may not cut it."
+        },
+        {
+          "show": [
+            6,
+            7
+          ],
+          "focus": [
+            6,
+            7
+          ],
+          "tint": {
+            "Pi 5@6": "good",
+            "Pi 5@7": "good"
+          },
+          "callout": "Pi 4: **1** · Pi 5: **6**",
+          "say": "The five is rated to run hotter, up to 70 degrees, and it will be made for two years longer. Final score, 6 to 1."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "How much faster",
+      "title": "Processor speed, as times the Pi 4",
+      "kind": "bar",
+      "unit": "×",
+      "better": "higher",
+      "narration": "Now the big one. How much faster is it, really? Start with both boards at the same height.",
+      "labels": [
+        "Pi 4",
+        "Pi 5"
+      ],
+      "series": [
+        {
+          "name": "times the Pi 4",
+          "values": [
+            1,
+            1
+          ]
+        }
+      ],
+      "callout": "Pi 4 = 1",
+      "steps": [
+        {
+          "set": {
+            "times the Pi 4": [
+              1,
+              1.333
+            ]
+          },
+          "focus": "Pi 5",
+          "callout": "2.4 ÷ 1.8 GHz = 1.333×",
+          "say": "The clock alone is 2.4 against 1.8. That makes it only a third faster."
+        },
+        {
+          "set": {
+            "times the Pi 4": [
+              1,
+              2
+            ]
+          },
+          "focus": "Pi 5",
+          "callout": "newer core: at least 2×",
+          "say": "But each tick of the newer core gets more done. Raspberry Pi says the five is at least twice as fast."
+        },
+        {
+          "set": {
+            "times the Pi 4": [
+              1,
+              3
+            ]
+          },
+          "focus": "Pi 5",
+          "callout": "Raspberry Pi’s claim: 2 to 3×",
+          "say": "And up to three times, depending on the job. That is their number, not a test we ran, but most of it comes from the core, not the clock.",
+          "draw": [
+            {
+              "write": "mostly the newer core,\nnot the clock",
+              "near": "Pi 5",
+              "side": "left",
+              "when": "most of it"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "What is new",
+      "title": "Things only the Pi 5 has",
+      "sides": [
+        {
+          "title": "Pi 4"
+        },
+        {
+          "title": "Pi 5",
+          "tone": "accent"
+        }
+      ],
+      "narration": "Then there are the things the Pi four simply does not have.",
+      "rows": [
+        {
+          "label": "Power button",
+          "cells": [
+            "No",
+            "Yes"
+          ],
+          "verdict": [
+            null,
+            "good"
+          ]
+        },
+        {
+          "label": "Clock that keeps time when off",
+          "cells": [
+            "No",
+            "Yes, with a small battery"
+          ],
+          "verdict": [
+            null,
+            "good"
+          ]
+        },
+        {
+          "label": "PCI Express, for fast drives",
+          "cells": [
+            "No",
+            "One lane, with an add-on board"
+          ],
+          "verdict": [
+            null,
+            "good"
+          ]
+        },
+        {
+          "label": "Its own input and output chip",
+          "cells": [
+            "No",
+            "Yes, made by Raspberry Pi"
+          ],
+          "verdict": [
+            null,
+            "good"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": 0,
+          "say": "A power button. Finally. No more pulling the cable out."
+        },
+        {
+          "focus": 1,
+          "say": "A real time clock, so it knows the time even after it was switched off, if you add a little battery."
+        },
+        {
+          "focus": 2,
+          "say": "A PCI Express slot. With an add-on board you can plug in a fast solid state drive instead of booting from a memory card.",
+          "draw": [
+            {
+              "circle": "2@Pi 5",
+              "when": "solid state drive"
+            }
+          ]
+        },
+        {
+          "focus": 3,
+          "say": "And a chip Raspberry Pi designed itself, which handles most of the plugs and pins, and more than doubles the USB speed overall."
+        }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Price",
+      "title": "List price in US dollars, by memory size",
+      "kind": "bar",
+      "better": "lower",
+      "narration": "So what does it cost? Here are the list prices for the memory sizes both boards come in.",
+      "labels": [
+        "1 GB",
+        "2 GB",
+        "4 GB",
+        "8 GB"
+      ],
+      "series": [
+        {
+          "name": "Pi 4",
+          "values": [
+            35,
+            67.5,
+            100,
+            165
+          ]
+        },
+        {
+          "name": "Pi 5",
+          "values": [
+            45,
+            77.5,
+            110,
+            175
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": "1 GB",
+          "callout": "+$10",
+          "say": "At one gigabyte, the five is 10 dollars more."
+        },
+        {
+          "focus": [
+            "2 GB",
+            "4 GB"
+          ],
+          "callout": "+$10",
+          "say": "At two and four gigabytes, also ten dollars more."
+        },
+        {
+          "focus": "8 GB",
+          "callout": "+$10, 6.1% more",
+          "say": "And at eight gigabytes, ten dollars again. On a 165 dollar board that is only about six percent."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "Verdict",
+      "narration": "So here is my verdict.",
+      "kicker": "The verdict",
+      "number": "$10 more",
+      "note": "for two to three times the speed, by Raspberry Pi’s count",
+      "items": [
+        "Buying new? Get the Pi 5",
+        "Want a desktop, a fast drive or two cameras? Upgrade",
+        "Pi 4 already doing its job? Keep it",
+        "Upgrading? Budget for a 5 A power supply"
+      ],
+      "hidden": [
+        "0-3"
+      ],
+      "steps": [
+        {
+          "show": [
+            0
+          ],
+          "say": "If you are buying a new board, the extra ten dollars is easily worth it. Get the five.",
+          "draw": [
+            {
+              "tick": 0
+            }
+          ]
+        },
+        {
+          "show": [
+            1
+          ],
+          "say": "If you want a small desktop, a fast drive, or two cameras, upgrade.",
+          "draw": [
+            {
+              "tick": 1
+            }
+          ]
+        },
+        {
+          "show": [
+            2
+          ],
+          "say": "But if your Pi four already runs your home server just fine, there is no need to throw it out."
+        },
+        {
+          "show": [
+            3
+          ],
+          "say": "And if you do upgrade, plan on a bigger power supply.",
+          "draw": [
+            {
+              "underline": 3,
+              "when": "bigger power supply"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
