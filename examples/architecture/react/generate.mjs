@@ -31,7 +31,6 @@ ${lis}
 <text x="980" y="540" text-anchor="middle" font-size="22" fill="var(--muted)">heavy, and slow to change</text></g>
 </svg>`;
 
-
 // Scene 8: four fibers and their child, sibling and return links.
 const node = (id, x, y, label) =>
   `<g id="${id}"><rect x="${x}" y="${y}" width="220" height="80" rx="14" stroke-width="3"/><text x="${x + 110}" y="${y + 50}" text-anchor="middle" font-size="28">${label}</text></g>`;
@@ -63,7 +62,8 @@ const storyboard = {
       type: 'svg',
       chapter: 'Touching the DOM',
       title: 'Why touching the page is slow',
-      narration: 'Every web page is a tree of elements the browser keeps in memory, called the DOM. Changing it by hand is where apps get slow.',
+      narration:
+        'Every web page is a tree of elements the browser keeps in memory, called the DOM. Changing it by hand is where apps get slow.',
       svg: dom,
       labels: {
         code: 'inner HTML',
@@ -106,7 +106,8 @@ const storyboard = {
       type: 'compare',
       chapter: 'JSX is a function call',
       title: 'JSX turns into JavaScript',
-      narration: 'This looks like HTML, but it is not. Before your code runs, a compiler such as Babel or SWC rewrites it.',
+      narration:
+        'This looks like HTML, but it is not. Before your code runs, a compiler such as Babel or SWC rewrites it.',
       sides: [
         { title: 'You write', tone: 'neutral' },
         { title: 'The compiler writes', tone: 'accent' },
@@ -115,13 +116,19 @@ const storyboard = {
         {
           cells: [
             { code: '<button\n  className="primary"\n  onClick={handleClick}>\n  Click Me\n</button>', lang: 'jsx' },
-            { code: 'jsx("button", {\n  className: "primary",\n  onClick: handleClick,\n  children: "Click Me",\n})', lang: 'js' },
+            {
+              code: 'jsx("button", {\n  className: "primary",\n  onClick: handleClick,\n  children: "Click Me",\n})',
+              lang: 'js',
+            },
           ],
         },
         { label: 'What it is', cells: ['Looks like HTML', 'A plain function call'] },
       ],
       steps: [
-        { focus: 0, say: 'The tag becomes a call to a function named jsx. The tag name, the props and the text all become arguments.' },
+        {
+          focus: 0,
+          say: 'The tag becomes a call to a function named jsx. The tag name, the props and the text all become arguments.',
+        },
         { focus: 1, say: 'So JSX is only a nicer way to write a function call.' },
       ],
     },
@@ -133,12 +140,19 @@ const storyboard = {
       frames: [{ name: 'App', vars: { element: { ref: 'el' } } }],
       objects: [
         { id: 'el', type: 'React element', fields: { type: '"button"', props: { ref: 'props' }, key: 'null' } },
-        { id: 'props', type: 'props', fields: { className: '"primary"', onClick: { ref: 'fn' }, children: '"Click Me"' } },
+        {
+          id: 'props',
+          type: 'props',
+          fields: { className: '"primary"', onClick: { ref: 'fn' }, children: '"Click Me"' },
+        },
         { id: 'fn', type: 'function', fields: { name: 'handleClick' } },
       ],
       steps: [
         { focus: ['App.element', 'el'], say: 'The component gets back an object, a React element.' },
-        { focus: ['el.type', 'props'], say: 'It says the type is a button, and holds the props: the class, the click handler and the text.' },
+        {
+          focus: ['el.type', 'props'],
+          say: 'It says the type is a button, and holds the props: the class, the click handler and the text.',
+        },
         {
           focus: 'el',
           callout: 'Nothing on screen yet: **just a description**',
@@ -151,7 +165,8 @@ const storyboard = {
       chapter: 'Comparing trees',
       title: 'Last render and this render',
       layout: 'TB',
-      narration: 'Each time your data changes, React builds a fresh tree of these objects and compares it with the last one.',
+      narration:
+        'Each time your data changes, React builds a fresh tree of these objects and compares it with the last one.',
       nodes: [
         { id: 'rootA', label: 'Root', shape: 'step', group: 'Last render' },
         { id: 'headerA', label: 'Header', shape: 'step', group: 'Last render' },
@@ -269,8 +284,14 @@ const storyboard = {
         { from: 0, to: 40, label: 'render, cannot stop', tone: 'bad' },
       ],
       steps: [
-        { focus: [0, `span:one frame, ${FRAME_MS} ms`], say: 'That gives each frame about sixteen point seven milliseconds.' },
-        { focus: [1, 'span:render, cannot stop'], say: 'This update takes forty milliseconds, and the click lands five milliseconds in.' },
+        {
+          focus: [0, `span:one frame, ${FRAME_MS} ms`],
+          say: 'That gives each frame about sixteen point seven milliseconds.',
+        },
+        {
+          focus: [1, 'span:render, cannot stop'],
+          say: 'This update takes forty milliseconds, and the click lands five milliseconds in.',
+        },
         { focus: '2-3', say: 'Two frames go by with nothing new drawn. The page freezes.' },
         { focus: 4, say: 'Only at forty milliseconds does the click get its turn. Typing feels sticky.' },
       ],
@@ -282,7 +303,14 @@ const storyboard = {
       narration:
         'React 16 rewrote this as Fiber. Each component gets a small object, a fiber, with three links: its first child, its next sibling, and its parent, called return.',
       svg: fiber,
-      labels: { 'wip-app': 'work in progress', child1: 'child link', sib: 'sibling link', child2: 'child link', ret3: 'return link', ret2: 'return link' },
+      labels: {
+        'wip-app': 'work in progress',
+        child1: 'child link',
+        sib: 'sibling link',
+        child2: 'child link',
+        ret3: 'return link',
+        ret2: 'return link',
+      },
       hidden: ['wip-header', 'wip-main', 'wip-card'],
       steps: [
         { focus: ['wip-app', 'app'], say: 'A loop holds one pointer, work in progress. It starts at App.' },
@@ -340,13 +368,19 @@ const storyboard = {
         { title: 'Commit phase', tone: 'good' },
       ],
       rows: [
-        { label: 'What it does', cells: ['Calls your components, works out what changed', 'Applies those changes to the real page'] },
+        {
+          label: 'What it does',
+          cells: ['Calls your components, works out what changed', 'Applies those changes to the real page'],
+        },
         { label: 'Can it stop?', cells: ['Yes: pause, throw away, start over', 'No: runs start to finish'] },
         { label: 'The page', cells: ['Never touched', 'All changes land at once'] },
         { label: 'Then runs', cells: ['Nothing', 'Updates refs, runs `useLayoutEffect`'] },
       ],
       steps: [
-        { focus: 0, say: 'The render phase calls your components and works out what changed. The commit phase applies it.' },
+        {
+          focus: 0,
+          say: 'The render phase calls your components and works out what changed. The commit phase applies it.',
+        },
         { focus: 1, say: 'Render can pause, give up, or start again. Commit never stops once it begins.' },
         { focus: 2, say: 'Render never touches the page. Commit changes it all in one go.' },
         { focus: 3, say: 'And straight after, commit updates refs and runs layout effects.' },
@@ -360,10 +394,18 @@ const storyboard = {
       frames: [{ name: 'root', vars: { current: { ref: 'onscreen' } } }],
       objects: [
         { id: 'onscreen', type: 'tree A', fields: { count: 1, onScreen: 'yes', alternate: 'null' } },
-        { id: 'building', type: 'tree B', fields: { count: 2, onScreen: 'no', alternate: { ref: 'onscreen' } }, hidden: true },
+        {
+          id: 'building',
+          type: 'tree B',
+          fields: { count: 2, onScreen: 'no', alternate: { ref: 'onscreen' } },
+          hidden: true,
+        },
       ],
       steps: [
-        { focus: ['root.current', 'onscreen'], say: 'The root’s current pointer marks tree A, the one the user sees, where the count is one.' },
+        {
+          focus: ['root.current', 'onscreen'],
+          say: 'The root’s current pointer marks tree A, the one the user sees, where the count is one.',
+        },
         {
           show: ['building'],
           set: { 'onscreen.alternate': { ref: 'building' } },
@@ -389,7 +431,13 @@ const storyboard = {
       title: 'From setState to pixels',
       narration: 'Let’s follow one update from start to finish.',
       steps: [
-        { actor: 'Your code', action: 'calls setState', payload: 'setCount(count + 1)', icon: 'code', say: 'Your code calls set state.' },
+        {
+          actor: 'Your code',
+          action: 'calls setState',
+          payload: 'setCount(count + 1)',
+          icon: 'code',
+          say: 'Your code calls set state.',
+        },
         {
           actor: 'Scheduler',
           action: 'picks what matters most',
@@ -413,7 +461,13 @@ const storyboard = {
           tone: 'good',
           say: 'React DOM applies the changes in one go. This is commit.',
         },
-        { actor: 'Browser', action: 'paints the pixels', payload: 'next frame', icon: 'paintbrush', say: 'And the browser paints the new frame.' },
+        {
+          actor: 'Browser',
+          action: 'paints the pixels',
+          payload: 'next frame',
+          icon: 'paintbrush',
+          say: 'And the browser paints the new frame.',
+        },
       ],
     },
   ],

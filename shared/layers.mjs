@@ -15,7 +15,9 @@ export function stopKey(scene, ref) {
 /** Index of the layer an item key sits in, or -1. */
 export function layerOf(scene, key) {
   const id = key.slice(2);
-  return list(scene.layers).findIndex((l) => (key.startsWith('l:') ? l?.id === id : list(l?.items).some((it) => it?.id === id)));
+  return list(scene.layers).findIndex((l) =>
+    key.startsWith('l:') ? l?.id === id : list(l?.items).some((it) => it?.id === id),
+  );
 }
 
 /**
@@ -30,7 +32,11 @@ export function layerRoute(scene) {
   const turn = at >= 0 ? at : keys.length - 1;
   const reached = keys.slice(0, turn + 1).map((key, stop) => ({ stop, key }));
   const back = at >= 0 || path.return === true ? [...reached].reverse().map((v) => ({ ...v, leg: 'up' })) : [];
-  return { visits: [...reached.map((v) => ({ ...v, leg: 'down' })), ...back], turn, skipped: keys.slice(turn + 1).filter(Boolean) };
+  return {
+    visits: [...reached.map((v) => ({ ...v, leg: 'down' })), ...back],
+    turn,
+    skipped: keys.slice(turn + 1).filter(Boolean),
+  };
 }
 
 /**
@@ -49,7 +55,9 @@ export function tokenSteps(scene, hunks) {
   const stuck = [];
   const positions = stepTargets(scene, hunks).map((keys, k) => {
     const stops = keys.filter((key) => stopKeys.has(key));
-    const next = stops.map((key) => (turnsHere(pos, key) ? pos + 1 : visits.findIndex((v, i) => i >= Math.max(pos, 0) && v.key === key)));
+    const next = stops.map((key) =>
+      turnsHere(pos, key) ? pos + 1 : visits.findIndex((v, i) => i >= Math.max(pos, 0) && v.key === key),
+    );
     if (next.some((i) => i < 0)) stuck.push(k);
     pos = Math.max(pos, ...next);
     return pos;

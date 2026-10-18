@@ -20,10 +20,27 @@ export function parseTransform(text) {
   while (rest) {
     const m = /^(\w+)\s*\(([^)]*)\)\s*,?\s*/.exec(rest);
     if (!m || !Object.hasOwn(ARITY, m[1])) return null;
-    const args = m[2].split(/[\s,]+/).filter(Boolean).map(Number);
+    const args = m[2]
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number);
     const [min, max] = ARITY[m[1]];
-    if (args.length < min || args.length > max || (m[1] === 'rotate' && args.length === 2) || !args.every(Number.isFinite)) return null;
-    out.push({ fn: m[1], args: m[1] === 'translate' ? [args[0], args[1] ?? 0] : m[1] === 'scale' ? [args[0], args[1] ?? args[0]] : [args[0], args[1] ?? 0, args[2] ?? 0] });
+    if (
+      args.length < min ||
+      args.length > max ||
+      (m[1] === 'rotate' && args.length === 2) ||
+      !args.every(Number.isFinite)
+    )
+      return null;
+    out.push({
+      fn: m[1],
+      args:
+        m[1] === 'translate'
+          ? [args[0], args[1] ?? 0]
+          : m[1] === 'scale'
+            ? [args[0], args[1] ?? args[0]]
+            : [args[0], args[1] ?? 0, args[2] ?? 0],
+    });
     rest = rest.slice(m[0].length);
   }
   return out;
@@ -33,18 +50,31 @@ const round = (n) => Math.round(n * 1000) / 1000;
 const write = (list) => list.map(({ fn, args }) => `${fn}(${args.map(round).join(' ')})`).join(' ');
 
 /** A function that changes nothing, of the same kind as `f`: a rotation keeps its pivot so it turns about it. */
-const identityOf = (f) => ({ fn: f.fn, args: f.fn === 'scale' ? [1, 1] : f.fn === 'rotate' ? [0, f.args[1], f.args[2]] : [0, 0] });
+const identityOf = (f) => ({
+  fn: f.fn,
+  args: f.fn === 'scale' ? [1, 1] : f.fn === 'rotate' ? [0, f.args[1], f.args[2]] : [0, 0],
+});
 
 /** An affine matrix [a, b, c, d, e, f] for a function list. */
 function matrixOf(list) {
   let m = [1, 0, 0, 1, 0, 0];
-  const mul = (p, q) => [p[0] * q[0] + p[2] * q[1], p[1] * q[0] + p[3] * q[1], p[0] * q[2] + p[2] * q[3], p[1] * q[2] + p[3] * q[3], p[0] * q[4] + p[2] * q[5] + p[4], p[1] * q[4] + p[3] * q[5] + p[5]];
+  const mul = (p, q) => [
+    p[0] * q[0] + p[2] * q[1],
+    p[1] * q[0] + p[3] * q[1],
+    p[0] * q[2] + p[2] * q[3],
+    p[1] * q[2] + p[3] * q[3],
+    p[0] * q[4] + p[2] * q[5] + p[4],
+    p[1] * q[4] + p[3] * q[5] + p[5],
+  ];
   for (const { fn, args } of list) {
     if (fn === 'translate') m = mul(m, [1, 0, 0, 1, args[0], args[1]]);
     else if (fn === 'scale') m = mul(m, [args[0], 0, 0, args[1], 0, 0]);
     else {
       const r = (args[0] * Math.PI) / 180;
-      m = mul(mul(mul(m, [1, 0, 0, 1, args[1], args[2]]), [Math.cos(r), Math.sin(r), -Math.sin(r), Math.cos(r), 0, 0]), [1, 0, 0, 1, -args[1], -args[2]]);
+      m = mul(
+        mul(mul(m, [1, 0, 0, 1, args[1], args[2]]), [Math.cos(r), Math.sin(r), -Math.sin(r), Math.cos(r), 0, 0]),
+        [1, 0, 0, 1, -args[1], -args[2]],
+      );
     }
   }
   return m;
@@ -96,7 +126,8 @@ export function tweenTransform(from, to, t) {
 export function cubicOutlines(d) {
   const text = String(d ?? '');
   const tokens = text.match(/[MLHVCSQTAZmlhvcsqtaz]|-?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/gi) ?? [];
-  if (tokens.join('').length < text.replace(/[\s,]/g, '').length) throw new Error(`"${text.slice(0, 40)}" has characters a path's d does not use`);
+  if (tokens.join('').length < text.replace(/[\s,]/g, '').length)
+    throw new Error(`"${text.slice(0, 40)}" has characters a path's d does not use`);
   const outlines = [];
   let cur = null;
   let [x, y] = [0, 0];
@@ -108,7 +139,8 @@ export function cubicOutlines(d) {
     if (!Number.isFinite(v)) throw new Error(`"${text.slice(0, 40)}" ends partway through a command`);
     return v;
   };
-  const line = (nx, ny) => cur.curves.push([x + (nx - x) / 3, y + (ny - y) / 3, x + (2 * (nx - x)) / 3, y + (2 * (ny - y)) / 3, nx, ny]);
+  const line = (nx, ny) =>
+    cur.curves.push([x + (nx - x) / 3, y + (ny - y) / 3, x + (2 * (nx - x)) / 3, y + (2 * (ny - y)) / 3, nx, ny]);
   while (i < tokens.length) {
     if (/^[a-z]$/i.test(tokens[i])) cmd = tokens[i++];
     else if (!cmd) throw new Error(`"${text.slice(0, 40)}" must start with M`);
@@ -148,7 +180,14 @@ export function cubicOutlines(d) {
     } else if (C === 'Q' || C === 'T') {
       const [qx, qy] = C === 'T' ? (lastQ ? [2 * x - lastQ[0], 2 * y - lastQ[1]] : [x, y]) : [px(num()), py(num())];
       const [nx, ny] = [px(num()), py(num())];
-      cur.curves.push([x + (2 / 3) * (qx - x), y + (2 / 3) * (qy - y), nx + (2 / 3) * (qx - nx), ny + (2 / 3) * (qy - ny), nx, ny]);
+      cur.curves.push([
+        x + (2 / 3) * (qx - x),
+        y + (2 / 3) * (qy - y),
+        nx + (2 / 3) * (qx - nx),
+        ny + (2 / 3) * (qy - ny),
+        nx,
+        ny,
+      ]);
       nextQ = [qx, qy];
       [x, y] = [nx, ny];
     } else if (C === 'A') {
@@ -188,13 +227,26 @@ function arcCurves(x1, y1, rx, ry, rotation, large, sweep, x2, y2) {
   const parts = Math.max(1, Math.ceil(Math.abs(delta) / (Math.PI / 2) - 1e-9));
   const step = delta / parts;
   const kappa = (4 / 3) * Math.tan(step / 4);
-  const point = (a) => [cx + rx * Math.cos(a) * cos - ry * Math.sin(a) * sin, cy + rx * Math.cos(a) * sin + ry * Math.sin(a) * cos];
-  const tangent = (a) => [-rx * Math.sin(a) * cos - ry * Math.cos(a) * sin, -rx * Math.sin(a) * sin + ry * Math.cos(a) * cos];
+  const point = (a) => [
+    cx + rx * Math.cos(a) * cos - ry * Math.sin(a) * sin,
+    cy + rx * Math.cos(a) * sin + ry * Math.sin(a) * cos,
+  ];
+  const tangent = (a) => [
+    -rx * Math.sin(a) * cos - ry * Math.cos(a) * sin,
+    -rx * Math.sin(a) * sin + ry * Math.cos(a) * cos,
+  ];
   const out = [];
   for (let n = 0; n < parts; n++) {
     const [a0, a1] = [theta + n * step, theta + (n + 1) * step];
     const [p0, p1, t0, t1] = [point(a0), point(a1), tangent(a0), tangent(a1)];
-    out.push([p0[0] + kappa * t0[0], p0[1] + kappa * t0[1], p1[0] - kappa * t1[0], p1[1] - kappa * t1[1], n === parts - 1 ? x2 : p1[0], n === parts - 1 ? y2 : p1[1]]);
+    out.push([
+      p0[0] + kappa * t0[0],
+      p0[1] + kappa * t0[1],
+      p1[0] - kappa * t1[0],
+      p1[1] - kappa * t1[1],
+      n === parts - 1 ? x2 : p1[0],
+      n === parts - 1 ? y2 : p1[1],
+    ]);
   }
   return out;
 }
@@ -205,11 +257,17 @@ function halve([x, y], [c1x, c1y, c2x, c2y, ex, ey]) {
   const [ax, ay, bx, by, cx, cy] = [mid(x, c1x), mid(y, c1y), mid(c1x, c2x), mid(c1y, c2y), mid(c2x, ex), mid(c2y, ey)];
   const [dx, dy, fx, fy] = [mid(ax, bx), mid(ay, by), mid(bx, cx), mid(by, cy)];
   const [mx, my] = [mid(dx, fx), mid(dy, fy)];
-  return [[ax, ay, dx, dy, mx, my], [fx, fy, cx, cy, ex, ey]];
+  return [
+    [ax, ay, dx, dy, mx, my],
+    [fx, fy, cx, cy, ex, ey],
+  ];
 }
 
 /** A cubic's control polygon's length, from (x, y): a little longer than the curve. */
-const legs = (from, c) => Math.hypot(c[0] - from[0], c[1] - from[1]) + Math.hypot(c[2] - c[0], c[3] - c[1]) + Math.hypot(c[4] - c[2], c[5] - c[3]);
+const legs = (from, c) =>
+  Math.hypot(c[0] - from[0], c[1] - from[1]) +
+  Math.hypot(c[2] - c[0], c[3] - c[1]) +
+  Math.hypot(c[4] - c[2], c[5] - c[3]);
 
 /** An outline split into `n` curves, halving the longest until it has that many. */
 function splitTo(outline, n) {
@@ -243,7 +301,10 @@ function startAt(outline, k) {
  */
 export function pairShapes(fromD, toD) {
   const [a, b] = [cubicOutlines(fromD), cubicOutlines(toD)];
-  if (a.length !== b.length) throw new Error(`draws ${a.length} outline${a.length === 1 ? '' : 's'} and the other ${b.length}; a morph pairs them one to one, so give both the same number of M…Z parts`);
+  if (a.length !== b.length)
+    throw new Error(
+      `draws ${a.length} outline${a.length === 1 ? '' : 's'} and the other ${b.length}; a morph pairs them one to one, so give both the same number of M…Z parts`,
+    );
   const pairs = a.map((p, i) => {
     const q = b[i];
     const n = Math.max(p.curves.length, q.curves.length);
@@ -293,18 +354,27 @@ export function pathLength(d) {
 
 /** A state's moves and morphs by element id, as svgGeometry takes them: each moved transform, and each morphed path's new `d`. */
 export function stateMotion(ids, state) {
-  const byId = (record, value) => Object.fromEntries(Object.entries(record ?? {}).map(([key, v]) => [key.slice(2), value(v)]));
-  return { transforms: byId(state.transforms, (v) => v), shapes: byId(state.shapes, (target) => ids.get(target)?.attrs?.d ?? '') };
+  const byId = (record, value) =>
+    Object.fromEntries(Object.entries(record ?? {}).map(([key, v]) => [key.slice(2), value(v)]));
+  return {
+    transforms: byId(state.transforms, (v) => v),
+    shapes: byId(state.shapes, (target) => ids.get(target)?.attrs?.d ?? ''),
+  };
 }
 
 const attrNum = (node, name) => Number.parseFloat(node.attrs[name] ?? '0') || 0;
 const pointList = (text) => {
-  const ns = String(text ?? '').split(/[\s,]+/).filter(Boolean).map(Number);
+  const ns = String(text ?? '')
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(Number);
   const out = [];
   for (let i = 0; i + 1 < ns.length; i += 2) out.push([ns[i], ns[i + 1]]);
   return out;
 };
-const along = (pts, closed) => pts.reduce((sum, p, i) => sum + (i ? Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0) + (closed && pts.length > 1 ? Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) : 0);
+const along = (pts, closed) =>
+  pts.reduce((sum, p, i) => sum + (i ? Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0) +
+  (closed && pts.length > 1 ? Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) : 0);
 
 /** About how long the line a trace draws on an element is, in its own units; a group's is its longest line's. */
 export function traceLength(node, d) {

@@ -42,14 +42,149 @@ const px = (lon) => +(((lon + 180) / 360) * W).toFixed(1);
 const py = (lat) => +(((75 - lat) / 135) * H).toFixed(1);
 const poly = (pts) => pts.map(([lon, lat]) => `${px(lon)},${py(lat)}`).join(' ');
 const land = {
-  na: [[-165, 65], [-140, 70], [-95, 72], [-80, 63], [-60, 55], [-55, 48], [-70, 42], [-81, 30], [-81, 25], [-97, 26], [-97, 20], [-87, 15], [-80, 8], [-92, 15], [-105, 22], [-117, 32], [-124, 40], [-125, 49], [-135, 58], [-150, 60], [-165, 62]],
-  sa: [[-80, 8], [-60, 10], [-50, 0], [-35, -7], [-40, -22], [-58, -38], [-65, -55], [-73, -50], [-71, -30], [-80, -5]],
-  eu: [[-10, 36], [-9, 43], [-1, 46], [-5, 48], [2, 51], [8, 54], [9, 57], [5, 58], [5, 62], [14, 68], [24, 71], [30, 70], [29, 62], [22, 60], [18, 56], [12, 54], [21, 55], [29, 59], [42, 62], [45, 45], [38, 41], [28, 41], [23, 37], [20, 40], [16, 38], [12, 44], [8, 44], [3, 42], [-1, 37]],
-  uk: [[-5, 50], [1, 51], [0, 53], [-3, 56], [-5, 58], [-6, 55], [-3, 53]],
-  af: [[-17, 15], [-10, 30], [0, 36], [10, 37], [32, 31], [43, 12], [51, 12], [40, -15], [35, -25], [20, -35], [12, -17], [9, 4], [-8, 5]],
-  as: [[45, 45], [45, 62], [60, 70], [100, 77], [140, 72], [180, 68], [170, 60], [160, 55], [142, 46], [135, 35], [122, 30], [120, 22], [108, 20], [105, 10], [100, 14], [98, 8], [100, 2], [104, 1], [98, 16], [92, 22], [80, 15], [77, 8], [72, 20], [60, 25], [50, 30], [35, 30], [36, 36]],
-  au: [[114, -22], [122, -18], [131, -12], [137, -12], [142, -11], [146, -19], [153, -28], [150, -37], [140, -38], [132, -32], [115, -34]],
-  jp: [[130, 31], [135, 34], [140, 36], [142, 40], [141, 45], [144, 43], [140, 40], [139, 35], [133, 33]],
+  na: [
+    [-165, 65],
+    [-140, 70],
+    [-95, 72],
+    [-80, 63],
+    [-60, 55],
+    [-55, 48],
+    [-70, 42],
+    [-81, 30],
+    [-81, 25],
+    [-97, 26],
+    [-97, 20],
+    [-87, 15],
+    [-80, 8],
+    [-92, 15],
+    [-105, 22],
+    [-117, 32],
+    [-124, 40],
+    [-125, 49],
+    [-135, 58],
+    [-150, 60],
+    [-165, 62],
+  ],
+  sa: [
+    [-80, 8],
+    [-60, 10],
+    [-50, 0],
+    [-35, -7],
+    [-40, -22],
+    [-58, -38],
+    [-65, -55],
+    [-73, -50],
+    [-71, -30],
+    [-80, -5],
+  ],
+  eu: [
+    [-10, 36],
+    [-9, 43],
+    [-1, 46],
+    [-5, 48],
+    [2, 51],
+    [8, 54],
+    [9, 57],
+    [5, 58],
+    [5, 62],
+    [14, 68],
+    [24, 71],
+    [30, 70],
+    [29, 62],
+    [22, 60],
+    [18, 56],
+    [12, 54],
+    [21, 55],
+    [29, 59],
+    [42, 62],
+    [45, 45],
+    [38, 41],
+    [28, 41],
+    [23, 37],
+    [20, 40],
+    [16, 38],
+    [12, 44],
+    [8, 44],
+    [3, 42],
+    [-1, 37],
+  ],
+  uk: [
+    [-5, 50],
+    [1, 51],
+    [0, 53],
+    [-3, 56],
+    [-5, 58],
+    [-6, 55],
+    [-3, 53],
+  ],
+  af: [
+    [-17, 15],
+    [-10, 30],
+    [0, 36],
+    [10, 37],
+    [32, 31],
+    [43, 12],
+    [51, 12],
+    [40, -15],
+    [35, -25],
+    [20, -35],
+    [12, -17],
+    [9, 4],
+    [-8, 5],
+  ],
+  as: [
+    [45, 45],
+    [45, 62],
+    [60, 70],
+    [100, 77],
+    [140, 72],
+    [180, 68],
+    [170, 60],
+    [160, 55],
+    [142, 46],
+    [135, 35],
+    [122, 30],
+    [120, 22],
+    [108, 20],
+    [105, 10],
+    [100, 14],
+    [98, 8],
+    [100, 2],
+    [104, 1],
+    [98, 16],
+    [92, 22],
+    [80, 15],
+    [77, 8],
+    [72, 20],
+    [60, 25],
+    [50, 30],
+    [35, 30],
+    [36, 36],
+  ],
+  au: [
+    [114, -22],
+    [122, -18],
+    [131, -12],
+    [137, -12],
+    [142, -11],
+    [146, -19],
+    [153, -28],
+    [150, -37],
+    [140, -38],
+    [132, -32],
+    [115, -34],
+  ],
+  jp: [
+    [130, 31],
+    [135, 34],
+    [140, 36],
+    [142, 40],
+    [141, 45],
+    [144, 43],
+    [140, 40],
+    [139, 35],
+    [133, 33],
+  ],
 };
 const city = {
   origin: { lon: -95.9, lat: 41.3 },
@@ -85,7 +220,6 @@ ${viewer('v-tyo', city.tyo, 34, -40)}${viewer('v-sin', city.sin, -36, 34)}${view
 <path id="miss" d="M${ox},${oy} Q${((ox + px(city.fra.lon)) / 2).toFixed(1)},${(py(city.fra.lat) - 90).toFixed(1)} ${px(city.fra.lon)},${py(city.fra.lat)}" fill="none" stroke="var(--warn)" stroke-width="5"/>
 </svg>`;
 
-
 // Scene 9: the whole system as four bands, snaking left and right.
 const BW = 230;
 const BH = 64;
@@ -115,13 +249,17 @@ const link = (id, from, to, label = '', dashed = false) => {
   const [x1, y1] = boxes[from];
   const [x2, y2] = boxes[to];
   let a;
-  if (y1 === y2) a = x2 > x1 ? [x1 + BW, y1 + BH / 2, x2 - 6, y2 + BH / 2] : [x1, y1 + BH / 2, x2 + BW + 6, y2 + BH / 2];
+  if (y1 === y2)
+    a = x2 > x1 ? [x1 + BW, y1 + BH / 2, x2 - 6, y2 + BH / 2] : [x1, y1 + BH / 2, x2 + BW + 6, y2 + BH / 2];
   else a = [x1 + BW / 2, y1 + BH, x2 + BW / 2, y2 - 6];
   const [ax, ay, bx, by] = a;
-  const text = label ? `<text x="${(ax + bx) / 2 + (y1 === y2 ? 0 : 12)}" y="${(ay + by) / 2 + (y1 === y2 ? -10 : 8)}" text-anchor="${y1 === y2 ? 'middle' : 'start'}" font-size="20" fill="var(--muted)">${label}</text>` : '';
+  const text = label
+    ? `<text x="${(ax + bx) / 2 + (y1 === y2 ? 0 : 12)}" y="${(ay + by) / 2 + (y1 === y2 ? -10 : 8)}" text-anchor="${y1 === y2 ? 'middle' : 'start'}" font-size="20" fill="var(--muted)">${label}</text>`
+    : '';
   return `<g id="e-${id}"><line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="var(--muted)" stroke-width="3"${dashed ? ' stroke-dasharray="10 8"' : ''} marker-end="url(#head)"/>${text}</g>`;
 };
-const band = (id, y, label, cls) => `<text id="band-${id}" x="30" y="${y - 14}" font-size="20" class="${cls}">${label}</text>`;
+const band = (id, y, label, cls) =>
+  `<text id="band-${id}" x="30" y="${y - 14}" font-size="20" class="${cls}">${label}</text>`;
 const topology = `<svg viewBox="0 0 1200 600">
 <defs><marker id="head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)" stroke="none"/></marker></defs>
 ${band('upload', rows.upload, 'UPLOAD', 'tone-good')}${band('processing', rows.processing, 'PROCESSING', 'tone-good')}${band('delivery', rows.delivery, 'DELIVERY', 'tone-good')}${band('metadata', rows.metadata, 'METADATA', 'tone-accent')}
@@ -143,7 +281,12 @@ const storyboard = {
       kicker: 'Uploaded to YouTube',
       number: '500 hours',
       note: 'of video, every minute',
-      steps: [{ set: { number: `${fmt(hoursPerDay)} hours`, note: 'of video, every day' }, say: 'Over a day, that is seven hundred and twenty thousand hours.' }],
+      steps: [
+        {
+          set: { number: `${fmt(hoursPerDay)} hours`, note: 'of video, every day' },
+          say: 'Over a day, that is seven hundred and twenty thousand hours.',
+        },
+      ],
     },
     {
       type: 'svg',
@@ -151,12 +294,22 @@ const storyboard = {
       title: 'Two different problems',
       narration: 'And someone then watches it on a phone in a train, or on a 4K TV at home.',
       svg: planes,
-      labels: { ingest: 'formats', storage: 'storage', streaming: 'play', divider: 'line', control: 'control plane', data: 'data plane' },
+      labels: {
+        ingest: 'formats',
+        storage: 'storage',
+        streaming: 'play',
+        divider: 'line',
+        control: 'control plane',
+        data: 'data plane',
+      },
       hidden: ['divider', 'control', 'data'],
       steps: [
         { focus: 'ingest', say: 'Uploads arrive in every format and size you can imagine.' },
         { focus: 'storage', say: 'They pile up by the petabyte, every day, and old videos still have to be kept.' },
-        { focus: 'streaming', say: 'And every play has to start fast and never stall, on a weak phone signal or on fast fiber.' },
+        {
+          focus: 'streaming',
+          say: 'And every play has to start fast and never stall, on a weak phone signal or on fast fiber.',
+        },
         {
           show: ['divider', 'control'],
           focus: ['divider', 'control'],
@@ -174,7 +327,8 @@ const storyboard = {
       chapter: 'Upload',
       title: 'Uploading in pieces',
       layout: 'TB',
-      narration: 'A creator uploads a four gigabyte file from their laptop. Sending it as one huge request would be fragile.',
+      narration:
+        'A creator uploads a four gigabyte file from their laptop. Sending it as one huge request would be fragile.',
       nodes: [
         { id: 'creator', label: 'Creator', icon: 'user', caption: 'video.mov, 4 GB 4K ProRes', tone: 'good' },
         { id: 'gateway', label: 'API gateway', icon: 'network', caption: 'load balancer' },
@@ -237,7 +391,8 @@ const storyboard = {
       type: 'graph',
       chapter: 'Transcoding',
       title: 'One file in, many versions out',
-      narration: 'A 4K file is far too big for a phone on a weak signal. So workers make several smaller versions of it.',
+      narration:
+        'A 4K file is far too big for a phone on a weak signal. So workers make several smaller versions of it.',
       nodes: [
         { id: 'worker', label: 'Transcoding worker', icon: 'cpu', caption: 'runs a task graph' },
         { id: 'r1080', label: '1080p', shape: 'step', caption: 'H.264, 5 Mbit/s', hidden: true },
@@ -280,15 +435,32 @@ const storyboard = {
       entries: [
         {
           command: 'cat master.m3u8',
-          output: ['#EXTM3U', ...ladder.flatMap((r) => [`#EXT-X-STREAM-INF:BANDWIDTH=${r.bps},RESOLUTION=${r.res}`, `${r.name}/index.m3u8`])].join('\n'),
+          output: [
+            '#EXTM3U',
+            ...ladder.flatMap((r) => [
+              `#EXT-X-STREAM-INF:BANDWIDTH=${r.bps},RESOLUTION=${r.res}`,
+              `${r.name}/index.m3u8`,
+            ]),
+          ].join('\n'),
         },
         {
           command: 'head -7 480p/index.m3u8',
-          output: ['#EXTM3U', '#EXT-X-VERSION:3', '#EXT-X-TARGETDURATION:4', '#EXTINF:4.000,', 'seg_0.ts', '#EXTINF:4.000,', 'seg_1.ts'].join('\n'),
+          output: [
+            '#EXTM3U',
+            '#EXT-X-VERSION:3',
+            '#EXT-X-TARGETDURATION:4',
+            '#EXTINF:4.000,',
+            'seg_0.ts',
+            '#EXTINF:4.000,',
+            'seg_1.ts',
+          ].join('\n'),
         },
       ],
       steps: [
-        { focus: ['0:1', '0:2'], say: 'Each pair of lines is one version: how many bits a second it needs, its size, and where its own list lives.' },
+        {
+          focus: ['0:1', '0:2'],
+          say: 'Each pair of lines is one version: how many bits a second it needs, its size, and where its own list lives.',
+        },
         { focus: ['0:5', '0:6'], say: 'The 480p version needs about one point four megabits a second.' },
         { focus: ['1:2', '1:3', '1:4'], say: 'And its own list names the chunks, four seconds each, in order.' },
       ],
@@ -298,7 +470,8 @@ const storyboard = {
       chapter: 'Playback',
       title: 'A phone goes into a tunnel',
       unit: 's',
-      narration: 'Now someone watches on a phone. The player, not the server, picks which version to fetch for every chunk.',
+      narration:
+        'Now someone watches on a phone. The player, not the server, picks which version to fetch for every chunk.',
       events: [
         { at: 0, label: 'Chunk 1 in 1080p', detail: 'Wi-Fi 5 bars, 18 Mbit/s', tone: 'good' },
         { at: 4, label: 'Chunk 2 in 1080p', detail: 'still fast', tone: 'good' },
@@ -320,14 +493,18 @@ const storyboard = {
           focus: [3, 'span:chunk 3'],
           say: `At this speed a 1080p chunk would take ${load(5_000_000)} seconds to load, longer than it plays. So the player looks at the manifest and asks for 480p, which loads in ${load(1_400_000)}.`,
         },
-        { focus: [4, 'span:chunk 4'], say: 'The picture gets softer for a while, but the video never stops to buffer.' },
+        {
+          focus: [4, 'span:chunk 4'],
+          say: 'The picture gets softer for a while, but the video never stops to buffer.',
+        },
       ],
     },
     {
       type: 'svg',
       chapter: 'CDN',
       title: 'Chunks near the viewer',
-      narration: 'Chunks are plain files that never change, which makes them perfect for a content delivery network, a CDN.',
+      narration:
+        'Chunks are plain files that never change, which makes them perfect for a content delivery network, a CDN.',
       svg: map,
       labels: {
         origin: 'origin',
@@ -341,7 +518,10 @@ const storyboard = {
       },
       hidden: ['to-ny', 'to-fra', 'to-tyo', 'to-sin', 'ny', 'fra', 'sin', 'tyo', 'v-tyo', 'v-sin', 'v-fra', 'miss'],
       steps: [
-        { focus: 'origin', say: 'Every video lives at the origin, a big data center, here in the middle of the United States.' },
+        {
+          focus: 'origin',
+          say: 'Every video lives at the origin, a big data center, here in the middle of the United States.',
+        },
         {
           show: ['to-ny', 'to-fra', 'to-tyo', 'to-sin', 'ny', 'fra', 'sin', 'tyo'],
           focus: ['ny', 'fra', 'sin', 'tyo'],
@@ -382,7 +562,10 @@ const storyboard = {
         rows: [{ cells: ['cat', '#12, #87'] }, { cells: ['piano', '#40, #87'] }, { cells: ['lesson', '#40'] }],
       },
       steps: [
-        { focus: ['api->db', 'db'], say: 'Titles, channels and upload times go in a database that spreads across many machines and still keeps them consistent.' },
+        {
+          focus: ['api->db', 'db'],
+          say: 'Titles, channels and upload times go in a database that spreads across many machines and still keeps them consistent.',
+        },
         {
           focus: ['api->search', 'search', 'row:cat', 'row:piano', 'row:lesson'],
           say: 'Search works the other way round. An index lists, for every word, the videos that contain it, from their titles, descriptions and transcripts.',
@@ -400,7 +583,8 @@ const storyboard = {
       chapter: 'View counts',
       layout: 'TB',
       title: 'Counting 100,000 views a second',
-      narration: 'Counting views sounds easy. Now imagine a video going viral, with a hundred thousand views every second.',
+      narration:
+        'Counting views sounds easy. Now imagine a video going viral, with a hundred thousand views every second.',
       nodes: [
         { id: 'viewers', label: 'Viewers', icon: 'users', caption: '100,000 views a second', tone: 'good' },
         { id: 'redis', label: 'Redis buffer', icon: 'memory-stick', caption: 'counts in memory', hidden: true },

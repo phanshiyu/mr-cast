@@ -5,7 +5,9 @@ import { SLOTS, sized } from './slots';
 
 /** "In the code: limiter.ts, server.ts": the files of the hunks a pre-read's diagram cites in `from`, never typed. */
 export function sourceText(scene: Scene, hunks: HunkMap): string | null {
-  const files = [...new Set((scene.from ?? []).flatMap((id) => (hunks[id] ? [hunks[id]!.file.split('/').at(-1)!] : [])))];
+  const files = [
+    ...new Set((scene.from ?? []).flatMap((id) => (hunks[id] ? [hunks[id]!.file.split('/').at(-1)!] : []))),
+  ];
   return files.length ? `In the code: ${files.join(', ')}` : null;
 }
 

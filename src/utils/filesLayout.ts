@@ -137,17 +137,37 @@ function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number
   const iconW = Math.round(font * 1.35);
   const nameX = PAD_X + MARKER_W;
   const nameNeed = Math.max(
-    ...all.map((r) => r.depth * indent + iconW + r.name.length * font * MONO_ADVANCE + (r.kind === 'file' ? (r.file.test ? font * 3.4 : 0) + (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0) : 0)),
+    ...all.map(
+      (r) =>
+        r.depth * indent +
+        iconW +
+        r.name.length * font * MONO_ADVANCE +
+        (r.kind === 'file'
+          ? (r.file.test ? font * 3.4 : 0) +
+            (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0)
+          : 0),
+    ),
   );
   const hasNotes = all.some((r) => r.kind === 'file' && r.note);
   const nameW = Math.min(nameNeed + 8, width * (hasNotes ? 0.46 : 0.7));
   const countsX = counts ? nameX + nameW + COL_GAP : null;
   const noteX = (countsX ?? nameX + nameW) + (counts ? COUNT_CHARS * font * 0.62 + 14 + BAR_MAX : 0) + COL_GAP;
   const noteW = width - PAD_X - noteX;
-  const extras = (r: TreeRow) => (r.kind === 'file' ? (r.file.test ? font * 3.4 : 0) + (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0) : 0);
-  const name = (r: TreeRow) => fitText(r.name, { ...sized(SLOTS.fileName, nameW - r.depth * indent - iconW - extras(r)), size: font }, r.kind === 'file' ? `files[${JSON.stringify(r.file.path)}]` : '');
-  const note = (r: TreeRow) => (r.kind === 'file' && r.note ? noteFit(r.note, noteW, font, rowH, `notes[${JSON.stringify(r.file.path)}]`) : null);
-  const rows = columns.flatMap((column, c) => column.map((row, i) => ({ row, x: c * (width + COLUMN_GUTTER), y: i * rowH, name: name(row), note: note(row) })));
+  const extras = (r: TreeRow) =>
+    r.kind === 'file'
+      ? (r.file.test ? font * 3.4 : 0) + (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0)
+      : 0;
+  const name = (r: TreeRow) =>
+    fitText(
+      r.name,
+      { ...sized(SLOTS.fileName, nameW - r.depth * indent - iconW - extras(r)), size: font },
+      r.kind === 'file' ? `files[${JSON.stringify(r.file.path)}]` : '',
+    );
+  const note = (r: TreeRow) =>
+    r.kind === 'file' && r.note ? noteFit(r.note, noteW, font, rowH, `notes[${JSON.stringify(r.file.path)}]`) : null;
+  const rows = columns.flatMap((column, c) =>
+    column.map((row, i) => ({ row, x: c * (width + COLUMN_GUTTER), y: i * rowH, name: name(row), note: note(row) })),
+  );
   const height = Math.max(...columns.map((column) => column.length)) * rowH;
   return { font, rowH, indent, rows, width, nameX, nameW, countsX, noteX, noteW, totalWidth, height };
 }
@@ -185,12 +205,19 @@ export function filesBoxes(layout: FilesLayout): LayoutBoxes {
   const obstacles: Box[] = [];
   for (const { row, x, y, name: text, note } of layout.rows) {
     const left = x + layout.nameX + row.depth * layout.indent;
-    const name = { x: left, y: y + 4, width: Math.min(iconW + text.width, layout.nameX + layout.nameW - (left - x)), height: layout.rowH - 8 };
+    const name = {
+      x: left,
+      y: y + 4,
+      width: Math.min(iconW + text.width, layout.nameX + layout.nameW - (left - x)),
+      height: layout.rowH - 8,
+    };
     obstacles.push(name);
     if (row.kind !== 'file') continue;
     boxes.set(`f:${row.file.path}`, name);
-    if (layout.countsX !== null) obstacles.push({ x: x + layout.countsX, y, width: layout.noteX - layout.countsX - 12, height: layout.rowH });
-    if (note) obstacles.push({ x: x + layout.noteX, y, width: Math.min(layout.noteW, note.width), height: layout.rowH });
+    if (layout.countsX !== null)
+      obstacles.push({ x: x + layout.countsX, y, width: layout.noteX - layout.countsX - 12, height: layout.rowH });
+    if (note)
+      obstacles.push({ x: x + layout.noteX, y, width: Math.min(layout.noteW, note.width), height: layout.rowH });
   }
   return { boxes, obstacles };
 }

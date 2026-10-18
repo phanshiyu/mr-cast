@@ -24,7 +24,8 @@ const STEPS_OF = {
   plot: own,
   map: own,
   image: own,
-  flow: (scene) => (Array.isArray(scene.steps) && scene.steps.some((step) => step?.say !== undefined) ? scene.steps : undefined),
+  flow: (scene) =>
+    Array.isArray(scene.steps) && scene.steps.some((step) => step?.say !== undefined) ? scene.steps : undefined,
 };
 
 /** The steps a scene speaks, in order; empty for a scene without them. */

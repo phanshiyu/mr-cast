@@ -29,7 +29,14 @@ export interface StepLayout {
 
 export const outcomeFont = (fontSize: number) => Math.round(fontSize * 0.8);
 
-function layoutAt(steps: FlowSteps, width: number, fontSize: number, gap: number, lines: number, path: (k: number) => string): StepLayout & { fits: boolean } {
+function layoutAt(
+  steps: FlowSteps,
+  width: number,
+  fontSize: number,
+  gap: number,
+  lines: number,
+  path: (k: number) => string,
+): StepLayout & { fits: boolean } {
   const textW = width - NODE_PAD_X * 2 - BADGE - BADGE_GAP;
   const small = outcomeFont(fontSize);
   const nodes: StepNodeLayout[] = [];
@@ -37,7 +44,9 @@ function layoutAt(steps: FlowSteps, width: number, fontSize: number, gap: number
   let fits = true;
   steps.forEach((step, k) => {
     const label = fitTextAt(step.label, { ...sized(SLOTS.stepLabel, textW), lines }, `${path(k)}.label`, fontSize);
-    const outcome = step.outcome?.trim() ? fitTextAt(step.outcome, { ...sized(SLOTS.stepOutcome, textW - small - 8), lines }, `${path(k)}.outcome`, small) : null;
+    const outcome = step.outcome?.trim()
+      ? fitTextAt(step.outcome, { ...sized(SLOTS.stepOutcome, textW - small - 8), lines }, `${path(k)}.outcome`, small)
+      : null;
     fits &&= label.fits && (outcome?.fits ?? true);
     const text = label.height + (outcome ? OUTCOME_GAP + outcome.height : 0);
     const height = Math.round(Math.max(BADGE, text) + NODE_PAD_Y * 2);
@@ -51,7 +60,12 @@ function layoutAt(steps: FlowSteps, width: number, fontSize: number, gap: number
  * The largest font at which every label and outcome fits in two lines and the stack fits `maxHeight`;
  * failing that, the smallest font with three lines each. `path(k)` names step k in the storyboard.
  */
-export function layoutSteps(steps: FlowSteps, width: number, maxHeight: number, path: (k: number) => string): StepLayout {
+export function layoutSteps(
+  steps: FlowSteps,
+  width: number,
+  maxHeight: number,
+  path: (k: number) => string,
+): StepLayout {
   for (let size = FONT_MAX; size >= FONT_MIN; size--) {
     for (const gap of ARROW_GAPS) {
       const layout = layoutAt(steps, width, size, gap, 2, path);

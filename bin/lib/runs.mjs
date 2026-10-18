@@ -28,9 +28,14 @@ export const isExplanationName = (name) => NAME.test(name);
 
 export function parseRunName(value) {
   if (!NAME.test(value) || value.length > NAME_MAX) {
-    throw new UserError(`--name "${value}" must be lowercase letters, digits and single dashes, at most ${NAME_MAX} characters, e.g. rate-limit`);
+    throw new UserError(
+      `--name "${value}" must be lowercase letters, digits and single dashes, at most ${NAME_MAX} characters, e.g. rate-limit`,
+    );
   }
-  if (RESERVED.has(value)) throw new UserError(`--name ${value} is reserved for .mr-cast/${value}, which earlier versions used; pick another name`);
+  if (RESERVED.has(value))
+    throw new UserError(
+      `--name ${value} is reserved for .mr-cast/${value}, which earlier versions used; pick another name`,
+    );
   return value;
 }
 
@@ -82,7 +87,11 @@ const isExplanationMeta = (meta) => meta?.mode === 'explain';
 
 function listRuns(root) {
   let names = [];
-  try { names = fs.readdirSync(root); } catch { /* none yet */ }
+  try {
+    names = fs.readdirSync(root);
+  } catch {
+    /* none yet */
+  }
   return names.filter((n) => isRunName(n) && readRunMeta(path.join(root, n)));
 }
 
@@ -107,18 +116,28 @@ export const clearCurrent = (root) => fs.rmSync(path.join(root, CURRENT_FILE), {
 /** Where 0.11 left a walkthrough in `root`, as --dir arguments, so a missing run can point at them. */
 function olderData(root) {
   const found = [];
-  if (fs.existsSync(path.join(root, 'storyboard.json')) || fs.existsSync(path.join(root, 'hunks.json'))) found.push(path.relative(process.cwd(), root) || '.');
+  if (fs.existsSync(path.join(root, 'storyboard.json')) || fs.existsSync(path.join(root, 'hunks.json')))
+    found.push(path.relative(process.cwd(), root) || '.');
   let explained = [];
-  try { explained = fs.readdirSync(path.join(root, 'explain')).filter(isExplanationName); } catch { /* none */ }
+  try {
+    explained = fs.readdirSync(path.join(root, 'explain')).filter(isExplanationName);
+  } catch {
+    /* none */
+  }
   for (const name of explained) found.push(path.relative(process.cwd(), path.join(root, 'explain', name)));
   return found;
 }
 
 function missingRun(root, what) {
   const known = listRuns(root);
-  const hints = [known.length ? `runs here: ${known.join(', ')}` : 'start one with `mr-cast extract` or `mr-cast init --title "..."`'];
+  const hints = [
+    known.length
+      ? `runs here: ${known.join(', ')}`
+      : 'start one with `mr-cast extract` or `mr-cast init --title "..."`',
+  ];
   const older = olderData(root);
-  if (older.length) hints.push(`walkthroughs from mr-cast 0.11 or earlier: ${older.map((d) => `--dir ${d}`).join(', ')}`);
+  if (older.length)
+    hints.push(`walkthroughs from mr-cast 0.11 or earlier: ${older.map((d) => `--dir ${d}`).join(', ')}`);
   return new UserError(`${what}; ${hints.join('; ')}`);
 }
 
@@ -160,10 +179,15 @@ export function branchRun(root, values, branch) {
   if (values.name) {
     const name = parseRunName(values.name);
     const dir = path.join(root, name);
-    if (isExplanationMeta(readRunMeta(dir))) throw new UserError(`.mr-cast/${name} holds an explanation (made by \`mr-cast init\`); pass another --name`);
+    if (isExplanationMeta(readRunMeta(dir)))
+      throw new UserError(`.mr-cast/${name} holds an explanation (made by \`mr-cast init\`); pass another --name`);
     return { dir, name };
   }
-  return claimName(root, slugify(branch, 12) || 'branch', (meta) => meta !== null && !isExplanationMeta(meta) && meta.branch === branch);
+  return claimName(
+    root,
+    slugify(branch, 12) || 'branch',
+    (meta) => meta !== null && !isExplanationMeta(meta) && meta.branch === branch,
+  );
 }
 
 /**
@@ -176,16 +200,24 @@ export function explanationRun(root, values) {
     const name = parseRunName(values.name);
     const dir = path.join(root, name);
     const meta = readRunMeta(dir);
-    if (meta && !isExplanationMeta(meta)) throw new UserError(`.mr-cast/${name} holds a branch walkthrough (made by \`mr-cast extract\`); pass another --name`);
+    if (meta && !isExplanationMeta(meta))
+      throw new UserError(
+        `.mr-cast/${name} holds a branch walkthrough (made by \`mr-cast extract\`); pass another --name`,
+      );
     return { dir, name };
   }
   const title = values.title ?? null;
   if (title === null) {
     const current = readCurrent(root);
-    if (current && isExplanationMeta(readRunMeta(path.join(root, current)))) return { dir: path.join(root, current), name: current };
+    if (current && isExplanationMeta(readRunMeta(path.join(root, current))))
+      return { dir: path.join(root, current), name: current };
   }
   const quick = Boolean(values.quick);
-  return claimName(root, explanationSlug(title, quick), (meta) => isExplanationMeta(meta) && (meta.title ?? null) === title && Boolean(meta.quick) === quick);
+  return claimName(
+    root,
+    explanationSlug(title, quick),
+    (meta) => isExplanationMeta(meta) && (meta.title ?? null) === title && Boolean(meta.quick) === quick,
+  );
 }
 
 /** A quick video's run is `quick-<slug>`, so it never takes the name of the full video of the same title. */

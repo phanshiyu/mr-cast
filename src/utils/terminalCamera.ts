@@ -58,7 +58,8 @@ function playGroup(entries: readonly PlacedEntry[], from: number, budget: number
 export function entryReach(scene: TerminalScene): number[] {
   let last = -1;
   return stepTargets(scene).map((keys) => {
-    for (const key of keys) if (key.startsWith('en:') || key.startsWith('ln:')) last = Math.max(last, parseInt(key.slice(3), 10));
+    for (const key of keys)
+      if (key.startsWith('en:') || key.startsWith('ln:')) last = Math.max(last, parseInt(key.slice(3), 10));
     return last;
   });
 }
@@ -69,7 +70,11 @@ export function entryReach(scene: TerminalScene): number[] {
  * pen starts on a finished screen; the last step plays any entries after it. Without steps, the entries play
  * one after another while the narration speaks.
  */
-export function terminalSchedule(scene: TerminalScene, layout: TerminalLayout, segments: readonly SpokenSegment[]): EntryTiming[] {
+export function terminalSchedule(
+  scene: TerminalScene,
+  layout: TerminalLayout,
+  segments: readonly SpokenSegment[],
+): EntryTiming[] {
   const out: EntryTiming[] = [];
   const entries = layout.entries;
   const reach = entryReach(scene);
@@ -106,7 +111,12 @@ export interface TerminalCamera {
  * does, and scrolls back up to what a step names when that is above the view. With steps it eases to each
  * step's stop as the step starts, at rest when the step settles; without, it follows the typing.
  */
-export function terminalCamera(scene: TerminalScene, layout: TerminalLayout, timing: readonly EntryTiming[], segments: readonly SpokenSegment[]): TerminalCamera {
+export function terminalCamera(
+  scene: TerminalScene,
+  layout: TerminalLayout,
+  timing: readonly EntryTiming[],
+  segments: readonly SpokenSegment[],
+): TerminalCamera {
   const maxScroll = Math.max(0, layout.height - layout.viewH);
   const steps = scene.steps ?? [];
   if (maxScroll < 0.5) return { scrolls: false, stops: steps.map(() => 0), scrollAt: () => 0 };
@@ -123,7 +133,11 @@ export function terminalCamera(scene: TerminalScene, layout: TerminalLayout, tim
       if (tops.length && Math.min(...tops) - MARGIN < stop) stop = clampScroll(Math.min(...tops) - MARGIN);
       return stop;
     });
-    const scrollAt = (frame: number) => stops.reduce((acc, stop, k) => acc + (stop - (k ? stops[k - 1]! : 0)) * stepMove(frame, segments[k + 1]!.from), 0);
+    const scrollAt = (frame: number) =>
+      stops.reduce(
+        (acc, stop, k) => acc + (stop - (k ? stops[k - 1]! : 0)) * stepMove(frame, segments[k + 1]!.from),
+        0,
+      );
     return { scrolls: true, stops, scrollAt };
   }
   const times: number[] = [0];
@@ -137,7 +151,11 @@ export function terminalCamera(scene: TerminalScene, layout: TerminalLayout, tim
     key(t.typeFrom, showing(e.command ? e.command.y + e.command.fit.lines.length * layout.rowH : e.top + layout.rowH));
     key(t.done + 6, showing(e.bottom));
   });
-  const scrollAt = (frame: number) => interpolate(frame, times, values, { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.quad) });
+  const scrollAt = (frame: number) =>
+    interpolate(frame, times, values, {
+      extrapolateLeft: 'clamp',
+      extrapolateRight: 'clamp',
+      easing: Easing.inOut(Easing.quad),
+    });
   return { scrolls: true, stops: steps.map(() => maxScroll), scrollAt };
 }
-

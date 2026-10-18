@@ -37,7 +37,10 @@ function attempt(findings: readonly Finding[], written: readonly Finding[], widt
   const pad = Math.round(font * 0.5);
   const whereX = ROW_PAD_X + PILL_W + COL_GAP;
   const locations = findings.map(findingLocation);
-  const widest = Math.max(0, ...locations.map((l) => measure(l, { family: 'mono', weight: SLOTS.findingWhere.weight, size: whereFont })));
+  const widest = Math.max(
+    0,
+    ...locations.map((l) => measure(l, { family: 'mono', weight: SLOTS.findingWhere.weight, size: whereFont })),
+  );
   const whereW = Math.ceil(Math.min(widest, (width - whereX) * WHERE_SHARE));
   const claimX = whereX + whereW + COL_GAP;
   const claimW = width - claimX - ROW_PAD_X;
@@ -51,7 +54,15 @@ function attempt(findings: readonly Finding[], written: readonly Finding[], widt
     y += h + ROW_GAP;
     return row;
   });
-  return { rows, lineHeight, whereX, claimX, claimW, height: Math.max(0, y - ROW_GAP), room: fitBlock('findings', 'review scene', true, '') };
+  return {
+    rows,
+    lineHeight,
+    whereX,
+    claimX,
+    claimW,
+    height: Math.max(0, y - ROW_GAP),
+    room: fitBlock('findings', 'review scene', true, ''),
+  };
 }
 
 /**
@@ -66,5 +77,13 @@ export function layoutReview(findings: readonly Finding[], width: number, height
     last = attempt(ordered, findings, width, font);
     if (last.height <= height && last.rows.every((r) => r.claim.fits)) return last;
   }
-  return { ...last, room: fitBlock('findings', 'review scene', last.height <= height, 'keep only the findings that clearly look wrong, or shorten their claims') };
+  return {
+    ...last,
+    room: fitBlock(
+      'findings',
+      'review scene',
+      last.height <= height,
+      'keep only the findings that clearly look wrong, or shorten their claims',
+    ),
+  };
 }

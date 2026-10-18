@@ -33,7 +33,8 @@ export function cameraShots(scene, hunks = {}) {
   const steps = sceneSteps(scene);
   const problems = [];
   const shots = [null];
-  if (!steps.some((step) => step?.camera !== undefined)) return { shots: [...shots, ...steps.map(() => null)], problems, moves: false };
+  if (!steps.some((step) => step?.camera !== undefined))
+    return { shots: [...shots, ...steps.map(() => null)], problems, moves: false };
   const problem = (step, field, message, suggest) => {
     problems.push({ step, field, message, ...(suggest ? { suggest } : {}) });
   };
@@ -42,8 +43,20 @@ export function cameraShots(scene, hunks = {}) {
   steps.forEach((step, k) => {
     const value = step?.camera;
     if (value !== undefined) {
-      const refused = scene.type === 'map' ? 'a map moves its camera with `view`, which keeps labels their size as it zooms; write "view": refs, "world" or { "box": [[lat, lng], [lat, lng]] }' : `${aType(scene.type)} scene has no refs to frame; camera goes on the steps of ${CAMERA_TYPES.join(', ')}`;
-      const next = scene.type === 'image' && scene.kenBurns ? problem(k, 'camera', 'the picture already pans and zooms with kenBurns; drop kenBurns to move the camera by step, or drop camera') : CAMERA_TYPES.includes(scene.type) ? readShot(scene, hunks, step, k, value, names, problem) : problem(k, 'camera', refused);
+      const refused =
+        scene.type === 'map'
+          ? 'a map moves its camera with `view`, which keeps labels their size as it zooms; write "view": refs, "world" or { "box": [[lat, lng], [lat, lng]] }'
+          : `${aType(scene.type)} scene has no refs to frame; camera goes on the steps of ${CAMERA_TYPES.join(', ')}`;
+      const next =
+        scene.type === 'image' && scene.kenBurns
+          ? problem(
+              k,
+              'camera',
+              'the picture already pans and zooms with kenBurns; drop kenBurns to move the camera by step, or drop camera',
+            )
+          : CAMERA_TYPES.includes(scene.type)
+            ? readShot(scene, hunks, step, k, value, names, problem)
+            : problem(k, 'camera', refused);
       if (next !== undefined) shot = next;
     }
     shots.push(shot);
@@ -60,10 +73,15 @@ function readShot(scene, hunks, step, k, value, names, problem) {
   let field = 'camera';
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const extra = Object.keys(value).filter((key) => key !== 'on' && key !== 'zoom');
-    if (extra.length) return problem(k, `camera.${extra[0]}`, `is not a camera field; a camera is { "on": refs, "zoom": 3 }`, { name: extra[0], names: ['on', 'zoom'] });
+    if (extra.length)
+      return problem(k, `camera.${extra[0]}`, `is not a camera field; a camera is { "on": refs, "zoom": 3 }`, {
+        name: extra[0],
+        names: ['on', 'zoom'],
+      });
     if (value.on === undefined) return problem(k, 'camera.on', 'required: the ref or refs to frame');
     if (value.zoom !== undefined) {
-      if (typeof value.zoom !== 'number' || !Number.isFinite(value.zoom) || value.zoom < 1 || value.zoom > ZOOM_MAX) return problem(k, 'camera.zoom', `must be a number from 1, the whole scene's scale, to ${ZOOM_MAX}`);
+      if (typeof value.zoom !== 'number' || !Number.isFinite(value.zoom) || value.zoom < 1 || value.zoom > ZOOM_MAX)
+        return problem(k, 'camera.zoom', `must be a number from 1, the whole scene's scale, to ${ZOOM_MAX}`);
       zoom = value.zoom;
     }
     refs = value.on;
@@ -77,8 +95,21 @@ function readShot(scene, hunks, step, k, value, names, problem) {
     const at = Array.isArray(refs) ? `${field}[${j}]` : field;
     if (!isRef(ref)) return problem(k, at, help);
     const hit = stepRefKeys(scene, hunks, step, ref);
-    if (typeof hit === 'number') return problem(k, at, `${JSON.stringify(ref)} occurs ${hit} times on the step's lines; lengthen it until it names one place`);
-    if (!hit) return problem(k, at, scene.type === 'code' ? `${JSON.stringify(ref)} is not on the step's lines; name a line number, an "a-b" range, or text copied exactly from the code` : `${JSON.stringify(ref)} names nothing in this ${scene.type}`, scene.type === 'code' ? undefined : { name: String(ref), names });
+    if (typeof hit === 'number')
+      return problem(
+        k,
+        at,
+        `${JSON.stringify(ref)} occurs ${hit} times on the step's lines; lengthen it until it names one place`,
+      );
+    if (!hit)
+      return problem(
+        k,
+        at,
+        scene.type === 'code'
+          ? `${JSON.stringify(ref)} is not on the step's lines; name a line number, an "a-b" range, or text copied exactly from the code`
+          : `${JSON.stringify(ref)} names nothing in this ${scene.type}`,
+        scene.type === 'code' ? undefined : { name: String(ref), names },
+      );
     keys.push(...hit);
   }
   return { keys: [...new Set(keys)], refs: list, zoom };
@@ -114,7 +145,12 @@ export function frameShot(shot, boxOf, area) {
 }
 
 /** The part of the content box a view shows. */
-export const viewRect = (view, area) => ({ x: view.x - area.width / (2 * view.zoom), y: view.y - area.height / (2 * view.zoom), width: area.width / view.zoom, height: area.height / view.zoom });
+export const viewRect = (view, area) => ({
+  x: view.x - area.width / (2 * view.zoom),
+  y: view.y - area.height / (2 * view.zoom),
+  width: area.width / view.zoom,
+  height: area.height / view.zoom,
+});
 
 /**
  * A view partway, `t` from 0 to 1, from one to another. The zoom changes evenly in scale, and the centre moves so that
@@ -129,4 +165,5 @@ export function tweenView(a, b, t) {
 }
 
 /** A CSS transform, with its origin at the top left, that shows `view` of a content box of `area`. */
-export const viewTransform = (view, area) => `translate(${area.width / 2 - view.x * view.zoom}px, ${area.height / 2 - view.y * view.zoom}px) scale(${view.zoom})`;
+export const viewTransform = (view, area) =>
+  `translate(${area.width / 2 - view.x * view.zoom}px, ${area.height / 2 - view.y * view.zoom}px) scale(${view.zoom})`;

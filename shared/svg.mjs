@@ -6,24 +6,111 @@ import { measure } from './textfit.mjs';
 
 /** Elements the scene draws. Everything else (script, foreignObject, image, style, a, animate...) is cut. */
 const ELEMENTS = new Set([
-  'svg', 'g', 'defs', 'title', 'desc', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'path', 'text', 'tspan',
-  'marker', 'linearGradient', 'radialGradient', 'stop', 'clipPath', 'use',
+  'svg',
+  'g',
+  'defs',
+  'title',
+  'desc',
+  'rect',
+  'circle',
+  'ellipse',
+  'line',
+  'polyline',
+  'polygon',
+  'path',
+  'text',
+  'tspan',
+  'marker',
+  'linearGradient',
+  'radialGradient',
+  'stop',
+  'clipPath',
+  'use',
 ]);
 
 /** Attributes any drawing element may carry. */
 const COMMON = [
-  'id', 'class', 'transform', 'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
-  'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'stroke-opacity', 'opacity', 'clip-path', 'clip-rule', 'marker-start',
-  'marker-mid', 'marker-end', 'font-size', 'font-weight', 'font-family', 'font-style', 'text-anchor', 'dominant-baseline',
-  'alignment-baseline', 'letter-spacing', 'vector-effect', 'paint-order', 'display', 'visibility',
+  'id',
+  'class',
+  'transform',
+  'fill',
+  'fill-opacity',
+  'fill-rule',
+  'stroke',
+  'stroke-width',
+  'stroke-dasharray',
+  'stroke-dashoffset',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'stroke-miterlimit',
+  'stroke-opacity',
+  'opacity',
+  'clip-path',
+  'clip-rule',
+  'marker-start',
+  'marker-mid',
+  'marker-end',
+  'font-size',
+  'font-weight',
+  'font-family',
+  'font-style',
+  'text-anchor',
+  'dominant-baseline',
+  'alignment-baseline',
+  'letter-spacing',
+  'vector-effect',
+  'paint-order',
+  'display',
+  'visibility',
 ];
-const GEOMETRY = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'fx', 'fy', 'width', 'height', 'points', 'd', 'dx', 'dy', 'rotate', 'pathLength', 'textLength', 'lengthAdjust'];
+const GEOMETRY = [
+  'x',
+  'y',
+  'x1',
+  'y1',
+  'x2',
+  'y2',
+  'cx',
+  'cy',
+  'r',
+  'rx',
+  'ry',
+  'fx',
+  'fy',
+  'width',
+  'height',
+  'points',
+  'd',
+  'dx',
+  'dy',
+  'rotate',
+  'pathLength',
+  'textLength',
+  'lengthAdjust',
+];
 const ATTRIBUTES = new Set([
-  ...COMMON, ...GEOMETRY,
-  'viewBox', 'preserveAspectRatio', 'xmlns', 'xmlns:xlink', 'version',
-  'refX', 'refY', 'markerWidth', 'markerHeight', 'markerUnits', 'orient',
-  'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform', 'spreadMethod', 'clipPathUnits',
-  'href', 'xlink:href',
+  ...COMMON,
+  ...GEOMETRY,
+  'viewBox',
+  'preserveAspectRatio',
+  'xmlns',
+  'xmlns:xlink',
+  'version',
+  'refX',
+  'refY',
+  'markerWidth',
+  'markerHeight',
+  'markerUnits',
+  'orient',
+  'offset',
+  'stop-color',
+  'stop-opacity',
+  'gradientUnits',
+  'gradientTransform',
+  'spreadMethod',
+  'clipPathUnits',
+  'href',
+  'xlink:href',
 ]);
 
 /** Colours a drawing can name as `var(--name)`, the player's own palette. Kept in step with src/components/theme.ts and tones.ts. */
@@ -48,7 +135,8 @@ export const DEFAULT_FONT = 16;
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 const decode = (s) =>
   s.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (m, e) => {
-    if (e[0] === '#') return String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1)));
+    if (e[0] === '#')
+      return String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1)));
     return ENTITIES[e] ?? m;
   });
 
@@ -64,13 +152,17 @@ const decode = (s) =>
 function parse(markup) {
   const root = { tag: '#root', attrs: {}, children: [] };
   const stack = [root];
-  const re = /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<![^>]*>|<\/\s*([\w:.-]+)\s*>|<([\w:.-]+)((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>|([^<]+)|(<)/g;
+  const re =
+    /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!\[CDATA\[[\s\S]*?\]\]>|<![^>]*>|<\/\s*([\w:.-]+)\s*>|<([\w:.-]+)((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>|([^<]+)|(<)/g;
   let m;
   const cut = [];
   while ((m = re.exec(markup))) {
     const [all, close, open, attrs, selfClose, text, stray] = m;
     const top = stack[stack.length - 1];
-    if (stray) throw new Error(`the tag at character ${m.index} does not parse ("${markup.slice(m.index, m.index + 30)}"); every attribute needs a quoted value`);
+    if (stray)
+      throw new Error(
+        `the tag at character ${m.index} does not parse ("${markup.slice(m.index, m.index + 30)}"); every attribute needs a quoted value`,
+      );
     if (text !== undefined) {
       // A space between two tspans is a word break the text draws; elsewhere whitespace is only layout.
       if (text.trim() || top.tag === 'text' || top.tag === 'tspan') top.children.push({ text: decode(text) });
@@ -87,7 +179,8 @@ function parse(markup) {
       continue;
     }
     const node = { tag: open, attrs: {}, children: [] };
-    for (const a of attrs.matchAll(/([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) node.attrs[a[1]] = decode(a[2] ?? a[3]);
+    for (const a of attrs.matchAll(/([\w:.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g))
+      node.attrs[a[1]] = decode(a[2] ?? a[3]);
     top.children.push(node);
     if (!selfClose) stack.push(node);
   }
@@ -100,7 +193,8 @@ const PAINTS = new Set(['fill', 'stroke']);
 /** Attributes that point at an element of the drawing: `none` or `url(#id)`. */
 const REFERENCES = new Set(['clip-path', 'marker-start', 'marker-mid', 'marker-end']);
 /** A colour: hex, a keyword such as `none`, `currentColor` or `white`, rgb() or hsl() of numbers, or a palette `var(--name)`. */
-const COLOUR = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|[a-z]+|(?:rgba?|hsla?)\(\s*[-+\d.%\s,/]*\)|var\(\s*--[\w-]+\s*\))$/i;
+const COLOUR =
+  /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|[a-z]+|(?:rgba?|hsla?)\(\s*[-+\d.%\s,/]*\)|var\(\s*--[\w-]+\s*\))$/i;
 const LOCAL_REF = /^url\(\s*(['"]?)#([\w.:-]+)\1\s*\)$/i;
 /** The classes the scene reads, tones and `flow`; the player's own classes never reach a drawing. */
 const TONE_CLASS = new RegExp(`^(?:(?:tone|fill|stroke)-(?:${SVG_TONES.join('|')})|flow)$`);
@@ -113,15 +207,28 @@ const PLACED = new Set(['transform', 'x', 'y']);
  * @returns {{ value: string, ref?: string } | { problem: string }}
  */
 function attribute(name, value) {
-  if (value.includes('\\')) return { problem: `"${value}" has a backslash, which CSS reads as an escape, so it is cut` };
+  if (value.includes('\\'))
+    return { problem: `"${value}" has a backslash, which CSS reads as an escape, so it is cut` };
   if (/javascript:|expression\s*\(|@import/i.test(value)) return { problem: `"${value}" is cut` };
   const local = LOCAL_REF.exec(value.trim());
   if (local && (PAINTS.has(name) || REFERENCES.has(name))) return { value: `url(#${local[2]})`, ref: local[2] };
   if (PAINTS.has(name) || name === 'stop-color') {
-    return COLOUR.test(value.trim()) ? { value } : { problem: `"${value}" is no colour, so it is cut; a ${name} is a colour such as #7c8cff, none, currentColor or var(--good)${name === 'stop-color' ? '' : ', or url(#id) for a gradient in the drawing'}` };
+    return COLOUR.test(value.trim())
+      ? { value }
+      : {
+          problem: `"${value}" is no colour, so it is cut; a ${name} is a colour such as #7c8cff, none, currentColor or var(--good)${name === 'stop-color' ? '' : ', or url(#id) for a gradient in the drawing'}`,
+        };
   }
-  if (REFERENCES.has(name)) return value.trim() === 'none' ? { value } : { problem: `"${value}" is not url(#id), so it is cut; point at a ${name === 'clip-path' ? 'clip path' : 'marker'} in the drawing, url(#id), or write none` };
-  if (/url\s*\(/i.test(value)) return { problem: `"${value}" loads from outside the drawing, so it is cut; use url(#id) in fill, stroke, clip-path or a marker` };
+  if (REFERENCES.has(name))
+    return value.trim() === 'none'
+      ? { value }
+      : {
+          problem: `"${value}" is not url(#id), so it is cut; point at a ${name === 'clip-path' ? 'clip path' : 'marker'} in the drawing, url(#id), or write none`,
+        };
+  if (/url\s*\(/i.test(value))
+    return {
+      problem: `"${value}" loads from outside the drawing, so it is cut; use url(#id) in fill, stroke, clip-path or a marker`,
+    };
   return { value };
 }
 
@@ -134,7 +241,13 @@ function attribute(name, value) {
 export function readSvg(markup) {
   const problems = [];
   const ids = new Map();
-  if (typeof markup !== 'string' || !markup.trim()) return { root: null, viewBox: null, ids, problems: ['is empty; give the drawing as SVG markup, "<svg viewBox=\\"0 0 400 300\\">...</svg>"'] };
+  if (typeof markup !== 'string' || !markup.trim())
+    return {
+      root: null,
+      viewBox: null,
+      ids,
+      problems: ['is empty; give the drawing as SVG markup, "<svg viewBox=\\"0 0 400 300\\">...</svg>"'],
+    };
   let parsed;
   try {
     parsed = parse(markup);
@@ -144,33 +257,57 @@ export function readSvg(markup) {
   for (const c of parsed.cut) problems.push(`has ${c}, which is cut`);
   const tops = parsed.root.children;
   const root = tops.find((n) => n.tag);
-  if (!root || root.tag !== 'svg' || tops.length !== 1) return { root: null, viewBox: null, ids, problems: [...problems, 'must be one <svg> element with the drawing inside it'] };
-  const vb = String(root.attrs.viewBox ?? '').trim().split(/[\s,]+/).map(Number);
+  if (!root || root.tag !== 'svg' || tops.length !== 1)
+    return {
+      root: null,
+      viewBox: null,
+      ids,
+      problems: [...problems, 'must be one <svg> element with the drawing inside it'],
+    };
+  const vb = String(root.attrs.viewBox ?? '')
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
   const viewBox = vb.length === 4 && vb.every(Number.isFinite) && vb[2] > 0 && vb[3] > 0 ? vb : null;
-  if (!viewBox) problems.push(`<svg> needs a viewBox of four numbers with a positive width and height, such as viewBox="0 0 400 300"; ${root.attrs.viewBox === undefined ? 'it has none' : `"${root.attrs.viewBox}" is not one`}`);
+  if (!viewBox)
+    problems.push(
+      `<svg> needs a viewBox of four numbers with a positive width and height, such as viewBox="0 0 400 300"; ${root.attrs.viewBox === undefined ? 'it has none' : `"${root.attrs.viewBox}" is not one`}`,
+    );
 
   const refs = [];
   const keep = (node, path) => {
     if (!node.tag) return node;
     const where = `${path}<${node.tag}${node.attrs.id ? ` id="${node.attrs.id}"` : ''}>`;
     if (!ELEMENTS.has(node.tag) || (node.tag === 'svg' && path)) {
-      problems.push(`${where} is not drawn, so it is cut; a drawing uses ${[...ELEMENTS].filter((e) => e !== 'svg').join(', ')}`);
+      problems.push(
+        `${where} is not drawn, so it is cut; a drawing uses ${[...ELEMENTS].filter((e) => e !== 'svg').join(', ')}`,
+      );
       return null;
     }
     const attrs = {};
     for (const [name, value] of Object.entries(node.attrs)) {
       if (/^on/i.test(name)) problems.push(`${where} ${name}: an event handler is cut`);
-      else if (name === 'style') problems.push(`${where} style: a style attribute is cut; set fill, stroke and the rest as attributes`);
+      else if (name === 'style')
+        problems.push(`${where} style: a style attribute is cut; set fill, stroke and the rest as attributes`);
       else if (!ATTRIBUTES.has(name)) problems.push(`${where} ${name}: not a drawing attribute, so it is cut`);
-      else if (!path && PLACED.has(name)) problems.push(`${where} ${name}: the scene places the drawing on its stage, so ${name} on the root <svg> is cut; put it on a <g> inside`);
+      else if (!path && PLACED.has(name))
+        problems.push(
+          `${where} ${name}: the scene places the drawing on its stage, so ${name} on the root <svg> is cut; put it on a <g> inside`,
+        );
       else if (name === 'class') {
         const [kept, cut] = [[], []];
         for (const c of value.split(/\s+/).filter(Boolean)) (TONE_CLASS.test(c) ? kept : cut).push(c);
-        if (cut.length) problems.push(`${where} class: ${cut.map((c) => `"${c}"`).join(', ')} ${cut.length === 1 ? 'is no tone class, so it is' : 'are no tone classes, so they are'} cut; a class is tone-, fill- or stroke- and one of ${SVG_TONES.join(', ')}, such as tone-good, or flow for marching dashes along a line`);
+        if (cut.length)
+          problems.push(
+            `${where} class: ${cut.map((c) => `"${c}"`).join(', ')} ${cut.length === 1 ? 'is no tone class, so it is' : 'are no tone classes, so they are'} cut; a class is tone-, fill- or stroke- and one of ${SVG_TONES.join(', ')}, such as tone-good, or flow for marching dashes along a line`,
+          );
         if (kept.length) attrs.class = kept.join(' ');
       } else if (name === 'href' || name === 'xlink:href') {
-        if (!/^#[\w.:-]+$/.test(value)) problems.push(`${where} ${name}: "${value}" points outside the drawing, so it is cut; point at an element's id, "#arrow"`);
-        else (refs.push([where, name, value.slice(1)]), (attrs.href = value));
+        if (!/^#[\w.:-]+$/.test(value))
+          problems.push(
+            `${where} ${name}: "${value}" points outside the drawing, so it is cut; point at an element's id, "#arrow"`,
+          );
+        else refs.push([where, name, value.slice(1)]), (attrs.href = value);
       } else {
         const kept = attribute(name, value);
         if ('problem' in kept) problems.push(`${where} ${name}: ${kept.problem}`);
@@ -182,7 +319,12 @@ export function readSvg(markup) {
     }
     for (const v of Object.values(attrs)) {
       for (const [, name] of v.matchAll(/var\(\s*--([\w-]+)\s*\)/g)) {
-        if (!Object.hasOwn(SVG_COLORS, name)) problems.push(`${where}: var(--${name}) is no palette colour; they are ${Object.keys(SVG_COLORS).map((c) => `--${c}`).join(', ')}`);
+        if (!Object.hasOwn(SVG_COLORS, name))
+          problems.push(
+            `${where}: var(--${name}) is no palette colour; they are ${Object.keys(SVG_COLORS)
+              .map((c) => `--${c}`)
+              .join(', ')}`,
+          );
       }
     }
     if (attrs.id !== undefined) {
@@ -202,7 +344,8 @@ export function readSvg(markup) {
     return out;
   };
   const kept = keep(root, '');
-  for (const [where, name, id] of refs) if (!ids.has(id)) problems.push(`${where} ${name}: points at "#${id}", which no element has as its id`);
+  for (const [where, name, id] of refs)
+    if (!ids.has(id)) problems.push(`${where} ${name}: points at "#${id}", which no element has as its id`);
   return { root: kept, viewBox, ids, problems };
 }
 
@@ -231,21 +374,34 @@ export function textOf(node) {
 
 /** An affine matrix [a, b, c, d, e, f], mapping (x, y) to (a x + c y + e, b x + d y + f). */
 const IDENTITY = [1, 0, 0, 1, 0, 0];
-const multiply = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+const multiply = (m, n) => [
+  m[0] * n[0] + m[2] * n[1],
+  m[1] * n[0] + m[3] * n[1],
+  m[0] * n[2] + m[2] * n[3],
+  m[1] * n[2] + m[3] * n[3],
+  m[0] * n[4] + m[2] * n[5] + m[4],
+  m[1] * n[4] + m[3] * n[5] + m[5],
+];
 const apply = (m, [x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
 
 /** A `transform` attribute as one matrix. */
 export function transformOf(text) {
   let m = IDENTITY;
   for (const [, fn, args] of String(text ?? '').matchAll(/(\w+)\s*\(([^)]*)\)/g)) {
-    const a = args.split(/[\s,]+/).filter(Boolean).map(Number);
+    const a = args
+      .split(/[\s,]+/)
+      .filter(Boolean)
+      .map(Number);
     const rad = ((a[0] ?? 0) * Math.PI) / 180;
     let n = IDENTITY;
     if (fn === 'translate') n = [1, 0, 0, 1, a[0] ?? 0, a[1] ?? 0];
     else if (fn === 'scale') n = [a[0] ?? 1, 0, 0, a[1] ?? a[0] ?? 1, 0, 0];
     else if (fn === 'rotate') {
       const [cx, cy] = [a[1] ?? 0, a[2] ?? 0];
-      n = multiply(multiply([1, 0, 0, 1, cx, cy], [Math.cos(rad), Math.sin(rad), -Math.sin(rad), Math.cos(rad), 0, 0]), [1, 0, 0, 1, -cx, -cy]);
+      n = multiply(
+        multiply([1, 0, 0, 1, cx, cy], [Math.cos(rad), Math.sin(rad), -Math.sin(rad), Math.cos(rad), 0, 0]),
+        [1, 0, 0, 1, -cx, -cy],
+      );
     } else if (fn === 'matrix' && a.length === 6) n = a;
     else if (fn === 'skewX') n = [1, 0, Math.tan(rad), 1, 0, 0];
     else if (fn === 'skewY') n = [1, Math.tan(rad), 0, 1, 0, 0];
@@ -256,7 +412,10 @@ export function transformOf(text) {
 
 const num = (v, d = 0) => (Number.isFinite(Number.parseFloat(v)) ? Number.parseFloat(v) : d);
 const pairs = (text) => {
-  const ns = String(text ?? '').split(/[\s,]+/).filter(Boolean).map(Number);
+  const ns = String(text ?? '')
+    .split(/[\s,]+/)
+    .filter(Boolean)
+    .map(Number);
   const out = [];
   for (let i = 0; i + 1 < ns.length; i += 2) out.push([ns[i], ns[i + 1]]);
   return out;
@@ -299,12 +458,23 @@ function pathPoints(d) {
 const fontOf = (node, inherited) => ({
   size: num(node.attrs['font-size'], inherited.size),
   weight: num(node.attrs['font-weight'] === 'bold' ? 700 : node.attrs['font-weight'], inherited.weight),
-  family: /mono/i.test(node.attrs['font-family'] ?? '') ? 'mono' : node.attrs['font-family'] ? 'sans' : inherited.family,
+  family: /mono/i.test(node.attrs['font-family'] ?? '')
+    ? 'mono'
+    : node.attrs['font-family']
+      ? 'sans'
+      : inherited.family,
   anchor: node.attrs['text-anchor'] ?? inherited.anchor,
 });
 
 /** The first number of an x or y list, or none. */
-const firstOf = (v) => (v === undefined ? undefined : num(String(v).trim().split(/[\s,]+/)[0]));
+const firstOf = (v) =>
+  v === undefined
+    ? undefined
+    : num(
+        String(v)
+          .trim()
+          .split(/[\s,]+/)[0],
+      );
 
 /**
  * A text element laid out run by run, measured in the player's own font: its box, the box of each `<tspan>` with an id,
@@ -317,7 +487,8 @@ function textLayout(node, font) {
   let chunk = null;
   let smallest = font.size;
   const runs = [];
-  const width = (text, f) => measure(text, { family: f.family, weight: Math.min(800, Math.max(400, f.weight)), size: f.size });
+  const width = (text, f) =>
+    measure(text, { family: f.family, weight: Math.min(800, Math.max(400, f.weight)), size: f.size });
   const start = (n, f) => {
     const [x, y] = [firstOf(n.attrs.x), firstOf(n.attrs.y)];
     if (x !== undefined || y !== undefined || !chunk) {
@@ -357,7 +528,10 @@ function textLayout(node, font) {
     const span = Math.max(...mine.map((r) => r.x + r.width)) - c.from;
     const shift = c.anchor === 'middle' ? -span / 2 : c.anchor === 'end' ? -span : 0;
     for (const r of mine) {
-      const corners = [[r.x + shift, r.y - 0.8 * r.f.size], [r.x + shift + r.width, r.y + 0.25 * r.f.size]];
+      const corners = [
+        [r.x + shift, r.y - 0.8 * r.f.size],
+        [r.x + shift + r.width, r.y + 0.25 * r.f.size],
+      ];
       all.push(...corners);
       for (const id of r.owners) spans.set(id, [...(spans.get(id) ?? []), ...corners]);
     }
@@ -377,7 +551,11 @@ export function svgGeometry(root, motion = {}) {
   const moves = motion.transforms ?? {};
   const shapes = motion.shapes ?? {};
   const visit = (node, m, font, owners) => {
-    if (!node?.tag || ['defs', 'marker', 'clipPath', 'linearGradient', 'radialGradient', 'title', 'desc'].includes(node.tag)) return [];
+    if (
+      !node?.tag ||
+      ['defs', 'marker', 'clipPath', 'linearGradient', 'radialGradient', 'title', 'desc'].includes(node.tag)
+    )
+      return [];
     const id = node.attrs.id;
     const moved = id !== undefined && moves[id] ? `${moves[id]} ` : '';
     const mm = multiply(m, transformOf(`${moved}${node.attrs.transform ?? ''}`));
@@ -385,10 +563,26 @@ export function svgGeometry(root, motion = {}) {
     const f = fontOf(node, font);
     const a = node.attrs;
     let local = [];
-    if (node.tag === 'rect') local = [[num(a.x), num(a.y)], [num(a.x) + num(a.width), num(a.y) + num(a.height)]];
-    else if (node.tag === 'circle') local = [[num(a.cx) - num(a.r), num(a.cy) - num(a.r)], [num(a.cx) + num(a.r), num(a.cy) + num(a.r)]];
-    else if (node.tag === 'ellipse') local = [[num(a.cx) - num(a.rx), num(a.cy) - num(a.ry)], [num(a.cx) + num(a.rx), num(a.cy) + num(a.ry)]];
-    else if (node.tag === 'line') local = [[num(a.x1), num(a.y1)], [num(a.x2), num(a.y2)]];
+    if (node.tag === 'rect')
+      local = [
+        [num(a.x), num(a.y)],
+        [num(a.x) + num(a.width), num(a.y) + num(a.height)],
+      ];
+    else if (node.tag === 'circle')
+      local = [
+        [num(a.cx) - num(a.r), num(a.cy) - num(a.r)],
+        [num(a.cx) + num(a.r), num(a.cy) + num(a.r)],
+      ];
+    else if (node.tag === 'ellipse')
+      local = [
+        [num(a.cx) - num(a.rx), num(a.cy) - num(a.ry)],
+        [num(a.cx) + num(a.rx), num(a.cy) + num(a.ry)],
+      ];
+    else if (node.tag === 'line')
+      local = [
+        [num(a.x1), num(a.y1)],
+        [num(a.x2), num(a.y2)],
+      ];
     else if (node.tag === 'polyline' || node.tag === 'polygon') local = pairs(a.points);
     else if (node.tag === 'path') local = pathPoints((id !== undefined && shapes[id]) || a.d);
     const laid = node.tag === 'text' ? textLayout(node, f) : null;
@@ -397,11 +591,20 @@ export function svgGeometry(root, motion = {}) {
     if (node.tag !== 'text') for (const child of node.children) pts.push(...visit(child, mm, f, mine));
     const box = boxOf(pts);
     for (const [span, corners] of laid?.spans ?? []) boxes.set(span, boxOf(placed(corners, mm)));
-    if (node.tag === 'text' && box) texts.push({ id: a.id, text: textOf(node), size: laid.smallest * Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])), box, owners: mine });
+    if (node.tag === 'text' && box)
+      texts.push({
+        id: a.id,
+        text: textOf(node),
+        size: laid.smallest * Math.sqrt(Math.abs(mm[0] * mm[3] - mm[1] * mm[2])),
+        box,
+        owners: mine,
+      });
     if (a.id !== undefined && box) boxes.set(a.id, box);
     return pts;
   };
-  if (root) for (const child of root.children) visit(child, IDENTITY, { size: DEFAULT_FONT, weight: 400, family: 'sans', anchor: 'start' }, []);
+  if (root)
+    for (const child of root.children)
+      visit(child, IDENTITY, { size: DEFAULT_FONT, weight: 400, family: 'sans', anchor: 'start' }, []);
   return { boxes, texts };
 }
 
@@ -411,7 +614,12 @@ function placed(local, m) {
   const xs = local.map((p) => p[0]);
   const ys = local.map((p) => p[1]);
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  return [[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map((p) => apply(m, p));
+  return [
+    [x0, y0],
+    [x1, y0],
+    [x0, y1],
+    [x1, y1],
+  ].map((p) => apply(m, p));
 }
 
 function boxOf(pts) {

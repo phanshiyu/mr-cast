@@ -10,7 +10,10 @@ import {
   layoutSequence,
   type PlacedMessage,
   type Pt,
-  type SequenceLayout, sequenceBoxes, sequenceScale } from '../utils/sequenceLayout';
+  type SequenceLayout,
+  sequenceBoxes,
+  sequenceScale,
+} from '../utils/sequenceLayout';
 import { centredStage, staged, type MarkTargets, type Stage } from '../utils/penGeometry';
 import { sequenceCamera } from '../utils/sequenceCamera';
 import { markedKeys } from '../../shared/pen-marks.mjs';
@@ -59,11 +62,18 @@ function partialPolyline(points: readonly Pt[], t: number): { points: Pt[]; angl
 }
 
 /** How a message is marked: by what the diff does to it, else as highlighted, else not at all. */
-function messageMark(message: SequenceMessage): { stroke: string; glow: string; labelBg: string; labelText: string } | null {
-  if (message.change === 'modified') return { stroke: colors.accent, glow: colors.accentGlow, labelBg: '#141834', labelText: '#cdd3ff' };
-  if (message.change === 'added') return { stroke: colors.add, glow: 'rgba(61,220,151,0.4)', labelBg: '#10201b', labelText: '#c4f3dd' };
-  if (message.change === 'removed') return { stroke: colors.del, glow: 'transparent', labelBg: '#1e1216', labelText: colors.muted };
-  return message.highlight ? { stroke: EMPHASIS.color, glow: EMPHASIS.glow, labelBg: '#1f2026', labelText: colors.text } : null;
+function messageMark(
+  message: SequenceMessage,
+): { stroke: string; glow: string; labelBg: string; labelText: string } | null {
+  if (message.change === 'modified')
+    return { stroke: colors.accent, glow: colors.accentGlow, labelBg: '#141834', labelText: '#cdd3ff' };
+  if (message.change === 'added')
+    return { stroke: colors.add, glow: 'rgba(61,220,151,0.4)', labelBg: '#10201b', labelText: '#c4f3dd' };
+  if (message.change === 'removed')
+    return { stroke: colors.del, glow: 'transparent', labelBg: '#1e1216', labelText: colors.muted };
+  return message.highlight
+    ? { stroke: EMPHASIS.color, glow: EMPHASIS.glow, labelBg: '#1f2026', labelText: colors.text }
+    : null;
 }
 
 const headPath: Record<MessageKind, string> = {
@@ -72,7 +82,11 @@ const headPath: Record<MessageKind, string> = {
   async: `M ${-HEAD} ${-HEAD * 0.6} L 0 0`,
 };
 
-const MessageArrow: React.FC<{ placed: PlacedMessage; draw: number; current: boolean }> = ({ placed, draw, current }) => {
+const MessageArrow: React.FC<{ placed: PlacedMessage; draw: number; current: boolean }> = ({
+  placed,
+  draw,
+  current,
+}) => {
   if (draw <= 0) return null;
   const { kind } = placed;
   const mark = messageMark(placed.message);
@@ -85,9 +99,24 @@ const MessageArrow: React.FC<{ placed: PlacedMessage; draw: number; current: boo
   return (
     <g opacity={removed ? 0.7 : mark && kind === 'return' ? 0.85 : 1}>
       {mark && !removed ? (
-        <path d={d} fill="none" stroke={mark.glow} strokeWidth={current ? 14 : 10} strokeOpacity={placed.message.highlight && !placed.message.change ? 0.7 : current ? 0.55 : 0.35} strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d={d}
+          fill="none"
+          stroke={mark.glow}
+          strokeWidth={current ? 14 : 10}
+          strokeOpacity={placed.message.highlight && !placed.message.change ? 0.7 : current ? 0.55 : 0.35}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       ) : null}
-      <path d={d} fill="none" stroke={stroke} strokeWidth={width} strokeDasharray={kind === 'return' || removed ? '10 8' : undefined} strokeLinejoin="round" />
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={width}
+        strokeDasharray={kind === 'return' || removed ? '10 8' : undefined}
+        strokeLinejoin="round"
+      />
       <path
         d={headPath[kind]}
         transform={`translate(${tip.x} ${tip.y}) rotate(${angle})`}
@@ -101,11 +130,20 @@ const MessageArrow: React.FC<{ placed: PlacedMessage; draw: number; current: boo
   );
 };
 
-const MessageLabel: React.FC<{ placed: PlacedMessage; appear: number; current: boolean }> = ({ placed, appear, current }) => {
+const MessageLabel: React.FC<{ placed: PlacedMessage; appear: number; current: boolean }> = ({
+  placed,
+  appear,
+  current,
+}) => {
   const { label, kind } = placed;
   const mark = messageMark(placed.message);
   const removed = placed.message.change === 'removed';
-  const shift = label.align === 'center' ? 'translate(-50%, -100%)' : label.align === 'right' ? 'translate(-100%, -50%)' : 'translate(0, -50%)';
+  const shift =
+    label.align === 'center'
+      ? 'translate(-50%, -100%)'
+      : label.align === 'right'
+        ? 'translate(-100%, -50%)'
+        : 'translate(0, -50%)';
   const placement: React.CSSProperties = {
     position: 'absolute',
     left: label.x,
@@ -121,12 +159,21 @@ const MessageLabel: React.FC<{ placed: PlacedMessage; appear: number; current: b
     borderRadius: 8,
     background: mark?.labelBg ?? '#0d0f16',
     border: `1px solid ${mark?.stroke ?? (current ? 'rgba(255,255,255,0.32)' : colors.border)}`,
-    boxShadow: current || (placed.message.highlight && !placed.message.change) ? `0 0 22px ${mark && !removed ? mark.glow : 'rgba(255,255,255,0.12)'}` : undefined,
+    boxShadow:
+      current || (placed.message.highlight && !placed.message.change)
+        ? `0 0 22px ${mark && !removed ? mark.glow : 'rgba(255,255,255,0.12)'}`
+        : undefined,
     color: mark?.labelText ?? (kind === 'return' ? colors.muted : colors.text),
     textDecoration: removed ? 'line-through' : undefined,
     textDecorationColor: colors.del,
   };
-  const lines = <FitText fit={label.text} weight={current ? 650 : 500} align={label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center'} />;
+  const lines = (
+    <FitText
+      fit={label.text}
+      weight={current ? 650 : 500}
+      align={label.align === 'right' ? 'right' : label.align === 'left' ? 'left' : 'center'}
+    />
+  );
   const badges = badgesOf(placed.message);
   if (!badges.length) return <div style={{ ...placement, ...box }}>{lines}</div>;
   return (
@@ -196,12 +243,15 @@ function revealFront(layout: SequenceLayout, starts: number[], drawFrames: numbe
  * up to the last one it or an earlier step focuses, and the last step also draws and lights any after.
  */
 function messageSteps(scene: SequenceScene, count: number): { lasts: number[]; lit: Set<number>[] } {
-  const focused = stepTargets(scene).map((keys) => keys.flatMap((key) => (key.startsWith('m:') ? [Number(key.slice(2))] : [])));
+  const focused = stepTargets(scene).map((keys) =>
+    keys.flatMap((key) => (key.startsWith('m:') ? [Number(key.slice(2))] : [])),
+  );
   let reach = -1;
   const lasts = focused.map((ms) => (reach = Math.max(reach, ...ms)));
   const lit = focused.map((ms, k) => {
     const set = new Set(ms);
-    if (k === focused.length - 1) for (let i = Math.max(-1, ...ms, k > 0 ? lasts[k - 1]! : -1) + 1; i < count; i++) set.add(i);
+    if (k === focused.length - 1)
+      for (let i = Math.max(-1, ...ms, k > 0 ? lasts[k - 1]! : -1) + 1; i < count; i++) set.add(i);
     return set;
   });
   return { lasts, lit };
@@ -211,11 +261,22 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
-  const layout = useMemo(() => layoutSequence(scene.participants, scene.messages, box), [scene.participants, scene.messages, box.width, box.height]);
+  const layout = useMemo(
+    () => layoutSequence(scene.participants, scene.messages, box),
+    [scene.participants, scene.messages, box.width, box.height],
+  );
   // Without steps every message draws in before the voice; with them, each step's messages draw with its words.
   const count = layout.messages.length;
   const steps = useMemo(() => messageSteps(scene, count), [scene, count]);
-  const starts = revealStarts(segments, count, steps.lasts, MESSAGES_START, buildFrames('sequence') - MESSAGE_FRAMES, STEP_STAGGER, MESSAGE_FRAMES);
+  const starts = revealStarts(
+    segments,
+    count,
+    steps.lasts,
+    MESSAGES_START,
+    buildFrames('sequence') - MESSAGE_FRAMES,
+    STEP_STAGGER,
+    MESSAGE_FRAMES,
+  );
   const step = currentStep(segments, frame);
   const litSet = step < 0 ? null : steps.lit[step]!;
   const isLit = (i: number) => litSet !== null && litSet.has(i);
@@ -225,22 +286,41 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
   const lifeline = interpolate(frame, [LIFELINE_START, LIFELINE_START + LIFELINE_FRAMES], [0, 1], clamp);
   const headerStagger = Math.min(5, (HEADERS_END - HEADER_START) / Math.max(1, layout.participants.length - 1));
   const scale = sequenceScale(layout, box);
-  const camera = useMemo(() => sequenceCamera(layout, steps.lit, segments, box.height / scale), [layout, steps.lit, segments, box.height, scale]);
+  const camera = useMemo(
+    () => sequenceCamera(layout, steps.lit, segments, box.height / scale),
+    [layout, steps.lit, segments, box.height, scale],
+  );
   const scroll = camera.scrollAt(frame);
-  const stage: Stage = camera.scrolls ? { left: (box.width - layout.width * scale) / 2, top: 0, scale } : centredStage(box, layout, scale);
+  const stage: Stage = camera.scrolls
+    ? { left: (box.width - layout.width * scale) / 2, top: 0, scale }
+    : centredStage(box, layout, scale);
   const boxes = useMemo(() => sequenceBoxes(layout), [layout]);
   // Marks on messages scroll with them: placed where step k's camera settles, then carried along while it moves.
   const markTargets = (k: number): MarkTargets => {
     const stop = camera.stops[k] ?? 0;
-    const onMessages = scene.steps?.[k] ? markedKeys(scene, scene.steps[k] as FocusStep, hunks).some((key) => key.startsWith('m:')) : false;
-    const moved = { ...boxes, boxes: new Map([...boxes.boxes].map(([key, b]) => [key, key.startsWith('m:') ? { ...b, y: b.y - stop } : b])), obstacles: boxes.obstacles?.map((b) => (b.y >= layout.lifelineTop ? { ...b, y: b.y - stop } : b)) };
+    const onMessages = scene.steps?.[k]
+      ? markedKeys(scene, scene.steps[k] as FocusStep, hunks).some((key) => key.startsWith('m:'))
+      : false;
+    const moved = {
+      ...boxes,
+      boxes: new Map([...boxes.boxes].map(([key, b]) => [key, key.startsWith('m:') ? { ...b, y: b.y - stop } : b])),
+      obstacles: boxes.obstacles?.map((b) => (b.y >= layout.lifelineTop ? { ...b, y: b.y - stop } : b)),
+    };
     const targets = staged(moved, stage, box);
     return onMessages ? { ...targets, shift: { x: 0, y: (stop - scroll) * scale } } : targets;
   };
 
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: markTargets }}>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: camera.scrolls ? 'flex-start' : 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: camera.scrolls ? 'flex-start' : 'center',
+          justifyContent: 'center',
+        }}
+      >
         <div
           style={{
             position: 'relative',
@@ -252,66 +332,92 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
           }}
         >
           <div style={camera.scrolls ? scrollClip(layout.lifelineTop, camera.viewH, scroll, layout.height) : CONTENTS}>
-          <div style={camera.scrolls ? { position: 'absolute', left: 0, top: 0, width: layout.width, height: layout.height, transform: `translateY(${-scroll}px)` } : CONTENTS}>
-          <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-            {lit ? (
-              <rect
-                x={-12}
-                y={layout.messages[lit[0]]!.top}
-                width={layout.width + 24}
-                height={layout.messages[lit[1]]!.bottom - layout.messages[lit[0]]!.top}
-                rx={12}
-                fill={layout.messages.slice(lit[0], lit[1] + 1).some((m) => m.message.change === 'modified') ? 'rgba(124,140,255,0.07)' : 'rgba(255,255,255,0.035)'}
-                opacity={interpolate(frame, [starts[lit[0]]!, starts[lit[0]]! + DRAW_FRAMES], [0, 1], clamp)}
-              />
-            ) : null}
-            {layout.participants.map((p) => (
-              <line
-                key={p.participant.id}
-                x1={p.x}
-                x2={p.x}
-                y1={layout.lifelineTop}
-                y2={layout.lifelineTop + (layout.height - layout.lifelineTop) * lifeline}
-                stroke={nodeMark(p.participant)?.color ?? 'rgba(255,255,255,0.22)'}
-                strokeOpacity={nodeMark(p.participant) ? 0.45 : 1}
-                strokeWidth={2}
-                strokeDasharray="6 10"
-              />
-            ))}
-            {layout.activations.map((a, i) =>
-              frame >= starts[a.opener]! ? (
-                <rect
-                  key={i}
-                  x={a.x - BAR_W / 2}
-                  y={a.y0}
-                  width={BAR_W}
-                  height={Math.max(0, Math.min(a.y1, Math.max(front, a.y0 + 6)) - a.y0)}
-                  rx={3}
-                  fill="#262b3c"
-                  stroke="rgba(255,255,255,0.3)"
-                  strokeWidth={1.5}
-                />
-              ) : null,
-            )}
-            {layout.messages.map((m, i) => (
-              <MessageArrow
-                key={i}
-                placed={m}
-                current={isLit(i)}
-                draw={interpolate(frame, [starts[i]!, starts[i]! + DRAW_FRAMES], [0, 1], clamp)}
-              />
-            ))}
-          </svg>
-          {layout.messages.map((m, i) => {
-            const appear = interpolate(frame, [starts[i]! + DRAW_FRAMES * 0.5, starts[i]! + MESSAGE_FRAMES], [0, 1], clamp);
-            return (
-              <div key={i}>
-                <MessageLabel placed={m} appear={appear} current={isLit(i)} />
-                {m.note ? <NoteCard placed={m} appear={appear} /> : null}
-              </div>
-            );
-          })}
-          </div>
+            <div
+              style={
+                camera.scrolls
+                  ? {
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      width: layout.width,
+                      height: layout.height,
+                      transform: `translateY(${-scroll}px)`,
+                    }
+                  : CONTENTS
+              }
+            >
+              <svg
+                width={layout.width}
+                height={layout.height}
+                style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+              >
+                {lit ? (
+                  <rect
+                    x={-12}
+                    y={layout.messages[lit[0]]!.top}
+                    width={layout.width + 24}
+                    height={layout.messages[lit[1]]!.bottom - layout.messages[lit[0]]!.top}
+                    rx={12}
+                    fill={
+                      layout.messages.slice(lit[0], lit[1] + 1).some((m) => m.message.change === 'modified')
+                        ? 'rgba(124,140,255,0.07)'
+                        : 'rgba(255,255,255,0.035)'
+                    }
+                    opacity={interpolate(frame, [starts[lit[0]]!, starts[lit[0]]! + DRAW_FRAMES], [0, 1], clamp)}
+                  />
+                ) : null}
+                {layout.participants.map((p) => (
+                  <line
+                    key={p.participant.id}
+                    x1={p.x}
+                    x2={p.x}
+                    y1={layout.lifelineTop}
+                    y2={layout.lifelineTop + (layout.height - layout.lifelineTop) * lifeline}
+                    stroke={nodeMark(p.participant)?.color ?? 'rgba(255,255,255,0.22)'}
+                    strokeOpacity={nodeMark(p.participant) ? 0.45 : 1}
+                    strokeWidth={2}
+                    strokeDasharray="6 10"
+                  />
+                ))}
+                {layout.activations.map((a, i) =>
+                  frame >= starts[a.opener]! ? (
+                    <rect
+                      key={i}
+                      x={a.x - BAR_W / 2}
+                      y={a.y0}
+                      width={BAR_W}
+                      height={Math.max(0, Math.min(a.y1, Math.max(front, a.y0 + 6)) - a.y0)}
+                      rx={3}
+                      fill="#262b3c"
+                      stroke="rgba(255,255,255,0.3)"
+                      strokeWidth={1.5}
+                    />
+                  ) : null,
+                )}
+                {layout.messages.map((m, i) => (
+                  <MessageArrow
+                    key={i}
+                    placed={m}
+                    current={isLit(i)}
+                    draw={interpolate(frame, [starts[i]!, starts[i]! + DRAW_FRAMES], [0, 1], clamp)}
+                  />
+                ))}
+              </svg>
+              {layout.messages.map((m, i) => {
+                const appear = interpolate(
+                  frame,
+                  [starts[i]! + DRAW_FRAMES * 0.5, starts[i]! + MESSAGE_FRAMES],
+                  [0, 1],
+                  clamp,
+                );
+                return (
+                  <div key={i}>
+                    <MessageLabel placed={m} appear={appear} current={isLit(i)} />
+                    {m.note ? <NoteCard placed={m} appear={appear} /> : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {layout.participants.map((p, i) => (
             <NodeCard
@@ -324,7 +430,11 @@ export const SequenceDiagram: React.FC<SceneProps<SequenceScene>> = ({ scene, hu
               size={layout.cardW < 290 ? 'compact' : 'small'}
               text={layout.texts.get(p.participant.id)!}
               emphasis={{ ...emphasisOf(`p:${p.participant.id}`), opacity: 1 }}
-              appear={spring({ frame: frame - HEADER_START - i * headerStagger, fps, config: { damping: 16, stiffness: 110 } })}
+              appear={spring({
+                frame: frame - HEADER_START - i * headerStagger,
+                fps,
+                config: { damping: 16, stiffness: 110 },
+              })}
             />
           ))}
         </div>

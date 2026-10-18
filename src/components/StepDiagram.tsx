@@ -1,6 +1,14 @@
 import { Check, CornerDownRight } from 'lucide-react';
 import { spring } from 'remotion';
-import { BADGE, BADGE_GAP, NODE_PAD_X, NODE_PAD_Y, OUTCOME_GAP, outcomeFont, type StepLayout } from '../utils/stepsLayout';
+import {
+  BADGE,
+  BADGE_GAP,
+  NODE_PAD_X,
+  NODE_PAD_Y,
+  OUTCOME_GAP,
+  outcomeFont,
+  type StepLayout,
+} from '../utils/stepsLayout';
 import { FitText } from './FitText';
 import { colors } from './theme';
 
@@ -22,7 +30,17 @@ interface StepDiagramProps {
 }
 
 /** A vertical stepper beside the code: the step whose range is highlighted lights up and a connector joins them. */
-export const StepDiagram: React.FC<StepDiagramProps> = ({ layout, codeRight, left, top, width, codeY, reached, frame, fps }) => {
+export const StepDiagram: React.FC<StepDiagramProps> = ({
+  layout,
+  codeRight,
+  left,
+  top,
+  width,
+  codeY,
+  reached,
+  frame,
+  fps,
+}) => {
   const { fontSize, nodes } = layout;
   const small = outcomeFont(fontSize);
   const arrowX = left + NODE_PAD_X + BADGE / 2;
@@ -38,11 +56,33 @@ export const StepDiagram: React.FC<StepDiagramProps> = ({ layout, codeRight, lef
           const tip = from + (to - from - 2) * drawn;
           return (
             <g key={i} opacity={appear(i + 1)}>
-              <line x1={arrowX} y1={from} x2={arrowX} y2={to - 2} stroke={colors.borderStrong} strokeWidth={2} strokeDasharray="5 6" />
+              <line
+                x1={arrowX}
+                y1={from}
+                x2={arrowX}
+                y2={to - 2}
+                stroke={colors.borderStrong}
+                strokeWidth={2}
+                strokeDasharray="5 6"
+              />
               {drawn > 0 ? (
                 <>
-                  <line x1={arrowX} y1={from} x2={arrowX} y2={tip - 6} stroke={colors.accent} strokeWidth={3} opacity={0.5 + 0.5 * drawn} />
-                  <path d={`M ${arrowX - 7} ${tip - 9} L ${arrowX} ${tip} L ${arrowX + 7} ${tip - 9}`} fill="none" stroke={colors.accent} strokeWidth={3} strokeLinejoin="round" />
+                  <line
+                    x1={arrowX}
+                    y1={from}
+                    x2={arrowX}
+                    y2={tip - 6}
+                    stroke={colors.accent}
+                    strokeWidth={3}
+                    opacity={0.5 + 0.5 * drawn}
+                  />
+                  <path
+                    d={`M ${arrowX - 7} ${tip - 9} L ${arrowX} ${tip} L ${arrowX + 7} ${tip - 9}`}
+                    fill="none"
+                    stroke={colors.accent}
+                    strokeWidth={3}
+                    strokeLinejoin="round"
+                  />
                 </>
               ) : null}
             </g>
@@ -56,7 +96,12 @@ export const StepDiagram: React.FC<StepDiagramProps> = ({ layout, codeRight, lef
           const mid = (codeRight + left) / 2;
           return (
             <g key={k} opacity={strength}>
-              <path d={`M ${codeRight} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${left - 4} ${y2}`} fill="none" stroke={colors.accent} strokeWidth={3} />
+              <path
+                d={`M ${codeRight} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${left - 4} ${y2}`}
+                fill="none"
+                stroke={colors.accent}
+                strokeWidth={3}
+              />
               <circle cx={codeRight} cy={y1} r={7} fill={colors.accent} />
             </g>
           );
@@ -111,7 +156,14 @@ export const StepDiagram: React.FC<StepDiagramProps> = ({ layout, codeRight, lef
             <div style={{ minWidth: 0, flex: 1, alignSelf: 'center' }}>
               <FitText fit={node.label} weight={state === 'active' ? 650 : 550} style={{ color: colors.text }} />
               {node.outcome ? (
-                <div style={{ display: 'flex', gap: 8, marginTop: OUTCOME_GAP, color: state === 'active' ? '#c3c9ff' : colors.muted }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    marginTop: OUTCOME_GAP,
+                    color: state === 'active' ? '#c3c9ff' : colors.muted,
+                  }}
+                >
                   <CornerDownRight size={small} style={{ flexShrink: 0, marginTop: small * 0.15 }} />
                   <FitText fit={node.outcome} />
                 </div>

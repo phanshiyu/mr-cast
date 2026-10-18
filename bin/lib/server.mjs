@@ -17,13 +17,27 @@ const BODY_MAX = 4096;
 export const TOKEN_HEADER = 'x-mr-cast-token';
 
 const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8', '.map': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif', '.webp': 'image/webp', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8',
-  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.wasm': 'application/wasm',
-  '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.txt': 'text/plain; charset=utf-8',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.wasm': 'application/wasm',
+  '.mp4': 'video/mp4',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
 };
 
 /** Streams `file`, honouring a single-range Range header so media elements can seek. */
@@ -61,7 +75,11 @@ function send(res, status, body) {
 /** Resolve a URL path inside `root`, or null if it would escape it. */
 function safeJoin(root, urlPath) {
   let decoded;
-  try { decoded = decodeURIComponent(urlPath); } catch { return null; }
+  try {
+    decoded = decodeURIComponent(urlPath);
+  } catch {
+    return null;
+  }
   if (decoded.includes('\0')) return null;
   const file = path.resolve(root, `.${path.posix.normalize(`/${decoded}`)}`);
   return file === root || file.startsWith(root + path.sep) ? file : null;
@@ -79,8 +97,10 @@ function sendJson(res, status, value) {
  */
 function postChoice(req, res, { token, dataDir }) {
   const given = Buffer.from(String(req.headers[TOKEN_HEADER] ?? ''));
-  if (given.length !== token.length || !timingSafeEqual(given, token)) return sendJson(res, 403, { error: 'missing or wrong token; open the URL mr-cast printed' });
-  if (!/^application\/json\b/.test(req.headers['content-type'] ?? '')) return sendJson(res, 415, { error: 'send application/json' });
+  if (given.length !== token.length || !timingSafeEqual(given, token))
+    return sendJson(res, 403, { error: 'missing or wrong token; open the URL mr-cast printed' });
+  if (!/^application\/json\b/.test(req.headers['content-type'] ?? ''))
+    return sendJson(res, 415, { error: 'send application/json' });
   const chunks = [];
   let size = 0;
   req.on('data', (chunk) => {
@@ -93,17 +113,31 @@ function postChoice(req, res, { token, dataDir }) {
   req.on('end', () => {
     if (size > BODY_MAX) return;
     let body;
-    try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return sendJson(res, 400, { error: 'body is not JSON' }); }
+    try {
+      body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    } catch {
+      return sendJson(res, 400, { error: 'body is not JSON' });
+    }
     let result;
-    try { result = writeChoice(dataDir, body); } catch (err) { result = { status: 500, error: `could not write plan.json: ${err.message}` }; }
+    try {
+      result = writeChoice(dataDir, body);
+    } catch (err) {
+      result = { status: 500, error: `could not write plan.json: ${err.message}` };
+    }
     sendJson(res, result.status, result.error ? { error: result.error } : { ok: true });
   });
 }
 
 function listen(server, port) {
   return new Promise((resolve, reject) => {
-    const onError = (err) => { server.off('listening', onListening); reject(err); };
-    const onListening = () => { server.off('error', onError); resolve(server.address().port); };
+    const onError = (err) => {
+      server.off('listening', onListening);
+      reject(err);
+    };
+    const onListening = () => {
+      server.off('error', onError);
+      resolve(server.address().port);
+    };
     server.once('error', onError);
     server.once('listening', onListening);
     server.listen(port, HOST);
@@ -125,7 +159,18 @@ function listen(server, port) {
  * the count starts from the start, from the last page leaving, or from the end of the work `busy` reports, such as
  * a voicing. `idle.onDeadline?.(ms)` hears when it would run, as a timestamp, or null while it is not counting.
  */
-export async function startServer({ distDir, dataDir, port, onDataChange, holding, getVoiceover, getStoryboard, audience = 'familiar', onViewers, idle }) {
+export async function startServer({
+  distDir,
+  dataDir,
+  port,
+  onDataChange,
+  holding,
+  getVoiceover,
+  getStoryboard,
+  audience = 'familiar',
+  onViewers,
+  idle,
+}) {
   const root = path.resolve(distDir);
   const token = randomBytes(16).toString('hex');
   const tokenBytes = Buffer.from(token);
@@ -136,7 +181,7 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
   let closing = false;
   const countDown = () => {
     if (!idle?.ms || closing) return;
-    const next = clients.size || idle.busy?.() ? null : deadline ?? Date.now() + idle.ms;
+    const next = clients.size || idle.busy?.() ? null : (deadline ?? Date.now() + idle.ms);
     if (next !== deadline) idle.onDeadline?.(next);
     deadline = next;
     if (deadline !== null && Date.now() >= deadline) {
@@ -161,7 +206,11 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'method not allowed');
 
     if (pathname === '/events') {
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-store',
+        Connection: 'keep-alive',
+      });
       res.write(': connected\n\n');
       clients.add(res);
       viewersChanged();
@@ -187,14 +236,18 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
     if (audio) {
       if (!AUDIO_NAME.test(audio[1])) return send(res, 404, 'not found');
       // Clip names are content hashes, so a cached clip never goes stale.
-      return sendFile(req, res, path.join(dataDir, 'audio', audio[1]), { 'Cache-Control': 'max-age=31536000, immutable' });
+      return sendFile(req, res, path.join(dataDir, 'audio', audio[1]), {
+        'Cache-Control': 'max-age=31536000, immutable',
+      });
     }
 
     // Only the run's copies of its pictures, by their hashed names; nothing else of the run directory is served.
     const image = pathname.match(/^\/data\/images\/([^/]+)$/);
     if (image) {
       if (!IMAGE_NAME.test(image[1])) return send(res, 404, 'not found');
-      return sendFile(req, res, path.join(dataDir, IMAGES_DIR, image[1]), { 'Cache-Control': 'max-age=31536000, immutable' });
+      return sendFile(req, res, path.join(dataDir, IMAGES_DIR, image[1]), {
+        'Cache-Control': 'max-age=31536000, immutable',
+      });
     }
 
     const data = pathname.match(/^\/data\/([^/]+)$/);
@@ -227,7 +280,9 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
   if (idle?.ms) idleTicker = setInterval(countDown, Math.max(10, Math.min(IDLE_TICK_MS, idle.ms / 4)));
   countDown();
 
-  const broadcast = (msg) => { for (const c of clients) c.write(msg); };
+  const broadcast = (msg) => {
+    for (const c of clients) c.write(msg);
+  };
   const keepalive = setInterval(() => broadcast(': keepalive\n\n'), KEEPALIVE_MS);
 
   const pending = new Set();
@@ -255,18 +310,21 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
       });
     }, DEBOUNCE_MS);
   });
-  watcher.on('error', (err) => console.error(`mr-cast: stopped watching ${dataDir} (${err.message}); restart play to resume live reload`));
+  watcher.on('error', (err) =>
+    console.error(`mr-cast: stopped watching ${dataDir} (${err.message}); restart play to resume live reload`),
+  );
 
-  const close = () => new Promise((resolve) => {
-    closing = true;
-    clearInterval(idleTicker);
-    clearInterval(keepalive);
-    clearTimeout(timer);
-    watcher.close();
-    for (const c of clients) c.end();
-    server.close(() => resolve());
-    server.closeAllConnections?.();
-  });
+  const close = () =>
+    new Promise((resolve) => {
+      closing = true;
+      clearInterval(idleTicker);
+      clearInterval(keepalive);
+      clearTimeout(timer);
+      watcher.close();
+      for (const c of clients) c.end();
+      server.close(() => resolve());
+      server.closeAllConnections?.();
+    });
 
   // Tells open players to reload the walkthrough, as after a change to its files.
   const reload = () => broadcast('event: change\ndata: change\n\n');

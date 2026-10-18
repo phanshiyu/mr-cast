@@ -19,7 +19,48 @@ const storyboard = JSON.parse(fs.readFileSync(storyboardPath, 'utf8'));
 const scan = JSON.parse(fs.readFileSync(scanPath, 'utf8'));
 
 /** Keys whose strings are not drawn as written: spoken words, ids, refs, enums and code the scene draws its own way. */
-const NOT_DRAWN = new Set(['narration', 'say', 'type', 'id', 'from', 'to', 'hunkId', 'kind', 'icon', 'tone', 'change', 'layout', 'view', 'unit', 'cardinality', 'initial', 'status', 'mark', 'token', 'focus', 'lines', 'oldLines', 'at', 'better', 'direction', 'style', 'shape', 'code', 'payload', 'series', 'explainsChange', 'chapter', 'subtitle', 'title', 'badge', 'path', 'risk', 'focusLinesAfter', 'focusLinesBefore', 'highlight']);
+const NOT_DRAWN = new Set([
+  'narration',
+  'say',
+  'type',
+  'id',
+  'from',
+  'to',
+  'hunkId',
+  'kind',
+  'icon',
+  'tone',
+  'change',
+  'layout',
+  'view',
+  'unit',
+  'cardinality',
+  'initial',
+  'status',
+  'mark',
+  'token',
+  'focus',
+  'lines',
+  'oldLines',
+  'at',
+  'better',
+  'direction',
+  'style',
+  'shape',
+  'code',
+  'payload',
+  'series',
+  'explainsChange',
+  'chapter',
+  'subtitle',
+  'title',
+  'badge',
+  'path',
+  'risk',
+  'focusLinesAfter',
+  'focusLinesBefore',
+  'highlight',
+]);
 const drawn = [];
 const walk = (value, key, where) => {
   if (typeof value === 'string') {
@@ -29,7 +70,8 @@ const walk = (value, key, where) => {
 };
 storyboard.scenes.forEach((scene, i) => {
   walk(scene, '', `scenes[${i}]`);
-  for (const key of ['chapter', 'title']) if (typeof scene[key] === 'string') drawn.push({ where: `scenes[${i}].${key}`, text: scene[key] });
+  for (const key of ['chapter', 'title'])
+    if (typeof scene[key] === 'string') drawn.push({ where: `scenes[${i}].${key}`, text: scene[key] });
 });
 
 const squash = (text) => text.replace(/\s+/g, '').toLowerCase();
@@ -40,7 +82,9 @@ const wide = scan.fits.filter((f) => f.drawn > f.measured + 1);
 const clipped = (scan.clipped ?? []).filter((text) => text);
 const worst = scan.fits.length ? scan.fits.reduce((m, f) => Math.max(m, f.drawn - f.measured), -Infinity) : NaN;
 
-console.log(`text-check: ${drawn.length} texts on screen, ${scan.lines.length} lines seen, ${scan.fits.length} fitted lines`);
+console.log(
+  `text-check: ${drawn.length} texts on screen, ${scan.lines.length} lines seen, ${scan.fits.length} fitted lines`,
+);
 console.log(`text-check: widest fitted line is ${worst.toFixed(1)}px past its measured width (allowed: 1px)`);
 for (const m of missing) console.log(`MISSING ${m.where}: ${JSON.stringify(m.text)}`);
 for (const e of ellipses) console.log(`ELLIPSIS ${JSON.stringify(e)}`);

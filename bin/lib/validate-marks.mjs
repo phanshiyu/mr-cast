@@ -30,21 +30,34 @@ const KINDS = {
   layer: { change: true, highlight: true, badge: true, tone: true },
 };
 
-const list = (items, q, kind) => (Array.isArray(items) ? items.flatMap((item, j) => (item && typeof item === 'object' ? [{ q: `${q}[${j}]`, item, kind }] : [])) : []);
+const list = (items, q, kind) =>
+  Array.isArray(items)
+    ? items.flatMap((item, j) => (item && typeof item === 'object' ? [{ q: `${q}[${j}]`, item, kind }] : []))
+    : [];
 
 /** Every markable item of a scene, with its path for messages. */
 const ITEMS = {
   graph: (s, p) => [...list(s.nodes, `${p}.nodes`, 'node'), ...list(s.edges, `${p}.edges`, 'edge')],
-  sequence: (s, p) => [...list(s.participants, `${p}.participants`, 'node'), ...list(s.messages, `${p}.messages`, 'message')],
+  sequence: (s, p) => [
+    ...list(s.participants, `${p}.participants`, 'node'),
+    ...list(s.messages, `${p}.messages`, 'message'),
+  ],
   er: (s, p) => [
-    ...list(s.entities, `${p}.entities`, 'entity').flatMap((e) => [e, ...list(e.item.fields, `${e.q}.fields`, 'field')]),
+    ...list(s.entities, `${p}.entities`, 'entity').flatMap((e) => [
+      e,
+      ...list(e.item.fields, `${e.q}.fields`, 'field'),
+    ]),
     ...list(s.relations, `${p}.relations`, 'relation'),
   ],
-  state: (s, p) => [...list(s.states, `${p}.states`, 'state'), ...list(s.transitions, `${p}.transitions`, 'transition')],
+  state: (s, p) => [
+    ...list(s.states, `${p}.states`, 'state'),
+    ...list(s.transitions, `${p}.transitions`, 'transition'),
+  ],
   table: (s, p) => list(s.rows, `${p}.rows`, 'row'),
   timeline: (s, p) => [...list(s.events, `${p}.events`, 'event'), ...list(s.spans, `${p}.spans`, 'span')],
   files: (s, p) => list(s.files, `${p}.files`, 'file'),
-  layers: (s, p) => list(s.layers, `${p}.layers`, 'layer').flatMap((l) => [l, ...list(l.item.items, `${l.q}.items`, 'node')]),
+  layers: (s, p) =>
+    list(s.layers, `${p}.layers`, 'layer').flatMap((l) => [l, ...list(l.item.items, `${l.q}.items`, 'node')]),
 };
 
 /**
@@ -54,24 +67,35 @@ const ITEMS = {
  */
 function shownChange({ item, kind }, explain) {
   if (CHANGES.includes(item.change)) return item.change;
-  if ((kind === 'node' || kind === 'message') && item.modified === true && item.highlight === undefined && !explain) return 'modified';
-  if (kind === 'row' && Array.isArray(item.cells) && item.cells.some((c) => c && typeof c === 'object')) return 'modified';
+  if ((kind === 'node' || kind === 'message') && item.modified === true && item.highlight === undefined && !explain)
+    return 'modified';
+  if (kind === 'row' && Array.isArray(item.cells) && item.cells.some((c) => c && typeof c === 'object'))
+    return 'modified';
   return undefined;
 }
 
 function checkShape({ q, item, kind }, errors) {
   const can = KINDS[kind];
-  if (can.change && item.change !== undefined && !CHANGES.includes(item.change)) errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
-  if (can.highlight && item.highlight !== undefined && typeof item.highlight !== 'boolean') errors.push(`${q}.highlight: must be true or false`);
-  if (can.tone && item.tone !== undefined && !TONES.includes(item.tone)) errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
-  if (kind === 'message' && item.modified !== undefined && typeof item.modified !== 'boolean') errors.push(`${q}.modified: must be a boolean; prefer change or highlight`);
+  if (can.change && item.change !== undefined && !CHANGES.includes(item.change))
+    errors.push(`${q}.change: must be one of ${CHANGES.join(', ')}`);
+  if (can.highlight && item.highlight !== undefined && typeof item.highlight !== 'boolean')
+    errors.push(`${q}.highlight: must be true or false`);
+  if (can.tone && item.tone !== undefined && !TONES.includes(item.tone))
+    errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
+  if (kind === 'message' && item.modified !== undefined && typeof item.modified !== 'boolean')
+    errors.push(`${q}.modified: must be a boolean; prefer change or highlight`);
   if (!can.badge || item.badge === undefined) return;
-  if (typeof item.badge !== 'string' || !item.badge.trim()) return errors.push(`${q}.badge: must be a short non-empty string`);
-  if (item.badge.trim().length > BADGE_MAX) errors.push(`${q}.badge: ${item.badge.trim().length} characters; a badge holds ${BADGE_MAX}`);
+  if (typeof item.badge !== 'string' || !item.badge.trim())
+    return errors.push(`${q}.badge: must be a short non-empty string`);
+  if (item.badge.trim().length > BADGE_MAX)
+    errors.push(`${q}.badge: ${item.badge.trim().length} characters; a badge holds ${BADGE_MAX}`);
 }
 
 /** Normalised for matching names to code: "created_at", "createdAt" and "Created at" all read "createdat". */
-const squash = (text) => String(text).toLowerCase().replace(/[^a-z0-9]/g, '');
+const squash = (text) =>
+  String(text)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 
 /** The diff's changed lines and changed file paths, squashed, one string per line. */
 function changedText(hunks) {
@@ -91,11 +115,16 @@ function changedText(hunks) {
  */
 function checkAgainstDiff(entry, changed, warnings) {
   const { q, item, kind } = entry;
-  const names = KINDS[kind].names?.(item).map(squash).filter((n) => n.length >= NAME_MIN);
+  const names = KINDS[kind]
+    .names?.(item)
+    .map(squash)
+    .filter((n) => n.length >= NAME_MIN);
   if (!names?.length || (item.change !== 'added' && item.change !== 'removed')) return;
   if (names.some((name) => changed.some((line) => line.includes(name)))) return;
   const shown = KINDS[kind].names(item).find((n) => squash(n).length >= NAME_MIN);
-  warnings.push(`${q}.change: marked "${item.change}", but "${shown}" appears on no changed line of the diff; mark only what the diff ${item.change === 'added' ? 'adds' : 'removes'}, and use highlight, a badge or a focus step to point at the rest`);
+  warnings.push(
+    `${q}.change: marked "${item.change}", but "${shown}" appears on no changed line of the diff; mark only what the diff ${item.change === 'added' ? 'adds' : 'removes'}, and use highlight, a badge or a focus step to point at the rest`,
+  );
 }
 
 /** A files entry whose `change` disagrees with what hunks.json says the diff does to that file. */
@@ -105,19 +134,31 @@ function checkFileChanges(s, p, hunks, warnings) {
   s.files.forEach((f, j) => {
     const actual = known.get(f?.path);
     if (!actual || !CHANGES.includes(f.change) || f.change === actual) return;
-    warnings.push(`${p}.files[${j}].change: "${f.change}", but hunks.json has ${f.path} as ${actual}; leave change off to take it from the diff`);
+    warnings.push(
+      `${p}.files[${j}].change: "${f.change}", but hunks.json has ${f.path} as ${actual}; leave change off to take it from the diff`,
+    );
   });
 }
 
-const refs = (entries) => entries.slice(0, 4).map((e) => e.q.slice(e.q.indexOf('.') + 1)).join(', ') + (entries.length > 4 ? `, ... ${entries.length - 4} more` : '');
+const refs = (entries) =>
+  entries
+    .slice(0, 4)
+    .map((e) => e.q.slice(e.q.indexOf('.') + 1))
+    .join(', ') + (entries.length > 4 ? `, ... ${entries.length - 4} more` : '');
 
 export function checkMarks(sb, hunks, mode, errors, warnings) {
   const explain = mode === 'explain';
   const changed = explain ? [] : changedText(hunks);
-  for (const [where, value] of [['explainsChange', sb.explainsChange], ...sb.scenes.map((s, i) => [`scenes[${i}].explainsChange`, s?.explainsChange])]) {
+  for (const [where, value] of [
+    ['explainsChange', sb.explainsChange],
+    ...sb.scenes.map((s, i) => [`scenes[${i}].explainsChange`, s?.explainsChange]),
+  ]) {
     if (value === undefined) continue;
     if (typeof value !== 'boolean') errors.push(`${where}: must be true or false`);
-    else if (!explain) warnings.push(`${where}: only an explanation uses it; a diff walkthrough's change marks always describe its diff, so remove it`);
+    else if (!explain)
+      warnings.push(
+        `${where}: only an explanation uses it; a diff walkthrough's change marks always describe its diff, so remove it`,
+      );
   }
   sb.scenes.forEach((s, i) => {
     if (!s || typeof s !== 'object') return;

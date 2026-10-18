@@ -21,7 +21,9 @@ const growth = {
   y: { from: 0, to: 80000, ticks: 20000, prefix: '$' },
   params: { year: 0 },
   functions: [{ id: 'growth', y: '10000 * 1.07^x', label: 'seven percent growth', hidden: true }],
-  points: [{ id: 'marker', at: ['year', '10000 * 1.07^year'], label: '${10000 * 1.07^year:0}', side: 'left', hidden: true }],
+  points: [
+    { id: 'marker', at: ['year', '10000 * 1.07^year'], label: '${10000 * 1.07^year:0}', side: 'left', hidden: true },
+  ],
   steps: [
     { trace: ['growth'], set: { year: 30 }, show: ['marker'], say: 'It bends upward over thirty years.' },
     { set: { year: 10 }, focus: 'marker', say: 'It doubles in about ten.' },
@@ -33,7 +35,10 @@ test('expressions compute with powers, unary minus, functions, constants and sum
   assert.equal(value('2^-1'), 0.5);
   assert.equal(value('max(1, 7, 3) + min(4, 2) + mod(-1, 3)'), 11);
   assert.equal(value('10000 * 1.07^10').toFixed(2), '19671.51');
-  assert.equal(value('sum(k, 1, n, 4 / (pi * (2*k - 1)) * sin((2*k - 1) * x))', { n: 3, x: Math.PI / 2 }).toFixed(4), '1.1035');
+  assert.equal(
+    value('sum(k, 1, n, 4 / (pi * (2*k - 1)) * sin((2*k - 1) * x))', { n: 3, x: Math.PI / 2 }).toFixed(4),
+    '1.1035',
+  );
   assert.equal(value('π / 2'), Math.PI / 2);
 });
 
@@ -55,7 +60,9 @@ test('a parse error says what is wrong and where, and nothing reaches past the n
 });
 
 test('deep nesting is a parse error at its column, and a long flat chain parses and computes', () => {
-  const tooDeep = { message: 'nests more than 200 levels deep in parentheses, minus signs, powers or calls; write it more simply' };
+  const tooDeep = {
+    message: 'nests more than 200 levels deep in parentheses, minus signs, powers or calls; write it more simply',
+  };
   assert.deepEqual(parseError(`${'('.repeat(20000)}1${')'.repeat(20000)}`), { ...tooDeep, at: 200 });
   assert.deepEqual(parseError(`${'-'.repeat(50000)}1`), { ...tooDeep, at: 200 });
   assert.deepEqual(parseError(Array(20000).fill('2').join('^')), { ...tooDeep, at: 400 });
@@ -68,44 +75,99 @@ test('deep nesting is a parse error at its column, and a long flat chain parses 
 });
 
 test('nested sums share one budget of terms per value, and sums with number bounds past 10000 terms do not parse', () => {
-  assert.deepEqual(parseError('sum(k, 1, 10000, sum(j, 1, 10000, k*j))'), { message: 'these nested sums add 10000 × 10000 = 100000000 terms at every point; at most 10000 in all, so use fewer terms', at: 17 });
-  assert.deepEqual(parseError('sum(k, 1, 10001, k)'), { message: 'this sum adds 10001 terms at every point; at most 10000 in all, so use fewer terms', at: 0 });
+  assert.deepEqual(parseError('sum(k, 1, 10000, sum(j, 1, 10000, k*j))'), {
+    message:
+      'these nested sums add 10000 × 10000 = 100000000 terms at every point; at most 10000 in all, so use fewer terms',
+    at: 17,
+  });
+  assert.deepEqual(parseError('sum(k, 1, 10001, k)'), {
+    message: 'this sum adds 10001 terms at every point; at most 10000 in all, so use fewer terms',
+    at: 0,
+  });
   assert.equal(value('sum(k, 1, 100, sum(j, 1, 100, 1))'), 10000);
   const nested = exprOf('sum(k, 1, n, sum(j, 1, n, 1))');
   assert.deepEqual(nested.evaluate({ n: 300 }), { value: 90000, overBudget: false });
   assert.deepEqual(nested.evaluate({ n: 400 }), { value: NaN, overBudget: true });
   assert.equal(nested.fn({ n: 10000 }), NaN);
-  assert.deepEqual(nested.evaluate({ n: 300 }), { value: 90000, overBudget: false }, 'each evaluation starts with the whole budget');
+  assert.deepEqual(
+    nested.evaluate({ n: 300 }),
+    { value: 90000, overBudget: false },
+    'each evaluation starts with the whole budget',
+  );
 });
 
 test('validate warns on a line whose sums run out of terms, and reports deep nesting without throwing', async () => {
-  const scene = { type: 'plot', narration: 'A plot.', x: { from: 0, to: 1 }, y: { from: -10, to: 10 }, params: { n: 400 }, functions: [{ id: 'f', y: 'sum(k, 1, n, sum(j, 1, n, 1)) / 1e5' }] };
+  const scene = {
+    type: 'plot',
+    narration: 'A plot.',
+    x: { from: 0, to: 1 },
+    y: { from: -10, to: 10 },
+    params: { n: 400 },
+    functions: [{ id: 'f', y: 'sum(k, 1, n, sum(j, 1, n, 1)) / 1e5' }],
+  };
   const { errors, warnings } = await check(scene);
   assert.deepEqual(errors, []);
-  assert.equal(warnings[0], 'scenes[0].functions[0].y: its sums add more than 100000 terms at x = 0 (with n = 400) at the start, so it has no value there; use fewer terms or smaller bounds');
-  const deep = await check({ ...scene, params: {}, functions: [{ id: 'f', y: `${'('.repeat(5000)}x${')'.repeat(5000)}` }, { id: 'g', y: Array(200000).fill('x').join('+') }] });
-  assert.deepEqual(deep.errors, ['scenes[0].functions[0].y: "' + '('.repeat(5000) + 'x' + ')'.repeat(5000) + '" column 201: nests more than 200 levels deep in parentheses, minus signs, powers or calls; write it more simply']);
+  assert.equal(
+    warnings[0],
+    'scenes[0].functions[0].y: its sums add more than 100000 terms at x = 0 (with n = 400) at the start, so it has no value there; use fewer terms or smaller bounds',
+  );
+  const deep = await check({
+    ...scene,
+    params: {},
+    functions: [
+      { id: 'f', y: `${'('.repeat(5000)}x${')'.repeat(5000)}` },
+      { id: 'g', y: Array(200000).fill('x').join('+') },
+    ],
+  });
+  assert.deepEqual(deep.errors, [
+    'scenes[0].functions[0].y: "' +
+      '('.repeat(5000) +
+      'x' +
+      ')'.repeat(5000) +
+      '" column 201: nests more than 200 levels deep in parentheses, minus signs, powers or calls; write it more simply',
+  ]);
 });
 
-test('a step sets a parameter, traces a hidden line on, and a parameter\'s name lights the parts it moves', () => {
+test("a step sets a parameter, traces a hidden line on, and a parameter's name lights the parts it moves", () => {
   const { states, problems } = walkStates(growth);
   assert.deepEqual(problems, []);
-  assert.deepEqual(states.map((s) => [s.values['k:year'], Object.keys(s.hidden)]), [[0, ['p:growth', 'p:marker']], [30, []], [10, []]]);
+  assert.deepEqual(
+    states.map((s) => [s.values['k:year'], Object.keys(s.hidden)]),
+    [
+      [0, ['p:growth', 'p:marker']],
+      [30, []],
+      [10, []],
+    ],
+  );
   assert.deepEqual(resolveRef(growth, 'year'), ['p:marker']);
   assert.deepEqual(resolveRef(growth, 'growth'), ['p:growth']);
 });
 
 test('a part some step traces starts undrawn without hidden, as a map route does, so it is not drawn during the narration', () => {
-  const scene = { ...growth, functions: [{ id: 'growth', y: '10000 * 1.07^x' }, { id: 'flat', y: '10000' }], points: [], steps: [{ say: 'First the flat line.' }, { trace: ['growth'], say: 'Then it grows.' }] };
+  const scene = {
+    ...growth,
+    functions: [
+      { id: 'growth', y: '10000 * 1.07^x' },
+      { id: 'flat', y: '10000' },
+    ],
+    points: [],
+    steps: [{ say: 'First the flat line.' }, { trace: ['growth'], say: 'Then it grows.' }],
+  };
   const { states, problems } = walkStates(scene);
   assert.deepEqual(problems, []);
-  assert.deepEqual(states.map((s) => Object.keys(s.hidden)), [['p:growth'], ['p:growth'], []]);
+  assert.deepEqual(
+    states.map((s) => Object.keys(s.hidden)),
+    [['p:growth'], ['p:growth'], []],
+  );
 });
 
 test('validate fails on a parse error at its column, a name that is no parameter, and a point traced', async () => {
   const { errors } = await check({
     ...growth,
-    functions: [{ id: 'growth', y: '10000 * (1.07^x' }, { id: 'real', y: '10000 * (1 + rate)^x' }],
+    functions: [
+      { id: 'growth', y: '10000 * (1.07^x' },
+      { id: 'real', y: '10000 * (1 + rate)^x' },
+    ],
     steps: [{ trace: ['marker'], set: { yaer: 3 }, say: 'Look.' }],
   });
   assert.deepEqual(errors, [
@@ -120,9 +182,13 @@ test('validate fails on an area between a line that does not exist, lines on a n
   const area = await check({ ...growth, areas: [{ id: 'gap', between: ['growth', 'reel'] }] });
   assert.deepEqual(area.errors, ['scenes[0].areas[0]: "reel" is no function id']);
   const line = await check({ type: 'plot', narration: 'n', x: { from: 0, to: 1 }, functions: [{ id: 'f', y: 'x' }] });
-  assert.deepEqual(line.errors, ['scenes[0].functions[0]: a number line (a plot without y) draws points and vectors only; give the scene a y axis to draw functions']);
+  assert.deepEqual(line.errors, [
+    'scenes[0].functions[0]: a number line (a plot without y) draws points and vectors only; give the scene a y axis to draw functions',
+  ]);
   const when = await check({ ...growth, steps: [{ ...growth.steps[0], when: 'thirty days' }] });
-  assert.deepEqual(when.errors, ['scenes[0].steps[0].when: "thirty days" is not in the step\'s say; copy the words its changes should start on']);
+  assert.deepEqual(when.errors, [
+    'scenes[0].steps[0].when: "thirty days" is not in the step\'s say; copy the words its changes should start on',
+  ]);
 });
 
 test('validate warns where a line has no value, where a point leaves the plot, and where labels collide', async () => {
@@ -143,34 +209,60 @@ test('validate warns where a line has no value, where a point leaves the plot, a
   assert.deepEqual(warnings, [
     'scenes[0].functions[0].y: has no value at x = 0 (with a = 1) at the start, so its line breaks there; check the expression, or start it past that point with from',
     'scenes[0].points[1].label: "another long label" overlaps the label of "p" at the start; shorten one, give a point a side, or move the parts apart',
-    'scenes[0].points[0].at: lands at (20, 2) (with a = 20) from step 0, outside the plot, so it is not drawn; move it inside the axes\' ranges',
-    'scenes[0].points[1].at: lands at (20.5, 2) (with a = 20) from step 0, outside the plot, so it is not drawn; move it inside the axes\' ranges',
+    "scenes[0].points[0].at: lands at (20, 2) (with a = 20) from step 0, outside the plot, so it is not drawn; move it inside the axes' ranges",
+    "scenes[0].points[1].at: lands at (20.5, 2) (with a = 20) from step 0, outside the plot, so it is not drawn; move it inside the axes' ranges",
   ]);
 });
 
 test('validate warns when tick labels overlap, and fails on a step that would draw too many ticks', async () => {
-  const axes = (ticks) => ({ type: 'plot', narration: 'n', x: { from: 0, to: 10000, ticks }, y: { from: 0, to: 1 }, points: [{ id: 'p', at: [1, 0.5] }] });
-  assert.deepEqual((await check(axes(250))).warnings, ['scenes[0].x.ticks: the tick labels "250" and "500" overlap; use a larger step']);
-  assert.deepEqual((await check(axes(100))).errors, ['scenes[0].x.ticks: a step of 100 draws 101 ticks; use a step of at least 250']);
+  const axes = (ticks) => ({
+    type: 'plot',
+    narration: 'n',
+    x: { from: 0, to: 10000, ticks },
+    y: { from: 0, to: 1 },
+    points: [{ id: 'p', at: [1, 0.5] }],
+  });
+  assert.deepEqual((await check(axes(250))).warnings, [
+    'scenes[0].x.ticks: the tick labels "250" and "500" overlap; use a larger step',
+  ]);
+  assert.deepEqual((await check(axes(100))).errors, [
+    'scenes[0].x.ticks: a step of 100 draws 101 ticks; use a step of at least 250',
+  ]);
 });
 
 test('equal units make a circle round, and the 0 where both axes cross is written once', () => {
-  const axes = (equal) => plotAxes({ x: { from: -2, to: 2, ticks: 1 }, y: { from: -1.5, to: 1.5 }, equal }, { width: 1712, height: 804 });
+  const axes = (equal) =>
+    plotAxes({ x: { from: -2, to: 2, ticks: 1 }, y: { from: -1.5, to: 1.5 }, equal }, { width: 1712, height: 804 });
   assert.deepEqual(axes(false).plot, { x: 16, y: 20, width: 1672, height: 764 });
   assert.deepEqual(axes(true).plot, { x: 342.6666666666667, y: 20, width: 1018.6666666666666, height: 764 });
-  assert.deepEqual(axes(true).ticks.y.map((t) => t.text), ['−1.5', '−1.0', '−0.5', '0.5', '1.0', '1.5']);
-  assert.deepEqual(axes(true).ticks.x.map((t) => t.text), ['−2', '−1', '0', '1', '2']);
+  assert.deepEqual(
+    axes(true).ticks.y.map((t) => t.text),
+    ['−1.5', '−1.0', '−0.5', '0.5', '1.0', '1.5'],
+  );
+  assert.deepEqual(
+    axes(true).ticks.x.map((t) => t.text),
+    ['−2', '−1', '0', '1', '2'],
+  );
 });
 
 test('the steps dump says what each step sets and traces, and the highlight check reads plot labels', async () => {
-  const scene = { ...growth, steps: [growth.steps[0], { focus: 'marker', say: 'The seven percent growth keeps climbing.' }] };
+  const scene = {
+    ...growth,
+    steps: [growth.steps[0], { focus: 'marker', say: 'The seven percent growth keeps climbing.' }],
+  };
   const dump = formatSteps({ title: 't', scenes: [scene] }, {});
   assert.match(dump, /changes year 0 → 30; shows growth; shows marker; traces growth/);
-  assert.match(dump, /! scenes\[0\]\.steps\[1\]: says "7 percent growth" \(function growth "seven percent growth"\), which is not lit; it lights point marker\./);
+  assert.match(
+    dump,
+    /! scenes\[0\]\.steps\[1\]: says "7 percent growth" \(function growth "seven percent growth"\), which is not lit; it lights point marker\./,
+  );
 });
 
 test('ink circles a plot part by its id', async () => {
-  const { errors } = await check({ ...growth, steps: [growth.steps[0], { ...growth.steps[1], draw: [{ circle: 'marker', note: 'doubled' }] }] });
+  const { errors } = await check({
+    ...growth,
+    steps: [growth.steps[0], { ...growth.steps[1], draw: [{ circle: 'marker', note: 'doubled' }] }],
+  });
   assert.deepEqual(errors, []);
 });
 
@@ -186,20 +278,57 @@ export const delayRender = () => 0;
 export const continueRender = () => {};`;
 const root = new URL('..', import.meta.url).pathname;
 const bundled = await build({
-  stdin: { contents: `export { PlotDiagram } from './src/components/PlotDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`, resolveDir: root, loader: 'ts' },
-  bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent', loader: { '.woff2': 'empty' },
-  banner: { js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});` },
-  plugins: [{ name: 'remotion', setup: (b) => {
-    b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
-    b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({ contents: REMOTION, loader: 'js', resolveDir: root }));
-  } }],
+  stdin: {
+    contents: `export { PlotDiagram } from './src/components/PlotDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`,
+    resolveDir: root,
+    loader: 'ts',
+  },
+  bundle: true,
+  write: false,
+  format: 'esm',
+  platform: 'node',
+  logLevel: 'silent',
+  loader: { '.woff2': 'empty' },
+  banner: {
+    js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});`,
+  },
+  plugins: [
+    {
+      name: 'remotion',
+      setup: (b) => {
+        b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
+        b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({
+          contents: REMOTION,
+          loader: 'js',
+          resolveDir: root,
+        }));
+      },
+    },
+  ],
 });
-const { PlotDiagram, renderToStaticMarkup, createElement } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
-const segment = (from, voiceFrom, speakingFrames) => ({ text: 'It bends upward over thirty years.', from, markFrom: voiceFrom, voiceFrom, durationInFrames: 200, speakingFrames, clip: undefined });
+const { PlotDiagram, renderToStaticMarkup, createElement } = await import(
+  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
+);
+const segment = (from, voiceFrom, speakingFrames) => ({
+  text: 'It bends upward over thirty years.',
+  from,
+  markFrom: voiceFrom,
+  voiceFrom,
+  durationInFrames: 200,
+  speakingFrames,
+  clip: undefined,
+});
 
 test('a traced step moves its parameter across its words, so the marker rides the line as it draws', () => {
   // Step 0 starts at frame 60 and its words end at 165: at frame 120 the trace is 60/105 of the way, year 17.14.
-  const html = renderToStaticMarkup(createElement(PlotDiagram, { scene: growth, hunks: {}, durationInFrames: 400, segments: [segment(0, 30, 20), segment(60, 75, 90), segment(260, 275, 60)] }));
+  const html = renderToStaticMarkup(
+    createElement(PlotDiagram, {
+      scene: growth,
+      hunks: {},
+      durationInFrames: 400,
+      segments: [segment(0, 30, 20), segment(60, 75, 90), segment(260, 275, 60)],
+    }),
+  );
   assert.match(html, />\$31,895<\/text>/);
   assert.match(html, />\$20k<\/text>/);
   assert.match(html, />seven percent growth<\/text>/);
@@ -207,20 +336,32 @@ test('a traced step moves its parameter across its words, so the marker rides th
 
 test('a line under a zoomed camera is drawn through enough points to stay smooth on screen, and its label spots do not move', () => {
   const sum = 'sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))';
-  const scene = { type: 'plot', x: { from: Math.PI / 2, to: 1.5 * Math.PI, ticks: 'pi' }, y: { from: -1.5, to: 1.5, ticks: 0.5 }, params: { n: 50 }, functions: [{ id: 'wave', y: sum }] };
+  const scene = {
+    type: 'plot',
+    x: { from: Math.PI / 2, to: 1.5 * Math.PI, ticks: 'pi' },
+    y: { from: -1.5, to: 1.5, ticks: 0.5 },
+    params: { n: 50 },
+    functions: [{ id: 'wave', y: sum }],
+  };
   const axes = plotAxes(scene, { width: 1760, height: 760 });
   const rect = viewRect({ x: axes.sx(Math.PI - Math.PI / 100), y: 130, zoom: 3 }, axes.box);
   const still = plotGeometry(scene, axes, { n: 50 }).get('wave');
   const zoomed = plotGeometry(scene, axes, { n: 50 }, () => 1, { rect, zoom: 3 }).get('wave');
   const f = exprOf(sum).fn;
   const dataX = (px) => scene.x.from + ((px - axes.plot.x) / axes.plot.width) * (scene.x.to - scene.x.from);
-  const onScreen = (p) => p[0] >= rect.x && p[0] <= rect.x + rect.width && p[1] >= rect.y && p[1] <= rect.y + rect.height;
+  const onScreen = (p) =>
+    p[0] >= rect.x && p[0] <= rect.x + rect.width && p[1] >= rect.y && p[1] <= rect.y + rect.height;
   // How far, in screen pixels, the drawn line strays from the true curve halfway between two of its points.
-  const worstMiss = (runs) => Math.max(...runs.flatMap((run) => run.slice(1).flatMap((b, i) => {
-    const a = run[i];
-    if (!onScreen(a) || !onScreen(b)) return [];
-    return [Math.abs(axes.sy(f({ n: 50, x: dataX((a[0] + b[0]) / 2) })) - (a[1] + b[1]) / 2) * 3];
-  })));
+  const worstMiss = (runs) =>
+    Math.max(
+      ...runs.flatMap((run) =>
+        run.slice(1).flatMap((b, i) => {
+          const a = run[i];
+          if (!onScreen(a) || !onScreen(b)) return [];
+          return [Math.abs(axes.sy(f({ n: 50, x: dataX((a[0] + b[0]) / 2) })) - (a[1] + b[1]) / 2) * 3];
+        }),
+      ),
+    );
   assert.equal(Math.round(worstMiss(still.runs)), 11);
   assert.ok(worstMiss(zoomed.runs) < 0.5, `strays ${worstMiss(zoomed.runs)} px`);
   assert.equal(still.runs.flat().length, 481);

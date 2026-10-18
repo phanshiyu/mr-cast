@@ -79,7 +79,12 @@ export declare function boldWeight(weight: number): number;
 export declare function measure(text: string, font: Font): number;
 export declare function runFont(run: Run, font: Font): Font;
 export declare function runsWidth(runs: readonly Run[], font: Font): number;
-export declare function wrapRuns(runs: readonly Run[], font: Font, width: number, options?: { balanced?: boolean; force?: boolean }): { lines: Run[][]; widths: number[]; ok: boolean };
+export declare function wrapRuns(
+  runs: readonly Run[],
+  font: Font,
+  width: number,
+  options?: { balanced?: boolean; force?: boolean },
+): { lines: Run[][]; widths: number[]; ok: boolean };
 export declare function slotRuns(text: string, slot: Slot): { runs: Run[]; errors: MarkupError[] };
 export declare function fitText(text: string, slot: Slot, path: string): Fit;
 /** The same text and slot at one given size, such as one title size shared by every card. */

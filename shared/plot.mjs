@@ -10,7 +10,13 @@ const list = (v) => (Array.isArray(v) ? v : []);
 const isRecord = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
 /** The scene's fields that hold parts, and what one of each is called. */
-export const PART_KINDS = { functions: 'function', series: 'series', points: 'point', vectors: 'vector', areas: 'area' };
+export const PART_KINDS = {
+  functions: 'function',
+  series: 'series',
+  points: 'point',
+  vectors: 'vector',
+  areas: 'area',
+};
 /** Parts a step can trace on: everything with a line or an extent. */
 export const TRACEABLE = ['functions', 'series', 'vectors', 'areas'];
 /** Line colours in the order parts without a tone take them. */
@@ -25,7 +31,9 @@ export const POINT_R = 9;
 
 /** Every part with its kind, index, id and the field path it is written at, in drawing order. */
 export function plotParts(scene) {
-  return Object.keys(PART_KINDS).flatMap((kind) => list(scene?.[kind]).map((item, index) => ({ kind, index, id: item?.id, item, path: `${kind}[${index}]` })));
+  return Object.keys(PART_KINDS).flatMap((kind) =>
+    list(scene?.[kind]).map((item, index) => ({ kind, index, id: item?.id, item, path: `${kind}[${index}]` })),
+  );
 }
 
 /** The part a ref names by id, or undefined. */
@@ -48,11 +56,17 @@ function numOf(spec) {
 export function partNumbers(part) {
   const { kind, item } = part;
   if (!isRecord(item)) return [];
-  const pair = (field, v) => (Array.isArray(v) ? v.map((s, i) => [`${field}[${i}]`, s, null]) : v === undefined ? [] : [[field, v, null]]);
-  const ends = [...(item.from !== undefined ? [['from', item.from, null]] : []), ...(item.to !== undefined && kind !== 'vectors' ? [['to', item.to, null]] : [])];
+  const pair = (field, v) =>
+    Array.isArray(v) ? v.map((s, i) => [`${field}[${i}]`, s, null]) : v === undefined ? [] : [[field, v, null]];
+  const ends = [
+    ...(item.from !== undefined ? [['from', item.from, null]] : []),
+    ...(item.to !== undefined && kind !== 'vectors' ? [['to', item.to, null]] : []),
+  ];
   switch (kind) {
     case 'functions':
-      return item.x !== undefined ? [['x', item.x, 't'], ['y', item.y, 't'], ...pair('t', item.t)] : [['y', item.y, 'x'], ...ends];
+      return item.x !== undefined
+        ? [['x', item.x, 't'], ['y', item.y, 't'], ...pair('t', item.t)]
+        : [['y', item.y, 'x'], ...ends];
     case 'points':
       return pair('at', item.at);
     case 'vectors':
@@ -92,7 +106,9 @@ export function formatNumber(v, digits = null) {
 
 /** A label's text with its holes filled from `scope`. */
 export function labelText(label, scope) {
-  return labelPieces(label).map((p) => (typeof p === 'string' ? p : formatNumber(exprOf(p.expr).fn(scope), p.digits))).join('');
+  return labelPieces(label)
+    .map((p) => (typeof p === 'string' ? p : formatNumber(exprOf(p.expr).fn(scope), p.digits)))
+    .join('');
 }
 
 const models = new WeakMap();
@@ -108,12 +124,22 @@ export function plotModel(scene) {
   for (const part of plotParts(scene)) {
     const read = new Set([
       ...partNumbers(part).flatMap(([, spec]) => numOf(spec).names.map((n) => n.name)),
-      ...labelPieces(part.item?.label).flatMap((p) => (typeof p === 'string' ? [] : exprOf(p.expr).names.map((n) => n.name))),
+      ...labelPieces(part.item?.label).flatMap((p) =>
+        typeof p === 'string' ? [] : exprOf(p.expr).names.map((n) => n.name),
+      ),
     ]);
     // An area reads what the functions it fills between read.
-    const filled = part.kind === 'areas' ? areaFunctions(part.item).map((fid) => partOf(scene, fid)).filter(Boolean) : [];
-    for (const fn of filled) for (const [, spec] of partNumbers(fn)) for (const n of numOf(spec).names) read.add(n.name);
-    for (const name of read) if (Object.hasOwn(params, name) && typeof part.id === 'string') dependents.set(name, [...(dependents.get(name) ?? []), part.id]);
+    const filled =
+      part.kind === 'areas'
+        ? areaFunctions(part.item)
+            .map((fid) => partOf(scene, fid))
+            .filter(Boolean)
+        : [];
+    for (const fn of filled)
+      for (const [, spec] of partNumbers(fn)) for (const n of numOf(spec).names) read.add(n.name);
+    for (const name of read)
+      if (Object.hasOwn(params, name) && typeof part.id === 'string')
+        dependents.set(name, [...(dependents.get(name) ?? []), part.id]);
   }
   model = { params, dependents };
   models.set(scene, model);
@@ -121,12 +147,19 @@ export function plotModel(scene) {
 }
 
 /** The function ids an area fills between: its `under`, or both of its `between`. */
-export const areaFunctions = (area) => (typeof area?.under === 'string' ? [area.under] : Array.isArray(area?.between) ? area.between.filter((id) => typeof id === 'string') : []);
+export const areaFunctions = (area) =>
+  typeof area?.under === 'string'
+    ? [area.under]
+    : Array.isArray(area?.between)
+      ? area.between.filter((id) => typeof id === 'string')
+      : [];
 
 /** The parameters in a state, by name: its `k:` values, falling back on the scene's own. */
 export function stateParams(scene, state) {
   const { params } = plotModel(scene);
-  return Object.fromEntries(Object.keys(params).map((name) => [name, Number(state?.values?.[`k:${name}`] ?? params[name])]));
+  return Object.fromEntries(
+    Object.keys(params).map((name) => [name, Number(state?.values?.[`k:${name}`] ?? params[name])]),
+  );
 }
 
 /** The item keys a ref lights: a part by its id, or the parts a parameter moves by the parameter's name. */
@@ -179,21 +212,32 @@ export function axisTicks(axis) {
   const inRange = (v) => v >= Math.min(from, to) - 1e-9 && v <= Math.max(from, to) + 1e-9;
   if (Array.isArray(axis.ticks)) {
     const vals = axis.ticks.filter((v) => typeof v === 'number' && inRange(v));
-    const step = vals.length > 1 ? Math.min(...vals.slice(1).map((v, i) => Math.abs(v - vals[i])).filter((d) => d > 0)) : 1;
+    const step =
+      vals.length > 1
+        ? Math.min(
+            ...vals
+              .slice(1)
+              .map((v, i) => Math.abs(v - vals[i]))
+              .filter((d) => d > 0),
+          )
+        : 1;
     return vals.map((v) => ({ value: v, text: tickText(v, step || 1, axis) }));
   }
   if (axis.log === true) {
     const [a, b] = [Math.floor(Math.log10(from) + 1e-9), Math.ceil(Math.log10(to) - 1e-9)];
     const few = b - a < 3;
     const out = [];
-    for (let k = a; k <= b && out.length < 200; k++) for (const m of few ? [1, 2, 5] : [1]) if (inRange(m * 10 ** k)) out.push({ value: m * 10 ** k, text: tickText(m * 10 ** k, 10 ** k, axis) });
+    for (let k = a; k <= b && out.length < 200; k++)
+      for (const m of few ? [1, 2, 5] : [1])
+        if (inRange(m * 10 ** k)) out.push({ value: m * 10 ** k, text: tickText(m * 10 ** k, 10 ** k, axis) });
     return out;
   }
   if (axis.ticks === 'pi') {
     const halves = Math.abs(to - from) / (Math.PI / 2) > 12 ? 2 : 1;
     const step = (halves * Math.PI) / 2;
     const out = [];
-    for (let m = Math.ceil(from / step - 1e-9); m * step <= to + 1e-9 && out.length < 200; m++) out.push({ value: m * step, text: `${axis.prefix ?? ''}${piLabel(m * halves)}${axis.suffix ?? ''}` });
+    for (let m = Math.ceil(from / step - 1e-9); m * step <= to + 1e-9 && out.length < 200; m++)
+      out.push({ value: m * step, text: `${axis.prefix ?? ''}${piLabel(m * halves)}${axis.suffix ?? ''}` });
     return out;
   }
   const step = typeof axis.ticks === 'number' && axis.ticks > 0 ? axis.ticks : niceStep(Math.abs(to - from));
@@ -225,7 +269,8 @@ export function plotAxes(scene, box) {
   const xTicks = axisTicks(x);
   const yTicks = y ? axisTicks(y) : [];
   const yTickWidth = Math.max(0, ...yTicks.map((t) => measure(t.text, TICK_FONT)));
-  const zeroInside = (axis) => axis.log !== true && Math.min(axis.from, axis.to) < 0 && Math.max(axis.from, axis.to) > 0;
+  const zeroInside = (axis) =>
+    axis.log !== true && Math.min(axis.from, axis.to) < 0 && Math.max(axis.from, axis.to) > 0;
   const yAxisInside = y ? zeroInside(x) : false;
   const xAxisInside = y ? zeroInside(y) : false;
   const lastTick = xTicks.at(-1);
@@ -233,7 +278,12 @@ export function plotAxes(scene, box) {
   const right = Math.max(24, lastTick ? Math.ceil(measure(lastTick.text, TICK_FONT) / 2) + 8 : 24);
   const top = y ? 20 : 0;
   const bottom = y && !xAxisInside ? TICK_GAP + lineHeight(TICK_FONT) + 8 : 20;
-  const plot = { x: left, y: top, width: Math.max(1, box.width - left - right), height: Math.max(1, box.height - top - bottom) };
+  const plot = {
+    x: left,
+    y: top,
+    width: Math.max(1, box.width - left - right),
+    height: Math.max(1, box.height - top - bottom),
+  };
   // Equal units on both axes: the plot narrows (or shortens) to the smaller scale and sits centred, so a circle is round.
   if (scene.equal === true && y && x.log !== true && y.log !== true) {
     const unit = Math.min(plot.width / (x.to - x.from), plot.height / (y.to - y.from));
@@ -245,21 +295,45 @@ export function plotAxes(scene, box) {
   const xAxisY = y ? (xAxisInside ? sy(0) : plot.y + plot.height) : plot.y + plot.height / 2;
   const yAxisX = y ? (yAxisInside ? sx(0) : plot.x) : null;
   const ticks = {
-    x: xTicks.map((t) => ({ ...t, at: sx(t.value), box: textBox(t.text, TICK_FONT, sx(t.value), xAxisY + TICK_GAP, 'middle') })),
-    y: yTicks.map((t) => ({ ...t, at: sy(t.value), box: textBox(t.text, TICK_FONT, yAxisX - TICK_GAP, sy(t.value) - lineHeight(TICK_FONT) / 2, 'end') })),
+    x: xTicks.map((t) => ({
+      ...t,
+      at: sx(t.value),
+      box: textBox(t.text, TICK_FONT, sx(t.value), xAxisY + TICK_GAP, 'middle'),
+    })),
+    y: yTicks.map((t) => ({
+      ...t,
+      at: sy(t.value),
+      box: textBox(t.text, TICK_FONT, yAxisX - TICK_GAP, sy(t.value) - lineHeight(TICK_FONT) / 2, 'end'),
+    })),
   };
   // A y tick whose text lands on an x tick's, such as the two zeros at a corner, gives way, as does the y axis's 0
   // where the x axis crosses it, which the x axis's own 0 names.
-  ticks.y = ticks.y.filter((t) => !ticks.x.some((u) => overlaps(t.box, u.box)) && !(xAxisInside && yAxisInside && t.value === 0));
+  ticks.y = ticks.y.filter(
+    (t) => !ticks.x.some((u) => overlaps(t.box, u.box)) && !(xAxisInside && yAxisInside && t.value === 0),
+  );
   const labels = {
-    x: typeof x.label === 'string' && x.label ? { text: x.label, box: textBox(x.label, AXIS_FONT, plot.x + plot.width, xAxisY - 10 - lineHeight(AXIS_FONT), 'end') } : null,
-    y: y && typeof y.label === 'string' && y.label ? { text: y.label, box: textBox(y.label, AXIS_FONT, yAxisX + 14, plot.y - 4) } : null,
+    x:
+      typeof x.label === 'string' && x.label
+        ? {
+            text: x.label,
+            box: textBox(x.label, AXIS_FONT, plot.x + plot.width, xAxisY - 10 - lineHeight(AXIS_FONT), 'end'),
+          }
+        : null,
+    y:
+      y && typeof y.label === 'string' && y.label
+        ? { text: y.label, box: textBox(y.label, AXIS_FONT, yAxisX + 14, plot.y - 4) }
+        : null,
   };
   return { box, plot, sx, sy, xAxisY, yAxisX, ticks, labels, numberLine: !y };
 }
 
-export const overlaps = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
-const inside = (inner, outer) => inner.x >= outer.x - 0.5 && inner.y >= outer.y - 0.5 && inner.x + inner.width <= outer.x + outer.width + 0.5 && inner.y + inner.height <= outer.y + outer.height + 0.5;
+export const overlaps = (a, b) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+const inside = (inner, outer) =>
+  inner.x >= outer.x - 0.5 &&
+  inner.y >= outer.y - 0.5 &&
+  inner.x + inner.width <= outer.x + outer.width + 0.5 &&
+  inner.y + inner.height <= outer.y + outer.height + 0.5;
 
 // ─── Parts in a frame ───
 
@@ -329,7 +403,8 @@ function screenPieces(item, axes, view) {
   const curve = item.x !== undefined;
   return (a, b) => {
     const [ax, bx, ay, by] = [axes.sx(a[0]), axes.sx(b[0]), axes.sy(a[1]), axes.sy(b[1])];
-    if (!Number.isFinite(ax) || !Number.isFinite(bx) || (curve && !(Number.isFinite(ay) && Number.isFinite(by)))) return 1;
+    if (!Number.isFinite(ax) || !Number.isFinite(bx) || (curve && !(Number.isFinite(ay) && Number.isFinite(by))))
+      return 1;
     const span = curve ? Math.max(Math.abs(bx - ax), Math.abs(by - ay)) : Math.abs(bx - ax);
     if (Math.max(ax, bx) + span < rect.x || Math.min(ax, bx) - span > rect.x + rect.width) return 1;
     if (curve && (Math.max(ay, by) + span < rect.y || Math.min(ay, by) - span > rect.y + rect.height)) return 1;
@@ -352,7 +427,11 @@ function toPixels(runs, axes) {
         continue;
       }
       const prev = cur.at(-1);
-      if (prev && Math.abs(p[1] - prev[1]) > plot.height && (prev[1] <= plot.y || prev[1] >= plot.y + plot.height || p[1] <= plot.y || p[1] >= plot.y + plot.height)) {
+      if (
+        prev &&
+        Math.abs(p[1] - prev[1]) > plot.height &&
+        (prev[1] <= plot.y || prev[1] >= plot.y + plot.height || p[1] <= plot.y || p[1] >= plot.y + plot.height)
+      ) {
         out.push(cur);
         cur = [];
       }
@@ -363,7 +442,11 @@ function toPixels(runs, axes) {
   return out;
 }
 
-const insidePlot = (p, plot) => p[0] >= plot.x - 0.5 && p[0] <= plot.x + plot.width + 0.5 && p[1] >= plot.y - 0.5 && p[1] <= plot.y + plot.height + 0.5;
+const insidePlot = (p, plot) =>
+  p[0] >= plot.x - 0.5 &&
+  p[0] <= plot.x + plot.width + 0.5 &&
+  p[1] >= plot.y - 0.5 &&
+  p[1] <= plot.y + plot.height + 0.5;
 const boundsOf = (pts) => {
   if (!pts.length) return null;
   const xs = pts.map((p) => p[0]);
@@ -372,7 +455,9 @@ const boundsOf = (pts) => {
   return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 };
 const pointOf = (pair, scope, axes) => {
-  const [vx, vy] = Array.isArray(pair) ? [numOf(pair[0]).fn(scope), axes.numberLine ? 0 : numOf(pair[1]).fn(scope)] : [numOf(pair).fn(scope), 0];
+  const [vx, vy] = Array.isArray(pair)
+    ? [numOf(pair[0]).fn(scope), axes.numberLine ? 0 : numOf(pair[1]).fn(scope)]
+    : [numOf(pair).fn(scope), 0];
   return { data: [vx, vy], px: [axes.sx(vx), axes.numberLine ? axes.xAxisY : axes.sy(vy)] };
 };
 
@@ -409,10 +494,22 @@ export function plotGeometry(scene, axes, scope, progress = () => 1, view = null
       const { runs, undefinedAt } = sampleFunction(item, scene, scope, p);
       const px = toPixels(runs, axes);
       const visible = px.flatMap((r) => r.filter((q) => insidePlot(q, plot)));
-      const drawn = view ? toPixels(sampleFunction(item, scene, scope, p, screenPieces(item, axes, view)).runs, axes) : px;
-      out.set(id, { part, runs: drawn, undefinedAt, visible: visible.length > 0, box: boundsOf(visible), end: visible.at(-1) ?? null, along: visible });
+      const drawn = view
+        ? toPixels(sampleFunction(item, scene, scope, p, screenPieces(item, axes, view)).runs, axes)
+        : px;
+      out.set(id, {
+        part,
+        runs: drawn,
+        undefinedAt,
+        visible: visible.length > 0,
+        box: boundsOf(visible),
+        end: visible.at(-1) ?? null,
+        along: visible,
+      });
     } else if (kind === 'series') {
-      const pts = list(item.points).filter((q) => Array.isArray(q)).map((q) => [axes.sx(q[0]), axes.numberLine ? axes.xAxisY : axes.sy(q[1])]);
+      const pts = list(item.points)
+        .filter((q) => Array.isArray(q))
+        .map((q) => [axes.sx(q[0]), axes.numberLine ? axes.xAxisY : axes.sy(q[1])]);
       const shown = pts.slice(0, Math.max(1, Math.ceil(pts.length * p - 1e-9)));
       if (p < 1 && shown.length > 1) {
         const exact = (pts.length - 1) * p;
@@ -421,17 +518,38 @@ export function plotGeometry(scene, axes, scope, progress = () => 1, view = null
         shown.splice(i + 1, shown.length, [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]);
       }
       const visible = shown.filter((q) => insidePlot(q, plot));
-      out.set(id, { part, runs: [shown], dots: item.style === 'line' ? [] : shown.slice(0, p < 1 ? Math.floor((pts.length - 1) * p) + 1 : pts.length), visible: visible.length > 0, box: boundsOf(visible), end: visible.at(-1) ?? null, along: visible });
+      out.set(id, {
+        part,
+        runs: [shown],
+        dots: item.style === 'line' ? [] : shown.slice(0, p < 1 ? Math.floor((pts.length - 1) * p) + 1 : pts.length),
+        visible: visible.length > 0,
+        box: boundsOf(visible),
+        end: visible.at(-1) ?? null,
+        along: visible,
+      });
     } else if (kind === 'points') {
       const at = pointOf(item.at, scope, axes);
       const ok = at.px.every(Number.isFinite) && insidePlot(at.px, plot);
-      out.set(id, { part, dot: at.px, data: at.data, visible: ok, box: ok ? { x: at.px[0] - POINT_R, y: at.px[1] - POINT_R, width: 2 * POINT_R, height: 2 * POINT_R } : null });
+      out.set(id, {
+        part,
+        dot: at.px,
+        data: at.data,
+        visible: ok,
+        box: ok ? { x: at.px[0] - POINT_R, y: at.px[1] - POINT_R, width: 2 * POINT_R, height: 2 * POINT_R } : null,
+      });
     } else if (kind === 'vectors') {
-      const from = item.from !== undefined ? pointOf(item.from, scope, axes) : pointOf(axes.numberLine ? 0 : [0, 0], scope, axes);
+      const from =
+        item.from !== undefined ? pointOf(item.from, scope, axes) : pointOf(axes.numberLine ? 0 : [0, 0], scope, axes);
       const to = pointOf(item.to, scope, axes);
       const tip = [from.px[0] + (to.px[0] - from.px[0]) * p, from.px[1] + (to.px[1] - from.px[1]) * p];
       const ok = [...from.px, ...tip].every(Number.isFinite);
-      out.set(id, { part, arrow: ok ? [from.px, tip] : null, data: [from.data, to.data], visible: ok && (insidePlot(from.px, plot) || insidePlot(tip, plot)), box: ok ? boundsOf([from.px, tip]) : null });
+      out.set(id, {
+        part,
+        arrow: ok ? [from.px, tip] : null,
+        data: [from.data, to.data],
+        visible: ok && (insidePlot(from.px, plot) || insidePlot(tip, plot)),
+        box: ok ? boundsOf([from.px, tip]) : null,
+      });
     }
   }
   // Areas last: they fill between functions already sampled.
@@ -442,8 +560,16 @@ export function plotGeometry(scene, axes, scope, progress = () => 1, view = null
       out.set(id, { part, polygon: null, visible: false, box: null });
       continue;
     }
-    const lo = Math.max(Math.min(scene.x.from, scene.x.to), item.from !== undefined ? numOf(item.from).fn(scope) : -Infinity, f.from !== undefined ? numOf(f.from).fn(scope) : -Infinity);
-    const hi = Math.min(Math.max(scene.x.from, scene.x.to), item.to !== undefined ? numOf(item.to).fn(scope) : Infinity, f.to !== undefined ? numOf(f.to).fn(scope) : Infinity);
+    const lo = Math.max(
+      Math.min(scene.x.from, scene.x.to),
+      item.from !== undefined ? numOf(item.from).fn(scope) : -Infinity,
+      f.from !== undefined ? numOf(f.from).fn(scope) : -Infinity,
+    );
+    const hi = Math.min(
+      Math.max(scene.x.from, scene.x.to),
+      item.to !== undefined ? numOf(item.to).fn(scope) : Infinity,
+      f.to !== undefined ? numOf(f.to).fn(scope) : Infinity,
+    );
     const end = lo + (hi - lo) * progress(id);
     const top = [];
     const bottom = [];
@@ -459,7 +585,13 @@ export function plotGeometry(scene, axes, scope, progress = () => 1, view = null
     }
     const polygon = top.length > 1 ? [...top, ...bottom.reverse()] : null;
     const mid = top.length ? Math.floor(top.length / 2) : 0;
-    out.set(id, { part, polygon, visible: Boolean(polygon), box: polygon ? boundsOf(polygon) : null, centre: polygon ? [top[mid][0], (top[mid][1] + bottom[bottom.length - 1 - mid][1]) / 2] : null });
+    out.set(id, {
+      part,
+      polygon,
+      visible: Boolean(polygon),
+      box: polygon ? boundsOf(polygon) : null,
+      centre: polygon ? [top[mid][0], (top[mid][1] + bottom[bottom.length - 1 - mid][1]) / 2] : null,
+    });
   }
   return out;
 }
@@ -486,7 +618,11 @@ function labelSpots(geo, w, h, side) {
     const len = Math.hypot(x1 - x0, y1 - y0) || 1;
     const [ux, uy] = [(x1 - x0) / len, (y1 - y0) / len];
     const c = [x1 + ux * (gap + w / 2), y1 + uy * (gap + h / 2)];
-    return [{ x: c[0] - w / 2, y: c[1] - h / 2 }, { x: x1 + gap, y: y1 - h - gap }, { x: x1 - w - gap, y: y1 - h - gap }];
+    return [
+      { x: c[0] - w / 2, y: c[1] - h / 2 },
+      { x: x1 + gap, y: y1 - h - gap },
+      { x: x1 - w - gap, y: y1 - h - gap },
+    ];
   }
   if (geo.centre) return [{ x: geo.centre[0] - w / 2, y: geo.centre[1] - h / 2 }];
   if (geo.end) {
@@ -494,7 +630,10 @@ function labelSpots(geo, w, h, side) {
     // By the line's end first, then above or below it further back along it.
     const back = [0.8, 0.6, 0.4, 0.2].flatMap((f) => {
       const [ax, ay] = geo.along[Math.floor((geo.along.length - 1) * f)];
-      return [{ x: ax - w / 2, y: ay - h - gap }, { x: ax - w / 2, y: ay + gap }];
+      return [
+        { x: ax - w / 2, y: ay - h - gap },
+        { x: ax - w / 2, y: ay + gap },
+      ];
     });
     return [{ x: x - w, y: y - h - gap }, { x: x - w, y: y + gap }, { x: x + gap, y: y - h / 2 }, ...back];
   }
@@ -508,18 +647,33 @@ function labelSpots(geo, w, h, side) {
  */
 export function plotLabels(scene, axes, geometry, scope, shown = () => true) {
   const placed = [];
-  const fixed = [...axes.ticks.x.map((t) => t.box), ...axes.ticks.y.map((t) => t.box), ...[axes.labels.x, axes.labels.y].filter(Boolean).map((l) => l.box)];
+  const fixed = [
+    ...axes.ticks.x.map((t) => t.box),
+    ...axes.ticks.y.map((t) => t.box),
+    ...[axes.labels.x, axes.labels.y].filter(Boolean).map((l) => l.box),
+  ];
   const stage = { x: 0, y: 0, width: axes.box.width, height: axes.box.height };
   const order = ['points', 'vectors', 'functions', 'series', 'areas'];
-  const parts = [...geometry.values()].filter((g) => g.visible && typeof g.part.item.label === 'string' && g.part.item.label && shown(g.part.id)).sort((a, b) => order.indexOf(a.part.kind) - order.indexOf(b.part.kind));
+  const parts = [...geometry.values()]
+    .filter((g) => g.visible && typeof g.part.item.label === 'string' && g.part.item.label && shown(g.part.id))
+    .sort((a, b) => order.indexOf(a.part.kind) - order.indexOf(b.part.kind));
   for (const geo of parts) {
     const text = labelText(geo.part.item.label, scope);
     const [w, h] = [measure(text, LABEL_FONT), lineHeight(LABEL_FONT)];
     const spots = labelSpots(geo, w, h, geo.part.item.side).map((s) => ({ ...s, width: w, height: h }));
-    const clear = (b) => inside(b, stage) && !placed.some((l) => overlaps(l.box, b)) && !fixed.some((f) => overlaps(f, b)) && !(geo.part.kind !== 'points' && [...geometry.values()].some((g) => g !== geo && g.dot && g.visible && overlaps(g.box, b)));
+    const clear = (b) =>
+      inside(b, stage) &&
+      !placed.some((l) => overlaps(l.box, b)) &&
+      !fixed.some((f) => overlaps(f, b)) &&
+      !(
+        geo.part.kind !== 'points' &&
+        [...geometry.values()].some((g) => g !== geo && g.dot && g.visible && overlaps(g.box, b))
+      );
     const box = spots.find(clear) ?? spots.find((b) => inside(b, stage)) ?? spots[0];
     if (!box) continue;
-    const clash = clear(box) ? null : (placed.find((l) => overlaps(l.box, box))?.id ?? (fixed.some((f) => overlaps(f, box)) ? 'axis' : null));
+    const clash = clear(box)
+      ? null
+      : (placed.find((l) => overlaps(l.box, box))?.id ?? (fixed.some((f) => overlaps(f, box)) ? 'axis' : null));
     placed.push({ id: geo.part.id, text, box, tone: partTone(scene, geo.part), clash, off: !inside(box, stage) });
   }
   return placed;

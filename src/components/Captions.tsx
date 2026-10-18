@@ -29,7 +29,16 @@ export const Captions: React.FC<CaptionsProps> = ({ segments, durationInFrames }
           opacity,
         }}
       >
-        <div style={{ fontFamily: fonts.sans, fontSize: 36, lineHeight: 1.4, fontWeight: 500, textAlign: 'center', maxWidth: 1560 }}>
+        <div
+          style={{
+            fontFamily: fonts.sans,
+            fontSize: 36,
+            lineHeight: 1.4,
+            fontWeight: 500,
+            textAlign: 'center',
+            maxWidth: 1560,
+          }}
+        >
           {lines.map((line, li) => (
             <div key={li}>
               {line.map((wi) => (

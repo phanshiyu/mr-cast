@@ -91,7 +91,12 @@ const properlyIntersect = (p1: Cell, p2: Cell, q1: Cell, q2: Cell) =>
   cross(p1, p2, q1) * cross(p1, p2, q2) < 0 && cross(q1, q2, p1) * cross(q1, q2, p2) < 0;
 
 /** Lower is better: short, straight, left-to-right relations that skip no cards and cross nothing. */
-function placementCost(cells: readonly Cell[], pairs: readonly [number, number][], isolated: readonly boolean[], cols: number): number {
+function placementCost(
+  cells: readonly Cell[],
+  pairs: readonly [number, number][],
+  isolated: readonly boolean[],
+  cols: number,
+): number {
   const occupied = new Set(cells.map((p) => p.r * cols + p.c));
   let cost = 0;
   for (const [a, b] of pairs) {
@@ -166,11 +171,14 @@ function placeInGrid(entities: readonly ErEntity[], relations: readonly ErRelati
   return best;
 }
 
-const singular = (word: string) => (word.endsWith('ies') ? `${word.slice(0, -3)}y` : word.endsWith('s') ? word.slice(0, -1) : word);
+const singular = (word: string) =>
+  word.endsWith('ies') ? `${word.slice(0, -3)}y` : word.endsWith('s') ? word.slice(0, -1) : word;
 
 /** The FK row in `child` that points at `parent`, e.g. orders.user_id for users. */
 function foreignKeyRow(child: ErEntity, parent: ErEntity): number {
-  const stems = [...new Set([parent.id, parent.name, singular(parent.id), singular(parent.name)].map((s) => s.toLowerCase()))];
+  const stems = [
+    ...new Set([parent.id, parent.name, singular(parent.id), singular(parent.name)].map((s) => s.toLowerCase())),
+  ];
   const matches = (f: ErField) => {
     const name = f.name.toLowerCase();
     return stems.some((s) => name.endsWith(`${s}_id`) || name.endsWith(`${s}id`));
@@ -181,7 +189,11 @@ function foreignKeyRow(child: ErEntity, parent: ErEntity): number {
 
 /** Field row indices at each end when the relation follows an obvious FK → PK match. */
 function keyRows(from: ErEntity, to: ErEntity): { from: number; to: number } | null {
-  const pk = (e: ErEntity) => Math.max(0, e.fields.findIndex((f) => f.pk));
+  const pk = (e: ErEntity) =>
+    Math.max(
+      0,
+      e.fields.findIndex((f) => f.pk),
+    );
   const inTo = foreignKeyRow(to, from);
   if (inTo >= 0) return { from: pk(from), to: inTo };
   const inFrom = foreignKeyRow(from, to);
@@ -193,7 +205,11 @@ function keyRows(from: ErEntity, to: ErEntity): { from: number; to: number } | n
  * Vertical offset per card within its grid row, so a relation between horizontal neighbours runs
  * straight from the PK row to the FK row instead of jogging. Walks each row left to right.
  */
-function alignOffsets(entities: readonly ErEntity[], relations: readonly ErRelation[], cells: readonly Cell[]): number[] {
+function alignOffsets(
+  entities: readonly ErEntity[],
+  relations: readonly ErRelation[],
+  cells: readonly Cell[],
+): number[] {
   const index = new Map(entities.map((e, i) => [e.id, i]));
   const offsets = entities.map(() => 0);
   const order = entities.map((_, i) => i).sort((a, b) => cells[a]!.r - cells[b]!.r || cells[a]!.c - cells[b]!.c);
@@ -223,7 +239,10 @@ function alignOffsets(entities: readonly ErEntity[], relations: readonly ErRelat
 
 /** PK row to the first FK that points at no other table, e.g. employees.manager_id. */
 function selfKeyRows(entity: ErEntity, all: readonly ErEntity[]): { from: number; to: number } {
-  const pk = Math.max(0, entity.fields.findIndex((f) => f.pk));
+  const pk = Math.max(
+    0,
+    entity.fields.findIndex((f) => f.pk),
+  );
   const named = foreignKeyRow(entity, entity);
   if (named >= 0) return { from: pk, to: named };
   const others = all.filter((e) => e !== entity);
@@ -234,7 +253,12 @@ function selfKeyRows(entity: ErEntity, all: readonly ErEntity[]): { from: number
 }
 
 /** Outward unit vector of each card side. */
-export const normal: Record<Side, Pt> = { left: { x: -1, y: 0 }, right: { x: 1, y: 0 }, top: { x: 0, y: -1 }, bottom: { x: 0, y: 1 } };
+export const normal: Record<Side, Pt> = {
+  left: { x: -1, y: 0 },
+  right: { x: 1, y: 0 },
+  top: { x: 0, y: -1 },
+  bottom: { x: 0, y: 1 },
+};
 
 interface EndSpec {
   card: PlacedEntity;
@@ -259,7 +283,9 @@ function entityText(entity: ErEntity, index: number, w: number): Pick<PlacedEnti
   return {
     name: fitText(entity.name, sized(SLOTS.entityName, w - 72), `${path}.name`),
     fields: entity.fields.map((field, k) => {
-      const type = field.type ? fitText(field.type, sized(SLOTS.fieldType, 0.45 * row), `${path}.fields[${k}].type`) : null;
+      const type = field.type
+        ? fitText(field.type, sized(SLOTS.fieldType, 0.45 * row), `${path}.fields[${k}].type`)
+        : null;
       const badges = field.badge ? badgesWidth([field.badge], 12) + 10 : 0;
       const room = row - 60 - (type ? type.width + 10 : 0) - badges;
       return { name: fitText(field.name, sized(SLOTS.fieldName, room), `${path}.fields[${k}].name`), type };
@@ -321,7 +347,8 @@ function segmentHitsRect(p: Pt, q: Pt, r: Rect): boolean {
   return x1 > r.x - CLEARANCE && x0 < r.x + r.w + CLEARANCE && y1 > r.y - CLEARANCE && y0 < r.y + r.h + CLEARANCE;
 }
 
-const polyLength = (pts: readonly Pt[]) => pts.slice(1).reduce((sum, p, i) => sum + Math.abs(p.x - pts[i]!.x) + Math.abs(p.y - pts[i]!.y), 0);
+const polyLength = (pts: readonly Pt[]) =>
+  pts.slice(1).reduce((sum, p, i) => sum + Math.abs(p.x - pts[i]!.x) + Math.abs(p.y - pts[i]!.y), 0);
 
 function dedupe(pts: readonly Pt[]): Pt[] {
   const out: Pt[] = [];
@@ -347,7 +374,14 @@ interface Grid {
 }
 
 /** Candidate orthogonal routes, cheapest first; the first that clears every other card wins. */
-function route(from: RelationEnd, to: RelationEnd, a: PlacedEntity, b: PlacedEntity, cards: readonly PlacedEntity[], grid: Grid): Pt[] {
+function route(
+  from: RelationEnd,
+  to: RelationEnd,
+  a: PlacedEntity,
+  b: PlacedEntity,
+  cards: readonly PlacedEntity[],
+  grid: Grid,
+): Pt[] {
   const P = from.point;
   const Q = to.point;
   const others = cards.filter((c) => c !== a && c !== b);
@@ -373,7 +407,9 @@ function route(from: RelationEnd, to: RelationEnd, a: PlacedEntity, b: PlacedEnt
 
   const scored = candidates.map(dedupe).map((pts) => ({ pts, cost: polyLength(pts) + (pts.length - 2) * 40 }));
   scored.sort((x, y) => x.cost - y.cost);
-  const clear = scored.find(({ pts }) => pts.slice(1).every((q, i) => others.every((r) => !segmentHitsRect(pts[i]!, q, r))));
+  const clear = scored.find(({ pts }) =>
+    pts.slice(1).every((q, i) => others.every((r) => !segmentHitsRect(pts[i]!, q, r))),
+  );
   return (clear ?? scored[0]!).pts;
 }
 
@@ -403,7 +439,8 @@ function pointAlong(pts: readonly Pt[], t: number): Pt {
     const a = pts[i - 1]!;
     const b = pts[i]!;
     const len = Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
-    if (remaining <= len && len > 0) return { x: a.x + ((b.x - a.x) * remaining) / len, y: a.y + ((b.y - a.y) * remaining) / len };
+    if (remaining <= len && len > 0)
+      return { x: a.x + ((b.x - a.x) * remaining) / len, y: a.y + ((b.y - a.y) * remaining) / len };
     remaining -= len;
   }
   return pts[pts.length - 1]!;
@@ -420,7 +457,9 @@ function labelPoint(pts: readonly Pt[]): Pt {
       best = i;
     }
   }
-  return pts.length > 1 ? { x: (pts[best]!.x + pts[best - 1]!.x) / 2, y: (pts[best]!.y + pts[best - 1]!.y) / 2 } : pointAlong(pts, 0.5);
+  return pts.length > 1
+    ? { x: (pts[best]!.x + pts[best - 1]!.x) / 2, y: (pts[best]!.y + pts[best - 1]!.y) / 2 }
+    : pointAlong(pts, 0.5);
 }
 
 export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRelation[]): ErLayout {
@@ -445,14 +484,27 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
 
   const placed = entities.map<PlacedEntity>((entity, i) => {
     const { r, c } = cells[i]!;
-    return { entity, row: r, col: c, x: grid.colLeft(c), y: rowTop[r]! + offsets[i]!, w: cardW, h: cardHeight(entity), ...entityText(entity, i, cardW) };
+    return {
+      entity,
+      row: r,
+      col: c,
+      x: grid.colLeft(c),
+      y: rowTop[r]! + offsets[i]!,
+      w: cardW,
+      h: cardHeight(entity),
+      ...entityText(entity, i, cardW),
+    };
   });
   const placedById = new Map(placed.map((p) => [p.entity.id, p]));
 
   const specs: [EndSpec, EndSpec][] = valid.map((rel) => {
     const a = placedById.get(rel.from)!;
     const b = placedById.get(rel.to)!;
-    if (a === b) return [{ card: a, side: 'right', row: null, straight: false }, { card: a, side: 'right', row: null, straight: false }];
+    if (a === b)
+      return [
+        { card: a, side: 'right', row: null, straight: false },
+        { card: a, side: 'right', row: null, straight: false },
+      ];
     const [sa, sb] = sidesFor(a, b);
     const keys = sa === 'left' || sa === 'right' ? keyRows(a.entity, b.entity) : null;
     const straight =
@@ -470,7 +522,10 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
     const lo = Math.min(rows.from, rows.to);
     const hi = Math.max(rows.from, rows.to);
     const crowding = (side: Side) =>
-      specs.flat().filter((e) => e.card === card && e.side === side && (e.row === null || (e.row >= lo - 1 && e.row <= hi + 1))).length;
+      specs
+        .flat()
+        .filter((e) => e.card === card && e.side === side && (e.row === null || (e.row >= lo - 1 && e.row <= hi + 1)))
+        .length;
     const side: Side = crowding('right') <= crowding('left') ? 'right' : 'left';
     specs[i] = [
       { card, side, row: rows.from, straight: false },
@@ -485,9 +540,18 @@ export function layoutEr(entities: readonly ErEntity[], relations: readonly ErRe
     const points = route(from, to, specs[i]![0].card, specs[i]![1].card, placed, grid);
     const mid =
       relation.from === relation.to && relation.label
-        ? { x: points[1]!.x + normal[from.side].x * (labelHalfWidth(relation.label) + 8), y: (from.point.y + to.point.y) / 2 }
+        ? {
+            x: points[1]!.x + normal[from.side].x * (labelHalfWidth(relation.label) + 8),
+            y: (from.point.y + to.point.y) / 2,
+          }
         : labelPoint(points);
-    const label = relation.label ? fitText(`${relation.change === 'added' ? '+ ' : ''}${relation.label}`, sized(SLOTS.relationLabel, RELATION_LABEL_MAX - RELATION_LABEL_CHROME), `relations[${relations.indexOf(relation)}].label`) : null;
+    const label = relation.label
+      ? fitText(
+          `${relation.change === 'added' ? '+ ' : ''}${relation.label}`,
+          sized(SLOTS.relationLabel, RELATION_LABEL_MAX - RELATION_LABEL_CHROME),
+          `relations[${relations.indexOf(relation)}].label`,
+        )
+      : null;
     return { relation, points, d: roundedPath(points), from, to, mid, label };
   });
 
@@ -529,15 +593,27 @@ export function erBoxes(layout: ErLayout): LayoutBoxes {
     const lift = badgeWords(e.entity).length ? BADGE_LIFT : 0;
     return { x: e.x, y: e.y - lift, width: e.w, height: e.h + lift };
   };
-  const relation = (r: RoutedRelation): Box => (r.relation.label ? around(r.mid, 2 * labelHalfWidth(r.relation.label), 2 * labelHalfHeight(r.label)) : around(r.mid, 40, 40));
+  const relation = (r: RoutedRelation): Box =>
+    r.relation.label
+      ? around(r.mid, 2 * labelHalfWidth(r.relation.label), 2 * labelHalfHeight(r.label))
+      : around(r.mid, 40, 40);
   const boxes = new Map<string, Box>([
     ...layout.entities.map((e): [string, Box] => [`e:${e.entity.id}`, card(e)]),
-    ...layout.entities.flatMap((e) => e.entity.fields.map((_, k): [string, Box] => [`f:${e.entity.id}/${k}`, { x: e.x + 6, y: e.y + HEADER_H + k * ROW_H + 2, width: e.w - 12, height: ROW_H - 4 }])),
+    ...layout.entities.flatMap((e) =>
+      e.entity.fields.map((_, k): [string, Box] => [
+        `f:${e.entity.id}/${k}`,
+        { x: e.x + 6, y: e.y + HEADER_H + k * ROW_H + 2, width: e.w - 12, height: ROW_H - 4 },
+      ]),
+    ),
     ...layout.relations.map((r, i): [string, Box] => [`r:${i}`, relation(r)]),
   ]);
-  const obstacles = [...layout.entities.map(card), ...layout.relations.flatMap((r) => (r.relation.label ? [relation(r)] : []))];
+  const obstacles = [
+    ...layout.entities.map(card),
+    ...layout.relations.flatMap((r) => (r.relation.label ? [relation(r)] : [])),
+  ];
   return { boxes, obstacles, lines: layout.relations.flatMap((r) => r.points) };
 }
 
 /** The scale an er diagram draws at in `box`: as large as fits, up to 1.3. */
-export const erScale = (layout: ErLayout, box: { width: number; height: number }): number => Math.min(box.width / layout.width, box.height / layout.height, 1.3);
+export const erScale = (layout: ErLayout, box: { width: number; height: number }): number =>
+  Math.min(box.width / layout.width, box.height / layout.height, 1.3);

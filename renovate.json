@@ -1,13 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    "helpers:pinGitHubActionDigests"
-  ],
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
   "timezone": "Asia/Singapore",
-  "labels": [
-    "dependencies"
-  ],
+  "labels": ["dependencies"],
   "platformAutomerge": true,
   "automergeType": "pr",
   "minimumReleaseAge": "3 days",
@@ -16,83 +11,51 @@
   "lockFileMaintenance": {
     "enabled": true,
     "automerge": true,
-    "schedule": [
-      "before 6am on monday"
-    ]
+    "schedule": ["before 6am on monday"]
   },
   "vulnerabilityAlerts": {
     "enabled": true,
-    "schedule": [
-      "at any time"
-    ],
+    "schedule": ["at any time"],
     "minimumReleaseAge": null,
-    "labels": [
-      "security"
-    ]
+    "labels": ["security"]
   },
   "osvVulnerabilityAlerts": true,
   "packageRules": [
     {
       "description": "Minor, patch, pin and digest updates merge themselves once ci-ok passes",
-      "matchUpdateTypes": [
-        "minor",
-        "patch",
-        "pin",
-        "pinDigest",
-        "digest"
-      ],
+      "matchUpdateTypes": ["minor", "patch", "pin", "pinDigest", "digest"],
       "automerge": true
     },
     {
       "description": "Majors, of any dependency or action, wait for a review",
-      "matchUpdateTypes": [
-        "major"
-      ],
+      "matchUpdateTypes": ["major"],
       "automerge": false,
-      "labels": [
-        "dependencies",
-        "major"
-      ]
+      "labels": ["dependencies", "major"]
     },
     {
       "description": "Below 1.0 a minor release can break (esbuild 0.28 to 0.29), so those wait for a review too",
       "matchCurrentVersion": "<1.0.0",
-      "matchUpdateTypes": [
-        "minor"
-      ],
+      "matchUpdateTypes": ["minor"],
       "automerge": false
     },
     {
       "description": "Every Remotion package must stay on one version",
       "groupName": "Remotion",
-      "matchPackageNames": [
-        "remotion",
-        "@remotion/**"
-      ]
+      "matchPackageNames": ["remotion", "@remotion/**"]
     },
     {
       "description": "React and its types move together",
       "groupName": "React",
-      "matchPackageNames": [
-        "react",
-        "react-dom",
-        "@types/react",
-        "@types/react-dom"
-      ]
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"]
     },
     {
       "description": "validate patches Mermaid's own DOMPurify, so they move together",
       "groupName": "Mermaid",
-      "matchPackageNames": [
-        "mermaid",
-        "dompurify"
-      ]
+      "matchPackageNames": ["mermaid", "dompurify"]
     },
     {
       "description": "@types/node follows the oldest Node in engines (22.12), not the newest",
-      "matchPackageNames": [
-        "@types/node"
-      ],
+      "matchPackageNames": ["@types/node"],
       "allowedVersions": "<23"
     }
   ]

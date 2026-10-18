@@ -27,9 +27,12 @@ export const ENGINES = {
     label: 'Kitten TTS mini 0.8 (KittenML, 80M parameters)',
     mb: KITTEN_MB,
     defaultVoice: 'luna',
-    voices: Object.fromEntries(['bella', 'jasper', 'luna', 'bruno', 'rosie', 'hugo', 'kiki', 'leo'].map((name, i) => [
-      name, `${i % 2 ? 'male' : 'female'}, American English`,
-    ])),
+    voices: Object.fromEntries(
+      ['bella', 'jasper', 'luna', 'bruno', 'rosie', 'hugo', 'kiki', 'leo'].map((name, i) => [
+        name,
+        `${i % 2 ? 'male' : 'female'}, American English`,
+      ]),
+    ),
     dir: () => kittenDir(cacheDir('kitten')),
     lock: () => cacheLock('kitten'),
     downloaded: () => kittenDownloaded(kittenDir(cacheDir('kitten'))),
@@ -38,9 +41,12 @@ export const ENGINES = {
     label: 'Kokoro 82M v1.0 (hexgrad, 82M parameters)',
     mb: 90,
     defaultVoice: 'af_heart',
-    voices: Object.fromEntries(Object.entries(KOKORO_VOICES).map(([name, v]) => [
-      name, `${v.gender.toLowerCase()}, ${ACCENTS[v.language] ?? v.language}, model card grade ${v.overallGrade}`,
-    ])),
+    voices: Object.fromEntries(
+      Object.entries(KOKORO_VOICES).map(([name, v]) => [
+        name,
+        `${v.gender.toLowerCase()}, ${ACCENTS[v.language] ?? v.language}, model card grade ${v.overallGrade}`,
+      ]),
+    ),
     dir: () => cacheDir('models'),
     lock: () => cacheLock('models'),
     downloaded: () => fs.existsSync(path.join(cacheDir('models'), KOKORO_MODEL_ID, 'onnx', KOKORO_MODEL_FILE)),
@@ -63,16 +69,21 @@ export function voiceParts(voice) {
  * mr-cast 0.26 and earlier, such as af_heart, still pick Kokoro. --engine alone picks its default voice.
  */
 export function resolveVoice({ engine, voice }) {
-  if (engine !== undefined && !Object.hasOwn(ENGINES, engine)) throw new UserError(`--engine must be one of ${engineNames()} (got "${engine}")`);
+  if (engine !== undefined && !Object.hasOwn(ENGINES, engine))
+    throw new UserError(`--engine must be one of ${engineNames()} (got "${engine}")`);
   if (voice === undefined) return `${engine ?? DEFAULT_ENGINE}:${ENGINES[engine ?? DEFAULT_ENGINE].defaultVoice}`;
   const given = voice.trim().toLowerCase();
   let [named, name] = given.includes(':') ? given.split(':', 2) : [undefined, given];
-  if (named !== undefined && !Object.hasOwn(ENGINES, named)) throw new UserError(`--voice ${voice}: no engine "${named}"; engines are ${engineNames()}`);
-  if (named !== undefined && engine !== undefined && named !== engine) throw new UserError(`--voice ${voice} is a ${named} voice, but --engine is ${engine}; drop one`);
+  if (named !== undefined && !Object.hasOwn(ENGINES, named))
+    throw new UserError(`--voice ${voice}: no engine "${named}"; engines are ${engineNames()}`);
+  if (named !== undefined && engine !== undefined && named !== engine)
+    throw new UserError(`--voice ${voice} is a ${named} voice, but --engine is ${engine}; drop one`);
   named ??= engine ?? Object.keys(ENGINES).find((e) => Object.hasOwn(ENGINES[e].voices, name));
   if (named === undefined || !Object.hasOwn(ENGINES[named].voices, name)) {
     const where = named ?? DEFAULT_ENGINE;
-    throw new UserError(`unknown voice "${voice}"${named ? ` for ${named}` : ''}; ${where} has ${Object.keys(ENGINES[where].voices).join(', ')} (\`mr-cast voices\` lists every engine)`);
+    throw new UserError(
+      `unknown voice "${voice}"${named ? ` for ${named}` : ''}; ${where} has ${Object.keys(ENGINES[where].voices).join(', ')} (\`mr-cast voices\` lists every engine)`,
+    );
   }
   return `${named}:${name}`;
 }
@@ -85,10 +96,15 @@ export function formatVoices(current = DEFAULT_VOICE) {
     out.push(`${engine}${engine === DEFAULT_ENGINE ? ' (default engine)' : ''} · ${e.label} · ${here}`);
     for (const [name, line] of Object.entries(e.voices)) {
       const id = `${engine}:${name}`;
-      const marks = [id === DEFAULT_VOICE && 'default', id === current && id !== DEFAULT_VOICE && 'last chosen'].filter(Boolean);
+      const marks = [id === DEFAULT_VOICE && 'default', id === current && id !== DEFAULT_VOICE && 'last chosen'].filter(
+        Boolean,
+      );
       out.push(`  ${id.padEnd(18)} ${line}${marks.length ? ` (${marks.join(', ')})` : ''}`);
     }
   }
-  out.push('', 'Pick one with --voice engine:name (or --engine and --voice); `mr-cast voices --sample engine:name` voices a sentence to hear it.');
+  out.push(
+    '',
+    'Pick one with --voice engine:name (or --engine and --voice); `mr-cast voices --sample engine:name` voices a sentence to hear it.',
+  );
   return out;
 }

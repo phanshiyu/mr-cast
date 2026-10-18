@@ -9,17 +9,47 @@ import { REVIEW_HEADING } from '../shared/review.mjs';
 import { READING_HEADING } from '../shared/reading.mjs';
 
 const CLI = fileURLToPath(new URL('../bin/mr-cast.mjs', import.meta.url));
-const HUNKS = { s1: { id: 's1', file: 'qs.ts', oldStart: 0, oldLines: 0, newStart: 1, newLines: 2, header: '', additions: 0, deletions: 0, status: 'source', lines: [{ type: 'context', oldNo: null, newNo: 1, text: 'a' }, { type: 'context', oldNo: null, newNo: 2, text: 'b' }] } };
+const HUNKS = {
+  s1: {
+    id: 's1',
+    file: 'qs.ts',
+    oldStart: 0,
+    oldLines: 0,
+    newStart: 1,
+    newLines: 2,
+    header: '',
+    additions: 0,
+    deletions: 0,
+    status: 'source',
+    lines: [
+      { type: 'context', oldNo: null, newNo: 1, text: 'a' },
+      { type: 'context', oldNo: null, newNo: 2, text: 'b' },
+    ],
+  },
+};
 // A code scene is fine for every audience but a pre-read, which shows no code.
-const CODE_ONLY = { title: 'Quicksort', scenes: [{ type: 'code', hunkId: 's1', narration: 'The partition function walks the list once.' }] };
+const CODE_ONLY = {
+  title: 'Quicksort',
+  scenes: [{ type: 'code', hunkId: 's1', narration: 'The partition function walks the list once.' }],
+};
 const PREREAD_ERROR = 'a pre-read puts no code on screen';
 
 function setup() {
   const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-hook-')));
-  const env = { XDG_CONFIG_HOME: path.join(tmp, 'config'), XDG_CACHE_HOME: path.join(tmp, 'cache'), CLAUDE_CONFIG_DIR: path.join(tmp, 'claude') };
+  const env = {
+    XDG_CONFIG_HOME: path.join(tmp, 'config'),
+    XDG_CACHE_HOME: path.join(tmp, 'cache'),
+    CLAUDE_CONFIG_DIR: path.join(tmp, 'claude'),
+  };
   const repo = path.join(tmp, 'work');
   fs.mkdirSync(repo);
-  const run = (args, input) => spawnSync(process.execPath, [CLI, ...args], { cwd: repo, input, encoding: 'utf8', env: { ...process.env, ...env, MR_CAST_NO_UPDATE_CHECK: '1' } });
+  const run = (args, input) =>
+    spawnSync(process.execPath, [CLI, ...args], {
+      cwd: repo,
+      input,
+      encoding: 'utf8',
+      env: { ...process.env, ...env, MR_CAST_NO_UPDATE_CHECK: '1' },
+    });
   const start = (args, name) => {
     assert.equal(run(['init', ...args]).status, 0);
     const dir = path.join(repo, '.mr-cast', name);
@@ -27,7 +57,15 @@ function setup() {
     fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify(CODE_ONLY));
     return dir;
   };
-  const hook = (dir) => run(['hook'], JSON.stringify({ hook_event_name: 'PostToolUse', tool_name: 'Write', tool_input: { file_path: path.join(dir, 'storyboard.json') } }));
+  const hook = (dir) =>
+    run(
+      ['hook'],
+      JSON.stringify({
+        hook_event_name: 'PostToolUse',
+        tool_name: 'Write',
+        tool_input: { file_path: path.join(dir, 'storyboard.json') },
+      }),
+    );
   const choices = path.join(env.XDG_CONFIG_HOME, 'mr-cast', 'last-choices.json');
   return { tmp, run, start, hook, choices, done: () => fs.rmSync(tmp, { recursive: true, force: true }) };
 }
@@ -77,7 +115,10 @@ test('a run started again with no --audience is a plain video, though it was a p
     assert.equal(run(['extract', 'main', '--audience', 'preread']).status, 0);
     const dir = path.join(repo, '.mr-cast', 'quicksort');
     assert.equal(meta(dir).audience, 'preread');
-    fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify({ ...CODE_ONLY, scenes: [{ ...CODE_ONLY.scenes[0], hunkId: 'h1' }] }));
+    fs.writeFileSync(
+      path.join(dir, 'storyboard.json'),
+      JSON.stringify({ ...CODE_ONLY, scenes: [{ ...CODE_ONLY.scenes[0], hunkId: 'h1' }] }),
+    );
     assert.equal(hook(dir).status, 2);
 
     assert.equal(run(['extract', 'main']).status, 0);
@@ -105,20 +146,27 @@ test('init with no --audience starts a plain video, though the run was a pre-rea
   }
 });
 
-test('the hook\'s validate writes and removes nothing, where validate keeps review.md and reading.md in step', () => {
+test("the hook's validate writes and removes nothing, where validate keeps review.md and reading.md in step", () => {
   const { run, start, hook, choices, done } = setup();
   try {
     const dir = start(['--title', 'Quicksort', '--audience', 'familiar', '--pace', 'slower'], 'quicksort');
     const own = { 'review.md': `${REVIEW_HEADING}Quicksort\n`, 'reading.md': `${READING_HEADING}Quicksort\n` };
     for (const [file, text] of Object.entries(own)) fs.writeFileSync(path.join(dir, file), text);
-    const snapshot = () => [fs.readdirSync(dir).sort(), fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'), fs.readFileSync(choices, 'utf8')];
+    const snapshot = () => [
+      fs.readdirSync(dir).sort(),
+      fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'),
+      fs.readFileSync(choices, 'utf8'),
+    ];
     const before = snapshot();
     assert.deepEqual([hook(dir).status, snapshot()], [0, before]);
     assert.equal(run(['validate', '--read-only', '--audience', 'preread']).status, 1);
     assert.deepEqual(snapshot(), before);
 
     assert.equal(run(['validate']).status, 0);
-    assert.deepEqual(Object.keys(own).filter((f) => fs.existsSync(path.join(dir, f))), []);
+    assert.deepEqual(
+      Object.keys(own).filter((f) => fs.existsSync(path.join(dir, f))),
+      [],
+    );
   } finally {
     done();
   }

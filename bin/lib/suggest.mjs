@@ -4,7 +4,8 @@ function distance(a, b) {
   let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
     const row = [i];
-    for (let j = 1; j <= b.length; j++) row.push(Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)));
+    for (let j = 1; j <= b.length; j++)
+      row.push(Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)));
     prev = row;
   }
   return prev[b.length];
@@ -21,7 +22,10 @@ export function closest(name, candidates, limit = 3) {
     if (words.some((w) => c.split(/[\s\-_.:@>]+/).includes(w))) return [{ candidate, score: 10 + d }];
     return [];
   });
-  return scored.sort((a, b) => a.score - b.score).slice(0, limit).map((s) => s.candidate);
+  return scored
+    .sort((a, b) => a.score - b.score)
+    .slice(0, limit)
+    .map((s) => s.candidate);
 }
 
 /** `; did you mean "a" or "b"?`, or an empty string when nothing is close. */

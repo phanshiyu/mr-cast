@@ -3,7 +3,17 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { Change, ErField, ErRelation, ErScene } from '../types';
-import { HEADER_H, RELATION_LABEL_MAX, ROW_H, layoutEr, erScale, normal, type PlacedEntity, type RelationEnd, type RoutedRelation } from '../utils/erLayout';
+import {
+  HEADER_H,
+  RELATION_LABEL_MAX,
+  ROW_H,
+  layoutEr,
+  erScale,
+  normal,
+  type PlacedEntity,
+  type RelationEnd,
+  type RoutedRelation,
+} from '../utils/erLayout';
 import type { Fit } from '../../shared/textfit.mjs';
 import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
@@ -45,10 +55,19 @@ function buildTimeline(layout: ReturnType<typeof layoutEr>): Timeline {
   const cardStagger = Math.min(6, (CARDS_END - CARD_START) / Math.max(1, layout.entities.length - 1));
   const cardAt = (id: string) => CARD_START + cardRank.get(id)! * cardStagger;
   const relationsStart = CARDS_END + 6;
-  const relationOrder = layout.relations.map((_, i) => i).sort((a, b) => Number(!!layout.relations[a]!.relation.change) - Number(!!layout.relations[b]!.relation.change));
+  const relationOrder = layout.relations
+    .map((_, i) => i)
+    .sort((a, b) => Number(!!layout.relations[a]!.relation.change) - Number(!!layout.relations[b]!.relation.change));
   const relationRank = new Map(relationOrder.map((r, i) => [r, i]));
-  const relationStagger = Math.min(5, (buildFrames('er') - relationsStart - RELATION_FRAMES - 4) / Math.max(1, layout.relations.length - 1));
-  const changed = layout.entities.flatMap((p) => p.entity.fields.flatMap((f, i) => (f.change ? [{ key: `${p.entity.id}/${i}`, at: cardAt(p.entity.id) + FIELDS_AFTER }] : [])));
+  const relationStagger = Math.min(
+    5,
+    (buildFrames('er') - relationsStart - RELATION_FRAMES - 4) / Math.max(1, layout.relations.length - 1),
+  );
+  const changed = layout.entities.flatMap((p) =>
+    p.entity.fields.flatMap((f, i) =>
+      f.change ? [{ key: `${p.entity.id}/${i}`, at: cardAt(p.entity.id) + FIELDS_AFTER }] : [],
+    ),
+  );
   return {
     cardAt: (index) => cardAt(layout.entities[index]!.entity.id),
     relationAt: (index) => relationsStart + relationRank.get(index)! * relationStagger,
@@ -64,15 +83,15 @@ const Pills: React.FC<{ badges: readonly BadgeSpec[]; scale: number }> = ({ badg
   </div>
 );
 
-const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }; index: number; at: number | undefined; frame: number; dimmed: boolean; lit: number }> = ({
-  field,
-  text,
-  index,
-  at,
-  frame,
-  dimmed,
-  lit,
-}) => {
+const FieldRow: React.FC<{
+  field: ErField;
+  text: { name: Fit; type: Fit | null };
+  index: number;
+  at: number | undefined;
+  frame: number;
+  dimmed: boolean;
+  lit: number;
+}> = ({ field, text, index, at, frame, dimmed, lit }) => {
   const tone = field.change ? changeTone[field.change] : null;
   const on = at === undefined ? 0 : interpolate(frame, [at, at + 10], [0, 1], clamp);
   const pulse = at === undefined ? 0 : interpolate(frame, [at, at + 6, at + 30], [0, 1, 0], clamp);
@@ -94,7 +113,15 @@ const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }
       }}
     >
       {field.highlight && !field.change ? (
-        <div style={{ position: 'absolute', inset: '2px 6px', borderRadius: 8, background: EMPHASIS.soft, boxShadow: `inset 0 0 0 2px ${EMPHASIS.color}aa, 0 0 18px ${EMPHASIS.glow}` }} />
+        <div
+          style={{
+            position: 'absolute',
+            inset: '2px 6px',
+            borderRadius: 8,
+            background: EMPHASIS.soft,
+            boxShadow: `inset 0 0 0 2px ${EMPHASIS.color}aa, 0 0 18px ${EMPHASIS.glow}`,
+          }}
+        />
       ) : null}
       {lit > 0 ? (
         <div
@@ -103,7 +130,9 @@ const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }
             inset: '2px 6px',
             borderRadius: 8,
             background: `rgba(124, 140, 255, ${0.14 * lit})`,
-            boxShadow: `inset 0 0 0 2px ${colors.accent}${Math.round(lit * 200).toString(16).padStart(2, '0')}, 0 0 ${26 * lit}px ${colors.accentGlow}`,
+            boxShadow: `inset 0 0 0 2px ${colors.accent}${Math.round(lit * 200)
+              .toString(16)
+              .padStart(2, '0')}, 0 0 ${26 * lit}px ${colors.accentGlow}`,
           }}
         />
       ) : null}
@@ -115,7 +144,9 @@ const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }
             borderRadius: 8,
             background: tone.bg,
             opacity: on,
-            boxShadow: `inset 0 0 0 2px ${tone.color}${Math.round(pulse * 200).toString(16).padStart(2, '0')}, 0 0 ${24 * pulse}px ${tone.color}66`,
+            boxShadow: `inset 0 0 0 2px ${tone.color}${Math.round(pulse * 200)
+              .toString(16)
+              .padStart(2, '0')}, 0 0 ${24 * pulse}px ${tone.color}66`,
           }}
         />
       ) : null}
@@ -132,7 +163,17 @@ const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }
           transform: `translateX(${(1 - slide) * -36}px)`,
         }}
       >
-        <div style={{ width: 18, textAlign: 'center', fontSize: 22, fontWeight: 800, color: tone?.color ?? 'transparent', opacity: on, flexShrink: 0 }}>
+        <div
+          style={{
+            width: 18,
+            textAlign: 'center',
+            fontSize: 22,
+            fontWeight: 800,
+            color: tone?.color ?? 'transparent',
+            opacity: on,
+            flexShrink: 0,
+          }}
+        >
           {tone?.marker ?? ''}
         </div>
         <div style={{ width: 22, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
@@ -158,27 +199,44 @@ const FieldRow: React.FC<{ field: ErField; text: { name: Fit; type: Fit | null }
             />
           ) : null}
         </div>
-        {text.type ? <FitText fit={text.type} style={{ color: field.change === 'removed' ? colors.faint : colors.muted, flexShrink: 0, lineHeight: 'normal' }} /> : null}
+        {text.type ? (
+          <FitText
+            fit={text.type}
+            style={{
+              color: field.change === 'removed' ? colors.faint : colors.muted,
+              flexShrink: 0,
+              lineHeight: 'normal',
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
 };
 
-const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number; fieldAt: Map<string, number>; emphasis: Emphasis; fieldLit: (index: number) => number }> = ({
-  placed,
-  start,
-  frame,
-  fieldLit,
-  fieldAt,
-  emphasis,
-}) => {
+const EntityCard: React.FC<{
+  placed: PlacedEntity;
+  start: number;
+  frame: number;
+  fieldAt: Map<string, number>;
+  emphasis: Emphasis;
+  fieldLit: (index: number) => number;
+}> = ({ placed, start, frame, fieldLit, fieldAt, emphasis }) => {
   const { entity } = placed;
   const { fps } = useVideoConfig();
   const appear = spring({ frame: frame - start, fps, config: { damping: 16, stiffness: 110 } });
   const removed = entity.change === 'removed';
   const highlight = entity.highlight && !entity.change;
   const borderColor =
-    entity.change === 'added' ? colors.add : removed ? `${colors.del}aa` : entity.change === 'modified' ? colors.accent : highlight ? EMPHASIS.color : colors.borderStrong;
+    entity.change === 'added'
+      ? colors.add
+      : removed
+        ? `${colors.del}aa`
+        : entity.change === 'modified'
+          ? colors.accent
+          : highlight
+            ? EMPHASIS.color
+            : colors.borderStrong;
   const glow =
     entity.change === 'added'
       ? `0 0 0 6px ${colors.addBg}, 0 0 44px rgba(61,220,151,0.3)`
@@ -188,7 +246,13 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
           ? emphasisRing(6, 48)
           : '0 14px 36px rgba(0,0,0,0.45)';
   const badges = badgesOf(entity);
-  const iconColor = entity.change ? (entity.change === 'modified' ? colors.accent : changeTone[entity.change].color) : highlight ? EMPHASIS.color : colors.muted;
+  const iconColor = entity.change
+    ? entity.change === 'modified'
+      ? colors.accent
+      : changeTone[entity.change].color
+    : highlight
+      ? EMPHASIS.color
+      : colors.muted;
   const pillScale = spring({ frame: frame - start - 12, fps, config: { damping: 12, stiffness: 160 } });
 
   return (
@@ -201,10 +265,18 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
         height: placed.h,
         boxSizing: 'border-box',
         borderRadius: 18,
-        background: entity.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : highlight ? EMPHASIS.card : colors.raised,
+        background:
+          entity.change === 'modified'
+            ? 'linear-gradient(180deg, #1c2033, #151826)'
+            : highlight
+              ? EMPHASIS.card
+              : colors.raised,
         border: `2px solid ${borderColor}`,
         borderStyle: removed ? 'dashed' : 'solid',
-        boxShadow: emphasis.glow > 0 ? `${glow}, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}` : glow,
+        boxShadow:
+          emphasis.glow > 0
+            ? `${glow}, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}`
+            : glow,
         opacity: appear * (removed ? 0.6 : 1) * emphasis.opacity,
         transform: `translateY(${(1 - appear) * 24}px) scale(${0.92 + 0.08 * appear})`,
       }}
@@ -225,11 +297,26 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
         <Table2 size={24} strokeWidth={2} color={iconColor} style={{ flexShrink: 0 }} />
         <FitText
           fit={placed.name}
-          style={{ color: colors.text, textDecoration: removed ? 'line-through' : 'none', textDecorationColor: colors.del, textDecorationThickness: 3, lineHeight: 'normal' }}
+          style={{
+            color: colors.text,
+            textDecoration: removed ? 'line-through' : 'none',
+            textDecorationColor: colors.del,
+            textDecorationThickness: 3,
+            lineHeight: 'normal',
+          }}
         />
       </div>
       {entity.fields.map((field, i) => (
-        <FieldRow key={i} field={field} text={placed.fields[i]!} index={i} at={fieldAt.get(`${entity.id}/${i}`)} frame={frame} dimmed={removed} lit={fieldLit(i)} />
+        <FieldRow
+          key={i}
+          field={field}
+          text={placed.fields[i]!}
+          index={i}
+          at={fieldAt.get(`${entity.id}/${i}`)}
+          frame={frame}
+          dimmed={removed}
+          lit={fieldLit(i)}
+        />
       ))}
       {badges.length ? <Pills badges={badges} scale={pillScale} /> : null}
     </div>
@@ -240,17 +327,33 @@ const EntityCard: React.FC<{ placed: PlacedEntity; start: number; frame: number;
 function endMark(end: RelationEnd, many: boolean): string {
   const n = normal[end.side];
   const t = { x: -n.y, y: n.x };
-  const at = (along: number, across: number) => `${end.point.x + n.x * along + t.x * across} ${end.point.y + n.y * along + t.y * across}`;
+  const at = (along: number, across: number) =>
+    `${end.point.x + n.x * along + t.x * across} ${end.point.y + n.y * along + t.y * across}`;
   if (many) return `M ${at(22, 0)} L ${at(0, -12)} M ${at(22, 0)} L ${at(0, 0)} M ${at(22, 0)} L ${at(0, 12)}`;
   return `M ${at(16, -11)} L ${at(16, 11)}`;
 }
 
 const relationColor = ({ change, highlight }: ErRelation) =>
-  change === 'added' ? colors.add : change === 'removed' ? colors.del : change === 'modified' ? colors.accent : highlight ? EMPHASIS.color : EDGE;
+  change === 'added'
+    ? colors.add
+    : change === 'removed'
+      ? colors.del
+      : change === 'modified'
+        ? colors.accent
+        : highlight
+          ? EMPHASIS.color
+          : EDGE;
 /** A relation the diff adds or alters, or a highlighted one, glows under its line. */
-const glowsSteady = (relation: ErRelation) => (relation.change ? relation.change !== 'removed' : Boolean(relation.highlight));
+const glowsSteady = (relation: ErRelation) =>
+  relation.change ? relation.change !== 'removed' : Boolean(relation.highlight);
 
-const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: number; opacity: number; glow: number }> = ({ routed, index, draw, opacity, glow }) => {
+const RelationPath: React.FC<{
+  routed: RoutedRelation;
+  index: number;
+  draw: number;
+  opacity: number;
+  glow: number;
+}> = ({ routed, index, draw, opacity, glow }) => {
   const { relation } = routed;
   const color = relationColor(relation);
   const fromMany = relation.cardinality === 'many-to-many';
@@ -260,7 +363,15 @@ const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: numb
   return (
     <g opacity={draw > 0 ? (removed ? 0.8 : 1) * opacity : 0}>
       <mask id={id} maskUnits="userSpaceOnUse">
-        <path d={routed.d} fill="none" stroke="#fff" strokeWidth={12} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - draw} />
+        <path
+          d={routed.d}
+          fill="none"
+          stroke="#fff"
+          strokeWidth={12}
+          pathLength={1}
+          strokeDasharray="1 1"
+          strokeDashoffset={1 - draw}
+        />
       </mask>
       {glowsSteady(relation) || glow > 0 ? (
         <path
@@ -283,13 +394,31 @@ const RelationPath: React.FC<{ routed: RoutedRelation; index: number; draw: numb
         strokeDasharray={removed ? '10 9' : undefined}
         mask={`url(#${id})`}
       />
-      <path d={endMark(routed.from, fromMany)} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" opacity={interpolate(draw, [0, 0.2], [0, 1], clamp)} />
-      <path d={endMark(routed.to, toMany)} fill="none" stroke={color} strokeWidth={3} strokeLinecap="round" opacity={interpolate(draw, [0.8, 1], [0, 1], clamp)} />
+      <path
+        d={endMark(routed.from, fromMany)}
+        fill="none"
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+        opacity={interpolate(draw, [0, 0.2], [0, 1], clamp)}
+      />
+      <path
+        d={endMark(routed.to, toMany)}
+        fill="none"
+        stroke={color}
+        strokeWidth={3}
+        strokeLinecap="round"
+        opacity={interpolate(draw, [0.8, 1], [0, 1], clamp)}
+      />
     </g>
   );
 };
 
-const RelationLabel: React.FC<{ routed: RoutedRelation; appear: number; emphasis: Emphasis }> = ({ routed, appear, emphasis }) => {
+const RelationLabel: React.FC<{ routed: RoutedRelation; appear: number; emphasis: Emphasis }> = ({
+  routed,
+  appear,
+  emphasis,
+}) => {
   const { relation } = routed;
   const change = relation.change;
   const color = change || relation.highlight ? relationColor(relation) : colors.muted;
@@ -306,11 +435,22 @@ const RelationLabel: React.FC<{ routed: RoutedRelation; appear: number; emphasis
     borderRadius: 10,
     background: '#0d0f16',
     border: `1px solid ${emphasis.glow > 0 ? colors.accent : change || relation.highlight ? `${color}88` : colors.borderStrong}`,
-    boxShadow: emphasis.glow > 0 ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}` : relation.highlight && !change ? `0 0 18px ${EMPHASIS.glow}` : undefined,
+    boxShadow:
+      emphasis.glow > 0
+        ? `0 0 ${22 * emphasis.glow}px ${colors.accentGlow}`
+        : relation.highlight && !change
+          ? `0 0 18px ${EMPHASIS.glow}`
+          : undefined,
     color,
     textDecoration: change === 'removed' ? 'line-through' : 'none',
   };
-  const text = routed.label ? <FitText fit={routed.label} align="center" style={routed.label.lines.length > 1 ? undefined : { lineHeight: 'normal' }} /> : null;
+  const text = routed.label ? (
+    <FitText
+      fit={routed.label}
+      align="center"
+      style={routed.label.lines.length > 1 ? undefined : { lineHeight: 'normal' }}
+    />
+  ) : null;
   const badges = badgesOf(relation, { change: false });
   if (!badges.length) return <div style={{ ...placement, ...box }}>{text}</div>;
   return (
@@ -379,19 +519,49 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, duratio
     return asBrightAs(own, [...fields.map((_, k) => emphasisOf(`f:${id}/${k}`)), ...relations]);
   };
   const relationEmphasis = (routed: RoutedRelation, i: number) =>
-    brighter(emphasisOf(`r:${i}`), { ...brighter(entityEmphasis(routed.relation.from), entityEmphasis(routed.relation.to)), glow: 0, bar: 0 });
+    brighter(emphasisOf(`r:${i}`), {
+      ...brighter(entityEmphasis(routed.relation.from), entityEmphasis(routed.relation.to)),
+      glow: 0,
+      bar: 0,
+    });
   const box = contentBox(Boolean(scene.title));
   const scale = erScale(layout, box);
   const marks = useMemo(() => erTargets(scene), [scene]);
-  const draws = layout.relations.map((_, i) => interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + RELATION_FRAMES], [0, 1], clamp));
+  const draws = layout.relations.map((_, i) =>
+    interpolate(frame, [timeline.relationAt(i), timeline.relationAt(i) + RELATION_FRAMES], [0, 1], clamp),
+  );
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }} aside={<Legend scene={scene} />}>
+    <SceneShell
+      scene={scene}
+      durationInFrames={durationInFrames}
+      camera={{ hunks, segments, targets: () => marks }}
+      aside={<Legend scene={scene} />}
+    >
       <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ position: 'relative', width: layout.width, height: layout.height, transform: `scale(${scale})`, flexShrink: 0 }}>
-          <svg width={layout.width} height={layout.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+        <div
+          style={{
+            position: 'relative',
+            width: layout.width,
+            height: layout.height,
+            transform: `scale(${scale})`,
+            flexShrink: 0,
+          }}
+        >
+          <svg
+            width={layout.width}
+            height={layout.height}
+            style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+          >
             {layout.relations.map((routed, i) => (
-              <RelationPath key={i} routed={routed} index={i} draw={draws[i]!} opacity={relationEmphasis(routed, i).opacity} glow={relationEmphasis(routed, i).glow} />
+              <RelationPath
+                key={i}
+                routed={routed}
+                index={i}
+                draw={draws[i]!}
+                opacity={relationEmphasis(routed, i).opacity}
+                glow={relationEmphasis(routed, i).glow}
+              />
             ))}
           </svg>
           {layout.entities.map((placed, i) => (
@@ -407,7 +577,12 @@ export const ErDiagram: React.FC<SceneProps<ErScene>> = ({ scene, hunks, duratio
           ))}
           {layout.relations.map((routed, i) =>
             routed.relation.label ? (
-              <RelationLabel key={i} routed={routed} emphasis={relationEmphasis(routed, i)} appear={interpolate(draws[i]!, [0.6, 1], [0, 1], clamp)} />
+              <RelationLabel
+                key={i}
+                routed={routed}
+                emphasis={relationEmphasis(routed, i)}
+                appear={interpolate(draws[i]!, [0.6, 1], [0, 1], clamp)}
+              />
             ) : null,
           )}
         </div>

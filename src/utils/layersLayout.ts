@@ -88,9 +88,16 @@ function fitRail(scene: LayersScene, bandsRight: number): Rail | null {
   const texts = [path.label, reply].filter((t): t is string => typeof t === 'string');
   const wanted = Math.max(0, ...texts.map((t) => natural(t, SLOTS.tokenLabel)));
   const pillW = Math.min(PILL_MAX_W, Math.ceil(wanted) + 2 * PILL_PAD_X);
-  const fit = (text: string | undefined, at: string) => (text ? fitText(text, sized(SLOTS.tokenLabel, pillW - 2 * PILL_PAD_X), at) : null);
+  const fit = (text: string | undefined, at: string) =>
+    text ? fitText(text, sized(SLOTS.tokenLabel, pillW - 2 * PILL_PAD_X), at) : null;
   const downX = bandsRight + RAIL_GAP;
-  return { downX, upX: downX + LANE_GAP, pillW, label: fit(path.label, 'path.label'), reply: fit(reply, path.skip ? 'path.skip.reply' : 'path.reply') };
+  return {
+    downX,
+    upX: downX + LANE_GAP,
+    pillW,
+    label: fit(path.label, 'path.label'),
+    reply: fit(reply, path.skip ? 'path.skip.reply' : 'path.reply'),
+  };
 }
 
 /** Width the rail takes right of the bands. */
@@ -106,14 +113,26 @@ export function layoutLayers(scene: LayersScene, box: { width: number; height: n
   const big = h >= 140;
   const labelSlot = { ...SLOTS.layerLabel, size: big ? 36 : SLOTS.layerLabel.size, lines: h >= 124 ? 2 : 1 };
   const captionSlot = { ...SLOTS.layerCaption, size: big ? 23 : SLOTS.layerCaption.size, lines: big ? 2 : 1 };
-  const wanted = Math.ceil(Math.max(...scene.layers.map((l) => Math.max(natural(l.label, labelSlot), l.caption ? natural(l.caption, captionSlot) : 0)))) + 2 * PAD_X;
-  const labelW = most ? Math.min(LABEL_MAX_W, Math.max(LABEL_MIN_W, wanted + 8)) : Math.min(box.width - railW, Math.max(LABEL_ALONE_MIN_W, wanted + 40), LABEL_ALONE_W);
+  const wanted =
+    Math.ceil(
+      Math.max(
+        ...scene.layers.map((l) =>
+          Math.max(natural(l.label, labelSlot), l.caption ? natural(l.caption, captionSlot) : 0),
+        ),
+      ),
+    ) +
+    2 * PAD_X;
+  const labelW = most
+    ? Math.min(LABEL_MAX_W, Math.max(LABEL_MIN_W, wanted + 8))
+    : Math.min(box.width - railW, Math.max(LABEL_ALONE_MIN_W, wanted + 40), LABEL_ALONE_W);
   // Bands are as wide as their content, so a stack of few items or none sits centred instead of trailing empty space.
   const bandW = Math.min(box.width - railW, most ? labelW + most * ITEM_MAX_W + (most - 1) * ITEM_GAP + PAD_X : labelW);
   const rail = fitRail(scene, bandW);
   const itemW = most ? Math.min(ITEM_MAX_W, (bandW - labelW - PAD_X - (most - 1) * ITEM_GAP) / most) : 0;
   const itemH = Math.min(ITEM_MAX_H, h - 2 * PAD_Y);
-  const all = scene.layers.flatMap((l, i) => (l.items ?? []).map((item, j) => ({ item, path: `layers[${i}].items[${j}]` })));
+  const all = scene.layers.flatMap((l, i) =>
+    (l.items ?? []).map((item, j) => ({ item, path: `layers[${i}].items[${j}]` })),
+  );
   const texts = cardTexts(
     all.map((a) => a.item),
     itemW,
@@ -129,10 +148,26 @@ export function layoutLayers(scene: LayersScene, box: { width: number; height: n
     const y = index * (h + BAND_GAP);
     const textW = labelW - 2 * PAD_X;
     const label = fitText(layer.label, sized(labelSlot, textW), `layers[${index}].label`);
-    const caption = layer.caption ? fitText(layer.caption, sized(captionSlot, textW), `layers[${index}].caption`) : null;
+    const caption = layer.caption
+      ? fitText(layer.caption, sized(captionSlot, textW), `layers[${index}].caption`)
+      : null;
     const textH = label.height + (caption ? CAPTION_GAP + caption.height : 0);
-    const room = fitBlock(`layers[${index}]`, 'band', textH <= h - 2 * PAD_Y + 2, 'shorten the label or caption, or use fewer layers so each band is taller');
-    const items = (layer.items ?? []).map((item, j): PlacedItem => ({ item, x: labelW + j * (itemW + ITEM_GAP), y: y + (h - itemH) / 2, w: itemW, h: itemH, text: texts.get(item.id)! }));
+    const room = fitBlock(
+      `layers[${index}]`,
+      'band',
+      textH <= h - 2 * PAD_Y + 2,
+      'shorten the label or caption, or use fewer layers so each band is taller',
+    );
+    const items = (layer.items ?? []).map(
+      (item, j): PlacedItem => ({
+        item,
+        x: labelW + j * (itemW + ITEM_GAP),
+        y: y + (h - itemH) / 2,
+        w: itemW,
+        h: itemH,
+        text: texts.get(item.id)!,
+      }),
+    );
     wires.set(`l:${layer.id}`, [
       { x: bandW, y: y + h / 2 },
       { x: downX, y: y + h / 2 },
@@ -179,12 +214,23 @@ export function tokenPoint(scene: LayersScene, layout: LayersLayout, p: number):
  * and an item's card. A note keeps off the cards, the labels and the rail, and may sit in a band's free space.
  */
 export function layersBoxes(layout: LayersLayout): LayoutBoxes {
-  const labels = layout.layers.map((l): Box => ({ x: PAD_X, y: l.textY, width: Math.max(l.label.width, l.caption?.width ?? 0), height: l.label.height + (l.caption ? CAPTION_GAP + l.caption.height : 0) }));
-  const cards = layout.layers.flatMap((l) => l.items.map((it): Box => ({ x: it.x, y: it.y, width: it.w, height: it.h })));
-  const rail = layout.rail ? [{ x: layout.bandW, y: 0, width: layout.width - layout.bandW, height: layout.height }] : [];
+  const labels = layout.layers.map(
+    (l): Box => ({
+      x: PAD_X,
+      y: l.textY,
+      width: Math.max(l.label.width, l.caption?.width ?? 0),
+      height: l.label.height + (l.caption ? CAPTION_GAP + l.caption.height : 0),
+    }),
+  );
+  const cards = layout.layers.flatMap((l) =>
+    l.items.map((it): Box => ({ x: it.x, y: it.y, width: it.w, height: it.h })),
+  );
+  const rail = layout.rail
+    ? [{ x: layout.bandW, y: 0, width: layout.width - layout.bandW, height: layout.height }]
+    : [];
   return { boxes: layout.boxes, obstacles: [...labels, ...cards, ...rail] };
 }
 
-
 /** The scale a layer stack draws at in `box`: shrunk only to fit its height. */
-export const layersScale = (layout: LayersLayout, box: { width: number; height: number }): number => Math.min(1, box.height / layout.height);
+export const layersScale = (layout: LayersLayout, box: { width: number; height: number }): number =>
+  Math.min(1, box.height / layout.height);

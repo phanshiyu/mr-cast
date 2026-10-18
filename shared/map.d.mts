@@ -32,7 +32,13 @@ interface ItemBase {
   tone?: Tone;
 }
 export type MapItem =
-  | (ItemBase & { kind: 'place'; point: LngLat; geometry: object; dot: boolean; side: 'right' | 'left' | 'above' | 'below' | null })
+  | (ItemBase & {
+      kind: 'place';
+      point: LngLat;
+      geometry: object;
+      dot: boolean;
+      side: 'right' | 'left' | 'above' | 'below' | null;
+    })
   | (ItemBase & { kind: 'route' | 'line'; path: LngLat[]; geometry: object })
   | (ItemBase & { kind: 'region'; geometry: object; countries: string[] | null; center: LngLat });
 
@@ -67,13 +73,29 @@ export declare function zoomBetween(a: Camera, b: Camera, t: number, stage: Stag
 export declare function onScreen(proj: MapProjection, camera: Camera, point: LngLat): [number, number] | null;
 export declare function partialPath(path: LngLat[], t: number): LngLat[];
 export declare function mapDetail(scene: MapScene, cameras: Camera[]): '110m' | '50m';
-export declare function mapLayout(scene: MapScene, stage: Stage): { proj: MapProjection; cameras: Camera[]; detail: '110m' | '50m' };
-export declare function labelBox(at: [number, number], width: number, side: string | null, gap: number): { x: number; y: number; width: number; height: number };
-export declare function pathAnchor(proj: MapProjection, camera: Camera, path: LngLat[], stage: Stage): [number, number] | null;
+export declare function mapLayout(
+  scene: MapScene,
+  stage: Stage,
+): { proj: MapProjection; cameras: Camera[]; detail: '110m' | '50m' };
+export declare function labelBox(
+  at: [number, number],
+  width: number,
+  side: string | null,
+  gap: number,
+): { x: number; y: number; width: number; height: number };
+export declare function pathAnchor(
+  proj: MapProjection,
+  camera: Camera,
+  path: LngLat[],
+  stage: Stage,
+): [number, number] | null;
 /** An SVG path of a geometry through the projection at zoom 1, or "" when none of it shows. */
 export declare function geoPathOf(proj: MapProjection, geometry: object): string;
 /** The box of a geometry through the projection at zoom 1. */
-export declare function geoBoxOf(proj: MapProjection, geometry: object): { x0: number; y0: number; x1: number; y1: number } | null;
+export declare function geoBoxOf(
+  proj: MapProjection,
+  geometry: object,
+): { x0: number; y0: number; x1: number; y1: number } | null;
 export declare function tracedKeys(scene: MapScene): string[];
 export interface MapLabel {
   key: string;
@@ -83,7 +105,20 @@ export interface MapLabel {
   dot: { x: number; y: number; width: number; height: number } | null;
   box: { x: number; y: number; width: number; height: number } | null;
 }
-export declare function mapLabels(scene: MapScene, proj: MapProjection, camera: Camera, stage: Stage, state: { hidden: Record<string, true>; values: Record<string, unknown> }): MapLabel[];
-export declare function mapBoxes(scene: MapScene, proj: MapProjection, camera: Camera, stage: Stage, state: { hidden: Record<string, true>; values: Record<string, unknown> }, keys?: readonly string[]): Map<string, { x: number; y: number; width: number; height: number }>;
+export declare function mapLabels(
+  scene: MapScene,
+  proj: MapProjection,
+  camera: Camera,
+  stage: Stage,
+  state: { hidden: Record<string, true>; values: Record<string, unknown> },
+): MapLabel[];
+export declare function mapBoxes(
+  scene: MapScene,
+  proj: MapProjection,
+  camera: Camera,
+  stage: Stage,
+  state: { hidden: Record<string, true>; values: Record<string, unknown> },
+  keys?: readonly string[],
+): Map<string, { x: number; y: number; width: number; height: number }>;
 /** The codes of the countries a scene names anywhere: in a tint, a focus, a view, a place's `at` or a region. */
 export declare function namedCountries(scene: MapScene): string[];

@@ -26,7 +26,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-
 const [url, outDir, ...steps] = process.argv.slice(2);
 if (!url || !outDir) {
   console.error('usage: node browse.mjs <url> <outdir> <step>...');
@@ -35,23 +34,40 @@ if (!url || !outDir) {
 fs.mkdirSync(outDir, { recursive: true });
 
 function chromePath() {
-  const root = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'mr-cast/remotion/node_modules/.remotion/chrome-headless-shell');
-  const found = execSync(`find ${JSON.stringify(root)} -name chrome-headless-shell -type f -perm -u+x 2>/dev/null | head -1`, { encoding: 'utf8' }).trim();
-  if (!found) throw new Error(`no Chrome Headless Shell under ${root}; run any mr-cast still or render once to download it`);
+  const root = path.join(
+    process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+    'mr-cast/remotion/node_modules/.remotion/chrome-headless-shell',
+  );
+  const found = execSync(
+    `find ${JSON.stringify(root)} -name chrome-headless-shell -type f -perm -u+x 2>/dev/null | head -1`,
+    { encoding: 'utf8' },
+  ).trim();
+  if (!found)
+    throw new Error(`no Chrome Headless Shell under ${root}; run any mr-cast still or render once to download it`);
   return found;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-verify-chrome-'));
-const chrome = spawn(chromePath(), [
-  '--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--mute-audio',
-  '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1920,1080',
-  // As Remotion renders: without it, Linux hints glyphs to whole-pixel advances and text draws wider than measured.
-  '--font-render-hinting=none',
-  // Ubuntu 24.04 blocks the unprivileged user namespaces Chrome's sandbox needs, as on GitHub's runners.
-  ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
-  'about:blank',
-], { stdio: 'ignore' });
+const chrome = spawn(
+  chromePath(),
+  [
+    '--headless',
+    '--disable-gpu',
+    '--hide-scrollbars',
+    '--no-first-run',
+    '--mute-audio',
+    '--remote-debugging-port=0',
+    `--user-data-dir=${profile}`,
+    '--window-size=1920,1080',
+    // As Remotion renders: without it, Linux hints glyphs to whole-pixel advances and text draws wider than measured.
+    '--font-render-hinting=none',
+    // Ubuntu 24.04 blocks the unprivileged user namespaces Chrome's sandbox needs, as on GitHub's runners.
+    ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
+    'about:blank',
+  ],
+  { stdio: 'ignore' },
+);
 
 let ws;
 let nextId = 1;
@@ -85,7 +101,9 @@ async function connect() {
     } else if (msg.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(msg.params.type)) {
       consoleLines.push(`${msg.params.type}: ${msg.params.args.map((a) => a.value ?? a.description ?? '').join(' ')}`);
     } else if (msg.method === 'Runtime.exceptionThrown') {
-      consoleLines.push(`exception: ${msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text}`);
+      consoleLines.push(
+        `exception: ${msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text}`,
+      );
     }
   });
   await cdp('Page.enable');
@@ -93,14 +111,21 @@ async function connect() {
   await cdp('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
 }
 
-const evaluate = async (expression) => (await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })).result.value;
+const evaluate = async (expression) =>
+  (await cdp('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true })).result.value;
 const pageText = () => evaluate('document.body ? document.body.innerText : ""');
 
 const KEYS = {
-  ArrowRight: { code: 'ArrowRight', keyCode: 39 }, ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
-  ArrowUp: { code: 'ArrowUp', keyCode: 38 }, ArrowDown: { code: 'ArrowDown', keyCode: 40 },
-  Space: { key: ' ', code: 'Space', keyCode: 32 }, j: { code: 'KeyJ', keyCode: 74 }, k: { code: 'KeyK', keyCode: 75 },
-  1: { code: 'Digit1', keyCode: 49 }, 2: { code: 'Digit2', keyCode: 50 }, 3: { code: 'Digit3', keyCode: 51 },
+  ArrowRight: { code: 'ArrowRight', keyCode: 39 },
+  ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
+  ArrowUp: { code: 'ArrowUp', keyCode: 38 },
+  ArrowDown: { code: 'ArrowDown', keyCode: 40 },
+  Space: { key: ' ', code: 'Space', keyCode: 32 },
+  j: { code: 'KeyJ', keyCode: 74 },
+  k: { code: 'KeyK', keyCode: 75 },
+  1: { code: 'Digit1', keyCode: 49 },
+  2: { code: 'Digit2', keyCode: 50 },
+  3: { code: 'Digit3', keyCode: 51 },
   v: { code: 'KeyV', keyCode: 86 },
 };
 
@@ -113,7 +138,9 @@ const STEPS = {
     throw new Error(`page never showed "${text}"; it shows: ${(await pageText()).slice(0, 300).replace(/\n/g, ' | ')}`);
   },
   async click(text) {
-    const ok = await evaluate(`(() => { const b = [...document.querySelectorAll('button')].find((el) => el.innerText.includes(${JSON.stringify(text)})); if (!b) return false; b.click(); return true; })()`);
+    const ok = await evaluate(
+      `(() => { const b = [...document.querySelectorAll('button')].find((el) => el.innerText.includes(${JSON.stringify(text)})); if (!b) return false; b.click(); return true; })()`,
+    );
     if (!ok) throw new Error(`no button containing "${text}"`);
   },
   async clickin(spec) {
@@ -137,7 +164,13 @@ const STEPS = {
     if (!k) throw new Error(`unknown key "${name}"; use ${Object.keys(KEYS).join(', ')}`);
     const key = k.key ?? name;
     for (const type of ['keyDown', 'keyUp']) {
-      await cdp('Input.dispatchKeyEvent', { type, key, code: k.code, windowsVirtualKeyCode: k.keyCode, nativeVirtualKeyCode: k.keyCode });
+      await cdp('Input.dispatchKeyEvent', {
+        type,
+        key,
+        code: k.code,
+        windowsVirtualKeyCode: k.keyCode,
+        nativeVirtualKeyCode: k.keyCode,
+      });
     }
     // The player's key handler reads the active chapter from the last render; a second key before it re-renders repeats the same seek.
     await sleep(300);
@@ -170,7 +203,10 @@ const STEPS = {
       }
       await sleep(200);
     }
-    fs.writeFileSync(path.join(outDir, 'textscan.json'), JSON.stringify({ lines: [...lines], fits: [...fits.values()], clipped: [...clipped] }, null, 1));
+    fs.writeFileSync(
+      path.join(outDir, 'textscan.json'),
+      JSON.stringify({ lines: [...lines], fits: [...fits.values()], clipped: [...clipped] }, null, 1),
+    );
     console.log(path.join(outDir, 'textscan.json'));
   },
   async fullshot(name) {

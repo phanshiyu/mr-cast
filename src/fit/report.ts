@@ -32,20 +32,47 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
-import { arrayTargets, erTargets, filesTargets, graphTargets, imageTargets, layersTargets, mapTargets, memoryTargets, plotTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
+import {
+  arrayTargets,
+  erTargets,
+  filesTargets,
+  graphTargets,
+  imageTargets,
+  layersTargets,
+  mapTargets,
+  memoryTargets,
+  plotTargets,
+  stateTargets,
+  svgTargets,
+  tableTargets,
+  testsTargets,
+  timelineTargets,
+} from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
 import { chartStepTargets } from '../utils/chartTargets';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
 class Scaled {
-  constructor(readonly name: string, readonly scale: number, readonly layout: unknown) {}
+  constructor(
+    readonly name: string,
+    readonly scale: number,
+    readonly layout: unknown,
+  ) {}
 }
 
 /** Each table state, at the scale it draws at. */
-const scaledTables = (name: string, tables: readonly { scale: number }[]) => tables.map((t) => new Scaled(name, t.scale, t));
+const scaledTables = (name: string, tables: readonly { scale: number }[]) =>
+  tables.map((t) => new Scaled(name, t.scale, t));
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
-type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap, images: ImageManifest) => unknown };
+type SceneFits = {
+  [T in Scene['type']]: (
+    scene: Extract<Scene, { type: T }>,
+    storyboard: Storyboard,
+    hunks: HunkMap,
+    images: ImageManifest,
+  ) => unknown;
+};
 
 const SCENE_FITS: SceneFits = {
   text: (scene) => textStates(scene).map((state) => layoutText(scene, state.values, state.paths)),
@@ -53,7 +80,15 @@ const SCENE_FITS: SceneFits = {
     const { full, graphBox, tableW } = graphAreas(scene);
     const states = sceneStates(scene);
     const { layout, scale } = fitSceneGraph(scene, states, graphBox);
-    const tables = scene.table ? layoutTableStates(scene.table.columns, stateRows(scene.table.columns, scene.table.rows, states), tableW, full.height, 'table.') : [];
+    const tables = scene.table
+      ? layoutTableStates(
+          scene.table.columns,
+          stateRows(scene.table.columns, scene.table.rows, states),
+          tableW,
+          full.height,
+          'table.',
+        )
+      : [];
     return [new Scaled('graph', scale, layout), scaledTables('table', tables)];
   },
   code: (scene, _storyboard, hunks) => (hunks[scene.hunkId] ? layoutCode(scene, hunks[scene.hunkId]!) : null),
@@ -79,7 +114,10 @@ const SCENE_FITS: SceneFits = {
   },
   table: (scene) => {
     const box = headerBox(scene);
-    return scaledTables('table', layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, sceneStates(scene)), box.width, box.height));
+    return scaledTables(
+      'table',
+      layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, sceneStates(scene)), box.width, box.height),
+    );
   },
   chart: (scene) => {
     const box = headerBox(scene);
@@ -172,16 +210,24 @@ export function fitReport(storyboard: Storyboard, hunks: HunkMap, images: ImageM
     const out: Fit[] = [];
     const scaled: ScaledFits[] = [];
     const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap, i: ImageManifest) => unknown;
-    collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks, images)], out, scaled, new Set());
+    collect(
+      [shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks, images)],
+      out,
+      scaled,
+      new Set(),
+    );
     return { scene: i, fits: out, scaled };
   });
 }
 
 /** The same targets for each step of a scene whose items do not move. */
-const everyStep = (steps: readonly unknown[] | undefined, targets: () => MarkTargets) => (steps?.length ? steps.map(targets) : []);
+const everyStep = (steps: readonly unknown[] | undefined, targets: () => MarkTargets) =>
+  steps?.length ? steps.map(targets) : [];
 
 /** Each step's item boxes, for the scene types whose layout code gives them without rendering. */
-const STEP_TARGETS: Partial<{ [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, hunks: HunkMap) => MarkTargets[] }> = {
+const STEP_TARGETS: Partial<{
+  [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, hunks: HunkMap) => MarkTargets[];
+}> = {
   graph: graphTargets,
   table: tableTargets,
   array: arrayTargets,
@@ -211,7 +257,11 @@ export function inkStages(storyboard: Storyboard, hunks: HunkMap, images: ImageM
       // Each step's ink lands as the step's pen starts, the pan and zoom that far along.
       const segments = sceneSegments(scene, null);
       const total = sceneDurationInFrames(scene, null);
-      return imageTargets(scene, images, segments.slice(1).map((s) => s.markFrom / total)).map((t) => ({ area: t.area, boxes: [...t.boxes] }));
+      return imageTargets(
+        scene,
+        images,
+        segments.slice(1).map((s) => s.markFrom / total),
+      ).map((t) => ({ area: t.area, boxes: [...t.boxes] }));
     }
     const targets = (STEP_TARGETS[scene.type] as ((s: Scene, h: HunkMap) => MarkTargets[]) | undefined)?.(scene, hunks);
     return targets ? targets.map((t) => ({ area: t.area, boxes: [...t.boxes] })) : null;
@@ -219,7 +269,15 @@ export function inkStages(storyboard: Storyboard, hunks: HunkMap, images: ImageM
 }
 
 /** Pictures drawn more than twice their own size, which look soft: the scene, the picture's size, and its drawn size. */
-export function imageScales(storyboard: Storyboard, images: ImageManifest): { scene: number; natural: { width: number; height: number }; drawn: { width: number; height: number }; scale: number }[] {
+export function imageScales(
+  storyboard: Storyboard,
+  images: ImageManifest,
+): {
+  scene: number;
+  natural: { width: number; height: number };
+  drawn: { width: number; height: number };
+  scale: number;
+}[] {
   return storyboard.scenes.flatMap((scene, i) => {
     if (scene.type !== 'image') return [];
     const area = headerBox(scene);
@@ -227,13 +285,24 @@ export function imageScales(storyboard: Storyboard, images: ImageManifest): { sc
     if (!layout.natural) return [];
     // A pan and zoom, or a step's camera, enlarges the picture further; it is as soft as it is at its closest.
     const { shots } = cameraShots(scene);
-    const regions = imageTargets(scene, images, shots.slice(1).map(() => 0));
+    const regions = imageTargets(
+      scene,
+      images,
+      shots.slice(1).map(() => 0),
+    );
     const zoom = Math.max(
       ...[0, 1].map((t) => cameraFor(layout, viewAt(scene, t)).zoom),
       ...shots.slice(1).map((shot, k) => frameShot(shot, (key) => regions[k]?.boxes.get(key) ?? null, area).zoom),
     );
     const scale = layout.upscale * zoom;
     if (scale <= 2) return [];
-    return [{ scene: i, natural: layout.natural, drawn: { width: Math.round(layout.base.width * zoom), height: Math.round(layout.base.height * zoom) }, scale }];
+    return [
+      {
+        scene: i,
+        natural: layout.natural,
+        drawn: { width: Math.round(layout.base.width * zoom), height: Math.round(layout.base.height * zoom) },
+        scale,
+      },
+    ];
   });
 }

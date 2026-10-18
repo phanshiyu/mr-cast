@@ -8,12 +8,18 @@ export const EXAMPLES = path.join(ROOT, 'examples');
 
 /** Every example, sorted by path. `name` is the path under examples/ with slashes as dashes, as release assets are flat. */
 export function findExamples(rel = '') {
-  return fs.readdirSync(path.join(EXAMPLES, rel), { withFileTypes: true }).filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name)).flatMap((e) => {
-    const sub = path.join(rel, e.name);
-    const dir = path.join(EXAMPLES, sub);
-    const here = fs.existsSync(path.join(dir, 'storyboard.json')) ? [{ rel: sub, dir, name: sub.split(path.sep).join('-'), flags: flagsFor(dir) }] : [];
-    return [...here, ...findExamples(sub)];
-  });
+  return fs
+    .readdirSync(path.join(EXAMPLES, rel), { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap((e) => {
+      const sub = path.join(rel, e.name);
+      const dir = path.join(EXAMPLES, sub);
+      const here = fs.existsSync(path.join(dir, 'storyboard.json'))
+        ? [{ rel: sub, dir, name: sub.split(path.sep).join('-'), flags: flagsFor(dir) }]
+        : [];
+      return [...here, ...findExamples(sub)];
+    });
 }
 
 /** The settings flags an example runs with: the audience its meta.json records, or none for the plain video. */
@@ -26,5 +32,6 @@ function flagsFor(dir) {
 /** Copies an example's JSON files and pictures into `dir`, so a command can run on the copy and never write into examples/. */
 export function copyExample(example, dir) {
   fs.mkdirSync(dir, { recursive: true });
-  for (const file of fs.readdirSync(example.dir).filter((f) => /\.(?:json|png|jpe?g|webp|gif)$/i.test(f))) fs.copyFileSync(path.join(example.dir, file), path.join(dir, file));
+  for (const file of fs.readdirSync(example.dir).filter((f) => /\.(?:json|png|jpe?g|webp|gif)$/i.test(f)))
+    fs.copyFileSync(path.join(example.dir, file), path.join(dir, file));
 }

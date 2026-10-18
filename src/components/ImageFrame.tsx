@@ -32,9 +32,14 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
   const dim = firstStep === undefined ? 0 : interpolate(frame, [firstStep, firstStep + 14], [0, 1], clamp);
   const appear = interpolate(frame, [0, 18], [0, 1], clamp);
   const { frame: area, base } = layout;
-  const regions = (scene.regions ?? []).map((r) => ({ region: r, at: regionOnScreen(layout, r.box, camera), lit: focus(`im:${r.id}`).glow }));
+  const regions = (scene.regions ?? []).map((r) => ({
+    region: r,
+    at: regionOnScreen(layout, r.box, camera),
+    lit: focus(`im:${r.id}`).glow,
+  }));
   // Ink lands where each step's region is as the step's pen starts.
-  const marks = (k: number): MarkTargets => imageTargets(scene, images, [(segments[k + 1]?.markFrom ?? 0) / Math.max(1, durationInFrames)])[0]!;
+  const marks = (k: number): MarkTargets =>
+    imageTargets(scene, images, [(segments[k + 1]?.markFrom ?? 0) / Math.max(1, durationInFrames)])[0]!;
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: marks }}>
       <div
@@ -54,7 +59,13 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
         <Picture
           src={scene.src}
           fit="fill"
-          style={{ position: 'absolute', left: camera.left - area.x, top: camera.top - area.y, width: base.width * camera.zoom, height: base.height * camera.zoom }}
+          style={{
+            position: 'absolute',
+            left: camera.left - area.x,
+            top: camera.top - area.y,
+            width: base.width * camera.zoom,
+            height: base.height * camera.zoom,
+          }}
         />
         {dim > 0 ? (
           <svg width={area.width} height={area.height} style={{ position: 'absolute', inset: 0 }}>
@@ -62,18 +73,46 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
               <mask id="image-spotlight">
                 <rect x={0} y={0} width={area.width} height={area.height} fill="white" />
                 {regions.map(({ region, at, lit }) => (
-                  <rect key={region.id} x={at.x - area.x} y={at.y - area.y} width={at.width} height={at.height} rx={12} fill="black" fillOpacity={lit} />
+                  <rect
+                    key={region.id}
+                    x={at.x - area.x}
+                    y={at.y - area.y}
+                    width={at.width}
+                    height={at.height}
+                    rx={12}
+                    fill="black"
+                    fillOpacity={lit}
+                  />
                 ))}
               </mask>
             </defs>
-            <rect x={0} y={0} width={area.width} height={area.height} fill="#000" opacity={DIM * dim} mask="url(#image-spotlight)" />
+            <rect
+              x={0}
+              y={0}
+              width={area.width}
+              height={area.height}
+              fill="#000"
+              opacity={DIM * dim}
+              mask="url(#image-spotlight)"
+            />
           </svg>
         ) : null}
       </div>
       {regions.map(({ region, at, lit }) =>
         lit > 0 ? (
-          <div key={region.id} style={{ position: 'absolute', left: at.x, top: at.y, width: at.width, height: at.height, opacity: lit }}>
-            <div style={{ position: 'absolute', inset: -3, borderRadius: 14, border: `3px solid ${colors.accent}`, boxShadow: `0 0 32px ${colors.accentGlow}` }} />
+          <div
+            key={region.id}
+            style={{ position: 'absolute', left: at.x, top: at.y, width: at.width, height: at.height, opacity: lit }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: -3,
+                borderRadius: 14,
+                border: `3px solid ${colors.accent}`,
+                boxShadow: `0 0 32px ${colors.accentGlow}`,
+              }}
+            />
             {layout.labels.get(region.id) ? (
               <div
                 style={{
@@ -94,8 +133,32 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
           </div>
         ) : null,
       )}
-      {layout.caption ? <FitText fit={layout.caption} style={{ position: 'absolute', left: area.x, top: layout.captionTop, width: area.width * 0.8, color: colors.text, opacity: appear }} /> : null}
-      {layout.credit ? <FitText fit={layout.credit} align="right" style={{ position: 'absolute', right: box.width - area.x - area.width, top: layout.captionTop + 4, color: colors.faint, opacity: appear }} /> : null}
+      {layout.caption ? (
+        <FitText
+          fit={layout.caption}
+          style={{
+            position: 'absolute',
+            left: area.x,
+            top: layout.captionTop,
+            width: area.width * 0.8,
+            color: colors.text,
+            opacity: appear,
+          }}
+        />
+      ) : null}
+      {layout.credit ? (
+        <FitText
+          fit={layout.credit}
+          align="right"
+          style={{
+            position: 'absolute',
+            right: box.width - area.x - area.width,
+            top: layout.captionTop + 4,
+            color: colors.faint,
+            opacity: appear,
+          }}
+        />
+      ) : null}
       <PenMarks scene={scene} hunks={hunks} segments={segments} targets={marks} />
     </SceneShell>
   );

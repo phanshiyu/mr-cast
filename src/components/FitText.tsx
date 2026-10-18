@@ -46,7 +46,13 @@ const Line: React.FC<{ runs: Run[]; width: number; weight: number }> = ({ runs, 
  * Lines never wrap again or clip: a text too long for its slot runs past it, and `validate` reports it.
  * `inline` draws it as a span, for text that sits in a line with other content, such as an icon.
  */
-export const FitText: React.FC<{ fit: Fit; weight?: number; align?: 'left' | 'center' | 'right'; inline?: boolean; style?: CSSProperties }> = ({ fit, weight, align, inline, style }) => {
+export const FitText: React.FC<{
+  fit: Fit;
+  weight?: number;
+  align?: 'left' | 'center' | 'right';
+  inline?: boolean;
+  style?: CSSProperties;
+}> = ({ fit, weight, align, inline, style }) => {
   const w = Math.min(weight ?? fit.font.weight, fit.font.weight);
   const font: CSSProperties = {
     fontFamily: fonts[fit.font.family],

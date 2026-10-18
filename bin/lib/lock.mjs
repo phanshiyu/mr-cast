@@ -61,7 +61,11 @@ export async function withLock(file, fn, onWait) {
   }
   const heartbeat = setInterval(() => {
     const now = new Date();
-    try { fs.utimesSync(file, now, now); } catch { /* removed under us; nothing to refresh */ }
+    try {
+      fs.utimesSync(file, now, now);
+    } catch {
+      /* removed under us; nothing to refresh */
+    }
   }, HEARTBEAT_MS);
   heartbeat.unref();
   try {
@@ -70,7 +74,9 @@ export async function withLock(file, fn, onWait) {
     clearInterval(heartbeat);
     try {
       if (Number(fs.readFileSync(file, 'utf8').trim()) === process.pid) fs.rmSync(file, { force: true });
-    } catch { /* already gone */ }
+    } catch {
+      /* already gone */
+    }
   }
 }
 
@@ -93,7 +99,11 @@ export async function whileUsing(dirs, fn) {
 /** Pids of live processes with a `whileUsing` marker on `dir`. A crashed process's marker counts for nothing. */
 export function usersOf(dir) {
   let names = [];
-  try { names = fs.readdirSync(usersDir(dir)); } catch { /* nobody has used it */ }
+  try {
+    names = fs.readdirSync(usersDir(dir));
+  } catch {
+    /* nobody has used it */
+  }
   return names.map(Number).filter((pid) => Number.isInteger(pid) && pid > 0 && alive(pid));
 }
 
@@ -103,9 +113,14 @@ const PARTIAL = /\.tmp(?:-(\d+)|\.(\d+)\.[0-9a-z]+)$/;
 /** Removes the partial files under `dir` whose writer is gone, as a process killed mid-download leaves them. */
 export function removeDeadPartials(dir) {
   let found = [];
-  try { found = fs.readdirSync(dir, { recursive: true, withFileTypes: true }); } catch { /* nothing downloaded yet */ }
+  try {
+    found = fs.readdirSync(dir, { recursive: true, withFileTypes: true });
+  } catch {
+    /* nothing downloaded yet */
+  }
   for (const entry of found) {
     const match = entry.name.match(PARTIAL);
-    if (entry.isFile() && match && !alive(Number(match[1] ?? match[2]))) fs.rmSync(path.join(entry.parentPath, entry.name), { force: true });
+    if (entry.isFile() && match && !alive(Number(match[1] ?? match[2])))
+      fs.rmSync(path.join(entry.parentPath, entry.name), { force: true });
   }
 }

@@ -35,7 +35,11 @@ function pairEdges(ref, edges, ids, undirected = () => false) {
   }
   if (!pairs.length) return null;
   const hits = edges.flatMap((e, i) =>
-    pairs.some(([a, b]) => (e?.from === a && e?.to === b) || ((!directed || undirected(e)) && e?.from === b && e?.to === a)) ? [i] : [],
+    pairs.some(
+      ([a, b]) => (e?.from === a && e?.to === b) || ((!directed || undirected(e)) && e?.from === b && e?.to === a),
+    )
+      ? [i]
+      : [],
   );
   return hits.length ? hits : null;
 }
@@ -114,13 +118,21 @@ const TARGETS = {
         return list(scene.nodes).some((n) => n?.group === name) ? [`g:${name}`] : null;
       }
       if (isIndex(ref, edges.length)) return [`e:${ref}`];
-      return pairEdges(ref, edges, ids, (e) => e?.direction === 'both' || e?.direction === 'none')?.map((i) => `e:${i}`) ?? null;
+      return (
+        pairEdges(ref, edges, ids, (e) => e?.direction === 'both' || e?.direction === 'none')?.map((i) => `e:${i}`) ??
+        null
+      );
     },
     names: (scene) => [
       ...list(scene.nodes).map((n) => n?.id),
       ...new Set(list(scene.nodes).flatMap((n) => (n?.group ? [`group:${n.group}`] : []))),
       ...list(scene.edges).map(pairName),
-      ...(scene.table ? [...list(scene.table.rows).map((_, i) => `row:${i}`), ...list(scene.table.columns).flatMap((c) => [`col:${c}`, `${c}@0`])] : []),
+      ...(scene.table
+        ? [
+            ...list(scene.table.rows).map((_, i) => `row:${i}`),
+            ...list(scene.table.columns).flatMap((c) => [`col:${c}`, `${c}@0`]),
+          ]
+        : []),
     ],
   },
   sequence: {
@@ -129,7 +141,10 @@ const TARGETS = {
       const r = indexRange(ref);
       return r && r[1] < list(scene.messages).length ? range(r[0], r[1]).map((i) => `m:${i}`) : null;
     },
-    names: (scene) => [...list(scene.participants).map((p) => p?.id), `0-${Math.max(0, list(scene.messages).length - 1)}`],
+    names: (scene) => [
+      ...list(scene.participants).map((p) => p?.id),
+      `0-${Math.max(0, list(scene.messages).length - 1)}`,
+    ],
   },
   er: {
     resolve(scene, ref) {
@@ -181,7 +196,9 @@ const TARGETS = {
       const at = ref.lastIndexOf('@');
       const col = columns.indexOf(ref.slice(0, at).trim());
       const row = Number(ref.slice(at + 1));
-      return at > 0 && col >= 0 && isIndex(row, list(scene.rows).length) && ref.slice(at + 1).trim() !== '' ? [`x:${row}/${col}`] : null;
+      return at > 0 && col >= 0 && isIndex(row, list(scene.rows).length) && ref.slice(at + 1).trim() !== ''
+        ? [`x:${row}/${col}`]
+        : null;
     },
     names: (scene) => [...list(scene.columns).map((c) => `col:${c}`), ...list(scene.columns).map((c) => `${c}@0`)],
   },
@@ -217,11 +234,16 @@ const TARGETS = {
       const r = indexRange(ref);
       return r && r[1] < list(scene.events).length ? range(r[0], r[1]).map((i) => `ev:${i}`) : null;
     },
-    names: (scene) => [`0-${Math.max(0, list(scene.events).length - 1)}`, ...list(scene.spans).map((s) => `span:${s?.label}`)],
+    names: (scene) => [
+      `0-${Math.max(0, list(scene.events).length - 1)}`,
+      ...list(scene.spans).map((s) => `span:${s?.label}`),
+    ],
   },
   files: {
     resolve(scene, ref, hunks) {
-      return typeof ref === 'string' && sceneFiles(scene, hunks ?? {}).some((f) => f.path === ref) ? [`f:${ref}`] : null;
+      return typeof ref === 'string' && sceneFiles(scene, hunks ?? {}).some((f) => f.path === ref)
+        ? [`f:${ref}`]
+        : null;
     },
     names: (scene, hunks) => sceneFiles(scene, hunks ?? {}).map((f) => f.path),
   },
@@ -244,7 +266,11 @@ const TARGETS = {
       const side = at > 0 ? compareSide(scene, ref.slice(at + 1)) : null;
       return side !== null && ref.slice(0, at).trim() !== '' && isIndex(row, rows) ? [`x:${row}/${side}`] : null;
     },
-    names: (scene) => [`0-${Math.max(0, list(scene.rows).length - 1)}`, ...compareTitles(scene).map((t) => `side:${t}`), `0@${compareTitles(scene)[1]}`],
+    names: (scene) => [
+      `0-${Math.max(0, list(scene.rows).length - 1)}`,
+      ...compareTitles(scene).map((t) => `side:${t}`),
+      `0@${compareTitles(scene)[1]}`,
+    ],
   },
   terminal: {
     resolve(scene, ref) {
@@ -254,9 +280,14 @@ const TARGETS = {
       const m = typeof ref === 'string' ? /^\s*(\d+)\s*:\s*(\d+)\s*$/.exec(ref) : null;
       if (!m) return null;
       const [entry, line] = [Number(m[1]), Number(m[2])];
-      return isIndex(entry, entries.length) && isIndex(line, outputLines(entries[entry]).length) ? [`ln:${entry}/${line}`] : null;
+      return isIndex(entry, entries.length) && isIndex(line, outputLines(entries[entry]).length)
+        ? [`ln:${entry}/${line}`]
+        : null;
     },
-    names: (scene) => [`0-${Math.max(0, list(scene.entries).length - 1)}`, ...list(scene.entries).flatMap((e, i) => (outputLines(e).length ? [`${i}:0`] : []))],
+    names: (scene) => [
+      `0-${Math.max(0, list(scene.entries).length - 1)}`,
+      ...list(scene.entries).flatMap((e, i) => (outputLines(e).length ? [`${i}:0`] : [])),
+    ],
   },
   layers: {
     resolve(scene, ref) {
@@ -276,7 +307,10 @@ const TARGETS = {
         const name = ref.slice(prefix.length).trim();
         return list(items).some((item) => item?.name === name) ? [`${key}:${name}`] : null;
       };
-      const marker = named('ptr:', scene.pointers, 'ptr') ?? named('range:', scene.ranges, 'rg') ?? named('array:', scene.arrays, 'a');
+      const marker =
+        named('ptr:', scene.pointers, 'ptr') ??
+        named('range:', scene.ranges, 'rg') ??
+        named('array:', scene.arrays, 'a');
       if (marker !== undefined) return marker;
       const rows = arrayRows(scene);
       if (!Array.isArray(scene.arrays)) {
@@ -323,7 +357,8 @@ const TARGETS = {
     ],
   },
   image: {
-    resolve: (scene, ref) => (typeof ref === 'string' && list(scene.regions).some((r) => r?.id === ref) ? [`im:${ref}`] : null),
+    resolve: (scene, ref) =>
+      typeof ref === 'string' && list(scene.regions).some((r) => r?.id === ref) ? [`im:${ref}`] : null,
     names: (scene) => list(scene.regions).map((r) => r?.id),
   },
   svg: {
@@ -332,7 +367,10 @@ const TARGETS = {
   },
   plot: {
     resolve: (scene, ref) => resolvePlotRef(scene, ref),
-    names: (scene) => [...plotParts(scene).map((p) => p.id), ...paramNames(scene).filter((n) => plotModel(scene).dependents.has(n))],
+    names: (scene) => [
+      ...plotParts(scene).map((p) => p.id),
+      ...paramNames(scene).filter((n) => plotModel(scene).dependents.has(n)),
+    ],
   },
   map: {
     resolve: mapRef,
@@ -365,7 +403,8 @@ const TARGETS = {
  * The item key of a memory frame's variable (`kind` "v") or an object's field ("f"). The owner's "%" and
  * "/" are escaped, so the first "/" ends it and any owner and name text round-trips, even malformed UTF-16.
  */
-export const memberKey = (kind, owner, name) => `${kind}:${String(owner).replaceAll('%', '%25').replaceAll('/', '%2F')}/${name}`;
+export const memberKey = (kind, owner, name) =>
+  `${kind}:${String(owner).replaceAll('%', '%25').replaceAll('/', '%2F')}/${name}`;
 
 /** A member key's owner, its owner's item key ("fr:name" or "o:id"), and its name. */
 export function splitMemberKey(key) {
@@ -387,7 +426,10 @@ export function resolveRef(scene, ref, hunks) {
   const resolve = targetsOf(scene)?.resolve;
   if (!resolve) return null;
   // An index written as a string, "2", means the index when nothing in the scene is named "2".
-  return resolve(scene, ref, hunks) ?? (typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) ? resolve(scene, Number(ref), hunks) : null);
+  return (
+    resolve(scene, ref, hunks) ??
+    (typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) ? resolve(scene, Number(ref), hunks) : null)
+  );
 }
 
 /**
@@ -396,7 +438,10 @@ export function resolveRef(scene, ref, hunks) {
  */
 export function ambiguousIndex(scene, ref) {
   if (scene?.type !== 'graph' || !scene.table) return null;
-  const n = typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) && !list(scene.nodes).some((node) => node?.id === ref) ? Number(ref) : ref;
+  const n =
+    typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) && !list(scene.nodes).some((node) => node?.id === ref)
+      ? Number(ref)
+      : ref;
   const edges = list(scene.edges);
   if (!isIndex(n, edges.length) || !isIndex(n, list(scene.table.rows).length)) return null;
   return `could be edge ${n} or table row ${n}; name the edge "${pairName(edges[n])}" or the row "row:${n}"`;
@@ -409,7 +454,9 @@ export function refNames(scene, hunks) {
 
 /** Each step's focus, as the item keys it lights; refs that name nothing light nothing. */
 export function stepTargets(scene, hunks) {
-  return list(scene?.steps).map((step) => [...new Set(focusRefs(step?.focus).flatMap((ref) => resolveRef(scene, ref, hunks) ?? []))]);
+  return list(scene?.steps).map((step) => [
+    ...new Set(focusRefs(step?.focus).flatMap((ref) => resolveRef(scene, ref, hunks) ?? [])),
+  ]);
 }
 
 /** For each item key, the steps that light it, in order. */

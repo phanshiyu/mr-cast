@@ -19,14 +19,14 @@ const ROWS_START = 4;
 /** Every row has started landing by this frame, so the list is in by the end of the build. */
 const ROWS_END = 16;
 
-const StepRow: React.FC<{ step: FlowStep; text: FlowLayout['rows'][number]; index: number; state: 'past' | 'active' | 'future'; appear: number; height: number }> = ({
-  step,
-  text,
-  index,
-  state,
-  appear,
-  height,
-}) => {
+const StepRow: React.FC<{
+  step: FlowStep;
+  text: FlowLayout['rows'][number];
+  index: number;
+  state: 'past' | 'active' | 'future';
+  appear: number;
+  height: number;
+}> = ({ step, text, index, state, appear, height }) => {
   const active = state === 'active';
   const Icon = lucideIcon(step.icon);
   const tone = step.tone ? tones[step.tone] : null;
@@ -54,7 +54,9 @@ const StepRow: React.FC<{ step: FlowStep; text: FlowLayout['rows'][number]; inde
       >
         {state === 'past' ? <Check size={24} strokeWidth={3} /> : index + 1}
       </div>
-      <div style={{ minWidth: 0, flex: 1, paddingTop: 2, opacity: state === 'past' ? 0.55 : state === 'future' ? 0.4 : 1 }}>
+      <div
+        style={{ minWidth: 0, flex: 1, paddingTop: 2, opacity: state === 'past' ? 0.55 : state === 'future' ? 0.4 : 1 }}
+      >
         <div
           style={{
             display: 'inline-block',
@@ -71,7 +73,9 @@ const StepRow: React.FC<{ step: FlowStep; text: FlowLayout['rows'][number]; inde
             verticalAlign: 'baseline',
           }}
         >
-          {Icon ? <Icon size={19} strokeWidth={2.2} style={{ display: 'inline-block', verticalAlign: -3, marginRight: 8 }} /> : null}
+          {Icon ? (
+            <Icon size={19} strokeWidth={2.2} style={{ display: 'inline-block', verticalAlign: -3, marginRight: 8 }} />
+          ) : null}
           <FitText fit={text.actor} inline />
         </div>
         <FitText fit={active ? text.action : text.idle} style={{ marginTop: 6 }} />
@@ -98,7 +102,16 @@ const CodeLines: React.FC<{ lines: Token[][]; fontSize: number }> = ({ lines, fo
 const PayloadCard: React.FC<{ card: StepCard; height: number }> = ({ card, height }) => {
   if (card.kind === 'headline') {
     return (
-      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 64px', textAlign: 'center' }}>
+      <div
+        style={{
+          height,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '0 64px',
+          textAlign: 'center',
+        }}
+      >
         <FitText fit={card.text} align="center" />
       </div>
     );
@@ -135,7 +148,16 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', gap: COLUMN_GAP }}>
         <div style={{ width: LIST_W, position: 'relative', flexShrink: 0 }}>
-          <div style={{ position: 'absolute', left: 23, top: 24, width: 3, height: stepH * (steps.length - 1), background: colors.border }} />
+          <div
+            style={{
+              position: 'absolute',
+              left: 23,
+              top: 24,
+              width: 3,
+              height: stepH * (steps.length - 1),
+              background: colors.border,
+            }}
+          />
           <div
             style={{
               position: 'absolute',
@@ -174,9 +196,21 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
               boxSizing: 'border-box',
             }}
           >
-            {current ? <FitText fit={layout.strip[active]!} style={{ color: colors.accent, lineHeight: 'normal' }} /> : <span style={{ color: colors.faint, fontWeight: 700 }}>start</span>}
+            {current ? (
+              <FitText fit={layout.strip[active]!} style={{ color: colors.accent, lineHeight: 'normal' }} />
+            ) : (
+              <span style={{ color: colors.faint, fontWeight: 700 }}>start</span>
+            )}
             <ArrowRight size={26} color={next ? colors.muted : colors.faint} style={{ flexShrink: 0 }} />
-            {next ? <FitText fit={layout.strip[active + 1]!} weight={400} style={{ color: colors.text, lineHeight: 'normal' }} /> : <span style={{ color: colors.faint }}>done</span>}
+            {next ? (
+              <FitText
+                fit={layout.strip[active + 1]!}
+                weight={400}
+                style={{ color: colors.text, lineHeight: 'normal' }}
+              />
+            ) : (
+              <span style={{ color: colors.faint }}>done</span>
+            )}
             <div style={{ flex: 1 }} />
             <span style={{ color: colors.faint, fontSize: 20, flexShrink: 0 }}>
               step {Math.max(0, active + 1)}/{steps.length}
@@ -193,15 +227,39 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFra
               overflow: 'hidden',
             }}
           >
-            <div style={{ position: 'absolute', left: 0, top: 0, height: 4, width: `${progress * 100}%`, background: colors.accent, opacity: 0.7 }} />
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                height: 4,
+                width: `${progress * 100}%`,
+                background: colors.accent,
+                opacity: 0.7,
+              }}
+            />
             {current ? null : <PayloadCard card={layout.intro} height={cardH} />}
             {previous ? (
-              <div style={{ position: 'absolute', inset: 0, opacity: 1 - enter, transform: `translateX(${-enter * 80}px)` }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: 1 - enter,
+                  transform: `translateX(${-enter * 80}px)`,
+                }}
+              >
                 <PayloadCard card={layout.cards[active - 1]!} height={cardH} />
               </div>
             ) : null}
             {current ? (
-              <div style={{ position: 'absolute', inset: 0, opacity: enter, transform: `translateX(${(1 - enter) * 80}px)` }}>
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: enter,
+                  transform: `translateX(${(1 - enter) * 80}px)`,
+                }}
+              >
                 <PayloadCard card={layout.cards[active]!} height={cardH} />
               </div>
             ) : null}

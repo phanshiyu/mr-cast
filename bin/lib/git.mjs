@@ -6,10 +6,25 @@ import { UserError } from './errors.mjs';
 const MAX_BUFFER = 1024 * 1024 * 1024;
 
 const NOISE_GLOBS = [
-  ...['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb', 'Cargo.lock', 'go.sum',
-    'poetry.lock', 'Gemfile.lock', 'composer.lock', 'uv.lock'].map((f) => `**/${f}`),
-  '**/*.min.js', '**/*.min.css', '**/*.map', '**/*.snap',
-  '**/dist/**', '**/build/**', '**/vendor/**',
+  ...[
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'bun.lockb',
+    'Cargo.lock',
+    'go.sum',
+    'poetry.lock',
+    'Gemfile.lock',
+    'composer.lock',
+    'uv.lock',
+  ].map((f) => `**/${f}`),
+  '**/*.min.js',
+  '**/*.min.css',
+  '**/*.map',
+  '**/*.snap',
+  '**/dist/**',
+  '**/build/**',
+  '**/vendor/**',
 ];
 const NOISE_PATHSPEC = ['.', ...NOISE_GLOBS.map((g) => `:(exclude,glob)${g}`)];
 
@@ -18,17 +33,26 @@ const BASE_CANDIDATES = ['main', 'master', 'origin/main', 'origin/master', 'deve
 export function git(cwd, args) {
   try {
     return execFileSync('git', ['-c', 'core.quotepath=off', ...args], {
-      cwd, encoding: 'utf8', maxBuffer: MAX_BUFFER, stdio: ['ignore', 'pipe', 'pipe'],
+      cwd,
+      encoding: 'utf8',
+      maxBuffer: MAX_BUFFER,
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch (err) {
     if (err.code === 'ENOENT') throw new UserError('git not found on PATH');
-    const detail = String(err.stderr || err.message).trim().split('\n')[0];
+    const detail = String(err.stderr || err.message)
+      .trim()
+      .split('\n')[0];
     throw new UserError(`git ${args[0]} failed: ${detail}`);
   }
 }
 
 function tryGit(cwd, args) {
-  try { return git(cwd, args).trim(); } catch { return null; }
+  try {
+    return git(cwd, args).trim();
+  } catch {
+    return null;
+  }
 }
 
 /** The git work tree containing `cwd`, or null outside one. */
@@ -60,7 +84,10 @@ export function resolveBase(root, explicit) {
     if (commitOf(root, ref)) return ref;
   }
   const found = BASE_CANDIDATES.find((ref) => commitOf(root, ref));
-  if (!found) throw new UserError(`could not find a base branch (tried origin/HEAD, ${BASE_CANDIDATES.join(', ')}); pass one: mr-cast extract <base>`);
+  if (!found)
+    throw new UserError(
+      `could not find a base branch (tried origin/HEAD, ${BASE_CANDIDATES.join(', ')}); pass one: mr-cast extract <base>`,
+    );
   return found;
 }
 
@@ -83,8 +110,14 @@ export function readDiff(root, { base, working, context, allFiles }) {
 
   let skipped = [];
   if (!allFiles) {
-    const all = git(root, ['diff', '-M', '--no-ext-diff', '--name-only', ...range]).split('\n').filter(Boolean);
-    const kept = new Set(git(root, ['diff', '-M', '--no-ext-diff', '--name-only', ...range, '--', ...NOISE_PATHSPEC]).split('\n').filter(Boolean));
+    const all = git(root, ['diff', '-M', '--no-ext-diff', '--name-only', ...range])
+      .split('\n')
+      .filter(Boolean);
+    const kept = new Set(
+      git(root, ['diff', '-M', '--no-ext-diff', '--name-only', ...range, '--', ...NOISE_PATHSPEC])
+        .split('\n')
+        .filter(Boolean),
+    );
     skipped = all.filter((f) => !kept.has(f));
   }
   const untracked = working
@@ -105,10 +138,14 @@ export function ensureExcluded(root) {
 }
 
 /** `git diff --numstat` lines as { file, additions, deletions }; binary files count 0. */
-const numstat = (text) => text.split('\n').filter(Boolean).map((line) => {
-  const [add, del, ...rest] = line.split('\t');
-  return { file: rest.join('\t'), additions: Number(add) || 0, deletions: Number(del) || 0 };
-});
+const numstat = (text) =>
+  text
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [add, del, ...rest] = line.split('\t');
+      return { file: rest.join('\t'), additions: Number(add) || 0, deletions: Number(del) || 0 };
+    });
 
 /**
  * What the current branch offers a walkthrough, without reading the diff itself: the base `extract` would
@@ -119,13 +156,19 @@ export function branchStatus(root) {
   const branch = tryGit(root, ['symbolic-ref', '-q', '--short', 'HEAD']) ?? 'HEAD';
   const hasCommits = Boolean(commitOf(root, 'HEAD'));
   let base = null;
-  try { base = resolveBase(root); } catch { /* no base branch */ }
+  try {
+    base = resolveBase(root);
+  } catch {
+    /* no base branch */
+  }
   const mergeBase = base && hasCommits ? tryGit(root, ['merge-base', base, 'HEAD']) : null;
   const ahead = mergeBase ? Number(git(root, ['rev-list', '--count', `${mergeBase}..HEAD`]).trim()) : 0;
-  const stat = (range) => numstat(git(root, ['diff', '-M', '--no-ext-diff', '--numstat', ...range, '--', ...NOISE_PATHSPEC]));
+  const stat = (range) =>
+    numstat(git(root, ['diff', '-M', '--no-ext-diff', '--numstat', ...range, '--', ...NOISE_PATHSPEC]));
   const files = ahead ? stat([`${base}...HEAD`]) : [];
   const working = hasCommits ? stat(['HEAD']) : [];
-  const untracked = git(root, ['ls-files', '--others', '--exclude-standard']).split('\n')
+  const untracked = git(root, ['ls-files', '--others', '--exclude-standard'])
+    .split('\n')
     .filter((f) => f && !f.startsWith('.mr-cast/')).length;
   return { branch, base, ahead, files, working, untracked };
 }

@@ -10,7 +10,11 @@ export function addDocker(Prism: typeof PrismType) {
   const option = /--[\w-]+=(?:<STR>|(?!["'])(?:[^\s\\]|\\.)+)/.source.replace(/<STR>/g, () => string);
   const stringRule = { pattern: RegExp(string), greedy: true };
   const commentRule = { pattern: /(^[ \t]*)#.*/m, lookbehind: true, greedy: true };
-  const re = (source: string, flags: string) => RegExp(source.replace(/<OPT>/g, () => option).replace(/<SP>/g, () => space), flags);
+  const re = (source: string, flags: string) =>
+    RegExp(
+      source.replace(/<OPT>/g, () => option).replace(/<SP>/g, () => space),
+      flags,
+    );
 
   Prism.languages.docker = {
     instruction: {
@@ -31,8 +35,16 @@ export function addDocker(Prism: typeof PrismType) {
           },
         },
         keyword: [
-          { pattern: re(/(^(?:ONBUILD<SP>)?HEALTHCHECK<SP>(?:<OPT><SP>)*)(?:CMD|NONE)\b/.source, 'i'), lookbehind: true, greedy: true },
-          { pattern: re(/(^(?:ONBUILD<SP>)?FROM<SP>(?:<OPT><SP>)*(?!--)[^ \t\\]+<SP>)AS/.source, 'i'), lookbehind: true, greedy: true },
+          {
+            pattern: re(/(^(?:ONBUILD<SP>)?HEALTHCHECK<SP>(?:<OPT><SP>)*)(?:CMD|NONE)\b/.source, 'i'),
+            lookbehind: true,
+            greedy: true,
+          },
+          {
+            pattern: re(/(^(?:ONBUILD<SP>)?FROM<SP>(?:<OPT><SP>)*(?!--)[^ \t\\]+<SP>)AS/.source, 'i'),
+            lookbehind: true,
+            greedy: true,
+          },
           { pattern: re(/(^ONBUILD<SP>)\w+/.source, 'i'), lookbehind: true, greedy: true },
           { pattern: /^\w+/, greedy: true },
         ],

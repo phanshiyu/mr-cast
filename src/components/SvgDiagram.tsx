@@ -47,7 +47,10 @@ const FLOW_DASH = [10, 12];
 const FLOW_SPEED = 1.4;
 
 /** `var(--good)` as the palette colour it names. */
-const resolveVars = (value: string) => value.replace(/var\(\s*--([\w-]+)\s*\)/g, (m, name: string) => (Object.hasOwn(SVG_COLORS, name) ? SVG_COLORS[name]! : m));
+const resolveVars = (value: string) =>
+  value.replace(/var\(\s*--([\w-]+)\s*\)/g, (m, name: string) =>
+    Object.hasOwn(SVG_COLORS, name) ? SVG_COLORS[name]! : m,
+  );
 
 /** The tones a class list names: `tone-good` for a tinted shape, `fill-good` and `stroke-good` for one solid colour. */
 function classTones(cls: string | undefined) {
@@ -63,7 +66,8 @@ function classTones(cls: string | undefined) {
 }
 
 /** An SVG attribute as a React prop name: stroke-width → strokeWidth, xlink:href → href. */
-const propName = (name: string) => (name === 'xlink:href' ? 'href' : name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase()));
+const propName = (name: string) =>
+  name === 'xlink:href' ? 'href' : name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 
 interface Inherited {
   fill: boolean;
@@ -99,7 +103,9 @@ interface Draw {
 
 /** Ids an attribute points at, url(#id) anywhere and an href's #id, as their prefixed ids. */
 const prefixRefs = (name: string, value: string, prefix: string) =>
-  name === 'href' || name === 'xlink:href' ? `#${prefix}${value.slice(1)}` : value.replace(/url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/g, `url(#${prefix}$1)`);
+  name === 'href' || name === 'xlink:href'
+    ? `#${prefix}${value.slice(1)}`
+    : value.replace(/url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/g, `url(#${prefix}$1)`);
 
 function draw(node: SvgNode, key: string, d: Draw, up: Inherited): ReactNode {
   if (!('tag' in node)) return node.text;
@@ -144,7 +150,8 @@ function draw(node: SvgNode, key: string, d: Draw, up: Inherited): ReactNode {
     if (tone) {
       if (node.tag === 'text') props.fill = tones[tone].color;
       else {
-        if (!LINES.has(node.tag) || node.tag === 'path') props.fill = props.fill === 'none' ? 'none' : tintFill(tones[tone].color);
+        if (!LINES.has(node.tag) || node.tag === 'path')
+          props.fill = props.fill === 'none' ? 'none' : tintFill(tones[tone].color);
         props.stroke = tones[tone].color;
       }
     }
@@ -155,16 +162,27 @@ function draw(node: SvgNode, key: string, d: Draw, up: Inherited): ReactNode {
   if (opacity !== 1) props.opacity = opacity;
   if (own && d.focus(own).glow > 0) {
     const g = d.focus(own).glow;
-    props.style = { filter: `drop-shadow(0 0 ${3 * g}px ${colors.accent}) drop-shadow(0 0 ${16 * g}px ${colors.accentGlow})` };
+    props.style = {
+      filter: `drop-shadow(0 0 ${3 * g}px ${colors.accent}) drop-shadow(0 0 ${16 * g}px ${colors.accentGlow})`,
+    };
   }
   if (own) {
     const [was, is] = [d.s.before.transforms[own], d.s.now.transforms[own]];
-    if (was !== undefined || is !== undefined) props.transform = `${tweenTransform(was ?? '', is ?? '', d.moved(own))} ${a.transform ?? ''}`.trim();
+    if (was !== undefined || is !== undefined)
+      props.transform = `${tweenTransform(was ?? '', is ?? '', d.moved(own))} ${a.transform ?? ''}`.trim();
     if (node.tag === 'path') props.d = d.shape(own, a.d);
   }
   const trace = (own ? d.traced(own) : null) ?? up.trace;
   const flow = up.flow || (a.class ?? '').split(/\s+/).includes('flow');
-  const next: Inherited = { fill: hasFill, stroke: hasStroke, emphasis, tint, font: a['font-family'] ?? up.font, trace, flow };
+  const next: Inherited = {
+    fill: hasFill,
+    stroke: hasStroke,
+    emphasis,
+    tint,
+    font: a['font-family'] ?? up.font,
+    trace,
+    flow,
+  };
   const rewritten = own !== null && value !== undefined && value !== d.initial[own];
   const children = rewritten ? [String(value)] : node.children.map((c, i) => draw(c, `${key}.${i}`, d, next));
   if (node.tag === 'text' && trace !== null) props.opacity = Number(props.opacity ?? 1) * trace;
@@ -176,31 +194,73 @@ function draw(node: SvgNode, key: string, d: Draw, up: Inherited): ReactNode {
  * A shape as its step's motion draws it: a traced one drawn on from its start (by its own dashes when it has none, or
  * through a mask that keeps them), and a flowing one as a faint line under marching dashes.
  */
-function motionShape(node: SvgElement, key: string, props: Record<string, unknown>, children: ReactNode[], d: Draw, trace: number | null, flow: boolean): ReactNode {
+function motionShape(
+  node: SvgElement,
+  key: string,
+  props: Record<string, unknown>,
+  children: ReactNode[],
+  d: Draw,
+  trace: number | null,
+  flow: boolean,
+): ReactNode {
   const tracing = trace !== null && trace < 1;
   if (!tracing && !flow) return createElement(node.tag, props, ...children);
   if (tracing) for (const m of ['markerStart', 'markerMid', 'markerEnd']) delete props[m];
   const dashed = flow || node.attrs['stroke-dasharray'] !== undefined;
   if (tracing && !dashed) {
-    Object.assign(props, { pathLength: 1, strokeDasharray: '1 1', strokeDashoffset: 1 - trace, fillOpacity: Number(node.attrs['fill-opacity'] ?? 1) * trace });
+    Object.assign(props, {
+      pathLength: 1,
+      strokeDasharray: '1 1',
+      strokeDashoffset: 1 - trace,
+      fillOpacity: Number(node.attrs['fill-opacity'] ?? 1) * trace,
+    });
     return createElement(node.tag, props, ...children);
   }
   const layers: ReactNode[] = [];
   let mask: string | undefined;
   if (tracing) {
     const maskId = `${d.prefix}trace-${key}`;
-    const shape: Record<string, unknown> = { fill: 'none', stroke: '#fff', strokeWidth: Number.parseFloat(node.attrs['stroke-width'] ?? '2') * 3 + 12 / d.scale, strokeLinecap: 'round', pathLength: 1, strokeDasharray: '1 1', strokeDashoffset: 1 - trace };
+    const shape: Record<string, unknown> = {
+      fill: 'none',
+      stroke: '#fff',
+      strokeWidth: Number.parseFloat(node.attrs['stroke-width'] ?? '2') * 3 + 12 / d.scale,
+      strokeLinecap: 'round',
+      pathLength: 1,
+      strokeDasharray: '1 1',
+      strokeDashoffset: 1 - trace,
+    };
     for (const g of GEOMETRY) if (props[g] !== undefined) shape[g] = props[g];
-    layers.push(createElement('mask', { key: 'm', id: maskId, maskUnits: 'userSpaceOnUse', x: -1e5, y: -1e5, width: 2e5, height: 2e5 }, createElement(node.tag, shape)));
+    layers.push(
+      createElement(
+        'mask',
+        { key: 'm', id: maskId, maskUnits: 'userSpaceOnUse', x: -1e5, y: -1e5, width: 2e5, height: 2e5 },
+        createElement(node.tag, shape),
+      ),
+    );
     mask = `url(#${maskId})`;
   }
-  if (!flow) return createElement('g', { key }, ...layers, createElement(node.tag, { ...props, key: 's', mask }, ...children));
+  if (!flow)
+    return createElement('g', { key }, ...layers, createElement(node.tag, { ...props, key: 's', mask }, ...children));
   const { id: _id, markerStart: _s, markerMid: _m, markerEnd: _e, ...plain } = props;
   const opacity = Number(node.attrs['stroke-opacity'] ?? 1);
   const grow = Math.max(1, (Number.parseFloat(node.attrs['stroke-width'] ?? '1') * d.scale) / 3);
   const dashes = node.attrs['stroke-dasharray'] ?? FLOW_DASH.map((n) => (n * grow) / d.scale).join(' ');
   layers.push(createElement(node.tag, { ...plain, key: 'u', mask, strokeOpacity: 0.25 * opacity }));
-  layers.push(createElement(node.tag, { ...props, key: 'f', mask, fill: 'none', strokeDasharray: dashes, strokeDashoffset: (-d.frame * FLOW_SPEED * grow) / d.scale, strokeLinecap: props.strokeLinecap ?? 'round' }, ...children));
+  layers.push(
+    createElement(
+      node.tag,
+      {
+        ...props,
+        key: 'f',
+        mask,
+        fill: 'none',
+        strokeDasharray: dashes,
+        strokeDashoffset: (-d.frame * FLOW_SPEED * grow) / d.scale,
+        strokeLinecap: props.strokeLinecap ?? 'round',
+      },
+      ...children,
+    ),
+  );
   return createElement('g', { key }, ...layers);
 }
 
@@ -216,7 +276,15 @@ function paired(from: string, to: string): PairedShape {
 }
 
 /** How far each element the current step traces has drawn at `frame`, from its cue or the step settling, at TRACE_SPEED. */
-function traceProgress(state: SceneState, ids: Map<string, SvgNode>, segments: readonly SpokenSegment[], k: number, frame: number, scale: number, shapeD: (key: string) => string | undefined) {
+function traceProgress(
+  state: SceneState,
+  ids: Map<string, SvgNode>,
+  segments: readonly SpokenSegment[],
+  k: number,
+  frame: number,
+  scale: number,
+  shapeD: (key: string) => string | undefined,
+) {
   const segment = segments[k + 1];
   const end = segments[k + 2]?.from ?? Infinity;
   const out = new Map<string, number>();
@@ -224,7 +292,11 @@ function traceProgress(state: SceneState, ids: Map<string, SvgNode>, segments: r
   for (const [key, cue] of Object.entries(state.traces)) {
     const start = (cue ? cueFrame(segment, cue) : null) ?? segment.from + STEP_SETTLE_FRAMES;
     const node = elementOf(ids, key.slice(2));
-    const frames = Math.min(TRACE_MAX, Math.max(TRACE_MIN, (traceLength(node, shapeD(key)) * scale) / TRACE_SPEED), Math.max(1, end - start));
+    const frames = Math.min(
+      TRACE_MAX,
+      Math.max(TRACE_MIN, (traceLength(node, shapeD(key)) * scale) / TRACE_SPEED),
+      Math.max(1, end - start),
+    );
     out.set(key, Math.min(1, Math.max(0, (frame - start) / frames)));
   }
   return out;
@@ -260,24 +332,65 @@ export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durat
   const marks = useMemo(() => svgTargets(scene), [scene]);
   const s = stateFrame(states, segments, frame);
   const focus = focusSpotlight(scene, hunks, segments, frame);
-  if (!root || !viewBox || !('tag' in root)) return <SceneShell scene={scene} durationInFrames={durationInFrames}>{null}</SceneShell>;
-  const dOf = (state: SceneState, key: string, own: string | undefined) => (state.shapes[key] ? elementOf(ids, state.shapes[key])?.attrs.d : own);
+  if (!root || !viewBox || !('tag' in root))
+    return (
+      <SceneShell scene={scene} durationInFrames={durationInFrames}>
+        {null}
+      </SceneShell>
+    );
+  const dOf = (state: SceneState, key: string, own: string | undefined) =>
+    state.shapes[key] ? elementOf(ids, state.shapes[key])?.attrs.d : own;
   const shape = (key: string, own: string | undefined) => {
     const [was, is] = [dOf(s.before, key, own), dOf(s.now, key, own)];
     return was === is || !was || !is ? is : s.t >= 1 ? is : tweenShape(paired(was, is), s.t);
   };
-  const traces = traceProgress(s.now, ids, segments, currentStep(segments, frame), frame, stage.scale, (key) => dOf(s.now, key, elementOf(ids, key.slice(2))?.attrs.d));
+  const traces = traceProgress(s.now, ids, segments, currentStep(segments, frame), frame, stage.scale, (key) =>
+    dOf(s.now, key, elementOf(ids, key.slice(2))?.attrs.d),
+  );
   const spans = spanProgress(s.now, segments, currentStep(segments, frame), frame);
-  const d: Draw = { s, focus, prefix: hashOf(scene.svg), initial: states[0]!.values, frame, scale: stage.scale, traced: (key) => traces.get(key) ?? null, moved: (key) => spans.get(key) ?? s.t, shape };
-  const base: Inherited = { fill: root.attrs.fill !== undefined, stroke: root.attrs.stroke !== undefined, emphasis: focus('#drawing'), tint: null, font: root.attrs['font-family'] ?? '', trace: null, flow: false };
+  const d: Draw = {
+    s,
+    focus,
+    prefix: hashOf(scene.svg),
+    initial: states[0]!.values,
+    frame,
+    scale: stage.scale,
+    traced: (key) => traces.get(key) ?? null,
+    moved: (key) => spans.get(key) ?? s.t,
+    shape,
+  };
+  const base: Inherited = {
+    fill: root.attrs.fill !== undefined,
+    stroke: root.attrs.stroke !== undefined,
+    emphasis: focus('#drawing'),
+    tint: null,
+    font: root.attrs['font-family'] ?? '',
+    trace: null,
+    flow: false,
+  };
   const parts = root.children;
   const stagger = Math.min(STAGGER, (STAGGER_END - START) / Math.max(1, parts.length - 1));
   const rootProps: Record<string, string> = {};
-  for (const [name, value] of Object.entries(root.attrs)) if (!['viewBox', 'width', 'height', 'preserveAspectRatio', 'version', 'id', 'class'].includes(name) && !name.startsWith('xmlns')) rootProps[propName(name)] = prefixRefs(name, resolveVars(value), d.prefix);
+  for (const [name, value] of Object.entries(root.attrs))
+    if (
+      !['viewBox', 'width', 'height', 'preserveAspectRatio', 'version', 'id', 'class'].includes(name) &&
+      !name.startsWith('xmlns')
+    )
+      rootProps[propName(name)] = prefixRefs(name, resolveVars(value), d.prefix);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (k) => marks[k] ?? null }} aside={<HeaderCallout scene={scene} s={s} />}>
-      <svg width={box.width + 2 * BLEED} height={box.height + 2 * BLEED} viewBox={`${-BLEED} ${-BLEED} ${box.width + 2 * BLEED} ${box.height + 2 * BLEED}`} style={{ position: 'absolute', left: -BLEED, top: -BLEED, overflow: 'hidden' }}>
+    <SceneShell
+      scene={scene}
+      durationInFrames={durationInFrames}
+      camera={{ hunks, segments, targets: (k) => marks[k] ?? null }}
+      aside={<HeaderCallout scene={scene} s={s} />}
+    >
+      <svg
+        width={box.width + 2 * BLEED}
+        height={box.height + 2 * BLEED}
+        viewBox={`${-BLEED} ${-BLEED} ${box.width + 2 * BLEED} ${box.height + 2 * BLEED}`}
+        style={{ position: 'absolute', left: -BLEED, top: -BLEED, overflow: 'hidden' }}
+      >
         <g transform={`translate(${stage.left} ${stage.top}) scale(${stage.scale})`} {...rootProps}>
           {parts.map((part, i) => {
             const appear = spring({ frame: frame - START - i * stagger, fps, config: { damping: 18, stiffness: 140 } });

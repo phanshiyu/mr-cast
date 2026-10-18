@@ -8,7 +8,8 @@ const flow = (n) => ({
   narration: 'A request passes each service in turn.',
   steps: Array.from({ length: n }, (_, i) => ({ actor: `Actor ${i}`, action: 'checks the request' })),
 });
-const errorsFor = async (n) => (await validateStoryboard({ title: 'Flows', scenes: [flow(n)] }, {}, { mode: 'explain' })).errors;
+const errorsFor = async (n) =>
+  (await validateStoryboard({ title: 'Flows', scenes: [flow(n)] }, {}, { mode: 'explain' })).errors;
 
 test('a flow whose rows are shorter than their actor and action is reported, and one with room passes', async () => {
   assert.deepEqual(await errorsFor(10), []);

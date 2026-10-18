@@ -34,7 +34,9 @@ export function stopVoicing({ keepDownloads = false } = {}) {
 function inChild(task, args, onProgress, signal) {
   return new Promise((resolve, reject) => {
     if (stopping || signal?.aborted) return resolve(null);
-    const child = fork(fileURLToPath(import.meta.url), ['--voice-child'], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+    const child = fork(fileURLToPath(import.meta.url), ['--voice-child'], {
+      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    });
     children.set(child, task);
     const abort = () => child.kill('SIGKILL');
     signal?.addEventListener('abort', abort, { once: true });
@@ -82,7 +84,7 @@ export async function ensureVoiceoverInChild({ onProgress, signal, ...args }) {
   const { engine } = voiceParts(args.voice);
   if (Object.hasOwn(ENGINES, engine) && !ENGINES[engine].downloaded()) {
     const aborted = new Promise((resolve) => signal?.addEventListener('abort', () => resolve(null), { once: true }));
-    if (await Promise.race([download(args.voice, onProgress).then(() => !stopping), aborted]) !== true) return null;
+    if ((await Promise.race([download(args.voice, onProgress).then(() => !stopping), aborted])) !== true) return null;
   }
   return inChild('ensure', args, onProgress, signal);
 }
@@ -99,7 +101,10 @@ if (process.argv[2] === '--voice-child') {
     const onProgress = (event) => process.connected && process.send({ type: 'progress', event });
     let reply;
     try {
-      const result = task === 'download' ? await downloadVoice(args.voice, onProgress) : await ensureVoiceover({ ...args, onProgress });
+      const result =
+        task === 'download'
+          ? await downloadVoice(args.voice, onProgress)
+          : await ensureVoiceover({ ...args, onProgress });
       reply = { type: 'done', result };
     } catch (err) {
       reply = { type: 'error', message: err.message, user: err instanceof UserError };

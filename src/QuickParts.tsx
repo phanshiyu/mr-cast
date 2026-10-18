@@ -18,7 +18,10 @@ const NEXT_STEPS = [
 export const QuickEndCard: React.FC = () => {
   const [copied, setCopied] = useState<string | null>(null);
   const copy = (text: string) => {
-    void navigator.clipboard?.writeText(text).then(() => setCopied(text), () => {});
+    void navigator.clipboard?.writeText(text).then(
+      () => setCopied(text),
+      () => {},
+    );
   };
   return (
     <div className="absolute inset-x-0 top-0 bottom-12 flex items-center justify-center bg-black/75 p-6">
@@ -26,7 +29,10 @@ export const QuickEndCard: React.FC = () => {
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Next, say to Claude</div>
         <ul className="mt-3 flex flex-col gap-2">
           {NEXT_STEPS.map(({ say, what }) => (
-            <li key={say} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+            <li
+              key={say}
+              className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2"
+            >
               <div className="min-w-0 flex-1">
                 <div className="font-mono text-sm text-white">"{say}"</div>
                 <div className="text-xs text-slate-400">{what}</div>

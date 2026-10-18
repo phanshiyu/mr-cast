@@ -13,10 +13,19 @@ try {
   for (const example of findExamples()) {
     const dir = path.join(work, example.name);
     copyExample(example, dir);
-    const res = spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), 'validate', '--dir', dir, ...example.flags], {
-      encoding: 'utf8',
-      env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(work, 'config'), CLAUDE_CONFIG_DIR: path.join(work, 'claude') },
-    });
+    const res = spawnSync(
+      process.execPath,
+      [path.join(ROOT, 'bin/mr-cast.mjs'), 'validate', '--dir', dir, ...example.flags],
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          MR_CAST_NO_UPDATE_CHECK: '1',
+          XDG_CONFIG_HOME: path.join(work, 'config'),
+          CLAUDE_CONFIG_DIR: path.join(work, 'claude'),
+        },
+      },
+    );
     const summary = res.stdout.trim().split('\n').at(-1);
     console.log(`${example.rel}: ${summary}`);
     if (res.status !== 0 || /could not load Mermaid/.test(res.stderr)) {

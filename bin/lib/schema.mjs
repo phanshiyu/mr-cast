@@ -30,7 +30,11 @@ export function readSchema(root) {
     }
     const body = [line];
     if (line.match(/^(?:export )?interface /)) while (!lines[i].startsWith('}')) body.push(lines[++i]);
-    decls.set(head[1], { name: head[1], text: [...doc, ...body].join('\n').replace(/^export /m, ''), storyboard: i >= first && i < last });
+    decls.set(head[1], {
+      name: head[1],
+      text: [...doc, ...body].join('\n').replace(/^export /m, ''),
+      storyboard: i >= first && i < last,
+    });
     doc = [];
   }
   const names = [...decls.keys()];
@@ -42,11 +46,19 @@ export function readSchema(root) {
 }
 
 /** A declaration's text without its comments and string literals, which name no type. */
-const code = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '').replace(/'[^'\n]*'/g, "''");
+const code = (text) =>
+  text
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '')
+    .replace(/'[^'\n]*'/g, "''");
 
 /** The scene types by their `type` literal, such as array → ArrayScene. */
 export function sceneTypes(decls) {
-  const union = decls.get('Scene').text.match(/=\s*([^;]+);/)[1].split('|').map((s) => s.trim());
+  const union = decls
+    .get('Scene')
+    .text.match(/=\s*([^;]+);/)[1]
+    .split('|')
+    .map((s) => s.trim());
   return new Map(union.map((name) => [decls.get(name).text.match(/type: '(\w+)';/)[1], name]));
 }
 
@@ -71,12 +83,21 @@ export function formatSchema(root, what) {
   const decls = readSchema(root);
   const scenes = sceneTypes(decls);
   const show = (names) => names.map((n) => decls.get(n).text).join('\n\n');
-  if (what === 'all') return show(closure(decls, [...decls.values()].filter((d) => d.storyboard).map((d) => d.name)));
+  if (what === 'all')
+    return show(
+      closure(
+        decls,
+        [...decls.values()].filter((d) => d.storyboard).map((d) => d.name),
+      ),
+    );
   if (what === undefined) {
     const root = closure(decls, ['Storyboard', 'SceneBase']).filter((n) => n !== 'Scene');
     return `${show(root)}\n\n// Scene is one of these. \`mr-cast schema <type>\` prints a scene's fields: ${[...scenes.keys()].join(', ')}.`;
   }
   const name = scenes.get(what) ?? (decls.has(what) ? what : null);
-  if (!name) throw new UserError(`no scene type or schema type "${what}"; scene types: ${[...scenes.keys()].join(', ')}; or "all"`);
+  if (!name)
+    throw new UserError(
+      `no scene type or schema type "${what}"; scene types: ${[...scenes.keys()].join(', ')}; or "all"`,
+    );
   return show(closure(decls, [name]));
 }

@@ -44,7 +44,8 @@ const lerp = (a, b, t) => a + (b - a) * t;
 /** Where `value` falls in an ascending list: the index below it and how far towards the next. */
 function bracket(list, value) {
   if (value <= list[0]) return [0, 0];
-  for (let k = 0; k < list.length - 1; k++) if (value <= list[k + 1]) return [k, (value - list[k]) / (list[k + 1] - list[k])];
+  for (let k = 0; k < list.length - 1; k++)
+    if (value <= list[k + 1]) return [k, (value - list[k]) / (list[k + 1] - list[k])];
   return [list.length - 1, 0];
 }
 
@@ -69,7 +70,10 @@ function kernTable(family, weight, band) {
   const key = `${family}${weight}${band}`;
   if (!kernTables.has(key)) {
     const list = KERNING[family]?.[weight]?.[band];
-    kernTables.set(key, new Map(list ? list.split('\n').map((entry) => [entry.slice(0, 2), Number(entry.slice(2)) / 1000]) : []));
+    kernTables.set(
+      key,
+      new Map(list ? list.split('\n').map((entry) => [entry.slice(0, 2), Number(entry.slice(2)) / 1000]) : []),
+    );
   }
   return kernTables.get(key);
 }
@@ -85,7 +89,10 @@ function kerning(a, b, family, weight, size) {
   if (!a || family === 'mono') return 0;
   const pair = a + b;
   const [w, tw] = bracket(MEASURED_WEIGHTS, weight);
-  const ws = tw === 0 ? [MEASURED_WEIGHTS[w]] : [MEASURED_WEIGHTS[w], MEASURED_WEIGHTS[Math.min(w + 1, MEASURED_WEIGHTS.length - 1)]];
+  const ws =
+    tw === 0
+      ? [MEASURED_WEIGHTS[w]]
+      : [MEASURED_WEIGHTS[w], MEASURED_WEIGHTS[Math.min(w + 1, MEASURED_WEIGHTS.length - 1)]];
   let k = -Infinity;
   for (const wk of ws) for (const band of bandsAt(size)) k = Math.max(k, kernTable(family, wk, band).get(pair) ?? 0);
   return k * size;
@@ -97,7 +104,10 @@ export function measure(text, font) {
   let width = 0;
   let prev = '';
   for (const ch of shown) {
-    width += charWidth(ch, font.family, font.weight, font.size) + kerning(prev, ch, font.family, font.weight, font.size) + (font.letterSpacing ?? 0);
+    width +=
+      charWidth(ch, font.family, font.weight, font.size) +
+      kerning(prev, ch, font.family, font.weight, font.size) +
+      (font.letterSpacing ?? 0);
     prev = ch;
   }
   return width;
@@ -105,13 +115,17 @@ export function measure(text, font) {
 
 /** The font a run draws in over a base font. */
 export function runFont(run, font) {
-  if (run.code) return { family: 'mono', weight: run.bold ? 700 : Math.min(font.weight, 600), size: font.size * CODE_SCALE };
+  if (run.code)
+    return { family: 'mono', weight: run.bold ? 700 : Math.min(font.weight, 600), size: font.size * CODE_SCALE };
   return run.bold ? { ...font, weight: boldWeight(font.weight) } : font;
 }
 
 /** Width of styled runs in `font`, code chips with their padding. */
 export function runsWidth(runs, font) {
-  return runs.reduce((sum, run) => sum + measure(run.text, runFont(run, font)) + (run.code ? 2 * CODE_PAD * font.size : 0), 0);
+  return runs.reduce(
+    (sum, run) => sum + measure(run.text, runFont(run, font)) + (run.code ? 2 * CODE_PAD * font.size : 0),
+    0,
+  );
 }
 
 /**
@@ -138,7 +152,10 @@ function layoutChars(runs, font) {
     const shown = font.upper && !run.code ? run.text.toUpperCase() : run.text;
     const list = [...shown];
     list.forEach((ch, k) => {
-      let w = charWidth(ch, f.family, f.weight, f.size) + kerning(list[k - 1], ch, f.family, f.weight, f.size) + (run.code ? 0 : font.letterSpacing ?? 0);
+      let w =
+        charWidth(ch, f.family, f.weight, f.size) +
+        kerning(list[k - 1], ch, f.family, f.weight, f.size) +
+        (run.code ? 0 : (font.letterSpacing ?? 0));
       if (run.code && k === 0) w += CODE_PAD * font.size;
       if (run.code && k === list.length - 1) w += CODE_PAD * font.size;
       chars.push({ ch, run, w });
@@ -308,7 +325,13 @@ function styledOf(runs) {
   return total ? runs.reduce((n, r) => n + (r.bold || r.code || r.mark || r.tone ? r.text.length : 0), 0) / total : 0;
 }
 
-const fontOf = (slot, size) => ({ family: slot.family, weight: slot.weight, size, letterSpacing: slot.letterSpacing, upper: slot.upper });
+const fontOf = (slot, size) => ({
+  family: slot.family,
+  weight: slot.weight,
+  size,
+  letterSpacing: slot.letterSpacing,
+  upper: slot.upper,
+});
 
 /** The wrap of `runs` in at most `maxLines` lines at `size`, or null when it needs more or breaks a word. */
 function attempt(runs, slot, size, maxLines) {
@@ -371,7 +394,24 @@ export function fitTextAt(text, slot, path, size) {
 
 /** A whole block that must fit a space, such as a table's rows in the frame, as a report entry. */
 export function fitBlock(path, slot, fits, fix) {
-  return { fit: true, path, text: '', slot, fix, size: 0, font: { family: 'sans', weight: 400, size: 0 }, lines: [], widths: [], width: 0, height: 0, lineHeight: 0, fits, min: 0, markupErrors: [], styled: 0 };
+  return {
+    fit: true,
+    path,
+    text: '',
+    slot,
+    fix,
+    size: 0,
+    font: { family: 'sans', weight: 400, size: 0 },
+    lines: [],
+    widths: [],
+    width: 0,
+    height: 0,
+    lineHeight: 0,
+    fits,
+    min: 0,
+    markupErrors: [],
+    styled: 0,
+  };
 }
 
 /**
@@ -387,7 +427,11 @@ export function fitLines(lines, slot, height, path) {
   const width = typeof slot.width === 'function' ? slot.width(lines.length, slot.size) : slot.width;
   const widthsAt = (size) => lines.map((line) => measure(line, fontOf(slot, size)));
   let size = slot.size;
-  while (size > slot.min && (Math.max(0, ...widthsAt(size)) > width + 0.01 || lines.length * size * slot.lineHeight > height + 0.01)) size--;
+  while (
+    size > slot.min &&
+    (Math.max(0, ...widthsAt(size)) > width + 0.01 || lines.length * size * slot.lineHeight > height + 0.01)
+  )
+    size--;
   const widths = widthsAt(size);
   const fits = Math.max(0, ...widths) <= width + 0.01 && lines.length * size * slot.lineHeight <= height + 0.01;
   const widest = widths.indexOf(Math.max(0, ...widths));

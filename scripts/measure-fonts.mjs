@@ -27,7 +27,8 @@ const FACES = Object.fromEntries(
   Object.entries(FAMILIES).map(([name, family]) => {
     const face = family.split(',')[0].trim();
     const imported = new RegExp(`import ${name} from '\\./(assets/[^']+\\.woff2)'`).exec(fontsModule);
-    if (!imported || !fontsModule.includes(`${name}: '${face}'`)) throw new Error(`src/fonts.ts loads no ${face} for the ${name} stack`);
+    if (!imported || !fontsModule.includes(`${name}: '${face}'`))
+      throw new Error(`src/fonts.ts loads no ${face} for the ${name} stack`);
     return [face, fs.readFileSync(path.join(REPO, 'src', imported[1])).toString('base64')];
   }),
 );
@@ -43,15 +44,32 @@ const EXTRA = '…→←↔−–—·•’‘“”×÷≤≥≠≈✓✗€£
 const CHARS = [...Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)), ...EXTRA];
 
 function chromePath() {
-  const root = path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'mr-cast/remotion/node_modules/.remotion/chrome-headless-shell');
-  const found = execSync(`find ${JSON.stringify(root)} -name chrome-headless-shell -type f -perm -u+x 2>/dev/null | head -1`, { encoding: 'utf8' }).trim();
+  const root = path.join(
+    process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
+    'mr-cast/remotion/node_modules/.remotion/chrome-headless-shell',
+  );
+  const found = execSync(
+    `find ${JSON.stringify(root)} -name chrome-headless-shell -type f -perm -u+x 2>/dev/null | head -1`,
+    { encoding: 'utf8' },
+  ).trim();
   if (!found) throw new Error(`no Chrome Headless Shell under ${root}; run any mr-cast still once to download it`);
   return found;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-fonts-'));
-const chrome = spawn(chromePath(), ['--headless', '--disable-gpu', '--no-first-run', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(
+  chromePath(),
+  [
+    '--headless',
+    '--disable-gpu',
+    '--no-first-run',
+    '--remote-debugging-port=0',
+    `--user-data-dir=${profile}`,
+    'about:blank',
+  ],
+  { stdio: 'ignore' },
+);
 
 try {
   const portFile = path.join(profile, 'DevToolsActivePort');
@@ -59,7 +77,10 @@ try {
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
   const page = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find((t) => t.type === 'page');
   const ws = new WebSocket(page.webSocketDebuggerUrl, { perMessageDeflate: false });
-  await new Promise((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
+  await new Promise((resolve, reject) => {
+    ws.once('open', resolve);
+    ws.once('error', reject);
+  });
   const pending = new Map();
   ws.on('message', (raw) => {
     const msg = JSON.parse(raw);
@@ -69,8 +90,18 @@ try {
   const evaluate = (expression) =>
     new Promise((resolve, reject) => {
       const n = ++id;
-      pending.set(n, (msg) => (msg.error || msg.result.exceptionDetails ? reject(new Error(JSON.stringify(msg.error ?? msg.result.exceptionDetails))) : resolve(msg.result.result.value)));
-      ws.send(JSON.stringify({ id: n, method: 'Runtime.evaluate', params: { expression, returnByValue: true, awaitPromise: true } }));
+      pending.set(n, (msg) =>
+        msg.error || msg.result.exceptionDetails
+          ? reject(new Error(JSON.stringify(msg.error ?? msg.result.exceptionDetails)))
+          : resolve(msg.result.result.value),
+      );
+      ws.send(
+        JSON.stringify({
+          id: n,
+          method: 'Runtime.evaluate',
+          params: { expression, returnByValue: true, awaitPromise: true },
+        }),
+      );
     });
   const measured = await evaluate(`(async () => {
     for (const [family, data] of Object.entries(${JSON.stringify(FACES)})) {
@@ -165,14 +196,21 @@ try {
     ...Object.entries(measured.kern).map(
       ([family, byWeight]) =>
         `  ${family}: {\n${Object.entries(byWeight)
-          .map(([w, bands]) => `    ${w}: {\n${Object.entries(bands).map(([band, pairs]) => `      ${band}: ${JSON.stringify(pairs.map(([p, k]) => p + k).join('\n'))},`).join('\n')}\n    },`)
+          .map(
+            ([w, bands]) =>
+              `    ${w}: {\n${Object.entries(bands)
+                .map(([band, pairs]) => `      ${band}: ${JSON.stringify(pairs.map(([p, k]) => p + k).join('\n'))},`)
+                .join('\n')}\n    },`,
+          )
           .join('\n')}\n  },`,
     ),
     '};',
     '',
   ];
   fs.writeFileSync(OUT, lines.join('\n'));
-  console.log(`wrote ${path.relative(REPO, OUT)}: ${CHARS.length} characters x ${WEIGHTS.length} weights x ${SIZES.length} sizes x ${Object.keys(FAMILIES).length} families`);
+  console.log(
+    `wrote ${path.relative(REPO, OUT)}: ${CHARS.length} characters x ${WEIGHTS.length} weights x ${SIZES.length} sizes x ${Object.keys(FAMILIES).length} families`,
+  );
 } finally {
   chrome.kill('SIGKILL');
   await sleep(200);

@@ -19,7 +19,11 @@ export function tintMix(s: StateFrame, key: string): TintMix {
 }
 
 /** The strongest tone in a mix, for a border or a label, or null. */
-export const mainTone = (mix: TintMix): Tone | null => mix.tones.reduce<{ tone: Tone; amount: number } | null>((best, t) => (!best || t.amount > best.amount ? t : best), null)?.tone ?? null;
+export const mainTone = (mix: TintMix): Tone | null =>
+  mix.tones.reduce<{ tone: Tone; amount: number } | null>(
+    (best, t) => (!best || t.amount > best.amount ? t : best),
+    null,
+  )?.tone ?? null;
 
 /** Opacity a dimmed item keeps: ruled out, it recedes but stays readable. */
 export const DIM_KEEP = 0.5;

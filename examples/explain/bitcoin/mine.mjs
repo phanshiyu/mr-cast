@@ -7,13 +7,27 @@ import fs from 'node:fs';
 
 const BITS = 30;
 const sha = (s) => createHash('sha256').update(s).digest('hex');
-const zeroBits = (hex) => { let n = 0; for (const ch of hex) { const v = parseInt(ch, 16); if (v === 0) { n += 4; continue; } return n + Math.clz32(v) - 28; } return n; };
+const zeroBits = (hex) => {
+  let n = 0;
+  for (const ch of hex) {
+    const v = parseInt(ch, 16);
+    if (v === 0) {
+      n += 4;
+      continue;
+    }
+    return n + Math.clz32(v) - 28;
+  }
+  return n;
+};
 const blockText = (prev, txs, nonce) => `prev: ${prev}\n${txs.join('\n')}\nnonce: ${nonce}`;
 
 if (!isMainThread) {
   const { prev, txs, start, step } = workerData;
   for (let n = start; ; n += step) {
-    if (zeroBits(sha(blockText(prev, txs, n))) >= BITS) { parentPort.postMessage(n); break; }
+    if (zeroBits(sha(blockText(prev, txs, n))) >= BITS) {
+      parentPort.postMessage(n);
+      break;
+    }
   }
 } else {
   const blocks = [
@@ -21,16 +35,23 @@ if (!isMainThread) {
     ['#4 David pays Alice 2 LD', '#5 Bob pays David 4 LD'],
     ['#6 Alice pays Charlie 7 LD', '#7 Charlie pays Bob 1 LD'],
   ];
-  const mine = (prev, txs) => new Promise((resolve) => {
-    const k = os.cpus().length; const ws = [];
-    const found = [];
-    for (let i = 0; i < k; i++) {
-      const w = new Worker(new URL(import.meta.url), { workerData: { prev, txs, start: i, step: k } });
-      w.on('message', (n) => { found.push(n); ws.forEach((x) => x.terminate()); resolve(Math.min(...found)); });
-      ws.push(w);
-    }
-  });
-  let prev = '0'.repeat(64); const out = [];
+  const mine = (prev, txs) =>
+    new Promise((resolve) => {
+      const k = os.cpus().length;
+      const ws = [];
+      const found = [];
+      for (let i = 0; i < k; i++) {
+        const w = new Worker(new URL(import.meta.url), { workerData: { prev, txs, start: i, step: k } });
+        w.on('message', (n) => {
+          found.push(n);
+          ws.forEach((x) => x.terminate());
+          resolve(Math.min(...found));
+        });
+        ws.push(w);
+      }
+    });
+  let prev = '0'.repeat(64);
+  const out = [];
   for (const txs of blocks) {
     const t = Date.now();
     const nonce = await mine(prev, txs);

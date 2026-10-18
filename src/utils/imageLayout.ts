@@ -26,7 +26,11 @@ export interface ImageLayout {
 }
 
 /** Lays a picture out in a scene's content box: the frame, the picture in it, and the caption and credit under it. */
-export function layoutImage(scene: ImageScene, box: { width: number; height: number }, images: ImageManifest | undefined): ImageLayout {
+export function layoutImage(
+  scene: ImageScene,
+  box: { width: number; height: number },
+  images: ImageManifest | undefined,
+): ImageLayout {
   const caption = scene.caption ? fitText(scene.caption, sized(SLOTS.imageCaption, box.width * 0.8), 'caption') : null;
   const credit = scene.credit ? fitText(scene.credit, sized(SLOTS.imageCredit, box.width * 0.5), 'credit') : null;
   const below = Math.max(caption?.height ?? 0, credit?.height ?? 0);
@@ -42,8 +46,21 @@ export function layoutImage(scene: ImageScene, box: { width: number; height: num
   const base = { x: (frame.width - width) / 2, y: (frame.height - height) / 2, width, height };
   // Contain shows the picture in the middle of its frame, so the frame shrinks to it.
   const shown = scene.fit === 'cover' ? frame : base;
-  const labels = new Map((scene.regions ?? []).flatMap((r, i) => (r.label ? [[r.id, fitText(r.label, sized(SLOTS.regionLabel, 420), `regions[${i}].label`)] as const] : [])));
-  return { frame: shown, base, caption, credit, captionTop: shown.y + shown.height + CAPTION_GAP, labels, natural, upscale: natural ? width / natural.width : 1 };
+  const labels = new Map(
+    (scene.regions ?? []).flatMap((r, i) =>
+      r.label ? [[r.id, fitText(r.label, sized(SLOTS.regionLabel, 420), `regions[${i}].label`)] as const] : [],
+    ),
+  );
+  return {
+    frame: shown,
+    base,
+    caption,
+    credit,
+    captionTop: shown.y + shown.height + CAPTION_GAP,
+    labels,
+    natural,
+    upscale: natural ? width / natural.width : 1,
+  };
 }
 
 /** The box a `kenBurns` end names: a region's, a box as written, or the whole picture. */
@@ -68,7 +85,10 @@ export function viewAt(scene: ImageScene, t: number): ImageBox {
 export function cameraFor(layout: ImageLayout, view: ImageBox) {
   const { base } = layout;
   const zoom = Math.min(1 / view[2], 1 / view[3]);
-  const centre = { x: base.x + (view[0] + view[2] / 2) * base.width, y: base.y + (view[1] + view[3] / 2) * base.height };
+  const centre = {
+    x: base.x + (view[0] + view[2] / 2) * base.width,
+    y: base.y + (view[1] + view[3] / 2) * base.height,
+  };
   const mid = { x: base.x + base.width / 2, y: base.y + base.height / 2 };
   const map = (x: number, y: number) => ({ x: mid.x + (x - centre.x) * zoom, y: mid.y + (y - centre.y) * zoom });
   const corner = map(base.x, base.y);

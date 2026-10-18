@@ -21,7 +21,16 @@ export const HeaderCallout: React.FC<{ scene: Scene; s: StateFrame }> = ({ scene
   const glow = changed ? s.lit : 0;
   const text = (value: string, opacity: number) =>
     value && opacity > 0 ? (
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity,
+        }}
+      >
         <FitText fit={fits.get(value)!} align="center" style={{ color: colors.text }} />
       </div>
     ) : null;
@@ -36,7 +45,10 @@ export const HeaderCallout: React.FC<{ scene: Scene; s: StateFrame }> = ({ scene
         borderRadius: 14,
         background: colors.raised,
         border: `1.5px solid ${glow > 0 ? colors.accent : colors.borderStrong}`,
-        boxShadow: glow > 0 ? `0 0 0 ${3 * glow}px ${colors.accentSoft}, 0 0 ${30 * glow}px ${colors.accentGlow}` : '0 10px 26px rgba(0,0,0,0.35)',
+        boxShadow:
+          glow > 0
+            ? `0 0 0 ${3 * glow}px ${colors.accentSoft}, 0 0 ${30 * glow}px ${colors.accentGlow}`
+            : '0 10px 26px rgba(0,0,0,0.35)',
         opacity: shown,
       }}
     >

@@ -71,7 +71,9 @@ export function updateNotice(root, version, env = process.env) {
       // Record the attempt first, so commands run while it is in flight, or offline, start no more.
       writeCache(latest);
       const worker = path.join(path.dirname(fileURLToPath(import.meta.url)), 'update-check.mjs');
-      spawn(process.execPath, [worker], { detached: true, stdio: 'ignore' }).on('error', () => {}).unref();
+      spawn(process.execPath, [worker], { detached: true, stdio: 'ignore' })
+        .on('error', () => {})
+        .unref();
     }
     if (!latest || compareVersions(latest, version) <= 0) return null;
     return `mr-cast ${latest} is available (you have ${version}). Run \`mr-cast upgrade\`.`;

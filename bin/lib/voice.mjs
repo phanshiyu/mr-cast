@@ -28,21 +28,28 @@ const isPauses = (n) => Number.isFinite(n) && n > 0 && n <= 4;
  * is absent, for the normal pace.
  */
 export function parsePace({ pace, speed }) {
-  if (pace !== undefined && !Object.hasOwn(PACES, pace)) throw new UserError(`--pace must be one of ${Object.keys(PACES).join(', ')} (got "${pace}")`);
+  if (pace !== undefined && !Object.hasOwn(PACES, pace))
+    throw new UserError(`--pace must be one of ${Object.keys(PACES).join(', ')} (got "${pace}")`);
   const chosen = pace === undefined ? {} : { ...PACES[pace] };
   if (speed !== undefined) {
     const n = Math.round(Number(speed) * 100) / 100;
-    if (speed.trim() === '' || !isSpeed(n)) throw new UserError(`--speed must be a number from ${MIN_SPEED} to ${MAX_SPEED}, such as 0.85 or 1.15 (got "${speed}")`);
+    if (speed.trim() === '' || !isSpeed(n))
+      throw new UserError(
+        `--speed must be a number from ${MIN_SPEED} to ${MAX_SPEED}, such as 0.85 or 1.15 (got "${speed}")`,
+      );
     chosen.speed = n;
   }
   return chosen;
 }
 
-const isSentence = (s) => Number.isInteger(s?.words) && s.words >= 0 && Number.isFinite(s.start) && Number.isFinite(s.end) && s.end >= s.start;
+const isSentence = (s) =>
+  Number.isInteger(s?.words) && s.words >= 0 && Number.isFinite(s.start) && Number.isFinite(s.end) && s.end >= s.start;
 
 /** How far voicing has come, in spoken lines: each distinct narration or `say` is one clip. */
 export function voicedLines(storyboard, voiceover) {
-  const texts = [...new Set(storyboard.scenes.flatMap(spokenTexts).filter((text) => typeof text === 'string' && text.trim()))];
+  const texts = [
+    ...new Set(storyboard.scenes.flatMap(spokenTexts).filter((text) => typeof text === 'string' && text.trim())),
+  ];
   return { done: texts.filter((text) => clipFor(voiceover, text)).length, total: texts.length };
 }
 
@@ -59,28 +66,39 @@ export function readVoiceover(dataDir) {
   for (const [key, clip] of Object.entries(raw.clips)) {
     if (!CLIP_SRC.test(clip?.src) || !Number.isFinite(clip.seconds) || clip.seconds <= 0) continue;
     clips[key] = { src: clip.src, seconds: clip.seconds };
-    if (typeof clip.voice === 'string' && isSpeed(clip.speed)) Object.assign(clips[key], { voice: clip.voice, speed: clip.speed });
+    if (typeof clip.voice === 'string' && isSpeed(clip.speed))
+      Object.assign(clips[key], { voice: clip.voice, speed: clip.speed });
     if (Array.isArray(clip.sentences) && clip.sentences.every(isSentence)) clips[key].sentences = clip.sentences;
   }
-  return { voice: raw.voice, speed: isSpeed(raw.speed) ? raw.speed : 1, pauses: isPauses(raw.pauses) ? raw.pauses : 1, clips };
+  return {
+    voice: raw.voice,
+    speed: isSpeed(raw.speed) ? raw.speed : 1,
+    pauses: isPauses(raw.pauses) ? raw.pauses : 1,
+    clips,
+  };
 }
 
 /** Each engine's loaded model, once per process. A failed load is forgotten so the next call retries. */
 const models = new Map();
 
-const waitingFor = (what) => (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish ${what} the voice model`);
+const waitingFor = (what) => (pid) =>
+  console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish ${what} the voice model`);
 
 /** Kitten's files, each checked against its pinned sha256, downloaded under the engine's lock so two processes share one download. */
 async function downloadKittenFiles(onProgress) {
   const dir = ENGINES.kitten.dir();
   if (ENGINES.kitten.downloaded()) return;
   fs.mkdirSync(path.dirname(dir), { recursive: true });
-  await withLock(ENGINES.kitten.lock(), async () => {
-    removeDeadPartials(dir);
-    if (ENGINES.kitten.downloaded()) return;
-    onProgress?.({ type: 'download', engine: 'kitten', mb: ENGINES.kitten.mb, cacheDir: dir });
-    await downloadKitten(dir);
-  }, waitingFor('downloading'));
+  await withLock(
+    ENGINES.kitten.lock(),
+    async () => {
+      removeDeadPartials(dir);
+      if (ENGINES.kitten.downloaded()) return;
+      onProgress?.({ type: 'download', engine: 'kitten', mb: ENGINES.kitten.mb, cacheDir: dir });
+      await downloadKitten(dir);
+    },
+    waitingFor('downloading'),
+  );
 }
 
 /**
@@ -103,11 +121,16 @@ const LOADERS = {
     if (process.env.HF_ENDPOINT) env.remoteHost = `${hubUrl()}/`;
     const { KokoroTTS, TextSplitterStream } = await import('./kokoro/kokoro.js');
     fs.mkdirSync(modelDir, { recursive: true });
-    const tts = await withLock(ENGINES.kokoro.lock(), () => {
-      removeDeadPartials(modelDir);
-      if (!ENGINES.kokoro.downloaded()) onProgress?.({ type: 'download', engine: 'kokoro', mb: ENGINES.kokoro.mb, cacheDir: modelDir });
-      return KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: 'q8', device: 'cpu' });
-    }, waitingFor('loading'));
+    const tts = await withLock(
+      ENGINES.kokoro.lock(),
+      () => {
+        removeDeadPartials(modelDir);
+        if (!ENGINES.kokoro.downloaded())
+          onProgress?.({ type: 'download', engine: 'kokoro', mb: ENGINES.kokoro.mb, cacheDir: modelDir });
+        return KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: 'q8', device: 'cpu' });
+      },
+      waitingFor('loading'),
+    );
     const { getVoiceData } = await import('./kokoro/voices.js');
     return {
       sampleRate: 24000,
@@ -115,16 +138,19 @@ const LOADERS = {
         try {
           await getVoiceData(name);
         } catch (err) {
-          throw new UserError(`could not get voice "${name}" (${err.cause?.message ?? err.message}); the first use of a Kokoro voice downloads about 0.5 MB from huggingface.co into ${modelDir}`);
+          throw new UserError(
+            `could not get voice "${name}" (${err.cause?.message ?? err.message}); the first use of a Kokoro voice downloads about 0.5 MB from huggingface.co into ${modelDir}`,
+          );
         }
       },
-      async* speak(text, name, speed) {
+      async *speak(text, name, speed) {
         // generate() truncates past 510 tokens, so speak sentence by sentence. stream() never closes the splitter
         // it builds from a string and hangs before the last sentence, so pass it a closed one.
         const splitter = new TextSplitterStream();
         splitter.push(text);
         splitter.close();
-        for await (const { text: sentence, audio } of tts.stream(splitter, { voice: name, speed })) yield { sentence, audio: audio.audio };
+        for await (const { text: sentence, audio } of tts.stream(splitter, { voice: name, speed }))
+          yield { sentence, audio: audio.audio };
       },
     };
   },
@@ -134,15 +160,20 @@ const SOURCES = { kitten: KITTEN_REPO, kokoro: KOKORO_MODEL_ID };
 
 const loadFailure = (engine, err) => {
   const { mb, dir } = ENGINES[engine];
-  return new UserError(`could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${hubUrl().replace(/^https?:\/\//, '')}/${SOURCES[engine]} into ${dir()}`);
+  return new UserError(
+    `could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${hubUrl().replace(/^https?:\/\//, '')}/${SOURCES[engine]} into ${dir()}`,
+  );
 };
 
 function loadEngine(engine, onProgress) {
   if (!models.has(engine)) {
-    models.set(engine, LOADERS[engine](onProgress).catch((err) => {
-      models.delete(engine);
-      throw loadFailure(engine, err);
-    }));
+    models.set(
+      engine,
+      LOADERS[engine](onProgress).catch((err) => {
+        models.delete(engine);
+        throw loadFailure(engine, err);
+      }),
+    );
   }
   return models.get(engine);
 }
@@ -185,7 +216,11 @@ async function speak(model, text, name, speed) {
   for (const { sentence, audio } of chunks) {
     samples.set(audio, offset);
     const [first, end] = soundBounds(audio);
-    sentences.push({ words: wordCount(sentence), start: roundMs((offset + first) / sampleRate), end: roundMs((offset + end) / sampleRate) });
+    sentences.push({
+      words: wordCount(sentence),
+      start: roundMs((offset + first) / sampleRate),
+      end: roundMs((offset + end) / sampleRate),
+    });
     offset += audio.length;
   }
   return { samples, sampleRate, sentences };
@@ -233,7 +268,8 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
   const clips = {};
   for (const [key, clip] of Object.entries(previous?.clips ?? {})) {
     const made = { voice: clip.voice ?? previous.voice, speed: clip.speed ?? previous.speed };
-    if (onDisk(clip) && texts.some((text) => narrationKey(text, made.voice, made.speed) === key)) clips[key] = { ...clip, ...made };
+    if (onDisk(clip) && texts.some((text) => narrationKey(text, made.voice, made.speed) === key))
+      clips[key] = { ...clip, ...made };
   }
   const missing = new Map();
   for (const text of texts) {
@@ -243,7 +279,8 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
 
   if (missing.size) {
     const { engine, name } = voiceParts(chosen);
-    if (!Object.hasOwn(ENGINES, engine) || !Object.hasOwn(ENGINES[engine].voices, name)) throw new UserError(`unknown voice "${chosen}"; \`mr-cast voices\` lists them`);
+    if (!Object.hasOwn(ENGINES, engine) || !Object.hasOwn(ENGINES[engine].voices, name))
+      throw new UserError(`unknown voice "${chosen}"; \`mr-cast voices\` lists them`);
     const model = await loadEngine(engine, onProgress);
     await model.prepare?.(name);
     fs.mkdirSync(path.join(dataDir, AUDIO_DIR), { recursive: true });
@@ -257,7 +294,14 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
       // voicing stopped for a newer edit keeps them.
       const partial = { voice: chosen, speed, pauses, clips: { ...clips } };
       writeAtomic(path.join(dataDir, VOICEOVER_FILE), `${JSON.stringify(partial, null, 2)}\n`);
-      onProgress?.({ type: 'clip', text, seconds: clips[key].seconds, done: ++done, total: missing.size, voiceover: partial });
+      onProgress?.({
+        type: 'clip',
+        text,
+        seconds: clips[key].seconds,
+        done: ++done,
+        total: missing.size,
+        voiceover: partial,
+      });
     }
   }
 
@@ -268,7 +312,11 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
 
   const used = new Set(Object.values(clips).map((c) => path.basename(c.src)));
   let stale = [];
-  try { stale = fs.readdirSync(path.join(dataDir, AUDIO_DIR)); } catch { /* no clips yet */ }
+  try {
+    stale = fs.readdirSync(path.join(dataDir, AUDIO_DIR));
+  } catch {
+    /* no clips yet */
+  }
   for (const name of stale) {
     if (OWNED_FILE.test(name) && !used.has(name)) fs.rmSync(path.join(dataDir, AUDIO_DIR, name), { force: true });
   }
@@ -276,7 +324,8 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
 }
 
 /** The sentence `mr-cast voices --sample` reads. */
-export const SAMPLE_TEXT = 'Here is how this change works: the request takes a token, and an empty bucket makes it wait.';
+export const SAMPLE_TEXT =
+  'Here is how this change works: the request takes a token, and an empty bucket makes it wait.';
 
 /** Voices SAMPLE_TEXT in `voice` at `speed` into the WAV file `out`; returns its length in seconds. */
 export async function sampleVoice({ voice, speed, out, onProgress }) {

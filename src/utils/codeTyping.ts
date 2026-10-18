@@ -18,7 +18,13 @@ export interface TypingSchedule {
  * When each step types its lines: from just after it starts, spread over most of its words, at a rate between
  * SLOWEST and FASTEST, and done before the next step starts.
  */
-export function typingSchedule(texts: readonly string[], slots: readonly Slot[], stepCount: number, segments: readonly SpokenSegment[], durationInFrames: number): TypingSchedule {
+export function typingSchedule(
+  texts: readonly string[],
+  slots: readonly Slot[],
+  stepCount: number,
+  segments: readonly SpokenSegment[],
+  durationInFrames: number,
+): TypingSchedule {
   const lines: TypingSchedule['lines'] = slots.map(() => null);
   const ends: number[] = [];
   for (let k = 0; k < stepCount; k++) {
@@ -44,4 +50,3 @@ export function typingSchedule(texts: readonly string[], slots: readonly Slot[],
   }
   return { lines, ends };
 }
-

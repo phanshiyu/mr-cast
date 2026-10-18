@@ -34,7 +34,15 @@ export interface MatrixRow {
 export interface TestsMatrix {
   outcomes: string[];
   rows: MatrixRow[];
-  counts: { tests: number; added: number; modified: number; removed: number; existing: number; gaps: number; unchecked: number };
+  counts: {
+    tests: number;
+    added: number;
+    modified: number;
+    removed: number;
+    existing: number;
+    gaps: number;
+    unchecked: number;
+  };
 }
 
 export declare const situationKey: (id: string) => string;

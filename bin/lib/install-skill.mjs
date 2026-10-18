@@ -27,16 +27,25 @@ const LEGACY = [
  */
 const MARK = '<!-- written by mr-cast install-skill -->';
 /** Text every file mr-cast writes contains: the CLI path (skills), the path of its skill (older commands), or MARK. */
-const MARKERS = ['/bin/mr-cast', '/skills/mr-video/SKILL.md', '/skills/explain-in-animation/SKILL.md', '/skills/mr-cast-', MARK];
+const MARKERS = [
+  '/bin/mr-cast',
+  '/skills/mr-video/SKILL.md',
+  '/skills/explain-in-animation/SKILL.md',
+  '/skills/mr-cast-',
+  MARK,
+];
 
 const defaultClaudeDir = () => process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude');
 
 /** The plan's views as a Markdown table: the key plan.json names, what the user reads, and the scenes that draw it. */
-const viewsTable = () => [
-  '| View | The user reads | Scene |',
-  '| --- | --- | --- |',
-  ...Object.entries(VIEWS).map(([key, view]) => `| \`${key}\` | ${view.label} | ${view.scenes.map((t) => `\`${t}\``).join(', ')} |`),
-].join('\n');
+const viewsTable = () =>
+  [
+    '| View | The user reads | Scene |',
+    '| --- | --- | --- |',
+    ...Object.entries(VIEWS).map(
+      ([key, view]) => `| \`${key}\` | ${view.label} | ${view.scenes.map((t) => `\`${t}\``).join(', ')} |`,
+    ),
+  ].join('\n');
 
 /** Sorts by skill, each skill's SKILL.md first and then its other files by path. */
 const installOrder = (f) => {
@@ -52,11 +61,18 @@ const byInstallOrder = (a, b) => {
  * Every Markdown file of every skill under skill/, as "<skill>/<path>": the skills are only Markdown, so an editor's
  * backup (SKILL.md~), a merge leftover (.orig) or a dotfile such as .DS_Store is never installed.
  */
-const skillFiles = (root) => fs
-  .readdirSync(path.join(root, 'skill'), { recursive: true })
-  .map((f) => f.split(path.sep).join('/'))
-  .filter((f) => f.includes('/') && f.endsWith('.md') && !/(^|\/)\./.test(f) && fs.statSync(path.join(root, 'skill', f)).isFile())
-  .sort(byInstallOrder);
+const skillFiles = (root) =>
+  fs
+    .readdirSync(path.join(root, 'skill'), { recursive: true })
+    .map((f) => f.split(path.sep).join('/'))
+    .filter(
+      (f) =>
+        f.includes('/') &&
+        f.endsWith('.md') &&
+        !/(^|\/)\./.test(f) &&
+        fs.statSync(path.join(root, 'skill', f)).isFile(),
+    )
+    .sort(byInstallOrder);
 
 const fromMrCast = (file) => {
   try {
@@ -96,7 +112,12 @@ function removeStale(claudeDir, keep) {
     }
     fs.rmSync(file);
     removed.push(file);
-    for (let dir = path.dirname(file); dir.startsWith(skills + path.sep) && fs.readdirSync(dir).length === 0; dir = path.dirname(dir)) fs.rmdirSync(dir);
+    for (
+      let dir = path.dirname(file);
+      dir.startsWith(skills + path.sep) && fs.readdirSync(dir).length === 0;
+      dir = path.dirname(dir)
+    )
+      fs.rmdirSync(dir);
   }
   return { removed, kept };
 }
@@ -110,15 +131,17 @@ function writeManifest(claudeDir, root, files) {
 }
 
 export function installSkill(root, claudeDir = defaultClaudeDir()) {
-  const fill = (template) => fs
-    .readFileSync(template, 'utf8')
-    .replaceAll('{{MR_CAST}}', () => root)
-    .replace('{{PLAN_VIEWS}}', viewsTable)
-    // Templates before 0.24 carried the whole schema; quality/variant.sh still installs them for comparison.
-    .replace('{{STORYBOARD_TYPES}}', () => formatSchema(root, 'all'));
+  const fill = (template) =>
+    fs
+      .readFileSync(template, 'utf8')
+      .replaceAll('{{MR_CAST}}', () => root)
+      .replace('{{PLAN_VIEWS}}', viewsTable)
+      // Templates before 0.24 carried the whole schema; quality/variant.sh still installs them for comparison.
+      .replace('{{STORYBOARD_TYPES}}', () => formatSchema(root, 'all'));
 
   // MR_CAST_SKILL_TEMPLATE swaps in a variant of the mr-cast skill's SKILL.md (quality/variant.sh).
-  const source = (rel) => (rel === 'mr-cast/SKILL.md' && process.env.MR_CAST_SKILL_TEMPLATE) || path.join(root, 'skill', rel);
+  const source = (rel) =>
+    (rel === 'mr-cast/SKILL.md' && process.env.MR_CAST_SKILL_TEMPLATE) || path.join(root, 'skill', rel);
   // A file is removed later only if it shows mr-cast wrote it, so one that never names the CLI gets a line that does.
   const marked = (text) => (MARKERS.some((m) => text.includes(m)) ? text : `${MARK}\n${text}`);
   const targets = skillFiles(root).map((rel) => [path.join(claudeDir, 'skills', rel), marked(fill(source(rel)))]);

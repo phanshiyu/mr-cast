@@ -40,9 +40,10 @@ Format the reply as "q1: ...", "q2: ...", then "ease: N" and "confusing_scene: .
 - video_help: what in the walkthrough saved you the most work, or "nothing", in one sentence.
 - confusing_scene: the scene that was most confusing, misleading or wrong once you read the code, and why, in one sentence.`
     : '- ease: a whole number from 1 (hard, I had to work for it) to 5 (easy) for the whole review.';
-  const budget = phase === 'budget'
-    ? `\n\nYou have a strict reading budget for the code. You may run \`git diff --stat main...${branch}\` once, and read at most 2 files of the repository, each with one Read call. Do not run any other git command, and do not use grep, cat, sed or any other way to see file contents. Anything you cannot check within the budget, answer from what you have and mark it "unchecked".`
-    : '';
+  const budget =
+    phase === 'budget'
+      ? `\n\nYou have a strict reading budget for the code. You may run \`git diff --stat main...${branch}\` once, and read at most 2 files of the repository, each with one Read call. Do not run any other git command, and do not use grep, cat, sed or any other way to see file contents. Anything you cannot check within the budget, answer from what you have and mark it "unchecked".`
+      : '';
   console.log(`You are reviewing a merge request: the branch ${branch} against main, in the git checkout at ${path.join(dir, 'repo')}.${video} Work only inside ${dir}. You cannot run the code or install packages.${budget}
 
 Do two things.

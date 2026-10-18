@@ -65,20 +65,32 @@ const storyboard = {
         password: 'password',
         login: 'logs in as Alice',
         others: 'Gmail, Drive and Calendar',
-                'warn-db': 'their database',
+        'warn-db': 'their database',
         'warn-revoke': 'change her password',
       },
       hidden: ['password', 'login', 'warn-all', 'warn-db', 'warn-revoke'],
       steps: [
-        { show: ['password'], focus: ['alice', 'password', 'pmp'], say: 'Alice types her real password into PrintMyPhotos.' },
-        { show: ['login'], focus: ['login', 'google'], say: 'The app logs in to her Google account, pretending to be her.' },
+        {
+          show: ['password'],
+          focus: ['alice', 'password', 'pmp'],
+          say: 'Alice types her real password into PrintMyPhotos.',
+        },
+        {
+          show: ['login'],
+          focus: ['login', 'google'],
+          say: 'The app logs in to her Google account, pretending to be her.',
+        },
         {
           show: ['warn-all'],
           focus: ['warn-all', 'others'],
           tint: { others: 'bad' },
           say: 'Problem one: it opens everything. The app could read her Gmail and Drive, or delete her photos.',
         },
-        { show: ['warn-db'], focus: 'warn-db', say: 'Problem two: her secret now sits in their database. If they get hacked, it leaks.' },
+        {
+          show: ['warn-db'],
+          focus: 'warn-db',
+          say: 'Problem two: her secret now sits in their database. If they get hacked, it leaks.',
+        },
         {
           show: ['warn-revoke'],
           focus: 'warn-revoke',
@@ -129,7 +141,11 @@ const storyboard = {
         { focus: 1, say: 'The client is PrintMyPhotos, the app that wants in, like the valet.' },
         { focus: 2, say: 'The authorization server is Google’s sign-in service. It makes the keys.' },
         { focus: 3, say: 'The resource server is the photos API, where the photos live. That is the car.' },
-        { show: [4], tint: { 4: 'accent' }, say: 'And the access token is the valet key: a pass that opens only the photos, for a short time.' },
+        {
+          show: [4],
+          tint: { 4: 'accent' },
+          say: 'And the access token is the valet key: a pass that opens only the photos, for a short time.',
+        },
       ],
     },
     {
@@ -143,8 +159,15 @@ const storyboard = {
       hidden: ['bytes', 'b64', 'challenge'],
       callout: '`code_challenge = BASE64URL(SHA256(code_verifier))`',
       steps: [
-        { focus: 'verifier', say: 'The app picks forty three random characters, the code verifier. It keeps this secret on the phone.' },
-        { show: ['bytes'], focus: ['sha', 'bytes'], say: 'It runs that through SHA-256, a hash that cannot be run backwards, and gets thirty two bytes.' },
+        {
+          focus: 'verifier',
+          say: 'The app picks forty three random characters, the code verifier. It keeps this secret on the phone.',
+        },
+        {
+          show: ['bytes'],
+          focus: ['sha', 'bytes'],
+          say: 'It runs that through SHA-256, a hash that cannot be run backwards, and gets thirty two bytes.',
+        },
         { show: ['b64'], focus: 'b64', say: 'It writes those bytes as safe text that can go in a web address.' },
         {
           show: ['challenge'],
@@ -209,7 +232,10 @@ const storyboard = {
       ],
       steps: [
         { focus: '0-1', say: 'The app sends Alice’s browser to the sign-in service, challenge and all.' },
-        { focus: '2-3', say: 'Alice signs in on Google’s own page and sees what the app wants: to view her photos. She taps allow.' },
+        {
+          focus: '2-3',
+          say: 'Alice signs in on Google’s own page and sees what the app wants: to view her photos. She taps allow.',
+        },
         {
           focus: '4-5',
           say: 'Alice comes back to the app with a one-time code. Not the token itself, because web addresses leak, into history and logs.',
@@ -274,9 +300,13 @@ const storyboard = {
           output: ['GET https://photos.example.com/v1/photos', 'Authorization: Bearer eyJhbGciOi...'].join('\n'),
         },
         {
-          output: ['[HTTP/1.1 200 OK]{good}', '{ "photos": [', '  { "id": "p_1", "name": "beach.jpg" },', '  { "id": "p_2", "name": "birthday.jpg" }', '] }'].join(
-            '\n',
-          ),
+          output: [
+            '[HTTP/1.1 200 OK]{good}',
+            '{ "photos": [',
+            '  { "id": "p_1", "name": "beach.jpg" },',
+            '  { "id": "p_2", "name": "birthday.jpg" }',
+            '] }',
+          ].join('\n'),
         },
       ],
       steps: [
@@ -309,7 +339,10 @@ const storyboard = {
         { focus: 1, say: 'Half an hour in, requests still work.' },
         { focus: 2, say: 'At sixty minutes the API says no: four oh one, unauthorized.' },
         { focus: 3, say: 'The app sends its refresh token to the sign-in service and gets a fresh access token.' },
-        { focus: [4, 'span:second token, 60 min'], say: 'Alice never sees a thing. And if a token leaks, it stops working within the hour.' },
+        {
+          focus: [4, 'span:second token, 60 min'],
+          say: 'Alice never sees a thing. And if a token leaks, it stops working within the hour.',
+        },
       ],
     },
     {
@@ -318,8 +351,21 @@ const storyboard = {
       title: 'Authorization Code Flow with PKCE',
       narration: 'Let’s put the whole thing together.',
       steps: [
-        { actor: 'Alice', action: 'consents', payload: 'scope=photos.read', icon: 'user', tone: 'good', say: 'Alice says yes, on the provider’s page, to just what the app needs.' },
-        { actor: 'Sign-in service', action: 'returns a one-time code', payload: '/callback?code=AUTH_CODE_789', icon: 'key-round', say: 'She comes back with a one-time code.' },
+        {
+          actor: 'Alice',
+          action: 'consents',
+          payload: 'scope=photos.read',
+          icon: 'user',
+          tone: 'good',
+          say: 'Alice says yes, on the provider’s page, to just what the app needs.',
+        },
+        {
+          actor: 'Sign-in service',
+          action: 'returns a one-time code',
+          payload: '/callback?code=AUTH_CODE_789',
+          icon: 'key-round',
+          say: 'She comes back with a one-time code.',
+        },
         {
           actor: 'PrintMyPhotos',
           action: 'swaps code + verifier',

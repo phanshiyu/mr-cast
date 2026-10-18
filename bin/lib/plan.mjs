@@ -28,12 +28,19 @@ export function readPlan(dir, { preread = false } = {}) {
     return { plan, ...checkPlan(plan, { preread }) };
   } catch {
     const loc = locateJsonError(text);
-    return { plan: null, errors: [`not valid JSON${loc ? ` at line ${loc.line} column ${loc.column}: ${loc.reason}` : ''}`], warnings: [] };
+    return {
+      plan: null,
+      errors: [`not valid JSON${loc ? ` at line ${loc.line} column ${loc.column}: ${loc.reason}` : ''}`],
+      warnings: [],
+    };
   }
 }
 
 function writeAtomic(file, value) {
-  const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`);
+  const tmp = path.join(
+    path.dirname(file),
+    `.${path.basename(file)}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`,
+  );
   fs.writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`);
   fs.renameSync(tmp, file);
 }
@@ -44,7 +51,8 @@ function writeAtomic(file, value) {
  * the topic does not offer.
  */
 export function mergeChoice(plan, body) {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return { error: 'expected { "topic": id, "choice": { depth, view } | null }' };
+  if (!body || typeof body !== 'object' || Array.isArray(body))
+    return { error: 'expected { "topic": id, "choice": { depth, view } | null }' };
   const extra = Object.keys(body).filter((k) => k !== 'topic' && k !== 'choice');
   if (extra.length) return { error: `unexpected ${extra.join(', ')}; send only topic and choice` };
   const index = plan.topics.findIndex((t) => t.id === body.topic);
@@ -78,6 +86,8 @@ export function writeChoice(dir, body) {
  * picks the video was built from, so the plan page marks each topic whose current pick differs.
  */
 export function recordBuilt(dir, plan, written = {}) {
-  const topics = plan.topics.filter((t) => Object.hasOwn(written, t.id)).map((t) => [t.id, { depth: written[t.id].depth, view: written[t.id].view }]);
+  const topics = plan.topics
+    .filter((t) => Object.hasOwn(written, t.id))
+    .map((t) => [t.id, { depth: written[t.id].depth, view: written[t.id].view }]);
   writeAtomic(path.join(dir, BUILT_FILE), { topics: Object.fromEntries(topics) });
 }

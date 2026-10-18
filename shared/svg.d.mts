@@ -32,4 +32,7 @@ export declare function svgGeometry(
   texts: { id?: string; text: string; size: number; box: SvgBox; owners: string[] }[];
 };
 /** Where a viewBox lands in a box: scaled to fit whole and centred. */
-export declare function svgStage(viewBox: readonly number[], box: { width: number; height: number }): { scale: number; left: number; top: number };
+export declare function svgStage(
+  viewBox: readonly number[],
+  box: { width: number; height: number },
+): { scale: number; left: number; top: number };

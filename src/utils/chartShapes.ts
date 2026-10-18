@@ -5,11 +5,13 @@ import { chartStates, formatValue, labelTotal, VALUE_FONT, type ChartState } fro
 
 /** Widest a series name runs in the legend. */
 const LEGEND_NAME_W = 240;
-const legendFits = (scene: ChartScene) => scene.series.map((series, i) => fitText(series.name, sized(SLOTS.legend, LEGEND_NAME_W), `series[${i}].name`));
+const legendFits = (scene: ChartScene) =>
+  scene.series.map((series, i) => fitText(series.name, sized(SLOTS.legend, LEGEND_NAME_W), `series[${i}].name`));
 const valueStyle = (size: number) => ({ family: 'mono', weight: 700, size }) as const;
 
 /** The value printed for each label in a state: its bar's, or a stack's total. */
-const printedValues = (scene: ChartScene, state: ChartState) => (scene.stacked ? scene.labels.map((_, l) => labelTotal(state.values, l)) : state.values.flat());
+const printedValues = (scene: ChartScene, state: ChartState) =>
+  scene.stacked ? scene.labels.map((_, l) => labelTotal(state.values, l)) : state.values.flat();
 
 /** A horizontal bar chart: labels in a column at the left, one row a label, each bar's value printed past its end. */
 export interface BarRowsLayout {
@@ -43,7 +45,9 @@ export function layoutBarRows(scene: ChartScene, width: number, height: number):
   const barGap = k > 1 ? 6 : 0;
   const barH = Math.min(60, (rowH * 0.74 - (k - 1) * barGap) / k);
   const valueFont = barH < 30 ? 17 : VALUE_FONT;
-  const widest = Math.max(...scene.labels.map((l) => fitText(l, sized({ ...SLOTS.chartLabel, lines: 1 }, Infinity), '').width));
+  const widest = Math.max(
+    ...scene.labels.map((l) => fitText(l, sized({ ...SLOTS.chartLabel, lines: 1 }, Infinity), '').width),
+  );
   const labelW = Math.round(Math.min(width * 0.28, Math.max(120, widest + LABEL_GAP)));
   const slot = { ...sized(SLOTS.chartLabel, labelW - LABEL_GAP), lines: 1 };
   const labelFont = Math.min(...scene.labels.map((l) => fitText(l, slot, '').size));
@@ -51,7 +55,20 @@ export function layoutBarRows(scene: ChartScene, width: number, height: number):
   const values = chartStates(scene).flatMap((state) => printedValues(scene, state));
   const valueW = Math.max(...values.map((v) => measure(formatValue(v, scene), valueStyle(valueFont))));
   const x0 = labelW;
-  return { width, labelW, x0, barMax: Math.max(40, width - x0 - valueW - VALUE_GAP - 8), rowH, top, barH, barGap, labels, labelFont, valueFont, legend: legendFits(scene) };
+  return {
+    width,
+    labelW,
+    x0,
+    barMax: Math.max(40, width - x0 - valueW - VALUE_GAP - 8),
+    rowH,
+    top,
+    barH,
+    barGap,
+    labels,
+    labelFont,
+    valueFont,
+    legend: legendFits(scene),
+  };
 }
 
 /** Top of series `s`'s bar in the row whose top is `rowTop`; a stack's series share one bar. */
@@ -103,7 +120,12 @@ export function layoutPie(scene: ChartScene, width: number, height: number): Pie
   const rowH = Math.min(PIE_LEGEND_ROW, height / n);
   const valueFont = rowH < 48 ? 18 : 21;
   const states = chartStates(scene);
-  const valueW = Math.max(...states.flatMap((state) => state.values[0]!.map((v) => measure(sliceText(scene, v, sum(state.values[0]!)), valueStyle(valueFont))))) + 8;
+  const valueW =
+    Math.max(
+      ...states.flatMap((state) =>
+        state.values[0]!.map((v) => measure(sliceText(scene, v, sum(state.values[0]!)), valueStyle(valueFont))),
+      ),
+    ) + 8;
   const labelW = Math.max(60, width - legendX - SWATCH - SWATCH_GAP - valueW - 24);
   const slot = { ...sized(SLOTS.chartLabel, labelW), lines: 1 };
   const labelFont = Math.min(...scene.labels.map((l) => fitText(l, slot, '').size));
@@ -120,7 +142,9 @@ export function layoutPie(scene: ChartScene, width: number, height: number): Pie
     labelW,
     valueW,
     valueFont,
-    centre: hole ? fitText(scene.series[0]!.name, { ...sized(SLOTS.legend, hole * 1.6), lines: 2 }, 'series[0].name') : null,
+    centre: hole
+      ? fitText(scene.series[0]!.name, { ...sized(SLOTS.legend, hole * 1.6), lines: 2 }, 'series[0].name')
+      : null,
   };
 }
 

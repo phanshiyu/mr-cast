@@ -10,7 +10,11 @@ const search = {
   type: 'array',
   narration: 'Binary search for five.',
   values: [1, 3, 4, 6],
-  pointers: [{ name: 'lo', at: 0 }, { name: 'hi', at: 3 }, { name: 'mid', at: 1, hidden: true }],
+  pointers: [
+    { name: 'lo', at: 0 },
+    { name: 'hi', at: 3 },
+    { name: 'mid', at: 1, hidden: true },
+  ],
   ranges: [{ name: 'window', from: 0, to: 3 }],
   steps: [
     { show: ['ptr:mid'], say: 'The middle is three.' },
@@ -38,41 +42,109 @@ test('an array state is the initial state plus every change up to the step, in o
   const { states, problems } = walkStates(search);
   assert.deepEqual(problems, []);
   assert.deepEqual(states, [
-    { values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] }, hidden: { 'ptr:mid': true }, tints: {}, callout: '', transforms: {}, shapes: {}, traces: {}, spans: {} },
-    { values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] }, hidden: {}, tints: {}, callout: '', transforms: {}, shapes: {}, traces: {}, spans: {} },
-    { values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] }, hidden: {}, tints: {}, callout: '', transforms: {}, shapes: {}, traces: {}, spans: {} },
-    { values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 }, places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] }, hidden: { 'rg:window': true }, tints: {}, callout: '', transforms: {}, shapes: {}, traces: {}, spans: {} },
+    {
+      values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 },
+      places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] },
+      hidden: { 'ptr:mid': true },
+      tints: {},
+      callout: '',
+      transforms: {},
+      shapes: {},
+      traces: {},
+      spans: {},
+    },
+    {
+      values: { 'c:0': 1, 'c:1': 3, 'c:2': 4, 'c:3': 6 },
+      places: { 'ptr:lo': [0, 0], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [0, 3] },
+      hidden: {},
+      tints: {},
+      callout: '',
+      transforms: {},
+      shapes: {},
+      traces: {},
+      spans: {},
+    },
+    {
+      values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 },
+      places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] },
+      hidden: {},
+      tints: {},
+      callout: '',
+      transforms: {},
+      shapes: {},
+      traces: {},
+      spans: {},
+    },
+    {
+      values: { 'c:0': 1, 'c:1': 'x', 'c:2': 4, 'c:3': 6 },
+      places: { 'ptr:lo': [2, 2], 'ptr:hi': [3, 3], 'ptr:mid': [1, 1], 'rg:window': [2, 3] },
+      hidden: { 'rg:window': true },
+      tints: {},
+      callout: '',
+      transforms: {},
+      shapes: {},
+      traces: {},
+      spans: {},
+    },
   ]);
 });
 
 test('a memory step re-points a reference and edits a field, and later steps keep both', () => {
   const { states, problems } = walkStates(cart);
   assert.deepEqual(problems, []);
-  assert.deepEqual(states.map((s) => [s.values['v:checkout/order'], s.values['f:c1/items'], s.values['f:l1/0'], s.hidden]), [
-    ['null', { ref: 'l1' }, 'mug', { 'o:l2': true }],
-    [{ ref: 'l2' }, { ref: 'l1' }, 'mug', {}],
-    [{ ref: 'l2' }, { ref: 'l2' }, 'tea', {}],
-  ]);
+  assert.deepEqual(
+    states.map((s) => [s.values['v:checkout/order'], s.values['f:c1/items'], s.values['f:l1/0'], s.hidden]),
+    [
+      ['null', { ref: 'l1' }, 'mug', { 'o:l2': true }],
+      [{ ref: 'l2' }, { ref: 'l1' }, 'mug', {}],
+      [{ ref: 'l2' }, { ref: 'l2' }, 'tea', {}],
+    ],
+  );
 });
 
 test('a pointer may stand just past either end, but no further', () => {
   const at = (n) => walkStates({ ...search, steps: [{ move: { hi: n }, say: 'x' }] });
   assert.deepEqual(at(4).states[1].places['ptr:hi'], [4, 4]);
   assert.deepEqual(at(-1).states[1].places['ptr:hi'], [-1, -1]);
-  assert.deepEqual(at(5).problems.filter((p) => p.level === 'error').map((p) => p.message), ['5 is no place; a pointer moves to a cell index from 0 to 3, or -1 or 4 just past either end']);
+  assert.deepEqual(
+    at(5)
+      .problems.filter((p) => p.level === 'error')
+      .map((p) => p.message),
+    ['5 is no place; a pointer moves to a cell index from 0 to 3, or -1 or 4 just past either end'],
+  );
 });
 
 test('a reference to an object that is hidden then is an error at the step that makes it', () => {
   const early = { ...cart, steps: [{ set: { 'checkout.order': { ref: 'l2' } }, say: 'Too soon.' }] };
-  assert.deepEqual(walkStates(early).problems.filter((p) => p.level === 'error'), [
-    { step: 0, field: 'set', ref: 'checkout.order', level: 'error', names: [], message: 'points at "l2" from this step, but "l2" is hidden then; show it in this step or an earlier one, or start it shown' },
-  ]);
+  assert.deepEqual(
+    walkStates(early).problems.filter((p) => p.level === 'error'),
+    [
+      {
+        step: 0,
+        field: 'set',
+        ref: 'checkout.order',
+        level: 'error',
+        names: [],
+        message:
+          'points at "l2" from this step, but "l2" is hidden then; show it in this step or an earlier one, or start it shown',
+      },
+    ],
+  );
 });
 
 test('a step without focus focuses what it changes', () => {
   const sb = normalizeStoryboard({ title: 't', scenes: [search, cart] }, {});
-  assert.deepEqual(sb.scenes[0].steps.map((s) => s.focus), [['ptr:mid'], ['1', 'ptr:lo', 'range:window'], 'ptr:mid']);
-  assert.deepEqual(sb.scenes[1].steps.map((s) => s.focus), [['checkout.order', 'l2'], ['c1.items', 'l1.0']]);
+  assert.deepEqual(
+    sb.scenes[0].steps.map((s) => s.focus),
+    [['ptr:mid'], ['1', 'ptr:lo', 'range:window'], 'ptr:mid'],
+  );
+  assert.deepEqual(
+    sb.scenes[1].steps.map((s) => s.focus),
+    [
+      ['checkout.order', 'l2'],
+      ['c1.items', 'l1.0'],
+    ],
+  );
 });
 
 test('array and memory refs resolve to the items the scenes draw', () => {
@@ -129,13 +201,27 @@ test('a variable, field or frame whose name holds "/" keeps its owner and name a
   };
   assert.deepEqual(resolveRef(cache, 'c./api/me'), ['f:c//api/me']);
   assert.deepEqual(resolveRef(cache, 'serve/api.req/id'), ['v:serve%2Fapi/req/id']);
-  assert.deepEqual(walkStates(cache).problems.filter((p) => p.level === 'error').map((p) => [p.ref, p.message]), [
-    ['c./api/me', 'points at "v" from this step, but "v" is hidden then; show it in this step or an earlier one, or start it shown'],
-  ]);
-  const shown = { ...cache, steps: [{ set: { 'c./api/me': { ref: 'v' } }, show: ['v'], say: 'Now the cache holds the other user.' }] };
+  assert.deepEqual(
+    walkStates(cache)
+      .problems.filter((p) => p.level === 'error')
+      .map((p) => [p.ref, p.message]),
+    [
+      [
+        'c./api/me',
+        'points at "v" from this step, but "v" is hidden then; show it in this step or an earlier one, or start it shown',
+      ],
+    ],
+  );
+  const shown = {
+    ...cache,
+    steps: [{ set: { 'c./api/me': { ref: 'v' } }, show: ['v'], say: 'Now the cache holds the other user.' }],
+  };
   const r = await validateStoryboard({ title: 't', scenes: [shown] }, {}, { mode: 'explain' });
   assert.deepEqual(r.errors, []);
-  assert.deepEqual(r.warnings.filter((w) => w.includes('could not check')), []);
+  assert.deepEqual(
+    r.warnings.filter((w) => w.includes('could not check')),
+    [],
+  );
 });
 
 test('validate requires a focus on a step that only hides, or whose changes are empty', async () => {
@@ -147,12 +233,20 @@ test('validate requires a focus on a step that only hides, or whose changes are 
   assert.deepEqual(await errorsOf(empty), [
     'scenes[0].steps[0].focus: required, a frame "frame:name", a variable "frame.var", an object id, or a field "object.field", or an array of them, since this step changes nothing, so it lights nothing',
   ]);
-  assert.deepEqual(await errorsOf({ ...hideOnly, steps: [{ hide: ['range:window'], focus: 'ptr:lo', say: 'The window is gone.' }] }), []);
+  assert.deepEqual(
+    await errorsOf({ ...hideOnly, steps: [{ hide: ['range:window'], focus: 'ptr:lo', say: 'The window is gone.' }] }),
+    [],
+  );
 });
 
 test('validate says "an array step"', async () => {
-  const token = { ...search, steps: [{ focus: 'ptr:lo', mark: 'circle', token: 'lo', say: 'The low end starts at zero.' }] };
-  assert.deepEqual(await errorsOf(token), ['scenes[0].steps[0].token: only code steps take a token; an array step marks its first focus ref']);
+  const token = {
+    ...search,
+    steps: [{ focus: 'ptr:lo', mark: 'circle', token: 'lo', say: 'The low end starts at zero.' }],
+  };
+  assert.deepEqual(await errorsOf(token), [
+    'scenes[0].steps[0].token: only code steps take a token; an array step marks its first focus ref',
+  ]);
 });
 
 test('a later tint key wins over an earlier one it overlaps, a key such as "3" included', async () => {
@@ -165,15 +259,33 @@ test('a later tint key wins over an earlier one it overlaps, a key such as "3" i
   const storyboard = JSON.parse(JSON.stringify(parseStoryboard(written)));
   const { states, problems } = walkStates(storyboard.scenes[0]);
   assert.deepEqual(problems, []);
-  assert.deepEqual(states.map((s) => s.tints), [
-    { 'c:0': 'dim', 'c:1': 'dim', 'c:2': 'dim', 'c:3': 'good', 'c:4': 'dim', 'c:5': 'dim' },
-    { 'c:0': 'bad', 'c:1': 'bad', 'c:3': 'bad', 'c:4': 'bad', 'c:5': 'bad' },
-  ]);
+  assert.deepEqual(
+    states.map((s) => s.tints),
+    [
+      { 'c:0': 'dim', 'c:1': 'dim', 'c:2': 'dim', 'c:3': 'good', 'c:4': 'dim', 'c:5': 'dim' },
+      { 'c:0': 'bad', 'c:1': 'bad', 'c:3': 'bad', 'c:4': 'bad', 'c:5': 'bad' },
+    ],
+  );
   assert.deepEqual((await validateStoryboard(storyboard, {}, { mode: 'explain' })).errors, []);
 });
 
 test("a number in a step's show or hide that names nothing prints as a number, not as an index", async () => {
-  const { errors } = await validateStoryboard({ title: 't', scenes: [{ ...search, steps: [{ show: [9], say: 'Nine.' }, { hide: [0, 7], focus: 'ptr:lo', say: 'Zero and seven.' }] }] }, {}, { mode: 'explain' });
+  const { errors } = await validateStoryboard(
+    {
+      title: 't',
+      scenes: [
+        {
+          ...search,
+          steps: [
+            { show: [9], say: 'Nine.' },
+            { hide: [0, 7], focus: 'ptr:lo', say: 'Zero and seven.' },
+          ],
+        },
+      ],
+    },
+    {},
+    { mode: 'explain' },
+  );
   assert.deepEqual(errors, [
     'scenes[0].steps[0].show: 9 names no pointer or range; show takes a pointer "ptr:name" or a range "range:name"; it can be "ptr:lo", "ptr:hi", "ptr:mid", "range:window"',
     'scenes[0].steps[1].hide: 0 names no pointer or range; hide takes a pointer "ptr:name" or a range "range:name"; it can be "ptr:lo", "ptr:hi", "ptr:mid", "range:window"',

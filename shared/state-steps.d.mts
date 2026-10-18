@@ -40,7 +40,10 @@ export interface StateProblem {
 
 export declare const STATE_TYPES: readonly Scene['type'][];
 export declare function isPointer(value: unknown): value is { ref: string };
-export declare function sameValue(a: MemoryValue | TableCell | undefined, b: MemoryValue | TableCell | undefined): boolean;
+export declare function sameValue(
+  a: MemoryValue | TableCell | undefined,
+  b: MemoryValue | TableCell | undefined,
+): boolean;
 export declare const TINTS: readonly Tint[];
 export declare function walkStates(scene: Scene): { states: SceneState[]; problems: StateProblem[] };
 export declare function sceneStates(scene: Scene): SceneState[];

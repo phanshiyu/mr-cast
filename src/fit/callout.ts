@@ -21,7 +21,8 @@ export function calloutFits(scene: Scene): Map<string, Fit> {
   if (s.callout) texts.push([s.callout, 'callout']);
   (s.steps ?? []).forEach((step, k) => step?.callout && texts.push([step.callout, `steps[${k}].callout`]));
   const out = new Map<string, Fit>();
-  for (const [text, path] of texts) if (!out.has(text)) out.set(text, fitText(text, sized(SLOTS.headerCallout, CALLOUT_W - 2 * CALLOUT_PAD.x), path));
+  for (const [text, path] of texts)
+    if (!out.has(text)) out.set(text, fitText(text, sized(SLOTS.headerCallout, CALLOUT_W - 2 * CALLOUT_PAD.x), path));
   return out;
 }
 

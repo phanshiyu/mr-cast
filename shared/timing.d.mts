@@ -30,7 +30,10 @@ export declare function spokenTexts(scene: Scene): string[];
 export declare function sceneSegments(scene: Scene, voiceover?: MaybeVoiceover): SpokenSegment[];
 export declare function sceneDurationInFrames(scene: Scene, voiceover?: MaybeVoiceover): number;
 export declare function settledFrame(durationInFrames: number): number;
-export declare function spokenAt(segments: readonly SpokenSegment[], frameInScene: number): { index: number; text: string; word: number };
+export declare function spokenAt(
+  segments: readonly SpokenSegment[],
+  frameInScene: number,
+): { index: number; text: string; word: number };
 /** Index of the first word of `cue` among a spoken text's words, or -1 when the text does not say it. */
 export declare function cueWord(text: string, cue: string): number;
 /** Frame, from the scene's start, at which a segment's voice says `cue`, less a short lead; null when it never does. */

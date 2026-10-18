@@ -4,20 +4,29 @@
     "find": "await redis.pexpire(key, windowMs);",
     "replace": "await redis.pexpire(key, Math.ceil(windowMs / 1000));",
     "bug": "pexpire takes milliseconds but gets seconds (60 instead of 60000), so each window's key expires after 60 ms and the counter restarts; the limiter almost never reaches 20 and does not limit.",
-    "must_mention": ["src/api/rate-limit.ts pexpire line", "expiry passed in seconds to a milliseconds call, so the key expires almost at once and the limit is not enforced"]
+    "must_mention": [
+      "src/api/rate-limit.ts pexpire line",
+      "expiry passed in seconds to a milliseconds call, so the key expires almost at once and the limit is not enforced"
+    ]
   },
   "webhook-retries": {
     "file": "src/webhooks/repository.ts",
     "find": "SET status = 'pending', attempts = 0, next_attempt_at = now()",
     "replace": "SET status = 'pending', next_attempt_at = now()",
     "bug": "requeueDead puts a dead delivery back to pending without resetting attempts, so a replayed delivery that fails once more is marked dead again at once (attempts + 1 >= maxAttempts in worker.ts failed()); replay gives one try, not a fresh retry schedule.",
-    "must_mention": ["src/webhooks/repository.ts requeueDead", "attempts not reset, so a replayed delivery goes dead after one more failure"]
+    "must_mention": [
+      "src/webhooks/repository.ts requeueDead",
+      "attempts not reset, so a replayed delivery goes dead after one more failure"
+    ]
   },
   "pagination-fix": {
     "file": "src/lib/pagination.ts",
     "find": "OR (created_at, id) > ($2, $3))",
     "replace": "OR (created_at, id) >= ($2, $3))",
     "bug": "The row comparison uses >= instead of >, so each next page starts with the cursor row itself, the last item of the previous page, and every page after the first repeats one event. The fake DB in the spec filters with > itself, so the tests do not catch it.",
-    "must_mention": ["src/lib/pagination.ts (created_at, id) comparison", ">= repeats the cursor row (last item of the previous page) on the next page"]
+    "must_mention": [
+      "src/lib/pagination.ts (created_at, id) comparison",
+      ">= repeats the cursor row (last item of the previous page) on the next page"
+    ]
   }
 }

@@ -20,7 +20,15 @@ let loaded;
 async function reportModule() {
   loaded ??= (async () => {
     const { build } = await import('esbuild');
-    const result = await build({ entryPoints: [ENTRY], bundle: true, write: false, format: 'esm', platform: 'node', target: 'node22', logLevel: 'silent' });
+    const result = await build({
+      entryPoints: [ENTRY],
+      bundle: true,
+      write: false,
+      format: 'esm',
+      platform: 'node',
+      target: 'node22',
+      logLevel: 'silent',
+    });
     const code = result.outputFiles[0].text;
     return import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`);
   })();
@@ -50,13 +58,17 @@ export async function checkFit(storyboard, hunks, errors, warnings, images = {})
     stages = inkStages(storyboard, hunks, images);
     upscaled = imageScales(storyboard, images);
   } catch (err) {
-    warnings.push(`could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`);
+    warnings.push(
+      `could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`,
+    );
     return;
   }
   checkInkPoints(storyboard, hunks, stages, warnings);
   checkCameraCrops(storyboard, hunks, stages, warnings);
   for (const { scene: i, natural, drawn, scale } of upscaled) {
-    warnings.push(`${where(storyboard.scenes[i], i, 'src')}: the picture is ${natural.width}×${natural.height} and is drawn ${drawn.width}×${drawn.height}, ${scale.toFixed(1)} times its size, so it looks soft; use a larger image`);
+    warnings.push(
+      `${where(storyboard.scenes[i], i, 'src')}: the picture is ${natural.width}×${natural.height} and is drawn ${drawn.width}×${drawn.height}, ${scale.toFixed(1)} times its size, so it looks soft; use a larger image`,
+    );
   }
   for (const { scene: i, fits, scaled } of reports) {
     const scene = storyboard.scenes[i];
@@ -72,7 +84,9 @@ export async function checkFit(storyboard, hunks, errors, warnings, images = {})
         const key = `${fit.path}\n${fit.slot}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const message = fit.text ? `${at}: ${quote(fit.text)} does not fit its ${fit.slot}, even at ${fit.min}px; ${fit.fix}` : `${at}: the ${fit.slot} does not fit the screen at the smallest readable size; ${fit.fix}`;
+        const message = fit.text
+          ? `${at}: ${quote(fit.text)} does not fit its ${fit.slot}, even at ${fit.min}px; ${fit.fix}`
+          : `${at}: the ${fit.slot} does not fit the screen at the smallest readable size; ${fit.fix}`;
         (fit.severity === 'warning' ? warnings : errors).push(message);
       }
     }
@@ -96,10 +110,14 @@ function checkInkPoints(storyboard, hunks, stages, warnings) {
     // Each key by the narrowest ref that names it: a cell's index rather than a range over every cell.
     const named = new Map();
     const width = new Map();
-    const names = [...refNames(scene, hunks), ...(Array.isArray(scene.values) ? scene.values.map((_, n) => String(n)) : [])];
+    const names = [
+      ...refNames(scene, hunks),
+      ...(Array.isArray(scene.values) ? scene.values.map((_, n) => String(n)) : []),
+    ];
     for (const name of names) {
       const keys = resolveRef(scene, name, hunks) ?? [];
-      for (const key of keys) if (!named.has(key) || keys.length < width.get(key)) [named.set(key, name), width.set(key, keys.length)];
+      for (const key of keys)
+        if (!named.has(key) || keys.length < width.get(key)) [named.set(key, name), width.set(key, keys.length)];
     }
     for (const { step, index, item, until } of inkBoard(scene, hunks).items) {
       if (!item.at || typeof item.write !== 'string') continue;
@@ -110,8 +128,13 @@ function checkInkPoints(storyboard, hunks, stages, warnings) {
       const x = Math.min(Math.max(area.x + item.at[0] * area.width, area.x), area.x + area.width - width);
       const y = Math.min(Math.max(area.y + item.at[1] * area.height, area.y), area.y + area.height - height);
       const text = { x, y, width, height };
-      const hit = steps.slice(step, Math.min(until, steps.length)).flatMap((s, j) => s.boxes.filter(([, b]) => overlaps(text, b)).map(([key]) => ({ key, at: step + j })))[0];
-      if (hit) warnings.push(`scenes[${i}].steps[${step}].draw[${index}].at: the text lands on ${named.has(hit.key) ? JSON.stringify(named.get(hit.key)) : 'part of the drawing'}${hit.at === step ? '' : ` once step ${hit.at} shows it`}; move it to free space, or write it near a ref`);
+      const hit = steps
+        .slice(step, Math.min(until, steps.length))
+        .flatMap((s, j) => s.boxes.filter(([, b]) => overlaps(text, b)).map(([key]) => ({ key, at: step + j })))[0];
+      if (hit)
+        warnings.push(
+          `scenes[${i}].steps[${step}].draw[${index}].at: the text lands on ${named.has(hit.key) ? JSON.stringify(named.get(hit.key)) : 'part of the drawing'}${hit.at === step ? '' : ` once step ${hit.at} shows it`}; move it to free space, or write it near a ref`,
+        );
     }
   });
 }
@@ -132,21 +155,36 @@ function unreadable({ name, scale, fits }) {
     if ((largest.get(f.slot) ?? 0) < f.size) largest.set(f.slot, f.size);
   }
   if (!largest.size) return null;
-  const parts = [...largest].sort((a, b) => b[1] - a[1]).map(([slot, size]) => `${slot} at ${tenths(size * scale)} px (${size} px unscaled)`);
+  const parts = [...largest]
+    .sort((a, b) => b[1] - a[1])
+    .map(([slot, size]) => `${slot} at ${tenths(size * scale)} px (${size} px unscaled)`);
   return `unreadable: the ${name} is scaled to ${scale.toFixed(2)}, so it draws its ${parts.join(', ')}, under the ${READABLE_PX} px readable minimum`;
 }
 
 /** Markup in spoken text and pen notes is not drawn as styling: the voice reads the words and notes are handwritten. */
 export function checkSpokenMarkup(scene, p, warnings) {
-  const spoken = [[`${p}.narration`, scene.narration], ...sceneSteps(scene).map((step, j) => [`${p}.steps[${j}].say`, step?.say])];
+  const spoken = [
+    [`${p}.narration`, scene.narration],
+    ...sceneSteps(scene).map((step, j) => [`${p}.steps[${j}].say`, step?.say]),
+  ];
   for (const [at, text] of spoken) {
-    if (typeof text === 'string' && hasMarkup(text)) warnings.push(`${at}: markup in spoken text is read as plain words and shown plain in the subtitles; remove it, and style the text on screen instead`);
+    if (typeof text === 'string' && hasMarkup(text))
+      warnings.push(
+        `${at}: markup in spoken text is read as plain words and shown plain in the subtitles; remove it, and style the text on screen instead`,
+      );
   }
   if (!Array.isArray(scene.steps)) return;
   scene.steps.forEach((step, j) => {
-    if (typeof step?.note === 'string' && hasMarkup(step.note)) warnings.push(`${p}.steps[${j}].note: a pen note is handwritten, so its markup is dropped and the words drawn plain; remove the markup`);
+    if (typeof step?.note === 'string' && hasMarkup(step.note))
+      warnings.push(
+        `${p}.steps[${j}].note: a pen note is handwritten, so its markup is dropped and the words drawn plain; remove the markup`,
+      );
     (Array.isArray(step?.draw) ? step.draw : []).forEach((item, k) => {
-      for (const field of ['note', 'write']) if (typeof item?.[field] === 'string' && hasMarkup(item[field])) warnings.push(`${p}.steps[${j}].draw[${k}].${field}: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup`);
+      for (const field of ['note', 'write'])
+        if (typeof item?.[field] === 'string' && hasMarkup(item[field]))
+          warnings.push(
+            `${p}.steps[${j}].draw[${k}].${field}: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup`,
+          );
     });
   });
 }

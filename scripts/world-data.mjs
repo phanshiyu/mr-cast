@@ -11,7 +11,8 @@ import { geoArea } from 'd3-geo';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = '5.1.2';
-const SOURCE = (scale) => `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v${VERSION}/geojson/ne_${scale}_admin_0_countries.geojson`;
+const SOURCE = (scale) =>
+  `https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v${VERSION}/geojson/ne_${scale}_admin_0_countries.geojson`;
 const QUANTUM = 100;
 const SCALES = { '110m': { simplify: 0 }, '50m': { simplify: 0.02 } };
 
@@ -65,7 +66,8 @@ function encodeRing(ring, tolerance) {
 
 const decodeRing = (ring) => {
   const out = [];
-  for (let i = 0, x = 0, y = 0; i < ring.length; i += 2) out.push([(x += ring[i]) / QUANTUM, (y += ring[i + 1]) / QUANTUM]);
+  for (let i = 0, x = 0, y = 0; i < ring.length; i += 2)
+    out.push([(x += ring[i]) / QUANTUM, (y += ring[i + 1]) / QUANTUM]);
   return out;
 };
 
@@ -85,25 +87,38 @@ for (const [scale, { simplify: tolerance }] of Object.entries(SCALES)) {
     const p = f.properties;
     const code = codeOf(p, taken);
     taken.add(code);
-    const polygons = (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates).flatMap((polygon) => {
-      let rings = polygon.map((ring) => encodeRing(ring, tolerance));
-      if (!rings[0]) return [];
-      rings = rings.filter(Boolean);
-      // d3-geo reads a ring that encloses more than half the globe as everything outside it; turn such a polygon round.
-      if (geoArea({ type: 'Polygon', coordinates: rings.map(decodeRing) }) > 2 * Math.PI) rings = rings.map((r) => encodeRing(decodeRing(r).reverse(), 0));
-      points += rings.reduce((n, r) => n + r.length / 2, 0);
-      return [rings];
-    });
+    const polygons = (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates).flatMap(
+      (polygon) => {
+        let rings = polygon.map((ring) => encodeRing(ring, tolerance));
+        if (!rings[0]) return [];
+        rings = rings.filter(Boolean);
+        // d3-geo reads a ring that encloses more than half the globe as everything outside it; turn such a polygon round.
+        if (geoArea({ type: 'Polygon', coordinates: rings.map(decodeRing) }) > 2 * Math.PI)
+          rings = rings.map((r) => encodeRing(decodeRing(r).reverse(), 0));
+        points += rings.reduce((n, r) => n + r.length / 2, 0);
+        return [rings];
+      },
+    );
     const names = [...new Set([p.NAME, p.NAME_LONG, p.ADMIN].filter((n) => typeof n === 'string' && n.trim()))];
-    countries.push([code, names, [Math.round(p.LABEL_X * QUANTUM) / QUANTUM, Math.round(p.LABEL_Y * QUANTUM) / QUANTUM], polygons]);
+    countries.push([
+      code,
+      names,
+      [Math.round(p.LABEL_X * QUANTUM) / QUANTUM, Math.round(p.LABEL_Y * QUANTUM) / QUANTUM],
+      polygons,
+    ]);
   }
   countries.sort((a, b) => (a[0] < b[0] ? -1 : 1));
   written[scale] = countries;
   const file = path.join(ROOT, 'shared/world', `ne-${scale}.mjs`);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const head = `// Natural Earth ${VERSION}, admin-0 countries at 1:${scale}, public domain (https://www.naturalearthdata.com/about/terms-of-use/).\n// Written by scripts/world-data.mjs; do not edit. Each country is [code, names, label [lng, lat], polygons], a polygon\n// its rings, a ring [x0, y0, dx1, dy1, ...] in hundredths of a degree of longitude and latitude.\n`;
-  fs.writeFileSync(file, `${head}export default ${JSON.stringify({ version: VERSION, scale, quantum: QUANTUM, countries })};\n`);
-  console.log(`${path.relative(ROOT, file)}: ${countries.length} countries, ${points} points, ${Math.round(fs.statSync(file).size / 1024)} KB`);
+  fs.writeFileSync(
+    file,
+    `${head}export default ${JSON.stringify({ version: VERSION, scale, quantum: QUANTUM, countries })};\n`,
+  );
+  console.log(
+    `${path.relative(ROOT, file)}: ${countries.length} countries, ${points} points, ${Math.round(fs.statSync(file).size / 1024)} KB`,
+  );
 }
 const fine = new Set(written['50m'].map(([code]) => code));
 const missing = written['110m'].filter(([code]) => !fine.has(code)).map(([code]) => code);

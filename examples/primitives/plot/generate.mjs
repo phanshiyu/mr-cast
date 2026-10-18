@@ -44,16 +44,37 @@ const fourier = {
     { id: 'wave', y: SUM, label: 'n = {n:0}' },
   ],
   points: [
-    { id: 'middle', at: ['pi/2', SUM.replaceAll('* x', '* pi/2')], label: '{' + SUM.replaceAll('* x', '* pi/2') + ':3}', side: 'above', hidden: true },
-    { id: 'peak', at: ['pi/(2*n)', SUM.replaceAll('* x', '* pi/(2*n)')], label: '{' + SUM.replaceAll('* x', '* pi/(2*n)') + ':3}', side: 'right', tone: 'warn', hidden: true },
+    {
+      id: 'middle',
+      at: ['pi/2', SUM.replaceAll('* x', '* pi/2')],
+      label: '{' + SUM.replaceAll('* x', '* pi/2') + ':3}',
+      side: 'above',
+      hidden: true,
+    },
+    {
+      id: 'peak',
+      at: ['pi/(2*n)', SUM.replaceAll('* x', '* pi/(2*n)')],
+      label: '{' + SUM.replaceAll('* x', '* pi/(2*n)') + ':3}',
+      side: 'right',
+      tone: 'warn',
+      hidden: true,
+    },
   ],
   callout: 'sin x + sin 3x / 3 + sin 5x / 5 + …',
   steps: [
     { trace: ['wave'], say: 'One sine wave already rises and falls in step with the square wave.' },
     { show: ['middle'], focus: ['middle'], say: `In the middle it reaches ${middle[0].toFixed(2)}, too high.` },
-    { set: { n: 3 }, focus: ['wave', 'middle'], say: `Add the next two odd waves and the shoulders flatten. The middle drops to ${middle[1].toFixed(2)}.` },
+    {
+      set: { n: 3 },
+      focus: ['wave', 'middle'],
+      say: `Add the next two odd waves and the shoulders flatten. The middle drops to ${middle[1].toFixed(2)}.`,
+    },
     { set: { n: 5 }, focus: ['wave', 'middle'], say: 'Five waves, and the sides get steeper.' },
-    { set: { n: 15 }, focus: ['wave', 'middle'], say: `With fifteen it hugs the square wave, ${middle[3].toFixed(3)} in the middle.` },
+    {
+      set: { n: 15 },
+      focus: ['wave', 'middle'],
+      say: `With fifteen it hugs the square wave, ${middle[3].toFixed(3)} in the middle.`,
+    },
     {
       hide: ['middle'],
       show: ['peak'],
@@ -89,11 +110,35 @@ const interest = {
     { id: 'today', y: REAL, label: "in today's dollars", tone: 'good' },
   ],
   areas: [{ id: 'gap', between: ['growth', 'today'], tone: 'warn', hidden: true }],
-  points: [{ id: 'marker', at: ['year', GROW.replaceAll('x', 'year')], label: '${' + GROW.replaceAll('x', 'year') + ':0}', side: 'left', guides: true, hidden: true }],
+  points: [
+    {
+      id: 'marker',
+      at: ['year', GROW.replaceAll('x', 'year')],
+      label: '${' + GROW.replaceAll('x', 'year') + ':0}',
+      side: 'left',
+      guides: true,
+      hidden: true,
+    },
+  ],
   steps: [
-    { trace: ['growth'], set: { year: 30 }, show: ['marker'], say: `Year by year it bends upward, to ${money(grown(30))} after thirty years.` },
-    { set: { year: 10 }, focus: ['marker'], callout: `72 ÷ 7 = ${ruleOf72.toFixed(1)} years · exact ${exactDouble.toFixed(2)}`, say: `It doubles in about ten years, to ${money(grown(10))}. The rule of seventy two says the same.` },
-    { trace: ['today'], focus: ['today'], callout: '', say: `But prices rise three percent a year. In today's money the thirty year total is worth ${money(real(30))}.` },
+    {
+      trace: ['growth'],
+      set: { year: 30 },
+      show: ['marker'],
+      say: `Year by year it bends upward, to ${money(grown(30))} after thirty years.`,
+    },
+    {
+      set: { year: 10 },
+      focus: ['marker'],
+      callout: `72 ÷ 7 = ${ruleOf72.toFixed(1)} years · exact ${exactDouble.toFixed(2)}`,
+      say: `It doubles in about ten years, to ${money(grown(10))}. The rule of seventy two says the same.`,
+    },
+    {
+      trace: ['today'],
+      focus: ['today'],
+      callout: '',
+      say: `But prices rise three percent a year. In today's money the thirty year total is worth ${money(real(30))}.`,
+    },
     { show: ['gap'], focus: ['gap', 'growth', 'today'], say: 'The shaded gap is what inflation takes.' },
   ],
 };
@@ -107,5 +152,9 @@ const here = (f) => new URL(f, import.meta.url);
 fs.writeFileSync(here('storyboard.json'), `${JSON.stringify(storyboard, null, 2)}\n`);
 fs.writeFileSync(here('hunks.json'), '{}\n');
 fs.writeFileSync(here('meta.json'), `${JSON.stringify({ mode: 'explain' })}\n`);
-console.log(`middle at 1, 3, 5, 15 waves: ${middle.map((v) => v.toFixed(4)).join(', ')}; peak ${peak.y.toFixed(4)} at x = ${peak.x.toFixed(4)}; overshoot ${(overshoot * 100).toFixed(2)}%`);
-console.log(`growth 10, 30: ${money(grown(10))}, ${money(grown(30))}; today's dollars at 30: ${money(real(30))}; doubling ${exactDouble.toFixed(2)} (rule of 72: ${ruleOf72.toFixed(2)})`);
+console.log(
+  `middle at 1, 3, 5, 15 waves: ${middle.map((v) => v.toFixed(4)).join(', ')}; peak ${peak.y.toFixed(4)} at x = ${peak.x.toFixed(4)}; overshoot ${(overshoot * 100).toFixed(2)}%`,
+);
+console.log(
+  `growth 10, 30: ${money(grown(10))}, ${money(grown(30))}; today's dollars at 30: ${money(real(30))}; doubling ${exactDouble.toFixed(2)} (rule of 72: ${ruleOf72.toFixed(2)})`,
+);

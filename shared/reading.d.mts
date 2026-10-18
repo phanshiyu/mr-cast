@@ -41,11 +41,19 @@ export interface ReadingOrder {
 }
 
 export declare function readingScene(storyboard: Storyboard): ReadingScene | undefined;
-export declare function hunkSpan(hunk: Hunk): { file: string; side: 'newLine' | 'oldLine'; range: [number, number] | null };
+export declare function hunkSpan(hunk: Hunk): {
+  file: string;
+  side: 'newLine' | 'oldLine';
+  range: [number, number] | null;
+};
 export declare function hunkLocation(hunk: Hunk, lines?: string | number): string;
 export declare function alsoText(item: ReadingEntry): string;
 export declare function readingOrder(storyboard: Storyboard, hunks: HunkMap, plan?: Plan | null): ReadingOrder | null;
 export declare function flagText(finding: Finding, line?: (text: string) => string): string;
 export declare function readingChecklist(order: ReadingOrder): string;
-export declare function readingMarkdown(storyboard: Storyboard, order: ReadingOrder, run?: { branch?: string; base?: string }): string;
+export declare function readingMarkdown(
+  storyboard: Storyboard,
+  order: ReadingOrder,
+  run?: { branch?: string; base?: string },
+): string;
 export declare function readingLines(order: ReadingOrder): string[];

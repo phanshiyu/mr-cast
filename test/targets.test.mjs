@@ -5,7 +5,10 @@ import { refNames, resolveRef, stepTargets, targetSteps } from '../shared/target
 const graph = {
   type: 'graph',
   nodes: [{ id: 'api', group: 'edge' }, { id: 'db-main' }, { id: 'cache' }],
-  edges: [{ from: 'api', to: 'db-main' }, { from: 'cache', to: 'api', direction: 'both' }],
+  edges: [
+    { from: 'api', to: 'db-main' },
+    { from: 'cache', to: 'api', direction: 'both' },
+  ],
   steps: [{ focus: 'api' }, { focus: ['api->db-main', 'group:edge'] }, { focus: 'nothing' }],
 };
 
@@ -45,11 +48,14 @@ test('an unknown scene type resolves nothing', () => {
 
 test('stepTargets and targetSteps map steps to lit items both ways', () => {
   assert.deepEqual(stepTargets(graph), [['n:api'], ['e:0', 'g:edge'], []]);
-  assert.deepEqual([...targetSteps(graph)], [
-    ['n:api', [0]],
-    ['e:0', [1]],
-    ['g:edge', [1]],
-  ]);
+  assert.deepEqual(
+    [...targetSteps(graph)],
+    [
+      ['n:api', [0]],
+      ['e:0', [1]],
+      ['g:edge', [1]],
+    ],
+  );
 });
 
 test('refNames suggests node ids, groups and edge pairs', () => {

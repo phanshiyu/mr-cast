@@ -10,16 +10,60 @@ import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
 import { branchStatus, dataDir, ensureExcluded, findRepoRoot, readDiff, repoRoot, resolveBase } from './lib/git.mjs';
-import { KINDS, formatBytes, formatChoices, formatListing, listArtifacts, listingJson, olderThan, pruneArtifacts, pruneChoices, removalPlan, select } from './lib/prune.mjs';
-import { branchRun, currentRun, explanationRun, explanationSlug, readRunMeta, recordAudience, runsRoot, videoName, writeCurrent } from './lib/runs.mjs';
+import {
+  KINDS,
+  formatBytes,
+  formatChoices,
+  formatListing,
+  listArtifacts,
+  listingJson,
+  olderThan,
+  pruneArtifacts,
+  pruneChoices,
+  removalPlan,
+  select,
+} from './lib/prune.mjs';
+import {
+  branchRun,
+  currentRun,
+  explanationRun,
+  explanationSlug,
+  readRunMeta,
+  recordAudience,
+  runsRoot,
+  videoName,
+  writeCurrent,
+} from './lib/runs.mjs';
 import { SETTINGS_OPTIONS, lastChoices, rememberChoices, settingsArgs, settingsFrom } from './lib/settings.mjs';
 import { BUILT_FILE, readPlan, recordBuilt } from './lib/plan.mjs';
 import { startServer } from './lib/server.mjs';
 import { createServing } from './lib/serving.mjs';
-import { countLine, exitedPids, formatPs, formatStopChoices, listProcesses, procJson, procsDir, register, runFields, selectProcs, stopChoices, stopProcesses } from './lib/procs.mjs';
+import {
+  countLine,
+  exitedPids,
+  formatPs,
+  formatStopChoices,
+  listProcesses,
+  procJson,
+  procsDir,
+  register,
+  runFields,
+  selectProcs,
+  stopChoices,
+  stopProcesses,
+} from './lib/procs.mjs';
 import { updateNotice } from './lib/update.mjs';
 import { upgrade } from './lib/upgrade.mjs';
-import { changedHunkIds, formatDuration, formatIndex, formatOutline, formatSnippets, formatValidation, plural, summarizeFiles } from './lib/summary.mjs';
+import {
+  changedHunkIds,
+  formatDuration,
+  formatIndex,
+  formatOutline,
+  formatSnippets,
+  formatValidation,
+  plural,
+  summarizeFiles,
+} from './lib/summary.mjs';
 import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { sceneSteps } from '../shared/steps.mjs';
@@ -149,7 +193,9 @@ function readJson(file, missingHint, parse = JSON.parse) {
     const loc = locateJsonError(text);
     if (!loc) throw err;
     const lineText = text.split('\n')[loc.line - 1].trim().slice(0, 80);
-    throw new UserError(`${rel(file)} is not valid JSON at line ${loc.line} column ${loc.column}: ${loc.reason} (line: ${lineText})`);
+    throw new UserError(
+      `${rel(file)} is not valid JSON at line ${loc.line} column ${loc.column}: ${loc.reason} (line: ${lineText})`,
+    );
   }
 }
 
@@ -166,13 +212,17 @@ function timingVoiceover(dir, settings) {
   const saved = readVoiceover(dir);
   const { speed, pauses } = settings.pace;
   if (!saved && speed === 1 && pauses === 1) return null;
-  return { voice: settings.voice, speed, pauses, clips: settings.silent ? {} : saved?.clips ?? {} };
+  return { voice: settings.voice, speed, pauses, clips: settings.silent ? {} : (saved?.clips ?? {}) };
 }
 
 /** The run checked and its storyboard normalized. Unless `write` is false, review.md and reading.md are written or removed to match it. */
 async function loadProject(dir, settings, { write = true } = {}) {
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
-  const raw = readJson(path.join(dir, 'storyboard.json'), 'write it first (schema: Storyboard in src/types.ts)', parseStoryboard);
+  const raw = readJson(
+    path.join(dir, 'storyboard.json'),
+    'write it first (schema: Storyboard in src/types.ts)',
+    parseStoryboard,
+  );
   const plan = readPlan(dir, { preread: settings.audience === 'preread' });
   // meta.json's mode is "explain" when `mr-cast init` made the run; anything else holds a diff.
   const meta = readRunMeta(dir);
@@ -184,8 +234,22 @@ async function loadProject(dir, settings, { write = true } = {}) {
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
   const review = result.errors.length || !write ? null : writeReview(path.join(dir, 'review.md'), storyboard, meta);
-  const reading = result.errors.length || !write ? null : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
-  return { dir, hunks, raw, storyboard, plan, result, review, reading, images: images.manifest, lines: formatValidation(result, { storyboard, hunks, seconds }) };
+  const reading =
+    result.errors.length || !write
+      ? null
+      : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
+  return {
+    dir,
+    hunks,
+    raw,
+    storyboard,
+    plan,
+    result,
+    review,
+    reading,
+    images: images.manifest,
+    lines: formatValidation(result, { storyboard, hunks, seconds }),
+  };
 }
 
 /** Whether `file` is absent or a file mr-cast wrote under `heading`, so mr-cast may replace or remove it. */
@@ -205,7 +269,8 @@ function ownFile(file, heading) {
  */
 function writeReview(file, storyboard, meta) {
   if (!ownFile(file, REVIEW_HEADING)) {
-    if (isReviewed(storyboard)) console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the review is not saved`);
+    if (isReviewed(storyboard))
+      console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the review is not saved`);
     return null;
   }
   if (!isReviewed(storyboard)) {
@@ -224,7 +289,8 @@ function writeReview(file, storyboard, meta) {
 function writeReading(file, storyboard, hunks, plan, meta, settings) {
   const order = settings.audience === 'preread' ? readingOrder(storyboard, hunks, plan) : null;
   if (!ownFile(file, READING_HEADING)) {
-    if (order) console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the reading order is not saved`);
+    if (order)
+      console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the reading order is not saved`);
     return null;
   }
   if (!order) {
@@ -247,7 +313,8 @@ async function loadValidProject(dir, settings) {
 
 function extract(argv) {
   const { values, positionals } = parseArgs({
-    args: argv, allowPositionals: true,
+    args: argv,
+    allowPositionals: true,
     options: {
       working: { type: 'boolean', default: false },
       context: { type: 'string', default: '4' },
@@ -269,10 +336,19 @@ function extract(argv) {
 
   const parsed = parseUnifiedDiff(diff.diffText);
   if (parsed.length === 0) {
-    if (diff.skipped.length) throw new UserError(`every changed file is noise (${diff.skipped.join(', ')}); pass --all-files to include them`);
-    if (values.working) throw new UserError(`no changes between ${base} (merge-base ${diff.mergeBase.slice(0, 7)}) and the working tree${diff.untracked.length ? `; ${diff.untracked.length} untracked files are not included (git add -N <file> to include)` : ''}`);
-    const where = diff.branch === base || diff.headSha === diff.baseSha ? `HEAD is on the base (${base}) with` : `${diff.branch} has`;
-    throw new UserError(`${where} no changes ahead of ${base}; use \`mr-cast extract --working\` for uncommitted changes or pass another base: \`mr-cast extract <base>\``);
+    if (diff.skipped.length)
+      throw new UserError(`every changed file is noise (${diff.skipped.join(', ')}); pass --all-files to include them`);
+    if (values.working)
+      throw new UserError(
+        `no changes between ${base} (merge-base ${diff.mergeBase.slice(0, 7)}) and the working tree${diff.untracked.length ? `; ${diff.untracked.length} untracked files are not included (git add -N <file> to include)` : ''}`,
+      );
+    const where =
+      diff.branch === base || diff.headSha === diff.baseSha
+        ? `HEAD is on the base (${base}) with`
+        : `${diff.branch} has`;
+    throw new UserError(
+      `${where} no changes ahead of ${base}; use \`mr-cast extract --working\` for uncommitted changes or pass another base: \`mr-cast extract <base>\``,
+    );
   }
 
   const runs = dataDir(root);
@@ -286,7 +362,11 @@ function extract(argv) {
   const storyboardPath = path.join(dir, 'storyboard.json');
 
   let previous = null;
-  try { previous = JSON.parse(fs.readFileSync(hunksPath, 'utf8')); } catch { /* first run or unreadable */ }
+  try {
+    previous = JSON.parse(fs.readFileSync(hunksPath, 'utf8'));
+  } catch {
+    /* first run or unreadable */
+  }
   // Snippets (`mr-cast snippet`) are context the author added beside the diff, so a new diff keeps them.
   const snippets = Object.values(previous ?? {}).filter((h) => h?.status === 'source' && typeof h.id === 'string');
 
@@ -296,28 +376,58 @@ function extract(argv) {
   const { audience } = settingsFrom(values);
   writeJson(hunksPath, written);
   writeJson(path.join(dir, 'meta.json'), {
-    mode: 'diff', base, baseSha: diff.baseSha, mergeBase: diff.mergeBase,
-    head: 'HEAD', headSha: diff.headSha, branch: diff.branch,
-    working: values.working, generatedAt: new Date().toISOString(),
-    files, skipped: diff.skipped,
+    mode: 'diff',
+    base,
+    baseSha: diff.baseSha,
+    mergeBase: diff.mergeBase,
+    head: 'HEAD',
+    headSha: diff.headSha,
+    branch: diff.branch,
+    working: values.working,
+    generatedAt: new Date().toISOString(),
+    files,
+    skipped: diff.skipped,
     audience,
   });
   writeCurrent(runs, name);
   rememberChoices(values);
 
   console.error(`mr-cast: run "${name}" in ${rel(dir)}; later commands use it until the next extract or init`);
-  if (snippets.length) console.error(`note: kept ${snippets.length} snippet${snippets.length === 1 ? '' : 's'} (${snippets.map((h) => h.id).join(', ')}) from the last extract; rerun \`mr-cast snippet${nameArg}\` on one to reread its lines`);
+  if (snippets.length)
+    console.error(
+      `note: kept ${snippets.length} snippet${snippets.length === 1 ? '' : 's'} (${snippets.map((h) => h.id).join(', ')}) from the last extract; rerun \`mr-cast snippet${nameArg}\` on one to reread its lines`,
+    );
   if (fs.existsSync(storyboardPath)) {
     const changed = previous ? changedHunkIds(previous, written) : null;
-    if (!changed) console.error(`note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate${runArgs}\``);
-    else if (changed.length) console.error(`note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate${runArgs}\``);
+    if (!changed)
+      console.error(
+        `note: kept existing ${rel(storyboardPath)}; hunk ids may have changed, run \`mr-cast validate${runArgs}\``,
+      );
+    else if (changed.length)
+      console.error(
+        `note: kept existing ${rel(storyboardPath)}; hunks changed or gone since last extract: ${changed.join(', ')}; re-check scenes using them, then \`mr-cast validate${runArgs}\``,
+      );
   }
 
-  console.log(formatIndex({
-    ctx: { branch: diff.branch, base, ahead: diff.ahead, working: values.working, mergeBase: diff.mergeBase, untracked: diff.untracked },
-    files, hunks, skipped: diff.skipped, maxLines,
-    hunksPath: rel(hunksPath), storyboardPath: rel(storyboardPath), runArgs,
-  }));
+  console.log(
+    formatIndex({
+      ctx: {
+        branch: diff.branch,
+        base,
+        ahead: diff.ahead,
+        working: values.working,
+        mergeBase: diff.mergeBase,
+        untracked: diff.untracked,
+      },
+      files,
+      hunks,
+      skipped: diff.skipped,
+      maxLines,
+      hunksPath: rel(hunksPath),
+      storyboardPath: rel(storyboardPath),
+      runArgs,
+    }),
+  );
 }
 
 /**
@@ -335,7 +445,10 @@ function runFor(values) {
 const RUN_OPTIONS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 
 async function validate(argv) {
-  const { values } = parseArgs({ args: argv, options: { ...RUN_OPTIONS, 'read-only': { type: 'boolean', default: false } } });
+  const { values } = parseArgs({
+    args: argv,
+    options: { ...RUN_OPTIONS, 'read-only': { type: 'boolean', default: false } },
+  });
   // --read-only, for the hook: check the run and write nothing, not even the remembered choices.
   const write = !values['read-only'];
   const { dir, settings } = write ? runFor(values) : { ...currentRun(values), settings: settingsFrom(values) };
@@ -371,7 +484,10 @@ function reportPace(voiceover) {
 }
 
 function reportVoiceProgress(event) {
-  if (event.type === 'download') console.error(`mr-cast: downloading the ${event.engine} voice model (about ${event.mb} MB, first use only) into ${event.cacheDir}`);
+  if (event.type === 'download')
+    console.error(
+      `mr-cast: downloading the ${event.engine} voice model (about ${event.mb} MB, first use only) into ${event.cacheDir}`,
+    );
   else if (event.type === 'clip') {
     const text = event.text.length > 60 ? `${event.text.slice(0, 57)}...` : event.text;
     console.error(`  voiced ${event.done}/${event.total} · ${event.seconds.toFixed(1)}s · ${text}`);
@@ -382,7 +498,12 @@ function reportVoiceProgress(event) {
  * Voice-over for play and render, in the command's voice and at its pace. A silent command, or one whose
  * voicing fails, has silent scenes timed from word count at that pace; `failed` marks the second for the player.
  */
-async function voiceoverFor(dir, storyboard, settings, { onProgress = reportVoiceProgress, ensure = ensureVoiceover, markFailed = false } = {}) {
+async function voiceoverFor(
+  dir,
+  storyboard,
+  settings,
+  { onProgress = reportVoiceProgress, ensure = ensureVoiceover, markFailed = false } = {},
+) {
   const silent = () => {
     const { speed, pauses } = settings.pace;
     return speed === 1 && pauses === 1 ? null : { voice: settings.voice, speed, pauses, clips: {} };
@@ -407,14 +528,20 @@ async function voice(argv) {
   }
   let generated = 0;
   const voiceover = await ensureVoiceover({
-    dataDir: dir, storyboard, voice: run.settings.voice, pace: run.settings.pace,
+    dataDir: dir,
+    storyboard,
+    voice: run.settings.voice,
+    pace: run.settings.pace,
     onProgress: (event) => {
       if (event.type === 'clip') generated++;
       reportVoiceProgress(event);
     },
   });
-  const clips = new Set(storyboard.scenes.flatMap(spokenTexts).flatMap((text) => clipFor(voiceover, text)?.src ?? [])).size;
-  console.log(`✓ voiceover · ${clips} clip${clips === 1 ? '' : 's'} (${generated} new)${formatPace(voiceover)} · ${formatDuration(storyboardSeconds(storyboard, voiceover))}`);
+  const clips = new Set(storyboard.scenes.flatMap(spokenTexts).flatMap((text) => clipFor(voiceover, text)?.src ?? []))
+    .size;
+  console.log(
+    `✓ voiceover · ${clips} clip${clips === 1 ? '' : 's'} (${generated} new)${formatPace(voiceover)} · ${formatDuration(storyboardSeconds(storyboard, voiceover))}`,
+  );
 }
 
 function ensureDist() {
@@ -427,9 +554,11 @@ function ensureDist() {
   if (fs.existsSync(path.join(dist, 'index.html'))) return dist;
   console.error('mr-cast: building the player (first run only)...');
   const vite = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
-  if (!fs.existsSync(vite)) throw new UserError(`player not built and ${rel(vite)} is missing; run \`pnpm install\` in ${ROOT}`);
+  if (!fs.existsSync(vite))
+    throw new UserError(`player not built and ${rel(vite)} is missing; run \`pnpm install\` in ${ROOT}`);
   const build = spawnSync(process.execPath, [vite, 'build'], { cwd: ROOT, stdio: ['ignore', 2, 2] });
-  if (build.status !== 0 || !fs.existsSync(path.join(dist, 'index.html'))) throw new UserError('player build failed (see output above)');
+  if (build.status !== 0 || !fs.existsSync(path.join(dist, 'index.html')))
+    throw new UserError('player build failed (see output above)');
   return dist;
 }
 
@@ -437,11 +566,16 @@ function ensureDist() {
 function idleExitMs(value) {
   const minutes = Number(value);
   // A timer longer than 2^31 ms (24.8 days) fires at once, so longer limits are refused.
-  if (value.trim() === '' || !(minutes >= 0 && minutes <= 35_000)) throw new UserError(`--idle-exit takes minutes from 0 to 35000, where 0 never exits (got "${value}")`);
+  if (value.trim() === '' || !(minutes >= 0 && minutes <= 35_000))
+    throw new UserError(`--idle-exit takes minutes from 0 to 35000, where 0 never exits (got "${value}")`);
   return minutes * 60_000;
 }
 
-const SERVER_OPTIONS = { port: { type: 'string', default: '4747' }, 'no-open': { type: 'boolean', default: false }, 'idle-exit': { type: 'string', default: '30' } };
+const SERVER_OPTIONS = {
+  port: { type: 'string', default: '4747' },
+  'no-open': { type: 'boolean', default: false },
+  'idle-exit': { type: 'string', default: '30' },
+};
 
 /** The signal a play or plan server gets from the next one of its run: it stops, but lets a model download finish. */
 const REPLACED = 'SIGUSR2';
@@ -454,9 +588,13 @@ const REPLACED = 'SIGUSR2';
 async function replaceRunning(kind, dir) {
   const old = listProcesses().filter((p) => p.registered && p.kind === kind && p.dir === path.resolve(dir));
   if (old.length === 0) return;
-  for (const p of old) console.error(`mr-cast: stopping the ${kind} server already running for this run (pid ${p.pid}, ${p.url}); this one replaces it`);
+  for (const p of old)
+    console.error(
+      `mr-cast: stopping the ${kind} server already running for this run (pid ${p.pid}, ${p.url}); this one replaces it`,
+    );
   const results = await stopProcesses(old, { signal: REPLACED });
-  for (const { proc, outcome } of results) if (outcome === 'failed') console.error(`mr-cast: warning: pid ${proc.pid} did not stop; both run until it does`);
+  for (const { proc, outcome } of results)
+    if (outcome === 'failed') console.error(`mr-cast: warning: pid ${proc.pid} did not stop; both run until it does`);
 }
 
 /**
@@ -465,7 +603,15 @@ async function replaceRunning(kind, dir) {
  */
 function registerServer(kind, dir, idleMs) {
   const since = () => new Date().toISOString();
-  const entry = register({ kind, url: null, ...runFields(dir), viewers: 0, idleSince: since(), idleExit: idleMs / 60_000, exitsAt: null });
+  const entry = register({
+    kind,
+    url: null,
+    ...runFields(dir),
+    viewers: 0,
+    idleSince: since(),
+    idleExit: idleMs / 60_000,
+    exitsAt: null,
+  });
   return {
     url: (url) => entry.update({ url }),
     viewers: (viewers) => entry.update({ viewers, idleSince: viewers ? null : since() }),
@@ -473,17 +619,23 @@ function registerServer(kind, dir, idleMs) {
   };
 }
 
-const idleMessage = (what, ms) => `mr-cast: no page has been open for ${plural(ms / 60_000, 'minute')}, so the ${what} stopped (--idle-exit 0 keeps it running)`;
+const idleMessage = (what, ms) =>
+  `mr-cast: no page has been open for ${plural(ms / 60_000, 'minute')}, so the ${what} stopped (--idle-exit 0 keeps it running)`;
 
 function openBrowser(url) {
-  const [cmd, args] = process.platform === 'darwin' ? ['open', [url]]
-    : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]]
-    : ['xdg-open', [url]];
+  const [cmd, args] =
+    process.platform === 'darwin'
+      ? ['open', [url]]
+      : process.platform === 'win32'
+        ? ['cmd', ['/c', 'start', '', url]]
+        : ['xdg-open', [url]];
   try {
     const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
     child.on('error', () => {});
     child.unref();
-  } catch { /* no browser; the URL is printed */ }
+  } catch {
+    /* no browser; the URL is printed */
+  }
 }
 
 /**
@@ -493,9 +645,14 @@ function openBrowser(url) {
 async function voiceNow(dir, storyboard, settings) {
   if (settings.silent) return { voiceover: await voiceoverFor(dir, storyboard, settings), wait: false };
   const { speed, pauses } = settings.pace;
-  const clips = Object.fromEntries(Object.entries(readVoiceover(dir)?.clips ?? {}).filter(([, clip]) => fs.existsSync(path.join(dir, clip.src))));
+  const clips = Object.fromEntries(
+    Object.entries(readVoiceover(dir)?.clips ?? {}).filter(([, clip]) => fs.existsSync(path.join(dir, clip.src))),
+  );
   const voiceover = { voice: settings.voice, speed, pauses, clips };
-  return { voiceover, wait: storyboard.scenes.some((scene) => spokenTexts(scene).some((text) => !clipFor(voiceover, text))) };
+  return {
+    voiceover,
+    wait: storyboard.scenes.some((scene) => spokenTexts(scene).some((text) => !clipFor(voiceover, text))),
+  };
 }
 
 /** "4 of 17 lines": the spoken lines that have a clip. */
@@ -570,10 +727,11 @@ async function play(argv) {
     voice: async (sb, voiced, signal) => {
       const own = voicingLine(sb, voiced);
       line = own;
-      const ensure = (args) => ensureVoiceoverInChild({ ...args, signal }).finally(() => {
-        own.end();
-        if (line === own) line = null;
-      });
+      const ensure = (args) =>
+        ensureVoiceoverInChild({ ...args, signal }).finally(() => {
+          own.end();
+          if (line === own) line = null;
+        });
       const voiceover = await voiceoverFor(dir, sb, settings, { onProgress: own.onProgress, ensure, markFailed: true });
       if (voiceover?.failed) console.error('mr-cast: voicing failed; the player plays silent with subtitles');
       else if (voiceover) console.error(`voice ready: ${voicedCount(sb, voiceover)}`);
@@ -601,15 +759,33 @@ async function play(argv) {
 
   reportPace(serving.voiceover());
   // Set before the server starts counting, so a storyboard voiced already counts from the start.
-  serving.ready.then(() => { ready = true; });
+  serving.ready.then(() => {
+    ready = true;
+  });
   const registered = registerServer('play', dir, idleMs);
   // Not while a voicing runs: the page opens only once the first is done, and an edit's reloads the page once voiced.
-  const idle = idleMs ? {
-    ms: idleMs, busy: () => !ready || serving.holding(), onDeadline: registered.deadline, onIdle: () => { log(idleMessage('player', idleMs)); shutdown(); },
-  } : null;
+  const idle = idleMs
+    ? {
+        ms: idleMs,
+        busy: () => !ready || serving.holding(),
+        onDeadline: registered.deadline,
+        onIdle: () => {
+          log(idleMessage('player', idleMs));
+          shutdown();
+        },
+      }
+    : null;
   server = await startServer({
-    distDir, dataDir: dir, port, onDataChange, holding: serving.holding, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard, audience: settings.audience,
-    onViewers: registered.viewers, idle,
+    distDir,
+    dataDir: dir,
+    port,
+    onDataChange,
+    holding: serving.holding,
+    getVoiceover: serving.voiceover,
+    getStoryboard: serving.storyboard,
+    audience: settings.audience,
+    onViewers: registered.viewers,
+    idle,
   });
   const url = `${server.url}/#token=${server.token}`;
   registered.url(url);
@@ -633,8 +809,14 @@ async function play(argv) {
 
 /** plan.json's problems as lines, and a summary line when it has no errors. */
 function planLines(planFile) {
-  const lines = [...planFile.errors.map((e) => `✗ plan.json: ${e}`), ...planFile.warnings.map((w) => `! plan.json: ${w}`)];
-  if (!planFile.errors.length) lines.push(`✓ plan ok · ${plural(planFile.plan.topics.length, 'topic')} · ${formatLength(planSeconds(planFile.plan)).toLowerCase()}`);
+  const lines = [
+    ...planFile.errors.map((e) => `✗ plan.json: ${e}`),
+    ...planFile.warnings.map((w) => `! plan.json: ${w}`),
+  ];
+  if (!planFile.errors.length)
+    lines.push(
+      `✓ plan ok · ${plural(planFile.plan.topics.length, 'topic')} · ${formatLength(planSeconds(planFile.plan)).toLowerCase()}`,
+    );
   return lines;
 }
 
@@ -646,7 +828,8 @@ async function plan(argv) {
   const { dir, settings } = runFor(values);
   const preread = settings.audience === 'preread';
   const planFile = readPlan(dir, { preread });
-  if (!planFile) throw new UserError(`${rel(path.join(dir, 'plan.json'))} not found; write it first (schema: Plan in src/types.ts)`);
+  if (!planFile)
+    throw new UserError(`${rel(path.join(dir, 'plan.json'))} not found; write it first (schema: Plan in src/types.ts)`);
   const lines = planLines(planFile);
   if (planFile.errors.length) {
     for (const line of lines) console.error(line);
@@ -664,9 +847,25 @@ async function plan(argv) {
   };
   await replaceRunning('plan', dir);
   const registered = registerServer('plan', dir, idleMs);
-  const idle = idleMs ? { ms: idleMs, onDeadline: registered.deadline, onIdle: () => { console.error(idleMessage('plan page', idleMs)); shutdown(); } } : null;
+  const idle = idleMs
+    ? {
+        ms: idleMs,
+        onDeadline: registered.deadline,
+        onIdle: () => {
+          console.error(idleMessage('plan page', idleMs));
+          shutdown();
+        },
+      }
+    : null;
   const server = await startServer({
-    distDir, dataDir: dir, port, onDataChange, getVoiceover: () => timingVoiceover(dir, settings), audience: settings.audience, onViewers: registered.viewers, idle,
+    distDir,
+    dataDir: dir,
+    port,
+    onDataChange,
+    getVoiceover: () => timingVoiceover(dir, settings),
+    audience: settings.audience,
+    onViewers: registered.viewers,
+    idle,
   });
   const url = `${server.url}/plan#token=${server.token}`;
   registered.url(url);
@@ -701,7 +900,9 @@ function progressReporter(label) {
         console.error(`${label} ${lastDecile * 10}%`);
       }
     },
-    done() { if (tty) process.stderr.write('\n'); },
+    done() {
+      if (tty) process.stderr.write('\n');
+    },
   };
 }
 
@@ -721,41 +922,76 @@ async function render(argv) {
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   const progress = progressReporter('rendering');
-  const written = await renderVideo({ hunks, storyboard, voiceover, images, dataDir: dir, outFile, onProgress: progress.update });
+  const written = await renderVideo({
+    hunks,
+    storyboard,
+    voiceover,
+    images,
+    dataDir: dir,
+    outFile,
+    onProgress: progress.update,
+  });
   progress.done();
   const video = written ?? outFile;
   // review.md and reading.md are in the run's directory; a video saved elsewhere gets its own copies beside it.
   const elsewhere = path.dirname(path.resolve(video)) !== path.resolve(dir);
   const review = elsewhere ? writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir)) : null;
-  const reading = elsewhere ? writeReading(video.replace(/\.[^./]+$/, '.reading.md'), storyboard, hunks, planFile?.plan, readRunMeta(dir), run.settings) : null;
+  const reading = elsewhere
+    ? writeReading(
+        video.replace(/\.[^./]+$/, '.reading.md'),
+        storyboard,
+        hunks,
+        planFile?.plan,
+        readRunMeta(dir),
+        run.settings,
+      )
+    : null;
   console.log(video);
   if (review) console.log(review);
   if (reading) console.log(reading);
 }
 
 async function still(argv) {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { out: { type: 'string' }, step: { type: 'string' }, ...RUN_OPTIONS } });
+  const { values, positionals } = parseArgs({
+    args: argv,
+    allowPositionals: true,
+    options: { out: { type: 'string' }, step: { type: 'string' }, ...RUN_OPTIONS },
+  });
   const run = runFor(values);
   const { dir, hunks, storyboard, images } = await loadValidProject(run.dir, run.settings);
   const count = storyboard.scenes.length;
   const scenes = positionals.map((p) => {
     const n = Number(p);
-    if (!Number.isInteger(n) || n < 0 || n >= count) throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${count - 1}`);
+    if (!Number.isInteger(n) || n < 0 || n >= count)
+      throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${count - 1}`);
     return n;
   });
   const step = values.step === undefined ? undefined : Number(values.step);
   if (step !== undefined) {
-    if (!Number.isInteger(step) || step < 0) throw new UserError(`--step "${values.step}" is not a step index; steps start at 0`);
+    if (!Number.isInteger(step) || step < 0)
+      throw new UserError(`--step "${values.step}" is not a step index; steps start at 0`);
     for (const i of scenes.length ? scenes : storyboard.scenes.map((_, i) => i)) {
       const have = sceneSteps(storyboard.scenes[i]).length;
-      if (step >= have) throw new UserError(`scene ${i} has ${have ? `steps 0-${have - 1}` : 'no steps'}, so no step ${step}; name the scenes that have it`);
+      if (step >= have)
+        throw new UserError(
+          `scene ${i} has ${have ? `steps 0-${have - 1}` : 'no steps'}, so no step ${step}; name the scenes that have it`,
+        );
     }
   }
   const { renderStills } = await importRender();
   const outDir = path.resolve(values.out ?? path.join(dir, 'stills'));
   fs.mkdirSync(outDir, { recursive: true });
   const voiceover = timingVoiceover(dir, run.settings);
-  const files = await renderStills({ hunks, storyboard, voiceover, images, dataDir: dir, outDir, scenes: scenes.length ? scenes : undefined, step });
+  const files = await renderStills({
+    hunks,
+    storyboard,
+    voiceover,
+    images,
+    dataDir: dir,
+    outDir,
+    scenes: scenes.length ? scenes : undefined,
+    step,
+  });
   for (const f of files) console.log(path.resolve(f));
 }
 
@@ -770,7 +1006,8 @@ async function steps(argv) {
   }
   const scenes = positionals.map((p) => {
     const n = Number(p);
-    if (!Number.isInteger(n) || n < 0 || n >= storyboard.scenes.length) throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${storyboard.scenes.length - 1}`);
+    if (!Number.isInteger(n) || n < 0 || n >= storyboard.scenes.length)
+      throw new UserError(`scene index "${p}" out of range; storyboard has scenes 0-${storyboard.scenes.length - 1}`);
     return n;
   });
   if (needsWorld(storyboard)) await loadWorld();
@@ -782,9 +1019,20 @@ async function outline(argv) {
   const run = runFor(values);
   const { dir, hunks, storyboard, result, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = timingVoiceover(dir, run.settings);
-  const voiced = Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
+  const voiced =
+    Boolean(voiceover) && storyboard.scenes.every((s) => spokenTexts(s).every((text) => clipFor(voiceover, text)));
   const seconds = storyboardSeconds(storyboard, voiceover);
-  console.log(formatOutline({ storyboard, hunks, coverage: result.coverage, seconds, voiced, pace: formatPace(voiceover), plan: planFile?.plan }));
+  console.log(
+    formatOutline({
+      storyboard,
+      hunks,
+      coverage: result.coverage,
+      seconds,
+      voiced,
+      pace: formatPace(voiceover),
+      plan: planFile?.plan,
+    }),
+  );
 }
 
 /**
@@ -804,10 +1052,15 @@ function hook() {
   if (path.basename(path.dirname(dir)) !== '.mr-cast' || !readRunMeta(dir)) return;
   const { audience } = readRunMeta(dir);
   const flags = ['--read-only', ...(audience ? ['--audience', audience] : [])];
-  const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'validate', '--dir', dir, ...flags], { encoding: 'utf8', env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' } });
+  const run = spawnSync(process.execPath, [fileURLToPath(import.meta.url), 'validate', '--dir', dir, ...flags], {
+    encoding: 'utf8',
+    env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' },
+  });
   if (run.status === 0) return;
   const lines = `${run.stdout}\n${run.stderr}`.split('\n').filter((l) => /^(error|✗|mr-cast:|hint:)/.test(l.trim()));
-  console.error(`mr-cast validate ${flags.join(' ')} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`);
+  console.error(
+    `mr-cast validate ${flags.join(' ')} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`,
+  );
   process.exit(2);
 }
 
@@ -822,14 +1075,16 @@ function installSkillCommand(argv) {
   const { written, removed, kept } = installSkill(ROOT);
   for (const file of written) console.log(`wrote ${file}`);
   for (const file of removed) console.log(`removed ${file} (installed by an earlier mr-cast, no longer used)`);
-  for (const file of kept) console.error(`note: kept ${file}; an earlier mr-cast installed this path but its content is not mr-cast's`);
+  for (const file of kept)
+    console.error(`note: kept ${file}; an earlier mr-cast installed this path but its content is not mr-cast's`);
 }
 
 function uninstallSkillCommand(argv) {
   parseArgs({ args: argv, options: {} });
   const { removed, kept } = uninstallSkill();
   for (const file of removed) console.log(`removed ${file}`);
-  for (const file of kept) console.error(`note: kept ${file}; mr-cast installed this path but its content is not mr-cast's`);
+  for (const file of kept)
+    console.error(`note: kept ${file}; mr-cast installed this path but its content is not mr-cast's`);
   if (removed.length === 0) console.log('nothing to remove; no mr-cast skills are installed');
 }
 
@@ -851,22 +1106,41 @@ function quickRunOf(runs, title) {
 
 /** Starts or reopens the run of an explanation, which has no diff: its code comes from `snippet`. */
 function init(argv) {
-  const { values } = parseArgs({ args: argv, options: { name: DIR_OPTION.name, ...SETTINGS_OPTIONS, title: { type: 'string' }, reset: { type: 'boolean', default: false }, quick: { type: 'boolean', default: false } } });
+  const { values } = parseArgs({
+    args: argv,
+    options: {
+      name: DIR_OPTION.name,
+      ...SETTINGS_OPTIONS,
+      title: { type: 'string' },
+      reset: { type: 'boolean', default: false },
+      quick: { type: 'boolean', default: false },
+    },
+  });
   settingsFrom(values); // rejects a bad flag before anything is written
   // Without a title, init reopens the current run, which may be a full video that --quick must not turn quick.
-  if (values.quick && values.title === undefined) throw new UserError('init --quick needs --title, such as --title "limiter.ts lines 40 to 72"');
+  if (values.quick && values.title === undefined)
+    throw new UserError('init --quick needs --title, such as --title "limiter.ts lines 40 to 72"');
   const repo = findRepoRoot();
   if (repo) ensureExcluded(repo);
   const runs = runsRoot();
   const { dir, name } = explanationRun(runs, values);
   const existing = readRunMeta(dir);
-  if (values.quick && existing && !existing.quick) throw new UserError(`.mr-cast/${name} holds a full video, which --quick would not make quick; pass another --name, or leave --name out`);
-  const files = { hunks: path.join(dir, 'hunks.json'), storyboard: path.join(dir, 'storyboard.json'), meta: path.join(dir, 'meta.json') };
+  if (values.quick && existing && !existing.quick)
+    throw new UserError(
+      `.mr-cast/${name} holds a full video, which --quick would not make quick; pass another --name, or leave --name out`,
+    );
+  const files = {
+    hunks: path.join(dir, 'hunks.json'),
+    storyboard: path.join(dir, 'storyboard.json'),
+    meta: path.join(dir, 'meta.json'),
+  };
   if (values.reset) for (const file of Object.values(files)) fs.rmSync(file, { force: true });
 
   const previous = readRunMeta(dir) ?? {};
   // A full run starts from its quick video only while it is empty, and not when the user asked to start it over.
-  const empty = !fs.existsSync(files.storyboard) && !Object.keys(fs.existsSync(files.hunks) ? readJson(files.hunks, '') : {}).length;
+  const empty =
+    !fs.existsSync(files.storyboard) &&
+    !Object.keys(fs.existsSync(files.hunks) ? readJson(files.hunks, '') : {}).length;
   const quickSource = values.quick || values.reset || !empty ? null : quickRunOf(runs, values.title);
   fs.mkdirSync(dir, { recursive: true });
   if (quickSource) {
@@ -891,11 +1165,24 @@ function init(argv) {
   console.error(`mr-cast: run "${name}" in ${rel(dir)}; later commands use it until the next extract or init`);
   const snippets = Object.keys(readJson(files.hunks, '')).length;
   let kept = null;
-  try { kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)'; } catch { /* none yet */ }
-  if (quickSource) console.error(`note: started from the quick video in ${rel(quickSource)}: its storyboard, ${plural(snippets, 'snippet')} and voice clips; add the scenes the full video needs`);
-  else if (kept !== null) console.error(`note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`);
-  else if (snippets) console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
-  console.error(`next: \`mr-cast snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast validate${settingsArgs(values)}\``);
+  try {
+    kept = JSON.parse(fs.readFileSync(files.storyboard, 'utf8')).title ?? '(untitled)';
+  } catch {
+    /* none yet */
+  }
+  if (quickSource)
+    console.error(
+      `note: started from the quick video in ${rel(quickSource)}: its storyboard, ${plural(snippets, 'snippet')} and voice clips; add the scenes the full video needs`,
+    );
+  else if (kept !== null)
+    console.error(
+      `note: kept existing storyboard "${kept}" and ${snippets} snippet${snippets === 1 ? '' : 's'}; pass --reset to start it over, or a new --title for another explanation`,
+    );
+  else if (snippets)
+    console.error(`note: kept ${snippets} existing snippet${snippets === 1 ? '' : 's'}; pass --reset to start over`);
+  console.error(
+    `next: \`mr-cast snippet <file>:<start>-<end>\` for code to show, write ${rel(files.storyboard)}, then \`mr-cast validate${settingsArgs(values)}\``,
+  );
 }
 
 /** Adds snippets of unchanged source to a run's hunks.json: the code of an explanation, or context beside a diff. */
@@ -925,10 +1212,15 @@ function snippet(argv) {
     return hunk;
   });
   writeJson(hunksPath, hunks);
-  console.log(formatSnippets({
-    added, hunks, hunksPath: rel(hunksPath), storyboardPath: rel(path.join(dir, 'storyboard.json')),
-    validateCommand: `mr-cast validate${runArg}`,
-  }));
+  console.log(
+    formatSnippets({
+      added,
+      hunks,
+      hunksPath: rel(hunksPath),
+      storyboardPath: rel(path.join(dir, 'storyboard.json')),
+      validateCommand: `mr-cast validate${runArg}`,
+    }),
+  );
 }
 
 /** 0.11's `explain <command>`, kept for skills an open session loaded before an upgrade: init, or any command on the current run. */
@@ -936,7 +1228,10 @@ const EXPLAIN_COMMANDS = { init, snippet, validate, outline, voice, play, render
 
 async function explain([sub, ...rest]) {
   const run = EXPLAIN_COMMANDS[sub];
-  if (!run) throw new UserError(`unknown command "explain${sub ? ` ${sub}` : ''}"; \`mr-cast init\` starts an explanation and the other commands work on it, see \`mr-cast help\``);
+  if (!run)
+    throw new UserError(
+      `unknown command "explain${sub ? ` ${sub}` : ''}"; \`mr-cast init\` starts an explanation and the other commands work on it, see \`mr-cast help\``,
+    );
   await run(rest);
 }
 
@@ -956,15 +1251,23 @@ function status(argv) {
   if (!root) out.push('branch: none (not in a git repository), so only an explanation can be animated');
   else {
     const s = branchStatus(root);
-    const ahead = !s.base ? 'no base branch found; pass one to `mr-cast extract <base>`'
-      : s.ahead ? `${plural(s.ahead, 'commit')} and ${plural(s.files.length, 'file')} ahead of ${s.base}`
-      : `nothing ahead of ${s.base}`;
+    const ahead = !s.base
+      ? 'no base branch found; pass one to `mr-cast extract <base>`'
+      : s.ahead
+        ? `${plural(s.ahead, 'commit')} and ${plural(s.files.length, 'file')} ahead of ${s.base}`
+        : `nothing ahead of ${s.base}`;
     out.push(`branch: ${s.branch} · ${ahead}`, ...fileLines(s.files));
-    const parts = [s.working.length && `${plural(s.working.length, 'changed file')} (\`extract --working\` includes them)`, s.untracked && plural(s.untracked, 'untracked file')].filter(Boolean);
+    const parts = [
+      s.working.length && `${plural(s.working.length, 'changed file')} (\`extract --working\` includes them)`,
+      s.untracked && plural(s.untracked, 'untracked file'),
+    ].filter(Boolean);
     out.push(`working tree: ${parts.length ? parts.join(', ') : 'clean'}`, ...fileLines(s.working));
   }
   const last = lastChoices();
-  out.push(`last pace: ${last.pace ?? 'none yet'}`, `last voice: ${last.voice ?? `none yet (default ${DEFAULT_VOICE})`}`);
+  out.push(
+    `last pace: ${last.pace ?? 'none yet'}`,
+    `last voice: ${last.voice ?? `none yet (default ${DEFAULT_VOICE})`}`,
+  );
   const running = countLine(listProcesses());
   if (running) out.push(`running: ${running} · \`mr-cast ps\` lists them, \`mr-cast stop\` stops them`);
   console.log(out.join('\n'));
@@ -972,7 +1275,10 @@ function status(argv) {
 
 function parseKinds(values) {
   if (!values) return null;
-  const kinds = values.flatMap((v) => v.split(',')).map((k) => k.trim()).filter(Boolean);
+  const kinds = values
+    .flatMap((v) => v.split(','))
+    .map((k) => k.trim())
+    .filter(Boolean);
   const unknown = kinds.filter((k) => !KINDS.includes(k));
   if (unknown.length) throw new UserError(`unknown --kind ${unknown.join(', ')}; kinds are ${KINDS.join(', ')}`);
   return [...new Set(kinds)];
@@ -980,21 +1286,34 @@ function parseKinds(values) {
 
 async function prune(argv) {
   const { values, positionals } = parseArgs({
-    args: argv, allowPositionals: true,
+    args: argv,
+    allowPositionals: true,
     options: {
-      'older-than': { type: 'string' }, kind: { type: 'string', multiple: true }, all: { type: 'boolean', default: false },
-      except: { type: 'string', multiple: true }, 'dry-run': { type: 'boolean', default: false },
-      choices: { type: 'boolean', default: false }, json: { type: 'boolean', default: false },
+      'older-than': { type: 'string' },
+      kind: { type: 'string', multiple: true },
+      all: { type: 'boolean', default: false },
+      except: { type: 'string', multiple: true },
+      'dry-run': { type: 'boolean', default: false },
+      choices: { type: 'boolean', default: false },
+      json: { type: 'boolean', default: false },
     },
   });
   const dataRoot = dataDir(findRepoRoot() ?? process.cwd());
   const olderThanDays = values['older-than'] === undefined ? null : intOption(values['older-than'], 'older-than', 0);
-  const selector = { ids: positionals, kinds: parseKinds(values.kind), all: values.all, except: values.except ?? [], olderThanDays };
+  const selector = {
+    ids: positionals,
+    kinds: parseKinds(values.kind),
+    all: values.all,
+    except: values.except ?? [],
+    olderThanDays,
+  };
   const selecting = selector.ids.length > 0 || selector.kinds !== null || selector.all;
-  const print = (json, lines) => (values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l)));
+  const print = (json, lines) =>
+    values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l));
   const listing = listArtifacts(dataRoot);
   if (values.choices) {
-    if (selecting || olderThanDays !== null || selector.except.length || values['dry-run']) throw new UserError('--choices takes only --json');
+    if (selecting || olderThanDays !== null || selector.except.length || values['dry-run'])
+      throw new UserError('--choices takes only --json');
     const choices = pruneChoices(listing);
     // Running processes are offered beside the files; their options' commands are `stop`, not `prune`.
     choices.groups.push(...stopChoices(listProcesses()).groups);
@@ -1002,28 +1321,46 @@ async function prune(argv) {
     return;
   }
   if (!selecting) {
-    if (selector.except.length || values['dry-run']) throw new UserError('--except and --dry-run need ids, --kind or --all');
+    if (selector.except.length || values['dry-run'])
+      throw new UserError('--except and --dry-run need ids, --kind or --all');
     const shown = olderThan(listing, olderThanDays);
     print(listingJson(shown, dataRoot), formatListing(shown));
     return;
   }
-  const { chosen, inUse } = select(listing, selector, { listCommand: `mr-cast prune${olderThanDays === null ? '' : ` --older-than ${olderThanDays}`}` });
+  const { chosen, inUse } = select(listing, selector, {
+    listCommand: `mr-cast prune${olderThanDays === null ? '' : ` --older-than ${olderThanDays}`}`,
+  });
   const dryRun = values['dry-run'];
-  const { removed, skipped } = dryRun ? { removed: removalPlan(chosen), skipped: [] } : await pruneArtifacts(chosen, dataRoot);
+  const { removed, skipped } = dryRun
+    ? { removed: removalPlan(chosen), skipped: [] }
+    : await pruneArtifacts(chosen, dataRoot);
   const verb = dryRun ? 'would remove' : 'removed';
   const freed = removed.reduce((n, r) => n + r.bytes, 0);
-  print({
-    dryRun,
-    artifacts: removed.map(({ artifact: a, bytes, with: outer }) => ({ id: a.id, kind: a.kind, path: a.path, bytes, with: outer })),
-    inUse: inUse.map((a) => ({ id: a.id, busy: a.busy })),
-    skipped: skipped.map(({ artifact, reason }) => ({ id: artifact.id, reason })),
-    bytes: freed,
-  }, [
-    ...(removed.length ? [] : ['nothing matched']),
-    ...removed.map(({ artifact, bytes, with: outer }) => (outer ? `${verb} ${artifact.id} (with ${outer})` : `${verb} ${artifact.id} · ${formatBytes(bytes)} · ${rel(artifact.path)}`)),
-    ...inUse.map((a) => `in use, not removed: ${a.id} · ${a.busy}`),
-    `${dryRun ? 'would free' : 'freed'} ${formatBytes(freed)}`,
-  ]);
+  print(
+    {
+      dryRun,
+      artifacts: removed.map(({ artifact: a, bytes, with: outer }) => ({
+        id: a.id,
+        kind: a.kind,
+        path: a.path,
+        bytes,
+        with: outer,
+      })),
+      inUse: inUse.map((a) => ({ id: a.id, busy: a.busy })),
+      skipped: skipped.map(({ artifact, reason }) => ({ id: artifact.id, reason })),
+      bytes: freed,
+    },
+    [
+      ...(removed.length ? [] : ['nothing matched']),
+      ...removed.map(({ artifact, bytes, with: outer }) =>
+        outer
+          ? `${verb} ${artifact.id} (with ${outer})`
+          : `${verb} ${artifact.id} · ${formatBytes(bytes)} · ${rel(artifact.path)}`,
+      ),
+      ...inUse.map((a) => `in use, not removed: ${a.id} · ${a.busy}`),
+      `${dryRun ? 'would free' : 'freed'} ${formatBytes(freed)}`,
+    ],
+  );
   for (const { artifact, reason } of skipped) console.error(`mr-cast: kept ${artifact.id}: ${reason}`);
   if (skipped.length) process.exitCode = 1;
 }
@@ -1035,46 +1372,85 @@ function psCommand(argv) {
   else for (const line of formatPs(list)) console.log(line);
 }
 
-const STOPPED = { stopped: 'stopped', killed: 'killed (it ignored SIGTERM for 5 s)', gone: 'already gone', failed: 'could not stop' };
+const STOPPED = {
+  stopped: 'stopped',
+  killed: 'killed (it ignored SIGTERM for 5 s)',
+  gone: 'already gone',
+  failed: 'could not stop',
+};
 
 async function stop(argv) {
   const { values, positionals } = parseArgs({
-    args: argv, allowPositionals: true,
+    args: argv,
+    allowPositionals: true,
     options: {
-      'older-than': { type: 'string' }, idle: { type: 'boolean', default: false }, 'dry-run': { type: 'boolean', default: false },
-      choices: { type: 'boolean', default: false }, json: { type: 'boolean', default: false }, 'any-repo': { type: 'boolean', default: false },
+      'older-than': { type: 'string' },
+      idle: { type: 'boolean', default: false },
+      'dry-run': { type: 'boolean', default: false },
+      choices: { type: 'boolean', default: false },
+      json: { type: 'boolean', default: false },
+      'any-repo': { type: 'boolean', default: false },
     },
   });
-  const print = (json, lines) => (values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l)));
+  const print = (json, lines) =>
+    values.json ? console.log(JSON.stringify(json, null, 2)) : lines.forEach((l) => console.log(l));
   const list = listProcesses();
   if (values.choices) {
-    if (positionals.length || values.idle || values['older-than'] !== undefined || values['dry-run'] || values['any-repo']) throw new UserError('--choices takes only --json');
+    if (
+      positionals.length ||
+      values.idle ||
+      values['older-than'] !== undefined ||
+      values['dry-run'] ||
+      values['any-repo']
+    )
+      throw new UserError('--choices takes only --json');
     const choices = stopChoices(list);
     print(choices, formatStopChoices(choices));
     return;
   }
-  const repo = values['any-repo'] ? null : findRepoRoot() ?? process.cwd();
+  const repo = values['any-repo'] ? null : (findRepoRoot() ?? process.cwd());
   // A menu's pids can exit before the user answers; the rest are still stopped.
   const exited = exitedPids(list, positionals);
   const targets = positionals.filter((t) => !exited.includes(t));
-  const chosen = exited.length && targets.length === 0 ? [] : selectProcs(list, { targets, olderThan: values['older-than'] ?? null, idle: values.idle, repo });
-  const describe = (p) => `${p.kind} ${p.pid}${p.parent === null ? [p.run, p.url].filter(Boolean).map((x) => ` · ${x}`).join('') : ` (with ${p.parent})`}`;
+  const chosen =
+    exited.length && targets.length === 0
+      ? []
+      : selectProcs(list, { targets, olderThan: values['older-than'] ?? null, idle: values.idle, repo });
+  const describe = (p) =>
+    `${p.kind} ${p.pid}${
+      p.parent === null
+        ? [p.run, p.url]
+            .filter(Boolean)
+            .map((x) => ` · ${x}`)
+            .join('')
+        : ` (with ${p.parent})`
+    }`;
   const skipped = exited.map((pid) => `skipped pid ${pid}: it has exited already`);
   const lines = (done) => [...skipped, ...(done.length || skipped.length ? done : ['nothing matched'])];
   if (values['dry-run']) {
-    print({ dryRun: true, processes: chosen.map(procJson), exited: exited.map(Number) }, lines(chosen.map((p) => `would stop ${describe(p)}`)));
+    print(
+      { dryRun: true, processes: chosen.map(procJson), exited: exited.map(Number) },
+      lines(chosen.map((p) => `would stop ${describe(p)}`)),
+    );
     return;
   }
   const results = await stopProcesses(chosen);
   print(
-    { dryRun: false, processes: results.map(({ proc, outcome }) => ({ ...procJson(proc), outcome })), exited: exited.map(Number) },
+    {
+      dryRun: false,
+      processes: results.map(({ proc, outcome }) => ({ ...procJson(proc), outcome })),
+      exited: exited.map(Number),
+    },
     lines(results.map(({ proc, outcome }) => `${STOPPED[outcome]} ${describe(proc)}`)),
   );
   if (results.some((r) => r.outcome === 'failed')) process.exitCode = 1;
 }
 
 async function voices(argv) {
-  const { values } = parseArgs({ args: argv, options: { sample: { type: 'string' }, out: { type: 'string' }, ...SETTINGS_OPTIONS } });
+  const { values } = parseArgs({
+    args: argv,
+    options: { sample: { type: 'string' }, out: { type: 'string' }, ...SETTINGS_OPTIONS },
+  });
   if (values.sample === undefined) {
     if (values.out !== undefined) throw new UserError('--out needs --sample');
     console.log(formatVoices(lastChoices().voice).join('\n'));
@@ -1082,11 +1458,39 @@ async function voices(argv) {
   }
   const voice = resolveVoice({ voice: values.sample, engine: values.engine });
   const out = path.resolve(values.out ?? path.join(os.tmpdir(), `mr-cast-sample-${voice.replace(':', '-')}.wav`));
-  const seconds = await sampleVoice({ voice, speed: settingsFrom({ ...values, voice: undefined, engine: undefined }).pace.speed, out, onProgress: reportVoiceProgress });
+  const seconds = await sampleVoice({
+    voice,
+    speed: settingsFrom({ ...values, voice: undefined, engine: undefined }).pace.speed,
+    out,
+    onProgress: reportVoiceProgress,
+  });
   console.log(`✓ ${voice} · ${seconds.toFixed(1)}s · ${out}`);
 }
 
-const COMMANDS = { hook, schema, status, extract, init, snippet, plan, validate, outline, voice, play, render, still, steps, explain, 'install-skill': installSkillCommand, 'uninstall-skill': uninstallSkillCommand, prune, ps: psCommand, stop, voices, upgrade: upgradeCommand };
+const COMMANDS = {
+  hook,
+  schema,
+  status,
+  extract,
+  init,
+  snippet,
+  plan,
+  validate,
+  outline,
+  voice,
+  play,
+  render,
+  still,
+  steps,
+  explain,
+  'install-skill': installSkillCommand,
+  'uninstall-skill': uninstallSkillCommand,
+  prune,
+  ps: psCommand,
+  stop,
+  voices,
+  upgrade: upgradeCommand,
+};
 
 function version() {
   console.log(`mr-cast ${VERSION} (node ${process.versions.node})`);
@@ -1096,7 +1500,9 @@ function version() {
 function refreshSkillsQuietly() {
   try {
     if (refreshSkills(ROOT, VERSION)) console.error(`mr-cast: updated Claude Code skills to ${VERSION}`);
-  } catch { /* retried next run */ }
+  } catch {
+    /* retried next run */
+  }
 }
 
 async function main([command, ...rest]) {
@@ -1125,12 +1531,15 @@ const argv = process.argv.slice(2);
 // Computed before the command runs and printed after it, on stderr, so stdout stays parseable.
 const notice = argv[0] === 'upgrade' ? null : updateNotice(ROOT, VERSION);
 
-main(argv).catch((err) => {
-  if (process.env.MR_CAST_DEBUG === '1') console.error(err);
-  else if (err instanceof UserError) console.error(`mr-cast: ${err.message}`);
-  else if (err.code?.startsWith?.('ERR_PARSE_ARGS')) console.error(`mr-cast: ${err.message.split('. ')[0]}; see \`mr-cast help\``);
-  else console.error(`mr-cast: ${err.message} (set MR_CAST_DEBUG=1 for details)`);
-  process.exitCode = 1; // not process.exit(): see shutdown in play()
-}).finally(() => {
-  if (notice) console.error(notice);
-});
+main(argv)
+  .catch((err) => {
+    if (process.env.MR_CAST_DEBUG === '1') console.error(err);
+    else if (err instanceof UserError) console.error(`mr-cast: ${err.message}`);
+    else if (err.code?.startsWith?.('ERR_PARSE_ARGS'))
+      console.error(`mr-cast: ${err.message.split('. ')[0]}; see \`mr-cast help\``);
+    else console.error(`mr-cast: ${err.message} (set MR_CAST_DEBUG=1 for details)`);
+    process.exitCode = 1; // not process.exit(): see shutdown in play()
+  })
+  .finally(() => {
+    if (notice) console.error(notice);
+  });

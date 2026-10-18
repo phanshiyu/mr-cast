@@ -33,7 +33,11 @@ function globalRoot(manager) {
  */
 function globalCopies(dir) {
   let entries = [];
-  try { entries = fs.readdirSync(dir); } catch { /* no global root yet */ }
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    /* no global root yet */
+  }
   const copies = [path.join(dir, PACKAGE), ...entries.map((e) => path.join(dir, e, 'node_modules', PACKAGE))];
   return copies.flatMap((copy) => {
     try {
@@ -55,7 +59,8 @@ function installKind(root) {
   const real = fs.realpathSync(root);
   for (const manager of MANAGERS) {
     const dir = globalRoot(manager);
-    if (dir && globalCopies(dir).some((copy) => copy.real === real)) return { kind: 'global', manager, globalRoot: dir };
+    if (dir && globalCopies(dir).some((copy) => copy.real === real))
+      return { kind: 'global', manager, globalRoot: dir };
   }
   return { kind: 'other' };
 }
@@ -101,14 +106,22 @@ const installedVersion = (root) => JSON.parse(fs.readFileSync(path.join(root, 'p
  */
 function upgradedRoot(install) {
   const copies = globalCopies(install.globalRoot).filter((copy) => fs.existsSync(path.join(copy.path, 'package.json')));
-  if (!copies.length) throw new UserError(`the upgrade succeeded but mr-cast is no longer under ${install.globalRoot}; run \`mr-cast install-skill\``);
-  return copies.reduce((a, b) => (compareVersions(installedVersion(b.path), installedVersion(a.path)) > 0 ? b : a)).path;
+  if (!copies.length)
+    throw new UserError(
+      `the upgrade succeeded but mr-cast is no longer under ${install.globalRoot}; run \`mr-cast install-skill\``,
+    );
+  return copies.reduce((a, b) => (compareVersions(installedVersion(b.path), installedVersion(a.path)) > 0 ? b : a))
+    .path;
 }
 
 export async function upgrade({ root, version, check }) {
   const latest = await latestVersion();
   const newer = compareVersions(latest, version) > 0;
-  console.log(newer ? `mr-cast ${latest} is available (you have ${version}); changes: ${RELEASES}` : `mr-cast ${version} is the latest version`);
+  console.log(
+    newer
+      ? `mr-cast ${latest} is available (you have ${version}); changes: ${RELEASES}`
+      : `mr-cast ${version} is the latest version`,
+  );
   const install = installKind(root);
 
   if (install.kind === 'clone') {
@@ -118,7 +131,9 @@ export async function upgrade({ root, version, check }) {
   }
   if (!newer) return;
   if (install.kind === 'other') {
-    console.log(`this mr-cast was not installed by \`npm install -g\`; to install the latest globally, run:\n  ${command(NPM)}`);
+    console.log(
+      `this mr-cast was not installed by \`npm install -g\`; to install the latest globally, run:\n  ${command(NPM)}`,
+    );
     return;
   }
   if (check) {
@@ -131,8 +146,13 @@ export async function upgrade({ root, version, check }) {
   const { code, stderr } = await runManager(install.manager);
   if (code !== 0) {
     if (/\bEACCES\b/.test(stderr)) {
-      const fix = install.manager === NPM ? `give npm a prefix you own (${EACCES_DOCS})` : 'run `pnpm setup` to give pnpm a global directory you own';
-      throw new UserError(`${install.manager.name} cannot write to ${install.globalRoot}. If you installed mr-cast with sudo, upgrade it the same way. Otherwise ${fix} and rerun \`mr-cast upgrade\``);
+      const fix =
+        install.manager === NPM
+          ? `give npm a prefix you own (${EACCES_DOCS})`
+          : 'run `pnpm setup` to give pnpm a global directory you own';
+      throw new UserError(
+        `${install.manager.name} cannot write to ${install.globalRoot}. If you installed mr-cast with sudo, upgrade it the same way. Otherwise ${fix} and rerun \`mr-cast upgrade\``,
+      );
     }
     throw new UserError(`${command(install.manager)} failed (exit ${code}; see its output above)`);
   }
@@ -142,6 +162,9 @@ export async function upgrade({ root, version, check }) {
   // This process still runs the old code, so the new version installs its own skills.
   const launcher = path.join(newRoot, 'bin', 'mr-cast');
   const res = spawnSync(fs.existsSync(launcher) ? launcher : 'mr-cast', ['install-skill'], { stdio: 'inherit' });
-  if (res.status !== 0) throw new UserError('the upgrade succeeded but reinstalling the Claude Code skills failed; run `mr-cast install-skill`');
+  if (res.status !== 0)
+    throw new UserError(
+      'the upgrade succeeded but reinstalling the Claude Code skills failed; run `mr-cast install-skill`',
+    );
   console.log('start a new Claude Code session to load the updated skills');
 }

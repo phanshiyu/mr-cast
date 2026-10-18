@@ -2,7 +2,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 
-const unreadable = async (scene) => (await validateStoryboard({ title: 'Scaled', scenes: [{ chapter: 'Scaled', narration: 'Each part hands the request on.', ...scene }] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('unreadable'));
+const unreadable = async (scene) =>
+  (
+    await validateStoryboard(
+      { title: 'Scaled', scenes: [{ chapter: 'Scaled', narration: 'Each part hands the request on.', ...scene }] },
+      {},
+      { mode: 'explain' },
+    )
+  ).warnings.filter((w) => w.includes('unreadable'));
 const range = (n, f) => Array.from({ length: n }, (_, i) => f(i));
 
 const chain = (n) => ({
@@ -21,7 +28,11 @@ const states = (n) => ({
 
 const tables = (n) => ({
   type: 'er',
-  entities: range(n, (i) => ({ id: `e${i}`, name: `table_${i}`, fields: range(4, (k) => ({ name: `field_${k}`, type: 'text' })) })),
+  entities: range(n, (i) => ({
+    id: `e${i}`,
+    name: `table_${i}`,
+    fields: range(4, (k) => ({ name: `field_${k}`, type: 'text' })),
+  })),
   relations: range(n - 1, (i) => ({ from: `e${i}`, to: `e${i + 1}`, label: 'has', cardinality: 'one-to-many' })),
 });
 

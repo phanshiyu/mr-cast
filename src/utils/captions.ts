@@ -21,7 +21,10 @@ export function captionPage(narration: string, wordIndex: number, maxChars: numb
   const words = narration.trim().split(/\s+/).filter(Boolean);
   const lines = wrapWords(words, maxChars);
   const current = Math.min(wordIndex, words.length - 1);
-  const lineIndex = Math.max(0, lines.findIndex((l) => l.includes(current)));
+  const lineIndex = Math.max(
+    0,
+    lines.findIndex((l) => l.includes(current)),
+  );
   const start = Math.floor(lineIndex / linesPerPage) * linesPerPage;
   return { words, lines: lines.slice(start, start + linesPerPage) };
 }

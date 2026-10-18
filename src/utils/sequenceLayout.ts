@@ -122,7 +122,9 @@ function pairActivations(messages: readonly SequenceMessage[], indexOf: Map<stri
   });
   for (const stack of pending.values()) unmatched.push(...stack);
   for (const span of unmatched) {
-    const next = messages.findIndex((m, j) => j > span.start && indexOf.get(m.from) === span.participant && m.from !== m.to);
+    const next = messages.findIndex(
+      (m, j) => j > span.start && indexOf.get(m.from) === span.participant && m.from !== m.to,
+    );
     spans.push({ ...span, end: next === -1 ? messages.length - 1 : next, open: next === -1 });
   }
   return spans.sort((a, b) => a.start - b.start || a.participant - b.participant);
@@ -181,14 +183,18 @@ export function layoutSequence(
 
   const isSelf = (m: SequenceMessage) => m.from === m.to;
   const weights = messages.map((m) => (isSelf(m) ? SELF_WEIGHT : 1));
-  const totalWeight = Math.max(1, weights.reduce((a, b) => a + b, 0));
+  const totalWeight = Math.max(
+    1,
+    weights.reduce((a, b) => a + b, 0),
+  );
   const unit = Math.max(MIN_UNIT, Math.min(MAX_UNIT, (box.height - rowsTop - BOTTOM_PAD) / totalWeight));
   const baseFont = Math.round(Math.max(17, Math.min(24, unit * 0.36)));
   /** A label may rise from its arrow to just short of the arrow in the row above. */
   const labelRoom = (1 - 0.28 + LABEL_RISE) * unit - LABEL_GAP;
 
   const spans = pairActivations(messages, indexOf);
-  const covering = (p: number, row: number) => spans.filter((s) => s.participant === p && s.start <= row && s.end >= row).length;
+  const covering = (p: number, row: number) =>
+    spans.filter((s) => s.participant === p && s.start <= row && s.end >= row).length;
   /** Where an arrow leaves or reaches a lifeline: the outer edge of its activation bars, if any. */
   const edgeX = (p: number, row: number, dir: 1 | -1) => {
     const depth = covering(p, row);
@@ -205,7 +211,9 @@ export function layoutSequence(
     const to = indexOf.get(m.to)!;
     let label: Omit<PlacedLabel, 'y'>;
     let occupied: [number, number];
-    let geometry: { self: true; x: number; depth: number; start: number; tip: number; loopX: number } | { self: false; x1: number; x2: number };
+    let geometry:
+      | { self: true; x: number; depth: number; start: number; tip: number; loopX: number }
+      | { self: false; x1: number; x2: number };
     if (from === to) {
       const x = xs[from]!;
       const depth = covering(from, i);
@@ -214,12 +222,20 @@ export function layoutSequence(
       const loopX = Math.max(start, tip) + LOOP_W;
       const rightRoom = width - (loopX + 12);
       const leftRoom = x - BAR_W - 8;
-      const want = chipWidth(fitText(m.label, { ...SLOTS.messageLabel, size: baseFont, min: baseFont, oneLineMin: undefined, lines: 1, width: Infinity }, path));
+      const want = chipWidth(
+        fitText(
+          m.label,
+          { ...SLOTS.messageLabel, size: baseFont, min: baseFont, oneLineMin: undefined, lines: 1, width: Infinity },
+          path,
+        ),
+      );
       const onRight = rightRoom >= Math.min(want, colW * 0.9) || rightRoom >= leftRoom;
       const maxWidth = Math.min(onRight ? rightRoom : leftRoom, Math.max(colW * 0.9, want));
       const text = fitLabel(m.label, maxWidth, labelRoom, baseFont, path);
       const used = Math.min(maxWidth, chipWidth(text));
-      label = onRight ? { x: loopX + 12, align: 'left', maxWidth, text } : { x: leftRoom, align: 'right', maxWidth, text };
+      label = onRight
+        ? { x: loopX + 12, align: 'left', maxWidth, text }
+        : { x: leftRoom, align: 'right', maxWidth, text };
       occupied = onRight ? [x - BAR_W, loopX + 12 + used] : [leftRoom - used, loopX];
       geometry = { self: true, x, depth, start, tip, loopX };
     } else {
@@ -227,7 +243,12 @@ export function layoutSequence(
       const x1 = edgeX(from, i, dir);
       const x2 = edgeX(to, i, dir === 1 ? -1 : 1);
       const span = Math.abs(x2 - x1) - 12;
-      label = { x: (x1 + x2) / 2, align: 'center', maxWidth: span, text: fitLabel(m.label, span, labelRoom, baseFont, path) };
+      label = {
+        x: (x1 + x2) / 2,
+        align: 'center',
+        maxWidth: span,
+        text: fitLabel(m.label, span, labelRoom, baseFont, path),
+      };
       occupied = [Math.min(x1, x2), Math.max(x1, x2)];
       geometry = { self: false, x1, x2 };
     }
@@ -239,7 +260,12 @@ export function layoutSequence(
       const maxWidth = Math.min(NOTE_MAX_W, Math.max(left, right));
       const slot = { ...SLOTS.messageNote, width: maxWidth - NOTE_CHROME };
       const usual = fitText(m.note, { ...slot, lines: weights[i]! * unit >= 62 ? 2 : 1 }, `messages[${at}].note`);
-      note = { x: side === 'right' ? occupied[1] + NOTE_GAP : occupied[0] - NOTE_GAP, side, maxWidth, text: usual.fits ? usual : fitText(m.note, { ...slot, lines: 3 }, `messages[${at}].note`) };
+      note = {
+        x: side === 'right' ? occupied[1] + NOTE_GAP : occupied[0] - NOTE_GAP,
+        side,
+        maxWidth,
+        text: usual.fits ? usual : fitText(m.note, { ...slot, lines: 3 }, `messages[${at}].note`),
+      };
     }
     // Down a row: a plain arrow sits 0.72 of a row down with its label above it; a self-call starts 0.3
     // down and loops 0.6 further, its label beside the loop. A tall label or note pushes the arrow down
@@ -283,11 +309,19 @@ export function layoutSequence(
     let label: PlacedLabel;
     if (g.self) {
       const yEnd = y + 0.6 * unit;
-      points = [{ x: g.start, y }, { x: g.loopX, y }, { x: g.loopX, y: yEnd }, { x: g.tip, y: yEnd }];
+      points = [
+        { x: g.start, y },
+        { x: g.loopX, y },
+        { x: g.loopX, y: yEnd },
+        { x: g.tip, y: yEnd },
+      ];
       activations.push({ x: g.x + g.depth * BAR_STEP, y0: yEnd - 8, y1: yEnd + 14, opener: i });
       label = { ...row.label, y: (y + yEnd) / 2 };
     } else {
-      points = [{ x: g.x1, y }, { x: g.x2, y }];
+      points = [
+        { x: g.x1, y },
+        { x: g.x2, y },
+      ];
       label = { ...row.label, y: y - LABEL_GAP };
     }
     const note = row.note ? { ...row.note, y: g.self ? label.y : (top + bottom) / 2 } : null;
@@ -303,7 +337,9 @@ export function layoutSequence(
     cardTop: CARD_TOP,
     lifelineTop,
     participants: participants.map((participant, i) => ({ participant, x: xs[i]! })),
-    texts: cardTexts(participants, cardW, CARD_H, cardW < 290 ? 'compact' : 'small', (i) => `participants[${i}]`, { shared: false }),
+    texts: cardTexts(participants, cardW, CARD_H, cardW < 290 ? 'compact' : 'small', (i) => `participants[${i}]`, {
+      shared: false,
+    }),
     messages: placed,
     activations,
   };

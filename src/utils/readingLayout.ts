@@ -41,28 +41,54 @@ export interface ReadingLayout {
 
 /** "+2 more to read, +3 routine": what the scene leaves to reading.md, the items to read apart from the routine ones. */
 export function moreText({ moreToRead, routine }: Pick<ReadingLayout, 'moreToRead' | 'routine'>): string {
-  return [moreToRead ? `+${moreToRead} more to read` : '', routine ? `+${routine} routine` : ''].filter(Boolean).join(', ');
+  return [moreToRead ? `+${moreToRead} more to read` : '', routine ? `+${routine} routine` : '']
+    .filter(Boolean)
+    .join(', ');
 }
 
 /** `index` is each item's place in the scene's `items`, which a report names it by. */
-function attempt(shown: readonly ReadingEntry[], index: (item: ReadingEntry) => number, width: number, font: number): Omit<ReadingLayout, 'moreToRead' | 'routine' | 'room'> {
+function attempt(
+  shown: readonly ReadingEntry[],
+  index: (item: ReadingEntry) => number,
+  width: number,
+  font: number,
+): Omit<ReadingLayout, 'moreToRead' | 'routine' | 'room'> {
   const lineHeight = Math.round(font * LINE_HEIGHT);
   const whereFont = Math.round(font * 0.8);
   const noteFont = Math.round(font * 0.62);
   const flagFont = Math.round(font * 0.76);
   const pad = Math.round(font * 0.5);
   const whereX = ROW_PAD_X + NUMBER_W + COL_GAP;
-  const widest = Math.max(0, ...shown.map((i) => measure(`${i.where}${alsoText(i)}`, { family: 'mono', weight: SLOTS.findingWhere.weight, size: whereFont })));
+  const widest = Math.max(
+    0,
+    ...shown.map((i) =>
+      measure(`${i.where}${alsoText(i)}`, { family: 'mono', weight: SLOTS.findingWhere.weight, size: whereFont }),
+    ),
+  );
   const whereW = Math.ceil(Math.min(widest, (width - whereX) * WHERE_SHARE));
   const checkX = whereX + whereW + COL_GAP;
   const checkW = width - checkX - ROW_PAD_X;
   let y = HEAD_H;
   const rows = shown.map((item) => {
     const k = `items[${index(item)}]`;
-    const where = fitTextAt(`${item.where}${alsoText(item)}`, sized(SLOTS.findingWhere, whereW), `${k}.hunkId`, whereFont);
-    const explained = item.explainedIn ? fitTextAt(`Explained in: ${item.explainedIn.chapter}`, sized(SLOTS.readingNote, whereW), `${k}.hunkId`, noteFont) : null;
+    const where = fitTextAt(
+      `${item.where}${alsoText(item)}`,
+      sized(SLOTS.findingWhere, whereW),
+      `${k}.hunkId`,
+      whereFont,
+    );
+    const explained = item.explainedIn
+      ? fitTextAt(
+          `Explained in: ${item.explainedIn.chapter}`,
+          sized(SLOTS.readingNote, whereW),
+          `${k}.hunkId`,
+          noteFont,
+        )
+      : null;
     const check = fitTextAt(item.check, sized(SLOTS.readingCheck, checkW), `${k}.check`, font);
-    const flag = item.finding ? fitTextAt(flagText(item.finding), sized(SLOTS.readingFlag, checkW), `${k}.flag`, flagFont) : null;
+    const flag = item.finding
+      ? fitTextAt(flagText(item.finding), sized(SLOTS.readingFlag, checkW), `${k}.flag`, flagFont)
+      : null;
     const left = where.height + (explained ? explained.height + 4 : 0);
     const right = Math.max(1, check.lines.length) * lineHeight + (flag ? 6 + flag.height : 0);
     const h = Math.max(left, right) + 2 * pad;
@@ -78,17 +104,33 @@ function attempt(shown: readonly ReadingEntry[], index: (item: ReadingEntry) => 
  * that explains it, the check and the finding it carries. Picks the largest font at which every text fits and the
  * rows, with the "+N" line, fit the height; one that does not fit at the smallest is reported, so `validate` fails.
  */
-export function layoutReading(order: ReadingOrder, items: readonly { hunkId: string }[], width: number, height: number): ReadingLayout {
+export function layoutReading(
+  order: ReadingOrder,
+  items: readonly { hunkId: string }[],
+  width: number,
+  height: number,
+): ReadingLayout {
   const shown = order.readFirst.slice(0, READ_FIRST_MAX);
   const moreToRead = order.readFirst.length - shown.length;
   const routine = order.skim.reduce((n, g) => n + g.items.length, 0);
   const room = height - (moreToRead || routine ? MORE_H : 0);
   const index = (item: ReadingEntry) => items.findIndex((i) => i.hunkId === item.hunkId);
-  const fits = (l: Omit<ReadingLayout, 'moreToRead' | 'routine' | 'room'>) => l.height <= room && l.rows.every((r) => r.check.fits && (r.flag?.fits ?? true) && (r.explained?.fits ?? true));
+  const fits = (l: Omit<ReadingLayout, 'moreToRead' | 'routine' | 'room'>) =>
+    l.height <= room && l.rows.every((r) => r.check.fits && (r.flag?.fits ?? true) && (r.explained?.fits ?? true));
   let last = attempt(shown, index, width, SLOTS.readingCheck.min);
   for (let font = MAX_FONT; font >= SLOTS.readingCheck.min; font--) {
     last = attempt(shown, index, width, font);
     if (fits(last)) return { ...last, moreToRead, routine, room: fitBlock('items', 'reading scene', true, '') };
   }
-  return { ...last, moreToRead, routine, room: fitBlock('items', 'reading scene', last.height <= room, 'shorten the checks, or mark more items "routine": true') };
+  return {
+    ...last,
+    moreToRead,
+    routine,
+    room: fitBlock(
+      'items',
+      'reading scene',
+      last.height <= room,
+      'shorten the checks, or mark more items "routine": true',
+    ),
+  };
 }

@@ -44,7 +44,8 @@ const CHILD = /(?:^|\/)bin\/lib\/voice-child\.mjs$/;
 const OLD_KINDS = new Set(['play', 'plan', 'render']);
 
 /** Per user, beside other state that outlives a command; a stale entry is dropped by the next listing. */
-export const procsDir = () => path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'mr-cast', 'procs');
+export const procsDir = () =>
+  path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), '.local', 'state'), 'mr-cast', 'procs');
 
 const entryFile = (pid) => path.join(procsDir(), `${pid}.json`);
 
@@ -78,15 +79,28 @@ export const removeEntry = (pid) => fs.rmSync(entryFile(pid), { force: true });
  * @returns {Map<number, Row> | null}
  */
 export function processTable(pids = null) {
-  const out = spawnSync('ps', [...(pids ? ['-p', pids.join(',')] : ['-A']), '-ww', '-o', 'pid=,ppid=,uid=,lstart=,command='], {
-    encoding: 'utf8', env: { ...process.env, LC_ALL: 'C', TZ: 'UTC0' }, timeout: 5000,
-  });
+  const out = spawnSync(
+    'ps',
+    [...(pids ? ['-p', pids.join(',')] : ['-A']), '-ww', '-o', 'pid=,ppid=,uid=,lstart=,command='],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, LC_ALL: 'C', TZ: 'UTC0' },
+      timeout: 5000,
+    },
+  );
   // `ps -p` exits 1, printing nothing, when none of the pids runs: an answer, unlike any other failure.
   if (out.error || out.signal || out.stderr?.trim() || !(out.status === 0 || (pids && out.status === 1))) return null;
   const rows = new Map();
   for (const line of out.stdout.split('\n')) {
     const m = line.match(/^\s*(\d+)\s+(\d+)\s+(\d+)\s+(\w{3} \w{3} [ \d]\d \d\d:\d\d:\d\d \d{4})\s+(.*)$/);
-    if (m) rows.set(Number(m[1]), { pid: Number(m[1]), ppid: Number(m[2]), uid: Number(m[3]), started: m[4], command: m[5] });
+    if (m)
+      rows.set(Number(m[1]), {
+        pid: Number(m[1]),
+        ppid: Number(m[2]),
+        uid: Number(m[3]),
+        started: m[4],
+        command: m[5],
+      });
   }
   return rows;
 }
@@ -107,18 +121,27 @@ export function mrCastCommand(command) {
   const [script, ...rest] = args.slice(at);
   if (CHILD.test(script)) return rest[0] === '--voice-child' ? { script, kind: 'voice', rest } : null;
   if (!MAIN.test(script)) return null;
-  return { script, kind: rest[0] === 'explain' ? rest[1] ?? null : rest[0] ?? null, rest };
+  return { script, kind: rest[0] === 'explain' ? (rest[1] ?? null) : (rest[0] ?? null), rest };
 }
 
 /** Whether `row` is the process `entry` describes: this user's, started then, and running the mr-cast it recorded. */
-const same = (row, entry) => Boolean(row) && row.uid === ownUid() && row.started === entry.started && row.command === entry.command && mrCastCommand(row.command) !== null;
+const same = (row, entry) =>
+  Boolean(row) &&
+  row.uid === ownUid() &&
+  row.started === entry.started &&
+  row.command === entry.command &&
+  mrCastCommand(row.command) !== null;
 
 /** The run fields of a process working on run directory `dir`. */
 export const runFields = (dir) => {
   if (!dir) return { dir: null, run: null, repo: null };
   const abs = path.resolve(dir);
   const parent = path.dirname(abs);
-  return { dir: abs, run: path.basename(abs), repo: path.basename(parent) === '.mr-cast' ? path.dirname(parent) : null };
+  return {
+    dir: abs,
+    run: path.basename(abs),
+    repo: path.basename(parent) === '.mr-cast' ? path.dirname(parent) : null,
+  };
 };
 
 /**
@@ -130,7 +153,14 @@ export function register(fields) {
   const row = processTable([process.pid])?.get(process.pid);
   if (!row) return { update() {}, remove() {} };
   const file = entryFile(process.pid);
-  let entry = { pid: process.pid, ppid: process.ppid, started: row.started, command: row.command, version: VERSION, ...fields };
+  let entry = {
+    pid: process.pid,
+    ppid: process.ppid,
+    started: row.started,
+    command: row.command,
+    version: VERSION,
+    ...fields,
+  };
   const write = () => {
     const dir = ownDir({ create: true });
     if (!dir) return;
@@ -146,7 +176,13 @@ export function register(fields) {
   const remove = () => fs.rmSync(file, { force: true });
   write();
   process.once('exit', remove);
-  return { update(patch) { entry = { ...entry, ...patch }; write(); }, remove };
+  return {
+    update(patch) {
+      entry = { ...entry, ...patch };
+      write();
+    },
+    remove,
+  };
 }
 
 const parseTime = (text) => (text ? Date.parse(text) : NaN);
@@ -156,29 +192,43 @@ const parseStarted = (text) => Date.parse(`${text} GMT`);
 function readEntries() {
   const dir = ownDir({ create: false });
   let names = [];
-  try { names = dir ? fs.readdirSync(dir) : []; } catch { /* none yet */ }
+  try {
+    names = dir ? fs.readdirSync(dir) : [];
+  } catch {
+    /* none yet */
+  }
   for (const name of names.filter((n) => n.endsWith('.tmp'))) {
     const file = path.join(dir, name);
     try {
       if (Date.now() - fs.lstatSync(file).mtimeMs > STALE_TMP_MS) fs.rmSync(file, { force: true });
-    } catch { /* gone meanwhile */ }
-  }
-  return names.filter((n) => /^\d+\.json$/.test(n)).map((name) => {
-    const file = path.join(dir, name);
-    try {
-      const entry = JSON.parse(fs.readFileSync(file, 'utf8'));
-      return { file, entry: entry?.pid === Number(name.slice(0, -5)) ? entry : null };
     } catch {
-      return { file, entry: null };
+      /* gone meanwhile */
     }
-  });
+  }
+  return names
+    .filter((n) => /^\d+\.json$/.test(n))
+    .map((name) => {
+      const file = path.join(dir, name);
+      try {
+        const entry = JSON.parse(fs.readFileSync(file, 'utf8'));
+        return { file, entry: entry?.pid === Number(name.slice(0, -5)) ? entry : null };
+      } catch {
+        return { file, entry: null };
+      }
+    });
 }
 
 /** The working directory and listening port of another process, from `lsof`; nulls where it cannot tell. */
 function lsofOf(pid) {
   const field = (args) => {
-    const out = spawnSync('lsof', ['-a', '-p', String(pid), ...args, '-Fn'], { encoding: 'utf8', timeout: 5000 }).stdout ?? '';
-    return out.split('\n').find((l) => l.startsWith('n'))?.slice(1) ?? null;
+    const out =
+      spawnSync('lsof', ['-a', '-p', String(pid), ...args, '-Fn'], { encoding: 'utf8', timeout: 5000 }).stdout ?? '';
+    return (
+      out
+        .split('\n')
+        .find((l) => l.startsWith('n'))
+        ?.slice(1) ?? null
+    );
   };
   const cwd = field(['-d', 'cwd']);
   const port = field(['-iTCP', '-sTCP:LISTEN', '-P', '-n'])?.match(/:(\d+)$/)?.[1] ?? null;
@@ -186,7 +236,11 @@ function lsofOf(pid) {
 }
 
 const packageOf = (root) => {
-  try { return JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')); } catch { return null; }
+  try {
+    return JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  } catch {
+    return null;
+  }
 };
 
 /** A process of this user running an mr-cast that wrote no entry, as 0.27.0 and older do; null for anything else. */
@@ -202,10 +256,23 @@ function unregistered(row) {
   const kind = /** @type {ProcKind} */ (found.kind);
   const name = row.command.match(/\s--name\s+(\S+)/)?.[1] ?? null;
   return {
-    pid: row.pid, ppid: row.ppid, kind, started: row.started, command: row.command, version: null, registered: false,
+    pid: row.pid,
+    ppid: row.ppid,
+    kind,
+    started: row.started,
+    command: row.command,
+    version: null,
+    registered: false,
     url: port && SERVERS.has(kind) ? `http://127.0.0.1:${port}${kind === 'plan' ? '/plan' : ''}` : null,
-    dir: null, run: name, repo: kind === 'voice' ? null : cwd, startedAt: parseStarted(row.started),
-    viewers: null, idleSince: null, idleExit: null, exitsAt: null, parent: null,
+    dir: null,
+    run: name,
+    repo: kind === 'voice' ? null : cwd,
+    startedAt: parseStarted(row.started),
+    viewers: null,
+    idleSince: null,
+    idleExit: null,
+    exitsAt: null,
+    parent: null,
   };
 }
 
@@ -233,11 +300,17 @@ export function listProcesses({ ps = processTable } = {}) {
     const row = entry && table.get(entry.pid);
     if (row && same(row, entry)) {
       procs.push({
-        ...entry, registered: true, startedAt: parseStarted(entry.started),
-        url: entry.url ?? null, dir: entry.dir ?? null, run: entry.run ?? null, repo: entry.repo ?? null, version: entry.version ?? null,
-        viewers: SERVERS.has(entry.kind) ? entry.viewers ?? 0 : null,
+        ...entry,
+        registered: true,
+        startedAt: parseStarted(entry.started),
+        url: entry.url ?? null,
+        dir: entry.dir ?? null,
+        run: entry.run ?? null,
+        repo: entry.repo ?? null,
+        version: entry.version ?? null,
+        viewers: SERVERS.has(entry.kind) ? (entry.viewers ?? 0) : null,
         idleSince: SERVERS.has(entry.kind) ? parseTime(entry.idleSince) || null : null,
-        idleExit: SERVERS.has(entry.kind) ? entry.idleExit ?? null : null,
+        idleExit: SERVERS.has(entry.kind) ? (entry.idleExit ?? null) : null,
         exitsAt: SERVERS.has(entry.kind) ? parseTime(entry.exitsAt) || null : null,
         parent: null,
       });
@@ -279,13 +352,17 @@ export function parseDuration(text, flag) {
 export function selectProcs(list, selector, now = Date.now()) {
   const { targets } = selector;
   const repo = selector.repo ?? null;
-  if (targets.length === 0) throw new UserError('name what to stop: a pid, a run name, or all; `mr-cast ps` lists them');
+  if (targets.length === 0)
+    throw new UserError('name what to stop: a pid, a run name, or all; `mr-cast ps` lists them');
   const ofRun = (p, t) => p.run === t && (repo === null || p.repo === repo);
   const unknown = targets.filter((t) => t !== 'all' && !list.some((p) => String(p.pid) === t || ofRun(p, t)));
   if (unknown.length) {
-    const why = (t) => (/^\d+$/.test(t) ? `pid ${t} is not a running mr-cast process of yours`
-      : repo === null ? `no running mr-cast process has run "${t}"`
-        : `no running mr-cast process of this repository has run "${t}"${list.some((p) => p.run === t) ? ' (--any-repo stops it in other repositories)' : ''}`);
+    const why = (t) =>
+      /^\d+$/.test(t)
+        ? `pid ${t} is not a running mr-cast process of yours`
+        : repo === null
+          ? `no running mr-cast process has run "${t}"`
+          : `no running mr-cast process of this repository has run "${t}"${list.some((p) => p.run === t) ? ' (--any-repo stops it in other repositories)' : ''}`;
     throw new UserError(`not stopping anything: ${unknown.map(why).join('; ')}; \`mr-cast ps\` lists them`);
   }
   const olderThanMs = selector.olderThan === null ? null : parseDuration(selector.olderThan, '--older-than');
@@ -340,7 +417,8 @@ export async function stopProcesses(procs, { graceMs = GRACE_MS, ps = processTab
     return left;
   };
   const before = ps(procs.map((p) => p.pid));
-  if (!before) throw new UserError('could not run `ps` to check the processes before signalling them; nothing was stopped');
+  if (!before)
+    throw new UserError('could not run `ps` to check the processes before signalling them; nothing was stopped');
   const running = alive(before);
   for (const p of procs) if (!running.includes(p)) outcome.set(p.pid, 'gone');
   signal(running, first);
@@ -386,40 +464,80 @@ function whereOf(p) {
 
 export function formatPs(list, now = Date.now()) {
   if (list.length === 0) return ['no mr-cast processes running'];
-  const rows = list.map((p) => [String(p.pid), p.parent === null ? p.kind : `  ${p.kind}`, formatAge(now - p.startedAt), pageOf(p, now), p.url ?? '', whereOf(p)]);
+  const rows = list.map((p) => [
+    String(p.pid),
+    p.parent === null ? p.kind : `  ${p.kind}`,
+    formatAge(now - p.startedAt),
+    pageOf(p, now),
+    p.url ?? '',
+    whereOf(p),
+  ]);
   const head = ['pid', 'kind', 'age', 'page', 'url', 'run'];
   const widths = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
-  const line = (r) => r.map((c, i) => (i === r.length - 1 ? c : c.padEnd(widths[i]))).join('  ').trimEnd();
-  return [line(head), ...rows.map(line), '', 'stop with `mr-cast stop <pid|run|all>`; --idle and --older-than 2h narrow it, --dry-run only prints'];
+  const line = (r) =>
+    r
+      .map((c, i) => (i === r.length - 1 ? c : c.padEnd(widths[i])))
+      .join('  ')
+      .trimEnd();
+  return [
+    line(head),
+    ...rows.map(line),
+    '',
+    'stop with `mr-cast stop <pid|run|all>`; --idle and --older-than 2h narrow it, --dry-run only prints',
+  ];
 }
 
 export const procJson = (p) => ({
-  pid: p.pid, ppid: p.ppid, kind: p.kind, registered: p.registered, parent: p.parent,
-  startedAt: new Date(p.startedAt).toISOString(), url: p.url, repo: p.repo, run: p.run, dir: p.dir, version: p.version,
-  viewers: p.viewers, idleSince: p.idleSince === null ? null : new Date(p.idleSince).toISOString(), idleExit: p.idleExit,
+  pid: p.pid,
+  ppid: p.ppid,
+  kind: p.kind,
+  registered: p.registered,
+  parent: p.parent,
+  startedAt: new Date(p.startedAt).toISOString(),
+  url: p.url,
+  repo: p.repo,
+  run: p.run,
+  dir: p.dir,
+  version: p.version,
+  viewers: p.viewers,
+  idleSince: p.idleSince === null ? null : new Date(p.idleSince).toISOString(),
+  idleExit: p.idleExit,
   exitsAt: p.exitsAt === null ? null : new Date(p.exitsAt).toISOString(),
 });
 
-const NOUNS = { play: 'player', plan: 'plan page', render: 'render', voice: 'voicing', download: 'voice model download' };
+const NOUNS = {
+  play: 'player',
+  plan: 'plan page',
+  render: 'render',
+  voice: 'voicing',
+  download: 'voice model download',
+};
 
 /** "2 players and 1 render": the processes no other listed process owns. */
 export function countLine(list) {
   const counts = new Map();
   for (const p of list.filter((q) => q.parent === null)) counts.set(p.kind, (counts.get(p.kind) ?? 0) + 1);
   const parts = [...counts].map(([kind, n]) => plural(n, NOUNS[kind]));
-  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0] ?? '';
+  return parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : (parts[0] ?? '');
 }
 
 const OLD = '2h';
 const MAX_OPTIONS = 4;
 
-const SHORT = { play: 'their pages stop working', plan: 'their pages stop working', render: 'a render writes no MP4', voice: 'the voicing stops', download: 'the download stops' };
+const SHORT = {
+  play: 'their pages stop working',
+  plan: 'their pages stop working',
+  render: 'a render writes no MP4',
+  voice: 'the voicing stops',
+  download: 'the download stops',
+};
 
 const CONSEQUENCE = {
   play: 'its page stops working; `mr-cast play` starts it again',
   plan: 'its page stops saving picks; `mr-cast plan` starts it again',
   render: 'the render stops and writes no MP4',
-  voice: 'the voicing stops', download: 'the download stops and starts again on the next voice-over',
+  voice: 'the voicing stops',
+  download: 'the download stops and starts again on the next voice-over',
 };
 
 /**
@@ -442,15 +560,24 @@ export function stopChoices(list, now = Date.now()) {
   const options = [];
   if (tops.length > 1) options.push(group('Every running mr-cast process', all, 'everything `mr-cast ps` lists'));
   const idle = tops.filter((p) => p.viewers === 0).length;
-  if (idle > 1 && idle < tops.length) options.push(group('Servers with no page open', { ...all, idle: true }, 'nobody is watching them'));
+  if (idle > 1 && idle < tops.length)
+    options.push(group('Servers with no page open', { ...all, idle: true }, 'nobody is watching them'));
   const old = tops.filter((p) => now - p.startedAt >= parseDuration(OLD, OLD)).length;
-  if (old > 1 && old < tops.length) options.push(group('Running for over 2 hours', { ...all, olderThan: OLD }, 'started more than 2 hours ago'));
+  if (old > 1 && old < tops.length)
+    options.push(group('Running for over 2 hours', { ...all, olderThan: OLD }, 'started more than 2 hours ago'));
   if (tops.length <= MAX_OPTIONS - options.length) {
     for (const p of tops) {
       const page = p.viewers === null ? null : p.viewers === 0 ? 'no page open' : plural(p.viewers, 'page') + ' open';
-      const facts = [`pid ${p.pid}`, `up ${formatAge(now - p.startedAt)}`, page, !p.registered && 'unregistered'].filter(Boolean).join(', ');
+      const facts = [`pid ${p.pid}`, `up ${formatAge(now - p.startedAt)}`, page, !p.registered && 'unregistered']
+        .filter(Boolean)
+        .join(', ');
       const label = `${NOUNS[p.kind][0].toUpperCase()}${NOUNS[p.kind].slice(1)}${p.run ? ` of ${p.run}` : ''}${p.repo ? ` in ${path.basename(p.repo)}` : ''}`;
-      options.push({ label, description: `${facts}; ${CONSEQUENCE[p.kind]}`, command: ['stop', String(p.pid)], ids: [String(p.pid)] });
+      options.push({
+        label,
+        description: `${facts}; ${CONSEQUENCE[p.kind]}`,
+        command: ['stop', String(p.pid)],
+        ids: [String(p.pid)],
+      });
     }
   }
   return { groups: [{ name: 'Running processes', options }] };
@@ -458,5 +585,8 @@ export function stopChoices(list, now = Date.now()) {
 
 export function formatStopChoices({ groups }) {
   if (groups.length === 0) return ['no mr-cast processes running'];
-  return groups.flatMap((g) => [g.name, ...g.options.flatMap((o) => [`  ${o.label} · ${o.description}`, `    mr-cast ${o.command.join(' ')}`])]);
+  return groups.flatMap((g) => [
+    g.name,
+    ...g.options.flatMap((o) => [`  ${o.label} · ${o.description}`, `    mr-cast ${o.command.join(' ')}`]),
+  ]);
 }

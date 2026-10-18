@@ -1,15 +1,55 @@
 // Zero-dependency unified diff parser for `git diff` output.
 
 const LANGUAGES = {
-  ts: 'typescript', tsx: 'tsx', mts: 'typescript', cts: 'typescript',
-  js: 'javascript', jsx: 'jsx', mjs: 'javascript', cjs: 'javascript',
-  py: 'python', rb: 'ruby', go: 'go', rs: 'rust', java: 'java', kt: 'kotlin',
-  swift: 'swift', c: 'c', h: 'c', cc: 'cpp', cpp: 'cpp', hpp: 'cpp', cs: 'csharp',
-  php: 'php', scala: 'scala', sh: 'bash', bash: 'bash', zsh: 'bash',
-  json: 'json', yml: 'yaml', yaml: 'yaml', toml: 'toml', md: 'markdown', mdx: 'markdown',
-  css: 'css', scss: 'scss', less: 'less', html: 'markup', vue: 'markup', svelte: 'markup',
-  xml: 'markup', svg: 'markup', sql: 'sql', graphql: 'graphql', gql: 'graphql',
-  proto: 'protobuf', dockerfile: 'docker', tf: 'hcl', lua: 'lua', ex: 'elixir', exs: 'elixir',
+  ts: 'typescript',
+  tsx: 'tsx',
+  mts: 'typescript',
+  cts: 'typescript',
+  js: 'javascript',
+  jsx: 'jsx',
+  mjs: 'javascript',
+  cjs: 'javascript',
+  py: 'python',
+  rb: 'ruby',
+  go: 'go',
+  rs: 'rust',
+  java: 'java',
+  kt: 'kotlin',
+  swift: 'swift',
+  c: 'c',
+  h: 'c',
+  cc: 'cpp',
+  cpp: 'cpp',
+  hpp: 'cpp',
+  cs: 'csharp',
+  php: 'php',
+  scala: 'scala',
+  sh: 'bash',
+  bash: 'bash',
+  zsh: 'bash',
+  json: 'json',
+  yml: 'yaml',
+  yaml: 'yaml',
+  toml: 'toml',
+  md: 'markdown',
+  mdx: 'markdown',
+  css: 'css',
+  scss: 'scss',
+  less: 'less',
+  html: 'markup',
+  vue: 'markup',
+  svelte: 'markup',
+  xml: 'markup',
+  svg: 'markup',
+  sql: 'sql',
+  graphql: 'graphql',
+  gql: 'graphql',
+  proto: 'protobuf',
+  dockerfile: 'docker',
+  tf: 'hcl',
+  lua: 'lua',
+  ex: 'elixir',
+  exs: 'elixir',
 };
 
 export function detectLanguage(file) {
@@ -33,7 +73,11 @@ function readQuoted(s, start) {
   while (i < s.length && s[i] !== '"') {
     if (s[i] === '\\') {
       const oct = s.slice(i + 1, i + 4);
-      if (/^[0-7]{3}$/.test(oct)) { bytes.push(parseInt(oct, 8)); i += 4; continue; }
+      if (/^[0-7]{3}$/.test(oct)) {
+        bytes.push(parseInt(oct, 8));
+        i += 4;
+        continue;
+      }
       bytes.push(C_ESCAPES[s[i + 1]] ?? s.charCodeAt(i + 1));
       i += 2;
     } else {
@@ -108,18 +152,27 @@ export function parseUnifiedDiff(text) {
     if (!hunk) {
       if (line.startsWith('new file mode')) file.status = 'added';
       else if (line.startsWith('deleted file mode')) file.status = 'deleted';
-      else if (line.startsWith('rename from ')) { file.status = 'renamed'; file.oldFile = unquote(line.slice(12)); }
-      else if (line.startsWith('rename to ')) file.file = unquote(line.slice(10));
+      else if (line.startsWith('rename from ')) {
+        file.status = 'renamed';
+        file.oldFile = unquote(line.slice(12));
+      } else if (line.startsWith('rename to ')) file.file = unquote(line.slice(10));
       else if (line.startsWith('Binary files ') || line.startsWith('GIT binary patch')) file.binary = true;
-      else if (line.startsWith('--- ')) { const p = stripPrefix(line.slice(4)); if (p) file.oldFile = p; }
-      else if (line.startsWith('+++ ')) { const p = stripPrefix(line.slice(4)); if (p) file.file = p; }
+      else if (line.startsWith('--- ')) {
+        const p = stripPrefix(line.slice(4));
+        if (p) file.oldFile = p;
+      } else if (line.startsWith('+++ ')) {
+        const p = stripPrefix(line.slice(4));
+        if (p) file.file = p;
+      }
     }
 
     const h = line.match(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$/);
     if (h) {
       hunk = {
-        oldStart: +h[1], oldLines: h[2] === undefined ? 1 : +h[2],
-        newStart: +h[3], newLines: h[4] === undefined ? 1 : +h[4],
+        oldStart: +h[1],
+        oldLines: h[2] === undefined ? 1 : +h[2],
+        newStart: +h[3],
+        newLines: h[4] === undefined ? 1 : +h[4],
         header: h[5].trim(),
         lines: [],
       };
@@ -135,7 +188,8 @@ export function parseUnifiedDiff(text) {
     if (tag === ' ') hunk.lines.push({ type: 'context', oldLine: oldNo++, newLine: newNo++, text: body });
     else if (tag === '-') hunk.lines.push({ type: 'del', oldLine: oldNo++, newLine: null, text: body });
     else if (tag === '+') hunk.lines.push({ type: 'add', oldLine: null, newLine: newNo++, text: body });
-    else if (tag === '\\') continue; // "\ No newline at end of file"
+    else if (tag === '\\')
+      continue; // "\ No newline at end of file"
     else if (line === '' && i === lines.length - 1) continue;
     else hunk = null; // anything else ends the hunk
   }

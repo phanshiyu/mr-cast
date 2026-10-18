@@ -22,7 +22,8 @@ export const EMPHASIS = {
 };
 
 /** Box shadow of a highlighted card or row: a soft white ring and glow. */
-export const emphasisRing = (ring: number, blur: number) => `0 0 0 ${ring}px ${EMPHASIS.soft}, 0 0 ${blur}px ${EMPHASIS.glow}`;
+export const emphasisRing = (ring: number, blur: number) =>
+  `0 0 0 ${ring}px ${EMPHASIS.soft}, 0 0 ${blur}px ${EMPHASIS.glow}`;
 
 export interface BadgeSpec {
   text: string;
@@ -38,7 +39,11 @@ export function badgesOf(item: Marks, { change = true }: { change?: boolean } = 
 }
 
 /** A filled pill with an uppercase word: a change or a badge of the author's own. */
-export const Badge: React.FC<{ badge: BadgeSpec; size: number; style?: React.CSSProperties }> = ({ badge, size, style }) => (
+export const Badge: React.FC<{ badge: BadgeSpec; size: number; style?: React.CSSProperties }> = ({
+  badge,
+  size,
+  style,
+}) => (
   <div
     style={{
       padding: `${Math.floor(size / 4)}px ${Math.floor(size * 0.75)}px`,
@@ -59,7 +64,13 @@ export const Badge: React.FC<{ badge: BadgeSpec; size: number; style?: React.CSS
 );
 
 /** Badges sitting on the top edge of a box, from its right corner. */
-export const CornerBadges: React.FC<{ badges: readonly BadgeSpec[]; size: number; top: number; right: number; style?: React.CSSProperties }> = ({ badges, size, top, right, style }) =>
+export const CornerBadges: React.FC<{
+  badges: readonly BadgeSpec[];
+  size: number;
+  top: number;
+  right: number;
+  style?: React.CSSProperties;
+}> = ({ badges, size, top, right, style }) =>
   badges.length ? (
     <div style={{ position: 'absolute', top, right, display: 'flex', gap: 6, ...style }}>
       {badges.map((b, i) => (
@@ -69,7 +80,11 @@ export const CornerBadges: React.FC<{ badges: readonly BadgeSpec[]; size: number
   ) : null;
 
 /** Badges at the right end of a row, centred on it. */
-export const RowBadges: React.FC<{ badges: readonly BadgeSpec[]; size: number; right: number }> = ({ badges, size, right }) =>
+export const RowBadges: React.FC<{ badges: readonly BadgeSpec[]; size: number; right: number }> = ({
+  badges,
+  size,
+  right,
+}) =>
   badges.length ? (
     <div style={{ position: 'absolute', top: 0, bottom: 0, right, display: 'flex', alignItems: 'center', gap: 6 }}>
       {badges.map((b, i) => (

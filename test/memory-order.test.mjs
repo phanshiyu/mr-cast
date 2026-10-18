@@ -5,8 +5,17 @@ import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { walkStates } from '../shared/state-steps.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
 
-const bundled = await build({ entryPoints: [new URL('../src/utils/memoryLayout.ts', import.meta.url).pathname], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
-const { layoutMemory, memoryBoxes } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const bundled = await build({
+  entryPoints: [new URL('../src/utils/memoryLayout.ts', import.meta.url).pathname],
+  bundle: true,
+  write: false,
+  format: 'esm',
+  platform: 'node',
+  logLevel: 'silent',
+});
+const { layoutMemory, memoryBoxes } = await import(
+  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
+);
 
 const BOX = { width: 1712, height: 700 };
 
@@ -31,14 +40,28 @@ test('a memory scene draws its fields and variables in the order written, names 
   const layout = layoutMemory(scene, BOX);
   assert.deepEqual(rowNames(layout, 'o:r'), ['name', '2', '1']);
   assert.deepEqual(rowNames(layout, 'fr:main'), ['row', '10', '2']);
-  assert.deepEqual(walkStates(scene).states[1].values, { 'v:main/row': { ref: 'r' }, 'v:main/10': 1, 'v:main/2': 0, 'f:r/name': 'Ada', 'f:r/2': 'c', 'f:r/1': 'a' });
+  assert.deepEqual(walkStates(scene).states[1].values, {
+    'v:main/row': { ref: 'r' },
+    'v:main/10': 1,
+    'v:main/2': 0,
+    'f:r/name': 'Ada',
+    'f:r/2': 'c',
+    'f:r/1': 'a',
+  });
   assert.deepEqual((await validateStoryboard(storyboard, {}, { mode: 'explain' })).errors, []);
 });
 
 test('memory fields written as [name, value] pairs are checked like an object', async () => {
-  const scene = { type: 'memory', narration: 'A record.', frames: [], objects: [{ id: 'r', fields: [['2', 'b'], ['2', 'c'], ['x']] }] };
+  const scene = {
+    type: 'memory',
+    narration: 'A record.',
+    frames: [],
+    objects: [{ id: 'r', fields: [['2', 'b'], ['2', 'c'], ['x']] }],
+  };
   const { errors } = await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
-  assert.deepEqual(errors, ['scenes[0].objects[0].fields: required object of field name to value, e.g. { "total": 0, "cart": { "ref": "c1" } }']);
+  assert.deepEqual(errors, [
+    'scenes[0].objects[0].fields: required object of field name to value, e.g. { "total": 0, "cart": { "ref": "c1" } }',
+  ]);
   scene.objects[0].fields.pop();
   const again = await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
   assert.deepEqual(again.errors, ['scenes[0].objects[0].fields: "2" is named twice; every field name is different']);
@@ -68,10 +91,15 @@ test('memory arrows between objects that point at each other never pass behind a
   const inside = (p, c) => p.x > c.x + 2 && p.x < c.x + c.w - 2 && p.y > c.y + 2 && p.y < c.y + c.h - 2;
   const behind = pointers.flatMap((key) => {
     // One arrow at a time: the state with every other reference shown as text.
-    const alone = { ...state, values: Object.fromEntries(Object.entries(state.values).map(([k, v]) => [k, k === key ? v : 'null'])) };
+    const alone = {
+      ...state,
+      values: Object.fromEntries(Object.entries(state.values).map(([k, v]) => [k, k === key ? v : 'null'])),
+    };
     const source = layout.row.get(key).card;
     const { lines } = memoryBoxes(layout, alone);
-    return layout.cards.filter((c) => c !== source && lines.some((p) => inside(p, c))).map((c) => `${key} behind ${c.key}`);
+    return layout.cards
+      .filter((c) => c !== source && lines.some((p) => inside(p, c)))
+      .map((c) => `${key} behind ${c.key}`);
   });
   assert.equal(pointers.length, 11);
   assert.deepEqual(behind, []);

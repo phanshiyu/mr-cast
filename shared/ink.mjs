@@ -33,7 +33,9 @@ function codeKeys(hunk, step, ref) {
   const lines = typeof ref === 'string' && /^\s*\d+\s*$/.test(ref) ? null : indexRange(ref);
   if (lines) {
     const { side } = stepRange(step);
-    const hits = hunk.lines.flatMap((line, i) => (line[side] !== null && line[side] >= lines[0] && line[side] <= lines[1] ? [`ln:${i}`] : []));
+    const hits = hunk.lines.flatMap((line, i) =>
+      line[side] !== null && line[side] >= lines[0] && line[side] <= lines[1] ? [`ln:${i}`] : [],
+    );
     return hits.length ? hits : null;
   }
   if (!isText(ref)) return null;
@@ -50,7 +52,8 @@ function codeKeys(hunk, step, ref) {
  * The item keys a ref names on a step, as ink and the camera resolve it: a scene's ref, or on a code step a line, a
  * range or text on its lines. Null when it names nothing; on code, the count of places when the text occurs more than once.
  */
-export const stepRefKeys = (scene, hunks, step, ref) => (scene?.type === 'code' ? codeKeys(hunks?.[scene.hunkId], step, ref) : resolveRef(scene, ref, hunks));
+export const stepRefKeys = (scene, hunks, step, ref) =>
+  scene?.type === 'code' ? codeKeys(hunks?.[scene.hunkId], step, ref) : resolveRef(scene, ref, hunks);
 
 /**
  * Walks the scene's steps in order and returns every item drawn, with what each points at and the step that erases it
@@ -62,10 +65,12 @@ export function inkBoard(scene, hunks = {}) {
   const items = [];
   const problems = [];
   if (!steps.some((step) => step?.draw !== undefined || step?.erase !== undefined)) return { items, problems };
-  const problem = (step, index, field, message, suggest) => problems.push({ step, index, field, message, ...(suggest ? { suggest } : {}) });
+  const problem = (step, index, field, message, suggest) =>
+    problems.push({ step, index, field, message, ...(suggest ? { suggest } : {}) });
   if (!INK_TYPES.includes(scene.type)) {
     steps.forEach((step, k) => {
-      if (step?.draw !== undefined) problem(k, null, 'draw', `${scene.type} steps take no draw; ink goes on the steps of ${INK_TYPES.join(', ')}`);
+      if (step?.draw !== undefined)
+        problem(k, null, 'draw', `${scene.type} steps take no draw; ink goes on the steps of ${INK_TYPES.join(', ')}`);
     });
     return { items, problems };
   }
@@ -73,7 +78,9 @@ export function inkBoard(scene, hunks = {}) {
   const hunk = code ? hunks[scene.hunkId] : undefined;
   const said = spokenTexts(scene);
   const live = () => items.filter((it) => it.until === Infinity);
-  const allIds = new Set(steps.flatMap((step) => list(step?.draw).flatMap((item) => (isText(item?.id) ? [item.id] : []))));
+  const allIds = new Set(
+    steps.flatMap((step) => list(step?.draw).flatMap((item) => (isText(item?.id) ? [item.id] : []))),
+  );
   const names = code ? [] : refNames(scene, hunks);
   const sceneKeys = (step, ref) => stepRefKeys(scene, hunks, step, ref);
 
@@ -83,19 +90,42 @@ export function inkBoard(scene, hunks = {}) {
     else if (Array.isArray(step.erase)) {
       step.erase.forEach((id, j) => {
         const hits = live().filter((it) => it.id === id);
-        if (!hits.length) problem(k, null, `erase[${j}]`, allIds.has(id) ? `${JSON.stringify(id)} is not on the board at this step; it is drawn later or already erased` : `no item has the id ${JSON.stringify(id)}; give the item to erase an "id"`, allIds.has(id) ? undefined : { name: String(id), names: [...allIds] });
+        if (!hits.length)
+          problem(
+            k,
+            null,
+            `erase[${j}]`,
+            allIds.has(id)
+              ? `${JSON.stringify(id)} is not on the board at this step; it is drawn later or already erased`
+              : `no item has the id ${JSON.stringify(id)}; give the item to erase an "id"`,
+            allIds.has(id) ? undefined : { name: String(id), names: [...allIds] },
+          );
         for (const it of hits) it.until = k;
       });
-    } else if (step.erase !== undefined) problem(k, null, 'erase', 'must be true, to erase everything drawn so far, or a list of item ids');
+    } else if (step.erase !== undefined)
+      problem(k, null, 'erase', 'must be true, to erase everything drawn so far, or a list of item ids');
     if (step.draw === undefined) return;
-    if (!Array.isArray(step.draw)) return problem(k, null, 'draw', 'must be a list of items, such as [{ "circle": "A", "note": "start" }]');
+    if (!Array.isArray(step.draw))
+      return problem(k, null, 'draw', 'must be a list of items, such as [{ "circle": "A", "note": "start" }]');
 
     step.draw.forEach((item, i) => {
-      if (!item || typeof item !== 'object' || Array.isArray(item)) return problem(k, i, '', 'must be an object with one verb, such as { "circle": "A" }');
+      if (!item || typeof item !== 'object' || Array.isArray(item))
+        return problem(k, i, '', 'must be an object with one verb, such as { "circle": "A" }');
       const bad = (field, message, suggest) => problem(k, i, field, message, suggest);
-      for (const key of Object.keys(item)) if (!INK_VERBS.includes(key) && !OPTIONS.includes(key)) bad(key, `is not an ink field; an item takes one of ${INK_VERBS.join(', ')}, and ${OPTIONS.join(', ')}`, { name: key, names: [...INK_VERBS, ...OPTIONS] });
+      for (const key of Object.keys(item))
+        if (!INK_VERBS.includes(key) && !OPTIONS.includes(key))
+          bad(key, `is not an ink field; an item takes one of ${INK_VERBS.join(', ')}, and ${OPTIONS.join(', ')}`, {
+            name: key,
+            names: [...INK_VERBS, ...OPTIONS],
+          });
       const verbs = inkVerbs(item);
-      if (verbs.length !== 1) return bad('', verbs.length ? `names ${verbs.join(' and ')}; an item draws one thing, so split it into ${verbs.length} items` : `names nothing to draw; give it one of ${INK_VERBS.join(', ')}`);
+      if (verbs.length !== 1)
+        return bad(
+          '',
+          verbs.length
+            ? `names ${verbs.join(' and ')}; an item draws one thing, so split it into ${verbs.length} items`
+            : `names nothing to draw; give it one of ${INK_VERBS.join(', ')}`,
+        );
       const [verb] = verbs;
 
       const target = (ref, field, points) => {
@@ -111,47 +141,88 @@ export function inkBoard(scene, hunks = {}) {
         }
         const keys = sceneKeys(step, ref);
         if (Array.isArray(keys)) return { keys };
-        if (typeof keys === 'number') bad(field, `${JSON.stringify(ref)} occurs ${keys} times on the step's lines; lengthen it until it names one place`);
-        else if (typeof ref === 'string' && allIds.has(ref)) bad(field, `${JSON.stringify(ref)} is an item id that is not on the board at this step; draw it in an earlier item or step`);
-        else if (code) bad(field, `${JSON.stringify(ref)} is not on the step's lines; name a line number, an "a-b" range, or text copied exactly from the code`);
-        else bad(field, `${JSON.stringify(ref)} names nothing in this ${scene.type}`, { name: String(ref), names: [...names, ...live().flatMap((it) => (it.id ? [it.id] : []))] });
+        if (typeof keys === 'number')
+          bad(
+            field,
+            `${JSON.stringify(ref)} occurs ${keys} times on the step's lines; lengthen it until it names one place`,
+          );
+        else if (typeof ref === 'string' && allIds.has(ref))
+          bad(
+            field,
+            `${JSON.stringify(ref)} is an item id that is not on the board at this step; draw it in an earlier item or step`,
+          );
+        else if (code)
+          bad(
+            field,
+            `${JSON.stringify(ref)} is not on the step's lines; name a line number, an "a-b" range, or text copied exactly from the code`,
+          );
+        else
+          bad(field, `${JSON.stringify(ref)} names nothing in this ${scene.type}`, {
+            name: String(ref),
+            names: [...names, ...live().flatMap((it) => (it.id ? [it.id] : []))],
+          });
         return null;
       };
 
       let targets;
       if (verb === 'arrow') {
-        if (!Array.isArray(item.arrow) || item.arrow.length !== 2) return bad('arrow', 'must be [from, to], each a ref, an item id or an [x, y] point');
+        if (!Array.isArray(item.arrow) || item.arrow.length !== 2)
+          return bad('arrow', 'must be [from, to], each a ref, an item id or an [x, y] point');
         targets = item.arrow.map((ref, j) => target(ref, `arrow[${j}]`, true));
       } else if (verb === 'write') {
         if (!isText(item.write)) bad('write', 'must be the text to write');
-        else if (item.write.split('\n').some((line) => line.trim().length > NOTE_MAX)) bad('write', `a line is over ${NOTE_MAX} characters; break it with "\\n"`);
-        if ((item.near === undefined) === (item.at === undefined)) return bad('write', 'needs "near", a ref or item id to write beside, or "at", an [x, y] point on the stage; give one');
-        if (item.at !== undefined && !(isPoint(item.at) && item.at.every(isFraction))) bad('at', 'must be [x, y], each a fraction of the stage from 0 to 1');
+        else if (item.write.split('\n').some((line) => line.trim().length > NOTE_MAX))
+          bad('write', `a line is over ${NOTE_MAX} characters; break it with "\\n"`);
+        if ((item.near === undefined) === (item.at === undefined))
+          return bad(
+            'write',
+            'needs "near", a ref or item id to write beside, or "at", an [x, y] point on the stage; give one',
+          );
+        if (item.at !== undefined && !(isPoint(item.at) && item.at.every(isFraction)))
+          bad('at', 'must be [x, y], each a fraction of the stage from 0 to 1');
         targets = item.near === undefined ? [] : [target(item.near, 'near', false)];
       } else {
         const refs = Array.isArray(item[verb]) ? item[verb] : [item[verb]];
         if (!refs.length) return bad(verb, 'names nothing; give a ref, an item id or a list of them');
         targets = refs.map((ref, j) => target(ref, Array.isArray(item[verb]) ? `${verb}[${j}]` : verb, false));
       }
-      if (verb !== 'write' && (item.near !== undefined || item.at !== undefined)) bad(item.near !== undefined ? 'near' : 'at', `only "write" takes it; a ${verb} goes on what it names`);
+      if (verb !== 'write' && (item.near !== undefined || item.at !== undefined))
+        bad(item.near !== undefined ? 'near' : 'at', `only "write" takes it; a ${verb} goes on what it names`);
       if (item.note !== undefined) {
         if (verb === 'write') bad('note', 'a write is its own text; drop "note" or make it a second item');
         else if (!isText(item.note)) bad('note', 'must be a non-empty string');
-        else if (item.note.trim().length > NOTE_MAX) bad('note', `${item.note.trim().length} characters; a note is written on one line, so keep it to ${NOTE_MAX}`);
+        else if (item.note.trim().length > NOTE_MAX)
+          bad(
+            'note',
+            `${item.note.trim().length} characters; a note is written on one line, so keep it to ${NOTE_MAX}`,
+          );
       }
-      if (item.side !== undefined && !INK_SIDES.includes(item.side)) bad('side', `must be one of ${INK_SIDES.join(', ')}`);
-      if (item.tone !== undefined && !INK_TONES.includes(item.tone)) bad('tone', `must be one of ${INK_TONES.join(', ')}`);
+      if (item.side !== undefined && !INK_SIDES.includes(item.side))
+        bad('side', `must be one of ${INK_SIDES.join(', ')}`);
+      if (item.tone !== undefined && !INK_TONES.includes(item.tone))
+        bad('tone', `must be one of ${INK_TONES.join(', ')}`);
       if (item.when !== undefined) {
-        if (!isText(item.when)) bad('when', 'must be words from the step\'s say');
-        else if (cueWord(said[k + 1], item.when) < 0) bad('when', `${JSON.stringify(item.when)} is not in the step's say; copy the words the item should start on`);
+        if (!isText(item.when)) bad('when', "must be words from the step's say");
+        else if (cueWord(said[k + 1], item.when) < 0)
+          bad('when', `${JSON.stringify(item.when)} is not in the step's say; copy the words the item should start on`);
       }
       if (item.id !== undefined) {
         if (!isText(item.id)) bad('id', 'must be a non-empty string');
-        else if (live().some((it) => it.id === item.id)) bad('id', `${JSON.stringify(item.id)} is already on the board; erase it first or pick another id`);
-        else if (sceneKeys(step, item.id) !== null) bad('id', `${JSON.stringify(item.id)} is also a ref in this scene; pick an id that names nothing else`);
+        else if (live().some((it) => it.id === item.id))
+          bad('id', `${JSON.stringify(item.id)} is already on the board; erase it first or pick another id`);
+        else if (sceneKeys(step, item.id) !== null)
+          bad('id', `${JSON.stringify(item.id)} is also a ref in this scene; pick an id that names nothing else`);
       }
       if (targets.some((t) => t === null)) return;
-      items.push({ step: k, index: i, item, verb, targets, until: Infinity, ...(isText(item.id) ? { id: item.id } : {}) });
+      items.push({
+        step: k,
+        index: i,
+        item,
+        verb,
+        targets,
+        until: Infinity,
+        ...(isText(item.id) ? { id: item.id } : {}),
+      });
     });
   });
   return { items, problems };

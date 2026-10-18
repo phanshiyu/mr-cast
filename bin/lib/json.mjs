@@ -6,14 +6,21 @@ const LITERAL = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?|true|false|null/y;
 /** @returns {{ pos: number, line: number, column: number, reason: string } | null} */
 export function locateJsonError(text) {
   let i = 0;
-  const fail = (reason) => { throw { pos: i, reason }; };
-  const ws = () => { while (' \t\n\r'.includes(text[i]) && i < text.length) i++; };
+  const fail = (reason) => {
+    throw { pos: i, reason };
+  };
+  const ws = () => {
+    while (' \t\n\r'.includes(text[i]) && i < text.length) i++;
+  };
 
   const string = () => {
     i++;
     while (i < text.length) {
       const c = text[i];
-      if (c === '"') { i++; return; }
+      if (c === '"') {
+        i++;
+        return;
+      }
       if (c === '\\') i += 2;
       else if (c < ' ') fail('raw control character or newline inside a string');
       else i++;
@@ -24,12 +31,23 @@ export function locateJsonError(text) {
   const sequence = (close, item) => {
     i++;
     ws();
-    if (text[i] === close) { i++; return; }
+    if (text[i] === close) {
+      i++;
+      return;
+    }
     for (;;) {
       item();
       ws();
-      if (text[i] === ',') { i++; ws(); if (text[i] === close) fail(`trailing comma before '${close}'`); continue; }
-      if (text[i] === close) { i++; return; }
+      if (text[i] === ',') {
+        i++;
+        ws();
+        if (text[i] === close) fail(`trailing comma before '${close}'`);
+        continue;
+      }
+      if (text[i] === close) {
+        i++;
+        return;
+      }
       fail(`expected ',' or '${close}'`);
     }
   };
@@ -37,20 +55,24 @@ export function locateJsonError(text) {
   const value = () => {
     ws();
     const c = text[i];
-    if (c === '{') return sequence('}', () => {
-      ws();
-      if (text[i] !== '"') fail('expected a double-quoted property name');
-      string();
-      ws();
-      if (text[i] !== ':') fail("expected ':' after property name");
-      i++;
-      value();
-    });
+    if (c === '{')
+      return sequence('}', () => {
+        ws();
+        if (text[i] !== '"') fail('expected a double-quoted property name');
+        string();
+        ws();
+        if (text[i] !== ':') fail("expected ':' after property name");
+        i++;
+        value();
+      });
     if (c === '[') return sequence(']', value);
     if (c === '"') return string();
     LITERAL.lastIndex = i;
     const m = LITERAL.exec(text);
-    if (m) { i += m[0].length; return; }
+    if (m) {
+      i += m[0].length;
+      return;
+    }
     fail(i >= text.length ? 'unexpected end of input' : `unexpected ${JSON.stringify(c)}`);
   };
 

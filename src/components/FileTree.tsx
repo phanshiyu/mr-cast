@@ -4,7 +4,15 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { sceneFiles } from '../../shared/files.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { FilesScene } from '../types';
-import { BAR_MAX, MARKER_W, PAD_X, layoutFiles, treeRows, type FilesLayout, type PlacedRow } from '../utils/filesLayout';
+import {
+  BAR_MAX,
+  MARKER_W,
+  PAD_X,
+  layoutFiles,
+  treeRows,
+  type FilesLayout,
+  type PlacedRow,
+} from '../utils/filesLayout';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { Badge, badgesOf, changeTone } from './marks';
@@ -20,21 +28,55 @@ const ROWS_END = 22;
 const MINUS = '−';
 
 /** Grows a file's diffstat bar and counts its lines up as the row lands. */
-const Counts: React.FC<{ layout: FilesLayout; additions: number; deletions: number; grow: number }> = ({ layout, additions, deletions, grow }) => {
+const Counts: React.FC<{ layout: FilesLayout; additions: number; deletions: number; grow: number }> = ({
+  layout,
+  additions,
+  deletions,
+  grow,
+}) => {
   const total = additions + deletions;
   const barW = BAR_MAX * Math.sqrt(total / layout.maxLines) * grow;
   const addW = total ? (barW * additions) / total : 0;
   const font = Math.round(layout.font * 0.88);
   return (
-    <div style={{ position: 'absolute', left: layout.countsX!, top: 0, bottom: 0, display: 'flex', alignItems: 'center', gap: 14 }}>
-      <div style={{ fontFamily: fonts.mono, fontSize: font, fontWeight: 700, display: 'flex', gap: '0.6em', width: `${11 * 0.62}em`, justifyContent: 'flex-end' }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: layout.countsX!,
+        top: 0,
+        bottom: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+      }}
+    >
+      <div
+        style={{
+          fontFamily: fonts.mono,
+          fontSize: font,
+          fontWeight: 700,
+          display: 'flex',
+          gap: '0.6em',
+          width: `${11 * 0.62}em`,
+          justifyContent: 'flex-end',
+        }}
+      >
         <span style={{ color: colors.add, opacity: additions ? 1 : 0.35 }}>+{Math.round(additions * grow)}</span>
         <span style={{ color: colors.del, opacity: deletions ? 1 : 0.35 }}>
           {MINUS}
           {Math.round(deletions * grow)}
         </span>
       </div>
-      <div style={{ width: BAR_MAX, height: 10, borderRadius: 5, background: 'rgba(255,255,255,0.05)', display: 'flex', overflow: 'hidden' }}>
+      <div
+        style={{
+          width: BAR_MAX,
+          height: 10,
+          borderRadius: 5,
+          background: 'rgba(255,255,255,0.05)',
+          display: 'flex',
+          overflow: 'hidden',
+        }}
+      >
         <div style={{ width: addW, background: colors.add }} />
         <div style={{ width: barW - addW, background: colors.del }} />
       </div>
@@ -42,7 +84,13 @@ const Counts: React.FC<{ layout: FilesLayout; additions: number; deletions: numb
   );
 };
 
-const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphasis: Emphasis; frame: number }> = ({ placed, layout, at, emphasis, frame }) => {
+const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphasis: Emphasis; frame: number }> = ({
+  placed,
+  layout,
+  at,
+  emphasis,
+  frame,
+}) => {
   const { fps } = useVideoConfig();
   const { row } = placed;
   const land = spring({ frame: frame - at, fps, config: { damping: 17, stiffness: 130 } });
@@ -54,11 +102,34 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
 
   if (row.kind === 'dir') {
     return (
-      <div style={{ position: 'absolute', left: placed.x, top: placed.y, width: layout.width, height: layout.rowH, opacity: land * emphasis.opacity, transform: `translateX(${(1 - land) * -30}px)` }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: placed.x,
+          top: placed.y,
+          width: layout.width,
+          height: layout.rowH,
+          opacity: land * emphasis.opacity,
+          transform: `translateX(${(1 - land) * -30}px)`,
+        }}
+      >
         {guides.map((x, i) => (
-          <div key={i} style={{ position: 'absolute', left: x, top: 0, bottom: 0, width: 1.5, background: colors.border }} />
+          <div
+            key={i}
+            style={{ position: 'absolute', left: x, top: 0, bottom: 0, width: 1.5, background: colors.border }}
+          />
         ))}
-        <div style={{ position: 'absolute', left, top: 0, bottom: 0, display: 'flex', alignItems: 'center', gap: Math.round(layout.font * 0.4) }}>
+        <div
+          style={{
+            position: 'absolute',
+            left,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: Math.round(layout.font * 0.4),
+          }}
+        >
           <Folder size={iconSize} strokeWidth={2} color={colors.muted} />
           <FitText fit={placed.name} inline style={{ color: colors.muted }} />
         </div>
@@ -81,14 +152,35 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
         height: layout.rowH,
         borderRadius: 12,
         background: emphasis.glow > 0 ? `rgba(124, 140, 255, ${0.1 * emphasis.glow})` : undefined,
-        boxShadow: emphasis.glow > 0 ? `inset 0 0 0 2px ${colors.accent}${Math.round(emphasis.glow * 150).toString(16).padStart(2, '0')}, 0 0 ${30 * emphasis.glow}px ${colors.accent}33` : undefined,
+        boxShadow:
+          emphasis.glow > 0
+            ? `inset 0 0 0 2px ${colors.accent}${Math.round(emphasis.glow * 150)
+                .toString(16)
+                .padStart(2, '0')}, 0 0 ${30 * emphasis.glow}px ${colors.accent}33`
+            : undefined,
         opacity: land * emphasis.opacity,
         transform: `translateX(${(1 - land) * -30}px)`,
       }}
     >
-      {emphasis.bar > 0 ? <div style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 5, borderRadius: 3, background: colors.accent, opacity: emphasis.bar }} /> : null}
+      {emphasis.bar > 0 ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 6,
+            bottom: 6,
+            width: 5,
+            borderRadius: 3,
+            background: colors.accent,
+            opacity: emphasis.bar,
+          }}
+        />
+      ) : null}
       {guides.map((x, i) => (
-        <div key={i} style={{ position: 'absolute', left: x, top: 0, bottom: 0, width: 1.5, background: colors.border }} />
+        <div
+          key={i}
+          style={{ position: 'absolute', left: x, top: 0, bottom: 0, width: 1.5, background: colors.border }}
+        />
       ))}
       <div
         style={{
@@ -107,12 +199,33 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
       >
         {tone?.marker ?? ''}
       </div>
-      <div style={{ position: 'absolute', left, width: layout.nameX + layout.nameW - left, top: 0, bottom: 0, display: 'flex', alignItems: 'center', gap: Math.round(layout.font * 0.4) }}>
-        <Icon size={iconSize} strokeWidth={2} color={file.test ? colors.accent : tone && !removed ? tone.color : colors.muted} style={{ flexShrink: 0 }} />
+      <div
+        style={{
+          position: 'absolute',
+          left,
+          width: layout.nameX + layout.nameW - left,
+          top: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: Math.round(layout.font * 0.4),
+        }}
+      >
+        <Icon
+          size={iconSize}
+          strokeWidth={2}
+          color={file.test ? colors.accent : tone && !removed ? tone.color : colors.muted}
+          style={{ flexShrink: 0 }}
+        />
         <FitText
           fit={placed.name}
           inline
-          style={{ color: removed ? colors.muted : colors.text, textDecoration: removed ? 'line-through' : 'none', textDecorationColor: colors.del, textDecorationThickness: 2.5 }}
+          style={{
+            color: removed ? colors.muted : colors.text,
+            textDecoration: removed ? 'line-through' : 'none',
+            textDecorationColor: colors.del,
+            textDecorationThickness: 2.5,
+          }}
         />
         {file.test ? (
           <span
@@ -167,7 +280,17 @@ const Totals: React.FC<{ files: ReturnType<typeof sceneFiles> }> = ({ files }) =
   const tests = files.filter((f) => f.test).length;
   const counted = files.some((f) => f.additions !== undefined || f.deletions !== undefined);
   return (
-    <div style={{ display: 'flex', gap: 22, fontSize: 21, color: colors.muted, flexShrink: 0, paddingBottom: 6, alignItems: 'baseline' }}>
+    <div
+      style={{
+        display: 'flex',
+        gap: 22,
+        fontSize: 21,
+        color: colors.muted,
+        flexShrink: 0,
+        paddingBottom: 6,
+        alignItems: 'baseline',
+      }}
+    >
       <span>
         {files.length} {files.length === 1 ? 'file' : 'files'}
       </span>
@@ -196,16 +319,25 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
   const marks = useMemo(() => filesTargets(scene, hunks), [scene, hunks]);
   // With steps, each lights the files it focuses. Without, the narration walks `highlight` in order, or
   // else every file with a note, top to bottom.
-  const walked = scene.highlight?.length ? scene.highlight : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
+  const walked = scene.highlight?.length
+    ? scene.highlight
+    : rows.flatMap((r) => (r.kind === 'file' && r.note ? [r.file.path] : []));
   const rowStagger = Math.min(4, (ROWS_END - START - 4) / Math.max(1, rows.length - 1));
   const rowAt = (i: number) => START + 4 + i * rowStagger;
   const { emphasis } = spotlight(frame, spotlightStarts(segments, walked.length, buildFrames('files')));
   const focus = focusSpotlight(scene, hunks, segments, frame);
   const fileEmphasis = (path: string | null) =>
-    scene.steps?.length ? focus(`f:${path}`) : emphasis(path !== null && walked.includes(path) ? [walked.indexOf(path)] : []);
+    scene.steps?.length
+      ? focus(`f:${path}`)
+      : emphasis(path !== null && walked.includes(path) ? [walked.indexOf(path)] : []);
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: () => marks }} aside={<Totals files={files} />}>
+    <SceneShell
+      scene={scene}
+      durationInFrames={durationInFrames}
+      camera={{ hunks, segments, targets: () => marks }}
+      aside={<Totals files={files} />}
+    >
       <div
         style={{
           position: 'absolute',

@@ -8,14 +8,34 @@ import { sceneSteps } from '../../shared/steps.mjs';
 import { focusRefs } from '../../shared/targets.mjs';
 import { resolveTestsRef, testKeys } from '../../shared/tests.mjs';
 
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+const NUMBER_WORDS = [
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+];
 const NUMBER = `(\\d+|${NUMBER_WORDS.join('|')})`;
 const countOf = (word) => (/^\d+$/.test(word) ? Number(word) : NUMBER_WORDS.indexOf(word.toLowerCase()));
 
 /** "Seven tests", "two new tests", "one existing test", "nine cases": the count, and which cases it means. */
-const TESTS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(new|added|existing|changed|removed)\\s+)?(?:tests?|test cases?|cases?)\\b`, 'gi');
+const TESTS_COUNT = new RegExp(
+  `\\b${NUMBER}\\s+(?:(new|added|existing|changed|removed)\\s+)?(?:tests?|test cases?|cases?)\\b`,
+  'gi',
+);
 /** "three things to check", "two risks": a text scene's items. */
-const ITEMS_COUNT = new RegExp(`\\b${NUMBER}\\s+(?:(?:main|key|big)\\s+)?(?:things|points|risks|questions|issues)\\b`, 'gi');
+const ITEMS_COUNT = new RegExp(
+  `\\b${NUMBER}\\s+(?:(?:main|key|big)\\s+)?(?:things|points|risks|questions|issues)\\b`,
+  'gi',
+);
 
 const QUALIFIED = { new: 'added', added: 'added', existing: 'existing', changed: 'changed', removed: 'removed' };
 
@@ -42,7 +62,10 @@ function allowed(list, qualifier) {
     return { counts: [n], shown: `${n} ${QUALIFIED[qualifier]}` };
   }
   const kept = list.filter((c) => statusOf(c) !== 'removed').length;
-  return { counts: [list.length, kept], shown: kept === list.length ? `${list.length}` : `${kept}, and ${list.length - kept} removed` };
+  return {
+    counts: [list.length, kept],
+    shown: kept === list.length ? `${list.length}` : `${kept}, and ${list.length - kept} removed`,
+  };
 }
 
 /** The tests a step lights: those it names, and those that check a situation, outcome or cell it lights. */
@@ -55,7 +78,8 @@ function checkTests(scene, p, warnings) {
   const tests = scene.tests;
   for (const { phrase, said, qualifier } of counts(scene.narration ?? '', TESTS_COUNT)) {
     const { counts: ok, shown } = allowed(tests, qualifier);
-    if (!ok.includes(said)) warnings.push(`${p}.narration: says "${phrase}", but the scene lists ${shown}; say the number on screen`);
+    if (!ok.includes(said))
+      warnings.push(`${p}.narration: says "${phrase}", but the scene lists ${shown}; say the number on screen`);
   }
   sceneSteps(scene).forEach((step, j) => {
     if (!isStep(step)) return;
@@ -63,16 +87,23 @@ function checkTests(scene, p, warnings) {
     if (!lit.length) return;
     for (const { phrase, said, qualifier } of counts(step.say ?? '', TESTS_COUNT)) {
       const { counts: ok, shown } = allowed(lit, qualifier);
-      if (!ok.includes(said)) warnings.push(`${p}.steps[${j}].say: says "${phrase}", but the step lights ${shown}; say the number it lights`);
+      if (!ok.includes(said))
+        warnings.push(`${p}.steps[${j}].say: says "${phrase}", but the step lights ${shown}; say the number it lights`);
     }
   });
 }
 
 function checkItems(scene, p, warnings) {
-  const texts = [['narration', scene.narration ?? ''], ...sceneSteps(scene).map((step, j) => [`steps[${j}].say`, (isStep(step) && step.say) || ''])];
+  const texts = [
+    ['narration', scene.narration ?? ''],
+    ...sceneSteps(scene).map((step, j) => [`steps[${j}].say`, (isStep(step) && step.say) || '']),
+  ];
   for (const [where, text] of texts) {
     for (const { phrase, said } of counts(text, ITEMS_COUNT)) {
-      if (said !== scene.items.length) warnings.push(`${p}.${where}: says "${phrase}", but the scene has ${scene.items.length} items; say the number on screen`);
+      if (said !== scene.items.length)
+        warnings.push(
+          `${p}.${where}: says "${phrase}", but the scene has ${scene.items.length} items; say the number on screen`,
+        );
     }
   }
 }
@@ -81,7 +112,8 @@ function checkItems(scene, p, warnings) {
 export function checkSpokenCounts(scenes, warnings) {
   scenes.forEach((scene, i) => {
     const p = `scenes[${i}]`;
-    if (scene?.type === 'tests' && Array.isArray(scene.tests) && Array.isArray(scene.situations)) checkTests(scene, p, warnings);
+    if (scene?.type === 'tests' && Array.isArray(scene.tests) && Array.isArray(scene.situations))
+      checkTests(scene, p, warnings);
     if (scene?.type === 'text' && Array.isArray(scene.items) && scene.items.length) checkItems(scene, p, warnings);
   });
 }

@@ -5,11 +5,27 @@ import { formatSchema } from '../bin/lib/schema.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 
 const root = new URL('..', import.meta.url).pathname;
-const intent = (fields) => ({ type: 'intent', chapter: 'Why', narration: 'Orders now have a limit.', summary: 'Limit orders to 20 a minute', risk: 'low', bullets: ['Per visitor', 'Retry after a minute'], ...fields });
-const validate = (scenes, extra = {}) => validateStoryboard({ title: 'Rate limits', subtitle: 'feature → main', scenes, ...extra }, {}, { mode: 'explain' });
+const intent = (fields) => ({
+  type: 'intent',
+  chapter: 'Why',
+  narration: 'Orders now have a limit.',
+  summary: 'Limit orders to 20 a minute',
+  risk: 'low',
+  bullets: ['Per visitor', 'Retry after a minute'],
+  ...fields,
+});
+const validate = (scenes, extra = {}) =>
+  validateStoryboard({ title: 'Rate limits', subtitle: 'feature → main', scenes, ...extra }, {}, { mode: 'explain' });
 
 test('an intent scene draws as a text scene: summary as headline, bullets as items, the title line as kicker', () => {
-  const out = normalizeStoryboard({ title: 'Rate *limits*', subtitle: 'feature → main', scenes: [intent({ steps: [{ focus: 1, say: 'Then retry.' }] })] }, {});
+  const out = normalizeStoryboard(
+    {
+      title: 'Rate *limits*',
+      subtitle: 'feature → main',
+      scenes: [intent({ steps: [{ focus: 1, say: 'Then retry.' }] })],
+    },
+    {},
+  );
   assert.deepEqual(out.scenes[0], {
     type: 'text',
     chapter: 'Why',
@@ -24,14 +40,29 @@ test('an intent scene draws as a text scene: summary as headline, bullets as ite
 });
 
 test('a well-formed intent scene validates as it did', async () => {
-  assert.deepEqual(await validate([intent({ steps: [{ focus: 1, say: 'Then retry.' }] })]), { errors: [], warnings: [], coverage: null });
+  assert.deepEqual(await validate([intent({ steps: [{ focus: 1, say: 'Then retry.' }] })]), {
+    errors: [],
+    warnings: [],
+    coverage: null,
+  });
 });
 
 test('an intent scene is reported by its own field names, not the text scene it draws as', async () => {
-  const long = 'A bullet far too long to fit on two lines at any readable size, since it rambles on and on about every detail of the limiter, the proxy, the headers and the retry';
-  const { errors, warnings } = await validate([intent({ narration: 'There are three things to check.', bullets: ['Per visitor', long], steps: [{ focus: 4, say: 'x' }] })]);
-  assert.deepEqual(errors, ['scenes[0].steps[0].focus: 4 names nothing in this scene, where a ref is a bullet index or "a-b" range, "note", "kicker", the lead\'s field name such as "headline", or a side "left" or "right"']);
-  assert.deepEqual(warnings, ['scenes[0].narration: says "three things", but the scene has 2 bullets; say the number on screen']);
+  const long =
+    'A bullet far too long to fit on two lines at any readable size, since it rambles on and on about every detail of the limiter, the proxy, the headers and the retry';
+  const { errors, warnings } = await validate([
+    intent({
+      narration: 'There are three things to check.',
+      bullets: ['Per visitor', long],
+      steps: [{ focus: 4, say: 'x' }],
+    }),
+  ]);
+  assert.deepEqual(errors, [
+    'scenes[0].steps[0].focus: 4 names nothing in this scene, where a ref is a bullet index or "a-b" range, "note", "kicker", the lead\'s field name such as "headline", or a side "left" or "right"',
+  ]);
+  assert.deepEqual(warnings, [
+    'scenes[0].narration: says "three things", but the scene has 2 bullets; say the number on screen',
+  ]);
 });
 
 test('text that does not fit an intent scene names the bullet, the summary or the storyboard title', async () => {
@@ -46,7 +77,11 @@ test('text that does not fit an intent scene names the bullet, the summary or th
 
 test('an intent scene missing its own fields reports them once, and the rest of the scene is still checked', async () => {
   const { errors } = await validate([{ type: 'intent', bullets: 'one' }]);
-  assert.deepEqual(errors, ['scenes[0].summary: required string', 'scenes[0].bullets: required array of strings', 'scenes[0].narration: required string']);
+  assert.deepEqual(errors, [
+    'scenes[0].summary: required string',
+    'scenes[0].bullets: required array of strings',
+    'scenes[0].narration: required string',
+  ]);
 });
 
 test('mr-cast schema lists text and no longer intent', () => {

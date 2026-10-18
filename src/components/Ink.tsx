@@ -9,8 +9,37 @@ import { plainText } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { cueFrame } from '../../shared/timing.mjs';
 import type { HunkMap, InkItem, Scene } from '../types';
-import { besideClear, BRACE_REACH, type InkSide, braceSketch, clearOf, edgeToward, keepIn, leader, linkSketch, placeText, rowEnd, shaftBulge, SIDE_ONLY, tickSketch, UNDER_FIRST } from '../utils/inkGeometry';
-import { center, grow, seedOf, sketchMark, strokeLength, strokePath, union, type Box, type MarkTargets, type Pt, type Sketch, type Stroke } from '../utils/penGeometry';
+import {
+  besideClear,
+  BRACE_REACH,
+  type InkSide,
+  braceSketch,
+  clearOf,
+  edgeToward,
+  keepIn,
+  leader,
+  linkSketch,
+  placeText,
+  rowEnd,
+  shaftBulge,
+  SIDE_ONLY,
+  tickSketch,
+  UNDER_FIRST,
+} from '../utils/inkGeometry';
+import {
+  center,
+  grow,
+  seedOf,
+  sketchMark,
+  strokeLength,
+  strokePath,
+  union,
+  type Box,
+  type MarkTargets,
+  type Pt,
+  type Sketch,
+  type Stroke,
+} from '../utils/penGeometry';
 import { currentStep, stepMove } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
 import { clamp, colors } from './theme';
@@ -70,14 +99,25 @@ interface Placed {
 
 function textBlock(text: string, size: number) {
   const lines = plainText(text).split('\n');
-  return { lines, width: Math.max(...lines.map((l) => textWidth(l, size))) + 10, height: Math.round(size * 1.2) * lines.length };
+  return {
+    lines,
+    width: Math.max(...lines.map((l) => textWidth(l, size))) + 10,
+    height: Math.round(size * 1.2) * lines.length,
+  };
 }
 
-const strokesBounds = (strokes: readonly Stroke[]): Box => union(strokes.flatMap((s) => s.points.map((p) => ({ x: p.x, y: p.y, width: 0, height: 0 }))))!;
-const strokeTotal = (sketch: Sketch | null) => (sketch ? sketch.strokes.reduce((sum, s) => sum + strokeLength(s), 0) : 0);
+const strokesBounds = (strokes: readonly Stroke[]): Box =>
+  union(strokes.flatMap((s) => s.points.map((p) => ({ x: p.x, y: p.y, width: 0, height: 0 }))))!;
+const strokeTotal = (sketch: Sketch | null) =>
+  sketch ? sketch.strokes.reduce((sum, s) => sum + strokeLength(s), 0) : 0;
 
 /** Lays out and times every item of the board in order, each placed clear of the scene from its step on and of the ink still up. */
-function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[], targets: (k: number) => MarkTargets | null): Placed[] {
+function planInk(
+  scene: Scene,
+  hunks: HunkMap,
+  segments: readonly SpokenSegment[],
+  targets: (k: number) => MarkTargets | null,
+): Placed[] {
   const steps = sceneSteps(scene) as readonly { mark?: string; flag?: string }[];
   const { items } = inkBoard(scene, hunks);
   const placed: Placed[] = [];
@@ -93,12 +133,24 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
         const own = live.findLast((p) => p.item.id === target.ink);
         return own ? (own.text?.box ?? own.bounds) : null;
       }
-      if ('point' in target) return grow({ x: t.area.x + target.point[0] * t.area.width, y: t.area.y + target.point[1] * t.area.height, width: 0, height: 0 }, 4);
+      if ('point' in target)
+        return grow(
+          {
+            x: t.area.x + target.point[0] * t.area.width,
+            y: t.area.y + target.point[1] * t.area.height,
+            width: 0,
+            height: 0,
+          },
+          4,
+        );
       return union(target.keys.map((key) => t.boxes.get(key) ?? t.boxOf?.(key)));
     };
     // A scene whose camera moves draws later steps elsewhere; its ink moves with the content, so only this step's boxes count.
     const shown = t.shift ? [t] : steps.slice(it.step).flatMap((_, j) => targets(it.step + j) ?? []);
-    const obstacles = [...shown.flatMap((tj) => [...(tj.obstacles ?? tj.boxes.values())]), ...live.flatMap((p) => [p.bounds, ...(p.text ? [p.text.box] : [])])];
+    const obstacles = [
+      ...shown.flatMap((tj) => [...(tj.obstacles ?? tj.boxes.values())]),
+      ...live.flatMap((p) => [p.bounds, ...(p.text ? [p.text.box] : [])]),
+    ];
     const item: InkItem = it.item;
     const seed = seedOf(`${it.step}:${it.index}:${JSON.stringify(item)}`);
     const color = item.tone ? tones[item.tone].color : PEN_INK;
@@ -121,8 +173,12 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
         // The note sits on the outside of the bend, off the shaft.
         const bulge = shaftBulge(sketch);
         const ends = sketch.strokes[0]!.points;
-        const out = { x: bulge.x - (ends[0]!.x + ends[ends.length - 1]!.x) / 2, y: bulge.y - (ends[0]!.y + ends[ends.length - 1]!.y) / 2 };
-        const outward: InkSide = Math.abs(out.y) >= Math.abs(out.x) ? (out.y > 0 ? 'below' : 'above') : out.x > 0 ? 'right' : 'left';
+        const out = {
+          x: bulge.x - (ends[0]!.x + ends[ends.length - 1]!.x) / 2,
+          y: bulge.y - (ends[0]!.y + ends[ends.length - 1]!.y) / 2,
+        };
+        const outward: InkSide =
+          Math.abs(out.y) >= Math.abs(out.x) ? (out.y > 0 ? 'below' : 'above') : out.x > 0 ? 'right' : 'left';
         const dot = grow({ ...bulge, width: 0, height: 0 }, 8);
         const sides = [outward, ...(['right', 'left', 'above', 'below'] as const).filter((side) => side !== outward)];
         box = placeText(dot, dot, blockSize, [...obstacles, source, target], t.area, sides).box;
@@ -133,9 +189,14 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
       const side = item.side ?? (span.width >= span.height ? 'below' : 'right');
       const target = clearOf(span, side, obstacles);
       sketch = braceSketch(target, side, seed, PEN);
-      if (block) box = placeText(grow(target, BRACE_REACH - 12), target, blockSize, obstacles, t.area, SIDE_ONLY[side]).box;
+      if (block)
+        box = placeText(grow(target, BRACE_REACH - 12), target, blockSize, obstacles, t.area, SIDE_ONLY[side]).box;
     } else if (it.verb === 'write') {
-      if (item.at) box = keepIn({ x: t.area.x + item.at[0] * t.area.width, y: t.area.y + item.at[1] * t.area.height, ...blockSize }, t.area);
+      if (item.at)
+        box = keepIn(
+          { x: t.area.x + item.at[0] * t.area.width, y: t.area.y + item.at[1] * t.area.height, ...blockSize },
+          t.area,
+        );
       else {
         const target = boxOf(it.targets[0]!);
         if (!target) continue;
@@ -155,9 +216,26 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
     } else {
       const target = union(it.targets.map(boxOf));
       if (!target) continue;
-      sketch = it.verb === 'tick' ? tickSketch(target, seed, PEN) : sketchMark(it.verb as 'circle' | 'box' | 'underline' | 'strike' | 'cross', target, t.area, obstacles, seed, PEN);
+      sketch =
+        it.verb === 'tick'
+          ? tickSketch(target, seed, PEN)
+          : sketchMark(
+              it.verb as 'circle' | 'box' | 'underline' | 'strike' | 'cross',
+              target,
+              t.area,
+              obstacles,
+              seed,
+              PEN,
+            );
       if (block) {
-        const near = placeText(sketch.bounds, target, blockSize, obstacles, t.area, item.side ? SIDE_ONLY[item.side] : it.verb === 'underline' ? UNDER_FIRST : undefined);
+        const near = placeText(
+          sketch.bounds,
+          target,
+          blockSize,
+          obstacles,
+          t.area,
+          item.side ? SIDE_ONLY[item.side] : it.verb === 'underline' ? UNDER_FIRST : undefined,
+        );
         const end = near.crowded && !item.side ? rowEnd(sketch.bounds, blockSize, obstacles, t.area) : null;
         box = end ?? near.box;
         if (near.crowded && !item.side && !end) {
@@ -170,21 +248,51 @@ function planInk(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[
 
     const strokeFrames = strokeTotal(sketch) / (it.verb === 'arrow' ? ARROW_PX_PER_FRAME : STROKE_PX_PER_FRAME);
     const textFrames = block ? block.lines.join('').length * FRAMES_PER_CHAR : 0;
-    const cursor = cursors.get(it.step) ?? (steps[it.step]?.mark || steps[it.step]?.flag ? segment.voiceFrom : segment.markFrom);
+    const cursor =
+      cursors.get(it.step) ?? (steps[it.step]?.mark || steps[it.step]?.flag ? segment.voiceFrom : segment.markFrom);
     const start = (item.when ? cueFrame(segment, item.when) : null) ?? cursor;
     cursors.set(it.step, Math.max(cursor, start + Math.max(8, strokeFrames + textFrames) + ITEM_GAP));
     const clear = it.until === Infinity ? Infinity : (segments[it.until + 1]?.from ?? Infinity);
     const text = block && box ? { lines: block.lines, box, size } : null;
-    placed.push({ item: it, sketch, text, textFirst, color, start, strokeFrames, textFrames, clear, bounds: sketch?.bounds ?? box! });
+    placed.push({
+      item: it,
+      sketch,
+      text,
+      textFirst,
+      color,
+      start,
+      strokeFrames,
+      textFrames,
+      clear,
+      bounds: sketch?.bounds ?? box!,
+    });
   }
   return placed;
 }
 
-const Strokes: React.FC<{ strokes: Stroke[]; progress: (i: number) => number; width: number; color: string; opacity: number }> = ({ strokes, progress, width, color, opacity }) => (
+const Strokes: React.FC<{
+  strokes: Stroke[];
+  progress: (i: number) => number;
+  width: number;
+  color: string;
+  opacity: number;
+}> = ({ strokes, progress, width, color, opacity }) => (
   <>
     {strokes.map((stroke, i) =>
       progress(i) > 0 ? (
-        <path key={i} d={strokePath(stroke)} fill="none" stroke={color} strokeOpacity={opacity} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - progress(i)} />
+        <path
+          key={i}
+          d={strokePath(stroke)}
+          fill="none"
+          stroke={color}
+          strokeOpacity={opacity}
+          strokeWidth={width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          pathLength={1}
+          strokeDasharray="1 1"
+          strokeDashoffset={1 - progress(i)}
+        />
       ) : null,
     )}
   </>
@@ -192,7 +300,18 @@ const Strokes: React.FC<{ strokes: Stroke[]; progress: (i: number) => number; wi
 
 /** The pen's tip where it is drawing. */
 const Tip: React.FC<{ at: Pt; color: string }> = ({ at, color }) => (
-  <div style={{ position: 'absolute', left: at.x - 3.5, top: at.y - 3.5, width: 7, height: 7, borderRadius: 4, background: color, boxShadow: `0 0 8px ${color}` }} />
+  <div
+    style={{
+      position: 'absolute',
+      left: at.x - 3.5,
+      top: at.y - 3.5,
+      width: 7,
+      height: 7,
+      borderRadius: 4,
+      background: color,
+      boxShadow: `0 0 8px ${color}`,
+    }}
+  />
 );
 
 /** Handwriting revealed left to right at writing speed, line by line, with a soft wet edge and the pen's tip at it. */
@@ -214,7 +333,16 @@ const Writing: React.FC<{ text: Text; written: number; color: string }> = ({ tex
         const writing = p < 1;
         const mask = writing ? `linear-gradient(to right, #000 ${edge - 8}px, transparent ${edge + 4}px)` : undefined;
         return (
-          <div key={i} style={{ position: 'absolute', left: text.box.x, top: text.box.y + i * lineH, height: lineH, width: w + 20 }}>
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              left: text.box.x,
+              top: text.box.y + i * lineH,
+              height: lineH,
+              width: w + 20,
+            }}
+          >
             <div
               style={{
                 padding: '0 5px',
@@ -231,7 +359,9 @@ const Writing: React.FC<{ text: Text; written: number; color: string }> = ({ tex
             >
               {line}
             </div>
-            {writing ? <Tip at={{ x: edge, y: lineH * 0.5 + Math.sin(edge / 9) * text.size * 0.18 }} color={color} /> : null}
+            {writing ? (
+              <Tip at={{ x: edge, y: lineH * 0.5 + Math.sin(edge / 9) * text.size * 0.18 }} color={color} />
+            ) : null}
           </div>
         );
       })}
@@ -251,19 +381,30 @@ function pointAlong(strokes: readonly Stroke[], share: number): Pt | null {
     for (let j = 1; j < stroke.points.length; j++) {
       const [a, b] = [stroke.points[j - 1]!, stroke.points[j]!];
       const seg = Math.hypot(b.x - a.x, b.y - a.y);
-      if (left <= seg) return { x: a.x + ((b.x - a.x) * left) / (seg || 1), y: a.y + ((b.y - a.y) * left) / (seg || 1) };
+      if (left <= seg)
+        return { x: a.x + ((b.x - a.x) * left) / (seg || 1), y: a.y + ((b.y - a.y) * left) / (seg || 1) };
       left -= seg;
     }
   }
   return null;
 }
 
-const InkItemView: React.FC<{ p: Placed; frame: number; area: Box; shift: Pt | undefined }> = ({ p, frame, area, shift }) => {
+const InkItemView: React.FC<{ p: Placed; frame: number; area: Box; shift: Pt | undefined }> = ({
+  p,
+  frame,
+  area,
+  shift,
+}) => {
   const total = Math.max(8, p.strokeFrames + p.textFrames);
   const t = Math.min(1, Math.max(0, (frame - p.start) / total));
   const strokeShare = p.strokeFrames / (p.strokeFrames + p.textFrames || 1);
-  const [penFrom, penTo, textFrom, textTo] = p.textFirst ? [1 - strokeShare, 1, 0, 1 - strokeShare] : [0, strokeShare, strokeShare, 1];
-  const pen = interpolate(t, [penFrom, Math.max(penFrom + 1e-6, penTo)], [0, 1], { ...clamp, easing: (x) => 1 - (1 - x) ** 1.6 });
+  const [penFrom, penTo, textFrom, textTo] = p.textFirst
+    ? [1 - strokeShare, 1, 0, 1 - strokeShare]
+    : [0, strokeShare, strokeShare, 1];
+  const pen = interpolate(t, [penFrom, Math.max(penFrom + 1e-6, penTo)], [0, 1], {
+    ...clamp,
+    easing: (x) => 1 - (1 - x) ** 1.6,
+  });
   const written = interpolate(t, [textFrom, Math.max(textFrom + 1e-6, textTo)], [0, 1], clamp);
   const lengths = p.sketch ? p.sketch.strokes.map(strokeLength) : [];
   const sum = lengths.reduce((a, b) => a + b, 0) || 1;
@@ -274,9 +415,20 @@ const InkItemView: React.FC<{ p: Placed; frame: number; area: Box; shift: Pt | u
   const tip = p.sketch && pen > 0 && pen < 1 ? pointAlong(p.sketch.strokes, pen) : null;
   const opacity = p.clear === Infinity ? 1 : interpolate(frame, [p.clear, p.clear + CLEAR_FRAMES], [1, 0], clamp);
   return (
-    <div style={{ position: 'absolute', inset: 0, opacity, transform: shift ? `translate(${shift.x}px, ${shift.y}px)` : undefined }}>
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        opacity,
+        transform: shift ? `translate(${shift.x}px, ${shift.y}px)` : undefined,
+      }}
+    >
       {p.sketch ? (
-        <svg width={area.width} height={area.height} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
+        <svg
+          width={area.width}
+          height={area.height}
+          style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}
+        >
           <Strokes strokes={p.sketch.strokes} progress={progress} width={PEN + 6} color={colors.bg} opacity={0.6} />
           <Strokes strokes={p.sketch.strokes} progress={progress} width={PEN} color={p.color} opacity={1} />
         </svg>
@@ -298,13 +450,21 @@ function boxAt(t: MarkTargets | null, keys: readonly string[]): Box | null {
  * How far an item has moved with the parts it marks since its step, as a later step slides a bar, a point or a
  * shape: the centre of its parts at each later step, eased in as that step settles. Null when nothing it marks moves.
  */
-function follow(p: Placed, frame: number, segments: readonly SpokenSegment[], targets: (k: number) => MarkTargets | null): Pt | null {
+function follow(
+  p: Placed,
+  frame: number,
+  segments: readonly SpokenSegment[],
+  targets: (k: number) => MarkTargets | null,
+): Pt | null {
   const keys = p.item.targets.flatMap((target) => ('keys' in target ? target.keys : []));
   const k = currentStep(segments, frame);
   const home = keys.length && k > p.item.step ? boxAt(targets(p.item.step), keys) : null;
   if (!home) return null;
   const from = center(home);
-  let [was, now] = [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+  let [was, now] = [
+    { x: 0, y: 0 },
+    { x: 0, y: 0 },
+  ];
   for (let j = p.item.step + 1; j <= k; j++) {
     was = now;
     const box = boxAt(targets(j), keys);
@@ -316,18 +476,38 @@ function follow(p: Placed, frame: number, segments: readonly SpokenSegment[], ta
 }
 
 /** Every ink item on the board at this frame. Draws nothing for a scene whose steps draw nothing. */
-export const InkLayer: React.FC<{ scene: Scene; hunks: HunkMap; segments: readonly SpokenSegment[]; targets: (k: number) => MarkTargets | null }> = ({ scene, hunks, segments, targets }) => {
+export const InkLayer: React.FC<{
+  scene: Scene;
+  hunks: HunkMap;
+  segments: readonly SpokenSegment[];
+  targets: (k: number) => MarkTargets | null;
+}> = ({ scene, hunks, segments, targets }) => {
   const frame = useCurrentFrame();
   if (!sceneSteps(scene).some((s) => (s as { draw?: unknown[] })?.draw?.length)) return null;
-  const shown = planInk(scene, hunks, segments, targets).filter((p) => frame >= p.start && frame < p.clear + CLEAR_FRAMES);
+  const shown = planInk(scene, hunks, segments, targets).filter(
+    (p) => frame >= p.start && frame < p.clear + CLEAR_FRAMES,
+  );
   if (!shown.length) return null;
   const first = targets(0);
   const area = first?.area ?? { x: 0, y: 0, width: 1920, height: 1080 };
   const clip = first?.clip;
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', clipPath: clip ? `inset(${clip.y}px 0 ${area.height - clip.y - clip.height}px 0)` : undefined }}>
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        clipPath: clip ? `inset(${clip.y}px 0 ${area.height - clip.y - clip.height}px 0)` : undefined,
+      }}
+    >
       {shown.map((p) => (
-        <InkItemView key={`${p.item.step}:${p.item.index}`} p={p} frame={frame} area={area} shift={targets(p.item.step)?.shift ?? follow(p, frame, segments, targets) ?? undefined} />
+        <InkItemView
+          key={`${p.item.step}:${p.item.index}`}
+          p={p}
+          frame={frame}
+          area={area}
+          shift={targets(p.item.step)?.shift ?? follow(p, frame, segments, targets) ?? undefined}
+        />
       ))}
     </div>
   );

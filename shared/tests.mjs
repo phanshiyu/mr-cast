@@ -15,7 +15,9 @@ export const testKey = (n) => `t:${n}`;
 export function cellOf(scene, ref) {
   if (typeof ref !== 'string') return null;
   const outcomes = list(scene?.outcomes);
-  const row = list(scene?.situations).findIndex((s) => typeof s?.id === 'string' && ref.startsWith(`${s.id}.`) && outcomes.includes(ref.slice(s.id.length + 1)));
+  const row = list(scene?.situations).findIndex(
+    (s) => typeof s?.id === 'string' && ref.startsWith(`${s.id}.`) && outcomes.includes(ref.slice(s.id.length + 1)),
+  );
   return row < 0 ? null : { row, col: outcomes.indexOf(ref.slice(list(scene.situations)[row].id.length + 1)) };
 }
 
@@ -58,9 +60,27 @@ export function testsMatrix(scene) {
       const was = [...new Set(by.map((n) => tests[n]?.was).filter((w) => typeof w === 'string' && w.length > 0))];
       const removed = by.length > live.length;
       const state = live.length ? 'checked' : value !== undefined ? 'unchecked' : removed ? 'removed' : 'none';
-      return { key: cellKey(row, col), row, col, outcome, value, tests: by, state, status: cellStatus(live.map((n) => tests[n])), removed, was };
+      return {
+        key: cellKey(row, col),
+        row,
+        col,
+        outcome,
+        value,
+        tests: by,
+        state,
+        status: cellStatus(live.map((n) => tests[n])),
+        removed,
+        was,
+      };
     });
-    return { key: situationKey(situation?.id), row, situation, gap: isGapRow(situation), cells, tests: [...new Set(cells.flatMap((c) => c.tests))] };
+    return {
+      key: situationKey(situation?.id),
+      row,
+      situation,
+      gap: isGapRow(situation),
+      cells,
+      tests: [...new Set(cells.flatMap((c) => c.tests))],
+    };
   });
   const status = (s) => tests.filter((t) => (t?.status ?? 'added') === s).length;
   const live = rows.filter((r) => !r.gap).flatMap((r) => r.cells);
@@ -81,10 +101,13 @@ export function testsMatrix(scene) {
 
 /** The item keys a test lights: its own, and every cell it checks. */
 export function testKeys(scene, n) {
-  return [testKey(n), ...list(list(scene?.tests)[n]?.checks).flatMap((ref) => {
-    const cell = cellOf(scene, ref);
-    return cell ? [cellKey(cell.row, cell.col)] : [];
-  })];
+  return [
+    testKey(n),
+    ...list(list(scene?.tests)[n]?.checks).flatMap((ref) => {
+      const cell = cellOf(scene, ref);
+      return cell ? [cellKey(cell.row, cell.col)] : [];
+    }),
+  ];
 }
 
 /** The item keys a ref lights: a situation id, a cell "id.Outcome", an outcome, or a test's name; null when it names none. */
@@ -93,7 +116,8 @@ export function resolveTestsRef(scene, ref) {
   const situations = list(scene?.situations);
   const outcomes = list(scene?.outcomes);
   const row = situations.findIndex((s) => s?.id === ref);
-  if (row >= 0) return [situationKey(ref), ...(isGapRow(situations[row]) ? [] : outcomes.map((_, col) => cellKey(row, col)))];
+  if (row >= 0)
+    return [situationKey(ref), ...(isGapRow(situations[row]) ? [] : outcomes.map((_, col) => cellKey(row, col)))];
   const cell = cellOf(scene, ref);
   if (cell) return [cellKey(cell.row, cell.col)];
   const col = outcomes.indexOf(ref);
@@ -132,7 +156,13 @@ export function testsCallouts(scene) {
  * `situations`, or with neither `cases` nor `gaps`, comes back as it is.
  */
 export function upgradeTests(scene) {
-  if (!isObject(scene) || scene.type !== 'tests' || scene.situations !== undefined || (scene.cases === undefined && scene.gaps === undefined)) return scene;
+  if (
+    !isObject(scene) ||
+    scene.type !== 'tests' ||
+    scene.situations !== undefined ||
+    (scene.cases === undefined && scene.gaps === undefined)
+  )
+    return scene;
   const { cases: rawCases, gaps: rawGaps, titles, ...rest } = scene;
   const cases = list(rawCases);
   const gaps = list(rawGaps);
@@ -140,11 +170,21 @@ export function upgradeTests(scene) {
   const caseId = (i) => `case ${i + 1}`;
   const gapId = (i) => `gap ${i + 1}`;
   const situations = [
-    ...cases.map((c, i) => ({ id: caseId(i), when: c?.name, ...(isLive(c) ? { expect: { [outcome]: c?.proves } } : {}) })),
+    ...cases.map((c, i) => ({
+      id: caseId(i),
+      when: c?.name,
+      ...(isLive(c) ? { expect: { [outcome]: c?.proves } } : {}),
+    })),
     ...gaps.map((g, i) => ({ id: gapId(i), when: g, gap: titles?.gaps || 'Not tested' })),
   ];
   const tests = cases.map((c, i) => {
-    const test = { name: c?.name, status: c?.status, checks: [`${caseId(i)}.${outcome}`], hunkId: c?.hunkId, was: isLive(c) ? undefined : c?.proves };
+    const test = {
+      name: c?.name,
+      status: c?.status,
+      checks: [`${caseId(i)}.${outcome}`],
+      hunkId: c?.hunkId,
+      was: isLive(c) ? undefined : c?.proves,
+    };
     return Object.fromEntries(Object.entries(test).filter(([, v]) => v !== undefined));
   });
   const refOf = (ref) => {
@@ -155,7 +195,11 @@ export function upgradeTests(scene) {
     return named >= 0 ? caseId(named) : ref;
   };
   const steps = Array.isArray(scene.steps)
-    ? scene.steps.map((step) => (isObject(step) && step.focus !== undefined ? { ...step, focus: Array.isArray(step.focus) ? step.focus.map(refOf) : refOf(step.focus) } : step))
+    ? scene.steps.map((step) =>
+        isObject(step) && step.focus !== undefined
+          ? { ...step, focus: Array.isArray(step.focus) ? step.focus.map(refOf) : refOf(step.focus) }
+          : step,
+      )
     : scene.steps;
   return { ...rest, when: 'Test', outcomes: [outcome], situations, tests, ...(steps !== undefined ? { steps } : {}) };
 }

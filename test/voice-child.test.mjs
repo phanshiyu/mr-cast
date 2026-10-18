@@ -20,7 +20,16 @@ function voicedRun(count) {
     scenes.push({ type: 'intent', narration: text, bullets: ['a'] });
     const key = narrationKey(text, 'af_heart', 1);
     fs.writeFileSync(path.join(dir, 'audio', `${key}.wav`), 'x');
-    clips[key] = { src: `audio/${key}.wav`, seconds: 6.1, voice: 'af_heart', speed: 1, sentences: [{ words: 11, start: 0.1, end: 3.4 }, { words: 5, start: 3.7, end: 5 }] };
+    clips[key] = {
+      src: `audio/${key}.wav`,
+      seconds: 6.1,
+      voice: 'af_heart',
+      speed: 1,
+      sentences: [
+        { words: 11, start: 0.1, end: 3.4 },
+        { words: 5, start: 3.7, end: 5 },
+      ],
+    };
   }
   fs.writeFileSync(path.join(dir, 'voiceover.json'), JSON.stringify({ voice: 'af_heart', speed: 1, pauses: 1, clips }));
   return { dataDir: dir, storyboard: { scenes }, voice: 'af_heart', pace: { speed: 1, pauses: 1 } };

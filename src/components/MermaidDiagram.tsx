@@ -14,7 +14,14 @@ type Rendered =
   | { status: 'ready'; svg: string; width: number; height: number }
   | { status: 'error'; message: string };
 
-const surfaces = { node: '#1c2033', alt: '#161a26', deep: '#11131c', line: '#aab2c8', edge: '#3a3f52', amber: '#fbbf24' };
+const surfaces = {
+  node: '#1c2033',
+  alt: '#161a26',
+  deep: '#11131c',
+  line: '#aab2c8',
+  edge: '#3a3f52',
+  amber: '#fbbf24',
+};
 const palette = [colors.accent, colors.add, surfaces.amber, colors.del, '#5ec8f2', '#c084fc', '#f472b6', '#a3e635'];
 
 let mermaidReady: Promise<Mermaid> | null = null;
@@ -137,10 +144,26 @@ const ErrorCard: React.FC<{ message: string }> = ({ message }) => {
         boxShadow: `0 0 0 6px ${colors.delBg}`,
       }}
     >
-      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: colors.del }}>Mermaid diagram failed to render</div>
-      <div style={{ fontSize: 32, fontWeight: 650, marginTop: 16, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{first}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2, textTransform: 'uppercase', color: colors.del }}>
+        Mermaid diagram failed to render
+      </div>
+      <div style={{ fontSize: 32, fontWeight: 650, marginTop: 16, lineHeight: 1.3, overflowWrap: 'anywhere' }}>
+        {first}
+      </div>
       {rest.length ? (
-        <pre style={{ margin: '24px 0 0', fontFamily: fonts.mono, fontSize: 20, lineHeight: 1.45, color: colors.muted, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', overflow: 'hidden', maxHeight: 220 }}>
+        <pre
+          style={{
+            margin: '24px 0 0',
+            fontFamily: fonts.mono,
+            fontSize: 20,
+            lineHeight: 1.45,
+            color: colors.muted,
+            whiteSpace: 'pre-wrap',
+            overflowWrap: 'anywhere',
+            overflow: 'hidden',
+            maxHeight: 220,
+          }}
+        >
           {rest.join('\n')}
         </pre>
       ) : null}

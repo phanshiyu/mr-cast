@@ -4,7 +4,15 @@ import { stepTargets } from '../../shared/targets.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { TimelineScene } from '../types';
 import { formatValue } from '../utils/chartLayout';
-import { SPAN_H, STAMP_FONT, layoutTimeline, timelineScale, type PlacedEvent, type PlacedSpan, type TimelineLayout } from '../utils/timelineLayout';
+import {
+  SPAN_H,
+  STAMP_FONT,
+  layoutTimeline,
+  timelineScale,
+  type PlacedEvent,
+  type PlacedSpan,
+  type TimelineLayout,
+} from '../utils/timelineLayout';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, revealStarts, stepSpring, type Emphasis } from '../utils/spotlight';
 import type { SpokenSegment } from '../utils/timing';
@@ -48,7 +56,9 @@ function stepReach(scene: TimelineScene): { lasts: number[]; values: number[] } 
  * last step runs to the end.
  */
 function playheadKeys(scene: TimelineScene, layout: TimelineLayout, segments: readonly SpokenSegment[]) {
-  const values = [...new Set([...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((s) => [s.from, s.to])])].sort((a, b) => a - b);
+  const values = [
+    ...new Set([...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((s) => [s.from, s.to])]),
+  ].sort((a, b) => a - b);
   const startX = layout.ticks[0]!.x;
   const endX = layout.x(values[values.length - 1]!);
   const times = [START + 4];
@@ -79,7 +89,8 @@ function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, segments: r
     const x = layout.x(value);
     if (x <= xs[0]!) return times[0]!;
     for (let i = 1; i < xs.length; i++) {
-      if (xs[i]! > xs[i - 1]! && x <= xs[i]!) return times[i - 1]! + ((x - xs[i - 1]!) / (xs[i]! - xs[i - 1]!)) * (times[i]! - times[i - 1]!);
+      if (xs[i]! > xs[i - 1]! && x <= xs[i]!)
+        return times[i - 1]! + ((x - xs[i - 1]!) / (xs[i]! - xs[i - 1]!)) * (times[i]! - times[i - 1]!);
     }
     return times[times.length - 1]!;
   };
@@ -93,7 +104,9 @@ function buildPlayhead(scene: TimelineScene, layout: TimelineLayout, segments: r
     reachedAt,
     eventAt: (index: number): EventTiming => {
       const reached = reachedAt(scene.events[index]!.at);
-      return stepped ? { at: Math.max(stepFrom[index]!, reached - TRAVEL_FRAMES / 2), stepFrom: stepFrom[index]! } : { at: reached };
+      return stepped
+        ? { at: Math.max(stepFrom[index]!, reached - TRAVEL_FRAMES / 2), stepFrom: stepFrom[index]! }
+        : { at: reached };
     },
     last: times[times.length - 1]!,
   };
@@ -107,7 +120,9 @@ interface EventTiming {
 
 function eventMotion(frame: number, fps: number, { at, stepFrom }: EventTiming) {
   const motion = (delay: number, config: { damping: number; stiffness: number }) =>
-    stepFrom === undefined ? spring({ frame: frame - at - delay, fps, config }) : stepSpring(frame, fps, at + delay, stepFrom, config);
+    stepFrom === undefined
+      ? spring({ frame: frame - at - delay, fps, config })
+      : stepSpring(frame, fps, at + delay, stepFrom, config);
   return {
     pop: motion(0, { damping: 12, stiffness: 170 }),
     rise: motion(3, { damping: 17, stiffness: 120 }),
@@ -116,7 +131,12 @@ function eventMotion(frame: number, fps: number, { at, stepFrom }: EventTiming) 
 }
 
 /** Leader and axis dot. The leader grows from the dot up to the card as the card rises. */
-const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; timing: EventTiming; frame: number }> = ({ placed, axisY, timing, frame }) => {
+const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; timing: EventTiming; frame: number }> = ({
+  placed,
+  axisY,
+  timing,
+  frame,
+}) => {
   const { fps } = useVideoConfig();
   const tone = tones[placed.event.tone ?? 'accent'];
   const { pop, rise, flash } = eventMotion(frame, fps, timing);
@@ -133,13 +153,26 @@ const EventMark: React.FC<{ placed: PlacedEvent; axisY: number; timing: EventTim
         strokeWidth={2}
         strokeLinejoin="round"
       />
-      <circle cx={placed.x} cy={axisY} r={(18 + 14 * flash) * Math.min(1, pop)} fill="none" stroke={tone.color} strokeOpacity={0.5 * flash} strokeWidth={3} />
+      <circle
+        cx={placed.x}
+        cy={axisY}
+        r={(18 + 14 * flash) * Math.min(1, pop)}
+        fill="none"
+        stroke={tone.color}
+        strokeOpacity={0.5 * flash}
+        strokeWidth={3}
+      />
       <circle cx={placed.x} cy={axisY} r={10 * pop} fill={tone.color} stroke={colors.bg} strokeWidth={3} />
     </g>
   );
 };
 
-const EventCard: React.FC<{ placed: PlacedEvent; timing: EventTiming; frame: number; emphasis: Emphasis }> = ({ placed, timing, frame, emphasis }) => {
+const EventCard: React.FC<{ placed: PlacedEvent; timing: EventTiming; frame: number; emphasis: Emphasis }> = ({
+  placed,
+  timing,
+  frame,
+  emphasis,
+}) => {
   const { fps } = useVideoConfig();
   const tone = tones[placed.event.tone ?? 'accent'];
   const { rise, flash } = eventMotion(frame, fps, timing);
@@ -162,7 +195,11 @@ const EventCard: React.FC<{ placed: PlacedEvent; timing: EventTiming; frame: num
         transform: `translateY(${(1 - rise) * 18}px) scale(${1 + 0.03 * emphasis.glow})`,
       }}
     >
-      <div style={{ fontFamily: fonts.mono, fontSize: STAMP_FONT, lineHeight: '24px', fontWeight: 700, color: tone.color }}>{placed.stamp}</div>
+      <div
+        style={{ fontFamily: fonts.mono, fontSize: STAMP_FONT, lineHeight: '24px', fontWeight: 700, color: tone.color }}
+      >
+        {placed.stamp}
+      </div>
       <FitText fit={placed.label} style={{ color: colors.text }} />
       {placed.detail ? <FitText fit={placed.detail} style={{ color: colors.muted }} /> : null}
       <CornerBadges badges={badgesOf(placed.event)} size={12} top={-12} right={12} />
@@ -170,7 +207,14 @@ const EventCard: React.FC<{ placed: PlacedEvent; timing: EventTiming; frame: num
   );
 };
 
-const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneAt: number; frame: number; emphasis: Emphasis }> = ({ placed, playX, unit, doneAt, frame, emphasis }) => {
+const SpanBar: React.FC<{
+  placed: PlacedSpan;
+  playX: number;
+  unit: string;
+  doneAt: number;
+  frame: number;
+  emphasis: Emphasis;
+}> = ({ placed, playX, unit, doneAt, frame, emphasis }) => {
   const tone = tones[placed.span.tone ?? 'warn'];
   const full = placed.x1 - placed.x0;
   const w = Math.max(0, Math.min(full, playX - placed.x0));
@@ -189,8 +233,16 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
           boxSizing: 'border-box',
           borderRadius: 10,
           background: `repeating-linear-gradient(135deg, ${tone.bg}, ${tone.bg} 10px, transparent 10px, transparent 18px), ${tone.bg}`,
-          border: w > 0 ? `1.5px solid ${placed.span.highlight ? EMPHASIS.color : `${tone.color}${emphasis.glow > 0 ? '' : '99'}`}` : 'none',
-          boxShadow: emphasis.glow > 0 ? `0 0 ${36 * emphasis.glow}px ${tone.color}77` : placed.span.highlight ? `0 0 26px ${EMPHASIS.glow}` : undefined,
+          border:
+            w > 0
+              ? `1.5px solid ${placed.span.highlight ? EMPHASIS.color : `${tone.color}${emphasis.glow > 0 ? '' : '99'}`}`
+              : 'none',
+          boxShadow:
+            emphasis.glow > 0
+              ? `0 0 ${36 * emphasis.glow}px ${tone.color}77`
+              : placed.span.highlight
+                ? `0 0 26px ${EMPHASIS.glow}`
+                : undefined,
           overflow: 'hidden',
         }}
       />
@@ -216,7 +268,9 @@ const SpanBar: React.FC<{ placed: PlacedSpan; playX: number; unit: string; doneA
             <Badge key={i} badge={b} size={12} />
           ))}
         </span>
-        {placed.inside && room > 0 ? <span style={{ fontFamily: fonts.mono, fontSize: 17, fontWeight: 600, opacity: 0.8 }}>{duration}</span> : null}
+        {placed.inside && room > 0 ? (
+          <span style={{ fontFamily: fonts.mono, fontSize: 17, fontWeight: 600, opacity: 0.8 }}>{duration}</span>
+        ) : null}
       </div>
     </div>
   );
@@ -228,12 +282,21 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
   const layout = useMemo(() => layoutTimeline(scene, box.width), [scene, box.width]);
   const playhead = useMemo(() => buildPlayhead(scene, layout, segments), [scene, layout, segments]);
   const scale = timelineScale(layout, box);
-  const stage = { left: (box.width - layout.width * scale) / 2, top: Math.max(0, box.height - layout.height * scale) * 0.4, scale };
+  const stage = {
+    left: (box.width - layout.width * scale) / 2,
+    top: Math.max(0, box.height - layout.height * scale) * 0.4,
+    scale,
+  };
   const marks = useMemo(() => timelineTargets(scene), [scene]);
   const playX = playhead.playX(frame);
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const axisIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
-  const headOpacity = interpolate(frame, [START + 2, START + 8, playhead.last + 6, playhead.last + 18], [0, 1, 1, 0], clamp);
+  const headOpacity = interpolate(
+    frame,
+    [START + 2, START + 8, playhead.last + 6, playhead.last + 18],
+    [0, 1, 1, 0],
+    clamp,
+  );
   const { axisY, ticks } = layout;
   const left = ticks[0]!.x;
   const right = ticks[ticks.length - 1]!.x;
@@ -252,30 +315,88 @@ export const Timeline: React.FC<SceneProps<TimelineScene>> = ({ scene, hunks, du
         }}
       >
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
-          <line x1={left} x2={right} y1={axisY} y2={axisY} stroke={colors.borderStrong} strokeWidth={3} strokeDasharray="2 9" strokeLinecap="round" opacity={axisIn} />
-          <line x1={left} x2={Math.max(left, playX)} y1={axisY} y2={axisY} stroke={colors.text} strokeOpacity={0.75} strokeWidth={4} strokeLinecap="round" />
+          <line
+            x1={left}
+            x2={right}
+            y1={axisY}
+            y2={axisY}
+            stroke={colors.borderStrong}
+            strokeWidth={3}
+            strokeDasharray="2 9"
+            strokeLinecap="round"
+            opacity={axisIn}
+          />
+          <line
+            x1={left}
+            x2={Math.max(left, playX)}
+            y1={axisY}
+            y2={axisY}
+            stroke={colors.text}
+            strokeOpacity={0.75}
+            strokeWidth={4}
+            strokeLinecap="round"
+          />
           {ticks.map((t, i) => (
-            <line key={i} x1={t.x} x2={t.x} y1={axisY - 8} y2={axisY + 8} stroke={colors.faint} strokeWidth={2} opacity={axisIn} />
+            <line
+              key={i}
+              x1={t.x}
+              x2={t.x}
+              y1={axisY - 8}
+              y2={axisY + 8}
+              stroke={colors.faint}
+              strokeWidth={2}
+              opacity={axisIn}
+            />
           ))}
         </svg>
         {ticks.map((t, i) => (
           <div
             key={i}
-            style={{ position: 'absolute', left: t.x, top: axisY + 14, transform: 'translateX(-50%)', fontFamily: fonts.mono, fontSize: 17, color: colors.faint, whiteSpace: 'nowrap', opacity: axisIn }}
+            style={{
+              position: 'absolute',
+              left: t.x,
+              top: axisY + 14,
+              transform: 'translateX(-50%)',
+              fontFamily: fonts.mono,
+              fontSize: 17,
+              color: colors.faint,
+              whiteSpace: 'nowrap',
+              opacity: axisIn,
+            }}
           >
             {t.text}
           </div>
         ))}
         {layout.spans.map((placed, i) => (
-          <SpanBar key={i} placed={placed} playX={playX} unit={scene.unit} doneAt={playhead.reachedAt(Math.max(placed.span.from, placed.span.to))} frame={frame} emphasis={emphasisOf(`sp:${i}`)} />
+          <SpanBar
+            key={i}
+            placed={placed}
+            playX={playX}
+            unit={scene.unit}
+            doneAt={playhead.reachedAt(Math.max(placed.span.from, placed.span.to))}
+            frame={frame}
+            emphasis={emphasisOf(`sp:${i}`)}
+          />
         ))}
         <svg style={{ position: 'absolute', inset: 0, overflow: 'visible' }} width="100%" height="100%">
           {layout.events.map((placed) => (
-            <EventMark key={placed.index} placed={placed} axisY={axisY} timing={playhead.eventAt(placed.index)} frame={frame} />
+            <EventMark
+              key={placed.index}
+              placed={placed}
+              axisY={axisY}
+              timing={playhead.eventAt(placed.index)}
+              frame={frame}
+            />
           ))}
         </svg>
         {layout.events.map((placed) => (
-          <EventCard key={placed.index} placed={placed} timing={playhead.eventAt(placed.index)} frame={frame} emphasis={emphasisOf(`ev:${placed.index}`)} />
+          <EventCard
+            key={placed.index}
+            placed={placed}
+            timing={playhead.eventAt(placed.index)}
+            frame={frame}
+            emphasis={emphasisOf(`ev:${placed.index}`)}
+          />
         ))}
         <div
           style={{

@@ -10,7 +10,11 @@ const res = path.resolve(process.argv[2] ?? '');
 const tsv = (f) => {
   const p = path.join(res, f);
   if (!fs.existsSync(p)) return [];
-  const [head, ...rows] = fs.readFileSync(p, 'utf8').trim().split('\n').map((l) => l.split('\t'));
+  const [head, ...rows] = fs
+    .readFileSync(p, 'utf8')
+    .trim()
+    .split('\n')
+    .map((l) => l.split('\t'));
   return rows.map((r) => Object.fromEntries(head.map((h, i) => [h, r[i]])));
 };
 const runs = [
@@ -32,7 +36,9 @@ for (const r of runs) {
   if (r.g) {
     const a = r.g.answers ?? [];
     r.accuracy = a.reduce((s, x) => s + x.correct, 0) / a.length;
-    r.evidence = a.some((x) => typeof x.evidence === 'number') ? a.reduce((s, x) => s + (x.evidence ?? 0), 0) / a.length : null;
+    r.evidence = a.some((x) => typeof x.evidence === 'number')
+      ? a.reduce((s, x) => s + (x.evidence ?? 0), 0) / a.length
+      : null;
     r.bug = typeof r.g.bug_found === 'number' ? r.g.bug_found : null;
     r.falseDefects = r.g.false_defects ?? null;
     r.ease = r.g.ease ?? null;
@@ -46,8 +52,27 @@ const stat = (xs) => {
   return v.length === 1 ? f(mean) : `${f(mean)} [${f(Math.min(...v))}-${f(Math.max(...v))}]`;
 };
 const cols = {
-  A: [['acc', (r) => r.accuracy], ['ease', (r) => r.ease], ['calls', (r) => r.t?.toolCalls], ['scenes', (r) => r.t?.scenesViewed], ['secs', (r) => r.t?.wallSeconds]],
-  B: [['acc', (r) => r.accuracy], ['evid', (r) => r.evidence], ['bug', (r) => r.bug], ['falseDef', (r) => r.falseDefects], ['calls', (r) => r.t?.toolCalls], ['repoFiles', (r) => r.t?.repoFilesOpened.length], ['scenes', (r) => r.t?.scenesViewed], ['readChars', (r) => r.t?.toolResultChars], ['peakCtx', (r) => r.t?.tokens.peakContext], ['outTok', (r) => r.t?.tokens.output], ['secs', (r) => r.t?.wallSeconds], ['ease', (r) => r.ease]],
+  A: [
+    ['acc', (r) => r.accuracy],
+    ['ease', (r) => r.ease],
+    ['calls', (r) => r.t?.toolCalls],
+    ['scenes', (r) => r.t?.scenesViewed],
+    ['secs', (r) => r.t?.wallSeconds],
+  ],
+  B: [
+    ['acc', (r) => r.accuracy],
+    ['evid', (r) => r.evidence],
+    ['bug', (r) => r.bug],
+    ['falseDef', (r) => r.falseDefects],
+    ['calls', (r) => r.t?.toolCalls],
+    ['repoFiles', (r) => r.t?.repoFilesOpened.length],
+    ['scenes', (r) => r.t?.scenesViewed],
+    ['readChars', (r) => r.t?.toolResultChars],
+    ['peakCtx', (r) => r.t?.tokens.peakContext],
+    ['outTok', (r) => r.t?.tokens.output],
+    ['secs', (r) => r.t?.wallSeconds],
+    ['ease', (r) => r.ease],
+  ],
 };
 cols.C = cols.B;
 const out = {};
@@ -55,9 +80,10 @@ for (const phase of ['A', 'B', 'C']) {
   const rs = runs.filter((r) => r.phase === phase);
   if (!rs.length) continue;
   const groups = new Map();
-  for (const r of rs) for (const key of [`${r.arm} ${r.fixture}`, `${r.arm} ALL`]) groups.set(key, [...(groups.get(key) ?? []), r]);
+  for (const r of rs)
+    for (const key of [`${r.arm} ${r.fixture}`, `${r.arm} ALL`]) groups.set(key, [...(groups.get(key) ?? []), r]);
   const table = [['arm fixture', 'n', ...cols[phase].map(([n]) => n)]];
-  for (const key of [...groups.keys()].sort((a, b) => (a.endsWith('ALL') - b.endsWith('ALL')) || a.localeCompare(b))) {
+  for (const key of [...groups.keys()].sort((a, b) => a.endsWith('ALL') - b.endsWith('ALL') || a.localeCompare(b))) {
     const g = groups.get(key);
     table.push([key, String(g.length), ...cols[phase].map(([, fn]) => stat(g.map(fn)))]);
   }

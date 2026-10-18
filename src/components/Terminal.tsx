@@ -4,7 +4,15 @@ import type { TerminalScene } from '../types';
 import { staged, type MarkTargets, type Stage } from '../utils/penGeometry';
 import { focusSpotlight, type Emphasis } from '../utils/spotlight';
 import { terminalCamera, terminalSchedule, type EntryTiming } from '../utils/terminalCamera';
-import { CHROME_H, EXIT_FONT, PAD_X, layoutTerminal, terminalBoxes, type PlacedEntry, type TerminalLayout } from '../utils/terminalLayout';
+import {
+  CHROME_H,
+  EXIT_FONT,
+  PAD_X,
+  layoutTerminal,
+  terminalBoxes,
+  type PlacedEntry,
+  type TerminalLayout,
+} from '../utils/terminalLayout';
 import { FitText } from './FitText';
 import { PenMarks } from './PenMarks';
 import { SceneShell } from './SceneShell';
@@ -18,30 +26,60 @@ const BODY_BG = '#0b0d13';
 /** Room under the title bar where scrolled lines fade out. */
 const FADE = 26;
 
-const hex = (v: number) => Math.round(Math.max(0, Math.min(1, v)) * 255).toString(16).padStart(2, '0');
+const hex = (v: number) =>
+  Math.round(Math.max(0, Math.min(1, v)) * 255)
+    .toString(16)
+    .padStart(2, '0');
 
 /** A block cursor after the typed text: solid while typing, blinking while the command waits for its output. */
-const Cursor: React.FC<{ layout: TerminalLayout; frame: number; timing: EntryTiming }> = ({ layout, frame, timing }) => {
+const Cursor: React.FC<{ layout: TerminalLayout; frame: number; timing: EntryTiming }> = ({
+  layout,
+  frame,
+  timing,
+}) => {
   const typing = frame < timing.typeFrom + timing.typeFrames;
   const on = typing || Math.floor((frame - timing.typeFrom) / 8) % 2 === 0;
-  return <span style={{ display: 'inline-block', width: layout.font * 0.6, height: layout.font * 1.15, verticalAlign: 'text-bottom', background: colors.text, opacity: on ? 0.85 : 0 }} />;
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: layout.font * 0.6,
+        height: layout.font * 1.15,
+        verticalAlign: 'text-bottom',
+        background: colors.text,
+        opacity: on ? 0.85 : 0,
+      }}
+    />
+  );
 };
 
-const Entry: React.FC<{ layout: TerminalLayout; placed: PlacedEntry; timing: EntryTiming; frame: number; emphasis: Emphasis; lineEmphasis: (line: number) => Emphasis }> = ({
-  layout,
-  placed,
-  timing,
-  frame,
-  emphasis,
-  lineEmphasis,
-}) => {
+const Entry: React.FC<{
+  layout: TerminalLayout;
+  placed: PlacedEntry;
+  timing: EntryTiming;
+  frame: number;
+  emphasis: Emphasis;
+  lineEmphasis: (line: number) => Emphasis;
+}> = ({ layout, placed, timing, frame, emphasis, lineEmphasis }) => {
   if (frame < timing.typeFrom) return null;
   const { rowH, font } = layout;
   const failed = placed.entry.exit !== undefined && placed.entry.exit !== 0;
-  const typed = placed.command ? Math.floor(interpolate(frame, [timing.typeFrom, timing.typeFrom + Math.max(1, timing.typeFrames)], [0, placed.command.chars], clamp)) : 0;
+  const typed = placed.command
+    ? Math.floor(
+        interpolate(
+          frame,
+          [timing.typeFrom, timing.typeFrom + Math.max(1, timing.typeFrames)],
+          [0, placed.command.chars],
+          clamp,
+        ),
+      )
+    : 0;
   const printing = frame < timing.outFrom;
-  const lineIn = (l: number) => interpolate(frame, [timing.outFrom + l * timing.lineGap, timing.outFrom + l * timing.lineGap + 3], [0, 1], clamp);
-  const lastIn = placed.lines.length ? lineIn(placed.lines.length - 1) : interpolate(frame, [timing.outFrom, timing.outFrom + 3], [0, 1], clamp);
+  const lineIn = (l: number) =>
+    interpolate(frame, [timing.outFrom + l * timing.lineGap, timing.outFrom + l * timing.lineGap + 3], [0, 1], clamp);
+  const lastIn = placed.lines.length
+    ? lineIn(placed.lines.length - 1)
+    : interpolate(frame, [timing.outFrom, timing.outFrom + 3], [0, 1], clamp);
   const height = placed.bottom - placed.top;
   const opacity = Math.max(emphasis.opacity, ...placed.lines.map((l) => lineEmphasis(l.index).opacity));
   let before = 0;
@@ -49,10 +87,32 @@ const Entry: React.FC<{ layout: TerminalLayout; placed: PlacedEntry; timing: Ent
   return (
     <div style={{ opacity }}>
       {failed ? (
-        <div style={{ position: 'absolute', left: PAD_X - 18, top: placed.top - 4, width: layout.innerW + 36, height: height + 8, borderRadius: 10, background: colors.delBg, opacity: 0.8 * lastIn }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: PAD_X - 18,
+            top: placed.top - 4,
+            width: layout.innerW + 36,
+            height: height + 8,
+            borderRadius: 10,
+            background: colors.delBg,
+            opacity: 0.8 * lastIn,
+          }}
+        />
       ) : null}
       {failed || emphasis.glow > 0 ? (
-        <div style={{ position: 'absolute', left: PAD_X - 18, top: placed.top - 4, width: 4, height: height + 8, borderRadius: 2, background: failed ? colors.del : colors.accent, opacity: failed ? lastIn : emphasis.glow }} />
+        <div
+          style={{
+            position: 'absolute',
+            left: PAD_X - 18,
+            top: placed.top - 4,
+            width: 4,
+            height: height + 8,
+            borderRadius: 2,
+            background: failed ? colors.del : colors.accent,
+            opacity: failed ? lastIn : emphasis.glow,
+          }}
+        />
       ) : null}
       {emphasis.glow > 0 ? (
         <div
@@ -91,13 +151,31 @@ const Entry: React.FC<{ layout: TerminalLayout; placed: PlacedEntry; timing: Ent
             const from = before;
             before += row.length;
             const shown = row.slice(0, Math.max(0, typed - from));
-            const cursorHere = printing && (typed < from + row.length || r === placed.command!.rows.length - 1) && typed >= from;
+            const cursorHere =
+              printing && (typed < from + row.length || r === placed.command!.rows.length - 1) && typed >= from;
             return (
               <div
                 key={r}
-                style={{ position: 'absolute', left: PAD_X, top: placed.command!.y + r * rowH, height: rowH, lineHeight: `${rowH}px`, fontFamily: fonts.mono, fontSize: font, whiteSpace: 'pre', color: colors.text, fontWeight: 500 }}
+                style={{
+                  position: 'absolute',
+                  left: PAD_X,
+                  top: placed.command!.y + r * rowH,
+                  height: rowH,
+                  lineHeight: `${rowH}px`,
+                  fontFamily: fonts.mono,
+                  fontSize: font,
+                  whiteSpace: 'pre',
+                  color: colors.text,
+                  fontWeight: 500,
+                }}
               >
-                {r === 0 ? <span style={{ color: failed && lastIn > 0.5 ? colors.del : PROMPT, fontWeight: 700 }}>{`${placed.prompt} `}</span> : <span style={{ display: 'inline-block', width: placed.promptW }} />}
+                {r === 0 ? (
+                  <span
+                    style={{ color: failed && lastIn > 0.5 ? colors.del : PROMPT, fontWeight: 700 }}
+                  >{`${placed.prompt} `}</span>
+                ) : (
+                  <span style={{ display: 'inline-block', width: placed.promptW }} />
+                )}
                 {shown}
                 {cursorHere ? <Cursor layout={layout} frame={frame} timing={timing} /> : null}
               </div>
@@ -105,7 +183,17 @@ const Entry: React.FC<{ layout: TerminalLayout; placed: PlacedEntry; timing: Ent
           })
         : null}
       {placed.lines.map((line) => (
-        <FitText key={line.index} fit={line.fit} style={{ position: 'absolute', left: PAD_X + line.indent, top: line.y, color: OUTPUT_TEXT, opacity: lineIn(line.index) }} />
+        <FitText
+          key={line.index}
+          fit={line.fit}
+          style={{
+            position: 'absolute',
+            left: PAD_X + line.indent,
+            top: line.y,
+            color: OUTPUT_TEXT,
+            opacity: lineIn(line.index),
+          }}
+        />
       ))}
       {placed.exit ? (
         <div
@@ -137,14 +225,46 @@ const Entry: React.FC<{ layout: TerminalLayout; placed: PlacedEntry; timing: Ent
 };
 
 const Chrome: React.FC<{ layout: TerminalLayout }> = ({ layout }) => (
-  <div style={{ position: 'absolute', left: 0, top: 0, width: layout.width, height: CHROME_H, background: '#171a23', borderBottom: `1px solid ${colors.border}`, borderRadius: '16px 16px 0 0' }}>
-    <div style={{ position: 'absolute', left: 22, top: 0, height: CHROME_H, display: 'flex', alignItems: 'center', gap: 10 }}>
+  <div
+    style={{
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      width: layout.width,
+      height: CHROME_H,
+      background: '#171a23',
+      borderBottom: `1px solid ${colors.border}`,
+      borderRadius: '16px 16px 0 0',
+    }}
+  >
+    <div
+      style={{
+        position: 'absolute',
+        left: 22,
+        top: 0,
+        height: CHROME_H,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}
+    >
       {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
         <div key={c} style={{ width: 14, height: 14, borderRadius: 7, background: c, opacity: 0.85 }} />
       ))}
     </div>
     {layout.window ? (
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 0, height: CHROME_H, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          height: CHROME_H,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <FitText fit={layout.window} style={{ color: colors.muted }} />
       </div>
     ) : null}
@@ -167,7 +287,10 @@ export const Terminal: React.FC<SceneProps<TerminalScene>> = ({ scene, hunks, du
   // Marks scroll with the session: placed where step k's camera settles, then carried along while it moves.
   const markTargets = (k: number): MarkTargets => {
     const stop = camera.stops[k] ?? 0;
-    const moved = { boxes: new Map([...boxes.boxes].map(([key, b]) => [key, { ...b, y: b.y - stop }])), obstacles: boxes.obstacles?.map((b) => ({ ...b, y: b.y - stop })) };
+    const moved = {
+      boxes: new Map([...boxes.boxes].map(([key, b]) => [key, { ...b, y: b.y - stop }])),
+      obstacles: boxes.obstacles?.map((b) => ({ ...b, y: b.y - stop })),
+    };
     return { ...staged(moved, stage, box), shift: { x: 0, y: stop - scroll } };
   };
   const more = scroll < layout.height - layout.viewH - 1;
@@ -190,8 +313,28 @@ export const Terminal: React.FC<SceneProps<TerminalScene>> = ({ scene, hunks, du
         }}
       >
         <Chrome layout={layout} />
-        <div style={{ position: 'absolute', left: 0, top: CHROME_H, width: layout.width, height: layout.viewH, overflow: 'hidden', maskImage: mask, WebkitMaskImage: mask }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, width: layout.width, height: layout.height, transform: `translateY(${-scroll}px)` }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: CHROME_H,
+            width: layout.width,
+            height: layout.viewH,
+            overflow: 'hidden',
+            maskImage: mask,
+            WebkitMaskImage: mask,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: layout.width,
+              height: layout.height,
+              transform: `translateY(${-scroll}px)`,
+            }}
+          >
             {layout.entries.map((placed) => (
               <Entry
                 key={placed.index}

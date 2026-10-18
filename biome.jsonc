@@ -14,7 +14,14 @@
     ]
   },
   "assist": { "enabled": false },
-  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 120 },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    // bin/lib/schema.mjs reads src/types.ts line by line and prints its declarations to the agent as written,
+    // one line per type alias.
+    "includes": ["**", "!src/types.ts"]
+  },
   "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "always" } },
   "css": { "parser": { "tailwindDirectives": true } },
   "linter": {

@@ -24,7 +24,8 @@ export interface Emphasis {
  * from when the scene has built in until its last word, so the light never runs far ahead of the voice.
  */
 export function spotlightStarts(segments: readonly SpokenSegment[], count: number, introEnd: number): number[] {
-  if (segments.length > 1) return Array.from({ length: count }, (_, k) => segments[k + 1]?.from ?? segments[segments.length - 1]!.from);
+  if (segments.length > 1)
+    return Array.from({ length: count }, (_, k) => segments[k + 1]?.from ?? segments[segments.length - 1]!.from);
   const narration = segments[0]!;
   const start = Math.max(introEnd, narration.voiceFrom);
   const end = Math.max(start, narration.voiceFrom + narration.speakingFrames);
@@ -37,7 +38,8 @@ export function spotlightStarts(segments: readonly SpokenSegment[], count: numbe
  */
 export function spotlight(frame: number, starts: readonly number[]) {
   const count = starts.length;
-  const reached = (k: number) => (k < count ? interpolate(frame, [starts[k]!, starts[k]! + STEP_FADE], [0, 1], clamp) : 0);
+  const reached = (k: number) =>
+    k < count ? interpolate(frame, [starts[k]!, starts[k]! + STEP_FADE], [0, 1], clamp) : 0;
   const dim = reached(0);
   return {
     emphasis(steps: readonly number[]): Emphasis {
@@ -53,15 +55,25 @@ export function spotlight(frame: number, starts: readonly number[]) {
 }
 
 /** The stronger of two emphases, part by part: an item lit through its own focus or a container's. */
-export const brighter = (a: Emphasis, b: Emphasis): Emphasis => ({ opacity: Math.max(a.opacity, b.opacity), bar: Math.max(a.bar, b.bar), glow: Math.max(a.glow, b.glow) });
+export const brighter = (a: Emphasis, b: Emphasis): Emphasis => ({
+  opacity: Math.max(a.opacity, b.opacity),
+  bar: Math.max(a.bar, b.bar),
+  glow: Math.max(a.glow, b.glow),
+});
 
 /** An item at least as bright as the brightest of `others`, such as a node beside a lit edge, so a lit edge never joins two dim nodes. */
-export const asBrightAs = (own: Emphasis, others: readonly Emphasis[]): Emphasis => ({ ...own, opacity: Math.max(own.opacity, ...others.map((e) => e.opacity)) });
+export const asBrightAs = (own: Emphasis, others: readonly Emphasis[]): Emphasis => ({
+  ...own,
+  opacity: Math.max(own.opacity, ...others.map((e) => e.opacity)),
+});
 
 /** Emphasis by item key (see shared/targets.mjs) for a scene whose steps take `focus`. */
 export function focusSpotlight(scene: Scene, hunks: HunkMap, segments: readonly SpokenSegment[], frame: number) {
   const steps = targetSteps(scene, hunks);
-  const { emphasis } = spotlight(frame, segments.slice(1).map((segment) => segment.from));
+  const { emphasis } = spotlight(
+    frame,
+    segments.slice(1).map((segment) => segment.from),
+  );
   return (key: string): Emphasis => emphasis(steps.get(key) ?? []);
 }
 
@@ -74,10 +86,19 @@ export function currentStep(segments: readonly SpokenSegment[], frame: number): 
 
 /** How far, 0 to 1, a move that a step starts at `from` has gone, such as a camera's: at rest when the step settles. */
 export const stepMove = (frame: number, from: number): number =>
-  interpolate(frame, [from, from + STEP_SETTLE_FRAMES], [0, 1], { ...clamp, easing: Easing.bezier(0.25, 0.1, 0.25, 1) });
+  interpolate(frame, [from, from + STEP_SETTLE_FRAMES], [0, 1], {
+    ...clamp,
+    easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+  });
 
 /** A spring for an item that a step starting at `stepFrom` brings in at `at`, squeezed to rest when the step settles. */
-export const stepSpring = (frame: number, fps: number, at: number, stepFrom: number, config: Partial<SpringConfig>): number =>
+export const stepSpring = (
+  frame: number,
+  fps: number,
+  at: number,
+  stepFrom: number,
+  config: Partial<SpringConfig>,
+): number =>
   spring({ frame: frame - at, fps, config, durationInFrames: Math.max(1, stepFrom + STEP_SETTLE_FRAMES - at) });
 
 /**
@@ -86,7 +107,15 @@ export const stepSpring = (frame: number, fps: number, at: number, stepFrom: num
  * after their start, when the step settles; the last step also brings any items after it. Without steps
  * the items arrive one after another from `from` to `to`, inside the scene's build.
  */
-export function revealStarts(segments: readonly SpokenSegment[], count: number, lasts: readonly number[], from: number, to: number, stagger: number, itemFrames = 0): number[] {
+export function revealStarts(
+  segments: readonly SpokenSegment[],
+  count: number,
+  lasts: readonly number[],
+  from: number,
+  to: number,
+  stagger: number,
+  itemFrames = 0,
+): number[] {
   if (segments.length > 1 && lasts.length) {
     const starts: number[] = [];
     lasts.forEach((last, k) => {

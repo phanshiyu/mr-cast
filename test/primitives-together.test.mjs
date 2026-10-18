@@ -3,18 +3,44 @@ import assert from 'node:assert/strict';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { changedRefs, walkStates } from '../shared/state-steps.mjs';
 
-const check = async (scenes) => validateStoryboard({ title: 't', scenes: scenes.map((s) => ({ chapter: 'c', narration: 'n', ...s })) }, {}, { mode: 'explain' });
+const check = async (scenes) =>
+  validateStoryboard(
+    { title: 't', scenes: scenes.map((s) => ({ chapter: 'c', narration: 'n', ...s })) },
+    {},
+    { mode: 'explain' },
+  );
 const about = (list, word) => list.filter((m) => m.includes(word));
 
-const svg = { type: 'svg', svg: '<svg viewBox="0 0 1712 804"><path id="route" d="M0 400 L1700 400" stroke="var(--good)"/><text id="t" x="10" y="40" font-size="30">a</text></svg>' };
-const plot = { type: 'plot', x: { from: 0, to: 10 }, y: { from: 0, to: 100 }, params: { k: 1 }, functions: [{ id: 'line', y: 'k * x * x' }], points: [{ id: 'dot', at: ['k', 'k'] }] };
-const map = { type: 'map', places: [{ id: 'sin', at: [1.36, 103.99], label: 'Singapore' }, { id: 'lhr', at: [51.47, -0.45], label: 'London' }], routes: [{ id: 'flight', stops: ['sin', 'lhr'] }] };
+const svg = {
+  type: 'svg',
+  svg: '<svg viewBox="0 0 1712 804"><path id="route" d="M0 400 L1700 400" stroke="var(--good)"/><text id="t" x="10" y="40" font-size="30">a</text></svg>',
+};
+const plot = {
+  type: 'plot',
+  x: { from: 0, to: 10 },
+  y: { from: 0, to: 100 },
+  params: { k: 1 },
+  functions: [{ id: 'line', y: 'k * x * x' }],
+  points: [{ id: 'dot', at: ['k', 'k'] }],
+};
+const map = {
+  type: 'map',
+  places: [
+    { id: 'sin', at: [1.36, 103.99], label: 'Singapore' },
+    { id: 'lhr', at: [51.47, -0.45], label: 'London' },
+  ],
+  routes: [{ id: 'flight', stops: ['sin', 'lhr'] }],
+};
 
 test('svg, plot and map record a trace the same way: shown, keyed in the step state with its cue, and lit by the step', () => {
   const traced = [
     [{ ...svg, steps: [{ trace: [{ ref: 'route', when: 'east' }], say: 'It runs east.' }] }, 's:route', 'east'],
     [{ ...plot, steps: [{ trace: ['line'], say: 'It curves up.' }] }, 'p:line', null],
-    [{ ...map, steps: [{ trace: [{ ref: 'flight', when: 'London' }], say: 'It lands in London.' }] }, 'mr:flight', 'London'],
+    [
+      { ...map, steps: [{ trace: [{ ref: 'flight', when: 'London' }], say: 'It lands in London.' }] },
+      'mr:flight',
+      'London',
+    ],
   ];
   for (const [scene, key, cue] of traced) {
     const { states, problems } = walkStates(scene);
@@ -27,9 +53,27 @@ test('svg, plot and map record a trace the same way: shown, keyed in the step st
 
 test('each scene refuses the trace entries it cannot take, in the same words', async () => {
   const { errors } = await check([
-    { ...svg, steps: [{ trace: [{ id: 'route' }], say: 'Old shape.' }, { trace: ['t'], say: 'Text.' }] },
-    { ...plot, steps: [{ trace: [{ ref: 'line', when: 'up' }], say: 'It goes up.' }, { trace: ['dot'], say: 'A point.' }] },
-    { ...map, steps: [{ trace: ['sin'], say: 'A place.' }, { trace: [{ ref: 'flight', when: 'Paris' }], say: 'It lands.' }] },
+    {
+      ...svg,
+      steps: [
+        { trace: [{ id: 'route' }], say: 'Old shape.' },
+        { trace: ['t'], say: 'Text.' },
+      ],
+    },
+    {
+      ...plot,
+      steps: [
+        { trace: [{ ref: 'line', when: 'up' }], say: 'It goes up.' },
+        { trace: ['dot'], say: 'A point.' },
+      ],
+    },
+    {
+      ...map,
+      steps: [
+        { trace: ['sin'], say: 'A place.' },
+        { trace: [{ ref: 'flight', when: 'Paris' }], say: 'It lands.' },
+      ],
+    },
     { type: 'array', values: [1, 2], steps: [{ trace: ['0'], say: 'No.' }] },
   ]);
   assert.deepEqual(about(errors, 'trace'), [
@@ -46,7 +90,13 @@ test('each scene refuses the trace entries it cannot take, in the same words', a
 test('a map moves its camera with view, and a picture that pans with kenBurns takes no step camera', async () => {
   const { errors } = await check([
     { ...map, steps: [{ camera: 'sin', say: 'Zoom.' }] },
-    { type: 'image', src: 'nowhere.png', kenBurns: true, regions: [{ id: 'face', box: [0.1, 0.1, 0.2, 0.2] }], steps: [{ camera: 'face', say: 'A face.' }] },
+    {
+      type: 'image',
+      src: 'nowhere.png',
+      kenBurns: true,
+      regions: [{ id: 'face', box: [0.1, 0.1, 0.2, 0.2] }],
+      steps: [{ camera: 'face', say: 'A face.' }],
+    },
   ]);
   assert.deepEqual(about(errors, 'camera'), [
     'scenes[0].steps[0].camera: a map moves its camera with `view`, which keeps labels their size as it zooms; write "view": refs, "world" or { "box": [[lat, lng], [lat, lng]] }',
@@ -55,10 +105,21 @@ test('a map moves its camera with view, and a picture that pans with kenBurns ta
 });
 
 test('validate knows where plot parts and chart bars are, so a camera that crops a lit one is reported', async () => {
-  const race = { type: 'chart', kind: 'bar', horizontal: true, labels: ['a', 'b', 'c'], series: [{ name: 'n', values: [1, 2, 3] }] };
+  const race = {
+    type: 'chart',
+    kind: 'bar',
+    horizontal: true,
+    labels: ['a', 'b', 'c'],
+    series: [{ name: 'n', values: [1, 2, 3] }],
+  };
   const { errors, warnings } = await check([
     { ...plot, steps: [{ camera: { on: 'dot', zoom: 30 }, focus: ['dot', 'line'], say: 'Close on the dot.' }] },
-    { ...race, steps: [{ set: { n: [3, 2, 1] }, sort: true, camera: { on: 'n@a', zoom: 20 }, focus: ['n@a', 'n@c'], say: 'A leads.' }] },
+    {
+      ...race,
+      steps: [
+        { set: { n: [3, 2, 1] }, sort: true, camera: { on: 'n@a', zoom: 20 }, focus: ['n@a', 'n@c'], say: 'A leads.' },
+      ],
+    },
   ]);
   assert.deepEqual(errors, []);
   assert.deepEqual(about(warnings, 'camera'), [

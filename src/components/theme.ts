@@ -51,7 +51,7 @@ export function codeColumns(text: string): number {
   return col;
 }
 
-export const clamp ={ extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
+export const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 
 const HEADER_EYEBROW = 26 + 36;
 const HEADER_TITLE = 70;

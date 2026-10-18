@@ -20,12 +20,21 @@ export interface StateFrame {
   lit: number;
 }
 
-export function stateFrame(states: readonly SceneState[], segments: readonly SpokenSegment[], frame: number): StateFrame {
+export function stateFrame(
+  states: readonly SceneState[],
+  segments: readonly SpokenSegment[],
+  frame: number,
+): StateFrame {
   const k = currentStep(segments, frame);
   if (k < 0 || !states[k + 1]) return { before: states[0]!, now: states[0]!, t: 1, lit: 0 };
   const from = segments[k + 1]!.from;
   const settled = from + STEP_SETTLE_FRAMES;
-  return { before: states[k]!, now: states[k + 1]!, t: stepMove(frame, from), lit: interpolate(frame, [from, settled, settled + LIT_FRAMES], [0, 1, 0], clamp) };
+  return {
+    before: states[k]!,
+    now: states[k + 1]!,
+    t: stepMove(frame, from),
+    lit: interpolate(frame, [from, settled, settled + LIT_FRAMES], [0, 1, 0], clamp),
+  };
 }
 
 /** Whether the current step changed the value under `key`. */

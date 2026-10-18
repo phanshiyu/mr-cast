@@ -12,7 +12,11 @@ export const KITTEN_REPO = 'KittenML/kitten-tts-mini-0.8';
 export const KITTEN_REVISION = 'c02725660cea441db4c383af69f1f26f5cd00947';
 /** What a first use downloads, pinned by revision and checked by size and sha256 before it is kept. */
 export const KITTEN_FILES = [
-  { name: 'kitten_tts_mini_v0_8.onnx', bytes: 78268016, sha256: '0f5bbae4fc4800c98dbc544a87ecfa79510de2fb8222db30d12e5bfe9177df91' },
+  {
+    name: 'kitten_tts_mini_v0_8.onnx',
+    bytes: 78268016,
+    sha256: '0f5bbae4fc4800c98dbc544a87ecfa79510de2fb8222db30d12e5bfe9177df91',
+  },
   { name: 'voices.npz', bytes: 3278902, sha256: '40ad2638952b77b7b2f30127e2608e169fc69dd256b53bd8aaa3409a33193c42' },
 ];
 export const KITTEN_MB = Math.round(KITTEN_FILES.reduce((n, f) => n + f.bytes, 0) / 1e6);
@@ -20,16 +24,24 @@ export const KITTEN_SAMPLE_RATE = 24000;
 
 /** The model's voice for each name its config.json gives (voice_aliases). */
 const VOICE_FILES = {
-  bella: 'expr-voice-2-f', jasper: 'expr-voice-2-m', luna: 'expr-voice-3-f', bruno: 'expr-voice-3-m',
-  rosie: 'expr-voice-4-f', hugo: 'expr-voice-4-m', kiki: 'expr-voice-5-f', leo: 'expr-voice-5-m',
+  bella: 'expr-voice-2-f',
+  jasper: 'expr-voice-2-m',
+  luna: 'expr-voice-3-f',
+  bruno: 'expr-voice-3-m',
+  rosie: 'expr-voice-4-f',
+  hugo: 'expr-voice-4-m',
+  kiki: 'expr-voice-5-f',
+  leo: 'expr-voice-5-m',
 };
 const TRIM_SAMPLES = 5000;
 const STYLE_DIM = 256;
 
 /** The files' directory for the pinned revision; only files that passed their check are under their names. */
-export const kittenDir = (cacheRoot) => path.join(cacheRoot, `${KITTEN_REPO.split('/')[1]}-${KITTEN_REVISION.slice(0, 8)}`);
+export const kittenDir = (cacheRoot) =>
+  path.join(cacheRoot, `${KITTEN_REPO.split('/')[1]}-${KITTEN_REVISION.slice(0, 8)}`);
 
-export const kittenDownloaded = (dir) => KITTEN_FILES.every((f) => fs.statSync(path.join(dir, f.name), { throwIfNoEntry: false })?.size === f.bytes);
+export const kittenDownloaded = (dir) =>
+  KITTEN_FILES.every((f) => fs.statSync(path.join(dir, f.name), { throwIfNoEntry: false })?.size === f.bytes);
 
 /** A download that sends nothing for this long is given up, however large it is. */
 const IDLE_MS = 120_000;
@@ -49,7 +61,9 @@ export async function downloadChecked(url, dir, file, { fetchImpl = fetch, idleM
     timer = setTimeout(() => ctl.abort(new Error(`${url} sent nothing for ${idleMs / 1000} s`)), idleMs);
   };
   const cannotWrite = (err) => {
-    throw WRITE_ERRORS.has(err.code) ? new UserError(`could not write ${file.name} into ${dir} (${err.code}: ${err.message})`) : err;
+    throw WRITE_ERRORS.has(err.code)
+      ? new UserError(`could not write ${file.name} into ${dir} (${err.code}: ${err.message})`)
+      : err;
   };
   let out = null;
   try {
@@ -66,7 +80,8 @@ export async function downloadChecked(url, dir, file, { fetchImpl = fetch, idleM
     await out.close().catch(cannotWrite);
     out = null;
     const sha256 = hash.digest('hex');
-    if (sha256 !== file.sha256) throw new Error(`${file.name} failed its integrity check (sha256 ${sha256}, expected ${file.sha256})`);
+    if (sha256 !== file.sha256)
+      throw new Error(`${file.name} failed its integrity check (sha256 ${sha256}, expected ${file.sha256})`);
     fs.renameSync(tmp, dest);
   } finally {
     clearTimeout(timer);
@@ -113,14 +128,44 @@ function readNpy(buf) {
   const headerLen = major === 1 ? buf.readUInt16LE(8) : buf.readUInt32LE(8);
   const offset = (major === 1 ? 10 : 12) + headerLen;
   const header = buf.toString('latin1', major === 1 ? 10 : 12, offset);
-  if (!/'descr':\s*'<f4'/.test(header) || /'fortran_order':\s*True/.test(header)) throw new Error(`unsupported array (${header.trim()})`);
-  const shape = header.match(/'shape':\s*\(([^)]*)\)/)[1].split(',').filter((s) => s.trim()).map(Number);
+  if (!/'descr':\s*'<f4'/.test(header) || /'fortran_order':\s*True/.test(header))
+    throw new Error(`unsupported array (${header.trim()})`);
+  const shape = header
+    .match(/'shape':\s*\(([^)]*)\)/)[1]
+    .split(',')
+    .filter((s) => s.trim())
+    .map(Number);
   const data = new Float32Array(buf.buffer.slice(buf.byteOffset + offset, buf.byteOffset + buf.length));
   return { shape, data };
 }
 
 // The sentence chunks of kittenml's chunk_text, at its max_len of 400 characters.
-const NON_BOUNDARY = new Set(['dr', 'prof', 'mr', 'mrs', 'ms', 'fig', 'figs', 'pp', 'p', 'ch', 'sec', 'jan', 'feb', 'mar', 'apr', 'jun', 'jul', 'aug', 'sep', 'sept', 'oct', 'nov', 'dec', 'al']);
+const NON_BOUNDARY = new Set([
+  'dr',
+  'prof',
+  'mr',
+  'mrs',
+  'ms',
+  'fig',
+  'figs',
+  'pp',
+  'p',
+  'ch',
+  'sec',
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'sept',
+  'oct',
+  'nov',
+  'dec',
+  'al',
+]);
 const MAX_CHUNK = 400;
 
 function isBoundary(chars, i) {
@@ -133,8 +178,11 @@ function isBoundary(chars, i) {
     if (NON_BOUNDARY.has(token)) return false;
     if ((token === 'a' || token === 'p') && chars[i + 1]?.toLowerCase() === 'm') return false;
     if (token === 'm' && /\b[ap]\.m$/i.test(before)) {
-      const next = chars.slice(i + 1).join('').trim();
-      return !next || next[0] === next[0].toUpperCase() && next[0] !== next[0].toLowerCase();
+      const next = chars
+        .slice(i + 1)
+        .join('')
+        .trim();
+      return !next || (next[0] === next[0].toUpperCase() && next[0] !== next[0].toLowerCase());
     }
   }
   const next = chars.slice(i + 1);
@@ -195,20 +243,37 @@ export async function kittenPhonemes(text) {
   const read = await Promise.all(parts.map(async (p) => (p.mark ? p.text : (await espeak(p.text, 'en-us')).join(' '))));
   // The phonemizer package's espeak-ng says "or" as oːɹ, where kittenml's espeak-ng 1.52 says ɔːɹ; 1.52 has no oː.
   // basic_english_tokenize: Python's \w+|[^\w\s], with Python's Unicode \w (letters, digits and underscore).
-  return (read.join('').replaceAll('oːɹ', 'ɔːɹ').match(/[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]/gu) ?? []).join(' ');
+  return (
+    read
+      .join('')
+      .replaceAll('oːɹ', 'ɔːɹ')
+      .match(/[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]/gu) ?? []
+  ).join(' ');
 }
 
 // TextCleaner's symbols. The duplicated quote marks are upstream's: the last index of each wins.
-const SYMBOLS = ['$', ...';:,.!?¡¿—…"«»"" ', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', ...'ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘\'̩\'ᵻ'];
+const SYMBOLS = [
+  '$',
+  ...';:,.!?¡¿—…"«»"" ',
+  ...'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+  ..."ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘'̩'ᵻ",
+];
 const SYMBOL_IDS = new Map(SYMBOLS.map((s, i) => [s, i]));
 
 /** The model's input ids for phonemes: a start token, each known symbol, then the end tokens. */
-export const kittenTokens = (phonemes) => [0, ...[...phonemes].flatMap((c) => (SYMBOL_IDS.has(c) ? [SYMBOL_IDS.get(c)] : [])), 10, 0];
+export const kittenTokens = (phonemes) => [
+  0,
+  ...[...phonemes].flatMap((c) => (SYMBOL_IDS.has(c) ? [SYMBOL_IDS.get(c)] : [])),
+  10,
+  0,
+];
 
 /** Loads the downloaded model. `speak` yields each chunk of `text` with its samples at 24 kHz. */
 export async function loadKitten(dir) {
   const ort = await import('onnxruntime-node');
-  const session = await ort.InferenceSession.create(path.join(dir, KITTEN_FILES[0].name), { executionProviders: ['cpu'] });
+  const session = await ort.InferenceSession.create(path.join(dir, KITTEN_FILES[0].name), {
+    executionProviders: ['cpu'],
+  });
   const voices = readNpz(fs.readFileSync(path.join(dir, KITTEN_FILES[1].name)));
   async function* speak(text, voice, speed) {
     const style = voices[VOICE_FILES[voice]];

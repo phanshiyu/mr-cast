@@ -89,7 +89,11 @@ function attempt(scene: TerminalScene, width: number, size: number) {
     const top = y;
     const prompt = entry.prompt ?? '$';
     const promptW = measure(`${prompt} `, { family: 'mono', weight: 700, size });
-    const promptFit = fitText(prompt, { ...sized(SLOTS.terminalPrompt, innerW * PROMPT_SHARE), size, min: size }, `entries[${index}].prompt`);
+    const promptFit = fitText(
+      prompt,
+      { ...sized(SLOTS.terminalPrompt, innerW * PROMPT_SHARE), size, min: size },
+      `entries[${index}].prompt`,
+    );
     let textW = 0;
     let command: PlacedCommand | null = null;
     if (entry.command !== undefined) {
@@ -115,7 +119,11 @@ function attempt(scene: TerminalScene, width: number, size: number) {
       const w = measure(text, { family: 'mono', weight: 700, size: EXIT_FONT }) + 2 * EXIT_PAD;
       const last = lines[lines.length - 1];
       // How wide the entry's last row is, or null when it has no rows.
-      const lastW = last ? last.indent + (last.fit.widths[last.fit.widths.length - 1] ?? 0) : command ? promptW + (command.fit.widths[command.fit.widths.length - 1] ?? 0) : null;
+      const lastW = last
+        ? last.indent + (last.fit.widths[last.fit.widths.length - 1] ?? 0)
+        : command
+          ? promptW + (command.fit.widths[command.fit.widths.length - 1] ?? 0)
+          : null;
       const own = lastW === null || lastW + EXIT_GAP + w > innerW;
       exit = { text, ok: entry.exit === 0, y: own ? y : y - rowH, w };
       if (own) y += rowH;
@@ -142,7 +150,12 @@ export function layoutTerminal(scene: TerminalScene, width: number, height: numb
 }
 
 /** An entry's rows, from its prompt to its last output line, in session units. */
-export const entryBox = (layout: TerminalLayout, e: PlacedEntry): Box => ({ x: PAD_X - 10, y: e.top - 4, width: Math.min(layout.innerW, e.textW) + 20, height: e.bottom - e.top + 8 });
+export const entryBox = (layout: TerminalLayout, e: PlacedEntry): Box => ({
+  x: PAD_X - 10,
+  y: e.top - 4,
+  width: Math.min(layout.innerW, e.textW) + 20,
+  height: e.bottom - e.top + 8,
+});
 
 /**
  * The box of each item a step can focus, by its key in shared/targets.mjs, in session units (the window's
@@ -153,9 +166,20 @@ export function terminalBoxes(layout: TerminalLayout): LayoutBoxes {
   const obstacles: Box[] = [];
   for (const e of layout.entries) {
     boxes.set(`en:${e.index}`, entryBox(layout, e));
-    if (e.command) obstacles.push({ x: PAD_X, y: e.command.y, width: e.promptW + e.command.fit.width, height: e.command.fit.lines.length * layout.rowH });
+    if (e.command)
+      obstacles.push({
+        x: PAD_X,
+        y: e.command.y,
+        width: e.promptW + e.command.fit.width,
+        height: e.command.fit.lines.length * layout.rowH,
+      });
     for (const line of e.lines) {
-      const box = { x: PAD_X + line.indent, y: line.y, width: Math.max(24, line.fit.width), height: Math.max(1, line.fit.lines.length) * layout.rowH };
+      const box = {
+        x: PAD_X + line.indent,
+        y: line.y,
+        width: Math.max(24, line.fit.width),
+        height: Math.max(1, line.fit.lines.length) * layout.rowH,
+      };
       boxes.set(`ln:${e.index}/${line.index}`, box);
       if (line.fit.width > 0) obstacles.push(box);
     }

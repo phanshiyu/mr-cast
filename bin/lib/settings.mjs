@@ -33,15 +33,20 @@ const audienceOf = (audience) => (audience === 'preread' ? 'preread' : 'familiar
 export const AUDIENCE_OPTIONS = { audience: { type: 'string' }, simple: { type: 'boolean', default: false } };
 export const SETTINGS_OPTIONS = {
   ...AUDIENCE_OPTIONS,
-  pace: { type: 'string' }, speed: { type: 'string' },
-  engine: { type: 'string' }, voice: { type: 'string' }, 'no-voice': { type: 'boolean', default: false },
+  pace: { type: 'string' },
+  speed: { type: 'string' },
+  engine: { type: 'string' },
+  voice: { type: 'string' },
+  'no-voice': { type: 'boolean', default: false },
 };
 
 /** The settings the flags in `values` ask for, with the default for each flag not given. */
 export function settingsFrom(values) {
-  if (values.audience !== undefined && !AUDIENCES.includes(values.audience)) throw new UserError(`--audience must be one of ${AUDIENCES.join(', ')} (got "${values.audience}")`);
+  if (values.audience !== undefined && !AUDIENCES.includes(values.audience))
+    throw new UserError(`--audience must be one of ${AUDIENCES.join(', ')} (got "${values.audience}")`);
   for (const flag of ['voice', 'engine']) {
-    if (values['no-voice'] && values[flag] !== undefined) throw new UserError(`--no-voice is silent; drop one of --no-voice and --${flag}`);
+    if (values['no-voice'] && values[flag] !== undefined)
+      throw new UserError(`--no-voice is silent; drop one of --no-voice and --${flag}`);
   }
   return {
     audience: audienceOf(values.audience),
@@ -52,7 +57,8 @@ export function settingsFrom(values) {
 }
 
 /** The audience the flags in `values` name, or undefined when they name none. */
-export const givenAudience = (values) => (AUDIENCES.includes(values.audience) ? audienceOf(values.audience) : undefined);
+export const givenAudience = (values) =>
+  AUDIENCES.includes(values.audience) ? audienceOf(values.audience) : undefined;
 
 /** The settings flags `values` gave, as they would be typed again, such as " --audience preread --pace slower"; "" for none. */
 export function settingsArgs(values) {
@@ -63,7 +69,10 @@ export function settingsArgs(values) {
     values.speed && `--speed ${values.speed}`,
     (values.voice || values.engine) && `--voice ${resolveVoice(values)}`,
     values['no-voice'] && '--no-voice',
-  ].filter(Boolean).map((arg) => ` ${arg}`).join('');
+  ]
+    .filter(Boolean)
+    .map((arg) => ` ${arg}`)
+    .join('');
 }
 
 const configDir = () => path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'mr-cast');
@@ -71,7 +80,11 @@ export const choicesFile = () => path.join(configDir(), 'last-choices.json');
 
 /** The full voice name a stored `voice` names, a bare Kokoro name included, or undefined. */
 const storedVoice = (voice) => {
-  try { return typeof voice === 'string' ? resolveVoice({ voice }) : undefined; } catch { return undefined; }
+  try {
+    return typeof voice === 'string' ? resolveVoice({ voice }) : undefined;
+  } catch {
+    return undefined;
+  }
 };
 
 /** The pace and voice the user chose last, from any run; {} before the first choice. */
@@ -101,7 +114,12 @@ export function rememberChoices(values) {
     const file = choicesFile();
     fs.mkdirSync(path.dirname(file), { recursive: true });
     const tmp = `${file}.tmp-${process.pid}`;
-    fs.writeFileSync(tmp, `${JSON.stringify({ ...lastChoices(), ...chosen, at: new Date().toISOString() }, null, 2)}\n`);
+    fs.writeFileSync(
+      tmp,
+      `${JSON.stringify({ ...lastChoices(), ...chosen, at: new Date().toISOString() }, null, 2)}\n`,
+    );
     fs.renameSync(tmp, file);
-  } catch { /* an unwritable config dir only costs the next question's default */ }
+  } catch {
+    /* an unwritable config dir only costs the next question's default */
+  }
 }

@@ -13,17 +13,28 @@ if (!process.argv[2] || !fs.existsSync(work)) {
 }
 
 const rows = [];
-for (const d of fs.readdirSync(work, { withFileTypes: true }).filter((e) => e.isDirectory()).sort((a, b) => a.name.localeCompare(b.name))) {
+for (const d of fs
+  .readdirSync(work, { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .sort((a, b) => a.name.localeCompare(b.name))) {
   const file = path.join(work, d.name, 'grades.json');
   if (!fs.existsSync(file)) continue;
   let g;
-  try { g = JSON.parse(fs.readFileSync(file, 'utf8')); } catch { console.error(`${d.name}: grades.json is not valid JSON, skipped`); continue; }
+  try {
+    g = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    console.error(`${d.name}: grades.json is not valid JSON, skipped`);
+    continue;
+  }
   const answers = Array.isArray(g.answers) ? g.answers.filter((a) => typeof a.correct === 'number') : [];
   const key = path.join(keysDir, `${d.name}.json`);
   const expected = fs.existsSync(key) ? JSON.parse(fs.readFileSync(key, 'utf8')).questions.length : 5;
   const points = answers.reduce((s, a) => s + a.correct, 0);
   rows.push({
-    fixture: d.name, graded: answers.length, expected, points,
+    fixture: d.name,
+    graded: answers.length,
+    expected,
+    points,
     accuracy: answers.length ? points / expected : null,
     ease: typeof g.ease === 'number' ? g.ease : null,
     confusingScene: g.confusing_scene ?? null,
@@ -46,8 +57,29 @@ fs.writeFileSync(path.join(work, 'grades-summary.json'), `${JSON.stringify({ fix
 const pct = (x) => (x === null ? '-' : `${(x * 100).toFixed(0)}%`);
 const fmt = (x) => (x === null ? '-' : x.toFixed(2));
 const table = [['fixture', 'points', 'accuracy', 'ease', 'missed', 'most confusing scene']];
-for (const r of rows) table.push([r.fixture, `${r.points}/${r.expected}`, pct(r.accuracy), r.ease ?? '-', r.wrong.join(' ') || '-', r.confusingScene ?? '-']);
-table.push(['OVERALL', `${overall.pointsTotal}/${overall.questionsTotal}`, pct(overall.accuracy), fmt(overall.ease), '', '']);
+for (const r of rows)
+  table.push([
+    r.fixture,
+    `${r.points}/${r.expected}`,
+    pct(r.accuracy),
+    r.ease ?? '-',
+    r.wrong.join(' ') || '-',
+    r.confusingScene ?? '-',
+  ]);
+table.push([
+  'OVERALL',
+  `${overall.pointsTotal}/${overall.questionsTotal}`,
+  pct(overall.accuracy),
+  fmt(overall.ease),
+  '',
+  '',
+]);
 const widths = table[0].map((_, i) => Math.max(...table.map((r) => String(r[i]).length)));
-for (const r of table) console.log(r.map((c, i) => String(c).padEnd(widths[i])).join('  ').trimEnd());
+for (const r of table)
+  console.log(
+    r
+      .map((c, i) => String(c).padEnd(widths[i]))
+      .join('  ')
+      .trimEnd(),
+  );
 if (!rows.length) console.log('(no grades.json files found)');

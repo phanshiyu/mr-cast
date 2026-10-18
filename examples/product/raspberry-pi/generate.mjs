@@ -10,13 +10,29 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const pi4 = {
-  cpu: 'Cortex-A72', ghz: 1.8, graphics: 'OpenGL ES 3.0', memory: 'LPDDR4', ram: [1, 2, 3, 4, 8],
-  camera: 'one 2-lane camera, one 2-lane display', amps: 3, maxC: 50, until: 'January 2034',
+  cpu: 'Cortex-A72',
+  ghz: 1.8,
+  graphics: 'OpenGL ES 3.0',
+  memory: 'LPDDR4',
+  ram: [1, 2, 3, 4, 8],
+  camera: 'one 2-lane camera, one 2-lane display',
+  amps: 3,
+  maxC: 50,
+  until: 'January 2034',
   price: { 1: 35, 2: 67.5, 3: 83.75, 4: 100, 8: 165 },
 };
 const pi5 = {
-  cpu: 'Cortex-A76', ghz: 2.4, graphics: 'VideoCore VII, Vulkan 1.2', gpuMhz: 800, memory: 'LPDDR4X-4267', ram: [1, 2, 4, 8, 16],
-  camera: 'two 4-lane, camera or display', amps: 5, maxC: 70, until: 'January 2036', claim: [2, 3],
+  cpu: 'Cortex-A76',
+  ghz: 2.4,
+  graphics: 'VideoCore VII, Vulkan 1.2',
+  gpuMhz: 800,
+  memory: 'LPDDR4X-4267',
+  ram: [1, 2, 4, 8, 16],
+  camera: 'two 4-lane, camera or display',
+  amps: 5,
+  maxC: 70,
+  until: 'January 2036',
+  claim: [2, 3],
   price: { 1: 45, 2: 77.5, 4: 110, 8: 175, 16: 305 },
 };
 
@@ -34,16 +50,25 @@ const scorecard = [
   { spec: 'Graphics', a: pi4.graphics, b: pi5.graphics, win: 'b' },
   { spec: 'Memory', a: `${pi4.memory}, ${range(pi4.ram)}`, b: `${pi5.memory}, ${range(pi5.ram)}`, win: 'b' },
   { spec: 'Camera and display', a: pi4.camera, b: pi5.camera, win: 'b' },
-  { spec: 'USB and network', a: '2 × USB 3.0, 2 × USB 2.0, Gigabit', b: '2 × USB 3.0, 2 × USB 2.0, Gigabit', win: null },
+  {
+    spec: 'USB and network',
+    a: '2 × USB 3.0, 2 × USB 2.0, Gigabit',
+    b: '2 × USB 3.0, 2 × USB 2.0, Gigabit',
+    win: null,
+  },
   { spec: 'Power supply', a: `5 V, ${pi4.amps} A`, b: `5 V, ${pi5.amps} A`, win: 'a' },
   { spec: 'Works up to', a: `${pi4.maxC} °C`, b: `${pi5.maxC} °C`, win: 'b' },
   { spec: 'Made until at least', a: pi4.until, b: pi5.until, win: 'b' },
 ];
 const score = { a: scorecard.filter((r) => r.win === 'a').length, b: scorecard.filter((r) => r.win === 'b').length };
 assert.deepEqual(score, { a: 1, b: 6 }, 'six rows to the Pi 5, one to the Pi 4, one tie');
-const winTint = (i) => (scorecard[i].win ? { [`${scorecard[i].win === 'a' ? 'Pi 4' : 'Pi 5'}@${i}`]: 'good' } : { [i]: 'dim' });
+const winTint = (i) =>
+  scorecard[i].win ? { [`${scorecard[i].win === 'a' ? 'Pi 4' : 'Pi 5'}@${i}`]: 'good' } : { [i]: 'dim' };
 const tints = (...rows) => Object.assign({}, ...rows.map(winTint));
-const tally = (n) => { const won = scorecard.slice(0, n); return `Pi 4: **${won.filter((r) => r.win === 'a').length}** · Pi 5: **${won.filter((r) => r.win === 'b').length}**`; };
+const tally = (n) => {
+  const won = scorecard.slice(0, n);
+  return `Pi 4: **${won.filter((r) => r.win === 'a').length}** · Pi 5: **${won.filter((r) => r.win === 'b').length}**`;
+};
 
 // Prices at the memory sizes both boards come in.
 const shared = pi4.ram.filter((g) => pi5.ram.includes(g));
@@ -63,7 +88,12 @@ const scenes = [
     question: 'Is the upgrade worth it?',
     note: 'Every number here is from Raspberry Pi’s own product briefs',
     hidden: ['note'],
-    steps: [{ show: ['note'], say: 'Every number in this video comes from the two boards’ official product briefs. No rumours.' }],
+    steps: [
+      {
+        show: ['note'],
+        say: 'Every number in this video comes from the two boards’ official product briefs. No rumours.',
+      },
+    ],
   },
   {
     type: 'table',
@@ -74,12 +104,41 @@ const scenes = [
     rows: scorecard.map((r, i) => ({ cells: [r.spec, r.a, r.b], ...(i ? { hidden: true } : {}) })),
     callout: tally(0),
     steps: [
-      { focus: 0, tint: tints(0), callout: tally(1), say: `The processor. The Pi five has a newer core, the A seventy six, and runs it at ${pi5.ghz} gigahertz instead of ${pi4.ghz}. First point goes to the five.` },
-      { show: [1, 2], focus: [1, 2], tint: tints(1, 2), callout: tally(3), say: 'Graphics and memory both go to the five as well: a new graphics chip that runs Vulkan, newer memory, and up to sixteen gigabytes of it.' },
-      { show: [3], focus: 3, tint: tints(3), callout: tally(4), say: 'The two camera and display ports are now twice as wide, and each one takes either a camera or a screen.' },
+      {
+        focus: 0,
+        tint: tints(0),
+        callout: tally(1),
+        say: `The processor. The Pi five has a newer core, the A seventy six, and runs it at ${pi5.ghz} gigahertz instead of ${pi4.ghz}. First point goes to the five.`,
+      },
+      {
+        show: [1, 2],
+        focus: [1, 2],
+        tint: tints(1, 2),
+        callout: tally(3),
+        say: 'Graphics and memory both go to the five as well: a new graphics chip that runs Vulkan, newer memory, and up to sixteen gigabytes of it.',
+      },
+      {
+        show: [3],
+        focus: 3,
+        tint: tints(3),
+        callout: tally(4),
+        say: 'The two camera and display ports are now twice as wide, and each one takes either a camera or a screen.',
+      },
       { show: [4], focus: 4, tint: tints(4), say: 'USB and networking are the same on both. That one is a tie.' },
-      { show: [5], focus: 5, tint: tints(5), callout: tally(6), say: `Power is where the four wins. The five wants a five amp supply, so your old ${pi4.amps} amp charger may not cut it.` },
-      { show: [6, 7], focus: [6, 7], tint: tints(6, 7), callout: tally(8), say: `The five is rated to run hotter, up to ${pi5.maxC} degrees, and it will be made for two years longer. Final score, ${score.b} to ${score.a}.` },
+      {
+        show: [5],
+        focus: 5,
+        tint: tints(5),
+        callout: tally(6),
+        say: `Power is where the four wins. The five wants a five amp supply, so your old ${pi4.amps} amp charger may not cut it.`,
+      },
+      {
+        show: [6, 7],
+        focus: [6, 7],
+        tint: tints(6, 7),
+        callout: tally(8),
+        say: `The five is rated to run hotter, up to ${pi5.maxC} degrees, and it will be made for two years longer. Final score, ${score.b} to ${score.a}.`,
+      },
     ],
   },
   {
@@ -94,9 +153,25 @@ const scenes = [
     series: [{ name: 'times the Pi 4', values: [1, 1] }],
     callout: 'Pi 4 = 1',
     steps: [
-      { set: { 'times the Pi 4': [1, clockRatio] }, focus: 'Pi 5', callout: `${pi5.ghz} ÷ ${pi4.ghz} GHz = ${clockRatio}×`, say: `The clock alone is ${pi5.ghz} against ${pi4.ghz}. That makes it only a third faster.` },
-      { set: { 'times the Pi 4': [1, pi5.claim[0]] }, focus: 'Pi 5', callout: 'newer core: at least 2×', say: 'But each tick of the newer core gets more done. Raspberry Pi says the five is at least twice as fast.' },
-      { set: { 'times the Pi 4': [1, pi5.claim[1]] }, focus: 'Pi 5', callout: 'Raspberry Pi’s claim: 2 to 3×', say: 'And up to three times, depending on the job. That is their number, not a test we ran, but most of it comes from the core, not the clock.', draw: [{ write: 'mostly the newer core,\nnot the clock', near: 'Pi 5', side: 'left', when: 'most of it' }] },
+      {
+        set: { 'times the Pi 4': [1, clockRatio] },
+        focus: 'Pi 5',
+        callout: `${pi5.ghz} ÷ ${pi4.ghz} GHz = ${clockRatio}×`,
+        say: `The clock alone is ${pi5.ghz} against ${pi4.ghz}. That makes it only a third faster.`,
+      },
+      {
+        set: { 'times the Pi 4': [1, pi5.claim[0]] },
+        focus: 'Pi 5',
+        callout: 'newer core: at least 2×',
+        say: 'But each tick of the newer core gets more done. Raspberry Pi says the five is at least twice as fast.',
+      },
+      {
+        set: { 'times the Pi 4': [1, pi5.claim[1]] },
+        focus: 'Pi 5',
+        callout: 'Raspberry Pi’s claim: 2 to 3×',
+        say: 'And up to three times, depending on the job. That is their number, not a test we ran, but most of it comes from the core, not the clock.',
+        draw: [{ write: 'mostly the newer core,\nnot the clock', near: 'Pi 5', side: 'left', when: 'most of it' }],
+      },
     ],
   },
   {
@@ -108,14 +183,28 @@ const scenes = [
     rows: [
       { label: 'Power button', cells: ['No', 'Yes'], verdict: [null, 'good'] },
       { label: 'Clock that keeps time when off', cells: ['No', 'Yes, with a small battery'], verdict: [null, 'good'] },
-      { label: 'PCI Express, for fast drives', cells: ['No', 'One lane, with an add-on board'], verdict: [null, 'good'] },
+      {
+        label: 'PCI Express, for fast drives',
+        cells: ['No', 'One lane, with an add-on board'],
+        verdict: [null, 'good'],
+      },
       { label: 'Its own input and output chip', cells: ['No', 'Yes, made by Raspberry Pi'], verdict: [null, 'good'] },
     ],
     steps: [
       { focus: 0, say: 'A power button. Finally. No more pulling the cable out.' },
-      { focus: 1, say: 'A real time clock, so it knows the time even after it was switched off, if you add a little battery.' },
-      { focus: 2, say: 'A PCI Express slot. With an add-on board you can plug in a fast solid state drive instead of booting from a memory card.', draw: [{ circle: '2@Pi 5', when: 'solid state drive' }] },
-      { focus: 3, say: 'And a chip Raspberry Pi designed itself, which handles most of the plugs and pins, and more than doubles the USB speed overall.' },
+      {
+        focus: 1,
+        say: 'A real time clock, so it knows the time even after it was switched off, if you add a little battery.',
+      },
+      {
+        focus: 2,
+        say: 'A PCI Express slot. With an add-on board you can plug in a fast solid state drive instead of booting from a memory card.',
+        draw: [{ circle: '2@Pi 5', when: 'solid state drive' }],
+      },
+      {
+        focus: 3,
+        say: 'And a chip Raspberry Pi designed itself, which handles most of the plugs and pins, and more than doubles the USB speed overall.',
+      },
     ],
   },
   {
@@ -134,7 +223,11 @@ const scenes = [
     steps: [
       { focus: GB(1), callout: `+${$(gaps[0])}`, say: `At one gigabyte, the five is ${gaps[0]} dollars more.` },
       { focus: [GB(2), GB(4)], callout: `+${$(gaps[1])}`, say: 'At two and four gigabytes, also ten dollars more.' },
-      { focus: GB(8), callout: `+${$(gaps[3])}, ${pct8}% more`, say: `And at eight gigabytes, ten dollars again. On a ${pi4.price[8]} dollar board that is only about six percent.` },
+      {
+        focus: GB(8),
+        callout: `+${$(gaps[3])}, ${pct8}% more`,
+        say: `And at eight gigabytes, ten dollars again. On a ${pi4.price[8]} dollar board that is only about six percent.`,
+      },
     ],
   },
   {
@@ -152,15 +245,34 @@ const scenes = [
     ],
     hidden: ['0-3'],
     steps: [
-      { show: [0], say: 'If you are buying a new board, the extra ten dollars is easily worth it. Get the five.', draw: [{ tick: 0 }] },
+      {
+        show: [0],
+        say: 'If you are buying a new board, the extra ten dollars is easily worth it. Get the five.',
+        draw: [{ tick: 0 }],
+      },
       { show: [1], say: 'If you want a small desktop, a fast drive, or two cameras, upgrade.', draw: [{ tick: 1 }] },
-      { show: [2], say: 'But if your Pi four already runs your home server just fine, there is no need to throw it out.' },
-      { show: [3], say: 'And if you do upgrade, plan on a bigger power supply.', draw: [{ underline: 3, when: 'bigger power supply' }] },
+      {
+        show: [2],
+        say: 'But if your Pi four already runs your home server just fine, there is no need to throw it out.',
+      },
+      {
+        show: [3],
+        say: 'And if you do upgrade, plan on a bigger power supply.',
+        draw: [{ underline: 3, when: 'bigger power supply' }],
+      },
     ],
   },
 ];
 
 fs.writeFileSync(
   new URL('./storyboard.json', import.meta.url),
-  JSON.stringify({ title: 'Raspberry Pi 5 against Pi 4', subtitle: 'Is the upgrade worth it? A spec-by-spec scorecard from the product briefs', scenes }, null, 2) + '\n',
+  JSON.stringify(
+    {
+      title: 'Raspberry Pi 5 against Pi 4',
+      subtitle: 'Is the upgrade worth it? A spec-by-spec scorecard from the product briefs',
+      scenes,
+    },
+    null,
+    2,
+  ) + '\n',
 );

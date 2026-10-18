@@ -60,7 +60,8 @@ export function parseMarkup(src) {
     if (style.tone) run.tone = style.tone;
     Object.assign(run, extra);
     const last = runs[runs.length - 1];
-    if (last && !extra.code && !last.code && last.bold === run.bold && last.mark === run.mark && last.tone === run.tone) last.text += buf;
+    if (last && !extra.code && !last.code && last.bold === run.bold && last.mark === run.mark && last.tone === run.tone)
+      last.text += buf;
     else runs.push(run);
     buf = '';
   };
@@ -92,7 +93,10 @@ export function parseMarkup(src) {
         } else code += text[j];
       }
       if (end < 0) {
-        errors.push({ at: i + 1, message: 'a ` that never closes; close the code with a second `, or write \\` for a literal one' });
+        errors.push({
+          at: i + 1,
+          message: 'a ` that never closes; close the code with a second `, or write \\` for a literal one',
+        });
         buf += ch;
         continue;
       }
@@ -115,8 +119,10 @@ export function parseMarkup(src) {
         continue;
       }
       if (!style[key] && canOpen) {
-        if (key === 'mark' && style.tone) errors.push({ at: i + 1, message: '== inside a [ ]{tone}; a mark and a tone do not nest' });
-        else if (key === 'mark' && style.bold) errors.push({ at: i + 1, message: '== inside **bold**; put the bold inside the mark instead' });
+        if (key === 'mark' && style.tone)
+          errors.push({ at: i + 1, message: '== inside a [ ]{tone}; a mark and a tone do not nest' });
+        else if (key === 'mark' && style.bold)
+          errors.push({ at: i + 1, message: '== inside **bold**; put the bold inside the mark instead' });
         else {
           flush();
           style[key] = true;
@@ -136,7 +142,10 @@ export function parseMarkup(src) {
         if (!TONE_NAMES.includes(tone[1])) {
           errors.push({ at: close + 2, message: `unknown tone "${tone[1]}"; use ${TONE_NAMES.join(', ')}` });
         } else if (style.tone || style.mark || style.bold) {
-          errors.push({ at: i + 1, message: 'a [ ]{tone} inside other markup; a tone goes outermost, with any **bold** inside it' });
+          errors.push({
+            at: i + 1,
+            message: 'a [ ]{tone} inside other markup; a tone goes outermost, with any **bold** inside it',
+          });
         } else {
           flush();
           style.tone = tone[1];
@@ -149,14 +158,24 @@ export function parseMarkup(src) {
     buf += ch;
   }
   flush();
-  if (style.bold) errors.push({ at: opened.bold + 1, message: '** that never closes; end the bold with a second ** right after a word, or write \\* for a literal one' });
-  if (style.mark) errors.push({ at: opened.mark + 1, message: '== that never closes; end the mark with a second == right after a word, or write \\= for a literal one' });
+  if (style.bold)
+    errors.push({
+      at: opened.bold + 1,
+      message: '** that never closes; end the bold with a second ** right after a word, or write \\* for a literal one',
+    });
+  if (style.mark)
+    errors.push({
+      at: opened.mark + 1,
+      message: '== that never closes; end the mark with a second == right after a word, or write \\= for a literal one',
+    });
   return { runs, errors };
 }
 
 /** The text without its markup, as a voice reads it. */
 export function plainText(src) {
-  return parseMarkup(src).runs.map((r) => r.text).join('');
+  return parseMarkup(src)
+    .runs.map((r) => r.text)
+    .join('');
 }
 
 /** Whether `src` has any markup in it. */

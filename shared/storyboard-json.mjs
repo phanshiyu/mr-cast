@@ -29,7 +29,10 @@ export function parseStoryboard(text) {
     const steps = at(scene, 'steps');
     if (Array.isArray(steps)) steps.forEach((step, k) => ordered(step, storyboard.scenes[i].steps[k], 'tint'));
     if (at(scene, 'type') !== 'memory') return;
-    for (const [list, field] of [['frames', 'vars'], ['objects', 'fields']]) {
+    for (const [list, field] of [
+      ['frames', 'vars'],
+      ['objects', 'fields'],
+    ]) {
       const items = at(scene, list);
       if (!Array.isArray(items)) continue;
       items.forEach((item, j) => {
@@ -41,7 +44,12 @@ export function parseStoryboard(text) {
   return storyboard;
 }
 
-const orderedEntries = (v) => (Array.isArray(v) ? v.filter((p) => Array.isArray(p) && typeof p[0] === 'string') : isRecord(v) ? Object.entries(v) : []);
+const orderedEntries = (v) =>
+  Array.isArray(v)
+    ? v.filter((p) => Array.isArray(p) && typeof p[0] === 'string')
+    : isRecord(v)
+      ? Object.entries(v)
+      : [];
 /** A memory frame's vars or an object's fields as [name, value] pairs, in order, from pairs or an object. */
 export const memoryMembers = orderedEntries;
 /** A tint as [ref, tint] pairs, in the order written, from pairs or an object. */

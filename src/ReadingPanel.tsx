@@ -10,7 +10,10 @@ type Copied = 'idle' | 'copied' | 'failed';
  * A pre-read's reading order beside the video, to follow in the editor once it ends: every item with its file and
  * lines, what to check, the finding it carries and the chapter that explains it, which seeks the video there.
  */
-export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: number) => void }> = ({ order, onScene }) => {
+export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: number) => void }> = ({
+  order,
+  onScene,
+}) => {
   const [copied, setCopied] = useState<Copied>('idle');
   const copy = async () => {
     try {
@@ -39,7 +42,9 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
       </div>
       {copied === 'failed' ? (
         <div className="mb-3">
-          <p className="mb-1 text-xs text-amber-200">The browser blocked the clipboard. Copy the checklist from here:</p>
+          <p className="mb-1 text-xs text-amber-200">
+            The browser blocked the clipboard. Copy the checklist from here:
+          </p>
           <textarea
             readOnly
             autoFocus
@@ -52,13 +57,18 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
       ) : null}
       {order.groups.map((group, g) => (
         <div key={g} className="mb-3 last:mb-0">
-          {group.title ? <div className="mb-1.5 text-xs font-medium text-slate-500">{plainText(group.title)}</div> : null}
+          {group.title ? (
+            <div className="mb-1.5 text-xs font-medium text-slate-500">{plainText(group.title)}</div>
+          ) : null}
           <ol className="flex flex-col gap-1.5">
             {group.items.map((item) => (
               <li key={item.hunkId} className="flex gap-3 text-sm">
                 <span className="w-5 shrink-0 text-right font-mono text-slate-500">{item.number}.</span>
                 <div className="min-w-0">
-                  <span className="font-mono text-slate-200">{item.where}{alsoText(item)}</span>
+                  <span className="font-mono text-slate-200">
+                    {item.where}
+                    {alsoText(item)}
+                  </span>
                   <span className="text-slate-300"> {plainText(item.check)}</span>
                   {item.finding ? (
                     <div className="text-xs" style={{ color: severityInk[item.finding.severity] }}>
@@ -66,7 +76,10 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
                     </div>
                   ) : null}
                   {item.explainedIn ? (
-                    <button onClick={() => onScene(item.explainedIn!.scene)} className="block text-xs text-slate-500 hover:text-indigo-300">
+                    <button
+                      onClick={() => onScene(item.explainedIn!.scene)}
+                      className="block text-xs text-slate-500 hover:text-indigo-300"
+                    >
                       Explained in: {item.explainedIn.chapter}
                     </button>
                   ) : null}
@@ -80,7 +93,8 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
         <div className="mt-3 border-t border-white/5 pt-3 text-xs text-slate-500">
           {order.skim.map((group, g) => (
             <div key={g}>
-              Skim{group.title ? ` (${plainText(group.title)})` : ''}: <span className="font-mono">{group.items.map((item) => item.where).join(', ')}</span>
+              Skim{group.title ? ` (${plainText(group.title)})` : ''}:{' '}
+              <span className="font-mono">{group.items.map((item) => item.where).join(', ')}</span>
             </div>
           ))}
         </div>

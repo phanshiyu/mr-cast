@@ -1,6 +1,19 @@
 import { useMemo } from 'react';
 import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { countriesAt, DOT_RADIUS, geoPathOf, LABEL_FONT, mapLabels, mapLayout, mapItems, onScreen, partialPath, zoomBetween, type Camera, type MapItem } from '../../shared/map.mjs';
+import {
+  countriesAt,
+  DOT_RADIUS,
+  geoPathOf,
+  LABEL_FONT,
+  mapLabels,
+  mapLayout,
+  mapItems,
+  onScreen,
+  partialPath,
+  zoomBetween,
+  type Camera,
+  type MapItem,
+} from '../../shared/map.mjs';
 import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { STEP_SETTLE_FRAMES, cueFrame } from '../../shared/timing.mjs';
 import { headerBox } from '../fit/shell';
@@ -24,10 +37,20 @@ const BORDER = '#3a4254';
 /** Frames a trace takes at least, so a short step still draws its route on. */
 const TRACE_MIN = 20;
 const clamp = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
-const DEFAULT_TONE: Record<MapItem['kind'], Tone> = { place: 'accent', route: 'accent', line: 'neutral', region: 'accent' };
+const DEFAULT_TONE: Record<MapItem['kind'], Tone> = {
+  place: 'accent',
+  route: 'accent',
+  line: 'neutral',
+  region: 'accent',
+};
 
 /** How far, 0 to 1, a route or line is drawn at `frame`: from its latest trace's start until its words end, or its `when`. */
-function traceProgress(states: readonly SceneState[], segments: readonly SpokenSegment[], frame: number, key: string): number {
+function traceProgress(
+  states: readonly SceneState[],
+  segments: readonly SpokenSegment[],
+  frame: number,
+  key: string,
+): number {
   const k = currentStep(segments, frame);
   for (let j = k; j >= 0; j--) {
     const when = states[j + 1]?.traces[key];
@@ -47,7 +70,12 @@ function colourOf(s: StateFrame, key: string, own: Tone) {
   return { tone: mainTone(mix) ?? own, opacity: dimOpacity(mix) };
 }
 
-const glowOf = (e: Emphasis) => (e.glow > 0 ? { filter: `drop-shadow(0 0 ${3 * e.glow}px ${colors.accent}) drop-shadow(0 0 ${14 * e.glow}px ${colors.accentGlow})` } : undefined);
+const glowOf = (e: Emphasis) =>
+  e.glow > 0
+    ? {
+        filter: `drop-shadow(0 0 ${3 * e.glow}px ${colors.accent}) drop-shadow(0 0 ${14 * e.glow}px ${colors.accentGlow})`,
+      }
+    : undefined;
 
 export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
@@ -69,7 +97,14 @@ export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durat
       new Map(
         [...items].flatMap(([key, item]) => {
           if (item.kind !== 'region') return [];
-          const geometry = item.countries ? { type: 'MultiPolygon', coordinates: item.countries.flatMap((c) => countriesAt(layout.detail).get(c)?.geometry.coordinates ?? []) } : item.geometry;
+          const geometry = item.countries
+            ? {
+                type: 'MultiPolygon',
+                coordinates: item.countries.flatMap(
+                  (c) => countriesAt(layout.detail).get(c)?.geometry.coordinates ?? [],
+                ),
+              }
+            : item.geometry;
           return [[key, geoPathOf(layout.proj, geometry)]];
         }),
       ),
@@ -78,18 +113,22 @@ export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durat
   const marks = useMemo(() => mapTargets(scene), [scene]);
   const stopsOf = useMemo(() => {
     const out = new Map<string, string[]>();
-    for (const r of scene.routes ?? []) for (const stop of r.stops) if (typeof stop === 'string') out.set(`mp:${stop}`, [...(out.get(`mp:${stop}`) ?? []), `mr:${r.id}`]);
+    for (const r of scene.routes ?? [])
+      for (const stop of r.stops)
+        if (typeof stop === 'string') out.set(`mp:${stop}`, [...(out.get(`mp:${stop}`) ?? []), `mr:${r.id}`]);
     return out;
   }, [scene]);
   const s = stateFrame(states, segments, frame);
   const focus = focusSpotlight(scene, hunks, segments, frame);
   const k = currentStep(segments, frame);
-  const camera: Camera = k < 0 ? layout.cameras[0]! : zoomBetween(layout.cameras[k]!, layout.cameras[k + 1]!, s.t, stage);
+  const camera: Camera =
+    k < 0 ? layout.cameras[0]! : zoomBetween(layout.cameras[k]!, layout.cameras[k + 1]!, s.t, stage);
   const base = focus('m:map');
   const appear = spring({ frame: frame - START, fps, config: { damping: 18, stiffness: 140 } });
   const view = `translate(${camera.x} ${camera.y}) scale(${camera.k})`;
   // A lit route lights the places it stops at.
-  const lightOf = (key: string) => [base, ...(stopsOf.get(key) ?? []).map(focus)].reduce((a, b) => brighter(a, b), focus(key));
+  const lightOf = (key: string) =>
+    [base, ...(stopsOf.get(key) ?? []).map(focus)].reduce((a, b) => brighter(a, b), focus(key));
   const scaled = { vectorEffect: 'non-scaling-stroke' as const };
 
   const paths = [...items].flatMap(([key, item]) => {
@@ -102,14 +141,36 @@ export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durat
     const e = lightOf(key);
     const { tone, opacity } = colourOf(s, key, item.tone ?? DEFAULT_TONE[item.kind]);
     const head = drawing ? onScreen(layout.proj, camera, path[path.length - 1]!) : null;
-    return [{ key, d: geoPathOf(layout.proj, { type: 'LineString', coordinates: path }), e, color: tones[tone].color, opacity: (drawing ? 1 : shown) * e.opacity * opacity, width: item.kind === 'route' ? 4 : 3, head, traced }];
+    return [
+      {
+        key,
+        d: geoPathOf(layout.proj, { type: 'LineString', coordinates: path }),
+        e,
+        color: tones[tone].color,
+        opacity: (drawing ? 1 : shown) * e.opacity * opacity,
+        width: item.kind === 'route' ? 4 : 3,
+        head,
+        traced,
+      },
+    ];
   });
   const labels = mapLabels(scene, layout.proj, camera, stage, s.now);
   const traceOf = new Map(paths.map((p) => [p.key, p.traced]));
 
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
-      <svg width={stage.width} height={stage.height} style={{ position: 'absolute', left: 0, top: 0, overflow: 'hidden', opacity: Math.min(1, appear), borderRadius: 18 }}>
+      <svg
+        width={stage.width}
+        height={stage.height}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          overflow: 'hidden',
+          opacity: Math.min(1, appear),
+          borderRadius: 18,
+        }}
+      >
         <rect width={stage.width} height={stage.height} fill={colors.bg} />
         <g transform={view}>
           <path d={land.sphere} fill={OCEAN} stroke={BORDER} strokeWidth={1.5} style={scaled} />
@@ -137,13 +198,46 @@ export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durat
             if (shown <= 0 || !d) return null;
             const e = lightOf(key);
             const { tone, opacity } = colourOf(s, key, item.tone ?? DEFAULT_TONE.region);
-            return <path key={key} d={d} fill={tintFill(tones[tone].color)} stroke={tones[tone].color} strokeWidth={2.5} strokeLinejoin="round" opacity={shown * e.opacity * opacity} style={{ ...scaled, ...glowOf(e) }} />;
+            return (
+              <path
+                key={key}
+                d={d}
+                fill={tintFill(tones[tone].color)}
+                stroke={tones[tone].color}
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+                opacity={shown * e.opacity * opacity}
+                style={{ ...scaled, ...glowOf(e) }}
+              />
+            );
           })}
           {paths.map((p) => (
-            <path key={p.key} d={p.d} fill="none" stroke={p.color} strokeWidth={p.width} strokeLinecap="round" strokeLinejoin="round" opacity={p.opacity} style={{ ...scaled, ...glowOf(p.e) }} />
+            <path
+              key={p.key}
+              d={p.d}
+              fill="none"
+              stroke={p.color}
+              strokeWidth={p.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={p.opacity}
+              style={{ ...scaled, ...glowOf(p.e) }}
+            />
           ))}
         </g>
-        {paths.map((p) => (p.head ? <circle key={`${p.key}.head`} cx={p.head[0]} cy={p.head[1]} r={7} fill={p.color} stroke={colors.bg} strokeWidth={3} /> : null))}
+        {paths.map((p) =>
+          p.head ? (
+            <circle
+              key={`${p.key}.head`}
+              cx={p.head[0]}
+              cy={p.head[1]}
+              r={7}
+              fill={p.color}
+              stroke={colors.bg}
+              strokeWidth={3}
+            />
+          ) : null,
+        )}
         {labels.map((l) => {
           const item = items.get(l.key)!;
           const shown = shownOf(s, l.key);
@@ -155,7 +249,16 @@ export const MapDiagram: React.FC<SceneProps<MapScene>> = ({ scene, hunks, durat
           const changed = s.before.values[l.key] !== s.now.values[l.key];
           return (
             <g key={l.key} opacity={fade} style={glowOf(e)}>
-              {l.dot ? <circle cx={l.anchor[0]} cy={l.anchor[1]} r={DOT_RADIUS} fill={tones[tone].color} stroke={colors.bg} strokeWidth={3} /> : null}
+              {l.dot ? (
+                <circle
+                  cx={l.anchor[0]}
+                  cy={l.anchor[1]}
+                  r={DOT_RADIUS}
+                  fill={tones[tone].color}
+                  stroke={colors.bg}
+                  strokeWidth={3}
+                />
+              ) : null}
               {l.box ? (
                 <text
                   x={l.box.x}

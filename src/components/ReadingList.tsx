@@ -3,7 +3,17 @@ import { spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { readingOrder } from '../../shared/reading.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { ReadingScene } from '../types';
-import { COL_GAP, HEAD_H, MORE_H, NUMBER_W, ROW_PAD_X, layoutReading, moreText, type PlacedItem, type ReadingLayout } from '../utils/readingLayout';
+import {
+  COL_GAP,
+  HEAD_H,
+  MORE_H,
+  NUMBER_W,
+  ROW_PAD_X,
+  layoutReading,
+  moreText,
+  type PlacedItem,
+  type ReadingLayout,
+} from '../utils/readingLayout';
 import { FitText } from './FitText';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -16,7 +26,8 @@ const Row: React.FC<{ row: PlacedItem; layout: ReadingLayout; at: number }> = ({
   const { fps } = useVideoConfig();
   const land = spring({ frame: frame - at, fps, config: { damping: 17, stiffness: 120 } });
   const ink = row.item.finding ? severityInk[row.item.finding.severity] : colors.accent;
-  const pad = (row.h - Math.max(1, row.check.lines.length) * layout.lineHeight - (row.flag ? 6 + row.flag.height : 0)) / 2;
+  const pad =
+    (row.h - Math.max(1, row.check.lines.length) * layout.lineHeight - (row.flag ? 6 + row.flag.height : 0)) / 2;
   const leftPad = (row.h - row.where.height - (row.explained ? row.explained.height + 4 : 0)) / 2;
   return (
     <div
@@ -70,16 +81,38 @@ const Row: React.FC<{ row: PlacedItem; layout: ReadingLayout; at: number }> = ({
 export const ReadingList: React.FC<SceneProps<ReadingScene>> = ({ scene, storyboard, hunks, durationInFrames }) => {
   const box = contentBox(Boolean(scene.title));
   const order = useMemo(() => readingOrder(storyboard, hunks), [storyboard, hunks]);
-  const layout = useMemo(() => (order ? layoutReading(order, scene.items, box.width, box.height) : null), [order, scene.items, box.width, box.height]);
+  const layout = useMemo(
+    () => (order ? layoutReading(order, scene.items, box.width, box.height) : null),
+    [order, scene.items, box.width, box.height],
+  );
   const frame = useCurrentFrame();
-  if (!order || !layout) return <SceneShell scene={scene} durationInFrames={durationInFrames}>{null}</SceneShell>;
+  if (!order || !layout)
+    return (
+      <SceneShell scene={scene} durationInFrames={durationInFrames}>
+        {null}
+      </SceneShell>
+    );
   const stagger = Math.min(8, (buildFrames('reading') - START - 14) / Math.max(1, layout.rows.length - 1));
   const moreAt = START + layout.rows.length * stagger;
   const more = moreText(layout);
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
-      <div style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: layout.height + (more ? MORE_H : 0) }}>
-        <div style={{ position: 'absolute', left: ROW_PAD_X, top: 0, height: HEAD_H - 10, color: colors.muted, fontSize: 20, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase' }}>
+      <div
+        style={{ position: 'absolute', left: 0, top: 0, width: box.width, height: layout.height + (more ? MORE_H : 0) }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: ROW_PAD_X,
+            top: 0,
+            height: HEAD_H - 10,
+            color: colors.muted,
+            fontSize: 20,
+            fontWeight: 800,
+            letterSpacing: 2.5,
+            textTransform: 'uppercase',
+          }}
+        >
           Read first
         </div>
         {layout.rows.map((row, i) => (

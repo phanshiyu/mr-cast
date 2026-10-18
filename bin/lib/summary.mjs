@@ -76,7 +76,9 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, s
   const what = ctx.working
     ? `${ctx.branch} + working tree vs ${ctx.base} (merge-base ${ctx.mergeBase.slice(0, 7)})`
     : `${ctx.branch} vs ${ctx.base} (${plural(ctx.ahead, 'commit')})`;
-  const out = [`mr-cast: ${what} · ${plural(files.length, 'file')} · ${plural(all.length, 'hunk')} · +${adds} ${MINUS}${dels}`];
+  const out = [
+    `mr-cast: ${what} · ${plural(files.length, 'file')} · ${plural(all.length, 'hunk')} · +${adds} ${MINUS}${dels}`,
+  ];
 
   for (const f of files) {
     const own = f.hunkIds.map((id) => hunks[id]);
@@ -96,8 +98,12 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, s
   if (ctx.untracked.length) {
     out.push(`not included: ${plural(ctx.untracked.length, 'untracked file')} (git add -N <file> to include)`);
   }
-  out.push(`line numbers: + is the new-file line (use in steps or focusLinesAfter), - is the old-file line (oldLines or focusLinesBefore)`);
-  out.push(`wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${runArgs}\` and \`mr-cast play${runArgs}\``);
+  out.push(
+    `line numbers: + is the new-file line (use in steps or focusLinesAfter), - is the old-file line (oldLines or focusLinesBefore)`,
+  );
+  out.push(
+    `wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${runArgs}\` and \`mr-cast play${runArgs}\``,
+  );
   return out.join('\n');
 }
 
@@ -133,15 +139,16 @@ function formatCoverage(coverage) {
 
 /** Lines for `validate`; the last line is the verdict. */
 export function formatValidation({ errors, warnings, coverage }, { storyboard, hunks, seconds }) {
-  const out = [
-    ...errors.map((e) => `error: ${e}`),
-    ...warnings.map((w) => `warning: ${w}`),
-  ];
+  const out = [...errors.map((e) => `error: ${e}`), ...warnings.map((w) => `warning: ${w}`)];
   if (errors.some((e) => e.includes('not found in hunks.json'))) {
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
-  if (errors.length) out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
-  else out.push(`✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${formatCoverage(coverage)}${isReviewed(storyboard) ? ` · review: ${formatFindings(storyboard.findings)}` : ''}`);
+  if (errors.length)
+    out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
+  else
+    out.push(
+      `✓ storyboard ok · ${plural(storyboard.scenes.length, 'scene')} · ${formatDuration(seconds)}${formatCoverage(coverage)}${isReviewed(storyboard) ? ` · review: ${formatFindings(storyboard.findings)}` : ''}`,
+    );
   return out;
 }
 
@@ -151,11 +158,16 @@ export function formatSnippets({ added, hunks, hunksPath, storyboardPath, valida
   for (const h of added) {
     const width = String(h.endLine).length;
     out.push(`  ${h.id} ${h.file} L${h.startLine}-${h.endLine} · ${plural(h.lines.length, 'line')}`);
-    for (const l of h.lines) out.push(`    ${String(l.newLine).padStart(width)} ${clip(l.text.replace(/\t/g, '  ').trimEnd(), LINE_WIDTH)}`);
+    for (const l of h.lines)
+      out.push(`    ${String(l.newLine).padStart(width)} ${clip(l.text.replace(/\t/g, '  ').trimEnd(), LINE_WIDTH)}`);
   }
-  const all = Object.values(hunks).filter((h) => h.status === 'source').map((h) => `${h.id} ${h.file} L${h.startLine}-${h.endLine}`);
+  const all = Object.values(hunks)
+    .filter((h) => h.status === 'source')
+    .map((h) => `${h.id} ${h.file} L${h.startLine}-${h.endLine}`);
   out.push(`snippets in ${hunksPath}: ${all.join(', ')}`);
-  out.push(`line numbers are the file's own; use them in steps or focusLinesAfter · next: write ${storyboardPath}, then \`${validateCommand}\``);
+  out.push(
+    `line numbers are the file's own; use them in steps or focusLinesAfter · next: write ${storyboardPath}, then \`${validateCommand}\``,
+  );
   return out.join('\n');
 }
 
@@ -168,13 +180,25 @@ function sceneGist(scene, hunks, storyboard) {
   switch (scene.type) {
     case 'text': {
       const lead = ['headline', 'question', 'number', 'term', 'quote'].find((f) => scene[f] !== undefined);
-      return [lead ? `${lead} ${scene[lead]}` : 'no lead', scene.risk ? `${scene.risk} risk` : '', scene.items?.length ? count(scene.items, 'item') : '', scene.sides ? 'two sides' : ''].filter(Boolean).join(' · ');
+      return [
+        lead ? `${lead} ${scene[lead]}` : 'no lead',
+        scene.risk ? `${scene.risk} risk` : '',
+        scene.items?.length ? count(scene.items, 'item') : '',
+        scene.sides ? 'two sides' : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
     }
     case 'graph': {
       const groups = new Set(scene.nodes.flatMap((n) => (n.group ? [n.group] : []))).size;
       const changed = scene.nodes.filter((n) => n.change).length;
       const key = scene.nodes.filter((n) => n.highlight).length;
-      const extra = [groups ? plural(groups, 'group') : '', scene.layout === 'TB' ? 'top to bottom' : '', changed ? `${changed} changed` : '', key ? `${key} key` : ''];
+      const extra = [
+        groups ? plural(groups, 'group') : '',
+        scene.layout === 'TB' ? 'top to bottom' : '',
+        changed ? `${changed} changed` : '',
+        key ? `${key} key` : '',
+      ];
       return [count(scene.nodes, 'node'), count(scene.edges, 'edge'), ...extra].filter(Boolean).join(', ');
     }
     case 'code': {
@@ -190,7 +214,8 @@ function sceneGist(scene, hunks, storyboard) {
       }
       if (scene.focusLinesAfter?.length) parts.push(`lines ${refs(scene.focusLinesAfter)}`);
       if (scene.focusLinesBefore?.length) parts.push(`old lines ${refs(scene.focusLinesBefore)}`);
-      if (!scene.focusLinesAfter?.length && !scene.focusLinesBefore?.length) parts.push(hunk?.status === 'source' ? 'whole snippet' : 'changed lines');
+      if (!scene.focusLinesAfter?.length && !scene.focusLinesBefore?.length)
+        parts.push(hunk?.status === 'source' ? 'whole snippet' : 'changed lines');
       if (scene.flow?.length) parts.push(`flow ${count(scene.flow, 'step')}`);
       return parts.join(' · ');
     }
@@ -199,7 +224,9 @@ function sceneGist(scene, hunks, storyboard) {
     case 'sequence':
       return titled(`${count(scene.participants, 'participant')}, ${count(scene.messages, 'message')}`);
     case 'er':
-      return titled(`${scene.entities.length} ${scene.entities.length === 1 ? 'entity' : 'entities'}, ${count(scene.relations, 'relation')}`);
+      return titled(
+        `${scene.entities.length} ${scene.entities.length === 1 ? 'entity' : 'entities'}, ${count(scene.relations, 'relation')}`,
+      );
     case 'state':
       return titled(`${count(scene.states, 'state')}, ${count(scene.transitions, 'transition')}`);
     case 'mermaid':
@@ -208,24 +235,37 @@ function sceneGist(scene, hunks, storyboard) {
       return `${scene.subject ? `${scene.subject} · ` : ''}${count(scene.tests, 'test')}, ${count(scene.situations, 'situation')}, ${plural(scene.situations.filter(isGapRow).length, 'gap')}`;
     case 'table': {
       const changed = scene.rows.filter((r) => r.change || r.cells.some((c) => typeof c !== 'string')).length;
-      const extra = [changed ? `${changed} changed` : '', scene.highlight?.length ? `${scene.highlight.length} highlighted` : ''].filter(Boolean);
-      return titled(`${count(scene.columns, 'column')}, ${count(scene.rows, 'row')}${extra.map((e) => `, ${e}`).join('')}`);
+      const extra = [
+        changed ? `${changed} changed` : '',
+        scene.highlight?.length ? `${scene.highlight.length} highlighted` : '',
+      ].filter(Boolean);
+      return titled(
+        `${count(scene.columns, 'column')}, ${count(scene.rows, 'row')}${extra.map((e) => `, ${e}`).join('')}`,
+      );
     }
     case 'chart': {
       const series = scene.series.map((x) => x.name).join(', ');
-      return titled(`${scene.kind}, ${series} over ${count(scene.labels, 'label')}${scene.unit || scene.prefix ? ` in ${scene.prefix ?? ''}${scene.unit ?? ''}` : ''}${scene.annotation ? ', annotated' : ''}`);
+      return titled(
+        `${scene.kind}, ${series} over ${count(scene.labels, 'label')}${scene.unit || scene.prefix ? ` in ${scene.prefix ?? ''}${scene.unit ?? ''}` : ''}${scene.annotation ? ', annotated' : ''}`,
+      );
     }
     case 'timeline': {
       const ats = [...scene.events.map((e) => e.at), ...(scene.spans ?? []).flatMap((x) => [x.from, x.to])];
       const spans = scene.spans?.length ? `, ${count(scene.spans, 'span')}` : '';
-      return titled(`${count(scene.events, 'event')}${spans} over ${Math.min(...ats)}-${Math.max(...ats)} ${scene.unit}`);
+      return titled(
+        `${count(scene.events, 'event')}${spans} over ${Math.min(...ats)}-${Math.max(...ats)} ${scene.unit}`,
+      );
     }
     case 'files': {
       const files = sceneFiles(scene, hunks);
-      const lines = files.some((f) => f.additions !== undefined) ? `, +${files.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${files.reduce((n, f) => n + (f.deletions ?? 0), 0)}` : '';
+      const lines = files.some((f) => f.additions !== undefined)
+        ? `, +${files.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${files.reduce((n, f) => n + (f.deletions ?? 0), 0)}`
+        : '';
       const tests = files.filter((f) => f.test).length;
       const notes = Object.keys(scene.notes ?? {}).length;
-      return titled(`${count(files, 'file')}${lines}${tests ? `, ${plural(tests, 'test')}` : ''}${notes ? `, ${plural(notes, 'note')}` : ''}`);
+      return titled(
+        `${count(files, 'file')}${lines}${tests ? `, ${plural(tests, 'test')}` : ''}${notes ? `, ${plural(notes, 'note')}` : ''}`,
+      );
     }
     case 'compare': {
       const [left, right] = compareTitles(scene);
@@ -235,11 +275,15 @@ function sceneGist(scene, hunks, storyboard) {
     case 'terminal': {
       const commands = scene.entries.filter((e) => e.command !== undefined).length;
       const failed = scene.entries.filter((e) => e.exit !== undefined && e.exit !== 0).length;
-      return titled(`${scene.window ? `${scene.window} · ` : ''}${scene.entries.length} ${scene.entries.length === 1 ? 'entry' : 'entries'}, ${plural(commands, 'command')}${failed ? `, ${failed} failed` : ''}`);
+      return titled(
+        `${scene.window ? `${scene.window} · ` : ''}${scene.entries.length} ${scene.entries.length === 1 ? 'entry' : 'entries'}, ${plural(commands, 'command')}${failed ? `, ${failed} failed` : ''}`,
+      );
     }
     case 'layers': {
       const items = scene.layers.reduce((n, l) => n + (l.items?.length ?? 0), 0);
-      const path = scene.path ? `, a path through ${count(scene.path.stops, 'stop')}${scene.path.skip ? `, answered at ${scene.path.skip.at}` : scene.path.return ? ' and back' : ''}` : '';
+      const path = scene.path
+        ? `, a path through ${count(scene.path.stops, 'stop')}${scene.path.skip ? `, answered at ${scene.path.skip.at}` : scene.path.return ? ' and back' : ''}`
+        : '';
       return titled(`${count(scene.layers, 'layer')}${items ? `, ${plural(items, 'item')}` : ''}${path}`);
     }
     case 'review':
@@ -247,12 +291,23 @@ function sceneGist(scene, hunks, storyboard) {
     case 'reading': {
       const routine = scene.items.filter((i) => i.routine).length;
       const flags = scene.items.filter((i) => i.flag).length;
-      return titled(`${plural(scene.items.length - routine, 'item')} to read${routine ? `, ${routine} routine` : ''}${flags ? `, ${plural(flags, 'flag')}` : ''}`);
+      return titled(
+        `${plural(scene.items.length - routine, 'item')} to read${routine ? `, ${routine} routine` : ''}${flags ? `, ${plural(flags, 'flag')}` : ''}`,
+      );
     }
     case 'array': {
       const changes = (scene.steps ?? []).filter(changesState).length;
-      const extra = [scene.pointers?.length ? count(scene.pointers, 'pointer') : '', scene.ranges?.length ? count(scene.ranges, 'range') : '', changes ? `${changes} changing` : ''].filter(Boolean);
-      const cells = Array.isArray(scene.arrays) ? `${count(scene.arrays, 'array')} of ${count(scene.arrays.flatMap((a) => a.values ?? []), 'cell')}` : count(scene.values, 'cell');
+      const extra = [
+        scene.pointers?.length ? count(scene.pointers, 'pointer') : '',
+        scene.ranges?.length ? count(scene.ranges, 'range') : '',
+        changes ? `${changes} changing` : '',
+      ].filter(Boolean);
+      const cells = Array.isArray(scene.arrays)
+        ? `${count(scene.arrays, 'array')} of ${count(
+            scene.arrays.flatMap((a) => a.values ?? []),
+            'cell',
+          )}`
+        : count(scene.values, 'cell');
       return titled(`${scene.label ? `${scene.label}, ` : ''}${cells}${extra.map((e) => `, ${e}`).join('')}`);
     }
     case 'svg': {
@@ -261,17 +316,30 @@ function sceneGist(scene, hunks, storyboard) {
     }
     case 'plot': {
       const changes = (scene.steps ?? []).filter(changesState).length;
-      const kinds = Object.keys(PART_KINDS).filter((k) => scene[k]?.length).map((k) => count(scene[k], PART_KINDS[k]));
-      return titled(`${scene.y ? 'a plot' : 'a number line'} of ${kinds.join(', ')}${changes ? `, ${changes} changing` : ''}`);
+      const kinds = Object.keys(PART_KINDS)
+        .filter((k) => scene[k]?.length)
+        .map((k) => count(scene[k], PART_KINDS[k]));
+      return titled(
+        `${scene.y ? 'a plot' : 'a number line'} of ${kinds.join(', ')}${changes ? `, ${changes} changing` : ''}`,
+      );
     }
     case 'map': {
       const changes = (scene.steps ?? []).filter(changesState).length;
-      const parts = [['places', 'place'], ['routes', 'route'], ['lines', 'line'], ['regions', 'region']].filter(([f]) => scene[f]?.length).map(([f, one]) => count(scene[f], one));
+      const parts = [
+        ['places', 'place'],
+        ['routes', 'route'],
+        ['lines', 'line'],
+        ['regions', 'region'],
+      ]
+        .filter(([f]) => scene[f]?.length)
+        .map(([f, one]) => count(scene[f], one));
       return titled(`a map${parts.length ? ` of ${parts.join(', ')}` : ''}${changes ? `, ${changes} changing` : ''}`);
     }
     case 'memory': {
       const changes = (scene.steps ?? []).filter(changesState).length;
-      return titled(`${count(scene.frames, 'frame')}, ${count(scene.objects, 'object')}${changes ? `, ${changes} changing` : ''}`);
+      return titled(
+        `${count(scene.frames, 'frame')}, ${count(scene.objects, 'object')}${changes ? `, ${changes} changing` : ''}`,
+      );
     }
     default:
       return '';
@@ -280,7 +348,10 @@ function sceneGist(scene, hunks, storyboard) {
 
 /** "1 bug, 2 nits", or "nothing flagged". */
 export function formatFindings(findings = []) {
-  const counts = SEVERITIES.map((severity) => [severity, findings.filter((f) => f.severity === severity).length]).filter(([, n]) => n);
+  const counts = SEVERITIES.map((severity) => [
+    severity,
+    findings.filter((f) => f.severity === severity).length,
+  ]).filter(([, n]) => n);
   return counts.length ? counts.map(([severity, n]) => plural(n, severity)).join(', ') : 'nothing flagged';
 }
 
@@ -315,10 +386,13 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pa
   const grouped = topics.size > 0 && scenes.some((s) => topics.has(s.topic));
   out.push('');
   scenes.forEach((scene, i) => {
-    if (grouped && (i === 0 || scenes[i - 1].topic !== scene.topic)) out.push(`${i ? '\n' : ''}${topicHeading(topics.get(scene.topic))}`);
+    if (grouped && (i === 0 || scenes[i - 1].topic !== scene.topic))
+      out.push(`${i ? '\n' : ''}${topicHeading(topics.get(scene.topic))}`);
     const chapter = clip(scene.chapter ?? '', chapterWidth).padEnd(chapterWidth);
     const head = `${String(i + 1).padStart(number)}. ${scene.type.padEnd(typeWidth)}  ${chapter}  `;
-    out.push(`${head}${clip(gistWithSteps(scene, hunks, storyboard), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd());
+    out.push(
+      `${head}${clip(gistWithSteps(scene, hunks, storyboard), Math.max(30, LINE_WIDTH - head.length))}`.trimEnd(),
+    );
   });
   out.push('');
   const length = `${voiced ? '' : 'about '}${formatDuration(seconds)}${voiced ? ' (voiced)' : ' (estimated from word count)'}${pace}`;

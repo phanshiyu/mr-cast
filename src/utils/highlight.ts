@@ -5,8 +5,15 @@ import { addDocker } from './prismDocker';
 addDocker(Prism);
 
 const ALIASES: Record<string, string> = {
-  java: 'clike', csharp: 'clike', php: 'clike', scala: 'clike',
-  scss: 'css', less: 'css', toml: 'yaml', protobuf: 'clike', hcl: 'clike',
+  java: 'clike',
+  csharp: 'clike',
+  php: 'clike',
+  scala: 'clike',
+  scss: 'css',
+  less: 'css',
+  toml: 'yaml',
+  protobuf: 'clike',
+  hcl: 'clike',
 };
 
 function grammarFor(language: string) {
@@ -22,8 +29,20 @@ export function tokenizeLines(code: string, language: string): Token[][] {
 
 /** Tokens for every hunk line, tokenized per side so multi-line constructs keep their context. */
 export function tokenizeHunkLines(lines: readonly DiffLine[], language: string): Token[][] {
-  const oldSide = tokenizeLines(lines.filter((l) => l.type !== 'add').map((l) => l.text).join('\n'), language);
-  const newSide = tokenizeLines(lines.filter((l) => l.type !== 'del').map((l) => l.text).join('\n'), language);
+  const oldSide = tokenizeLines(
+    lines
+      .filter((l) => l.type !== 'add')
+      .map((l) => l.text)
+      .join('\n'),
+    language,
+  );
+  const newSide = tokenizeLines(
+    lines
+      .filter((l) => l.type !== 'del')
+      .map((l) => l.text)
+      .join('\n'),
+    language,
+  );
   let o = 0;
   let n = 0;
   return lines.map((line) => {

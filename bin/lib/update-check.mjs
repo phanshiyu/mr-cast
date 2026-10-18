@@ -4,4 +4,6 @@ import { fetchLatest, writeCache } from './update.mjs';
 
 try {
   writeCache(await fetchLatest(10_000));
-} catch { /* offline or sandboxed */ }
+} catch {
+  /* offline or sandboxed */
+}

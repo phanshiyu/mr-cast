@@ -16,7 +16,9 @@ export async function createServing({ raw, storyboard, now, voice, reload }) {
   let turns = 0;
   let settled = 0;
   let markReady;
-  const ready = new Promise((resolve) => { markReady = resolve; });
+  const ready = new Promise((resolve) => {
+    markReady = resolve;
+  });
   const serve = (turn, next) => {
     served = next;
     settled = turn;

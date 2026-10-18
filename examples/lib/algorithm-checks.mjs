@@ -9,7 +9,8 @@ export { walkStates };
 export const plain = (t) => t.replace(/\[([^\]]*)\]\{\w+\}/g, '$1').replace(/\*\*/g, '');
 
 /** The n cell values of array `name` (or of the scene's only array) in one state. */
-export const row = (state, name, n) => Array.from({ length: n }, (_, k) => state.values[name ? `c:${name}/${k}` : `c:${k}`]);
+export const row = (state, name, n) =>
+  Array.from({ length: n }, (_, k) => state.values[name ? `c:${name}/${k}` : `c:${k}`]);
 
 /** The sequence with runs of equal neighbours collapsed to one. */
 export const distinct = (seq) => seq.filter((v, k) => k === 0 || JSON.stringify(v) !== JSON.stringify(seq[k - 1]));
@@ -26,9 +27,19 @@ export function checkCallouts(scene, label) {
     const f = text.match(/mid = (\d+) \+ ⌊\((\d+) − (\d+)\) \/ 2⌋ = (\d+)/);
     if (f) {
       const [L, R, L2, mid] = f.slice(1).map(Number);
-      assert.ok(L === L2 && mid === L + Math.floor((R - L) / 2), `${label} state ${k}: formula "${text}" does not add up`);
-      assert.ok(state.places['ptr:L']?.[0] === L && state.places['ptr:R']?.[0] === R, `${label} state ${k}: L and R are not where the formula says`);
-      if (!state.hidden['ptr:mid'] && state.places['ptr:mid']) assert.ok(state.places['ptr:mid'][0] === mid, `${label} state ${k}: mid pointer at ${state.places['ptr:mid'][0]}, formula says ${mid}`);
+      assert.ok(
+        L === L2 && mid === L + Math.floor((R - L) / 2),
+        `${label} state ${k}: formula "${text}" does not add up`,
+      );
+      assert.ok(
+        state.places['ptr:L']?.[0] === L && state.places['ptr:R']?.[0] === R,
+        `${label} state ${k}: L and R are not where the formula says`,
+      );
+      if (!state.hidden['ptr:mid'] && state.places['ptr:mid'])
+        assert.ok(
+          state.places['ptr:mid'][0] === mid,
+          `${label} state ${k}: mid pointer at ${state.places['ptr:mid'][0]}, formula says ${mid}`,
+        );
     }
   });
 }

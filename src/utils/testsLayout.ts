@@ -82,7 +82,8 @@ export const tagFont = (tag: NonNullable<CellTag>, size: number): Font =>
 const tagWidth = (tag: CellTag, size: number) => (tag ? measure(tag, tagFont(tag, size)) + TAG_GAP : 0);
 
 /** The text a cell shows: its promised value, ticked when a test checks it. */
-const cellText = (cell: MatrixCell) => (cell.state === 'checked' ? `✓ ${cell.value ?? ''}`.trimEnd() : (cell.value ?? ''));
+const cellText = (cell: MatrixCell) =>
+  cell.state === 'checked' ? `✓ ${cell.value ?? ''}`.trimEnd() : (cell.value ?? '');
 
 /** "7 tests · 4 new · 2 changed · 1 removed · 2 unchecked · 2 gaps": the counts under the matrix. */
 export function countsLine({ counts }: TestsMatrix): string {
@@ -100,7 +101,6 @@ const rowCount = (scene: TestsScene, row: MatrixRow) => {
   const live = row.tests.filter((n) => (scene.tests[n]?.status ?? 'added') !== 'removed').length;
   return row.gap ? '' : live === 0 ? 'no test' : live === 1 ? '1 test' : `${live} tests`;
 };
-
 
 /**
  * Column widths for `room`: every column its natural width and an equal part of what is left; when they do not
@@ -128,7 +128,13 @@ function shareWidths(natural: readonly number[], room: number): number[] {
   return out;
 }
 
-function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: number, maxLines = 2): Omit<TestsLayout, 'scale' | 'room'> & { fits: boolean } {
+function attempt(
+  scene: TestsScene,
+  matrix: TestsMatrix,
+  width: number,
+  font: number,
+  maxLines = 2,
+): Omit<TestsLayout, 'scale' | 'room'> & { fits: boolean } {
   const lineHeight = Math.round(font * 1.25);
   const padX = Math.round(font * 0.6);
   const padY = Math.round(font * 0.42);
@@ -136,24 +142,35 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
   const { outcomes, rows } = matrix;
   const valueFont: Font = { family: 'sans', weight: 700, size: font };
   const whenFont: Font = { family: 'sans', weight: 600, size: font };
-  const headFont: Font = { family: 'sans', weight: 700, size: HEAD_SLOT.size, letterSpacing: HEAD_SLOT.letterSpacing, upper: true };
+  const headFont: Font = {
+    family: 'sans',
+    weight: 700,
+    size: HEAD_SLOT.size,
+    letterSpacing: HEAD_SLOT.letterSpacing,
+    upper: true,
+  };
   const counted = rows.some((r) => r.tests.filter((n) => isLive(scene.tests[n])).length > 1);
   const countW = counted ? measure('99 tests', { family: 'sans', weight: 600, size: small }) + TAG_GAP : 0;
 
-  const whenNat = Math.max(...rows.map((r) => measure(plainText(r.situation.when ?? ''), whenFont)), 0) + 2 * padX + countW;
+  const whenNat =
+    Math.max(...rows.map((r) => measure(plainText(r.situation.when ?? ''), whenFont)), 0) + 2 * padX + countW;
   const whenW = Math.round(Math.min(Math.max(whenNat, width * 0.16), width * 0.34));
   const colNat = outcomes.map((o, col) =>
     Math.max(
       measure(o, headFont) + 2 * padX,
-      ...rows.filter((r) => !r.gap).map((r) => {
-        const cell = r.cells[col]!;
-        return measure(plainText(cellText(cell)), valueFont) + tagWidth(TAG_OF[cell.state](cell), small) + 2 * padX;
-      }),
+      ...rows
+        .filter((r) => !r.gap)
+        .map((r) => {
+          const cell = r.cells[col]!;
+          return measure(plainText(cellText(cell)), valueFont) + tagWidth(TAG_OF[cell.state](cell), small) + 2 * padX;
+        }),
     ),
   );
 
   const nameFont: Font = { family: 'mono', weight: 500, size: Math.max(MIN_FONT, Math.round(font * 0.76)) };
-  const namesNat = scene.tests.length ? Math.max(measure('Tests', headFont), ...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX : 0;
+  const namesNat = scene.tests.length
+    ? Math.max(measure('Tests', headFont), ...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX
+    : 0;
   const outcomeRoom = (namesW: number) => width - whenW - namesW - COL_GAP * (outcomes.length + (namesW ? 1 : 0));
   const natSum = colNat.reduce((a, b) => a + b, 0);
   const namesFit = Math.round(Math.min(namesNat, width * 0.3));
@@ -168,10 +185,18 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
     fits &&= f.fits;
     return f;
   };
-  const whenCol = { x: 0, w: whenW, title: fitText(scene.when ?? 'When', sized(HEAD_SLOT, whenW - padX), scene.when ? 'when' : '') };
+  const whenCol = {
+    x: 0,
+    w: whenW,
+    title: fitText(scene.when ?? 'When', sized(HEAD_SLOT, whenW - padX), scene.when ? 'when' : ''),
+  };
   let x = whenW + COL_GAP;
   const cols = outcomes.map((o, col) => {
-    const placed = { x, w: Math.round(colW[col]!), title: fitText(o, sized(HEAD_SLOT, colW[col]! - padX), `outcomes[${col}]`) };
+    const placed = {
+      x,
+      w: Math.round(colW[col]!),
+      title: fitText(o, sized(HEAD_SLOT, colW[col]! - padX), `outcomes[${col}]`),
+    };
     x += placed.w + COL_GAP;
     return placed;
   });
@@ -184,7 +209,13 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
     const sit = row.situation;
     // With the names column beside it a count would only repeat it, and with one test a row it says nothing a tick does not.
     const count = namesCol || !counted ? '' : rowCount(scene, row);
-    const when = fitAt(sit.when ?? '', SLOTS.testWhen, whenW - 2 * padX - (count ? countW : 0), `situations[${r}].when`, font);
+    const when = fitAt(
+      sit.when ?? '',
+      SLOTS.testWhen,
+      whenW - 2 * padX - (count ? countW : 0),
+      `situations[${r}].when`,
+      font,
+    );
     let h = when.lines.length * lineHeight;
     let bar: PlacedRow['bar'] = null;
     const cells: PlacedCell[] = [];
@@ -199,16 +230,35 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
         const c = cols[col]!;
         const inner = c.w - 2 * padX - tagWidth(tag, small);
         const text = cellText(cell);
-        const value = text ? fitAt(text, SLOTS.testValue, inner, cell.value === undefined ? '' : `situations[${r}].expect.${cell.outcome}`, font) : null;
+        const value = text
+          ? fitAt(
+              text,
+              SLOTS.testValue,
+              inner,
+              cell.value === undefined ? '' : `situations[${r}].expect.${cell.outcome}`,
+              font,
+            )
+          : null;
         const wasPath = `tests[${cell.tests.find((n) => scene.tests[n]!.was)}].was`;
         const was = cell.was.length ? fitAt(cell.was.join(', '), SLOTS.testWas, inner, wasPath, small, 1) : null;
         h = Math.max(h, (value?.lines.length ?? 1) * lineHeight + (was ? Math.round(small * 1.25) : 0));
         cells.push({ cell, value, was, tag, x: c.x, y, w: c.w, h: 0 });
       });
     }
-    const names = namesCol && !row.gap
-      ? row.tests.map((n) => ({ fit: fitAt(scene.tests[n]!.name, SLOTS.testNames, namesCol.w - 2 * padX, `tests[${n}].name`, nameFont.size, 1), removed: !isLive(scene.tests[n]) }))
-      : [];
+    const names =
+      namesCol && !row.gap
+        ? row.tests.map((n) => ({
+            fit: fitAt(
+              scene.tests[n]!.name,
+              SLOTS.testNames,
+              namesCol.w - 2 * padX,
+              `tests[${n}].name`,
+              nameFont.size,
+              1,
+            ),
+            removed: !isLive(scene.tests[n]),
+          }))
+        : [];
     if (names.length) h = Math.max(h, names.length * Math.round(nameFont.size * 1.25));
     h += 2 * padY;
     for (const c of cells) c.h = h;
@@ -219,7 +269,23 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
   const footY = y - ROW_GAP + FOOT_GAP;
   const subject = scene.subject ? fitText(scene.subject, sized(SLOTS.testSubject, right * 0.55), 'subject') : null;
   if (subject && !subject.fits) fits = false;
-  return { matrix, font, tagFont: small, lineHeight, padX, whenCol, cols, namesCol, rows: placedRows, footY, subject, counts: countsLine(matrix), width: right, height: footY + FOOT_H, fits };
+  return {
+    matrix,
+    font,
+    tagFont: small,
+    lineHeight,
+    padX,
+    whenCol,
+    cols,
+    namesCol,
+    rows: placedRows,
+    footY,
+    subject,
+    counts: countsLine(matrix),
+    width: right,
+    height: footY + FOOT_H,
+    fits,
+  };
 }
 
 /**
@@ -239,7 +305,16 @@ export function layoutTests(scene: TestsScene, width: number, height: number): T
   // A wider layout wraps less, so it is never taller: scaling by the first estimate always fits.
   const scale = height / last.height;
   const { fits: __, ...wide } = attempt(scene, matrix, width / scale, MIN_FONT, 3);
-  return { ...wide, scale, room: fitBlock('situations', 'tests scene', false, 'split the situations into two tests scenes, or use fewer outcomes') };
+  return {
+    ...wide,
+    scale,
+    room: fitBlock(
+      'situations',
+      'tests scene',
+      false,
+      'split the situations into two tests scenes, or use fewer outcomes',
+    ),
+  };
 }
 
 const boxOf = (b: Box): PenBox => ({ x: b.x, y: b.y, width: b.w, height: b.h });
@@ -259,11 +334,17 @@ export function testsBoxes(layout: TestsLayout): LayoutBoxes {
       obstacles.push(boxOf(c));
     }
     if (row.bar) obstacles.push(boxOf(row.bar));
-    if (layout.namesCol && row.names.length) obstacles.push({ x: layout.namesCol.x, y: row.y, width: layout.namesCol.w, height: row.h });
+    if (layout.namesCol && row.names.length)
+      obstacles.push({ x: layout.namesCol.x, y: row.y, width: layout.namesCol.w, height: row.h });
   }
   // The column titles above the rows and the counts under them.
-  obstacles.push({ x: 0, y: 0, width: layout.width, height: HEAD_H }, { x: 0, y: layout.footY, width: layout.width, height: FOOT_H });
+  obstacles.push(
+    { x: 0, y: 0, width: layout.width, height: HEAD_H },
+    { x: 0, y: layout.footY, width: layout.width, height: FOOT_H },
+  );
   const last = layout.rows.at(-1);
-  layout.cols.forEach((c, col) => boxes.set(`o:${col}`, { x: c.x, y: 0, width: c.w, height: last ? last.y + last.h : HEAD_H }));
+  layout.cols.forEach((c, col) =>
+    boxes.set(`o:${col}`, { x: c.x, y: 0, width: c.w, height: last ? last.y + last.h : HEAD_H }),
+  );
   return { boxes, obstacles };
 }

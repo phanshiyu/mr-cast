@@ -74,7 +74,13 @@ export interface PlotView {
   rect: Box;
   zoom: number;
 }
-export declare function plotGeometry(scene: PlotScene, axes: PlotAxes, scope: Record<string, number>, progress?: (id: string) => number, view?: PlotView | null): Map<string, PartGeometry>;
+export declare function plotGeometry(
+  scene: PlotScene,
+  axes: PlotAxes,
+  scope: Record<string, number>,
+  progress?: (id: string) => number,
+  view?: PlotView | null,
+): Map<string, PartGeometry>;
 
 export interface PlacedLabel {
   id: string;
@@ -84,4 +90,10 @@ export interface PlacedLabel {
   clash: string | null;
   off: boolean;
 }
-export declare function plotLabels(scene: PlotScene, axes: PlotAxes, geometry: Map<string, PartGeometry>, scope: Record<string, number>, shown?: (id: string) => boolean): PlacedLabel[];
+export declare function plotLabels(
+  scene: PlotScene,
+  axes: PlotAxes,
+  geometry: Map<string, PartGeometry>,
+  scope: Record<string, number>,
+  shown?: (id: string) => boolean,
+): PlacedLabel[];

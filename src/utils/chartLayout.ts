@@ -18,11 +18,14 @@ export const chartStateOf = (scene: ChartScene, state: SceneState): ChartState =
 });
 
 /** Every state of a chart, `[initial, during step 0, ...]`. */
-export const chartStates = (scene: ChartScene): ChartState[] => sceneStates(scene).map((state) => chartStateOf(scene, state));
+export const chartStates = (scene: ChartScene): ChartState[] =>
+  sceneStates(scene).map((state) => chartStateOf(scene, state));
 
 /** The scene with its series holding `values`, for the layout of one state. */
 export const withValues = (scene: ChartScene, values: readonly (readonly number[])[]): ChartScene =>
-  values.every((v, s) => v === scene.series[s]!.values) ? scene : { ...scene, series: scene.series.map((series, s) => ({ ...series, values: [...values[s]!] })) };
+  values.every((v, s) => v === scene.series[s]!.values)
+    ? scene
+    : { ...scene, series: scene.series.map((series, s) => ({ ...series, values: [...values[s]!] })) };
 
 /** Decimal places a value is written with, so a value partway between two keeps no more digits than they have. */
 const places = (v: number) => {
@@ -39,14 +42,23 @@ export function between(a: number, b: number, t: number): number {
 }
 
 /** Values `t` of the way from one state's to another's: exact, for the bars and points to move smoothly. */
-export const valuesBetween = (a: readonly (readonly number[])[], b: readonly (readonly number[])[], t: number): number[][] =>
+export const valuesBetween = (
+  a: readonly (readonly number[])[],
+  b: readonly (readonly number[])[],
+  t: number,
+): number[][] =>
   t >= 1 ? b.map((row) => [...row]) : b.map((row, s) => row.map((v, l) => a[s]![l]! + (v - a[s]![l]!) * t));
 
 /** The same values as printed: rounded to the places their two ends are written with, so a label counts. */
-export const shownBetween = (a: readonly (readonly number[])[], b: readonly (readonly number[])[], t: number): number[][] => b.map((row, s) => row.map((v, l) => between(a[s]![l]!, v, t)));
+export const shownBetween = (
+  a: readonly (readonly number[])[],
+  b: readonly (readonly number[])[],
+  t: number,
+): number[][] => b.map((row, s) => row.map((v, l) => between(a[s]![l]!, v, t)));
 
 /** A label's total over every series, as a stack draws it. */
-export const labelTotal = (values: readonly (readonly number[])[], label: number) => values.reduce((sum, row) => sum + row[label]!, 0);
+export const labelTotal = (values: readonly (readonly number[])[], label: number) =>
+  values.reduce((sum, row) => sum + row[label]!, 0);
 
 /**
  * Each label's place, 0 first, in one state: in the order of `labels`, or sorted by value, largest first, by the
@@ -96,7 +108,8 @@ function ticksOf(lo: number, span: number, count: number): number[] {
   const mag = 10 ** Math.floor(Math.log10(raw));
   const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw)!;
   const ticks: number[] = [];
-  for (let t = Math.floor(lo / step) * step; t < lo + span + step - step * 1e-9; t += step) ticks.push(Number(t.toPrecision(12)));
+  for (let t = Math.floor(lo / step) * step; t < lo + span + step - step * 1e-9; t += step)
+    ticks.push(Number(t.toPrecision(12)));
   return ticks;
 }
 
@@ -112,11 +125,16 @@ export function niceTicks(min: number, max: number): number[] {
 export type Direction = 'good' | 'bad' | 'neutral';
 
 /** The change from `a` to `b` as a badge: "−42%", or "×3.1" past a tripling. Null when `a` is 0. */
-export function delta(a: number, b: number, better: ChartScene['better']): { text: string; direction: Direction } | null {
+export function delta(
+  a: number,
+  b: number,
+  better: ChartScene['better'],
+): { text: string; direction: Direction } | null {
   if (a === 0) return null;
   const pct = ((b - a) / Math.abs(a)) * 100;
   const rounded = Math.abs(pct) >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
-  const text = pct >= 200 ? `×${trimmed(b / a, 2)}` : rounded === 0 ? '±0%' : `${rounded > 0 ? '+' : MINUS}${Math.abs(rounded)}%`;
+  const text =
+    pct >= 200 ? `×${trimmed(b / a, 2)}` : rounded === 0 ? '±0%' : `${rounded > 0 ? '+' : MINUS}${Math.abs(rounded)}%`;
   if (rounded === 0 || !better) return { text, direction: 'neutral' };
   const improved = better === 'lower' ? pct < 0 : pct > 0;
   return { text, direction: improved ? 'good' : 'bad' };
@@ -175,7 +193,11 @@ export interface ValueLabel {
 }
 
 /** The value labels a chart draws: every bar's, and a line's at each point, or at its last point past two series or eight labels. */
-export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueFits'>, shown: readonly (readonly number[])[] = scene.series.map((s) => s.values)): ValueLabel[] {
+export function valueLabels(
+  scene: ChartScene,
+  layout: Omit<ChartLayout, 'valueFits'>,
+  shown: readonly (readonly number[])[] = scene.series.map((s) => s.values),
+): ValueLabel[] {
   const k = scene.series.length;
   if (scene.stacked) {
     // A stack carries its total, labelled as its top series.
@@ -183,7 +205,16 @@ export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueF
     const values = scene.series.map((s) => s.values);
     return scene.labels.map((_, i) => {
       const y = layout.y(labelTotal(values, i));
-      return { series: k - 1, label: i, text: formatValue(labelTotal(shown, i), scene), x: layout.xs[i]!, y, top: y - 14 - size * 1.25, size, below: false };
+      return {
+        series: k - 1,
+        label: i,
+        text: formatValue(labelTotal(shown, i), scene),
+        x: layout.xs[i]!,
+        y,
+        top: y - 14 - size * 1.25,
+        size,
+        below: false,
+      };
     });
   }
   const size = scene.kind === 'bar' && layout.barW < 64 ? NARROW_VALUE_FONT : VALUE_FONT;
@@ -194,7 +225,18 @@ export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueF
       const below = scene.kind === 'line' && k === 2 && scene.series.some((o, j) => j !== s && o.values[i]! > v);
       const x = scene.kind === 'bar' ? barX(layout, layout.xs[i]!, s, k) + layout.barW / 2 : layout.xs[i]!;
       const y = layout.y(v);
-      return [{ series: s, label: i, text: formatValue(shown[s]?.[i] ?? v, scene), x, y, top: below ? y + 14 : y - 14 - size * 1.25, size, below }];
+      return [
+        {
+          series: s,
+          label: i,
+          text: formatValue(shown[s]?.[i] ?? v, scene),
+          x,
+          y,
+          top: below ? y + 14 : y - 14 - size * 1.25,
+          size,
+          below,
+        },
+      ];
     }),
   );
 }
@@ -208,7 +250,14 @@ function valueFits(labels: ValueLabel[]): Fit[] {
       return b !== a && o.x < l.x && sameHeight ? [2 * (l.x - o.x - widths[b]! / 2 - VALUE_GAP)] : [];
     });
     if (!rooms.length) return [];
-    return [fitTextAt(l.text, sized(SLOTS.chartValue, Math.max(0, Math.min(...rooms))), `series[${l.series}].values[${l.label}]`, l.size)];
+    return [
+      fitTextAt(
+        l.text,
+        sized(SLOTS.chartValue, Math.max(0, Math.min(...rooms))),
+        `series[${l.series}].values[${l.label}]`,
+        l.size,
+      ),
+    ];
   });
 }
 
@@ -216,11 +265,14 @@ function valueFits(labels: ValueLabel[]): Fit[] {
 export function layoutChart(scene: ChartScene, width: number, height: number): ChartLayout {
   const states = chartStates(scene);
   const layout = placeChart(scene, width, height, states);
-  const same = (a: ChartState, b: ChartState) => a.sort === b.sort && a.values.every((row, s) => row.every((v, l) => v === b.values[s]![l]));
+  const same = (a: ChartState, b: ChartState) =>
+    a.sort === b.sort && a.values.every((row, s) => row.every((v, l) => v === b.values[s]![l]));
   const fits = states.flatMap((state, k) => {
     if (k > 0 && same(state, states[k - 1]!)) return [];
     const order = chartOrder(scene, state.values, state.sort);
-    const fitted = valueFits(valueLabels(withValues(scene, state.values), { ...layout, xs: order.map((place) => layout.xs[place]!) }));
+    const fitted = valueFits(
+      valueLabels(withValues(scene, state.values), { ...layout, xs: order.map((place) => layout.xs[place]!) }),
+    );
     // A later state's labels are reported at the step that sets them, and only when they run together.
     return k === 0 ? fitted : fitted.flatMap((fit) => (fit.fits ? [] : [{ ...fit, path: `steps[${k - 1}].set` }]));
   });
@@ -229,10 +281,17 @@ export function layoutChart(scene: ChartScene, width: number, height: number): C
 
 /** Every value the chart's axis must reach in any state: each bar or point, or each stack's total. */
 function axisValues(scene: ChartScene, states: readonly ChartState[]): number[] {
-  return states.flatMap((state) => (scene.stacked ? scene.labels.map((_, l) => labelTotal(state.values, l)) : state.values.flat()));
+  return states.flatMap((state) =>
+    scene.stacked ? scene.labels.map((_, l) => labelTotal(state.values, l)) : state.values.flat(),
+  );
 }
 
-function placeChart(scene: ChartScene, width: number, height: number, states: readonly ChartState[]): Omit<ChartLayout, 'valueFits'> {
+function placeChart(
+  scene: ChartScene,
+  width: number,
+  height: number,
+  states: readonly ChartState[],
+): Omit<ChartLayout, 'valueFits'> {
   const values = axisValues(scene, states);
   const ticks = niceTicks(Math.min(...values), Math.max(...values));
   const lo = ticks[0]!;
@@ -266,13 +325,23 @@ function placeChart(scene: ChartScene, width: number, height: number, states: re
     barW,
     barGap,
     xLabels,
-    legend: scene.series.map((series, i) => fitText(series.name, sized(SLOTS.legend, LEGEND_NAME_W), `series[${i}].name`)),
-    note: scene.annotation ? fitText(scene.annotation.text, sized(SLOTS.annotation, NOTE_MAX_W - NOTE_PAD_X), 'annotation.text') : null,
+    legend: scene.series.map((series, i) =>
+      fitText(series.name, sized(SLOTS.legend, LEGEND_NAME_W), `series[${i}].name`),
+    ),
+    note: scene.annotation
+      ? fitText(scene.annotation.text, sized(SLOTS.annotation, NOTE_MAX_W - NOTE_PAD_X), 'annotation.text')
+      : null,
   };
 }
 
 /** Left edge of series `s`'s bar in a slot centred on `cx`; every series of a stack shares one bar. */
-export function barX(layout: Pick<ChartLayout, 'barW' | 'barGap'>, cx: number, s: number, seriesCount: number, stacked = false): number {
+export function barX(
+  layout: Pick<ChartLayout, 'barW' | 'barGap'>,
+  cx: number,
+  s: number,
+  seriesCount: number,
+  stacked = false,
+): number {
   if (stacked) return cx - layout.barW / 2;
   const group = seriesCount * layout.barW + (seriesCount - 1) * layout.barGap;
   return cx - group / 2 + s * (layout.barW + layout.barGap);

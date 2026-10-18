@@ -94,7 +94,11 @@ export function packRow(items: { want: number; w: number }[], gap: number, width
     const c: Cluster = { first: i, last: i, left: 0, w: item.w, wish: item.want };
     place(c);
     clusters.push(c);
-    for (let prev = clusters[clusters.length - 2]; prev && prev.left + prev.w + gap > clusters[clusters.length - 1]!.left; prev = clusters[clusters.length - 2]) {
+    for (
+      let prev = clusters[clusters.length - 2];
+      prev && prev.left + prev.w + gap > clusters[clusters.length - 1]!.left;
+      prev = clusters[clusters.length - 2]
+    ) {
       const next = clusters.pop()!;
       // Each box wishes for the cluster's left edge to sit at its own wanted left minus its offset in the cluster.
       const offset = prev.w + gap;
@@ -137,29 +141,53 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   const x1 = width - SIDE_PAD - 30;
   const x = (v: number) => x0 + ((v - lo) / (hi - lo || 1)) * (x1 - x0);
 
-  const order = scene.events.map((event, index) => ({ event, index })).sort((a, b) => a.event.at - b.event.at || a.index - b.index);
+  const order = scene.events
+    .map((event, index) => ({ event, index }))
+    .sort((a, b) => a.event.at - b.event.at || a.index - b.index);
   const wanted = order.map(({ event }) => {
     const one = (text: string, slot: typeof SLOTS.eventLabel) => fitText(text, sized(slot, Infinity), '').width;
     const stampW = measure(formatValue(event.at, scene), { family: 'mono', weight: 700, size: STAMP_FONT }) * 1.2;
-    const text = Math.max(one(event.label, SLOTS.eventLabel), event.detail ? one(event.detail, SLOTS.eventDetail) : 0, stampW);
+    const text = Math.max(
+      one(event.label, SLOTS.eventLabel),
+      event.detail ? one(event.detail, SLOTS.eventDetail) : 0,
+      stampW,
+    );
     return Math.max(BOX_MIN_W, Math.min(BOX_MAX_W, text + 2 * BOX_PAD_X));
   });
   // One row of cards above the axis while their narrowest widths fit; else every other event's card goes below it.
   const fitsOneRow = order.length * BOX_MIN_W + BOX_GAP * (order.length - 1) <= width;
-  const rows = fitsOneRow ? [order.map((_, i) => i)] : [0, 1].map((r) => order.flatMap((_, i) => (i % 2 === r ? [i] : [])));
-  const boxes = order.map(({ event, index }) => ({ event, index, cx: x(event.at), stamp: formatValue(event.at, scene) }));
+  const rows = fitsOneRow
+    ? [order.map((_, i) => i)]
+    : [0, 1].map((r) => order.flatMap((_, i) => (i % 2 === r ? [i] : [])));
+  const boxes = order.map(({ event, index }) => ({
+    event,
+    index,
+    cx: x(event.at),
+    stamp: formatValue(event.at, scene),
+  }));
   const rowLayouts = rows.map((members) => {
-    const widths = capWidths(members.map((i) => wanted[i]!), width - BOX_GAP * Math.max(0, members.length - 1));
+    const widths = capWidths(
+      members.map((i) => wanted[i]!),
+      width - BOX_GAP * Math.max(0, members.length - 1),
+    );
     const cards = members.map((i, k) => {
       const { event, index } = boxes[i]!;
       const w = widths[k]!;
       const label = fitText(event.label, sized(SLOTS.eventLabel, w - 2 * BOX_PAD_X), `events[${index}].label`);
-      const detail = event.detail ? fitText(event.detail, sized(SLOTS.eventDetail, w - 2 * BOX_PAD_X), `events[${index}].detail`) : null;
+      const detail = event.detail
+        ? fitText(event.detail, sized(SLOTS.eventDetail, w - 2 * BOX_PAD_X), `events[${index}].detail`)
+        : null;
       return { i, w, label, detail, h: 2 * BOX_PAD_Y + STAMP_LINE + label.height + (detail?.height ?? 0) };
     });
     // The cards in the events' order, each as near its event as the cards beside it allow.
-    const lefts = packRow(cards.map((c) => ({ want: boxes[c.i]!.cx - c.w / 2, w: c.w })), BOX_GAP, width);
-    const anchors = cards.map((c, k) => Math.min(lefts[k]! + c.w - 2 * BOX_PAD_X, Math.max(lefts[k]! + 2 * BOX_PAD_X, boxes[c.i]!.cx)));
+    const lefts = packRow(
+      cards.map((c) => ({ want: boxes[c.i]!.cx - c.w / 2, w: c.w })),
+      BOX_GAP,
+      width,
+    );
+    const anchors = cards.map((c, k) =>
+      Math.min(lefts[k]! + c.w - 2 * BOX_PAD_X, Math.max(lefts[k]! + 2 * BOX_PAD_X, boxes[c.i]!.cx)),
+    );
     const moved = cards.some((c, k) => Math.abs(anchors[k]! - boxes[c.i]!.cx) > 0.5);
     return { cards, lefts, anchors, stemH: moved ? STEM_LEAD : STEM_MIN, rowH: Math.max(0, ...cards.map((c) => c.h)) };
   });
@@ -175,11 +203,29 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
     row.cards.forEach((c, k) => {
       const b = boxes[c.i]!;
       const ax = row.anchors[k]!;
-      const stem = Math.abs(ax - b.cx) <= 0.5
-        ? [{ x: b.cx, y: axisY }, { x: b.cx, y: edge }]
-        : [{ x: b.cx, y: axisY }, { x: b.cx, y: axisY + lead }, { x: ax, y: edge - lead }, { x: ax, y: edge }];
+      const stem =
+        Math.abs(ax - b.cx) <= 0.5
+          ? [
+              { x: b.cx, y: axisY },
+              { x: b.cx, y: edge },
+            ]
+          : [
+              { x: b.cx, y: axisY },
+              { x: b.cx, y: axisY + lead },
+              { x: ax, y: edge - lead },
+              { x: ax, y: edge },
+            ];
       const box = { x: row.lefts[k]!, y: up ? edge - c.h : edge, w: c.w, h: c.h };
-      events[c.i] = { event: b.event, index: b.index, x: b.cx, stamp: b.stamp, label: c.label, detail: c.detail, box, stem };
+      events[c.i] = {
+        event: b.event,
+        index: b.index,
+        x: b.cx,
+        stamp: b.stamp,
+        label: c.label,
+        detail: c.detail,
+        box,
+        stem,
+      };
     });
   });
 
@@ -188,7 +234,11 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
     const a = x(Math.min(span.from, span.to));
     const b = x(Math.max(span.from, span.to));
     const path = `spans[${spans.indexOf(span)}].label`;
-    const within = fitText(span.label, { ...sized(SLOTS.spanLabel, b - a - SPAN_PAD), min: SLOTS.spanLabel.size }, path);
+    const within = fitText(
+      span.label,
+      { ...sized(SLOTS.spanLabel, b - a - SPAN_PAD), min: SLOTS.spanLabel.size },
+      path,
+    );
     // A label too long for its bar sits after it, so the next span in the lane must start past the label.
     const inside = within.fits;
     const label = inside ? within : fitText(span.label, sized(SLOTS.spanLabel, width - (b + 12)), path);
@@ -198,7 +248,14 @@ export function layoutTimeline(scene: TimelineScene, width: number): TimelineLay
   // Spans that only touch, like consecutive waits, share a lane and read as one bar in segments.
   const spanLanes = assignLanes(fitted, (f) => [f.a, f.reach], -0.5);
   const spansTop = below ? belowTop + below.rowH + SPAN_GAP * 2 : axisY + TICK_ZONE;
-  const placedSpans: PlacedSpan[] = fitted.map((f, i) => ({ span: f.span, x0: f.a, x1: f.b, y: spansTop + spanLanes[i]! * (SPAN_H + SPAN_GAP), label: f.label, inside: f.inside }));
+  const placedSpans: PlacedSpan[] = fitted.map((f, i) => ({
+    span: f.span,
+    x0: f.a,
+    x1: f.b,
+    y: spansTop + spanLanes[i]! * (SPAN_H + SPAN_GAP),
+    label: f.label,
+    inside: f.inside,
+  }));
   const spanLaneCount = spans.length ? Math.max(...spanLanes) + 1 : 0;
   const height = spansTop + spanLaneCount * (SPAN_H + SPAN_GAP);
 
@@ -224,10 +281,13 @@ export function timelineBoxes(layout: TimelineLayout): LayoutBoxes {
     ...layout.events.map((e): [string, Box] => [`ev:${e.index}`, card(e)]),
     ...layout.spans.map((s, i): [string, Box] => [`sp:${i}`, bar(s)]),
   ]);
-  const labels = layout.spans.flatMap((s) => (s.inside ? [] : [{ x: s.x1 + 12, y: s.y, width: s.label.width, height: SPAN_H }]));
+  const labels = layout.spans.flatMap((s) =>
+    s.inside ? [] : [{ x: s.x1 + 12, y: s.y, width: s.label.width, height: SPAN_H }],
+  );
   const axis = { x: 0, y: layout.axisY - 26, width: layout.width, height: 70 };
   return { boxes, obstacles: [...boxes.values(), ...labels, axis] };
 }
 
 /** The scale a timeline draws at in `box`: shrunk only to fit its height. */
-export const timelineScale = (layout: TimelineLayout, box: { width: number; height: number }): number => Math.min(1, box.height / layout.height);
+export const timelineScale = (layout: TimelineLayout, box: { width: number; height: number }): number =>
+  Math.min(1, box.height / layout.height);

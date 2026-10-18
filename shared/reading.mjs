@@ -17,7 +17,12 @@ export const FLAG_WORDS = { bug: 'likely bug', risk: 'risk', nit: 'nit' };
 
 const oneLine = (text) => plainText(String(text)).replace(/\s+/g, ' ').trim();
 /** One line of Markdown: the markup's `code` stays code, and the rest is plain text. */
-const mdLine = (text) => parseMarkup(String(text)).runs.map((r) => (r.code ? `\`${r.text}\`` : r.text)).join('').replace(/\s+/g, ' ').trim();
+const mdLine = (text) =>
+  parseMarkup(String(text))
+    .runs.map((r) => (r.code ? `\`${r.text}\`` : r.text))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
 // A file name from git may hold control characters, which would garble the terminal and reading.md.
 const C0 = /[\u0000-\u001f\u007f]/g;
 
@@ -31,7 +36,7 @@ export const readingScene = (storyboard) => storyboard?.scenes?.find((s) => s?.t
 export function hunkSpan(hunk) {
   const side = hunk.lines.some((l) => l.newLine !== null) ? 'newLine' : 'oldLine';
   const numbers = hunk.lines.map((l) => l[side]).filter((n) => n !== null);
-  const file = (side === 'oldLine' ? hunk.oldFile ?? hunk.file : hunk.file).replace(C0, '');
+  const file = (side === 'oldLine' ? (hunk.oldFile ?? hunk.file) : hunk.file).replace(C0, '');
   return { file, side, range: numbers.length ? [Math.min(...numbers), Math.max(...numbers)] : null };
 }
 
@@ -72,7 +77,8 @@ function byTopic(items) {
   const titled = items.some((i) => i.topic !== null);
   const groups = new Map();
   for (const item of items) {
-    if (!groups.has(item.topicId)) groups.set(item.topicId, { title: titled ? item.topic ?? 'Other changes' : null, items: [] });
+    if (!groups.has(item.topicId))
+      groups.set(item.topicId, { title: titled ? (item.topic ?? 'Other changes') : null, items: [] });
     groups.get(item.topicId).items.push(item);
   }
   return [...groups.values()];
@@ -90,25 +96,29 @@ export function readingOrder(storyboard, hunks, plan = null) {
   if (!scene || !Array.isArray(scene.items)) return null;
   const findings = new Map((Array.isArray(storyboard.findings) ? storyboard.findings : []).map((f) => [f?.id, f]));
   const titles = new Map((plan?.topics ?? []).map((t) => [t.id, t.title]));
-  const items = scene.items.filter((item) => item && Object.hasOwn(hunks, item.hunkId)).map((item) => {
-    const by = explainer(storyboard, item.hunkId);
-    const topicId = typeof by?.scene.topic === 'string' ? by.scene.topic : null;
-    return {
-      hunkId: item.hunkId,
-      where: hunkLocation(hunks[item.hunkId], item.lines),
-      also: [],
-      check: typeof item.check === 'string' ? item.check : '',
-      routine: item.routine === true,
-      number: null,
-      finding: typeof item.flag === 'string' ? findings.get(item.flag) ?? null : null,
-      explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
-      topicId,
-      topic: titles.get(topicId) ?? null,
-    };
-  });
+  const items = scene.items
+    .filter((item) => item && Object.hasOwn(hunks, item.hunkId))
+    .map((item) => {
+      const by = explainer(storyboard, item.hunkId);
+      const topicId = typeof by?.scene.topic === 'string' ? by.scene.topic : null;
+      return {
+        hunkId: item.hunkId,
+        where: hunkLocation(hunks[item.hunkId], item.lines),
+        also: [],
+        check: typeof item.check === 'string' ? item.check : '',
+        routine: item.routine === true,
+        number: null,
+        finding: typeof item.flag === 'string' ? (findings.get(item.flag) ?? null) : null,
+        explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
+        topicId,
+        topic: titles.get(topicId) ?? null,
+      };
+    });
   const groups = byTopic(items.filter((i) => !i.routine));
   const readFirst = groups.flatMap((g) => g.items);
-  readFirst.forEach((item, i) => { item.number = i + 1; });
+  readFirst.forEach((item, i) => {
+    item.number = i + 1;
+  });
   // A routine hunk of a file the reader already reads rides on that file's item, so no file is on both lists.
   const skimmed = [];
   for (const item of items.filter((i) => i.routine)) {
@@ -124,7 +134,8 @@ export function readingOrder(storyboard, hunks, plan = null) {
 export const alsoText = (item) => (item.also.length ? `, also ${item.also.join(', ')}` : '');
 
 /** "Claude: likely bug, the count is per server". */
-export const flagText = (finding, line = oneLine) => `Claude: ${FLAG_WORDS[finding.severity] ?? finding.severity}, ${line(finding.claim)}`;
+export const flagText = (finding, line = oneLine) =>
+  `Claude: ${FLAG_WORDS[finding.severity] ?? finding.severity}, ${line(finding.claim)}`;
 
 /** One item as a terminal line: its number, place and check, and the finding it carries. */
 function itemLine(item) {
@@ -151,7 +162,10 @@ export function readingChecklist(order) {
   }
   if (order.skim.length) {
     out.push('### Skim', '');
-    for (const group of order.skim) out.push(`- [ ] ${group.title ? `${oneLine(group.title)}: ` : ''}${group.items.map((i) => mdWhere(i.where)).join(', ')}`);
+    for (const group of order.skim)
+      out.push(
+        `- [ ] ${group.title ? `${oneLine(group.title)}: ` : ''}${group.items.map((i) => mdWhere(i.where)).join(', ')}`,
+      );
   }
   return out.join('\n').trimEnd();
 }

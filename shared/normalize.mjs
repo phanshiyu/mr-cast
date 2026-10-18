@@ -38,9 +38,14 @@ export const NODE_KINDS = Object.keys(KINDS);
  */
 export function upgradeScenes(storyboard) {
   if (!Array.isArray(storyboard?.scenes)) return storyboard;
-  const renamed = (scene) => (scene && typeof scene === 'object' && Object.hasOwn(LEGACY_TYPES, scene.type) ? { ...scene, type: LEGACY_TYPES[scene.type] } : scene);
+  const renamed = (scene) =>
+    scene && typeof scene === 'object' && Object.hasOwn(LEGACY_TYPES, scene.type)
+      ? { ...scene, type: LEGACY_TYPES[scene.type] }
+      : scene;
   const upgraded = (scene) => upgradeTests(renamed(scene));
-  return storyboard.scenes.some((s) => upgraded(s) !== s) ? { ...storyboard, scenes: storyboard.scenes.map(upgraded) } : storyboard;
+  return storyboard.scenes.some((s) => upgraded(s) !== s)
+    ? { ...storyboard, scenes: storyboard.scenes.map(upgraded) }
+    : storyboard;
 }
 export const legacyFocusKeys = (type) => (Object.hasOwn(LEGACY_FOCUS, type) ? LEGACY_FOCUS[type] : []);
 
@@ -56,7 +61,11 @@ const defined = (obj) => Object.fromEntries(Object.entries(obj).filter(([, v]) =
 function normalizeMarks(raw, explain) {
   const { modified, ...item } = raw;
   const marked = modified === true && item.change === undefined && item.highlight === undefined;
-  return defined({ ...item, change: marked && !explain ? 'modified' : item.change, highlight: marked && explain ? true : item.highlight });
+  return defined({
+    ...item,
+    change: marked && !explain ? 'modified' : item.change,
+    highlight: marked && explain ? true : item.highlight,
+  });
 }
 
 function normalizeNode(raw, explain) {
@@ -98,7 +107,9 @@ const literal = (text) => String(text ?? '').replace(/[\\*`=[\]{}]/g, (c) => `\\
  */
 export function intentAsText(scene, storyboard) {
   const { type, summary, bullets, ...rest } = scene;
-  const kicker = storyboard.subtitle ? `${literal(storyboard.title)} · [${literal(storyboard.subtitle)}]{neutral}` : literal(storyboard.title);
+  const kicker = storyboard.subtitle
+    ? `${literal(storyboard.title)} · [${literal(storyboard.subtitle)}]{neutral}`
+    : literal(storyboard.title);
   return { ...rest, type: 'text', kicker, headline: summary, items: bullets, diffstat: true };
 }
 
@@ -108,7 +119,10 @@ function normalizeScene(raw, explain, storyboard) {
   const out = steps === scene.steps ? { ...scene } : { ...scene, steps };
   if (scene.type === 'code' && Array.isArray(out.steps)) out.steps = flagSteps(out.steps, storyboard);
   if (scene.type === 'graph') out.nodes = scene.nodes.map((n) => normalizeNode(n, explain));
-  if (scene.type === 'layers') out.layers = scene.layers.map((l) => (l.items ? { ...l, items: l.items.map((n) => normalizeNode(n, explain)) } : l));
+  if (scene.type === 'layers')
+    out.layers = scene.layers.map((l) =>
+      l.items ? { ...l, items: l.items.map((n) => normalizeNode(n, explain)) } : l,
+    );
   // A step that focuses tests names them in the callout, unless it sets its own.
   if (scene.type === 'tests' && Array.isArray(out.steps)) {
     const callouts = testsCallouts(scene);

@@ -24,7 +24,11 @@ function mrCastData(dir: string): Plugin {
         res.end(readFileSync(file));
       });
       server.middlewares.use('/events', (_req, res) => {
-        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-store',
+          Connection: 'keep-alive',
+        });
         res.write(': connected\n\n');
         const watcher = watch(dir, (_event, filename) => {
           if (filename?.endsWith('.json')) res.write(`event: change\ndata: ${JSON.stringify({ file: filename })}\n\n`);

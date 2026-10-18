@@ -13,7 +13,17 @@ const START = 12;
 
 /** Says whose words these are, so the recap never reads as part of the explanation. */
 const Opinion: React.FC = () => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 6, color: colors.muted, fontSize: 22, fontWeight: 500 }}>
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      paddingBottom: 6,
+      color: colors.muted,
+      fontSize: 22,
+      fontWeight: 500,
+    }}
+  >
     <MessageCircleWarning size={26} strokeWidth={2} color={severityInk.risk} />
     My opinion, checked against the code
   </div>
@@ -63,11 +73,24 @@ const Row: React.FC<{ row: PlacedFinding; layout: ReviewLayout; at: number }> = 
       </div>
       <FitText
         fit={row.where}
-        style={{ position: 'absolute', left: layout.whereX, width: layout.claimX - layout.whereX - COL_GAP, top: (row.h - row.where.height) / 2, color: colors.muted }}
+        style={{
+          position: 'absolute',
+          left: layout.whereX,
+          width: layout.claimX - layout.whereX - COL_GAP,
+          top: (row.h - row.where.height) / 2,
+          color: colors.muted,
+        }}
       />
       <FitText
         fit={row.claim}
-        style={{ position: 'absolute', left: layout.claimX, width: layout.claimW, top: centred(row.claim.lines.length, layout.lineHeight), lineHeight: `${layout.lineHeight}px`, color: colors.text }}
+        style={{
+          position: 'absolute',
+          left: layout.claimX,
+          width: layout.claimW,
+          top: centred(row.claim.lines.length, layout.lineHeight),
+          lineHeight: `${layout.lineHeight}px`,
+          color: colors.text,
+        }}
       />
     </div>
   );
@@ -76,7 +99,10 @@ const Row: React.FC<{ row: PlacedFinding; layout: ReviewLayout; at: number }> = 
 /** The review's recap: every finding, worst first, under a label that says it is Claude's opinion. */
 export const ReviewRecap: React.FC<SceneProps<ReviewScene>> = ({ scene, storyboard, durationInFrames }) => {
   const box = contentBox(Boolean(scene.title));
-  const layout = useMemo(() => layoutReview(storyboard.findings ?? [], box.width, box.height), [storyboard.findings, box.width, box.height]);
+  const layout = useMemo(
+    () => layoutReview(storyboard.findings ?? [], box.width, box.height),
+    [storyboard.findings, box.width, box.height],
+  );
   const stagger = Math.min(8, (buildFrames('review') - START - 14) / Math.max(1, layout.rows.length - 1));
   const top = Math.max(0, box.height - layout.height) * 0.3;
   return (

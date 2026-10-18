@@ -74,7 +74,10 @@ export function buildFrames(type) {
 }
 
 export function wordCount(text) {
-  return String(text ?? '').trim().split(/\s+/).filter(Boolean).length;
+  return String(text ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
 /**
@@ -82,7 +85,9 @@ export function wordCount(text) {
  * and with the written forms the voice misreads in words.
  */
 export function spokenTexts(scene) {
-  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)].map((text) => (typeof text === 'string' ? speechText(plainText(text)) : text));
+  return [scene?.narration, ...sceneSteps(scene).map((step) => step?.say)].map((text) =>
+    typeof text === 'string' ? speechText(plainText(text)) : text,
+  );
 }
 
 /**
@@ -99,12 +104,22 @@ export function sceneSegments(scene, voiceover) {
   return spokenTexts(scene).map((text, i) => {
     const clip = clipFor(voiceover, text);
     const markFrom = from + (i === 0 ? narrationLead : Math.max(pause(STEP_LEAD), STEP_SETTLE_FRAMES));
-    const voiceFrom = markFrom + (i > 0 && (typeof steps[i - 1]?.mark === 'string' || typeof steps[i - 1]?.flag === 'string') ? PEN_FRAMES : 0);
+    const voiceFrom =
+      markFrom +
+      (i > 0 && (typeof steps[i - 1]?.mark === 'string' || typeof steps[i - 1]?.flag === 'string') ? PEN_FRAMES : 0);
     const speakingFrames = clip ? clip.seconds * FPS : (wordCount(text) / (WORDS_PER_MINUTE * speed)) * 60 * FPS;
     const after = clip
       ? Math.ceil(speakingFrames) + pause(i === 0 ? NARRATION_TAIL : STEP_TAIL)
       : Math.max(MIN_SILENT_SECONDS * FPS, Math.ceil(speakingFrames) + pause(SILENT_TAIL));
-    const segment = { text, from, markFrom, voiceFrom, durationInFrames: voiceFrom - from + after, speakingFrames, clip };
+    const segment = {
+      text,
+      from,
+      markFrom,
+      voiceFrom,
+      durationInFrames: voiceFrom - from + after,
+      speakingFrames,
+      clip,
+    };
     from += segment.durationInFrames;
     return segment;
   });
@@ -159,7 +174,8 @@ export function cueWord(text, cue) {
   const said = cueTokens(text);
   const want = cueTokens(speechText(plainText(String(cue ?? '')))).map((t) => t.word);
   if (!want.length) return -1;
-  for (let i = 0; i + want.length <= said.length; i++) if (want.every((w, j) => said[i + j].word === w)) return said[i].index;
+  for (let i = 0; i + want.length <= said.length; i++)
+    if (want.every((w, j) => said[i + j].word === w)) return said[i].index;
   return -1;
 }
 

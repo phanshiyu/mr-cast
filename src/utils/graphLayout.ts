@@ -56,13 +56,15 @@ export type GraphDirection = NonNullable<GraphScene['layout']>;
 export const shapeOf = (node: GraphNode): NodeShape => node.shape ?? 'card';
 
 /** A graph's direction: its own, or top to bottom when it branches at a decision, as a flowchart reads. */
-export const graphDirection = (scene: Pick<GraphScene, 'layout' | 'nodes'>): GraphDirection => scene.layout ?? (scene.nodes.some((n) => shapeOf(n) === 'decision') ? 'TB' : 'LR');
+export const graphDirection = (scene: Pick<GraphScene, 'layout' | 'nodes'>): GraphDirection =>
+  scene.layout ?? (scene.nodes.some((n) => shapeOf(n) === 'decision') ? 'TB' : 'LR');
 
 /**
  * The width a decision's question has on `lines` lines at `size`: the widest box of that height that
  * fits inside a diamond `w` wide and `h` tall, less its padding.
  */
-const diamondWidth = (w: number, h: number) => (lines: number, size: number) => w * (1 - (lines * size * SLOTS.decision.lineHeight + 2 * DECISION_PAD) / h) - 2 * DECISION_PAD;
+const diamondWidth = (w: number, h: number) => (lines: number, size: number) =>
+  w * (1 - (lines * size * SLOTS.decision.lineHeight + 2 * DECISION_PAD) / h) - 2 * DECISION_PAD;
 
 function decisionFit(node: GraphNode, w: number, h: number, path: string, min = SLOTS.decision.min): Fit {
   return fitText(node.label, { ...SLOTS.decision, min, width: diamondWidth(w, h) }, path);
@@ -71,22 +73,41 @@ function decisionFit(node: GraphNode, w: number, h: number, path: string, min = 
 /** The height of a graph's diamonds: the least at which every question keeps a comfortable size. */
 function decisionHeight(nodes: readonly GraphNode[], w: number): number {
   const decisions = nodes.filter((n) => shapeOf(n) === 'decision');
-  return DECISION_HEIGHTS.find((h) => decisions.every((n) => decisionFit(n, w, h, '', DECISION_COMFORT).fits)) ?? DECISION_HEIGHTS[DECISION_HEIGHTS.length - 1]!;
+  return (
+    DECISION_HEIGHTS.find((h) => decisions.every((n) => decisionFit(n, w, h, '', DECISION_COMFORT).fits)) ??
+    DECISION_HEIGHTS[DECISION_HEIGHTS.length - 1]!
+  );
 }
 
 /** How tall each shape is drawn, given the graph's diamond height. */
-const shapeHeight = (shape: NodeShape, diamond: number) => (shape === 'decision' ? diamond : shape === 'terminal' ? TERMINAL_H : NODE_H);
+const shapeHeight = (shape: NodeShape, diamond: number) =>
+  shape === 'decision' ? diamond : shape === 'terminal' ? TERMINAL_H : NODE_H;
 
 /**
  * Each node's text, by id. A card fits its title and caption; a step its title and caption with no icon;
  * a terminal its words in its pill; a decision its question in its diamond. Cards and steps share one title size.
  */
 function nodeTexts(nodes: readonly GraphNode[], w: number, diamond: number): Map<string, CardText> {
-  const boxed = nodes.flatMap((node, index) => (shapeOf(node) === 'card' || shapeOf(node) === 'step' ? [{ node: shapeOf(node) === 'step' ? { ...node, icon: undefined } : node, index }] : []));
-  const texts = cardTexts(boxed.map((b) => b.node), w, NODE_H, 'large', (i) => `nodes[${boxed[i]!.index}]`);
+  const boxed = nodes.flatMap((node, index) =>
+    shapeOf(node) === 'card' || shapeOf(node) === 'step'
+      ? [{ node: shapeOf(node) === 'step' ? { ...node, icon: undefined } : node, index }]
+      : [],
+  );
+  const texts = cardTexts(
+    boxed.map((b) => b.node),
+    w,
+    NODE_H,
+    'large',
+    (i) => `nodes[${boxed[i]!.index}]`,
+  );
   nodes.forEach((node, i) => {
-    if (shapeOf(node) === 'terminal') texts.set(node.id, { title: fitText(node.label, sized(SLOTS.terminal, w - 2 * TERMINAL_PAD_X), `nodes[${i}].label`), caption: null });
-    if (shapeOf(node) === 'decision') texts.set(node.id, { title: decisionFit(node, w, diamond, `nodes[${i}].label`), caption: null });
+    if (shapeOf(node) === 'terminal')
+      texts.set(node.id, {
+        title: fitText(node.label, sized(SLOTS.terminal, w - 2 * TERMINAL_PAD_X), `nodes[${i}].label`),
+        caption: null,
+      });
+    if (shapeOf(node) === 'decision')
+      texts.set(node.id, { title: decisionFit(node, w, diamond, `nodes[${i}].label`), caption: null });
   });
   return texts;
 }
@@ -115,8 +136,26 @@ interface Axes {
 /** Top to bottom the frame is short for its layers, so the layers keep less margin there. */
 function axesFor(direction: GraphDirection, nodeW: number, cellH: number): Axes {
   return direction === 'LR'
-    ? { V: cellH, uGap: 280, vGap: 64, uPad: PAD, labelChars: 22, labelU: (b) => b.width, labelV: (b) => b.height, xy: (u, v) => ({ x: u, y: v }) }
-    : { V: nodeW, uGap: 48, vGap: 56, uPad: 20, labelChars: 32, labelU: (b) => b.height, labelV: (b) => b.width, xy: (u, v) => ({ x: v, y: u }) };
+    ? {
+        V: cellH,
+        uGap: 280,
+        vGap: 64,
+        uPad: PAD,
+        labelChars: 22,
+        labelU: (b) => b.width,
+        labelV: (b) => b.height,
+        xy: (u, v) => ({ x: u, y: v }),
+      }
+    : {
+        V: nodeW,
+        uGap: 48,
+        vGap: 56,
+        uPad: 20,
+        labelChars: 32,
+        labelU: (b) => b.height,
+        labelV: (b) => b.width,
+        xy: (u, v) => ({ x: v, y: u }),
+      };
 }
 
 export interface Pt {
@@ -282,7 +321,8 @@ function bandsOf(nodes: readonly GraphNode[], columns: readonly GraphNode[][]): 
       if (run && (name !== null || run[1] === l - 1)) run[1] = l;
       else runs.push([l, l]);
     }
-    for (const [first, last] of runs) bands.push({ name, first, last, size: Math.max(...counts.slice(first, last + 1)), track: 0, v0: 0 });
+    for (const [first, last] of runs)
+      bands.push({ name, first, last, size: Math.max(...counts.slice(first, last + 1)), track: 0, v0: 0 });
   }
   const tracks: Band[][] = [];
   for (const band of bands) {
@@ -305,7 +345,10 @@ interface Curve {
 function bezier(a: Pt, b: Pt, c: Pt, d: Pt): (t: number) => Pt {
   return (t) => {
     const w = [(1 - t) ** 3, 3 * (1 - t) ** 2 * t, 3 * (1 - t) * t ** 2, t ** 3] as const;
-    return { x: w[0] * a.x + w[1] * b.x + w[2] * c.x + w[3] * d.x, y: w[0] * a.y + w[1] * b.y + w[2] * c.y + w[3] * d.y };
+    return {
+      x: w[0] * a.x + w[1] * b.x + w[2] * c.x + w[3] * d.x,
+      y: w[0] * a.y + w[1] * b.y + w[2] * c.y + w[3] * d.y,
+    };
   };
 }
 
@@ -340,7 +383,12 @@ const LANE_RANKS = 5;
  * on, never a lane that crosses a node. Returns a lane v per edge, or null for an edge that runs clear.
  * Points here are (u, v) in `x` and `y`.
  */
-function skipLanes(axes: Axes, pairs: readonly [Placed, Placed][], all: readonly Placed[], step: number): (number | null)[] {
+function skipLanes(
+  axes: Axes,
+  pairs: readonly [Placed, Placed][],
+  all: readonly Placed[],
+  step: number,
+): (number | null)[] {
   const { V, vGap } = axes;
   const taken: { v: number; u0: number; u1: number }[] = [];
   return pairs.map(([a, b]) => {
@@ -358,8 +406,18 @@ function skipLanes(axes: Axes, pairs: readonly [Placed, Placed][], all: readonly
     const before = Math.min(...between.map((n) => n.v)) - vGap / 2;
     const after = Math.max(...between.map((n) => n.v + V)) + vGap / 2;
     const mid = (v0 + v1) / 2;
-    const sides: [number, number][] = Math.abs(mid - before) <= Math.abs(mid - after) ? [[before, -1], [after, 1]] : [[after, 1], [before, -1]];
-    const crossesNode = (v: number) => all.some((n) => n.u < u1 && n.u + n.uSize > u0 && v > n.v - LANE_MARGIN && v < n.v + V + LANE_MARGIN);
+    const sides: [number, number][] =
+      Math.abs(mid - before) <= Math.abs(mid - after)
+        ? [
+            [before, -1],
+            [after, 1],
+          ]
+        : [
+            [after, 1],
+            [before, -1],
+          ];
+    const crossesNode = (v: number) =>
+      all.some((n) => n.u < u1 && n.u + n.uSize > u0 && v > n.v - LANE_MARGIN && v < n.v + V + LANE_MARGIN);
     const sharesLane = (v: number) => taken.some((t) => Math.abs(t.v - v) < 1 && t.u0 < u1 && u0 < t.u1);
     const candidates = Array.from({ length: LANE_RANKS }, (_, k) => sides.map(([v, out]) => v + out * k * step)).flat();
     const v = candidates.find((c) => !crossesNode(c) && !sharesLane(c)) ?? sides[0]![0];
@@ -369,7 +427,15 @@ function skipLanes(axes: Axes, pairs: readonly [Placed, Placed][], all: readonly
 }
 
 /** `lane` is the v a skipping edge runs along, or null to run straight; `labelU` is where along u a label between neighbouring layers sits best. */
-function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: readonly Placed[], lane: number | null, labelU: number): Curve {
+function route(
+  axes: Axes,
+  gaps: readonly number[],
+  a: Placed,
+  b: Placed,
+  all: readonly Placed[],
+  lane: number | null,
+  labelU: number,
+): Curve {
   const { V, xy } = axes;
   if (b.layer > a.layer) {
     const p0 = { x: a.u + a.uSize - a.iu, y: a.v + V / 2 };
@@ -377,18 +443,36 @@ function route(axes: Axes, gaps: readonly number[], a: Placed, b: Placed, all: r
     if (lane !== null) {
       const g0 = gaps[a.layer]! / 2;
       const g1 = gaps[b.layer - 1]! / 2;
-      const pts = [p0, { x: p0.x + g0 / 2, y: p0.y }, { x: p0.x + g0 / 2, y: lane }, { x: p0.x + g0, y: lane }, { x: p3.x - g1, y: lane }, { x: p3.x - g1 / 2, y: lane }, { x: p3.x - g1 / 2, y: p3.y }, p3].map(
-        (p) => xy(p.x, p.y),
-      );
+      const pts = [
+        p0,
+        { x: p0.x + g0 / 2, y: p0.y },
+        { x: p0.x + g0 / 2, y: lane },
+        { x: p0.x + g0, y: lane },
+        { x: p3.x - g1, y: lane },
+        { x: p3.x - g1 / 2, y: lane },
+        { x: p3.x - g1 / 2, y: p3.y },
+        p3,
+      ].map((p) => xy(p.x, p.y));
       const s = (p: Pt) => `${p.x} ${p.y}`;
       const d = `M ${s(pts[0]!)} C ${s(pts[1]!)}, ${s(pts[2]!)}, ${s(pts[3]!)} L ${s(pts[4]!)} C ${s(pts[5]!)}, ${s(pts[6]!)}, ${s(pts[7]!)}`;
       const [l0, l1] = [pts[3]!, pts[4]!];
       const at = (t: number) => ({ x: l0.x + (l1.x - l0.x) * t, y: l0.y + (l1.y - l0.y) * t });
-      const points = [...sample(bezier(pts[0]!, pts[1]!, pts[2]!, pts[3]!), 16), ...sample(at, 16), ...sample(bezier(pts[4]!, pts[5]!, pts[6]!, pts[7]!), 16)];
+      const points = [
+        ...sample(bezier(pts[0]!, pts[1]!, pts[2]!, pts[3]!), 16),
+        ...sample(at, 16),
+        ...sample(bezier(pts[4]!, pts[5]!, pts[6]!, pts[7]!), 16),
+      ];
       return { d, points, at, t0: 0.5 };
     }
     const du = (p3.x - p0.x) / 2;
-    return cubic(axes, p0, { x: p0.x + du, y: p0.y }, { x: p3.x - du, y: p3.y }, p3, b.layer === a.layer + 1 ? tAtU(p0.x, p3.x, labelU) : 0.5);
+    return cubic(
+      axes,
+      p0,
+      { x: p0.x + du, y: p0.y },
+      { x: p3.x - du, y: p3.y },
+      p3,
+      b.layer === a.layer + 1 ? tAtU(p0.x, p3.x, labelU) : 0.5,
+    );
   }
   if (b.layer === a.layer) {
     const down = b.v > a.v;
@@ -411,7 +495,12 @@ interface Rect {
   height: number;
 }
 
-const grow = (r: Rect, by: number): Rect => ({ x: r.x - by, y: r.y - by, width: r.width + 2 * by, height: r.height + 2 * by });
+const grow = (r: Rect, by: number): Rect => ({
+  x: r.x - by,
+  y: r.y - by,
+  width: r.width + 2 * by,
+  height: r.height + 2 * by,
+});
 
 function overlap(a: Rect, b: Rect): number {
   const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
@@ -423,7 +512,8 @@ function overlap(a: Rect, b: Rect): number {
 export const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
 
 /** Widest a group's name may run: top to bottom it keeps to half the box, clear of edges entering at the middle. */
-export const groupNameMax = (g: { width: number }, direction: GraphDirection) => (direction === 'TB' ? g.width / 2 - 34 : g.width - 44);
+export const groupNameMax = (g: { width: number }, direction: GraphDirection) =>
+  direction === 'TB' ? g.width / 2 - 34 : g.width - 44;
 
 /** What a label must stay clear of in a group: its four borders and its name. */
 function groupObstacles(g: PlacedGroup): Rect[] {
@@ -434,7 +524,12 @@ function groupObstacles(g: PlacedGroup): Rect[] {
     { x: g.x - b, y: g.y + g.height - b, width: g.width + 2 * b, height: 2 * b },
     { x: g.x - b, y: g.y - b, width: 2 * b, height: g.height + 2 * b },
     { x: g.x + g.width - b, y: g.y - b, width: 2 * b, height: g.height + 2 * b },
-    { x: g.nameAt === 'left' ? g.x + GROUP_NAME.x : g.x + g.width - GROUP_NAME.x - nameW, y: g.y + GROUP_NAME.y, width: nameW, height: GROUP_NAME.font * 1.3 },
+    {
+      x: g.nameAt === 'left' ? g.x + GROUP_NAME.x : g.x + g.width - GROUP_NAME.x - nameW,
+      y: g.y + GROUP_NAME.y,
+      width: nameW,
+      height: GROUP_NAME.font * 1.3,
+    },
   ];
 }
 
@@ -452,21 +547,34 @@ function labelSize(text: string, chars: number, path: string): { text: Fit; widt
 /** Where along `curve` a label may sit, nearest its `t0` first. */
 function labelSpots(curve: Curve): Pt[] {
   const ts = [curve.t0];
-  for (let k = 1; k <= 30; k++) for (const t of [curve.t0 - 0.03 * k, curve.t0 + 0.03 * k]) if (t > 0.05 && t < 0.95) ts.push(t);
+  for (let k = 1; k <= 30; k++)
+    for (const t of [curve.t0 - 0.03 * k, curve.t0 + 0.03 * k]) if (t > 0.05 && t < 0.95) ts.push(t);
   return ts.map(curve.at);
 }
 
 /** What a label of `size` at `at` covers: area of `obstacles` (`cost`), then points of other edges' `lines`. */
-function labelCost(at: Pt, size: { width: number; height: number }, obstacles: readonly Rect[], lines: readonly Pt[]): { cost: number; crossed: number } {
+function labelCost(
+  at: Pt,
+  size: { width: number; height: number },
+  obstacles: readonly Rect[],
+  lines: readonly Pt[],
+): { cost: number; crossed: number } {
   const rect = { x: at.x - size.width / 2, y: at.y - size.height / 2, width: size.width, height: size.height };
   return {
     cost: obstacles.reduce((sum, o) => sum + overlap(rect, o), 0),
-    crossed: lines.filter((p) => p.x > rect.x && p.x < rect.x + rect.width && p.y > rect.y && p.y < rect.y + rect.height).length,
+    crossed: lines.filter(
+      (p) => p.x > rect.x && p.x < rect.x + rect.width && p.y > rect.y && p.y < rect.y + rect.height,
+    ).length,
   };
 }
 
 /** The spot along `curve` that covers least, nearest its `t0` among equals. */
-function placeLabel(curve: Curve, size: { width: number; height: number }, obstacles: readonly Rect[], lines: readonly Pt[]): Pt & { cost: number } {
+function placeLabel(
+  curve: Curve,
+  size: { width: number; height: number },
+  obstacles: readonly Rect[],
+  lines: readonly Pt[],
+): Pt & { cost: number } {
   let best = { at: curve.at(curve.t0), cost: Infinity, crossed: Infinity };
   for (const at of labelSpots(curve)) {
     const { cost, crossed } = labelCost(at, size, obstacles, lines);
@@ -482,7 +590,12 @@ function placeLabel(curve: Curve, size: { width: number; height: number }, obsta
  * the tallest (top to bottom) or widest (left to right) label between those two layers. A gap where a
  * label still finds no clear spot, say beside another label, grows by that label and is laid out again.
  */
-export function layoutGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[], direction: GraphDirection = 'LR', nodeW = NODE_W): GraphLayout {
+export function layoutGraph(
+  nodes: readonly GraphNode[],
+  edges: readonly GraphEdge[],
+  direction: GraphDirection = 'LR',
+  nodeW = NODE_W,
+): GraphLayout {
   const extra: number[] = [];
   for (let pass = 0; ; pass++) {
     const { layout, crowded } = layoutPass(nodes, edges, direction, nodeW, extra);
@@ -518,8 +631,10 @@ function layoutPass(
   const bands = bandsOf(nodes, columns);
   /** Each layer's extent along u, and how far a node sits inside its cell. */
   const uSizes = columns.map((col) => (direction === 'LR' ? nodeW : Math.max(TERMINAL_H, ...col.map(heightOf))));
-  const insets = (n: GraphNode, l: number) => (direction === 'LR' ? { iu: 0, iv: (V - heightOf(n)) / 2 } : { iu: (uSizes[l]! - heightOf(n)) / 2, iv: 0 });
-  const bandOf = (n: GraphNode) => bands.find((b) => b.name === (n.group ?? null) && b.first <= layer(n.id) && layer(n.id) <= b.last)!;
+  const insets = (n: GraphNode, l: number) =>
+    direction === 'LR' ? { iu: 0, iv: (V - heightOf(n)) / 2 } : { iu: (uSizes[l]! - heightOf(n)) / 2, iv: 0 };
+  const bandOf = (n: GraphNode) =>
+    bands.find((b) => b.name === (n.group ?? null) && b.first <= layer(n.id) && layer(n.id) <= b.last)!;
   for (const col of columns) col.sort((a, b) => bandOf(a).track - bandOf(b).track);
 
   // The group name sits above its nodes: along v left to right, along u top to bottom.
@@ -543,12 +658,21 @@ function layoutPass(
   /** Along u, what group boxes take after layer `l` ends and before it starts. */
   const closing = (l: number) => (named.some((b) => b.last === l) ? GROUP_PAD : 0);
   const opening = (l: number) => (named.some((b) => b.first === l) ? GROUP_PAD + headU : 0);
-  const sizes = new Map(valid.flatMap((e) => (e.label ? [[e, labelSize(e.label, axes.labelChars, `edges[${edges.indexOf(e)}].label`)] as const] : [])));
+  const sizes = new Map(
+    valid.flatMap((e) =>
+      e.label ? [[e, labelSize(e.label, axes.labelChars, `edges[${edges.indexOf(e)}].label`)] as const] : [],
+    ),
+  );
   const gaps = Array.from({ length: layerCount - 1 }, (_, l) => {
-    const between = valid.filter((e) => sizes.has(e) && Math.min(layer(e.from), layer(e.to)) === l && Math.abs(layer(e.to) - layer(e.from)) === 1);
+    const between = valid.filter(
+      (e) => sizes.has(e) && Math.min(layer(e.from), layer(e.to)) === l && Math.abs(layer(e.to) - layer(e.from)) === 1,
+    );
     const label = Math.max(0, ...between.map((e) => axes.labelU(sizes.get(e)!)));
     const floor = closing(l) || opening(l + 1) ? Math.max(axes.uGap, BORDERED_GAP) : axes.uGap;
-    return Math.max(floor, closing(l) + (label ? label + 2 * LABEL_CLEAR : 0) + Math.max(opening(l + 1), ARROW_CLEAR)) + (extra[l] ?? 0);
+    return (
+      Math.max(floor, closing(l) + (label ? label + 2 * LABEL_CLEAR : 0) + Math.max(opening(l + 1), ARROW_CLEAR)) +
+      (extra[l] ?? 0)
+    );
   });
   const uStart = [axes.uPad + opening(0)];
   gaps.forEach((gap, l) => uStart.push(uStart[l]! + uSizes[l]! + gap));
@@ -561,7 +685,14 @@ function layoutPass(
     bands.forEach((band) => {
       const members = col.filter((n) => bandOf(n) === band);
       members.forEach((node, i) => {
-        placed.set(node.id, { node, layer: l, u: uOf(l), uSize: uSizes[l]!, v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap), ...insets(node, l) });
+        placed.set(node.id, {
+          node,
+          layer: l,
+          u: uOf(l),
+          uSize: uSizes[l]!,
+          v: band.v0 + (extent(band.size) - extent(members.length)) / 2 + i * (V + vGap),
+          ...insets(node, l),
+        });
       });
     });
   });
@@ -569,7 +700,9 @@ function layoutPass(
 
   // Lanes are a label's extent apart, so stacked lanes' labels never touch, and the graph grows along v to hold the outermost.
   const ends = valid.map((e): [Placed, Placed] => [placed.get(e.from)!, placed.get(e.to)!]);
-  const skipping = valid.flatMap((e, i) => (ends[i]![1].layer > ends[i]![0].layer + 1 && sizes.has(e) ? [axes.labelV(sizes.get(e)!)] : []));
+  const skipping = valid.flatMap((e, i) =>
+    ends[i]![1].layer > ends[i]![0].layer + 1 && sizes.has(e) ? [axes.labelV(sizes.get(e)!)] : [],
+  );
   const isLane = (v: number | null): v is number => v !== null;
   const raw = skipLanes(axes, ends, all, Math.max(vGap / 2, ...skipping) + 2 * LABEL_CLEAR);
   const shift = Math.max(0, LANE_EDGE - Math.min(...raw.filter(isLane)));
@@ -583,12 +716,28 @@ function layoutPass(
     const { first, last } = band;
     const a = xy(uOf(first) - GROUP_PAD - headU, band.v0 - GROUP_PAD - headV);
     const b = xy(uOf(last) + uSizes[last]! + GROUP_PAD, band.v0 + extent(band.size) + GROUP_PAD);
-    const incoming = valid.filter((e) => placed.get(e.to)!.node.group === band.name && layer(e.to) === first && placed.get(e.from)!.node.group !== band.name);
+    const incoming = valid.filter(
+      (e) =>
+        placed.get(e.to)!.node.group === band.name &&
+        layer(e.to) === first &&
+        placed.get(e.from)!.node.group !== band.name,
+    );
     const from = incoming.map((e) => placed.get(e.from)!.v + V / 2);
-    const enterBefore = from.length > 0 && from.reduce((sum, v) => sum + v, 0) / from.length < band.v0 + extent(band.size) / 2;
+    const enterBefore =
+      from.length > 0 && from.reduce((sum, v) => sum + v, 0) / from.length < band.v0 + extent(band.size) / 2;
     const box = { x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y };
-    const label = fitText(band.name!, sized(SLOTS.groupName, groupNameMax(box, direction)), `nodes[${nodes.findIndex((n) => n.group === band.name)}].group`);
-    return { name: band.name!, ...box, layer: first, nameAt: direction === 'TB' && enterBefore ? 'right' : 'left', label };
+    const label = fitText(
+      band.name!,
+      sized(SLOTS.groupName, groupNameMax(box, direction)),
+      `nodes[${nodes.findIndex((n) => n.group === band.name)}].group`,
+    );
+    return {
+      name: band.name!,
+      ...box,
+      layer: first,
+      nameAt: direction === 'TB' && enterBefore ? 'right' : 'left',
+      label,
+    };
   });
 
   /** A node's shape in layout units. */
@@ -596,10 +745,7 @@ function layoutPass(
     const size = xy(p.uSize - 2 * p.iu, V - 2 * p.iv);
     return { ...xy(p.u + p.iu, p.v + p.iv), width: size.x, height: size.y };
   };
-  const obstacles: Rect[] = [
-    ...all.map((p) => grow(shapeBox(p), 6)),
-    ...groups.flatMap(groupObstacles),
-  ];
+  const obstacles: Rect[] = [...all.map((p) => grow(shapeBox(p), 6)), ...groups.flatMap(groupObstacles)];
   const crowded = new Map<number, number>();
   const curves = valid.map((_, i) => {
     const [a, b] = ends[i]!;
@@ -613,20 +759,35 @@ function layoutPass(
       const { cost, crossed } = labelCost(at, sizes.get(valid[i]!)!, obstacles, others(i));
       return cost === 0 && crossed === 0;
     }).length;
-  const labelled = valid.flatMap((e, i) => (sizes.has(e) ? [{ i, spots: clearSpots(i) }] : [])).sort((a, b) => a.spots - b.spots);
+  const labelled = valid
+    .flatMap((e, i) => (sizes.has(e) ? [{ i, spots: clearSpots(i) }] : []))
+    .sort((a, b) => a.spots - b.spots);
   const labels = new Map<number, EdgeLabelBox>();
   for (const { i } of labelled) {
     const [e, size] = [valid[i]!, sizes.get(valid[i]!)!];
     const { cost, ...at } = placeLabel(curves[i]!, size, obstacles, others(i));
     const [la, lb] = [layer(e.from), layer(e.to)];
-    if (cost > 0 && Math.abs(la - lb) === 1) crowded.set(Math.min(la, lb), Math.max(crowded.get(Math.min(la, lb)) ?? 0, axes.labelU(size) + LABEL_CLEAR));
+    if (cost > 0 && Math.abs(la - lb) === 1)
+      crowded.set(Math.min(la, lb), Math.max(crowded.get(Math.min(la, lb)) ?? 0, axes.labelU(size) + LABEL_CLEAR));
     labels.set(i, { ...size, ...at });
-    obstacles.push(grow({ x: at.x - size.width / 2, y: at.y - size.height / 2, width: size.width, height: size.height }, 4));
+    obstacles.push(
+      grow({ x: at.x - size.width / 2, y: at.y - size.height / 2, width: size.width, height: size.height }, 4),
+    );
   }
-  const routed = valid.map((e, i): RoutedEdge => ({ edge: e, index: edges.indexOf(e), d: curves[i]!.d, label: labels.get(i) ?? null, mid: curves[i]!.at(curves[i]!.t0), points: curves[i]!.points }));
+  const routed = valid.map(
+    (e, i): RoutedEdge => ({
+      edge: e,
+      index: edges.indexOf(e),
+      d: curves[i]!.d,
+      label: labels.get(i) ?? null,
+      mid: curves[i]!.at(curves[i]!.t0),
+      points: curves[i]!.points,
+    }),
+  );
 
   const hasSameLayer = valid.some((e) => layer(e.to) === layer(e.from));
-  const uSize = uOf(layerCount - 1) + uSizes[layerCount - 1]! + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
+  const uSize =
+    uOf(layerCount - 1) + uSizes[layerCount - 1]! + closing(layerCount - 1) + axes.uPad + (hasSameLayer ? 80 : 0);
   const vSize = Math.max(cursor + PAD, Math.max(...laneVs) + LANE_EDGE);
   const size = xy(uSize, vSize);
   const layout = {
@@ -647,7 +808,8 @@ function layoutPass(
 }
 
 /** Scale that fits a layout into `box`, never above MAX_SCALE. */
-const fitScale = (layout: GraphLayout, box: { width: number; height: number }) => Math.min(box.width / layout.width, box.height / layout.height, MAX_SCALE);
+const fitScale = (layout: GraphLayout, box: { width: number; height: number }) =>
+  Math.min(box.width / layout.width, box.height / layout.height, MAX_SCALE);
 
 /**
  * The layout that draws largest in `box`. Shapes widen from NODE_W towards NODE_W_MAX while that draws the
@@ -655,10 +817,17 @@ const fitScale = (layout: GraphLayout, box: { width: number; height: number }) =
  * smaller. Top to bottom the frame is wide for the layers, so a wider diamond, which holds its question
  * on fewer lines and so is lower, draws the whole flowchart larger; left to right a wider shape never does.
  */
-export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[], direction: GraphDirection, box: { width: number; height: number }): { layout: GraphLayout; scale: number } {
+export function fitGraph(
+  nodes: readonly GraphNode[],
+  edges: readonly GraphEdge[],
+  direction: GraphDirection,
+  box: { width: number; height: number },
+): { layout: GraphLayout; scale: number } {
   const base = layoutGraph(nodes, edges, direction, NODE_W);
   const floor = fitScale(base, box);
-  const boxed = nodes.flatMap((n) => (shapeOf(n) === 'card' ? [n] : shapeOf(n) === 'step' ? [{ ...n, icon: undefined }] : []));
+  const boxed = nodes.flatMap((n) =>
+    shapeOf(n) === 'card' ? [n] : shapeOf(n) === 'step' ? [{ ...n, icon: undefined }] : [],
+  );
   const lowers = (w: number) => decisionHeight(nodes, w) < decisionHeight(nodes, NODE_W);
   let best = { layout: base, scale: floor, titleFont: sharedTitleSize(boxed, NODE_W, NODE_H, 'large') };
   for (let w = NODE_W + 8; w <= NODE_W_MAX; w += 8) {
@@ -667,7 +836,8 @@ export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[
     const layout = layoutGraph(nodes, edges, direction, w);
     const scale = fitScale(layout, box);
     if (scale < floor * 0.995) break;
-    if (scale > best.scale * 1.005 || (font > best.titleFont && scale >= best.scale * 0.995)) best = { layout, scale, titleFont: Math.max(font, best.titleFont) };
+    if (scale > best.scale * 1.005 || (font > best.titleFont && scale >= best.scale * 0.995))
+      best = { layout, scale, titleFont: Math.max(font, best.titleFont) };
   }
   return { layout: best.layout, scale: best.scale };
 }
@@ -675,11 +845,17 @@ export function fitGraph(nodes: readonly GraphNode[], edges: readonly GraphEdge[
 /** A node as a state shows it: the badge the steps have set on it, or none. */
 export const asShown = (node: GraphNode, state: SceneState): GraphNode => {
   const badge = state.values[`b:${node.id}`];
-  return badge === undefined || badge === (node.badge ?? '') ? node : { ...node, badge: badge === '' ? undefined : String(badge) };
+  return badge === undefined || badge === (node.badge ?? '')
+    ? node
+    : { ...node, badge: badge === '' ? undefined : String(badge) };
 };
 
 /** A graph scene's layout and scale in `box`, keeping room for a badge on every node any state gives one, so a badge a step sets never lands on a mark. */
-export function fitSceneGraph(scene: GraphScene, states: readonly SceneState[], box: { width: number; height: number }): { layout: GraphLayout; scale: number } {
+export function fitSceneGraph(
+  scene: GraphScene,
+  states: readonly SceneState[],
+  box: { width: number; height: number },
+): { layout: GraphLayout; scale: number } {
   const sized = scene.nodes.map((n) => states.reduce((node, state) => (node.badge ? node : asShown(n, state)), n));
   return fitGraph(sized, scene.edges, graphDirection(scene), box);
 }
@@ -695,7 +871,8 @@ export function graphBoxes(layout: GraphLayout): LayoutBoxes {
     const lift = badgeWords(p.node).length ? BADGE_LIFT : 0;
     return { x: p.box.x, y: p.box.y - lift, width: p.box.width, height: p.box.height + lift };
   };
-  const edge = (r: RoutedEdge): Box => (r.label ? around(r.label, r.label.width, r.label.height) : around(r.mid, 40, 40));
+  const edge = (r: RoutedEdge): Box =>
+    r.label ? around(r.label, r.label.width, r.label.height) : around(r.mid, 40, 40);
   const boxes = new Map<string, Box>([
     ...layout.nodes.map((p): [string, Box] => [`n:${p.node.id}`, card(p)]),
     ...layout.edges.map((r): [string, Box] => [`e:${r.index}`, edge(r)]),
@@ -714,8 +891,16 @@ const TABLE_SHARE = 0.4;
 const TABLE_GAP = 48;
 
 /** Where a graph scene draws: the whole content box, the graph's part of it, and the width of the table beside it (0 for none). */
-export function graphAreas(scene: GraphScene): { full: { width: number; height: number }; graphBox: { width: number; height: number }; tableW: number } {
+export function graphAreas(scene: GraphScene): {
+  full: { width: number; height: number };
+  graphBox: { width: number; height: number };
+  tableW: number;
+} {
   const full = hasCallout(scene) ? headerBox(scene) : contentBox(false);
   const tableW = scene.table ? Math.round(full.width * TABLE_SHARE) : 0;
-  return { full, graphBox: { width: full.width - (scene.table ? tableW + TABLE_GAP : 0), height: full.height }, tableW };
+  return {
+    full,
+    graphBox: { width: full.width - (scene.table ? tableW + TABLE_GAP : 0), height: full.height },
+    tableW,
+  };
 }

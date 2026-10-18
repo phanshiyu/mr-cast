@@ -13,7 +13,10 @@ export const FLAG_MARK = 'circle';
 export const isReviewed = (storyboard) => Array.isArray(storyboard?.findings);
 
 /** The finding a code step flags, or undefined. */
-export const flaggedFinding = (storyboard, step) => (typeof step?.flag === 'string' && isReviewed(storyboard) ? storyboard.findings.find((f) => f?.id === step.flag) : undefined);
+export const flaggedFinding = (storyboard, step) =>
+  typeof step?.flag === 'string' && isReviewed(storyboard)
+    ? storyboard.findings.find((f) => f?.id === step.flag)
+    : undefined;
 
 /** A line number or "a-b" range as [first, last], or null when it is neither. Never expands the range. */
 export function lineSpan(ref) {
@@ -37,13 +40,19 @@ export const REVIEW_HEADING = '# Review: ';
 const oneLine = (text) => text.replace(/\s+/g, ' ').trim();
 
 /** The findings worst first, keeping the written order within a severity. */
-export const bySeverity = (findings) => SEVERITIES.flatMap((severity) => findings.filter((f) => f.severity === severity));
+export const bySeverity = (findings) =>
+  SEVERITIES.flatMap((severity) => findings.filter((f) => f.severity === severity));
 
 /** review.md: the findings as file:line bullets a reader can act on, with their evidence. */
 export function reviewMarkdown(storyboard, { branch, base } = {}) {
   const findings = storyboard.findings ?? [];
   const against = branch && base ? ` of \`${branch}\` against \`${base}\`` : '';
-  const out = [`${REVIEW_HEADING}${oneLine(plainText(storyboard.title))}`, '', `Claude's review${against}. Each finding is an opinion, checked against the code before it was written down.`, ''];
+  const out = [
+    `${REVIEW_HEADING}${oneLine(plainText(storyboard.title))}`,
+    '',
+    `Claude's review${against}. Each finding is an opinion, checked against the code before it was written down.`,
+    '',
+  ];
   if (!findings.length) {
     out.push('No findings. Nothing in the change looked wrong.');
     return `${out.join('\n')}\n`;
@@ -52,7 +61,8 @@ export function reviewMarkdown(storyboard, { branch, base } = {}) {
     const own = findings.filter((f) => f.severity === severity);
     if (!own.length) continue;
     out.push(`## ${SEVERITY_TITLES[severity]}`, '');
-    for (const f of own) out.push(`- \`${findingLocation(f)}\` ${oneLine(plainText(f.claim))}`, `  - Evidence: ${oneLine(f.evidence)}`);
+    for (const f of own)
+      out.push(`- \`${findingLocation(f)}\` ${oneLine(plainText(f.claim))}`, `  - Evidence: ${oneLine(f.evidence)}`);
     out.push('');
   }
   return out.join('\n');

@@ -31,7 +31,32 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg', 'plot', 'map', 'image'];
+const TYPES = [
+  'text',
+  'graph',
+  'code',
+  'flow',
+  'sequence',
+  'er',
+  'state',
+  'mermaid',
+  'tests',
+  'table',
+  'chart',
+  'timeline',
+  'files',
+  'review',
+  'reading',
+  'compare',
+  'terminal',
+  'layers',
+  'array',
+  'memory',
+  'svg',
+  'plot',
+  'map',
+  'image',
+];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEXT_ITEMS_MAX = 6;
@@ -48,24 +73,36 @@ function checkText(s, p, errors, warnings) {
   };
   const leads = leadOf(s, p);
   if (!leads.length && !s.sides) errors.push(`${p}: needs a lead (${TEXT_LEADS.join(', ')}) or two sides`);
-  for (const f of ['kicker', 'note']) if (s[f] !== undefined && typeof s[f] !== 'string') errors.push(`${p}.${f}: must be a string`);
+  for (const f of ['kicker', 'note'])
+    if (s[f] !== undefined && typeof s[f] !== 'string') errors.push(`${p}.${f}: must be a string`);
   if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
   if (s.items !== undefined && !strings(s.items)) errors.push(`${p}.items: must be an array of strings`);
-  else if (s.items?.length > TEXT_ITEMS_MAX) errors.push(`${p}.items: ${s.items.length} items; the scene holds ${TEXT_ITEMS_MAX}`);
+  else if (s.items?.length > TEXT_ITEMS_MAX)
+    errors.push(`${p}.items: ${s.items.length} items; the scene holds ${TEXT_ITEMS_MAX}`);
   if (s.sides !== undefined) {
-    if (!Array.isArray(s.sides) || s.sides.length !== 2 || !s.sides.every((x) => x && typeof x === 'object')) errors.push(`${p}.sides: must be two objects, left then right`);
+    if (!Array.isArray(s.sides) || s.sides.length !== 2 || !s.sides.every((x) => x && typeof x === 'object'))
+      errors.push(`${p}.sides: must be two objects, left then right`);
     else {
-      if (s.items !== undefined) errors.push(`${p}: has items and sides; the sides take the room items would, so put the items in a side`);
+      if (s.items !== undefined)
+        errors.push(`${p}: has items and sides; the sides take the room items would, so put the items in a side`);
       s.sides.forEach((side, i) => {
         const at = `${p}.sides[${i}]`;
-        if (!leadOf(side, at).length && side.label === undefined) errors.push(`${at}: needs a lead (${TEXT_LEADS.join(', ')}) or a label`);
+        if (!leadOf(side, at).length && side.label === undefined)
+          errors.push(`${at}: needs a lead (${TEXT_LEADS.join(', ')}) or a label`);
         if (side.items !== undefined && !strings(side.items)) errors.push(`${at}.items: must be an array of strings`);
-        else if (side.items?.length > TEXT_SIDE_ITEMS_MAX) errors.push(`${at}.items: ${side.items.length} items; a side holds ${TEXT_SIDE_ITEMS_MAX}`);
+        else if (side.items?.length > TEXT_SIDE_ITEMS_MAX)
+          errors.push(`${at}.items: ${side.items.length} items; a side holds ${TEXT_SIDE_ITEMS_MAX}`);
       });
     }
   }
-  if (s.hidden !== undefined && !(Array.isArray(s.hidden) && s.hidden.every((r) => typeof r === 'string' || Number.isInteger(r)))) errors.push(`${p}.hidden: must be an array of refs`);
-  else for (const ref of s.hidden ?? []) if (!resolveRef(s, ref)) errors.push(`${p}.hidden: ${JSON.stringify(ref)} names nothing in the scene`);
+  if (
+    s.hidden !== undefined &&
+    !(Array.isArray(s.hidden) && s.hidden.every((r) => typeof r === 'string' || Number.isInteger(r)))
+  )
+    errors.push(`${p}.hidden: must be an array of refs`);
+  else
+    for (const ref of s.hidden ?? [])
+      if (!resolveRef(s, ref)) errors.push(`${p}.hidden: ${JSON.stringify(ref)} names nothing in the scene`);
   checkStateSteps(s, p, errors, warnings);
 }
 const MAX_LINE_RANGE = 10000;
@@ -104,7 +141,9 @@ function checkLineRefs(refs, path, errors) {
 function linesOutsideHunk(refs, hunk, side) {
   const valid = hunk.lines.map((l) => (side === 'new' ? l.newLine : l.oldLine)).filter((n) => n !== null);
   const missing = [...expandLineRefs(refs)].filter((n) => !valid.includes(n));
-  const span = valid.length ? `${side}-file lines ${Math.min(...valid)}-${Math.max(...valid)}` : `no ${side}-file lines`;
+  const span = valid.length
+    ? `${side}-file lines ${Math.min(...valid)}-${Math.max(...valid)}`
+    : `no ${side}-file lines`;
   return { missing, span };
 }
 
@@ -118,7 +157,8 @@ const formatRange = ([a, b]) => (a === b ? `${a}` : `${a}-${b}`);
 /** A code scene's `flow` names one step per focus range, in the order the ranges play. */
 function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
   const { flow } = scene;
-  if (!Array.isArray(flow) || flow.length === 0) return errors.push(`${p}.flow: must be a non-empty array of { label, outcome? }`);
+  if (!Array.isArray(flow) || flow.length === 0)
+    return errors.push(`${p}.flow: must be a non-empty array of { label, outcome? }`);
   flow.forEach((step, j) => {
     const q = `${p}.flow[${j}]`;
     if (!isStr(step?.label)) return errors.push(`${q}.label: required string`);
@@ -126,13 +166,16 @@ function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
   });
   if (!refsOk) return;
   const ranges = sceneFocusRanges(scene);
-  if (!ranges.length) return errors.push(`${p}.flow: needs focusLinesAfter or focusLinesBefore with one range per step`);
+  if (!ranges.length)
+    return errors.push(`${p}.flow: needs focusLinesAfter or focusLinesBefore with one range per step`);
   if (!hunk) return;
   const order = focusStepOrder(scene, hunk);
   if (order.length === flow.length) return;
   const list = order.map((id) => (ranges[id] ? formatRange(ranges[id].range) : 'the changed lines')).join(', ');
   const plural = order.length === 1 ? 'range' : 'ranges';
-  errors.push(`${p}.flow: ${flow.length} steps, but the focus has ${order.length} ${plural} (${list}); give each range exactly one step, in that top-to-bottom order`);
+  errors.push(
+    `${p}.flow: ${flow.length} steps, but the focus has ${order.length} ${plural} (${list}); give each range exactly one step, in that top-to-bottom order`,
+  );
 }
 
 /**
@@ -142,19 +185,26 @@ function checkCodeFlow(scene, hunk, refsOk, p, errors, warnings) {
  */
 function checkCodeSteps(scene, hunk, p, errors, warnings) {
   const { steps } = scene;
-  if (!Array.isArray(steps) || steps.length === 0) return errors.push(`${p}.steps: must be a non-empty array of { lines, say }`);
+  if (!Array.isArray(steps) || steps.length === 0)
+    return errors.push(`${p}.steps: must be a non-empty array of { lines, say }`);
   for (const key of ['focusLinesAfter', 'focusLinesBefore', 'flow']) {
-    if (scene[key] !== undefined) errors.push(`${p}.${key}: not used with steps; give each step its lines (or oldLines) and its flow label`);
+    if (scene[key] !== undefined)
+      errors.push(`${p}.${key}: not used with steps; give each step its lines (or oldLines) and its flow label`);
   }
   let refsOk = true;
   let labelled = 0;
   steps.forEach((step, j) => {
     const q = `${p}.steps[${j}]`;
-    if (!step || typeof step !== 'object') { refsOk = false; return errors.push(`${q}: must be an object { lines, say }`); }
+    if (!step || typeof step !== 'object') {
+      refsOk = false;
+      return errors.push(`${q}: must be an object { lines, say }`);
+    }
     const sides = ['lines', 'oldLines'].filter((k) => step[k] !== undefined);
     if (sides.length !== 1) {
       refsOk = false;
-      errors.push(`${q}: set lines (a new-file line number or "a-b" range) or oldLines (old-file, for removed code), not ${sides.length ? 'both' : 'neither'}`);
+      errors.push(
+        `${q}: set lines (a new-file line number or "a-b" range) or oldLines (old-file, for removed code), not ${sides.length ? 'both' : 'neither'}`,
+      );
     } else if (!checkLineRef(step[sides[0]], `${q}.${sides[0]}`, errors)) refsOk = false;
     if (!isStr(step.say)) errors.push(`${q}.say: required string, the words spoken while these lines are highlighted`);
     if (step.label !== undefined) {
@@ -162,32 +212,55 @@ function checkCodeSteps(scene, hunk, p, errors, warnings) {
       else labelled++;
     }
     if (step.outcome !== undefined && typeof step.outcome !== 'string') errors.push(`${q}.outcome: must be a string`);
-    if (scene.typing === true && step.oldLines !== undefined) errors.push(`${q}.oldLines: a typing scene writes the new code and draws no removed lines; type new lines with lines, or drop typing`);
-    if (step.output !== undefined && typeof step.output !== 'string') errors.push(`${q}.output: must be a string, lines separated by "\n"`);
+    if (scene.typing === true && step.oldLines !== undefined)
+      errors.push(
+        `${q}.oldLines: a typing scene writes the new code and draws no removed lines; type new lines with lines, or drop typing`,
+      );
+    if (step.output !== undefined && typeof step.output !== 'string')
+      errors.push(`${q}.output: must be a string, lines separated by "\n"`);
     if (step.outputWhen !== undefined) {
-      if (typeof step.outputWhen !== 'string' || !step.outputWhen.trim()) errors.push(`${q}.outputWhen: must be words of the step's say`);
+      if (typeof step.outputWhen !== 'string' || !step.outputWhen.trim())
+        errors.push(`${q}.outputWhen: must be words of the step's say`);
       else if (step.output === undefined) errors.push(`${q}.outputWhen: the step has no output to print`);
-      else if (isStr(step.say) && cueWord(step.say, step.outputWhen) < 0) errors.push(`${q}.outputWhen: ${JSON.stringify(step.outputWhen)} is not in the step's say`);
+      else if (isStr(step.say) && cueWord(step.say, step.outputWhen) < 0)
+        errors.push(`${q}.outputWhen: ${JSON.stringify(step.outputWhen)} is not in the step's say`);
     }
   });
-  if (labelled && steps.some((step) => step?.output !== undefined)) errors.push(`${p}.steps: the output pane and the step diagram both sit beside the code; drop the labels or the output`);
-  if (labelled && labelled < steps.length) errors.push(`${p}.steps: ${labelled} of ${steps.length} steps have a label; label every step to draw the flow diagram beside the code, or none`);
-  else if (labelled > LABELLED_STEPS_MAX) warnings.push(`${p}.steps: ${labelled} labelled steps; the step diagram beside the code fits ${LABELLED_STEPS_MAX}, so split the scene or drop the labels`);
+  if (labelled && steps.some((step) => step?.output !== undefined))
+    errors.push(
+      `${p}.steps: the output pane and the step diagram both sit beside the code; drop the labels or the output`,
+    );
+  if (labelled && labelled < steps.length)
+    errors.push(
+      `${p}.steps: ${labelled} of ${steps.length} steps have a label; label every step to draw the flow diagram beside the code, or none`,
+    );
+  else if (labelled > LABELLED_STEPS_MAX)
+    warnings.push(
+      `${p}.steps: ${labelled} labelled steps; the step diagram beside the code fits ${LABELLED_STEPS_MAX}, so split the scene or drop the labels`,
+    );
   if (!refsOk) return;
 
   const ranges = sceneFocusRanges(scene);
   ranges.forEach(({ side, range: [a, b] }, j) => {
     const q = `${p}.steps[${j}].${side === 'oldLine' ? 'oldLines' : 'lines'}`;
     const earlier = ranges.findIndex((r, i) => i < j && r.side === side && r.range[0] <= b && a <= r.range[1]);
-    if (earlier >= 0) errors.push(`${q}: ${formatRange([a, b])} overlaps steps[${earlier}] (${formatRange(ranges[earlier].range)}); each line belongs to one step`);
+    if (earlier >= 0)
+      errors.push(
+        `${q}: ${formatRange([a, b])} overlaps steps[${earlier}] (${formatRange(ranges[earlier].range)}); each line belongs to one step`,
+      );
     if (!hunk) return;
     const { missing, span } = linesOutsideHunk([`${a}-${b}`], hunk, side === 'oldLine' ? 'old' : 'new');
-    if (missing.length) errors.push(`${q}: lines ${missing.join(', ')} are outside ${hunk.id} (${span}), so the step would highlight nothing while its words play`);
+    if (missing.length)
+      errors.push(
+        `${q}: lines ${missing.join(', ')} are outside ${hunk.id} (${span}), so the step would highlight nothing while its words play`,
+      );
   });
   if (!hunk) return;
   const order = focusStepOrder(scene, hunk);
   if (order.length === steps.length && order.some((id, k) => id !== k)) {
-    errors.push(`${p}.steps: steps play in the order written, but their lines read top to bottom as steps ${order.map((id) => id + 1).join(', ')}; reorder the steps to match the code`);
+    errors.push(
+      `${p}.steps: steps play in the order written, but their lines read top to bottom as steps ${order.map((id) => id + 1).join(', ')}; reorder the steps to match the code`,
+    );
   }
 }
 
@@ -205,15 +278,19 @@ function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
   });
   const shown = new Set(shownIds.filter((id) => typeof id === 'string' && Object.hasOwn(hunks, id)));
   const skipped = new Set();
-  if (sb.skipped !== undefined && !Array.isArray(sb.skipped)) errors.push('skipped: must be an array of { hunkId, reason }');
-  else (sb.skipped ?? []).forEach((entry, i) => {
-    const p = `skipped[${i}]`;
-    if (!isStr(entry?.hunkId)) errors.push(`${p}.hunkId: required string`);
-    else if (!Object.hasOwn(hunks, entry.hunkId)) errors.push(`${p}.hunkId: "${entry.hunkId}" not found in hunks.json`);
-    else if (shown.has(entry.hunkId)) warnings.push(`${p}: ${entry.hunkId} is also shown in a scene; remove it from skipped or drop the scene`);
-    else skipped.add(entry.hunkId);
-    if (!isStr(entry?.reason)) errors.push(`${p}.reason: required string`);
-  });
+  if (sb.skipped !== undefined && !Array.isArray(sb.skipped))
+    errors.push('skipped: must be an array of { hunkId, reason }');
+  else
+    (sb.skipped ?? []).forEach((entry, i) => {
+      const p = `skipped[${i}]`;
+      if (!isStr(entry?.hunkId)) errors.push(`${p}.hunkId: required string`);
+      else if (!Object.hasOwn(hunks, entry.hunkId))
+        errors.push(`${p}.hunkId: "${entry.hunkId}" not found in hunks.json`);
+      else if (shown.has(entry.hunkId))
+        warnings.push(`${p}: ${entry.hunkId} is also shown in a scene; remove it from skipped or drop the scene`);
+      else skipped.add(entry.hunkId);
+      if (!isStr(entry?.reason)) errors.push(`${p}.reason: required string`);
+    });
 
   // A snippet (`mr-cast snippet`) is context the author chose to add, not a change of the diff.
   const changes = Object.values(hunks).filter((h) => h.status !== 'source');
@@ -223,16 +300,31 @@ function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
     tests.total++;
     if (shown.has(h.id)) tests.shown++;
   }
-  const testsScenes = sb.scenes.filter((s) => s?.type === 'tests' && Array.isArray(s.tests) && Array.isArray(s.situations));
+  const testsScenes = sb.scenes.filter(
+    (s) => s?.type === 'tests' && Array.isArray(s.tests) && Array.isArray(s.situations),
+  );
   const testsScene = testsScenes.length
-    ? { tests: testsScenes.reduce((n, s) => n + s.tests.length, 0), gaps: testsScenes.reduce((n, s) => n + s.situations.filter(isGapRow).length, 0) }
+    ? {
+        tests: testsScenes.reduce((n, s) => n + s.tests.length, 0),
+        gaps: testsScenes.reduce((n, s) => n + s.situations.filter(isGapRow).length, 0),
+      }
     : null;
-  return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene, preread };
+  return {
+    shown: [...shown].filter((id) => hunks[id].status !== 'source').length,
+    skipped: skipped.size,
+    total: changes.length,
+    tests,
+    testsScene,
+    preread,
+  };
 }
 
 /** Checks a non-empty array of items with unique string ids; returns the id set, or null if the array is unusable. */
 function checkIds(items, path, errors, checkItem) {
-  if (!Array.isArray(items) || items.length === 0) { errors.push(`${path}: required non-empty array`); return null; }
+  if (!Array.isArray(items) || items.length === 0) {
+    errors.push(`${path}: required non-empty array`);
+    return null;
+  }
   const ids = new Set();
   items.forEach((item, i) => {
     const q = `${path}[${i}]`;
@@ -257,7 +349,11 @@ async function loadMermaidParser() {
 
 /** Mermaid's message on one line, without the caret line that only lines up in monospace. */
 function mermaidMessage(err) {
-  return String(err?.message ?? err).split('\n').map((l) => l.trim()).filter((l) => l && !/^-*\^$/.test(l)).join(' ');
+  return String(err?.message ?? err)
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/^-*\^$/.test(l))
+    .join(' ');
 }
 
 async function checkMermaid(diagrams, errors, warnings) {
@@ -266,7 +362,9 @@ async function checkMermaid(diagrams, errors, warnings) {
   try {
     mermaid = await loadMermaidParser();
   } catch (err) {
-    warnings.push(`could not load Mermaid to check diagram syntax (${err.message}); run \`mr-cast still\` on mermaid scenes`);
+    warnings.push(
+      `could not load Mermaid to check diagram syntax (${err.message}); run \`mr-cast still\` on mermaid scenes`,
+    );
     return;
   }
   for (const { p, code } of diagrams) {
@@ -274,7 +372,10 @@ async function checkMermaid(diagrams, errors, warnings) {
       await mermaid.parse(code);
     } catch (err) {
       // Syntax errors are plain Errors; a TypeError means the Node stand-ins fell short, not that the diagram is wrong.
-      if (err instanceof TypeError) warnings.push(`${p}.code: could not check Mermaid syntax (${err.message}); run \`mr-cast still\` on this scene`);
+      if (err instanceof TypeError)
+        warnings.push(
+          `${p}.code: could not check Mermaid syntax (${err.message}); run \`mr-cast still\` on this scene`,
+        );
       else errors.push(`${p}.code: invalid Mermaid: ${mermaidMessage(err)}`);
     }
   }
@@ -295,19 +396,24 @@ export async function validateStoryboard(raw, hunks, meta = {}) {
   // check below sees one shape, and messages about the older shapes are put back in their own field names.
   const upgraded = upgradeScenes(raw);
   const olderTests = new Map();
-  if (Array.isArray(raw?.scenes)) raw.scenes.forEach((s, i) => {
-    if (s?.type === 'tests' && upgradeTests(s) !== s) olderTests.set(i, Array.isArray(s.cases) ? s.cases.length : 0);
-  });
+  if (Array.isArray(raw?.scenes))
+    raw.scenes.forEach((s, i) => {
+      if (s?.type === 'tests' && upgradeTests(s) !== s) olderTests.set(i, Array.isArray(s.cases) ? s.cases.length : 0);
+    });
   const intents = new Map();
   const shapeErrors = [];
   const scenes = Array.isArray(upgraded?.scenes) ? upgraded.scenes : [];
   scenes.forEach((s, i) => {
     if (s?.type === 'intent') intents.set(i, checkIntent(s, `scenes[${i}]`, shapeErrors));
   });
-  const sb = intents.size ? { ...upgraded, scenes: scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) } : upgraded;
+  const sb = intents.size
+    ? { ...upgraded, scenes: scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) }
+    : upgraded;
   const result = await validateScenes(sb, hunks, meta);
   if (!intents.size && !olderTests.size) return result;
-  const said = (messages) => [...new Set(messages.flatMap((m) => intentMessage(m, intents)).flatMap((m) => olderTestsMessage(m, olderTests)))];
+  const said = (messages) => [
+    ...new Set(messages.flatMap((m) => intentMessage(m, intents)).flatMap((m) => olderTestsMessage(m, olderTests))),
+  ];
   return { ...result, errors: [...shapeErrors, ...said(result.errors)], warnings: said(result.warnings) };
 }
 
@@ -324,7 +430,10 @@ function olderTestsMessage(message, olderTests) {
   if (cases === undefined) return [message];
   const [, scene, label, field, rest] = m;
   const at = (path, text = rest) => [`scenes[${scene}]${label}${path}${text}`];
-  const inRow = (noun) => rest.replace(/the situation in plain words$/, `the ${noun}`).replace(/its situation, (.*?); shorten the situation.*$/, `its row, $1; shorten the ${noun}`);
+  const inRow = (noun) =>
+    rest
+      .replace(/the situation in plain words$/, `the ${noun}`)
+      .replace(/its situation, (.*?); shorten the situation.*$/, `its row, $1; shorten the ${noun}`);
   const row = /^\.situations\[(\d+)\](\.[^.]+)?(.*)$/.exec(field);
   if (row) {
     const k = Number(row[1]);
@@ -336,9 +445,22 @@ function olderTestsMessage(message, olderTests) {
     return at(`.cases[${k}]${row[2] ?? ''}${row[3]}`);
   }
   const test = /^\.tests\[(\d+)\](\.was)?(.*)$/.exec(field);
-  if (test) return at(`.cases[${test[1]}]${test[2] ? '.proves' : test[3]}`, test[2] ? rest.replace(/its old value, (.*?); shorten the old value in was$/, 'its row, $1; shorten what it proves') : rest);
+  if (test)
+    return at(
+      `.cases[${test[1]}]${test[2] ? '.proves' : test[3]}`,
+      test[2]
+        ? rest.replace(/its old value, (.*?); shorten the old value in was$/, 'its row, $1; shorten what it proves')
+        : rest,
+    );
   if (field.startsWith('.outcomes[0]')) return at('.titles.proves');
-  if (field.startsWith('.steps')) return at(field, rest.replace(/where a ref is a situation id, .*$/, 'where a ref is a case\'s index or name, or "gap:0" for the first gap'));
+  if (field.startsWith('.steps'))
+    return at(
+      field,
+      rest.replace(
+        /where a ref is a situation id, .*$/,
+        'where a ref is a case\'s index or name, or "gap:0" for the first gap',
+      ),
+    );
   return [message];
 }
 
@@ -348,11 +470,21 @@ function checkIntent(s, p, errors) {
   if (!isStr(s.summary)) errors.push(`${p}.summary: required string`);
   if (s.risk !== undefined && !RISKS.includes(s.risk)) errors.push(`${p}.risk: must be one of ${RISKS.join(', ')}`);
   if (!Array.isArray(s.bullets) || !s.bullets.every(isStr)) errors.push(`${p}.bullets: required array of strings`);
-  else if (s.bullets.length > TEXT_ITEMS_MAX) errors.push(`${p}.bullets: ${s.bullets.length} bullets; the card holds ${TEXT_ITEMS_MAX}, so keep the ones that matter most and say the rest`);
+  else if (s.bullets.length > TEXT_ITEMS_MAX)
+    errors.push(
+      `${p}.bullets: ${s.bullets.length} bullets; the card holds ${TEXT_ITEMS_MAX}, so keep the ones that matter most and say the rest`,
+    );
   return errors.length === before;
 }
 
-const INTENT_WORDS = { items: 'bullets', item: 'bullet', 'an item': 'a bullet', headline: 'summary', kicker: 'title', 'this text': 'this intent' };
+const INTENT_WORDS = {
+  items: 'bullets',
+  item: 'bullet',
+  'an item': 'a bullet',
+  headline: 'summary',
+  kicker: 'title',
+  'this text': 'this intent',
+};
 
 /**
  * A message about an intent scene, checked as a text scene, in the intent's own words: `items[2]` is `bullets[2]`,
@@ -363,7 +495,13 @@ function intentMessage(message, intents) {
   const m = SCENE_MESSAGE.exec(message);
   if (!m || !intents.has(Number(m[1]))) return [message];
   if (!intents.get(Number(m[1])) && /^(?:$|\.(?:headline|items|risk|kicker)\b)/.test(m[3])) return [];
-  const words = (text) => text.split(/("(?:[^"\\]|\\.)*")/).map((part, i) => (i % 2 ? part : part.replace(/\b(items|an item|item|headline|kicker|this text)\b/g, (w) => INTENT_WORDS[w]))).join('');
+  const words = (text) =>
+    text
+      .split(/("(?:[^"\\]|\\.)*")/)
+      .map((part, i) =>
+        i % 2 ? part : part.replace(/\b(items|an item|item|headline|kicker|this text)\b/g, (w) => INTENT_WORDS[w]),
+      )
+      .join('');
   if (m[3].startsWith('.kicker')) return [`title${words(m[4])}`];
   return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
 }
@@ -383,7 +521,8 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
     const p = `scenes[${i}]`;
     const errorsBefore = errors.length;
     if (!s || typeof s !== 'object') return errors.push(`${p}: must be an object`);
-    if (!TYPES.includes(s.type)) return errors.push(`${p}.type: must be one of ${TYPES.join(', ')} (got ${JSON.stringify(s.type)})`);
+    if (!TYPES.includes(s.type))
+      return errors.push(`${p}.type: must be one of ${TYPES.join(', ')} (got ${JSON.stringify(s.type)})`);
     if (!isStr(s.narration)) errors.push(`${p}.narration: required string`);
     if (s.chapter !== undefined && typeof s.chapter !== 'string') errors.push(`${p}.chapter: must be a string`);
 
@@ -401,12 +540,17 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
         const hunk = isStr(s.hunkId) && hunks && Object.hasOwn(hunks, s.hunkId) ? hunks[s.hunkId] : undefined;
         if (!isStr(s.hunkId)) errors.push(`${p}.hunkId: required string`);
         else if (!hunk) errors.push(`${p}.hunkId: "${s.hunkId}" not found in hunks.json`);
-        if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
-        if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
-        if (s.outputTitle !== undefined && typeof s.outputTitle !== 'string') errors.push(`${p}.outputTitle: must be a string`);
+        if (s.view !== undefined && !VIEWS.includes(s.view))
+          errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
+        if (s.calloutText !== undefined && typeof s.calloutText !== 'string')
+          errors.push(`${p}.calloutText: must be a string`);
+        if (s.outputTitle !== undefined && typeof s.outputTitle !== 'string')
+          errors.push(`${p}.outputTitle: must be a string`);
         if (s.typing !== undefined && typeof s.typing !== 'boolean') errors.push(`${p}.typing: must be true or false`);
-        else if (s.typing === true && s.steps === undefined) errors.push(`${p}.typing: each step types its lines, so the scene needs steps`);
-        else if (s.typing === true && s.view === 'split') errors.push(`${p}.view: a typing scene draws its code in one column; drop view "split"`);
+        else if (s.typing === true && s.steps === undefined)
+          errors.push(`${p}.typing: each step types its lines, so the scene needs steps`);
+        else if (s.typing === true && s.view === 'split')
+          errors.push(`${p}.view: a typing scene draws its code in one column; drop view "split"`);
         if (s.steps !== undefined) {
           checkCodeSteps(s, hunk, p, errors, warnings);
           break;
@@ -421,27 +565,39 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
       }
 
       case 'flow':
-        if (!Array.isArray(s.steps) || s.steps.length === 0) { errors.push(`${p}.steps: required non-empty array`); break; }
+        if (!Array.isArray(s.steps) || s.steps.length === 0) {
+          errors.push(`${p}.steps: required non-empty array`);
+          break;
+        }
         s.steps.forEach((st, j) => {
           if (!isStr(st?.actor)) errors.push(`${p}.steps[${j}].actor: required string`);
           if (!isStr(st?.action)) errors.push(`${p}.steps[${j}].action: required string`);
-          if (st?.payload !== undefined && typeof st.payload !== 'string') errors.push(`${p}.steps[${j}].payload: must be a string (stringify JSON yourself)`);
+          if (st?.payload !== undefined && typeof st.payload !== 'string')
+            errors.push(`${p}.steps[${j}].payload: must be a string (stringify JSON yourself)`);
           checkIcon(st?.icon, `${p}.steps[${j}].icon`, errors);
-          if (st?.tone !== undefined && !TONES.includes(st.tone)) errors.push(`${p}.steps[${j}].tone: must be one of ${TONES.join(', ')}`);
+          if (st?.tone !== undefined && !TONES.includes(st.tone))
+            errors.push(`${p}.steps[${j}].tone: must be one of ${TONES.join(', ')}`);
         });
         checkFlowSays(s, p, errors);
         break;
 
       case 'sequence': {
-        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) => checkNodeFields(n, q, errors, warnings));
+        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) =>
+          checkNodeFields(n, q, errors, warnings),
+        );
         if (!ids) break;
         if (ids.size > 6) warnings.push(`${p}.participants: ${ids.size} participants; more than 6 get cramped`);
-        if (!Array.isArray(s.messages) || s.messages.length === 0) { errors.push(`${p}.messages: required non-empty array`); break; }
+        if (!Array.isArray(s.messages) || s.messages.length === 0) {
+          errors.push(`${p}.messages: required non-empty array`);
+          break;
+        }
         s.messages.forEach((m, j) => {
           const q = `${p}.messages[${j}]`;
-          for (const k of ['from', 'to']) if (!ids.has(m?.[k])) errors.push(`${q}.${k}: unknown participant id ${JSON.stringify(m?.[k])}`);
+          for (const k of ['from', 'to'])
+            if (!ids.has(m?.[k])) errors.push(`${q}.${k}: unknown participant id ${JSON.stringify(m?.[k])}`);
           if (!isStr(m?.label)) errors.push(`${q}.label: required string`);
-          if (m?.kind !== undefined && !MESSAGE_KINDS.includes(m.kind)) errors.push(`${q}.kind: must be one of ${MESSAGE_KINDS.join(', ')}`);
+          if (m?.kind !== undefined && !MESSAGE_KINDS.includes(m.kind))
+            errors.push(`${q}.kind: must be one of ${MESSAGE_KINDS.join(', ')}`);
           if (m?.note !== undefined && typeof m.note !== 'string') errors.push(`${q}.note: must be a string`);
         });
         break;
@@ -450,19 +606,26 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
       case 'er': {
         const ids = checkIds(s.entities, `${p}.entities`, errors, (e, q) => {
           if (!isStr(e?.name)) errors.push(`${q}.name: required string`);
-          if (!Array.isArray(e?.fields) || e.fields.length === 0) return errors.push(`${q}.fields: required non-empty array`);
+          if (!Array.isArray(e?.fields) || e.fields.length === 0)
+            return errors.push(`${q}.fields: required non-empty array`);
           e.fields.forEach((f, k) => {
             if (!isStr(f?.name)) errors.push(`${q}.fields[${k}].name: required string`);
-            if (f?.type !== undefined && typeof f.type !== 'string') errors.push(`${q}.fields[${k}].type: must be a string`);
+            if (f?.type !== undefined && typeof f.type !== 'string')
+              errors.push(`${q}.fields[${k}].type: must be a string`);
           });
         });
         if (!ids) break;
         if (ids.size > 6) warnings.push(`${p}.entities: ${ids.size} entities; more than 6 get cramped`);
-        if (!Array.isArray(s.relations)) { errors.push(`${p}.relations: required array (may be empty)`); break; }
+        if (!Array.isArray(s.relations)) {
+          errors.push(`${p}.relations: required array (may be empty)`);
+          break;
+        }
         s.relations.forEach((r, j) => {
           const q = `${p}.relations[${j}]`;
-          for (const k of ['from', 'to']) if (!ids.has(r?.[k])) errors.push(`${q}.${k}: unknown entity id ${JSON.stringify(r?.[k])}`);
-          if (!CARDINALITIES.includes(r?.cardinality)) errors.push(`${q}.cardinality: must be one of ${CARDINALITIES.join(', ')}`);
+          for (const k of ['from', 'to'])
+            if (!ids.has(r?.[k])) errors.push(`${q}.${k}: unknown entity id ${JSON.stringify(r?.[k])}`);
+          if (!CARDINALITIES.includes(r?.cardinality))
+            errors.push(`${q}.cardinality: must be one of ${CARDINALITIES.join(', ')}`);
         });
         break;
       }
@@ -474,11 +637,16 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
         });
         if (!ids) break;
         if (ids.size > 10) warnings.push(`${p}.states: ${ids.size} states; more than 10 get cramped`);
-        if (s.initial !== undefined && !ids.has(s.initial)) errors.push(`${p}.initial: unknown state id ${JSON.stringify(s.initial)}`);
-        if (!Array.isArray(s.transitions)) { errors.push(`${p}.transitions: required array (may be empty)`); break; }
+        if (s.initial !== undefined && !ids.has(s.initial))
+          errors.push(`${p}.initial: unknown state id ${JSON.stringify(s.initial)}`);
+        if (!Array.isArray(s.transitions)) {
+          errors.push(`${p}.transitions: required array (may be empty)`);
+          break;
+        }
         s.transitions.forEach((t, j) => {
           const q = `${p}.transitions[${j}]`;
-          for (const k of ['from', 'to']) if (!ids.has(t?.[k])) errors.push(`${q}.${k}: unknown state id ${JSON.stringify(t?.[k])}`);
+          for (const k of ['from', 'to'])
+            if (!ids.has(t?.[k])) errors.push(`${q}.${k}: unknown state id ${JSON.stringify(t?.[k])}`);
           if (t?.label !== undefined && typeof t.label !== 'string') errors.push(`${q}.label: must be a string`);
         });
         break;
@@ -545,7 +713,10 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
 
       case 'review':
         if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
-        if (s.steps !== undefined) errors.push(`${p}.steps: a review scene takes no steps; its narration recaps the findings, and each was said where its code was shown`);
+        if (s.steps !== undefined)
+          errors.push(
+            `${p}.steps: a review scene takes no steps; its narration recaps the findings, and each was said where its code was shown`,
+          );
         break;
 
       case 'mermaid':
@@ -565,16 +736,19 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
   const preread = audience === 'preread';
   const listed = checkPreread(sb, hunks ?? {}, { preread, mode }, errors, warnings);
   // Whether each picture can be shown, as bin/lib/images.mjs found when it made them local.
-  for (const { path: at, message, level } of images?.problems ?? []) (level === 'warning' ? warnings : errors).push(`${at}: ${message}`);
+  for (const { path: at, message, level } of images?.problems ?? [])
+    (level === 'warning' ? warnings : errors).push(`${at}: ${message}`);
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   checkTopics(sb, plan, errors, warnings, { preread });
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
-  if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings, images?.manifest ?? {});
+  if (!errors.length)
+    await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings, images?.manifest ?? {});
   checkSpokenCounts(sb.scenes, warnings);
   if (mode === 'explain') {
-    if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
+    if (sb.skipped !== undefined)
+      warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
     return { errors, warnings, coverage: null };
   }
   const coverage = checkCoverage(sb, hunks ?? {}, audience, listed, errors, warnings);

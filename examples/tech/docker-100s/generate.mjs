@@ -18,7 +18,9 @@ import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 
 const here = (name) => new URL(name, import.meta.url);
-const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
+const assert = (ok, msg) => {
+  if (!ok) throw new Error(msg);
+};
 
 const dockerfile = [
   'FROM node:22-alpine',
@@ -33,15 +35,28 @@ const dockerfile = [
 // start, so it gets no step of its own.
 const built = dockerfile.filter((l) => /^(FROM|WORKDIR|COPY|RUN)\b/.test(l));
 assert(built.length === 5, 'five build steps');
-const buildLog = built.map((l, i) => ` => [${i + 1}/${built.length}] ${l.replace(/^FROM /, 'FROM docker.io/library/')}`);
+const buildLog = built.map(
+  (l, i) => ` => [${i + 1}/${built.length}] ${l.replace(/^FROM /, 'FROM docker.io/library/')}`,
+);
 
 // A container ID is 64 hex characters; this one is a fixed hash so every run prints the same.
 const id = createHash('sha256').update('my-app, example container').digest('hex');
 assert(id.length === 64, 'container id length');
 
 const source = (key, file, language, lines) => ({
-  id: key, file, oldFile: null, status: 'source', language, header: '', startLine: 1, oldStartLine: 1,
-  endLine: lines.length, additions: 0, deletions: 0, beforeCode: lines.join('\n'), afterCode: lines.join('\n'),
+  id: key,
+  file,
+  oldFile: null,
+  status: 'source',
+  language,
+  header: '',
+  startLine: 1,
+  oldStartLine: 1,
+  endLine: lines.length,
+  additions: 0,
+  deletions: 0,
+  beforeCode: lines.join('\n'),
+  afterCode: lines.join('\n'),
   lines: lines.map((text, i) => ({ type: 'context', oldLine: i + 1, newLine: i + 1, text })),
 });
 const hunks = { s1: source('s1', 'Dockerfile', 'docker', dockerfile) };
@@ -71,14 +86,17 @@ scenes.push({
   chapter: 'Not a VM',
   title: 'Two ways to keep apps apart',
   sides: [{ title: 'Virtual machine' }, { title: 'Container' }],
-  narration: 'So it\'s a virtual machine? No.',
+  narration: "So it's a virtual machine? No.",
   rows: [
-    { label: 'Kernel', cells: ['Its own', 'Shares the host\'s'], verdict: [null, 'good'] },
+    { label: 'Kernel', cells: ['Its own', "Shares the host's"], verdict: [null, 'good'] },
     { label: 'Inside', cells: ['A whole operating system', 'One process and its files'], verdict: [null, 'good'] },
     { label: 'Ten apps', cells: ['Ten operating systems', 'Ten processes, one kernel'], verdict: ['bad', 'good'] },
   ],
   steps: [
-    { focus: [0, 1], say: 'A virtual machine runs a whole operating system, kernel and all. A container is one walled off process that shares the host\'s kernel.' },
+    {
+      focus: [0, 1],
+      say: "A virtual machine runs a whole operating system, kernel and all. A container is one walled off process that shares the host's kernel.",
+    },
     { focus: 2, say: 'So many more of them fit on one machine.' },
   ],
 });
@@ -138,7 +156,8 @@ scenes.push({
 scenes.push({
   type: 'text',
   chapter: 'Recap',
-  narration: 'The Dockerfile is the recipe. The image is what it builds. A container is that image, running, the same on every machine.',
+  narration:
+    'The Dockerfile is the recipe. The image is what it builds. A container is that image, running, the same on every machine.',
   headline: 'Three words',
   items: [
     '**Dockerfile**: the recipe, one layer per step',

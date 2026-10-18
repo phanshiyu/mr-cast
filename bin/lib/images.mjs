@@ -27,10 +27,16 @@ const LIMIT = `${MAX_IMAGE_BYTES / 1024 / 1024} MB`;
 
 /** What the bytes are, by their first bytes: one of TYPES, "svg", or null. */
 export function sniffImage(buf) {
-  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])))
+    return 'png';
   if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
   if (buf.length >= 6 && /^GIF8[79]a$/.test(buf.subarray(0, 6).toString('latin1'))) return 'gif';
-  if (buf.length >= 12 && buf.subarray(0, 4).toString('latin1') === 'RIFF' && buf.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp';
+  if (
+    buf.length >= 12 &&
+    buf.subarray(0, 4).toString('latin1') === 'RIFF' &&
+    buf.subarray(8, 12).toString('latin1') === 'WEBP'
+  )
+    return 'webp';
   const head = buf.subarray(0, 512).toString('utf8').replace(/^﻿/, '').trimStart();
   if (head.startsWith('<') && /<svg[\s>]/i.test(head)) return 'svg';
   return null;
@@ -94,10 +100,14 @@ export const isUrl = (src) => /^https?:\/\//i.test(src);
 /** Bytes that are a picture mr-cast draws, with its type and size; or the reason they are not. */
 function checkBytes(buf) {
   const type = sniffImage(buf);
-  if (type === 'svg') return { error: `is an SVG image, which mr-cast does not show as a picture since it can carry scripts; draw it in an svg scene, or convert it to PNG` };
+  if (type === 'svg')
+    return {
+      error: `is an SVG image, which mr-cast does not show as a picture since it can carry scripts; draw it in an svg scene, or convert it to PNG`,
+    };
   if (!type) return { error: `is not ${TYPE_NAMES}; its first bytes are of no image type mr-cast shows` };
   const size = imageSize(buf, type);
-  if (!size || !size.width || !size.height) return { error: `is a ${type.toUpperCase()} file whose width and height cannot be read; it may be cut short` };
+  if (!size || !size.width || !size.height)
+    return { error: `is a ${type.toUpperCase()} file whose width and height cannot be read; it may be cut short` };
   return { type, ...size };
 }
 
@@ -129,10 +139,11 @@ function cachedDownload(dir, src) {
 /** Why a download failed, in a few words: the refusal, a timeout, the system's error code, or the message. */
 function fetchReason(err) {
   if (err instanceof Refused) return err.message;
-  if (err?.name === 'TimeoutError' || err?.name === 'AbortError') return `no answer within ${DOWNLOAD_TIMEOUT_MS / 1000} s`;
+  if (err?.name === 'TimeoutError' || err?.name === 'AbortError')
+    return `no answer within ${DOWNLOAD_TIMEOUT_MS / 1000} s`;
   const code = err?.code ?? err?.cause?.code;
   const hostname = err?.hostname ?? err?.cause?.hostname;
-  return code ? `${code}${hostname ? ` for ${hostname}` : ''}` : err?.message ?? String(err);
+  return code ? `${code}${hostname ? ` for ${hostname}` : ''}` : (err?.message ?? String(err));
 }
 
 /** Downloads `src`, at most MAX_IMAGE_BYTES, checking the server's content type and then the bytes themselves. */
@@ -147,7 +158,9 @@ async function download(src) {
   const status = res.statusCode ?? 0;
   if (status < 200 || status > 299) {
     res.destroy();
-    return { error: `could not be downloaded: the server answered HTTP ${status}${res.statusMessage ? ` ${res.statusMessage}` : ''}` };
+    return {
+      error: `could not be downloaded: the server answered HTTP ${status}${res.statusMessage ? ` ${res.statusMessage}` : ''}`,
+    };
   }
   const type = (res.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
   if (!SENT_TYPES.has(type)) {
@@ -205,8 +218,12 @@ function localFile(dir, repo, src) {
  * downloaded or copied: a local file is only checked, and a URL not downloaded yet is reported as such.
  */
 async function resolveOne(dir, repo, src, { fetch: allowed }) {
-  if (path.isAbsolute(src)) return { error: `is an absolute path; write it relative to the run directory or the repository, or give an http(s) URL` };
-  if (/^[a-z][a-z0-9+.-]*:/i.test(src) && !isUrl(src)) return { error: `is neither a relative path nor an http(s) URL` };
+  if (path.isAbsolute(src))
+    return {
+      error: `is an absolute path; write it relative to the run directory or the repository, or give an http(s) URL`,
+    };
+  if (/^[a-z][a-z0-9+.-]*:/i.test(src) && !isUrl(src))
+    return { error: `is neither a relative path nor an http(s) URL` };
   if (isUrl(src)) {
     const cached = cachedDownload(dir, src);
     if (cached) {
@@ -221,7 +238,8 @@ async function resolveOne(dir, repo, src, { fetch: allowed }) {
     return { file: store(dir, keyOf(src), checked.type, got.buf, true), ...checked };
   }
   const found = localFile(dir, repo, src);
-  if (found.leadsOut) return { error: `is a link to a file outside the run directory and the repository, which mr-cast does not read` };
+  if (found.leadsOut)
+    return { error: `is a link to a file outside the run directory and the repository, which mr-cast does not read` };
   if (!found.file) return { error: `is not a file in ${found.tried.join(' or in ')}` };
   const stat = fs.statSync(found.file);
   if (!stat.isFile()) return { error: `is a directory, not an image file` };
@@ -247,7 +265,12 @@ export async function resolveImages(dir, storyboard, { write = true, repo = find
     if (!done.has(src)) done.set(src, await resolveOne(dir, repo, src, { fetch: write }));
     const result = done.get(src);
     if (result.error) problems.push({ path: at, message: `${JSON.stringify(src)} ${result.error}`, level: 'error' });
-    else if (result.pending) problems.push({ path: at, message: `${JSON.stringify(src)} is not downloaded yet; \`mr-cast validate\` downloads it`, level: 'warning' });
+    else if (result.pending)
+      problems.push({
+        path: at,
+        message: `${JSON.stringify(src)} is not downloaded yet; \`mr-cast validate\` downloads it`,
+        level: 'warning',
+      });
     else manifest[src] = { file: result.file, width: result.width, height: result.height };
   }
   if (write) {

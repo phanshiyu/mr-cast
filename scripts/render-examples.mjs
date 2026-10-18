@@ -37,14 +37,18 @@ const chosen = shardOf(only.length ? examples.filter((e) => only.includes(e.name
 /** The words an example speaks, which render time follows. */
 function spokenWords(example) {
   const { scenes } = JSON.parse(fs.readFileSync(path.join(example.dir, 'storyboard.json'), 'utf8'));
-  const texts = scenes.flatMap((s) => [s.narration, ...(s.steps ?? []).map((st) => st.say)]).filter((t) => typeof t === 'string');
+  const texts = scenes
+    .flatMap((s) => [s.narration, ...(s.steps ?? []).map((st) => st.say)])
+    .filter((t) => typeof t === 'string');
   return texts.join(' ').split(/\s+/).length;
 }
 
 /** Deals the examples, longest first, each to the group with the fewest words so far, and returns group `i`. */
 function shardOf(list, i, n) {
   const groups = Array.from({ length: n }, () => ({ words: 0, examples: [] }));
-  for (const example of list.map((e) => ({ e, words: spokenWords(e) })).sort((a, b) => b.words - a.words || a.e.name.localeCompare(b.e.name))) {
+  for (const example of list
+    .map((e) => ({ e, words: spokenWords(e) }))
+    .sort((a, b) => b.words - a.words || a.e.name.localeCompare(b.e.name))) {
     const group = groups.reduce((min, g) => (g.words < min.words ? g : min));
     group.words += example.words;
     group.examples.push(example.e);
@@ -65,10 +69,20 @@ try {
     copyExample(example, dir);
     const video = path.join(out, `${example.name}.mp4`);
     const started = Date.now();
-    const res = spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), 'render', '--dir', dir, '--out', video, ...example.flags], {
-      encoding: 'utf8',
-      env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(work, 'config'), XDG_STATE_HOME: path.join(work, 'state'), CLAUDE_CONFIG_DIR: path.join(work, 'claude') },
-    });
+    const res = spawnSync(
+      process.execPath,
+      [path.join(ROOT, 'bin/mr-cast.mjs'), 'render', '--dir', dir, '--out', video, ...example.flags],
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          MR_CAST_NO_UPDATE_CHECK: '1',
+          XDG_CONFIG_HOME: path.join(work, 'config'),
+          XDG_STATE_HOME: path.join(work, 'state'),
+          CLAUDE_CONFIG_DIR: path.join(work, 'claude'),
+        },
+      },
+    );
     const seconds = ((Date.now() - started) / 1000).toFixed(0);
     const flags = example.flags.length ? ` ${example.flags.join(' ')}` : '';
     if (res.status === 0 && fs.existsSync(video)) {

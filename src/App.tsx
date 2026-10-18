@@ -1,5 +1,33 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, ChartSpline, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, Earth, FlaskConical, Image as ImageIcon, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, PenTool, Play, Sheet, Table2, Type, Workflow, type LucideIcon } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Brackets,
+  ChartColumn,
+  ChartGantt,
+  ChartSpline,
+  CircleDot,
+  Columns2,
+  SquareTerminal,
+  FolderTree,
+  Code2,
+  Earth,
+  FlaskConical,
+  Image as ImageIcon,
+  Shapes,
+  GitBranch,
+  Layers,
+  ListChecks,
+  MemoryStick,
+  MessageCircleWarning,
+  Network,
+  PenTool,
+  Play,
+  Sheet,
+  Table2,
+  Type,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
 import { loadWorld, needsWorld } from '../shared/map.mjs';
@@ -11,7 +39,17 @@ import { ReadingPanel } from './ReadingPanel';
 import { readingOrder } from '../shared/reading.mjs';
 import type { HunkMap, ImageManifest, Plan, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
-import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
+import {
+  FPS,
+  HEIGHT,
+  WIDTH,
+  formatTime,
+  spokenAt,
+  timeline,
+  totalDurationInFrames,
+  type SpokenSegment,
+  type TimedScene,
+} from './utils/timing';
 import { Walkthrough } from './Walkthrough';
 import { QuickEndCard, VoiceFailed } from './QuickParts';
 
@@ -36,14 +74,48 @@ type LoadState =
   | { status: 'error'; file: string; message: string }
   // One `walkthrough` object per load: the Player restarts its frame clock whenever `inputProps` changes
   // identity, and this component re-renders on every frame. It is null before Claude writes the storyboard.
-  | { status: 'ready'; walkthrough: WalkthroughProps | null; meta: Meta | null; plan: PlanData | null; settings: ServedSettings | null };
+  | {
+      status: 'ready';
+      walkthrough: WalkthroughProps | null;
+      meta: Meta | null;
+      plan: PlanData | null;
+      settings: ServedSettings | null;
+    };
 
 type Tab = 'video' | 'plan';
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { text: Type, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, reading: ListChecks, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick, svg: PenTool, plot: ChartSpline, map: Earth, image: ImageIcon };
+const typeIcon: Record<Scene['type'], LucideIcon> = {
+  text: Type,
+  graph: Network,
+  code: Code2,
+  flow: Workflow,
+  sequence: ArrowRightLeft,
+  er: Table2,
+  state: CircleDot,
+  mermaid: Shapes,
+  tests: FlaskConical,
+  table: Sheet,
+  chart: ChartColumn,
+  timeline: ChartGantt,
+  files: FolderTree,
+  review: MessageCircleWarning,
+  reading: ListChecks,
+  compare: Columns2,
+  terminal: SquareTerminal,
+  layers: Layers,
+  array: Brackets,
+  memory: MemoryStick,
+  svg: PenTool,
+  plot: ChartSpline,
+  map: Earth,
+  image: ImageIcon,
+};
 
 class DataError extends Error {
-  constructor(readonly file: string, message: string) {
+  constructor(
+    readonly file: string,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -94,7 +166,8 @@ async function loadAll(): Promise<LoadState> {
       fetchOptional<ServedSettings>('settings.json').catch(() => null),
     ]);
     // Before Claude writes the storyboard, the run has only the plan, and the page shows only the plan.
-    if (storyboard === null && (plan || onPlanPath())) return { status: 'ready', walkthrough: null, meta, plan, settings };
+    if (storyboard === null && (plan || onPlanPath()))
+      return { status: 'ready', walkthrough: null, meta, plan, settings };
     if (storyboard === null) throw new DataError('storyboard.json', 'HTTP 404 Not Found');
     if (!Array.isArray(storyboard.scenes) || storyboard.scenes.length === 0) {
       throw new DataError('storyboard.json', 'expected a non-empty "scenes" array');
@@ -107,7 +180,15 @@ async function loadAll(): Promise<LoadState> {
     ]);
     return {
       status: 'ready',
-      walkthrough: { storyboard: normalizeStoryboard(storyboard, hunks), hunks, showCaptions: false, voiceover, audioBaseUrl: './data/', images: images ?? {}, imageBaseUrl: './data/' },
+      walkthrough: {
+        storyboard: normalizeStoryboard(storyboard, hunks),
+        hunks,
+        showCaptions: false,
+        voiceover,
+        audioBaseUrl: './data/',
+        images: images ?? {},
+        imageBaseUrl: './data/',
+      },
       meta,
       plan,
       settings,
@@ -188,7 +269,10 @@ export const App: React.FC = () => {
 
   const current = activeIndex(chapters, frame);
   const planData = ready?.plan?.status === 'ok' ? ready.plan.plan : null;
-  const reading = useMemo(() => (shown ? readingOrder(shown.storyboard, shown.hunks, planData) : null), [shown, planData]);
+  const reading = useMemo(
+    () => (shown ? readingOrder(shown.storyboard, shown.hunks, planData) : null),
+    [shown, planData],
+  );
   const seekChapter = useCallback(
     (index: number) => {
       const target = chapters[Math.max(0, Math.min(chapters.length - 1, index))];
@@ -206,7 +290,8 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (view !== 'video') return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey)
+        return;
       if (e.key === ' ') {
         e.preventDefault();
         playerRef.current?.toggle();
@@ -229,7 +314,9 @@ export const App: React.FC = () => {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-2 p-8 text-center" aria-live="polite">
         <div className="text-base text-slate-200">Making the voice-over…</div>
-        <div className="text-sm text-slate-500">The video starts here once every scene is voiced. The terminal shows how far it is.</div>
+        <div className="text-sm text-slate-500">
+          The video starts here once every scene is voiced. The terminal shows how far it is.
+        </div>
       </div>
     );
   }
@@ -237,9 +324,14 @@ export const App: React.FC = () => {
     return (
       <div className="flex h-screen items-center justify-center p-8">
         <div className="max-w-xl rounded-2xl border border-rose-500/30 bg-rose-500/10 p-6 text-slate-100">
-          <div className="text-xs font-semibold uppercase tracking-widest text-rose-300">Could not load {state.file}</div>
+          <div className="text-xs font-semibold uppercase tracking-widest text-rose-300">
+            Could not load {state.file}
+          </div>
           <pre className="mt-3 whitespace-pre-wrap font-mono text-sm text-rose-100/90">{state.message}</pre>
-          <button onClick={() => void reload()} className="mt-5 rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/20">
+          <button
+            onClick={() => void reload()}
+            className="mt-5 rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
+          >
             Retry
           </button>
         </div>
@@ -286,7 +378,9 @@ export const App: React.FC = () => {
                 {meta?.base ? <span className="text-slate-500">→ {meta.base}</span> : null}
               </span>
             ) : null}
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono">{formatTime(total)}</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono">
+              {formatTime(total)}
+            </span>
           </div>
         </header>
 
@@ -315,7 +409,10 @@ export const App: React.FC = () => {
                         <span className="font-mono text-xs text-slate-500">{formatTime(c.from)}</span>
                       </div>
                       {isActive ? (
-                        <div className="absolute bottom-0 left-0 h-0.5 bg-indigo-400" style={{ width: `${progress * 100}%` }} />
+                        <div
+                          className="absolute bottom-0 left-0 h-0.5 bg-indigo-400"
+                          style={{ width: `${progress * 100}%` }}
+                        />
                       ) : null}
                     </button>
                   </li>
@@ -353,7 +450,8 @@ export const App: React.FC = () => {
             {reading ? <ReadingPanel order={reading} onScene={seekChapter} /> : null}
             <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
               <span>
-                <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next chapter
+                <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next
+                chapter
               </span>
               <PlaybackRate rate={rate} onChange={setRate} />
             </footer>
@@ -386,7 +484,16 @@ const Tabs: React.FC<{ tab: Tab; onChange: (tab: Tab) => void }> = ({ tab, onCha
 );
 
 /** The plan page, or what stands in for it while plan.json is missing or has problems. */
-const PlanView: React.FC<{ plan: PlanData | null; token: string | null; hasVideo: boolean; title: string; branch?: string; explanation: boolean; active: boolean; preread: boolean }> = ({ plan, ...props }) => {
+const PlanView: React.FC<{
+  plan: PlanData | null;
+  token: string | null;
+  hasVideo: boolean;
+  title: string;
+  branch?: string;
+  explanation: boolean;
+  active: boolean;
+  preread: boolean;
+}> = ({ plan, ...props }) => {
   if (!plan) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
@@ -432,7 +539,9 @@ const PlaybackRate: React.FC<{ rate: number; onChange: (rate: number) => void }>
 );
 
 const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300">{children}</kbd>
+  <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300">
+    {children}
+  </kbd>
 );
 
 const renderPlayPoster = () => (
@@ -444,7 +553,10 @@ const renderPlayPoster = () => (
   </div>
 );
 
-const SubtitleHud: React.FC<{ segments: readonly SpokenSegment[]; frameInScene: number }> = ({ segments, frameInScene }) => {
+const SubtitleHud: React.FC<{ segments: readonly SpokenSegment[]; frameInScene: number }> = ({
+  segments,
+  frameInScene,
+}) => {
   const { text, word: current } = spokenAt(segments, frameInScene);
   const { words, lines } = captionPage(text, current, 90);
   return (
@@ -454,7 +566,13 @@ const SubtitleHud: React.FC<{ segments: readonly SpokenSegment[]; frameInScene: 
           {line.map((wi) => (
             <span
               key={wi}
-              className={wi === current ? 'text-white [text-shadow:0_0_14px_rgba(124,140,255,0.7)]' : wi < current ? 'text-slate-200' : 'text-slate-500'}
+              className={
+                wi === current
+                  ? 'text-white [text-shadow:0_0_14px_rgba(124,140,255,0.7)]'
+                  : wi < current
+                    ? 'text-slate-200'
+                    : 'text-slate-500'
+              }
             >
               {words[wi]}{' '}
             </span>

@@ -1,4 +1,24 @@
-import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, Check, CircleDot, Code2, Columns2, Copy, Layers, MemoryStick, Network, RotateCcw, Sheet, Split, SquareTerminal, Table2, Workflow, type LucideIcon } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Brackets,
+  ChartColumn,
+  ChartGantt,
+  Check,
+  CircleDot,
+  Code2,
+  Columns2,
+  Copy,
+  Layers,
+  MemoryStick,
+  Network,
+  RotateCcw,
+  Sheet,
+  Split,
+  SquareTerminal,
+  Table2,
+  Workflow,
+  type LucideIcon,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DEPTHS, formatLength, pickOf, planSeconds, samePick, suggestionOf } from '../shared/plan.mjs';
 import { VIEWS } from '../shared/views.mjs';
@@ -6,8 +26,21 @@ import { aType } from '../shared/words.mjs';
 import type { Depth, Plan, PlanTopic, TopicPick, ViewKey } from './types';
 
 const viewIcon: Record<ViewKey, LucideIcon> = {
-  parts: Network, calls: ArrowRightLeft, data: Workflow, decisions: Split, states: CircleDot, layers: Layers, schema: Table2, compare: Columns2,
-  timing: ChartGantt, facts: Sheet, numbers: ChartColumn, shell: SquareTerminal, memory: MemoryStick, steps: Brackets, code: Code2,
+  parts: Network,
+  calls: ArrowRightLeft,
+  data: Workflow,
+  decisions: Split,
+  states: CircleDot,
+  layers: Layers,
+  schema: Table2,
+  compare: Columns2,
+  timing: ChartGantt,
+  facts: Sheet,
+  numbers: ChartColumn,
+  shell: SquareTerminal,
+  memory: MemoryStick,
+  steps: Brackets,
+  code: Code2,
 };
 
 const depthLabel: Record<Depth, string> = { skip: 'Skip', brief: 'Brief', deep: 'Deep' };
@@ -26,7 +59,12 @@ const prereadHint: Record<Depth, string> = {
 /** The picks the current video was built from, by topic id (plan-built.json). */
 export type BuiltPicks = Record<string, TopicPick>;
 
-type Save = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'failed'; body: ChoiceBody } | { status: 'stale' };
+type Save =
+  | { status: 'idle' }
+  | { status: 'saving' }
+  | { status: 'saved' }
+  | { status: 'failed'; body: ChoiceBody }
+  | { status: 'stale' };
 interface ChoiceBody {
   topic: string;
   choice: TopicPick | null;
@@ -122,7 +160,14 @@ export const PlanPage: React.FC<{
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey
+      )
+        return;
       const topic = local.topics[row];
       if (!topic) return;
       const pick = pickOf(topic);
@@ -152,28 +197,43 @@ export const PlanPage: React.FC<{
           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-300/80">Plan</div>
           <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-100">{title}</h1>
           <p className="mt-1 text-sm text-slate-400">
-            Pick how much time each topic gets, and how it is shown.{preread ? ' No code on screen: you read the code after the video.' : ''}
+            Pick how much time each topic gets, and how it is shown.
+            {preread ? ' No code on screen: you read the code after the video.' : ''}
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400">
           <SaveNote save={save} />
-          {branch ? <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono">{branch}</span> : null}
-          <span className="rounded-full border border-indigo-400/30 bg-indigo-400/10 px-3 py-1 text-sm font-medium text-indigo-100" aria-live="polite">
+          {branch ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono">{branch}</span>
+          ) : null}
+          <span
+            className="rounded-full border border-indigo-400/30 bg-indigo-400/10 px-3 py-1 text-sm font-medium text-indigo-100"
+            aria-live="polite"
+          >
             {formatLength(planSeconds(local))}
           </span>
         </div>
       </header>
 
       {save.status === 'failed' ? (
-        <div role="alert" className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100">
+        <div
+          role="alert"
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100"
+        >
           Could not save. Is <code className="font-mono text-rose-50">mr-cast plan</code> still running?
-          <button onClick={() => void send(save.body)} className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20">
+          <button
+            onClick={() => void send(save.body)}
+            className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
+          >
             Retry
           </button>
         </div>
       ) : null}
       {save.status === 'stale' ? (
-        <div role="alert" className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100">
+        <div
+          role="alert"
+          className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100"
+        >
           This tab is from an earlier session. Reopen the link mr-cast printed.
         </div>
       ) : null}
@@ -204,13 +264,25 @@ export const PlanPage: React.FC<{
           />
         ))}
       </ol>
-      {explanation ? null : <FixedRow text={preread ? 'The tests, then the order in which to read the code, with what to check at each place.' : 'The tests, and what is left to check.'} />}
+      {explanation ? null : (
+        <FixedRow
+          text={
+            preread
+              ? 'The tests, then the order in which to read the code, with what to check at each place.'
+              : 'The tests, and what is left to check.'
+          }
+        />
+      )}
 
       <p className="mt-6 hidden text-xs text-slate-500 sm:block">
-        <Kbd>↑</Kbd> <Kbd>↓</Kbd> topic · <Kbd>1</Kbd> <Kbd>2</Kbd> <Kbd>3</Kbd> skip, brief, deep · <Kbd>←</Kbd> <Kbd>→</Kbd> how it is shown
+        <Kbd>↑</Kbd> <Kbd>↓</Kbd> topic · <Kbd>1</Kbd> <Kbd>2</Kbd> <Kbd>3</Kbd> skip, brief, deep · <Kbd>←</Kbd>{' '}
+        <Kbd>→</Kbd> how it is shown
       </p>
 
-      <HandBack hasVideo={hasVideo} changed={Boolean(built) && local.topics.some((t) => built?.[t.id] && !samePick(built[t.id], pickOf(t)))} />
+      <HandBack
+        hasVideo={hasVideo}
+        changed={Boolean(built) && local.topics.some((t) => built?.[t.id] && !samePick(built[t.id], pickOf(t)))}
+      />
     </div>
   );
 };
@@ -248,7 +320,19 @@ interface TopicRowProps {
   showHint: boolean;
 }
 
-const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, editable, onFocusRow, onChoose, onReset, ref, hints, showHint }) => {
+const TopicRow: React.FC<TopicRowProps> = ({
+  topic,
+  built,
+  current,
+  flash,
+  editable,
+  onFocusRow,
+  onChoose,
+  onReset,
+  ref,
+  hints,
+  showHint,
+}) => {
   const pick = pickOf(topic);
   const suggested = suggestionOf(topic);
   const changed = !samePick(pick, suggested);
@@ -260,20 +344,32 @@ const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, edita
       onMouseDown={onFocusRow}
       className={`relative rounded-2xl border px-4 py-4 transition sm:px-5 ${current ? 'border-indigo-400/40 bg-white/[0.05]' : 'border-white/10 bg-white/[0.025]'} ${flash ? 'ring-2 ring-amber-300/60' : ''}`}
     >
-      {changed ? <span aria-hidden className="absolute bottom-3 left-0 top-3 w-[3px] rounded-full bg-indigo-400" /> : null}
+      {changed ? (
+        <span aria-hidden className="absolute bottom-3 left-0 top-3 w-[3px] rounded-full bg-indigo-400" />
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className={`min-w-0 flex-1 basis-64 ${skipped ? 'opacity-45' : ''}`}>
           <h2 className="text-base font-semibold text-slate-100">{topic.title}</h2>
           <p className="mt-0.5 text-sm text-slate-300">{topic.summary}</p>
-          {topic.files.length ? <p className="mt-1 font-mono text-xs text-slate-500">{formatFiles(topic.files)}</p> : null}
+          {topic.files.length ? (
+            <p className="mt-1 font-mono text-xs text-slate-500">{formatFiles(topic.files)}</p>
+          ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <DepthControl value={pick.depth} suggested={suggested.depth} disabled={!editable} hints={hints} onChange={(depth) => onChoose({ depth })} />
+          <DepthControl
+            value={pick.depth}
+            suggested={suggested.depth}
+            disabled={!editable}
+            hints={hints}
+            onChange={(depth) => onChoose({ depth })}
+          />
           {showHint ? <p className="max-w-64 text-right text-xs text-slate-400">{hints[pick.depth]}</p> : null}
         </div>
       </div>
 
-      {skipped ? null : <ViewPicker topic={topic} value={pick.view} disabled={!editable} onChange={(view) => onChoose({ view })} />}
+      {skipped ? null : (
+        <ViewPicker topic={topic} value={pick.view} disabled={!editable} onChange={(view) => onChoose({ view })} />
+      )}
 
       {topic.why || changed || notInVideo ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -288,7 +384,11 @@ const TopicRow: React.FC<TopicRowProps> = ({ topic, built, current, flash, edita
               <RotateCcw size={12} /> Back to suggested
             </button>
           ) : null}
-          {notInVideo ? <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-0.5 text-amber-200">Changed, not in the video yet</span> : null}
+          {notInVideo ? (
+            <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-2.5 py-0.5 text-amber-200">
+              Changed, not in the video yet
+            </span>
+          ) : null}
         </div>
       ) : null}
     </li>
@@ -301,8 +401,18 @@ function formatFiles(files: readonly string[]): string {
   return `${names.join(', ')}${files.length > 2 ? ` +${files.length - 2}` : ''}`;
 }
 
-const DepthControl: React.FC<{ value: Depth; suggested: Depth; disabled: boolean; hints: Record<Depth, string>; onChange: (depth: Depth) => void }> = ({ value, suggested, disabled, hints, onChange }) => (
-  <div role="radiogroup" aria-label="Depth" className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5">
+const DepthControl: React.FC<{
+  value: Depth;
+  suggested: Depth;
+  disabled: boolean;
+  hints: Record<Depth, string>;
+  onChange: (depth: Depth) => void;
+}> = ({ value, suggested, disabled, hints, onChange }) => (
+  <div
+    role="radiogroup"
+    aria-label="Depth"
+    className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5"
+  >
     {DEPTHS.map((depth) => (
       <button
         key={depth}
@@ -312,23 +422,35 @@ const DepthControl: React.FC<{ value: Depth; suggested: Depth; disabled: boolean
         disabled={disabled}
         onClick={() => onChange(depth)}
         className={`relative rounded-md px-3.5 py-1.5 text-sm transition disabled:cursor-default ${
-          depth === value ? (depth === 'skip' ? 'bg-white/15 text-slate-100' : 'bg-indigo-500 text-white shadow') : 'text-slate-400 enabled:hover:text-slate-100'
+          depth === value
+            ? depth === 'skip'
+              ? 'bg-white/15 text-slate-100'
+              : 'bg-indigo-500 text-white shadow'
+            : 'text-slate-400 enabled:hover:text-slate-100'
         }`}
       >
         {depthLabel[depth]}
-        {depth === suggested ? <span aria-hidden className="absolute right-1 top-1 h-1 w-1 rounded-full bg-current opacity-70" /> : null}
+        {depth === suggested ? (
+          <span aria-hidden className="absolute right-1 top-1 h-1 w-1 rounded-full bg-current opacity-70" />
+        ) : null}
       </button>
     ))}
   </div>
 );
 
-const ViewPicker: React.FC<{ topic: PlanTopic; value: ViewKey; disabled: boolean; onChange: (view: ViewKey) => void }> = ({ topic, value, disabled, onChange }) => {
+const ViewPicker: React.FC<{
+  topic: PlanTopic;
+  value: ViewKey;
+  disabled: boolean;
+  onChange: (view: ViewKey) => void;
+}> = ({ topic, value, disabled, onChange }) => {
   if (topic.views.length === 1) {
     const only = topic.views[0]!;
     const Icon = viewIcon[only];
     return (
       <p className="mt-3 flex items-center gap-2 text-sm text-slate-400">
-        <Icon size={15} className="text-slate-500" /> Shown as: <span className="text-slate-200">{VIEWS[only].label}</span>
+        <Icon size={15} className="text-slate-500" /> Shown as:{' '}
+        <span className="text-slate-200">{VIEWS[only].label}</span>
       </p>
     );
   }
@@ -346,13 +468,17 @@ const ViewPicker: React.FC<{ topic: PlanTopic; value: ViewKey; disabled: boolean
             title={`Drawn as ${VIEWS[view].scenes.map(aType).join(' or ')} scene`}
             onClick={() => onChange(view)}
             className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition disabled:cursor-default ${
-              on ? 'border-indigo-400/60 bg-indigo-400/15 text-white' : 'border-white/10 text-slate-300 enabled:hover:border-white/25 enabled:hover:bg-white/5'
+              on
+                ? 'border-indigo-400/60 bg-indigo-400/15 text-white'
+                : 'border-white/10 text-slate-300 enabled:hover:border-white/25 enabled:hover:bg-white/5'
             }`}
           >
             <Icon size={18} className={on ? 'shrink-0 text-indigo-300' : 'shrink-0 text-slate-500'} />
             <span className="flex flex-1 flex-col leading-snug">
               {VIEWS[view].label}
-              {i === 0 ? <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-300/80">Suggested</span> : null}
+              {i === 0 ? (
+                <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-300/80">Suggested</span>
+              ) : null}
             </span>
           </button>
         );
@@ -372,13 +498,19 @@ const HandBack: React.FC<{ hasVideo: boolean; changed: boolean }> = ({ hasVideo,
   };
   if (hasVideo && !changed) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-10 border-t border-white/10 bg-[#0b0d14]/95 px-4 py-3 backdrop-blur" style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div
+      className="fixed inset-x-0 bottom-0 z-10 border-t border-white/10 bg-[#0b0d14]/95 px-4 py-3 backdrop-blur"
+      style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="mx-auto flex max-w-[880px] flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-slate-200">
         {hasVideo ? (
           <>
             <span>In the terminal, say:</span>
             <code className="rounded-md bg-white/10 px-2 py-0.5 font-mono">{say}</code>
-            <button onClick={copy} className="flex items-center gap-1 rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/10">
+            <button
+              onClick={copy}
+              className="flex items-center gap-1 rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/10"
+            >
               {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy'}
             </button>
           </>
@@ -393,5 +525,7 @@ const HandBack: React.FC<{ hasVideo: boolean; changed: boolean }> = ({ hasVideo,
 };
 
 const Kbd: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300">{children}</kbd>
+  <kbd className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[11px] text-slate-300">
+    {children}
+  </kbd>
 );

@@ -38,4 +38,9 @@ export declare const INK_TYPES: readonly Scene['type'][];
 export declare function inkVerbs(item: unknown): InkVerb[];
 export declare function inkBoard(scene: Scene, hunks?: HunkMap): { items: BoardItem[]; problems: InkProblem[] };
 /** The item keys a ref names on a step, as ink and the camera resolve it; on code, a count when text occurs more than once. */
-export declare function stepRefKeys(scene: Scene, hunks: HunkMap | undefined, step: unknown, ref: unknown): string[] | number | null;
+export declare function stepRefKeys(
+  scene: Scene,
+  hunks: HunkMap | undefined,
+  step: unknown,
+  ref: unknown,
+): string[] | number | null;

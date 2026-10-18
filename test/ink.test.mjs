@@ -6,7 +6,8 @@ import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { inkBoard } from '../shared/ink.mjs';
 import { cueFrame, cueWord, sceneSegments } from '../shared/timing.mjs';
 
-const errorsOf = async (scene, hunks = {}) => (await validateStoryboard({ title: 't', scenes: [scene] }, hunks, { mode: 'explain' })).errors;
+const errorsOf = async (scene, hunks = {}) =>
+  (await validateStoryboard({ title: 't', scenes: [scene] }, hunks, { mode: 'explain' })).errors;
 
 const graph = (steps) => ({
   type: 'graph',
@@ -24,11 +25,19 @@ const graph = (steps) => ({
   steps,
 });
 
-const board = (scene) => inkBoard(scene).items.map((it) => ({ step: it.step, verb: it.verb, id: it.id, until: it.until }));
+const board = (scene) =>
+  inkBoard(scene).items.map((it) => ({ step: it.step, verb: it.verb, id: it.id, until: it.until }));
 
 test('ink stays on the board until a step erases it, by id or all at once', () => {
   const scene = graph([
-    { focus: 'S', say: 'Start at S.', draw: [{ circle: 'S', id: 'start' }, { write: 'd = 0', near: 'S' }] },
+    {
+      focus: 'S',
+      say: 'Start at S.',
+      draw: [
+        { circle: 'S', id: 'start' },
+        { write: 'd = 0', near: 'S' },
+      ],
+    },
     { focus: 'A', say: 'A costs four.', draw: [{ underline: 'A', id: 'four' }] },
     { focus: 'B', say: 'B costs two.', erase: ['start'], draw: [{ tick: 'B' }] },
     { focus: 'A', say: 'A again.', erase: true },
@@ -54,7 +63,13 @@ test('an erase lands before the step draws, so a step can redraw an id it erases
 });
 
 test('targets resolve to scene keys, items on the board and stage points', () => {
-  const scene = graph([{ focus: 'B', say: 'Two plus one.', draw: [{ write: '2 + 1', near: 'B', id: 'sum' }, { arrow: ['sum', 'A'] }, { arrow: [[0.1, 0.9], 'B->A'] }] }]);
+  const scene = graph([
+    {
+      focus: 'B',
+      say: 'Two plus one.',
+      draw: [{ write: '2 + 1', near: 'B', id: 'sum' }, { arrow: ['sum', 'A'] }, { arrow: [[0.1, 0.9], 'B->A'] }],
+    },
+  ]);
   assert.deepEqual(
     inkBoard(scene).items.map((it) => it.targets),
     [[{ keys: ['n:B'] }], [{ ink: 'sum' }, { keys: ['n:A'] }], [{ point: [0.1, 0.9] }, { keys: ['e:2'] }]],
@@ -69,9 +84,21 @@ test('validate fails on a ref that names nothing, with the names close to it', a
 });
 
 test('validate fails on a when the say does not contain, and matches words without case or punctuation', async () => {
-  assert.deepEqual(await errorsOf(graph([{ focus: 'S', say: 'Two plus one, which is three.', draw: [{ circle: 'S', when: 'which is THREE' }, { tick: 'A', when: 'is four' }] }])), [
-    'scenes[0].steps[0].draw[1].when: "is four" is not in the step\'s say; copy the words the item should start on',
-  ]);
+  assert.deepEqual(
+    await errorsOf(
+      graph([
+        {
+          focus: 'S',
+          say: 'Two plus one, which is three.',
+          draw: [
+            { circle: 'S', when: 'which is THREE' },
+            { tick: 'A', when: 'is four' },
+          ],
+        },
+      ]),
+    ),
+    ['scenes[0].steps[0].draw[1].when: "is four" is not in the step\'s say; copy the words the item should start on'],
+  );
 });
 
 test('validate fails on an erase of an id never drawn, or not on the board yet', async () => {
@@ -106,7 +133,20 @@ test('validate fails on an arrow from an id drawn later in the scene or later in
 
 test('validate fails on items that draw nothing, two things, or a write with no place', async () => {
   assert.deepEqual(
-    await errorsOf(graph([{ focus: 'S', say: 'x', draw: [{ note: 'hi' }, { circle: 'S', box: 'A' }, { write: 'hi' }, { circle: 'S', colour: 'good', side: 'up', at: [0.5, 0.5] }] }])),
+    await errorsOf(
+      graph([
+        {
+          focus: 'S',
+          say: 'x',
+          draw: [
+            { note: 'hi' },
+            { circle: 'S', box: 'A' },
+            { write: 'hi' },
+            { circle: 'S', colour: 'good', side: 'up', at: [0.5, 0.5] },
+          ],
+        },
+      ]),
+    ),
     [
       'scenes[0].steps[0].draw[0]: names nothing to draw; give it one of circle, box, underline, strike, cross, tick, brace, arrow, write',
       'scenes[0].steps[0].draw[1]: names circle and box; an item draws one thing, so split it into 2 items',
@@ -120,7 +160,11 @@ test('validate fails on items that draw nothing, two things, or a write with no 
 
 test('validate fails on draw on a scene type without refs', async () => {
   const flow = { type: 'flow', narration: 'x', steps: [{ actor: 'a', action: 'b', say: 'c', draw: [{ circle: 0 }] }] };
-  assert.ok((await errorsOf(flow)).includes('scenes[0].steps[0].draw: flow steps take no draw; ink goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, image, svg, plot, map, text, code'));
+  assert.ok(
+    (await errorsOf(flow)).includes(
+      'scenes[0].steps[0].draw: flow steps take no draw; ink goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, image, svg, plot, map, text, code',
+    ),
+  );
 });
 
 test('a code step names lines by number or range, and any other string as text on its own lines', () => {
@@ -132,13 +176,30 @@ test('a code step names lines by number or range, and any other string as text o
       { type: 'add', text: 'count = count + 1;', oldLine: null, newLine: 3 },
     ],
   };
-  const scene = { type: 'code', hunkId: 'h1', narration: 'x', steps: [{ lines: '2-3', say: 'y', draw: [{ circle: '429' }, { underline: '2-3' }, { box: 'count' }, { tick: 'max = 20' }] }] };
+  const scene = {
+    type: 'code',
+    hunkId: 'h1',
+    narration: 'x',
+    steps: [
+      {
+        lines: '2-3',
+        say: 'y',
+        draw: [{ circle: '429' }, { underline: '2-3' }, { box: 'count' }, { tick: 'max = 20' }],
+      },
+    ],
+  };
   const { items, problems } = inkBoard(scene, { h1: hunk });
-  assert.deepEqual(items.map((it) => it.targets), [[{ keys: ['tx:1:24:3'] }], [{ keys: ['ln:1', 'ln:2'] }]]);
-  assert.deepEqual(problems.map((p) => p.message), [
-    '"count" occurs 3 times on the step\'s lines; lengthen it until it names one place',
-    '"max = 20" is not on the step\'s lines; name a line number, an "a-b" range, or text copied exactly from the code',
-  ]);
+  assert.deepEqual(
+    items.map((it) => it.targets),
+    [[{ keys: ['tx:1:24:3'] }], [{ keys: ['ln:1', 'ln:2'] }]],
+  );
+  assert.deepEqual(
+    problems.map((p) => p.message),
+    [
+      '"count" occurs 3 times on the step\'s lines; lengthen it until it names one place',
+      '"max = 20" is not on the step\'s lines; name a line number, an "a-b" range, or text copied exactly from the code',
+    ],
+  );
 });
 
 test('a cue is found among the spoken words and timed where the voice says it', () => {
@@ -158,11 +219,17 @@ test('validate warns when text written at a point lands on what the scene draws,
     values: [1, 2, 3, 4],
     steps: [{ focus: 0, say: 'The first cell.', draw: [{ write: 'start here', at }] }],
   });
-  const warningsOf = async (scene) => (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('.at:'));
+  const warningsOf = async (scene) =>
+    (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) =>
+      w.includes('.at:'),
+    );
   assert.deepEqual(await warningsOf(array([0.02, 0.9])), []);
   const onCells = await warningsOf(array([0.3, 0.42]));
   assert.equal(onCells.length, 1);
-  assert.match(onCells[0], /^scenes\[0\]\.steps\[0\]\.draw\[0\]\.at: the text lands on "0"; move it to free space, or write it near a ref$/);
+  assert.match(
+    onCells[0],
+    /^scenes\[0\]\.steps\[0\]\.draw\[0\]\.at: the text lands on "0"; move it to free space, or write it near a ref$/,
+  );
 });
 
 test('a step that only draws ink is not reported as moving nothing', async () => {
@@ -170,21 +237,52 @@ test('a step that only draws ink is not reported as moving nothing', async () =>
     { focus: 'S', say: 'Start at S.' },
     { focus: 'S', say: 'It costs nothing.', ...draw },
   ];
-  const same = async (scene) => (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('nothing moves'));
-  assert.deepEqual(await same(graph(steps({}))), ['scenes[0].steps[1]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere']);
+  const same = async (scene) =>
+    (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) =>
+      w.includes('nothing moves'),
+    );
+  assert.deepEqual(await same(graph(steps({}))), [
+    'scenes[0].steps[1]: focuses the same as the step before it, so nothing moves; merge the two or point this one elsewhere',
+  ]);
   assert.deepEqual(await same(graph(steps({ draw: [{ write: 'd = 0', near: 'S' }] }))), []);
 });
 
 test('the ink reference example validates with no errors and no warnings', async () => {
-  const text = (await import('node:fs')).readFileSync(new URL('../skill/mr-cast/references/ink.md', import.meta.url), 'utf8');
+  const text = (await import('node:fs')).readFileSync(
+    new URL('../skill/mr-cast/references/ink.md', import.meta.url),
+    'utf8',
+  );
   const scene = JSON.parse(/^```json\n([\s\S]*?)^```$/m.exec(text)[1]);
   const { errors, warnings } = await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' });
   assert.deepEqual({ errors, warnings }, { errors: [], warnings: [] });
 });
 
 test('validate warns that markup in handwritten ink is dropped', async () => {
-  const { warnings } = await validateStoryboard({ title: 't', scenes: [graph([{ focus: 'S', say: 'Start.', draw: [{ write: '**d** = 0', near: 'S' }, { circle: 'A', note: 'plain' }] }])] }, {}, { mode: 'explain' });
-  assert.deepEqual(warnings.filter((w) => w.includes('handwritten')), ['scenes[0].steps[0].draw[0].write: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup']);
+  const { warnings } = await validateStoryboard(
+    {
+      title: 't',
+      scenes: [
+        graph([
+          {
+            focus: 'S',
+            say: 'Start.',
+            draw: [
+              { write: '**d** = 0', near: 'S' },
+              { circle: 'A', note: 'plain' },
+            ],
+          },
+        ]),
+      ],
+    },
+    {},
+    { mode: 'explain' },
+  );
+  assert.deepEqual(
+    warnings.filter((w) => w.includes('handwritten')),
+    [
+      'scenes[0].steps[0].draw[0].write: ink is handwritten, so its markup is dropped and the words drawn plain; remove the markup',
+    ],
+  );
 });
 
 test('a step still shows the frame before the next step starts, and the last step its settled frame', async () => {
@@ -201,14 +299,43 @@ test('a step still shows the frame before the next step starts, and the last ste
 });
 
 test('ink on a text scene names its items, its lead by field name, its note and its kicker', async () => {
-  const text = (draw) => ({ type: 'text', narration: 'Three rules.', kicker: 'Rules', headline: 'Keep it small', note: 'and true', items: ['one', 'two', 'three'], steps: [{ focus: 1, say: 'The second rule.', draw }] });
-  const scene = text([{ circle: 1 }, { underline: 'headline' }, { write: 'why?', near: 'note' }, { box: ['0-1', 'kicker'] }]);
-  assert.deepEqual(inkBoard(scene).items.map((it) => it.targets), [[{ keys: ['b:1'] }], [{ keys: ['t:lead'] }], [{ keys: ['t:note'] }], [{ keys: ['b:0', 'b:1'] }, { keys: ['t:kicker'] }]]);
-  assert.deepEqual(await errorsOf(text([{ box: 'nope' }])), ['scenes[0].steps[0].draw[0].box: "nope" names nothing in this text; did you mean "note"?']);
+  const text = (draw) => ({
+    type: 'text',
+    narration: 'Three rules.',
+    kicker: 'Rules',
+    headline: 'Keep it small',
+    note: 'and true',
+    items: ['one', 'two', 'three'],
+    steps: [{ focus: 1, say: 'The second rule.', draw }],
+  });
+  const scene = text([
+    { circle: 1 },
+    { underline: 'headline' },
+    { write: 'why?', near: 'note' },
+    { box: ['0-1', 'kicker'] },
+  ]);
+  assert.deepEqual(
+    inkBoard(scene).items.map((it) => it.targets),
+    [
+      [{ keys: ['b:1'] }],
+      [{ keys: ['t:lead'] }],
+      [{ keys: ['t:note'] }],
+      [{ keys: ['b:0', 'b:1'] }, { keys: ['t:kicker'] }],
+    ],
+  );
+  assert.deepEqual(await errorsOf(text([{ box: 'nope' }])), [
+    'scenes[0].steps[0].draw[0].box: "nope" names nothing in this text; did you mean "note"?',
+  ]);
 });
 
 test('ink on an intent scene draws on its bullets, and validate names the scene as an intent', async () => {
-  const intent = { type: 'intent', narration: 'Two changes.', summary: 'Retry webhooks', bullets: ['backoff', 'a cap'], steps: [{ focus: 1, say: 'And a cap.', draw: [{ circle: 1 }, { circle: 'zzz' }] }] };
+  const intent = {
+    type: 'intent',
+    narration: 'Two changes.',
+    summary: 'Retry webhooks',
+    bullets: ['backoff', 'a cap'],
+    steps: [{ focus: 1, say: 'And a cap.', draw: [{ circle: 1 }, { circle: 'zzz' }] }],
+  };
   assert.deepEqual(await errorsOf(intent), ['scenes[0].steps[0].draw[1].circle: "zzz" names nothing in this intent']);
 });
 
@@ -229,19 +356,35 @@ const matrix = (draw) => ({
 });
 
 test('ink on a tests matrix names a cell, a situation, an outcome, a gap and a test by the cells it checks', async () => {
-  const scene = matrix([{ circle: 'retry.Calls', note: '3 calls' }, { box: 'ok' }, { tick: 'Calls' }, { cross: 'down' }, { underline: 'retries three times' }]);
-  assert.deepEqual(inkBoard(scene).items.map((it) => it.targets), [
-    [{ keys: ['x:1/1'] }],
-    [{ keys: ['s:ok', 'x:0/0', 'x:0/1'] }],
-    [{ keys: ['o:1', 'x:0/1', 'x:1/1'] }],
-    [{ keys: ['s:down'] }],
-    [{ keys: ['t:0', 'x:1/1', 'x:1/0'] }],
+  const scene = matrix([
+    { circle: 'retry.Calls', note: '3 calls' },
+    { box: 'ok' },
+    { tick: 'Calls' },
+    { cross: 'down' },
+    { underline: 'retries three times' },
   ]);
-  assert.deepEqual(await errorsOf(matrix([{ circle: 'retry.Waits' }])), ['scenes[0].steps[0].draw[0].circle: "retry.Waits" names nothing in this tests; did you mean "retry"?']);
+  assert.deepEqual(
+    inkBoard(scene).items.map((it) => it.targets),
+    [
+      [{ keys: ['x:1/1'] }],
+      [{ keys: ['s:ok', 'x:0/0', 'x:0/1'] }],
+      [{ keys: ['o:1', 'x:0/1', 'x:1/1'] }],
+      [{ keys: ['s:down'] }],
+      [{ keys: ['t:0', 'x:1/1', 'x:1/0'] }],
+    ],
+  );
+  assert.deepEqual(await errorsOf(matrix([{ circle: 'retry.Waits' }])), [
+    'scenes[0].steps[0].draw[0].circle: "retry.Waits" names nothing in this tests; did you mean "retry"?',
+  ]);
 });
 
 test('validate warns when text written at a point lands on a tests matrix, and not below it', async () => {
-  const warningsOf = async (scene) => (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => w.includes('.at:'));
-  assert.deepEqual(await warningsOf(matrix([{ write: 'here', at: [0.5, 0.3] }])), ['scenes[0].steps[0].draw[0].at: the text lands on "ok"; move it to free space, or write it near a ref']);
+  const warningsOf = async (scene) =>
+    (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) =>
+      w.includes('.at:'),
+    );
+  assert.deepEqual(await warningsOf(matrix([{ write: 'here', at: [0.5, 0.3] }])), [
+    'scenes[0].steps[0].draw[0].at: the text lands on "ok"; move it to free space, or write it near a ref',
+  ]);
   assert.deepEqual(await warningsOf(matrix([{ write: 'here', at: [0.02, 0.97] }])), []);
 });

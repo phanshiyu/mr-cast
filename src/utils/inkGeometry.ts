@@ -13,13 +13,25 @@ function overlapArea(a: Box, b: Box): number {
 }
 
 /** A box moved the least distance that puts it inside `area`. */
-export const keepIn = (b: Box, a: Box): Box => ({ ...b, x: Math.min(Math.max(b.x, a.x), right(a) - b.width), y: Math.min(Math.max(b.y, a.y), bottom(a) - b.height) });
+export const keepIn = (b: Box, a: Box): Box => ({
+  ...b,
+  x: Math.min(Math.max(b.x, a.x), right(a) - b.width),
+  y: Math.min(Math.max(b.y, a.y), bottom(a) - b.height),
+});
 
 function boundsOf(strokes: readonly Stroke[], pen: number): Box {
   const points = strokes.flatMap((s) => s.points);
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
-  return grow({ x: Math.min(...xs), y: Math.min(...ys), width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) }, pen);
+  return grow(
+    {
+      x: Math.min(...xs),
+      y: Math.min(...ys),
+      width: Math.max(...xs) - Math.min(...xs),
+      height: Math.max(...ys) - Math.min(...ys),
+    },
+    pen,
+  );
 }
 
 /** Where a line from the centre of `b` towards `p` leaves `b` grown by 10px. */
@@ -108,7 +120,10 @@ export function besideClear(t: Box, side: InkSide, size: Size, off: number, obst
   const wider = obstacles.filter((o) => overlapArea(box, o) > 0 && overlapArea(o, t) === 0 && spans(o));
   if (!wider.length) return box;
   const past = union([t, ...wider])!;
-  return keepIn(besideBox(across ? { ...past, y: t.y, height: t.height } : { ...past, x: t.x, width: t.width }, side, size, off), area);
+  return keepIn(
+    besideBox(across ? { ...past, y: t.y, height: t.height } : { ...past, x: t.x, width: t.width }, side, size, off),
+    area,
+  );
 }
 
 /** The target grown to take in what hangs off it on `side` within reach, such as index labels under cells, so a brace clears them. */
@@ -116,25 +131,60 @@ export function clearOf(t: Box, side: InkSide, obstacles: readonly Box[]): Box {
   const reach = 46;
   let out = t;
   for (const o of obstacles) {
-    const spans = side === 'above' || side === 'below' ? o.x < right(t) && right(o) > t.x : o.y < bottom(t) && bottom(o) > t.y;
+    const spans =
+      side === 'above' || side === 'below' ? o.x < right(t) && right(o) > t.x : o.y < bottom(t) && bottom(o) > t.y;
     if (!spans || overlapArea(o, t) > 0.5 * o.width * o.height) continue;
-    const gap = side === 'below' ? o.y - bottom(t) : side === 'above' ? t.y - bottom(o) : side === 'right' ? o.x - right(t) : t.x - right(o);
-    if (gap >= -4 && gap < reach) out = union([out, side === 'above' || side === 'below' ? { x: t.x, y: o.y, width: t.width, height: o.height } : { x: o.x, y: t.y, width: o.width, height: t.height }])!;
+    const gap =
+      side === 'below'
+        ? o.y - bottom(t)
+        : side === 'above'
+          ? t.y - bottom(o)
+          : side === 'right'
+            ? o.x - right(t)
+            : t.x - right(o);
+    if (gap >= -4 && gap < reach)
+      out = union([
+        out,
+        side === 'above' || side === 'below'
+          ? { x: t.x, y: o.y, width: t.width, height: o.height }
+          : { x: o.x, y: t.y, width: o.width, height: t.height },
+      ])!;
   }
   return out;
 }
 
 type TextSide = 'right' | 'below' | 'above' | 'left' | 'above-right' | 'below-right' | 'above-left' | 'below-left';
-const TEXT_SIDES: TextSide[] = ['right', 'above-right', 'above', 'below', 'below-right', 'left', 'above-left', 'below-left'];
+const TEXT_SIDES: TextSide[] = [
+  'right',
+  'above-right',
+  'above',
+  'below',
+  'below-right',
+  'left',
+  'above-left',
+  'below-left',
+];
 /** Where text may go for an ink item that names its side. */
-export const SIDE_ONLY: Record<InkSide, TextSide[]> = { above: ['above'], below: ['below'], left: ['left'], right: ['right'] };
+export const SIDE_ONLY: Record<InkSide, TextSide[]> = {
+  above: ['above'],
+  below: ['below'],
+  left: ['left'],
+  right: ['right'],
+};
 export const UNDER_FIRST: TextSide[] = ['below', 'below-right', 'right', 'above', 'left'];
 
 /**
  * The clearest spot for text of `size` beside `mark` (the drawn mark, or the target itself), inside `area`. An
  * obstacle costs far more than a less preferred side; `crowded` says even the best spot covers something.
  */
-export function placeText(mark: Box, target: Box, size: Size, obstacles: readonly Box[], area: Box, sides: readonly TextSide[] = TEXT_SIDES): { box: Box; crowded: boolean } {
+export function placeText(
+  mark: Box,
+  target: Box,
+  size: Size,
+  obstacles: readonly Box[],
+  area: Box,
+  sides: readonly TextSide[] = TEXT_SIDES,
+): { box: Box; crowded: boolean } {
   const G = 12;
   const at = (side: TextSide): Box => {
     const midY = target.y + target.height / 2 - size.height / 2;
@@ -163,9 +213,17 @@ export function placeText(mark: Box, target: Box, size: Size, obstacles: readonl
     const across = side === 'left' || side === 'right';
     [0, -0.35, 0.35, -0.7, 0.7, -1.1, 1.1, 1.6, -1.6].forEach((f, j) => {
       const base = at(side);
-      const box = keepIn({ ...base, x: base.x + (across ? 0 : f * size.width), y: base.y + (across ? f * (size.height + 6) : 0) }, area);
+      const box = keepIn(
+        { ...base, x: base.x + (across ? 0 : f * size.width), y: base.y + (across ? f * (size.height + 6) : 0) },
+        area,
+      );
       const near = grow(box, 8);
-      const score = 80 * overlapArea(box, grow(target, 4)) + 40 * overlapArea(box, mark) + 15 * obstacles.reduce((sum, o) => sum + overlapArea(near, o), 0) + 300 * i + 200 * j;
+      const score =
+        80 * overlapArea(box, grow(target, 4)) +
+        40 * overlapArea(box, mark) +
+        15 * obstacles.reduce((sum, o) => sum + overlapArea(near, o), 0) +
+        300 * i +
+        200 * j;
       if (!best || score < best.score) best = { box, score };
     });
   });
@@ -181,7 +239,10 @@ export function bowedArrow(tail: Pt, target: Box, seed: number, minBow: number, 
   const nx = -(tip.y - tail.y) / len;
   const ny = (tip.x - tail.x) / len;
   // `share` of the length, signed to bend left or right of travel; by default 0.15, bending to the right of a downward run.
-  const bow = share === undefined ? Math.max(minBow, len * 0.15) * (nx >= 0 ? 1 : -1) : Math.sign(share) * Math.max(minBow, len * Math.abs(share));
+  const bow =
+    share === undefined
+      ? Math.max(minBow, len * 0.15) * (nx >= 0 ? 1 : -1)
+      : Math.sign(share) * Math.max(minBow, len * Math.abs(share));
   const ctrl = { x: (tail.x + tip.x) / 2 + nx * bow, y: (tail.y + tip.y) / 2 + ny * bow };
   return headed(tail, ctrl, tip, 20, rand, pen);
 }
@@ -201,7 +262,10 @@ function headed(a: Pt, ctrl: Pt, b: Pt, n: number, rand: () => number, pen: numb
   const shaft = Array.from({ length: n + 1 }, (_, i) => {
     const t = i / n;
     const w = i > 0 && i < n ? (rand() - 0.5) * 1.5 : 0;
-    return { x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * ctrl.x + t * t * b.x + w, y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * ctrl.y + t * t * b.y + w };
+    return {
+      x: (1 - t) ** 2 * a.x + 2 * (1 - t) * t * ctrl.x + t * t * b.x + w,
+      y: (1 - t) ** 2 * a.y + 2 * (1 - t) * t * ctrl.y + t * t * b.y + w,
+    };
   });
   const last = shaft[n - 2]!;
   const angle = Math.atan2(b.y - last.y, b.x - last.x);
@@ -211,29 +275,51 @@ function headed(a: Pt, ctrl: Pt, b: Pt, n: number, rand: () => number, pen: numb
 }
 
 /** How many of `points` fall inside an obstacle. */
-const hits = (points: readonly Pt[], obstacles: readonly Box[]) => points.filter((p) => obstacles.some((o) => p.x > o.x && p.x < right(o) && p.y > o.y && p.y < bottom(o))).length;
+const hits = (points: readonly Pt[], obstacles: readonly Box[]) =>
+  points.filter((p) => obstacles.some((o) => p.x > o.x && p.x < right(o) && p.y > o.y && p.y < bottom(o))).length;
 
 /**
  * The arrow from one box to another: a swing round the outside for close neighbours; otherwise whichever bowed arrow,
  * or swing round the side of both boxes, crosses the fewest `obstacles` on its way, the shallowest on a tie.
  */
-export function linkSketch(source: Box | null, tail: Pt, target: Box, obstacles: readonly Box[], seed: number, pen: number): Sketch {
+export function linkSketch(
+  source: Box | null,
+  tail: Pt,
+  target: Box,
+  obstacles: readonly Box[],
+  seed: number,
+  pen: number,
+): Sketch {
   const tip = edgeToward(target, tail);
   const len = Math.hypot(tip.x - tail.x, tip.y - tail.y) || 1;
-  const vertical = source !== null && Math.abs(center(source).y - center(target).y) > Math.abs(center(source).x - center(target).x);
+  const vertical =
+    source !== null && Math.abs(center(source).y - center(target).y) > Math.abs(center(source).x - center(target).x);
   const round = (side: 1 | -1, bulge: number): Sketch | null => {
     if (!source) return null;
     if (vertical) {
       const x = (b: Box) => (side > 0 ? right(b) + 12 : b.x - 12);
-      return swing({ x: x(source), y: center(source).y }, { x: x(target), y: center(target).y }, side * bulge, seed, pen);
+      return swing(
+        { x: x(source), y: center(source).y },
+        { x: x(target), y: center(target).y },
+        side * bulge,
+        seed,
+        pen,
+      );
     }
     const y = (b: Box) => (side > 0 ? b.y - 12 : bottom(b) + 12);
     return swing({ x: center(source).x, y: y(source) }, { x: center(target).x, y: y(target) }, side * bulge, seed, pen);
   };
   if (source && len < 140) return round(1, vertical ? 70 : 60)!;
-  const others = obstacles.filter((o) => overlapArea(o, grow(target, 2)) < o.width * o.height * 0.5 && (!source || overlapArea(o, grow(source, 2)) < o.width * o.height * 0.5));
+  const others = obstacles.filter(
+    (o) =>
+      overlapArea(o, grow(target, 2)) < o.width * o.height * 0.5 &&
+      (!source || overlapArea(o, grow(source, 2)) < o.width * o.height * 0.5),
+  );
   const candidates: [Sketch | null, number][] = [
-    ...[0.15, -0.15, 0.3, -0.3, 0.5, -0.5, 0.75, -0.75].map((bow): [Sketch, number] => [bowedArrow(tail, target, seed, 34, pen, bow), Math.abs(bow) * 40]),
+    ...[0.15, -0.15, 0.3, -0.3, 0.5, -0.5, 0.75, -0.75].map((bow): [Sketch, number] => [
+      bowedArrow(tail, target, seed, 34, pen, bow),
+      Math.abs(bow) * 40,
+    ]),
     [round(1, 70), 40],
     [round(-1, 70), 45],
   ];
@@ -262,14 +348,24 @@ export function shaftBulge(sketch: Sketch): Pt {
 export function rowEnd(mark: Box, size: Size, obstacles: readonly Box[], area: Box): Box | null {
   const y = mark.y + mark.height / 2 - size.height / 2;
   const band = { x: area.x, y, width: area.width, height: size.height };
-  const end = Math.max(right(mark), ...obstacles.filter((o) => overlapArea(o, band) > 0 && o.x < right(mark) + 400).map(right));
+  const end = Math.max(
+    right(mark),
+    ...obstacles.filter((o) => overlapArea(o, band) > 0 && o.x < right(mark) + 400).map(right),
+  );
   const box = { x: end + 24, y, ...size };
   if (right(box) > right(area) || obstacles.some((o) => overlapArea(box, o) > 0)) return null;
   return box;
 }
 
 /** Text put where `placeText` found no clear spot: off in the nearest free space, with a leader arrow back to the mark. */
-export function leader(mark: Box, size: Size, obstacles: readonly Box[], area: Box, seed: number, pen: number): { box: Box; strokes: Stroke[] } {
+export function leader(
+  mark: Box,
+  size: Size,
+  obstacles: readonly Box[],
+  area: Box,
+  seed: number,
+  pen: number,
+): { box: Box; strokes: Stroke[] } {
   const c = center(mark);
   let best: { box: Box; tail: Pt; score: number } | null = null;
   for (const reach of [90, 150, 220, 300, 400, 520]) {
@@ -279,12 +375,20 @@ export function leader(mark: Box, size: Size, obstacles: readonly Box[], area: B
       const edge = edgeToward(mark, { x: c.x + d.x * 1e4, y: c.y + d.y * 1e4 });
       const want = { x: edge.x + d.x * reach, y: edge.y + d.y * reach };
       const box = keepIn({ x: d.x >= 0 ? want.x : want.x - size.width, y: want.y - size.height / 2, ...size }, area);
-      const tail = { x: Math.min(Math.max(c.x, box.x - 6), right(box) + 6), y: Math.min(Math.max(c.y, box.y - 6), bottom(box) + 6) };
+      const tail = {
+        x: Math.min(Math.max(c.x, box.x - 6), right(box) + 6),
+        y: Math.min(Math.max(c.y, box.y - 6), bottom(box) + 6),
+      };
       const tip = edgeToward(mark, tail);
-      const crossed = Array.from({ length: 10 }, (_, i) => ({ x: tail.x + ((tip.x - tail.x) * (i + 0.5)) / 10, y: tail.y + ((tip.y - tail.y) * (i + 0.5)) / 10 })).filter((p) =>
-        obstacles.some((o) => p.x > o.x && p.x < right(o) && p.y > o.y && p.y < bottom(o)),
-      ).length;
-      const score = 30 * obstacles.reduce((sum, o) => sum + overlapArea(grow(box, 8), o), 0) + 30 * overlapArea(box, grow(mark, 6)) + 2500 * crossed + 4 * reach;
+      const crossed = Array.from({ length: 10 }, (_, i) => ({
+        x: tail.x + ((tip.x - tail.x) * (i + 0.5)) / 10,
+        y: tail.y + ((tip.y - tail.y) * (i + 0.5)) / 10,
+      })).filter((p) => obstacles.some((o) => p.x > o.x && p.x < right(o) && p.y > o.y && p.y < bottom(o))).length;
+      const score =
+        30 * obstacles.reduce((sum, o) => sum + overlapArea(grow(box, 8), o), 0) +
+        30 * overlapArea(box, grow(mark, 6)) +
+        2500 * crossed +
+        4 * reach;
       if (!best || score < best.score) best = { box, tail, score };
     }
   }

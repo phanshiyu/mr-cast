@@ -12,7 +12,10 @@ import { ALLOW_LOOPBACK_ENV, isAllowedAddress } from '../bin/lib/public-fetch.mj
 // The download tests serve from 127.0.0.1, which mr-cast refuses unless this switch is on.
 process.env[ALLOW_LOOPBACK_ENV] = '1';
 
-const png = (width, height) => sharp({ create: { width, height, channels: 3, background: '#3366cc' } }).png().toBuffer();
+const png = (width, height) =>
+  sharp({ create: { width, height, channels: 3, background: '#3366cc' } })
+    .png()
+    .toBuffer();
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-images-'));
 const board = (...srcs) => ({ title: 't', scenes: srcs.map((src) => ({ type: 'image', narration: 'x', src })) });
 
@@ -23,22 +26,38 @@ async function serve(routes) {
     hits.push(req.url);
     const route = routes[req.url];
     if (!route) return res.writeHead(404, { 'Content-Type': 'text/plain' }).end('nope');
-    res.writeHead(route.status ?? 200, { ...(route.type ? { 'Content-Type': route.type } : {}), ...(route.headers ?? {}) });
+    res.writeHead(route.status ?? 200, {
+      ...(route.type ? { 'Content-Type': route.type } : {}),
+      ...(route.headers ?? {}),
+    });
     res.end(route.body);
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  return { url: `http://127.0.0.1:${server.address().port}`, hits, close: () => new Promise((resolve) => { server.close(resolve); server.closeAllConnections(); }) };
+  return {
+    url: `http://127.0.0.1:${server.address().port}`,
+    hits,
+    close: () =>
+      new Promise((resolve) => {
+        server.close(resolve);
+        server.closeAllConnections();
+      }),
+  };
 }
 
 test('the header of each image type gives the size a browser draws it at', async () => {
   for (const format of ['png', 'jpeg', 'webp', 'gif']) {
-    const buf = await sharp({ create: { width: 321, height: 123, channels: 3, background: '#808080' } }).toFormat(format).toBuffer();
+    const buf = await sharp({ create: { width: 321, height: 123, channels: 3, background: '#808080' } })
+      .toFormat(format)
+      .toBuffer();
     const type = sniffImage(buf);
     assert.equal(type, format === 'jpeg' ? 'jpg' : format);
     assert.deepEqual(imageSize(buf, type), { width: 321, height: 123 }, format);
   }
   // A phone photo stored landscape with orientation 6 is drawn portrait.
-  const rotated = await sharp({ create: { width: 300, height: 200, channels: 3, background: '#808080' } }).jpeg().withMetadata({ orientation: 6 }).toBuffer();
+  const rotated = await sharp({ create: { width: 300, height: 200, channels: 3, background: '#808080' } })
+    .jpeg()
+    .withMetadata({ orientation: 6 })
+    .toBuffer();
   assert.deepEqual(imageSize(rotated, 'jpg'), { width: 200, height: 300 });
   assert.equal(sniffImage(Buffer.from('<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg"></svg>')), 'svg');
 });
@@ -65,18 +84,29 @@ test('a source that cannot be shown is an error at its field that says why', asy
   (await png(4, 4)).copy(big);
   fs.writeFileSync(path.join(dir, 'huge.png'), big);
   fs.writeFileSync(path.join(path.dirname(dir), 'outside.png'), await png(4, 4));
-  const sb = board('missing.png', 'notes.png', 'logo.svg', 'huge.png', `../${'outside.png'}`, '/etc/hosts', 'ftp://x/y.png');
+  const sb = board(
+    'missing.png',
+    'notes.png',
+    'logo.svg',
+    'huge.png',
+    `../${'outside.png'}`,
+    '/etc/hosts',
+    'ftp://x/y.png',
+  );
   const { manifest, problems } = await resolveImages(dir, sb, { repo });
   assert.deepEqual(manifest, {});
-  assert.deepEqual(problems.map((p) => `${p.path}: ${p.message}`), [
-    `scenes[0].src: "missing.png" is not a file in ${dir} or in ${repo}`,
-    'scenes[1].src: "notes.png" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows',
-    'scenes[2].src: "logo.svg" is an SVG image, which mr-cast does not show as a picture since it can carry scripts; draw it in an svg scene, or convert it to PNG',
-    'scenes[3].src: "huge.png" is 11.0 MB; an image may be up to 10 MB',
-    `scenes[4].src: "../outside.png" is not a file in ${dir} or in ${repo}`,
-    'scenes[5].src: "/etc/hosts" is an absolute path; write it relative to the run directory or the repository, or give an http(s) URL',
-    'scenes[6].src: "ftp://x/y.png" is neither a relative path nor an http(s) URL',
-  ]);
+  assert.deepEqual(
+    problems.map((p) => `${p.path}: ${p.message}`),
+    [
+      `scenes[0].src: "missing.png" is not a file in ${dir} or in ${repo}`,
+      'scenes[1].src: "notes.png" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows',
+      'scenes[2].src: "logo.svg" is an SVG image, which mr-cast does not show as a picture since it can carry scripts; draw it in an svg scene, or convert it to PNG',
+      'scenes[3].src: "huge.png" is 11.0 MB; an image may be up to 10 MB',
+      `scenes[4].src: "../outside.png" is not a file in ${dir} or in ${repo}`,
+      'scenes[5].src: "/etc/hosts" is an absolute path; write it relative to the run directory or the repository, or give an http(s) URL',
+      'scenes[6].src: "ftp://x/y.png" is neither a relative path nor an http(s) URL',
+    ],
+  );
   assert.ok(problems.every((p) => p.level === 'error'));
 });
 
@@ -112,14 +142,17 @@ test('a URL that cannot be downloaded or is no image is an error with the reason
     const dir = tmp();
     const srcs = ['/missing.png', '/page', '/fake.png', '/big.png', '/icon.svg'].map((p) => server.url + p);
     const { problems } = await resolveImages(dir, board(...srcs, `${deadUrl}/x.png`), { repo: null });
-    assert.deepEqual(problems.map((p) => p.message), [
-      `"${srcs[0]}" could not be downloaded: the server answered HTTP 404 Not Found`,
-      `"${srcs[1]}" is not a PNG, JPEG, WebP or GIF image: the server sends it as "text/html"`,
-      `"${srcs[2]}" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows`,
-      `"${srcs[3]}" is 11.0 MB; an image may be up to 10 MB`,
-      `"${srcs[4]}" is not a PNG, JPEG, WebP or GIF image: the server sends it as "image/svg+xml"`,
-      `"${deadUrl}/x.png" could not be downloaded: ECONNREFUSED`,
-    ]);
+    assert.deepEqual(
+      problems.map((p) => p.message),
+      [
+        `"${srcs[0]}" could not be downloaded: the server answered HTTP 404 Not Found`,
+        `"${srcs[1]}" is not a PNG, JPEG, WebP or GIF image: the server sends it as "text/html"`,
+        `"${srcs[2]}" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows`,
+        `"${srcs[3]}" is 11.0 MB; an image may be up to 10 MB`,
+        `"${srcs[4]}" is not a PNG, JPEG, WebP or GIF image: the server sends it as "image/svg+xml"`,
+        `"${deadUrl}/x.png" could not be downloaded: ECONNREFUSED`,
+      ],
+    );
     assert.deepEqual(fs.existsSync(path.join(dir, 'images')) ? fs.readdirSync(path.join(dir, 'images')) : [], []);
   } finally {
     await server.close();
@@ -129,14 +162,47 @@ test('a URL that cannot be downloaded or is no image is an error with the reason
 test('only addresses on the public internet are allowed, IPv4 and IPv6 alike', () => {
   const allowed = ['93.184.215.14', '8.8.8.8', '2606:4700::6810:85e5', '::ffff:8.8.8.8', '2002:0808:0808::1'];
   const refused = [
-    '127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0',
-    '224.0.0.1', '255.255.255.255', '198.18.0.1', '192.0.2.1', '::', '::1', '::ffff:127.0.0.1', '::ffff:7f00:1',
-    '::ffff:169.254.169.254', 'fc00::1', 'fd12:3456::1', 'fe80::1', 'fe80::1%en0', 'ff02::1', '2001:db8::1',
-    '64:ff9b::a9fe:a9fe', '2002:7f00:0001::1', 'not an address',
+    '127.0.0.1',
+    '10.1.2.3',
+    '172.16.0.1',
+    '172.31.255.255',
+    '192.168.1.1',
+    '169.254.169.254',
+    '100.64.0.1',
+    '0.0.0.0',
+    '224.0.0.1',
+    '255.255.255.255',
+    '198.18.0.1',
+    '192.0.2.1',
+    '::',
+    '::1',
+    '::ffff:127.0.0.1',
+    '::ffff:7f00:1',
+    '::ffff:169.254.169.254',
+    'fc00::1',
+    'fd12:3456::1',
+    'fe80::1',
+    'fe80::1%en0',
+    'ff02::1',
+    '2001:db8::1',
+    '64:ff9b::a9fe:a9fe',
+    '2002:7f00:0001::1',
+    'not an address',
   ];
-  assert.deepEqual(allowed.filter((a) => !isAllowedAddress(a)), []);
-  assert.deepEqual(refused.filter((a) => isAllowedAddress(a)), []);
-  assert.deepEqual(['127.0.0.1', '127.9.9.9', '::1', '::ffff:127.0.0.1', '10.0.0.1', '::'].map((a) => isAllowedAddress(a, { loopback: true })), [true, true, true, true, false, false]);
+  assert.deepEqual(
+    allowed.filter((a) => !isAllowedAddress(a)),
+    [],
+  );
+  assert.deepEqual(
+    refused.filter((a) => isAllowedAddress(a)),
+    [],
+  );
+  assert.deepEqual(
+    ['127.0.0.1', '127.9.9.9', '::1', '::ffff:127.0.0.1', '10.0.0.1', '::'].map((a) =>
+      isAllowedAddress(a, { loopback: true }),
+    ),
+    [true, true, true, true, false, false],
+  );
 });
 
 test('a URL whose host is private, local or reserved is refused before any connection, by name or by address', async () => {
@@ -144,10 +210,26 @@ test('a URL whose host is private, local or reserved is refused before any conne
   const port = new URL(server.url).port;
   delete process.env[ALLOW_LOOPBACK_ENV];
   try {
-    const srcs = [`${server.url}/cat.png`, `http://localhost:${port}/cat.png`, `http://[::ffff:127.0.0.1]:${port}/cat.png`, `http://0.0.0.0:${port}/cat.png`, `http://[::]:${port}/cat.png`, `http://2130706433:${port}/cat.png`, 'http://169.254.169.254/latest/meta-data/x.png', 'http://10.0.0.1/x.png', 'http://[fd00::1]/x.png'];
+    const srcs = [
+      `${server.url}/cat.png`,
+      `http://localhost:${port}/cat.png`,
+      `http://[::ffff:127.0.0.1]:${port}/cat.png`,
+      `http://0.0.0.0:${port}/cat.png`,
+      `http://[::]:${port}/cat.png`,
+      `http://2130706433:${port}/cat.png`,
+      'http://169.254.169.254/latest/meta-data/x.png',
+      'http://10.0.0.1/x.png',
+      'http://[fd00::1]/x.png',
+    ];
     const { manifest, problems } = await resolveImages(tmp(), board(...srcs), { repo: null });
     assert.deepEqual(manifest, {});
-    assert.deepEqual(problems.map((p) => p.message), srcs.map((src) => `${JSON.stringify(src)} could not be downloaded: its host is a private, local or reserved address, which mr-cast does not download from`));
+    assert.deepEqual(
+      problems.map((p) => p.message),
+      srcs.map(
+        (src) =>
+          `${JSON.stringify(src)} could not be downloaded: its host is a private, local or reserved address, which mr-cast does not download from`,
+      ),
+    );
     assert.deepEqual(server.hits, []);
   } finally {
     process.env[ALLOW_LOOPBACK_ENV] = '1';
@@ -168,16 +250,24 @@ test('redirects are followed by hand, at most five, and each hop is checked like
   });
   try {
     const src = (p) => server.url + p;
-    const { manifest, problems } = await resolveImages(tmp(), board(src('/moved'), src('/metadata'), src('/private'), src('/ftp'), src('/loop')), { repo: null });
+    const { manifest, problems } = await resolveImages(
+      tmp(),
+      board(src('/moved'), src('/metadata'), src('/private'), src('/ftp'), src('/loop')),
+      { repo: null },
+    );
     assert.deepEqual(Object.keys(manifest), [src('/moved')]);
     assert.equal(manifest[src('/moved')].width, 20);
-    const refused = 'could not be downloaded: its host is a private, local or reserved address, which mr-cast does not download from';
-    assert.deepEqual(problems.map((p) => p.message), [
-      `"${src('/metadata')}" ${refused}`,
-      `"${src('/private')}" ${refused}`,
-      `"${src('/ftp')}" could not be downloaded: it redirects to a URL that is not http(s)`,
-      `"${src('/loop')}" could not be downloaded: it redirects more than 5 times`,
-    ]);
+    const refused =
+      'could not be downloaded: its host is a private, local or reserved address, which mr-cast does not download from';
+    assert.deepEqual(
+      problems.map((p) => p.message),
+      [
+        `"${src('/metadata')}" ${refused}`,
+        `"${src('/private')}" ${refused}`,
+        `"${src('/ftp')}" could not be downloaded: it redirects to a URL that is not http(s)`,
+        `"${src('/loop')}" could not be downloaded: it redirects more than 5 times`,
+      ],
+    );
     assert.equal(server.hits.filter((h) => h === '/loop').length, 6);
   } finally {
     await server.close();
@@ -189,14 +279,25 @@ test('a server that sends an image as octet-stream or image/jpg is trusted to th
   const server = await serve({
     '/a': { type: 'application/octet-stream', body },
     '/b': { type: 'binary/octet-stream', body },
-    '/c.jpg': { type: 'image/jpg', body: await sharp({ create: { width: 30, height: 20, channels: 3, background: '#808080' } }).jpeg().toBuffer() },
+    '/c.jpg': {
+      type: 'image/jpg',
+      body: await sharp({ create: { width: 30, height: 20, channels: 3, background: '#808080' } })
+        .jpeg()
+        .toBuffer(),
+    },
     '/d': { type: 'application/octet-stream', body: 'hello' },
   });
   try {
     const srcs = ['/a', '/b', '/c.jpg', '/d'].map((p) => server.url + p);
     const { manifest, problems } = await resolveImages(tmp(), board(...srcs), { repo: null });
-    assert.deepEqual(srcs.slice(0, 3).map((s) => manifest[s]?.file.split('.').pop()), ['png', 'png', 'jpg']);
-    assert.deepEqual(problems.map((p) => p.message), [`"${srcs[3]}" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows`]);
+    assert.deepEqual(
+      srcs.slice(0, 3).map((s) => manifest[s]?.file.split('.').pop()),
+      ['png', 'png', 'jpg'],
+    );
+    assert.deepEqual(
+      problems.map((p) => p.message),
+      [`"${srcs[3]}" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows`],
+    );
   } finally {
     await server.close();
   }
@@ -213,31 +314,49 @@ test('a local path that is a link out of the run directory and the repository is
   fs.symlinkSync(path.join(root, 'secret.png'), path.join(dir, 'out-too.png'));
   fs.symlinkSync(path.join(repo, 'shot.png'), path.join(dir, 'in.png'));
   fs.symlinkSync(root, path.join(dir, 'up'));
-  const { manifest, problems } = await resolveImages(dir, board('out.png', 'out-too.png', 'in.png', 'up/secret.png'), { repo });
+  const { manifest, problems } = await resolveImages(dir, board('out.png', 'out-too.png', 'in.png', 'up/secret.png'), {
+    repo,
+  });
   assert.deepEqual(Object.keys(manifest), ['in.png']);
   assert.equal(manifest['in.png'].width, 6);
   const out = 'is a link to a file outside the run directory and the repository, which mr-cast does not read';
-  assert.deepEqual(problems.map((p) => p.message), [`"out.png" ${out}`, `"out-too.png" ${out}`, `"up/secret.png" ${out}`]);
+  assert.deepEqual(
+    problems.map((p) => p.message),
+    [`"out.png" ${out}`, `"out-too.png" ${out}`, `"up/secret.png" ${out}`],
+  );
 });
 
 test('the read-only check downloads and writes nothing, and says a URL is not downloaded yet', async () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, 'a.png'), await png(10, 10));
-  const { manifest, problems } = await resolveImages(dir, board('a.png', 'https://example.invalid/b.png'), { write: false, repo: null });
+  const { manifest, problems } = await resolveImages(dir, board('a.png', 'https://example.invalid/b.png'), {
+    write: false,
+    repo: null,
+  });
   assert.deepEqual(Object.keys(manifest), ['a.png']);
-  assert.deepEqual(problems, [{ path: 'scenes[1].src', message: '"https://example.invalid/b.png" is not downloaded yet; `mr-cast validate` downloads it', level: 'warning' }]);
+  assert.deepEqual(problems, [
+    {
+      path: 'scenes[1].src',
+      message: '"https://example.invalid/b.png" is not downloaded yet; `mr-cast validate` downloads it',
+      level: 'warning',
+    },
+  ]);
   assert.deepEqual(fs.readdirSync(dir), ['a.png']);
 });
 
 const imageScene = (extra) => ({ type: 'image', narration: 'A desk.', src: 'desk.png', ...extra });
-const check = async (scene, images) => validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain', images });
+const check = async (scene, images) =>
+  validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain', images });
 
 test('validate names an image scene field that cannot be drawn', async () => {
   const { errors } = await check(
     imageScene({
       src: 'logo.svg',
       fit: 'stretch',
-      regions: [{ id: 'a', box: [0.5, 0.5, 0.6, 0.2] }, { id: 'a', box: [0, 0, 0.1] }],
+      regions: [
+        { id: 'a', box: [0.5, 0.5, 0.6, 0.2] },
+        { id: 'a', box: [0, 0, 0.1] },
+      ],
       kenBurns: { from: 'b', to: [0, 0, 0, 1] },
     }),
   );
@@ -250,26 +369,52 @@ test('validate names an image scene field that cannot be drawn', async () => {
     'scenes[0].kenBurns.from: "b" is no region id; they are "a"',
     'scenes[0].kenBurns.to: needs a width and height above 0',
   ]);
-  const compare = { type: 'compare', narration: 'x', rows: [{ cells: [{ image: 'a.png', fit: 'fill' }, { image: 'b.png' }] }] };
+  const compare = {
+    type: 'compare',
+    narration: 'x',
+    rows: [{ cells: [{ image: 'a.png', fit: 'fill' }, { image: 'b.png' }] }],
+  };
   assert.deepEqual((await check(compare)).errors, ['scenes[0].rows[0].cells[0].fit: must be one of contain, cover']);
 });
 
 test('validate reports a picture that cannot be shown, one drawn soft, and a step that names no region', async () => {
-  const images = { manifest: { 'desk.png': { file: 'images/0123456789abcdef.png', width: 320, height: 200 } }, problems: [{ path: 'scenes[0].src', message: '"desk.png" is not a file in /run', level: 'error' }] };
+  const images = {
+    manifest: { 'desk.png': { file: 'images/0123456789abcdef.png', width: 320, height: 200 } },
+    problems: [{ path: 'scenes[0].src', message: '"desk.png" is not a file in /run', level: 'error' }],
+  };
   assert.deepEqual((await check(imageScene({}), images)).errors, ['scenes[0].src: "desk.png" is not a file in /run']);
-  const { errors, warnings } = await check(imageScene({ regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4], label: 'the laptop' }], steps: [{ focus: 'laptop', say: 'The laptop.' }, { focus: 'mug', say: 'The mug.' }] }), { ...images, problems: [] });
+  const { errors, warnings } = await check(
+    imageScene({
+      regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4], label: 'the laptop' }],
+      steps: [
+        { focus: 'laptop', say: 'The laptop.' },
+        { focus: 'mug', say: 'The mug.' },
+      ],
+    }),
+    { ...images, problems: [] },
+  );
   assert.deepEqual(errors, ['scenes[0].steps[1].focus: "mug" names nothing in this scene, where a ref is a region id']);
   assert.deepEqual(warnings, []);
   const soft = await check(imageScene({}), { ...images, problems: [] });
-  assert.deepEqual(soft.warnings, ['scenes[0].src: the picture is 320×200 and is drawn 1286×804, 4.0 times its size, so it looks soft; use a larger image']);
+  assert.deepEqual(soft.warnings, [
+    'scenes[0].src: the picture is 320×200 and is drawn 1286×804, 4.0 times its size, so it looks soft; use a larger image',
+  ]);
 });
 
 test('a step that names a region by its label lights it, or the highlight check says so', async () => {
-  const scene = imageScene({ regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4], label: 'the laptop' }, { id: 'router', box: [0.7, 0.5, 0.2, 0.2], label: 'router' }], steps: [{ focus: 'laptop', say: 'The router sits behind it.' }] });
-  assert.deepEqual((await check(scene)).warnings, ['scenes[0].steps[0]: says "router" (region router "router"), which is not lit; it lights region laptop "the laptop". Focus what the words name, or say only what is lit']);
+  const scene = imageScene({
+    regions: [
+      { id: 'laptop', box: [0.3, 0.3, 0.4, 0.4], label: 'the laptop' },
+      { id: 'router', box: [0.7, 0.5, 0.2, 0.2], label: 'router' },
+    ],
+    steps: [{ focus: 'laptop', say: 'The router sits behind it.' }],
+  });
+  assert.deepEqual((await check(scene)).warnings, [
+    'scenes[0].steps[0]: says "router" (region router "router"), which is not lit; it lights region laptop "the laptop". Focus what the words name, or say only what is lit',
+  ]);
 });
 
-test('the player serves the run\'s picture copies by their hashed names and nothing else of the run', async () => {
+test("the player serves the run's picture copies by their hashed names and nothing else of the run", async () => {
   const { startServer } = await import('../bin/lib/server.mjs');
   const dir = tmp();
   fs.mkdirSync(path.join(dir, 'images'));
@@ -284,7 +429,8 @@ test('the player serves the run\'s picture copies by their hashed names and noth
     assert.equal(ok.status, 200);
     assert.equal(ok.headers.get('content-type'), 'image/png');
     assert.ok(Buffer.from(await ok.arrayBuffer()).equals(body));
-    for (const p of ['/data/images/notes.txt', '/data/desk.png', '/data/images/..%2Fdesk.png']) assert.equal((await get(p)).status, 404, p);
+    for (const p of ['/data/images/notes.txt', '/data/desk.png', '/data/images/..%2Fdesk.png'])
+      assert.equal((await get(p)).status, 404, p);
   } finally {
     await server.close();
   }
@@ -297,8 +443,16 @@ test('picture requests are not pages: an idle player exits while they come, and 
   fs.writeFileSync(path.join(dir, 'images', '0123456789abcdef.png'), await png(4, 4));
   const viewers = [];
   let closed = null;
-  const idled = new Promise((resolve) => { closed = resolve; });
-  const server = await startServer({ distDir: dir, dataDir: dir, port: 0, onViewers: (n) => viewers.push(n), idle: { ms: 200, onIdle: () => closed() } });
+  const idled = new Promise((resolve) => {
+    closed = resolve;
+  });
+  const server = await startServer({
+    distDir: dir,
+    dataDir: dir,
+    port: 0,
+    onViewers: (n) => viewers.push(n),
+    idle: { ms: 200, onIdle: () => closed() },
+  });
   const url = `${server.url}/data/images/0123456789abcdef.png`;
   const started = Date.now();
   let fetched = 0;
@@ -320,6 +474,11 @@ test('picture requests are not pages: an idle player exits while they come, and 
 });
 
 test('ink written at a point on a region of a picture warns, as on any scene with boxes', async () => {
-  const scene = imageScene({ regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4] }], steps: [{ focus: 'laptop', say: 'The laptop.', draw: [{ write: 'here', at: [0.45, 0.45] }] }] });
-  assert.deepEqual((await check(scene)).warnings, ['scenes[0].steps[0].draw[0].at: the text lands on "laptop"; move it to free space, or write it near a ref']);
+  const scene = imageScene({
+    regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4] }],
+    steps: [{ focus: 'laptop', say: 'The laptop.', draw: [{ write: 'here', at: [0.45, 0.45] }] }],
+  });
+  assert.deepEqual((await check(scene)).warnings, [
+    'scenes[0].steps[0].draw[0].at: the text lands on "laptop"; move it to free space, or write it near a ref',
+  ]);
 });

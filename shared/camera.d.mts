@@ -29,7 +29,10 @@ interface Rect extends Area {
 export declare const CAMERA_TYPES: readonly Scene['type'][];
 export declare const ZOOM_MAX: number;
 export declare const FIT_ZOOM_MAX: number;
-export declare function cameraShots(scene: Scene, hunks?: HunkMap): { shots: (Shot | null)[]; problems: CameraProblem[]; moves: boolean };
+export declare function cameraShots(
+  scene: Scene,
+  hunks?: HunkMap,
+): { shots: (Shot | null)[]; problems: CameraProblem[]; moves: boolean };
 export declare function wholeView(area: Area): View;
 export declare function frameShot(shot: Shot | null, boxOf: (key: string) => Rect | null | undefined, area: Area): View;
 export declare function viewRect(view: View, area: Area): Rect;

@@ -15,7 +15,10 @@ export const MORPH_NUMBER_W = 58;
 export const SPLIT_GUTTER_W = SPLIT_NUMBER_W + SIGN_W;
 export const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
 /** Code sizes: the readable range, largest first. Past the smallest, code still shrinks to HARD_MIN rather than lose a character. */
-const FONT_RANGE: Record<View, { min: number; max: number }> = { split: { min: 14, max: 20 }, morph: { min: 15, max: 23 } };
+const FONT_RANGE: Record<View, { min: number; max: number }> = {
+  split: { min: 14, max: 20 },
+  morph: { min: 15, max: 23 },
+};
 const HARD_MIN = 10;
 /** Room kept between the end of the longest line and the edge of its panel. */
 const CODE_RIGHT_PAD = 14;
@@ -34,7 +37,13 @@ export const FLOW_CALLOUT_GAP = 36;
 /** Unfocused rows kept above the first step and below the last; the rest of the hunk is cropped away. */
 const CONTEXT_ROWS = 3;
 
-export const STATUS_LABEL: Record<Hunk['status'], string> = { added: CHANGE_WORD.added, modified: CHANGE_WORD.modified, deleted: CHANGE_WORD.removed, renamed: 'renamed', source: 'source' };
+export const STATUS_LABEL: Record<Hunk['status'], string> = {
+  added: CHANGE_WORD.added,
+  modified: CHANGE_WORD.modified,
+  deleted: CHANGE_WORD.removed,
+  renamed: 'renamed',
+  source: 'source',
+};
 
 /** Morph numbers each row with its old and new line like a unified diff; a source snippet has only its own numbers. */
 export const morphGutterW = (hunk: Hunk) => (hunk.status === 'source' ? SPLIT_GUTTER_W : MORPH_GUTTER_W);
@@ -61,8 +70,24 @@ function codeMetrics(hunk: Hunk, texts: readonly string[], view: View, panelW: n
   const lines = texts.map(expandTabs);
   const { min, max } = FONT_RANGE[view];
   const slot = { ...sized(SLOTS.code, column), size: max, min };
-  const readable = fitLines(lines, view === 'split' ? slot : { ...slot, severity: 'warning', fix: 'the source line is long, so the code is drawn smaller' }, Infinity, 'hunkId');
-  const drawn = fitLines(lines, { ...slot, min: HARD_MIN, fix: 'a line is too long to show at all; leave this hunk out with "skipped", or show other lines of it' }, Infinity, 'hunkId');
+  const readable = fitLines(
+    lines,
+    view === 'split'
+      ? slot
+      : { ...slot, severity: 'warning', fix: 'the source line is long, so the code is drawn smaller' },
+    Infinity,
+    'hunkId',
+  );
+  const drawn = fitLines(
+    lines,
+    {
+      ...slot,
+      min: HARD_MIN,
+      fix: 'a line is too long to show at all; leave this hunk out with "skipped", or show other lines of it',
+    },
+    Infinity,
+    'hunkId',
+  );
   return { fontSize: drawn.size, rowH: Math.round(drawn.size * 1.65), readable, drawn };
 }
 
@@ -73,7 +98,9 @@ function codeMetrics(hunk: Hunk, texts: readonly string[], view: View, panelW: n
 function defaultView(hunk: Hunk, scene: CodeScene): View {
   const focus = lineFocusRanges(scene, hunk);
   const changed = (i: number | null) => i !== null && hunk.lines[i]!.type !== 'context';
-  const focused = splitRows(hunk.lines).filter((row) => [row.left, row.right].some((i) => changed(i) && focus[i!] !== null));
+  const focused = splitRows(hunk.lines).filter((row) =>
+    [row.left, row.right].some((i) => changed(i) && focus[i!] !== null),
+  );
   const paired = focused.filter((row) => changed(row.left) && changed(row.right)).length;
   return paired > 0 && 2 * paired >= focused.length ? 'split' : 'morph';
 }
@@ -99,7 +126,9 @@ function cropSlots(hunk: Hunk, view: View, scene: CodeScene): { slots: Slot[]; s
   const stepped = scene.steps?.length ?? 0;
   const order: number[] = [];
   const slots = rows.map((row) => {
-    const ids = [row.left, row.right].flatMap((i) => (i === null ? [] : [rangeOf[i] ?? null])).filter((id) => id !== null);
+    const ids = [row.left, row.right]
+      .flatMap((i) => (i === null ? [] : [rangeOf[i] ?? null]))
+      .filter((id) => id !== null);
     if (!ids.length) return { ...row, step: null };
     const id = Math.min(...ids);
     if (stepped) return { ...row, step: id };
@@ -115,10 +144,14 @@ function cropSlots(hunk: Hunk, view: View, scene: CodeScene): { slots: Slot[]; s
 
 /** Width of the status pill and the line counts on either side of a code scene's path. */
 function headerChrome(hunk: Hunk): number {
-  const pill = measure(STATUS_LABEL[hunk.status], { family: 'sans', weight: 700, size: 20, letterSpacing: 1.5, upper: true }) + 2 * 16 + 2;
+  const pill =
+    measure(STATUS_LABEL[hunk.status], { family: 'sans', weight: 700, size: 20, letterSpacing: 1.5, upper: true }) +
+    2 * 16 +
+    2;
   const mono = { family: 'mono', weight: 600, size: 24 } as const;
   const range = hunk.status === 'deleted' ? `L${hunk.oldStartLine}` : `L${hunk.startLine}–${hunk.endLine}`;
-  const counts = hunk.status === 'source' ? 0 : measure(`+${hunk.additions}`, mono) + measure(`−${hunk.deletions}`, mono) + 2 * 14;
+  const counts =
+    hunk.status === 'source' ? 0 : measure(`+${hunk.additions}`, mono) + measure(`−${hunk.deletions}`, mono) + 2 * 14;
   return pill + 2 * 22 + counts + 8 + measure(range, mono);
 }
 
@@ -149,14 +182,30 @@ function layoutOutput(scene: CodeScene, x: number, width: number): OutputPaneLay
     typeof step.output !== 'string'
       ? []
       : step.output.split('\n').map((raw) => {
-          const fit = fitText(raw.replace(/\t/g, '  ').trimEnd(), { ...sized(SLOTS.terminalOutput, inner), size: OUTPUT_FONT, min: OUTPUT_FONT }, `steps[${k}].output`);
+          const fit = fitText(
+            raw.replace(/\t/g, '  ').trimEnd(),
+            { ...sized(SLOTS.terminalOutput, inner), size: OUTPUT_FONT, min: OUTPUT_FONT },
+            `steps[${k}].output`,
+          );
           // A terminal wraps a long line rather than shrink it, so only its markup can be wrong.
-          const placed = { step: k, fit: { ...fit, fits: true, styled: 0 }, y, h: Math.max(1, fit.lines.length) * rowH };
+          const placed = {
+            step: k,
+            fit: { ...fit, fits: true, styled: 0 },
+            y,
+            h: Math.max(1, fit.lines.length) * rowH,
+          };
           y += placed.h;
           return placed;
         }),
   );
-  return { x, width, title: fitText(scene.outputTitle ?? 'Output', sized(SLOTS.terminalWindow, width - 140), 'outputTitle'), font: OUTPUT_FONT, rowH, lines };
+  return {
+    x,
+    width,
+    title: fitText(scene.outputTitle ?? 'Output', sized(SLOTS.terminalWindow, width - 140), 'outputTitle'),
+    font: OUTPUT_FONT,
+    rowH,
+    lines,
+  };
 }
 
 export interface CodeLayout {
@@ -184,24 +233,44 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
   const box = contentBox(false);
   const steps = scene.steps?.length ? scene.steps : null;
   const flow: FlowSteps | null = steps
-    ? steps.every((step) => step.label) ? steps.map((step) => ({ label: step.label!, outcome: step.outcome })) : null
-    : scene.flow?.length ? scene.flow : null;
+    ? steps.every((step) => step.label)
+      ? steps.map((step) => ({ label: step.label!, outcome: step.outcome }))
+      : null
+    : scene.flow?.length
+      ? scene.flow
+      : null;
   const flowPath = (k: number) => (steps ? `steps[${k}]` : `flow[${k}]`);
-  const view: View = hunk.status === 'source' || scene.typing ? 'morph' : scene.view ?? (flow ? 'morph' : defaultView(hunk, scene));
+  const view: View =
+    hunk.status === 'source' || scene.typing ? 'morph' : (scene.view ?? (flow ? 'morph' : defaultView(hunk, scene)));
   const { slots, stepCount } = cropSlots(hunk, view, scene);
   const calloutText = scene.calloutText?.trim() || null;
   const printing = !flow && Boolean(steps?.some((step) => typeof step.output === 'string'));
-  const at: CalloutAt | null = calloutText === null ? null : flow ? 'flow' : view === 'morph' && !printing ? 'beside' : 'below';
+  const at: CalloutAt | null =
+    calloutText === null ? null : flow ? 'flow' : view === 'morph' && !printing ? 'beside' : 'below';
 
-  const panelW = flow ? Math.round(box.width * FLOW_CODE_SHARE) : printing ? Math.round(box.width * OUTPUT_CODE_SHARE) : at === 'beside' ? box.width - CALLOUT_W - CALLOUT_GAP : box.width;
+  const panelW = flow
+    ? Math.round(box.width * FLOW_CODE_SHARE)
+    : printing
+      ? Math.round(box.width * OUTPUT_CODE_SHARE)
+      : at === 'beside'
+        ? box.width - CALLOUT_W - CALLOUT_GAP
+        : box.width;
   const panelH = box.height - HEADER_H - HEADER_GAP - (at === 'below' ? CALLOUT_BELOW_H + 28 : 0);
-  const shown = slots.flatMap((slot) => [slot.left, slot.right]).flatMap((i) => (i === null ? [] : [hunk.lines[i]!.text]));
+  const shown = slots
+    .flatMap((slot) => [slot.left, slot.right])
+    .flatMap((i) => (i === null ? [] : [hunk.lines[i]!.text]));
   const metrics = codeMetrics(hunk, [...new Set(shown)], view, panelW);
 
   const diagramLeft = panelW + FLOW_GAP;
   const diagramW = box.width - diagramLeft;
   const calloutWidth = at === 'flow' ? diagramW : at === 'beside' ? CALLOUT_W : box.width;
-  const calloutFit = calloutText ? fitText(calloutText, { ...sized(SLOTS.callout, calloutWidth - CALLOUT_PAD.x), lines: at === 'beside' ? 5 : at === 'flow' ? 4 : 2 }, 'calloutText') : null;
+  const calloutFit = calloutText
+    ? fitText(
+        calloutText,
+        { ...sized(SLOTS.callout, calloutWidth - CALLOUT_PAD.x), lines: at === 'beside' ? 5 : at === 'flow' ? 4 : 2 },
+        'calloutText',
+      )
+    : null;
   const callout = calloutFit && at ? { at, text: calloutFit, height: calloutFit.height + CALLOUT_PAD.y } : null;
   const flowCalloutBlock = callout?.at === 'flow' ? callout.height + FLOW_CALLOUT_GAP : 0;
   const stepLayout = flow ? layoutSteps(flow, diagramW, panelH - flowCalloutBlock, flowPath) : null;

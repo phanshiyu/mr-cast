@@ -24,7 +24,12 @@ export interface SequenceCamera {
  * steps, it pans from the first message to the last while the narration speaks. A still shows where the
  * last step leaves it, or the end of the sequence.
  */
-export function sequenceCamera(layout: SequenceLayout, lit: readonly ReadonlySet<number>[], segments: readonly SpokenSegment[], viewH: number): SequenceCamera {
+export function sequenceCamera(
+  layout: SequenceLayout,
+  lit: readonly ReadonlySet<number>[],
+  segments: readonly SpokenSegment[],
+  viewH: number,
+): SequenceCamera {
   const maxScroll = Math.max(0, layout.height - viewH);
   if (maxScroll < 0.5) return { viewH, scrolls: false, stops: lit.map(() => 0), scrollAt: () => 0 };
   const band = { top: layout.lifelineTop + MARGIN, height: viewH - layout.lifelineTop - 2 * MARGIN };
@@ -36,12 +41,28 @@ export function sequenceCamera(layout: SequenceLayout, lit: readonly ReadonlySet
     const first = layout.messages[Math.min(...set)]!;
     const last = layout.messages[Math.max(...set)]!;
     const span = last.bottom - first.top;
-    stops.push(clampScroll(span <= band.height ? (first.top + last.bottom) / 2 - (band.top + band.height / 2) : last.bottom - (band.top + band.height)));
+    stops.push(
+      clampScroll(
+        span <= band.height
+          ? (first.top + last.bottom) / 2 - (band.top + band.height / 2)
+          : last.bottom - (band.top + band.height),
+      ),
+    );
   });
   const stepped = segments.length > 1 && stops.length > 0;
   const narration = segments[0]!;
   const scrollAt = stepped
-    ? (frame: number) => stops.reduce((acc, stop, k) => acc + (stop - (k ? stops[k - 1]! : 0)) * stepMove(frame, segments[k + 1]!.from), 0)
-    : (frame: number) => interpolate(frame, [narration.voiceFrom, narration.voiceFrom + Math.max(1, narration.speakingFrames)], [0, maxScroll], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) });
+    ? (frame: number) =>
+        stops.reduce(
+          (acc, stop, k) => acc + (stop - (k ? stops[k - 1]! : 0)) * stepMove(frame, segments[k + 1]!.from),
+          0,
+        )
+    : (frame: number) =>
+        interpolate(
+          frame,
+          [narration.voiceFrom, narration.voiceFrom + Math.max(1, narration.speakingFrames)],
+          [0, maxScroll],
+          { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.inOut(Easing.cubic) },
+        );
   return { viewH, scrolls: true, stops: stepped ? stops : lit.map(() => maxScroll), scrollAt };
 }

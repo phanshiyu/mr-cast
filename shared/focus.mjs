@@ -8,7 +8,9 @@ export function expandLineRefs(refs = []) {
       out.add(ref);
       continue;
     }
-    const [a, b = a] = String(ref).split('-').map((s) => parseInt(s, 10));
+    const [a, b = a] = String(ref)
+      .split('-')
+      .map((s) => parseInt(s, 10));
     if (Number.isNaN(a) || Number.isNaN(b)) continue;
     for (let n = Math.min(a, b); n <= Math.max(a, b); n++) out.add(n);
   }
@@ -34,8 +36,13 @@ function numberRuns(lines) {
  */
 export function focusRanges(refs = []) {
   const numbers = refs.filter((ref) => typeof ref === 'number');
-  const strings = refs.filter((ref) => typeof ref !== 'number').map((ref) => [...expandLineRefs([ref])]).filter((lines) => lines.length);
-  const pieces = [...numberRuns(numbers), ...strings.map((lines) => [Math.min(...lines), Math.max(...lines)])].sort((x, y) => x[0] - y[0]);
+  const strings = refs
+    .filter((ref) => typeof ref !== 'number')
+    .map((ref) => [...expandLineRefs([ref])])
+    .filter((lines) => lines.length);
+  const pieces = [...numberRuns(numbers), ...strings.map((lines) => [Math.min(...lines), Math.max(...lines)])].sort(
+    (x, y) => x[0] - y[0],
+  );
   const ranges = [];
   for (const [a, b] of pieces) {
     const last = ranges[ranges.length - 1];
@@ -57,7 +64,10 @@ export function stepRange(step) {
 
 /** Indexes into `hunk.lines` of the lines a code step highlights. */
 export function stepLines(hunk, step) {
-  const { side, range: [a, b] } = stepRange(step);
+  const {
+    side,
+    range: [a, b],
+  } = stepRange(step);
   return hunk.lines.flatMap((line, i) => (line[side] !== null && line[side] >= a && line[side] <= b ? [i] : []));
 }
 

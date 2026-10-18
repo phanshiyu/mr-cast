@@ -54,7 +54,15 @@ function fixture() {
   write(path.join(cache, 'mr-cast', 'models', 'kokoro.onnx'), 4000);
   write(path.join(cache, 'mr-cast', 'remotion.users', String(process.pid)), 0);
   process.env.XDG_CACHE_HOME = cache;
-  const env = { ...process.env, XDG_CACHE_HOME: cache, XDG_CONFIG_HOME: path.join(root, 'config'), XDG_STATE_HOME: path.join(root, 'state'), CLAUDE_CONFIG_DIR: path.join(root, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1', MR_CAST_PROCS_SCAN: '0' };
+  const env = {
+    ...process.env,
+    XDG_CACHE_HOME: cache,
+    XDG_CONFIG_HOME: path.join(root, 'config'),
+    XDG_STATE_HOME: path.join(root, 'state'),
+    CLAUDE_CONFIG_DIR: path.join(root, 'claude'),
+    MR_CAST_NO_UPDATE_CHECK: '1',
+    MR_CAST_PROCS_SCAN: '0',
+  };
   const cwd = path.join(root, 'repo');
   const run = (...args) => spawnSync(process.execPath, [BIN, ...args], { cwd, env, encoding: 'utf8' });
   return { data, cache, run, list: () => listArtifacts(data) };
@@ -62,21 +70,39 @@ function fixture() {
 
 const selector = (fields) => ({ ids: [], kinds: null, all: false, except: [], olderThanDays: null, ...fields });
 const ids = (artifacts) => artifacts.map((a) => a.id);
-const filesUnder = (dir) => fs.readdirSync(dir, { recursive: true }).map((f) => path.join(dir, f)).sort();
+const filesUnder = (dir) =>
+  fs
+    .readdirSync(dir, { recursive: true })
+    .map((f) => path.join(dir, f))
+    .sort();
 
 test('--kind picks every artifact of its kinds, and --older-than narrows it', () => {
   const { list } = fixture();
-  assert.deepEqual(ids(select(list(), selector({ kinds: ['video'] }), { now: NOW }).chosen), ['video:rate-limit/rate-limiter.mp4', 'video:retry/retry-backoff.mp4']);
-  assert.deepEqual(ids(select(list(), selector({ kinds: ['video'], olderThanDays: 30 }), { now: NOW }).chosen), ['video:rate-limit/rate-limiter.mp4']);
-  assert.deepEqual(ids(select(list(), selector({ kinds: ['run', 'explain'], olderThanDays: 30 }), { now: NOW }).chosen), ['run:rate-limit']);
-  assert.deepEqual(ids(select(list(), selector({ kinds: ['stills', 'audio'] }), { now: NOW }).chosen), ['stills:rate-limit', 'audio:rate-limit']);
+  assert.deepEqual(ids(select(list(), selector({ kinds: ['video'] }), { now: NOW }).chosen), [
+    'video:rate-limit/rate-limiter.mp4',
+    'video:retry/retry-backoff.mp4',
+  ]);
+  assert.deepEqual(ids(select(list(), selector({ kinds: ['video'], olderThanDays: 30 }), { now: NOW }).chosen), [
+    'video:rate-limit/rate-limiter.mp4',
+  ]);
+  assert.deepEqual(
+    ids(select(list(), selector({ kinds: ['run', 'explain'], olderThanDays: 30 }), { now: NOW }).chosen),
+    ['run:rate-limit'],
+  );
+  assert.deepEqual(ids(select(list(), selector({ kinds: ['stills', 'audio'] }), { now: NOW }).chosen), [
+    'stills:rate-limit',
+    'audio:rate-limit',
+  ]);
 });
 
 test('deleting a part leaves its walkthrough as old as its newest file, not its directory', () => {
   const { list, run } = fixture();
   const result = run('prune', 'video:rate-limit/rate-limiter.mp4');
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(ids(select(list(), selector({ kinds: ['run', 'explain'], olderThanDays: 30 }), { now: Date.now() }).chosen), ['run:rate-limit']);
+  assert.deepEqual(
+    ids(select(list(), selector({ kinds: ['run', 'explain'], olderThanDays: 30 }), { now: Date.now() }).chosen),
+    ['run:rate-limit'],
+  );
 });
 
 test('an empty walkthrough directory is as old as the directory, not as old as 1970', () => {
@@ -89,9 +115,19 @@ test('an empty walkthrough directory is as old as the directory, not as old as 1
 
 test('--except keeps a walkthrough with its parts, and keeps the walkthrough holding an excepted part', () => {
   const { list } = fixture();
-  assert.deepEqual(ids(select(list(), selector({ all: true, except: ['run:rate-limit'] }), { now: NOW }).chosen), ['run:retry', 'video:retry/retry-backoff.mp4', 'cache:bundle', 'cache:models']);
+  assert.deepEqual(ids(select(list(), selector({ all: true, except: ['run:rate-limit'] }), { now: NOW }).chosen), [
+    'run:retry',
+    'video:retry/retry-backoff.mp4',
+    'cache:bundle',
+    'cache:models',
+  ]);
   assert.deepEqual(ids(select(list(), selector({ all: true, except: ['stills:rate-limit'] }), { now: NOW }).chosen), [
-    'video:rate-limit/rate-limiter.mp4', 'audio:rate-limit', 'run:retry', 'video:retry/retry-backoff.mp4', 'cache:bundle', 'cache:models',
+    'video:rate-limit/rate-limiter.mp4',
+    'audio:rate-limit',
+    'run:retry',
+    'video:retry/retry-backoff.mp4',
+    'cache:bundle',
+    'cache:models',
   ]);
   assert.throws(() => select(list(), selector({ all: true, except: ['run:nope'] })), /unknown --except id: run:nope/);
 });
@@ -100,20 +136,38 @@ test('a busy artifact is never selected and is reported; naming it outright dele
   const { list } = fixture();
   const { chosen, inUse } = select(list(), selector({ kinds: ['cache'] }), { now: NOW });
   assert.deepEqual(ids(chosen), ['cache:bundle', 'cache:models']);
-  assert.deepEqual(inUse.map((a) => [a.id, a.busy]), [['cache:remotion', `a render (pid ${process.pid}) is using it`]]);
-  assert.throws(() => select(list(), selector({ ids: ['cache:remotion', 'cache:models'] })), /not pruning anything: cache:remotion is in use/);
-  assert.throws(() => select(list(), selector({ ids: ['run:retry'], olderThanDays: 30 }), { now: NOW, listCommand: 'mr-cast prune --older-than 30' }), /unknown id: run:retry; run `mr-cast prune --older-than 30`/);
+  assert.deepEqual(
+    inUse.map((a) => [a.id, a.busy]),
+    [['cache:remotion', `a render (pid ${process.pid}) is using it`]],
+  );
+  assert.throws(
+    () => select(list(), selector({ ids: ['cache:remotion', 'cache:models'] })),
+    /not pruning anything: cache:remotion is in use/,
+  );
+  assert.throws(
+    () =>
+      select(list(), selector({ ids: ['run:retry'], olderThanDays: 30 }), {
+        now: NOW,
+        listCommand: 'mr-cast prune --older-than 30',
+      }),
+    /unknown id: run:retry; run `mr-cast prune --older-than 30`/,
+  );
 });
 
 test('a walkthrough selected with its parts counts their bytes once', () => {
   const { list } = fixture();
-  const plan = removalPlan(select(list(), selector({ ids: ['run:rate-limit'], kinds: ['video', 'stills'] }), { now: NOW }).chosen);
-  assert.deepEqual(plan.map((r) => [r.artifact.id, r.bytes, r.with]), [
-    ['run:rate-limit', 1000 + 200 + 300 + 2 + 24 + 23, null],
-    ['video:rate-limit/rate-limiter.mp4', 0, 'run:rate-limit'],
-    ['stills:rate-limit', 0, 'run:rate-limit'],
-    ['video:retry/retry-backoff.mp4', 2000, null],
-  ]);
+  const plan = removalPlan(
+    select(list(), selector({ ids: ['run:rate-limit'], kinds: ['video', 'stills'] }), { now: NOW }).chosen,
+  );
+  assert.deepEqual(
+    plan.map((r) => [r.artifact.id, r.bytes, r.with]),
+    [
+      ['run:rate-limit', 1000 + 200 + 300 + 2 + 24 + 23, null],
+      ['video:rate-limit/rate-limiter.mp4', 0, 'run:rate-limit'],
+      ['stills:rate-limit', 0, 'run:rate-limit'],
+      ['video:retry/retry-backoff.mp4', 2000, null],
+    ],
+  );
 });
 
 test('--dry-run prints what would go and removes nothing', () => {
@@ -121,20 +175,37 @@ test('--dry-run prints what would go and removes nothing', () => {
   const before = [...filesUnder(data), ...filesUnder(cache)];
   const text = run('prune', '--kind', 'run,explain', '--older-than', '30', '--dry-run');
   assert.equal(text.status, 0, text.stderr);
-  assert.equal(text.stdout, [
-    'would remove run:rate-limit · 1.5 KB · .mr-cast/rate-limit',
-    'would free 1.5 KB',
-    '',
-  ].join('\n'));
+  assert.equal(
+    text.stdout,
+    ['would remove run:rate-limit · 1.5 KB · .mr-cast/rate-limit', 'would free 1.5 KB', ''].join('\n'),
+  );
   const json = run('prune', '--all', '--except', 'run:retry', '--dry-run', '--json');
   assert.equal(json.status, 0, json.stderr);
   assert.deepEqual(JSON.parse(json.stdout), {
     dryRun: true,
     artifacts: [
       { id: 'run:rate-limit', kind: 'run', path: path.join(data, 'rate-limit'), bytes: 1549, with: null },
-      { id: 'video:rate-limit/rate-limiter.mp4', kind: 'video', path: path.join(data, 'rate-limit', 'rate-limiter.mp4'), bytes: 0, with: 'run:rate-limit' },
-      { id: 'stills:rate-limit', kind: 'stills', path: path.join(data, 'rate-limit', 'stills'), bytes: 0, with: 'run:rate-limit' },
-      { id: 'audio:rate-limit', kind: 'audio', path: path.join(data, 'rate-limit', 'audio'), bytes: 0, with: 'run:rate-limit' },
+      {
+        id: 'video:rate-limit/rate-limiter.mp4',
+        kind: 'video',
+        path: path.join(data, 'rate-limit', 'rate-limiter.mp4'),
+        bytes: 0,
+        with: 'run:rate-limit',
+      },
+      {
+        id: 'stills:rate-limit',
+        kind: 'stills',
+        path: path.join(data, 'rate-limit', 'stills'),
+        bytes: 0,
+        with: 'run:rate-limit',
+      },
+      {
+        id: 'audio:rate-limit',
+        kind: 'audio',
+        path: path.join(data, 'rate-limit', 'audio'),
+        bytes: 0,
+        with: 'run:rate-limit',
+      },
       { id: 'cache:bundle', kind: 'cache', path: path.join(cache, 'mr-cast', 'bundle'), bytes: 50, with: null },
       { id: 'cache:models', kind: 'cache', path: path.join(cache, 'mr-cast', 'models'), bytes: 4000, with: null },
     ],
@@ -152,32 +223,52 @@ test('--choices groups the menu, and each option command removes exactly the ids
   const choices = JSON.parse(out.stdout);
   // mr-cast processes running on this machine add a group of `stop` options, which this test must never run.
   choices.groups = choices.groups.filter((g) => g.name !== 'Running processes');
-  assert.deepEqual(choices.groups.map((g) => [g.name, g.options.map((o) => [o.label, o.command.join(' ')])]), [
-    ['Rendered videos', [
-      ['All rendered videos', 'prune --kind video'],
-      ['Videos not changed in 30 days', 'prune --kind video --older-than 30'],
-      ['Video of "Rate limiter"', 'prune video:rate-limit/rate-limiter.mp4'],
-      ['Video of "Retry backoff"', 'prune video:retry/retry-backoff.mp4'],
-    ]],
-    ['Stills and voice clips', [
-      ['All stills and voice clips', 'prune --kind stills,audio'],
-      ['Stills of "Rate limiter"', 'prune stills:rate-limit'],
-      ['Voice clips of "Rate limiter"', 'prune audio:rate-limit'],
-    ]],
-    ['Walkthroughs', [
-      ['All walkthroughs', 'prune --kind run,explain'],
-      ['Walkthroughs not changed in 30 days', 'prune --kind run,explain --older-than 30'],
-      ['"Rate limiter"', 'prune run:rate-limit'],
-      ['"Retry backoff"', 'prune run:retry'],
-    ]],
-    ['Cache', [
-      ['All cached downloads', 'prune --kind cache'],
-      ['Player bundle', 'prune cache:bundle'],
-      ['Kokoro voice model', 'prune cache:models'],
-    ]],
+  assert.deepEqual(
+    choices.groups.map((g) => [g.name, g.options.map((o) => [o.label, o.command.join(' ')])]),
+    [
+      [
+        'Rendered videos',
+        [
+          ['All rendered videos', 'prune --kind video'],
+          ['Videos not changed in 30 days', 'prune --kind video --older-than 30'],
+          ['Video of "Rate limiter"', 'prune video:rate-limit/rate-limiter.mp4'],
+          ['Video of "Retry backoff"', 'prune video:retry/retry-backoff.mp4'],
+        ],
+      ],
+      [
+        'Stills and voice clips',
+        [
+          ['All stills and voice clips', 'prune --kind stills,audio'],
+          ['Stills of "Rate limiter"', 'prune stills:rate-limit'],
+          ['Voice clips of "Rate limiter"', 'prune audio:rate-limit'],
+        ],
+      ],
+      [
+        'Walkthroughs',
+        [
+          ['All walkthroughs', 'prune --kind run,explain'],
+          ['Walkthroughs not changed in 30 days', 'prune --kind run,explain --older-than 30'],
+          ['"Rate limiter"', 'prune run:rate-limit'],
+          ['"Retry backoff"', 'prune run:retry'],
+        ],
+      ],
+      [
+        'Cache',
+        [
+          ['All cached downloads', 'prune --kind cache'],
+          ['Player bundle', 'prune cache:bundle'],
+          ['Kokoro voice model', 'prune cache:models'],
+        ],
+      ],
+    ],
+  );
+  assert.equal(
+    choices.groups[0].options[0].description,
+    '3.0 KB in 2 items; the walkthrough stays, so render makes the video again',
+  );
+  assert.deepEqual(choices.inUse, [
+    { id: 'cache:remotion', label: 'Chrome cache', busy: `a render (pid ${process.pid}) is using it` },
   ]);
-  assert.equal(choices.groups[0].options[0].description, '3.0 KB in 2 items; the walkthrough stays, so render makes the video again');
-  assert.deepEqual(choices.inUse, [{ id: 'cache:remotion', label: 'Chrome cache', busy: `a render (pid ${process.pid}) is using it` }]);
 
   for (const option of choices.groups.flatMap((g) => g.options)) {
     const { list, run: runHere } = fixture();
@@ -187,14 +278,20 @@ test('--choices groups the menu, and each option command removes exactly the ids
     const gone = before.filter((a) => option.ids.includes(a.id) || option.ids.includes(a.parent));
     assert.deepEqual(ids(list()), ids(before.filter((a) => !gone.includes(a))), option.label);
     for (const a of gone) assert.equal(fs.existsSync(a.path), false, `${option.label}: ${a.id} removed`);
-    assert.match(result.stdout, new RegExp(`freed ${option.description.split(/[ ;]/).slice(0, 2).join(' ').replace('.', '\\.')}\n$`), option.label);
+    assert.match(
+      result.stdout,
+      new RegExp(`freed ${option.description.split(/[ ;]/).slice(0, 2).join(' ').replace('.', '\\.')}\n$`),
+      option.label,
+    );
   }
 });
 
 test('options picked together run as one prune of the union of their ids, where one command each would fail', () => {
   const { list, run } = fixture();
   const options = JSON.parse(run('prune', '--choices', '--json').stdout).groups.flatMap((g) => g.options);
-  const picked = ['All rendered videos', 'Video of "Rate limiter"', 'Stills of "Rate limiter"'].map((label) => options.find((o) => o.label === label));
+  const picked = ['All rendered videos', 'Video of "Rate limiter"', 'Stills of "Rate limiter"'].map((label) =>
+    options.find((o) => o.label === label),
+  );
   const union = [...new Set(picked.flatMap((o) => o.ids))];
   assert.deepEqual(union, ['video:rate-limit/rate-limiter.mp4', 'video:retry/retry-backoff.mp4', 'stills:rate-limit']);
 
@@ -213,13 +310,21 @@ test('ids and --kind together remove the union of both', () => {
   const before = ids(list());
   const result = run('prune', 'stills:rate-limit', '--kind', 'video', '--dry-run', '--json');
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(JSON.parse(result.stdout).artifacts.map((a) => a.id).sort(), ['stills:rate-limit', 'video:rate-limit/rate-limiter.mp4', 'video:retry/retry-backoff.mp4']);
+  assert.deepEqual(
+    JSON.parse(result.stdout)
+      .artifacts.map((a) => a.id)
+      .sort(),
+    ['stills:rate-limit', 'video:rate-limit/rate-limiter.mp4', 'video:retry/retry-backoff.mp4'],
+  );
   assert.deepEqual(ids(list()), before, 'a dry run removes nothing');
 });
 
 test('selector errors name the fix', () => {
   const { run } = fixture();
-  assert.match(run('prune', '--kind', 'videos').stderr, /unknown --kind videos; kinds are run, explain, video, stills, audio, cache/);
+  assert.match(
+    run('prune', '--kind', 'videos').stderr,
+    /unknown --kind videos; kinds are run, explain, video, stills, audio, cache/,
+  );
   assert.match(run('prune', '--dry-run').stderr, /--except and --dry-run need ids, --kind or --all/);
   assert.match(run('prune', '--choices', '--kind', 'video').stderr, /--choices takes only --json/);
 });

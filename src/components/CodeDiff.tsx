@@ -45,7 +45,8 @@ const VISITED_OPACITY = 0.6;
 const DIM_OPACITY = 0.3;
 
 /** Morph numbers each row with its old and new line like a unified diff; a source snippet has only its own numbers. */
-const morphNumbers = (hunk: Hunk, line: DiffLine) => (hunk.status === 'source' ? [line.newLine] : [line.oldLine, line.newLine]);
+const morphNumbers = (hunk: Hunk, line: DiffLine) =>
+  hunk.status === 'source' ? [line.newLine] : [line.oldLine, line.newLine];
 
 /** A row the scrolling viewport stacks; views decide height and content per frame. */
 interface RowModel {
@@ -57,10 +58,27 @@ interface RowModel {
   content: ReactNode;
 }
 
-const statusColor: Record<Hunk['status'], string> = { added: colors.add, modified: colors.accent, deleted: colors.del, renamed: '#fbbf24', source: colors.muted };
+const statusColor: Record<Hunk['status'], string> = {
+  added: colors.add,
+  modified: colors.accent,
+  deleted: colors.del,
+  renamed: '#fbbf24',
+  source: colors.muted,
+};
 
 const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (
-  <div style={{ whiteSpace: 'pre', tabSize: CODE_TAB_SIZE, fontFamily: fonts.mono, fontSize, flex: 1, minWidth: 0, opacity: dim ? 0.55 : 1, color: plainCodeColor }}>
+  <div
+    style={{
+      whiteSpace: 'pre',
+      tabSize: CODE_TAB_SIZE,
+      fontFamily: fonts.mono,
+      fontSize,
+      flex: 1,
+      minWidth: 0,
+      opacity: dim ? 0.55 : 1,
+      color: plainCodeColor,
+    }}
+  >
     {tokens.map((t, i) => (
       <span key={i} style={{ color: tokenColor(t.types) }}>
         {t.content}
@@ -69,27 +87,56 @@ const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ 
   </div>
 );
 
-const LineNumber: React.FC<{ value: number | null; fontSize: number; width: number }> = ({ value, fontSize, width }) => (
-  <div style={{ width, flexShrink: 0, textAlign: 'right', paddingRight: 14, boxSizing: 'border-box', fontFamily: fonts.mono, fontSize: Math.round(fontSize * 0.85), color: colors.faint }}>
+const LineNumber: React.FC<{ value: number | null; fontSize: number; width: number }> = ({
+  value,
+  fontSize,
+  width,
+}) => (
+  <div
+    style={{
+      width,
+      flexShrink: 0,
+      textAlign: 'right',
+      paddingRight: 14,
+      boxSizing: 'border-box',
+      fontFamily: fonts.mono,
+      fontSize: Math.round(fontSize * 0.85),
+      color: colors.faint,
+    }}
+  >
     {value ?? ''}
   </div>
 );
 
 /** Line number column(s) plus the +/− sign; morph shows both old and new numbers like a unified diff. */
-const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; fontSize: number }> = ({ line, numbers, fontSize }) => {
+const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; fontSize: number }> = ({
+  line,
+  numbers,
+  fontSize,
+}) => {
   const sign = line?.type === 'add' ? '+' : line?.type === 'del' ? '−' : ' ';
   const signColor = line?.type === 'add' ? colors.add : line?.type === 'del' ? colors.del : colors.faint;
   return (
     <>
       {numbers.map((n, i) => (
-        <LineNumber key={i} value={n} fontSize={fontSize} width={numbers.length > 1 ? MORPH_NUMBER_W : SPLIT_NUMBER_W} />
+        <LineNumber
+          key={i}
+          value={n}
+          fontSize={fontSize}
+          width={numbers.length > 1 ? MORPH_NUMBER_W : SPLIT_NUMBER_W}
+        />
       ))}
-      <div style={{ width: SIGN_W, flexShrink: 0, fontFamily: fonts.mono, fontSize, color: signColor, fontWeight: 700 }}>{sign}</div>
+      <div
+        style={{ width: SIGN_W, flexShrink: 0, fontFamily: fonts.mono, fontSize, color: signColor, fontWeight: 700 }}
+      >
+        {sign}
+      </div>
     </>
   );
 };
 
-const lineBg = (line: DiffLine | null) => (line?.type === 'add' ? colors.addBg : line?.type === 'del' ? colors.delBg : 'transparent');
+const lineBg = (line: DiffLine | null) =>
+  line?.type === 'add' ? colors.addBg : line?.type === 'del' ? colors.delBg : 'transparent';
 
 function splitModels(hunk: Hunk, tokens: Token[][], slots: Slot[], { fontSize, rowH }: CodeMetrics): RowModel[] {
   const cell = (index: number | null, side: 'left' | 'right') => {
@@ -156,7 +203,13 @@ type MorphTimeline = ReturnType<typeof morphTimeline>;
  * when the narration moves to the step after the last step on old lines, or near the end when none follows,
  * and additions grow in during the intro so every step's lines exist when it starts.
  */
-function steppedMorphTimeline(hunk: Hunk, steps: readonly CodeStep[], segments: readonly SpokenSegment[], introEnd: number, legacy: MorphTimeline): MorphTimeline {
+function steppedMorphTimeline(
+  hunk: Hunk,
+  steps: readonly CodeStep[],
+  segments: readonly SpokenSegment[],
+  introEnd: number,
+  legacy: MorphTimeline,
+): MorphTimeline {
   let lastOld = -1;
   steps.forEach((step, k) => {
     if (step.lines === undefined && step.oldLines !== undefined) lastOld = k;
@@ -165,14 +218,30 @@ function steppedMorphTimeline(hunk: Hunk, steps: readonly CodeStep[], segments: 
   // Segment 0 is the narration, so step k speaks segment k + 1.
   const lastOldSegment = segments[lastOld + 1];
   const nextSegment = segments[lastOld + 2];
-  const collapseStart = nextSegment ? nextSegment.from : Math.max(introEnd, (lastOldSegment ? lastOldSegment.from + lastOldSegment.durationInFrames : introEnd) - 20);
+  const collapseStart = nextSegment
+    ? nextSegment.from
+    : Math.max(introEnd, (lastOldSegment ? lastOldSegment.from + lastOldSegment.durationInFrames : introEnd) - 20);
   const stagger = Math.min(3, Math.max(1, (introEnd * 0.3) / Math.max(1, hunk.additions)));
   const growLength = stagger * hunk.additions + 10;
   const growStart = Math.max(10, introEnd - growLength);
-  return { flashStart: Math.max(0, collapseStart - 18), collapseStart, collapseEnd: collapseStart + 10, growStart, stagger, growEnd: growStart + growLength };
+  return {
+    flashStart: Math.max(0, collapseStart - 18),
+    collapseStart,
+    collapseEnd: collapseStart + 10,
+    growStart,
+    stagger,
+    growEnd: growStart + growLength,
+  };
 }
 
-function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, t: MorphTimeline, { fontSize, rowH }: CodeMetrics): RowModel[] {
+function morphModels(
+  hunk: Hunk,
+  tokens: Token[][],
+  slots: Slot[],
+  frame: number,
+  t: MorphTimeline,
+  { fontSize, rowH }: CodeMetrics,
+): RowModel[] {
   let addIndex = 0;
   return slots.map(({ left, step }) => {
     const i = left!;
@@ -202,7 +271,9 @@ function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number
       finalHeight: line.type === 'del' ? 0 : rowH,
       step,
       content: (
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: rowH, background: bg, opacity }}>
+        <div
+          style={{ position: 'relative', display: 'flex', alignItems: 'center', height: rowH, background: bg, opacity }}
+        >
           <Gutter line={line} numbers={morphNumbers(hunk, line)} fontSize={fontSize} />
           <Code tokens={tokens[i]!} fontSize={fontSize} />
           {strike > 0 ? (
@@ -227,7 +298,14 @@ function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number
 }
 
 /** Rows of a typing scene: lines no step names are there from the start; a step's lines appear as it types them. */
-function typingModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, schedule: TypingSchedule, { fontSize, rowH }: CodeMetrics): RowModel[] {
+function typingModels(
+  hunk: Hunk,
+  tokens: Token[][],
+  slots: Slot[],
+  frame: number,
+  schedule: TypingSchedule,
+  { fontSize, rowH }: CodeMetrics,
+): RowModel[] {
   const cursor = cursorAt(schedule, frame);
   return slots.map(({ left, step }, r) => {
     const i = left!;
@@ -242,7 +320,18 @@ function typingModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: numbe
       content: shown ? (
         <div style={{ display: 'flex', alignItems: 'center', height: rowH, background: lineBg(line) }}>
           <Gutter line={line} numbers={morphNumbers(hunk, line)} fontSize={fontSize} />
-          {typed ? <TypedCode text={line.text} tokens={tokens[i]!} fontSize={fontSize} frame={frame} line={typed} cursor={cursor?.row === r ? cursor.state : null} /> : <Code tokens={tokens[i]!} fontSize={fontSize} />}
+          {typed ? (
+            <TypedCode
+              text={line.text}
+              tokens={tokens[i]!}
+              fontSize={fontSize}
+              frame={frame}
+              line={typed}
+              cursor={cursor?.row === r ? cursor.state : null}
+            />
+          ) : (
+            <Code tokens={tokens[i]!} fontSize={fontSize} />
+          )}
         </div>
       ) : null,
     };
@@ -266,7 +355,15 @@ interface CodeGeometry {
  * Where step k's lines and token sit once its camera move has settled: rows above it at the height they
  * have while it plays (removed lines stay until the steps leave them), scrolled to the step's stop.
  */
-function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, rowTops: (k: number) => number[], stop: number, area: { width: number; height: number }, extra: readonly Box[]): MarkTargets {
+function codeTargets(
+  g: CodeGeometry,
+  steps: readonly CodeStep[],
+  k: number,
+  rowTops: (k: number) => number[],
+  stop: number,
+  area: { width: number; height: number },
+  extra: readonly Box[],
+): MarkTargets {
   const { hunk, view, slots, metrics } = g;
   const step = steps[k]!;
   const advance = metrics.fontSize * MONO_DRAWN;
@@ -274,11 +371,20 @@ function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, row
   const half = (inner - 1) / 2;
   /** Content-box x where the code of hunk line `i` starts, on the side the row shows it. */
   const codeX = (slot: Slot, i: number) =>
-    view === 'morph' ? 1 + morphGutterW(hunk) : slot.right === i && slot.left !== i ? 1 + half + 1 + SPLIT_GUTTER_W : 1 + SPLIT_GUTTER_W;
+    view === 'morph'
+      ? 1 + morphGutterW(hunk)
+      : slot.right === i && slot.left !== i
+        ? 1 + half + 1 + SPLIT_GUTTER_W
+        : 1 + SPLIT_GUTTER_W;
   const tops = rowTops(k);
   const textBoxes: { line: number; box: Box; x: number; y: number }[] = slots.flatMap((slot, r) => {
     const y = g.viewportTop + tops[r]! - stop;
-    const sides = view === 'morph' ? [slot.left] : step.oldLines !== undefined && step.lines === undefined ? [slot.left, slot.right] : [slot.right, slot.left];
+    const sides =
+      view === 'morph'
+        ? [slot.left]
+        : step.oldLines !== undefined && step.lines === undefined
+          ? [slot.left, slot.right]
+          : [slot.right, slot.left];
     return [...new Set(sides)].flatMap((i) => {
       if (i === null) return [];
       const x = codeX(slot, i);
@@ -289,7 +395,9 @@ function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, row
   const boxes = new Map<string, Box>();
   const own = slots.flatMap((slot, r) => (slot.step === k ? [r] : []));
   const ownLines = new Set(own.flatMap((r) => [slots[r]!.left, slots[r]!.right]));
-  const lines = union(textBoxes.filter((t) => ownLines.has(t.line) && hunk.lines[t.line]!.text.trim()).map((t) => t.box));
+  const lines = union(
+    textBoxes.filter((t) => ownLines.has(t.line) && hunk.lines[t.line]!.text.trim()).map((t) => t.box),
+  );
   if (lines) boxes.set('lines', lines);
   const hit = tokenHits(hunk, step)[0];
   const at = hit ? textBoxes.find((t) => t.line === hit.line) : undefined;
@@ -297,9 +405,16 @@ function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, row
     const text = hunk.lines[hit.line]!.text;
     const x = at.x + codeColumns(text.slice(0, hit.at)) * advance;
     const textH = Math.round(metrics.fontSize * 1.3);
-    boxes.set('token', { x, y: at.y + (metrics.rowH - textH) / 2, width: codeColumns(step.token!) * advance, height: textH });
+    boxes.set('token', {
+      x,
+      y: at.y + (metrics.rowH - textH) / 2,
+      width: codeColumns(step.token!) * advance,
+      height: textH,
+    });
   }
-  const visible = textBoxes.filter((t) => t.box.y + t.box.height > g.viewportTop && t.box.y < g.viewportTop + (area.height - g.viewportTop));
+  const visible = textBoxes.filter(
+    (t) => t.box.y + t.box.height > g.viewportTop && t.box.y < g.viewportTop + (area.height - g.viewportTop),
+  );
   // Ink names a line "ln:<hunk line>" and text on it "tx:<hunk line>:<offset>:<length>" (shared/ink.mjs).
   const boxOf = (key: string): Box | null => {
     const [kind, line, at, length] = key.split(':');
@@ -309,7 +424,12 @@ function codeTargets(g: CodeGeometry, steps: readonly CodeStep[], k: number, row
     const text = hunk.lines[row.line]!.text;
     const textH = Math.round(metrics.fontSize * 1.3);
     const from = Number(at);
-    return { x: row.x + codeColumns(text.slice(0, from)) * advance, y: row.y + (metrics.rowH - textH) / 2, width: codeColumns(text.slice(from, from + Number(length))) * advance, height: textH };
+    return {
+      x: row.x + codeColumns(text.slice(0, from)) * advance,
+      y: row.y + (metrics.rowH - textH) / 2,
+      width: codeColumns(text.slice(from, from + Number(length))) * advance,
+      height: textH,
+    };
   };
   return { boxes, obstacles: [...visible.map((t) => t.box), ...extra], area: areaOf(area), boxOf };
 }
@@ -330,7 +450,9 @@ const MissingHunk: React.FC<{ hunkId: string }> = ({ hunkId }) => (
       <FileWarning size={64} color={colors.del} />
       <div>
         <div style={{ fontSize: 44, fontWeight: 700 }}>Hunk {hunkId} not found</div>
-        <div style={{ fontSize: 26, color: colors.muted, marginTop: 8 }}>The storyboard references a hunk id that is not in hunks.json.</div>
+        <div style={{ fontSize: 26, color: colors.muted, marginTop: 8 }}>
+          The storyboard references a hunk id that is not in hunks.json.
+        </div>
       </div>
     </div>
   </div>
@@ -359,7 +481,9 @@ const FileHeader: React.FC<{ hunk: Hunk; layout: CodeLayout }> = ({ hunk, layout
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <FitText fit={layout.path} style={{ lineHeight: 'normal' }} />
-        {layout.header ? <FitText fit={layout.header} style={{ color: colors.faint, marginTop: 6, lineHeight: 'normal' }} /> : null}
+        {layout.header ? (
+          <FitText fit={layout.header} style={{ color: colors.faint, marginTop: 6, lineHeight: 'normal' }} />
+        ) : null}
       </div>
       <div style={{ display: 'flex', gap: 14, fontFamily: fonts.mono, fontSize: 24, fontWeight: 600, flexShrink: 0 }}>
         {hunk.status === 'source' ? null : (
@@ -392,12 +516,30 @@ const Callout: React.FC<{ text: Fit; appear: number; width: number }> = ({ text,
   </div>
 );
 
-const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: number; segments: readonly SpokenSegment[]; inkOf: InkOf }> = ({ scene, hunk, durationInFrames, segments, inkOf }) => {
+const CodeBody: React.FC<{
+  scene: CodeScene;
+  hunk: Hunk;
+  durationInFrames: number;
+  segments: readonly SpokenSegment[];
+  inkOf: InkOf;
+}> = ({ scene, hunk, durationInFrames, segments, inkOf }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const steps = scene.steps?.length ? scene.steps : null;
   const layout = useMemo(() => layoutCode(scene, hunk), [scene, hunk]);
-  const { view, slots, stepCount, metrics, panelW, panelH, viewportH, steps: stepLayout, diagramLeft, diagramW, diagramTop } = layout;
+  const {
+    view,
+    slots,
+    stepCount,
+    metrics,
+    panelW,
+    panelH,
+    viewportH,
+    steps: stepLayout,
+    diagramLeft,
+    diagramW,
+    diagramTop,
+  } = layout;
   const tokens = useMemo(() => tokenizeHunkLines(hunk.lines, hunk.language), [hunk]);
   const box = contentBox(false);
   const callout = layout.callout;
@@ -406,25 +548,51 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   // A stepped scene highlights step k while its spoken segment plays: the narration is the intro and the
   // morph is paced over it. Otherwise the morph (or a short settle) is the intro and each focus step takes
   // an equal share of the time left.
-  const introFrames = steps ? segments[1]?.from ?? durationInFrames : durationInFrames;
+  const introFrames = steps ? (segments[1]?.from ?? durationInFrames) : durationInFrames;
   const pacedMorph = morphTimeline(hunk, introFrames, segments[0]?.voiceFrom ?? 0);
   const morph = steps ? steppedMorphTimeline(hunk, steps, segments, introFrames, pacedMorph) : pacedMorph;
   const typing = useMemo(
-    () => (scene.typing && steps ? typingSchedule(slots.map((slot) => hunk.lines[slot.left!]!.text), slots, stepCount, segments, durationInFrames) : null),
+    () =>
+      scene.typing && steps
+        ? typingSchedule(
+            slots.map((slot) => hunk.lines[slot.left!]!.text),
+            slots,
+            stepCount,
+            segments,
+            durationInFrames,
+          )
+        : null,
     [scene.typing, steps, slots, hunk, stepCount, segments, durationInFrames],
   );
-  const rows = typing ? typingModels(hunk, tokens, slots, frame, typing, metrics) : view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, morph, metrics);
-  const outputFrom = useMemo(() => (layout.output ? outputStarts(scene, segments, typing?.ends ?? null) : []), [layout.output, scene, segments, typing]);
+  const rows = typing
+    ? typingModels(hunk, tokens, slots, frame, typing, metrics)
+    : view === 'split'
+      ? splitModels(hunk, tokens, slots, metrics)
+      : morphModels(hunk, tokens, slots, frame, morph, metrics);
+  const outputFrom = useMemo(
+    () => (layout.output ? outputStarts(scene, segments, typing?.ends ?? null) : []),
+    [layout.output, scene, segments, typing],
+  );
   const morphEnd = view === 'morph' ? pacedMorph.growEnd : 0;
-  const introEnd = steps ? introFrames : Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
+  const introEnd = steps
+    ? introFrames
+    : Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
   const stepsEnd = Math.max(introEnd, Math.round(durationInFrames * 0.9));
-  const stepStarts = Array.from({ length: stepCount }, (_, k) => (steps ? segments[k + 1]?.from ?? introEnd : introEnd + (k * (stepsEnd - introEnd)) / stepCount));
-  const reached = (k: number) => (k < stepCount ? interpolate(frame, [stepStarts[k]!, stepStarts[k]! + STEP_FADE], [0, 1], clamp) : 0);
+  const stepStarts = Array.from({ length: stepCount }, (_, k) =>
+    steps ? (segments[k + 1]?.from ?? introEnd) : introEnd + (k * (stepsEnd - introEnd)) / stepCount,
+  );
+  const reached = (k: number) =>
+    k < stepCount ? interpolate(frame, [stepStarts[k]!, stepStarts[k]! + STEP_FADE], [0, 1], clamp) : 0;
   const dim = reached(0);
 
   let y = 0;
   let finalY = 0;
-  const spans = Array.from({ length: stepCount }, () => ({ top: Infinity, bottom: -Infinity, finalTop: Infinity, finalBottom: -Infinity }));
+  const spans = Array.from({ length: stepCount }, () => ({
+    top: Infinity,
+    bottom: -Infinity,
+    finalTop: Infinity,
+    finalBottom: -Infinity,
+  }));
   const placed = rows.map((row) => {
     const top = y;
     const span = row.step === null ? undefined : spans[row.step];
@@ -446,7 +614,9 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   for (const span of spans) {
     const previous = stops[stops.length - 1] ?? 0;
     // A step none of the shown rows belong to (an invalid storyboard) keeps the camera where it was.
-    const target = Number.isFinite(span.finalTop) ? Math.min(maxScroll, Math.max(0, (span.finalTop + span.finalBottom) / 2 - viewportH / 2)) : previous;
+    const target = Number.isFinite(span.finalTop)
+      ? Math.min(maxScroll, Math.max(0, (span.finalTop + span.finalBottom) / 2 - viewportH / 2))
+      : previous;
     stops.push(Math.max(previous, target));
   }
   const scroll = stops.reduce(
@@ -455,13 +625,22 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   );
 
   // Pen marks: where each step's rows settle, at the heights they have while that step plays.
-  const lastOld = steps ? steps.reduce((last, step, k) => (step.lines === undefined && step.oldLines !== undefined ? k : last), -1) : -1;
+  const lastOld = steps
+    ? steps.reduce((last, step, k) => (step.lines === undefined && step.oldLines !== undefined ? k : last), -1)
+    : -1;
   const rowTops = (k: number) => {
     let top = 0;
     return rows.map((row, r) => {
       const at = top;
       const line = hunk.lines[slots[r]!.left ?? slots[r]!.right!]!;
-      top += view === 'morph' && line.type === 'del' ? (k <= lastOld ? metrics.rowH : 0) : view === 'morph' ? row.finalHeight || metrics.rowH : row.height;
+      top +=
+        view === 'morph' && line.type === 'del'
+          ? k <= lastOld
+            ? metrics.rowH
+            : 0
+          : view === 'morph'
+            ? row.finalHeight || metrics.rowH
+            : row.height;
       return at;
     });
   };
@@ -469,25 +648,50 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const markTargets = (k: number): MarkTargets | null => {
     if (!steps) return null;
     const extra: Box[] = [{ x: 0, y: 0, width: box.width, height: HEADER_H }];
-    if (calloutBeside) extra.push({ x: panelW + CALLOUT_GAP, y: panelTop + calloutTop, width: CALLOUT_W, height: calloutH });
-    if (stepLayout) extra.push({ x: diagramLeft, y: panelTop + diagramTop, width: diagramW, height: stepLayout.height + flowCalloutBlock });
+    if (calloutBeside)
+      extra.push({ x: panelW + CALLOUT_GAP, y: panelTop + calloutTop, width: CALLOUT_W, height: calloutH });
+    if (stepLayout)
+      extra.push({
+        x: diagramLeft,
+        y: panelTop + diagramTop,
+        width: diagramW,
+        height: stepLayout.height + flowCalloutBlock,
+      });
     if (calloutBelow) extra.push({ x: 0, y: panelTop + panelH + 28, width: box.width, height: CALLOUT_BELOW_H });
-    const targets = codeTargets({ hunk, view, slots, metrics, panelW, viewportTop: panelTop + PANEL_PAD }, steps, k, rowTops, stops[k] ?? 0, box, extra);
+    const targets = codeTargets(
+      { hunk, view, slots, metrics, panelW, viewportTop: panelTop + PANEL_PAD },
+      steps,
+      k,
+      rowTops,
+      stops[k] ?? 0,
+      box,
+      extra,
+    );
     // The camera and the collapsing lines may still be on their way: carry the mark along with the code.
     const first = slots.findIndex((slot) => slot.step === k);
     const settled = first < 0 ? 0 : rowTops(k)[first]! - (stops[k] ?? 0);
     const live = first < 0 ? 0 : placed[first]!.top - scroll;
-    return { ...targets, shift: { x: 0, y: live - settled }, clip: { x: 0, y: panelTop + PANEL_PAD, width: box.width, height: viewportH } };
+    return {
+      ...targets,
+      shift: { x: 0, y: live - settled },
+      clip: { x: 0, y: panelTop + PANEL_PAD, width: box.width, height: viewportH },
+    };
   };
 
   /** Panel y of a step's code range as the camera shows it, kept inside the viewport. */
-  const anchorY = (span: { top: number; bottom: number }) => PANEL_PAD + Math.min(viewportH, Math.max(0, (Number.isFinite(span.top) ? (span.top + span.bottom) / 2 : 0) - scroll));
+  const anchorY = (span: { top: number; bottom: number }) =>
+    PANEL_PAD +
+    Math.min(viewportH, Math.max(0, (Number.isFinite(span.top) ? (span.top + span.bottom) / 2 : 0) - scroll));
 
   // The callout belongs to the last step: the conclusion the narration builds to.
   const lastSpan = spans[stepCount - 1];
   const last = lastSpan && Number.isFinite(lastSpan.top) ? lastSpan : { top: 0, bottom: contentH };
   const lastCenter = (last.top + last.bottom) / 2;
-  const calloutAppear = spring({ frame: frame - (stepStarts[stepCount - 1] ?? introEnd) - 6, fps, config: { damping: 16, stiffness: 120 } });
+  const calloutAppear = spring({
+    frame: frame - (stepStarts[stepCount - 1] ?? introEnd) - 6,
+    fps,
+    config: { damping: 16, stiffness: 120 },
+  });
   const focusY = anchorY(last);
   const calloutH = callout?.at === 'beside' ? callout.height : 0;
   const calloutTop = Math.min(panelH - calloutH, Math.max(0, focusY - calloutH / 2));
@@ -509,149 +713,199 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const hunkMap = useMemo(() => ({ [hunk.id]: hunk }), [hunk]);
   return (
     <Camera scene={scene} source={{ hunks: hunkMap, segments, targets: markTargets }}>
-    <div style={{ position: 'absolute', inset: 0 }}>
-      <FileHeader hunk={hunk} layout={layout} />
-      <div style={{ position: 'absolute', top: HEADER_H + HEADER_GAP, left: 0, width: box.width, height: panelH }}>
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: panelW,
-            borderRadius: 20,
-            background: colors.surface,
-            border: `1px solid ${colors.border}`,
-            boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
-            overflow: 'hidden',
-          }}
-        >
-          {hunk.additions === 0 && contentH < metrics.rowH ? (
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <FileHeader hunk={hunk} layout={layout} />
+        <div style={{ position: 'absolute', top: HEADER_H + HEADER_GAP, left: 0, width: box.width, height: panelH }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: panelW,
+              borderRadius: 20,
+              background: colors.surface,
+              border: `1px solid ${colors.border}`,
+              boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+              overflow: 'hidden',
+            }}
+          >
+            {hunk.additions === 0 && contentH < metrics.rowH ? (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 18,
+                  color: colors.muted,
+                  fontSize: 30,
+                  fontWeight: 600,
+                  opacity: interpolate(contentH, [0, metrics.rowH], [1, 0], clamp),
+                }}
+              >
+                <Trash2 size={34} color={colors.del} />
+                {hunk.deletions} {hunk.deletions === 1 ? 'line' : 'lines'} removed
+              </div>
+            ) : null}
             <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 18,
-                color: colors.muted,
-                fontSize: 30,
-                fontWeight: 600,
-                opacity: interpolate(contentH, [0, metrics.rowH], [1, 0], clamp),
-              }}
+              style={{ position: 'absolute', left: 0, right: 0, top: PANEL_PAD, height: viewportH, overflow: 'hidden' }}
             >
-              <Trash2 size={34} color={colors.del} />
-              {hunk.deletions} {hunk.deletions === 1 ? 'line' : 'lines'} removed
-            </div>
-          ) : null}
-          <div style={{ position: 'absolute', left: 0, right: 0, top: PANEL_PAD, height: viewportH, overflow: 'hidden' }}>
-            <div style={{ position: 'relative', transform: `translateY(${-scroll}px)` }}>
-              {placed.map(({ row, top }) => {
-                // A line a typing step has not reached yet draws nothing, not even its step's light.
-                const { opacity, bar, glow } = row.content === null ? { opacity: 0, bar: 0, glow: 0 } : emphasis(row.step);
-                return (
-                  <div
-                    key={row.key}
-                    style={{
-                      position: 'absolute',
-                      top,
-                      left: 0,
-                      right: 0,
-                      height: row.height,
-                      overflow: 'hidden',
-                      opacity,
-                      background: glow > 0 ? `rgba(124, 140, 255, ${0.08 * glow})` : undefined,
-                    }}
-                  >
-                    {bar > 0 ? <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: colors.accent, opacity: bar }} /> : null}
-                    {row.content}
-                  </div>
-                );
-              })}
+              <div style={{ position: 'relative', transform: `translateY(${-scroll}px)` }}>
+                {placed.map(({ row, top }) => {
+                  // A line a typing step has not reached yet draws nothing, not even its step's light.
+                  const { opacity, bar, glow } =
+                    row.content === null ? { opacity: 0, bar: 0, glow: 0 } : emphasis(row.step);
+                  return (
+                    <div
+                      key={row.key}
+                      style={{
+                        position: 'absolute',
+                        top,
+                        left: 0,
+                        right: 0,
+                        height: row.height,
+                        overflow: 'hidden',
+                        opacity,
+                        background: glow > 0 ? `rgba(124, 140, 255, ${0.08 * glow})` : undefined,
+                      }}
+                    >
+                      {bar > 0 ? (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 5,
+                            background: colors.accent,
+                            opacity: bar,
+                          }}
+                        />
+                      ) : null}
+                      {row.content}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-        {layout.output ? <OutputPane layout={layout.output} height={panelH} starts={outputFrom} frame={frame} current={currentStep(segments, frame)} /> : null}
-        {stepLayout ? (
-          <StepDiagram
-            layout={stepLayout}
-            codeRight={panelW}
-            left={diagramLeft}
-            top={diagramTop}
-            width={diagramW}
-            codeY={spans.map(anchorY)}
-            reached={reached}
-            frame={frame}
-            fps={fps}
-          />
-        ) : null}
-        {stepLayout && callout?.at === 'flow' ? (
-          <>
+          {layout.output ? (
+            <OutputPane
+              layout={layout.output}
+              height={panelH}
+              starts={outputFrom}
+              frame={frame}
+              current={currentStep(segments, frame)}
+            />
+          ) : null}
+          {stepLayout ? (
+            <StepDiagram
+              layout={stepLayout}
+              codeRight={panelW}
+              left={diagramLeft}
+              top={diagramTop}
+              width={diagramW}
+              codeY={spans.map(anchorY)}
+              reached={reached}
+              frame={frame}
+              fps={fps}
+            />
+          ) : null}
+          {stepLayout && callout?.at === 'flow' ? (
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: diagramLeft + diagramW / 2 - 1.5,
+                  top: diagramTop + stepLayout.height,
+                  width: 3,
+                  height: FLOW_CALLOUT_GAP,
+                  background: colors.accent,
+                  opacity: calloutAppear,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: diagramLeft,
+                  top: diagramTop + stepLayout.height + FLOW_CALLOUT_GAP,
+                }}
+              >
+                <Callout text={callout.text} appear={calloutAppear} width={diagramW} />
+              </div>
+            </>
+          ) : null}
+          {calloutBeside ? (
+            <>
+              <svg
+                width={box.width}
+                height={panelH}
+                style={{ position: 'absolute', inset: 0, overflow: 'visible', opacity: calloutAppear }}
+              >
+                <path
+                  d={`M ${panelW - 4} ${focusY} C ${panelW + CALLOUT_GAP / 2} ${focusY}, ${panelW + CALLOUT_GAP / 2} ${calloutTop + calloutH / 2}, ${panelW + CALLOUT_GAP} ${calloutTop + calloutH / 2}`}
+                  fill="none"
+                  stroke={colors.accent}
+                  strokeWidth={3}
+                />
+                <circle cx={panelW - 4} cy={focusY} r={7} fill={colors.accent} />
+              </svg>
+              <div style={{ position: 'absolute', left: panelW + CALLOUT_GAP, top: calloutTop }}>
+                <Callout text={callout!.text} appear={calloutAppear} width={CALLOUT_W} />
+              </div>
+            </>
+          ) : null}
+          {calloutBelow && stepCount > 0 ? (
             <div
               style={{
                 position: 'absolute',
-                left: diagramLeft + diagramW / 2 - 1.5,
-                top: diagramTop + stepLayout.height,
+                left: 10,
+                top: focusY + (last.bottom - lastCenter),
                 width: 3,
-                height: FLOW_CALLOUT_GAP,
+                height: Math.max(0, panelH + 28 - focusY - (last.bottom - lastCenter)),
                 background: colors.accent,
                 opacity: calloutAppear,
               }}
             />
-            <div style={{ position: 'absolute', left: diagramLeft, top: diagramTop + stepLayout.height + FLOW_CALLOUT_GAP }}>
-              <Callout text={callout.text} appear={calloutAppear} width={diagramW} />
+          ) : null}
+          {calloutBelow ? (
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: panelH + 28,
+                height: CALLOUT_BELOW_H,
+                display: 'flex',
+                alignItems: 'flex-start',
+              }}
+            >
+              <Callout text={callout!.text} appear={calloutAppear} width={box.width} />
             </div>
-          </>
-        ) : null}
-        {calloutBeside ? (
-          <>
-            <svg width={box.width} height={panelH} style={{ position: 'absolute', inset: 0, overflow: 'visible', opacity: calloutAppear }}>
-              <path
-                d={`M ${panelW - 4} ${focusY} C ${panelW + CALLOUT_GAP / 2} ${focusY}, ${panelW + CALLOUT_GAP / 2} ${calloutTop + calloutH / 2}, ${panelW + CALLOUT_GAP} ${calloutTop + calloutH / 2}`}
-                fill="none"
-                stroke={colors.accent}
-                strokeWidth={3}
-              />
-              <circle cx={panelW - 4} cy={focusY} r={7} fill={colors.accent} />
-            </svg>
-            <div style={{ position: 'absolute', left: panelW + CALLOUT_GAP, top: calloutTop }}>
-              <Callout text={callout!.text} appear={calloutAppear} width={CALLOUT_W} />
-            </div>
-          </>
-        ) : null}
-        {calloutBelow && stepCount > 0 ? (
-          <div
-            style={{
-              position: 'absolute',
-              left: 10,
-              top: focusY + (last.bottom - lastCenter),
-              width: 3,
-              height: Math.max(0, panelH + 28 - focusY - (last.bottom - lastCenter)),
-              background: colors.accent,
-              opacity: calloutAppear,
-            }}
-          />
-        ) : null}
-        {calloutBelow ? (
-          <div style={{ position: 'absolute', left: 0, right: 0, top: panelH + 28, height: CALLOUT_BELOW_H, display: 'flex', alignItems: 'flex-start' }}>
-            <Callout text={callout!.text} appear={calloutAppear} width={box.width} />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+        <PenMarks scene={scene} hunks={hunkMap} segments={segments} targets={markTargets} inkOf={inkOf} />
       </div>
-      <PenMarks scene={scene} hunks={hunkMap} segments={segments} targets={markTargets} inkOf={inkOf} />
-    </div>
     </Camera>
   );
 };
 
 export const CodeDiff: React.FC<SceneProps<CodeScene>> = ({ scene, hunks, storyboard, durationInFrames, segments }) => {
   const hunk = hunks[scene.hunkId];
-  const inkOf = useCallback((step: CodeStep | FocusStep): Ink | null => {
-    const finding = flaggedFinding(storyboard, step as CodeStep);
-    return finding ? { color: severityInk[finding.severity], label: finding.severity } : null;
-  }, [storyboard]);
+  const inkOf = useCallback(
+    (step: CodeStep | FocusStep): Ink | null => {
+      const finding = flaggedFinding(storyboard, step as CodeStep);
+      return finding ? { color: severityInk[finding.severity], label: finding.severity } : null;
+    },
+    [storyboard],
+  );
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
-      {hunk ? <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} segments={segments} inkOf={inkOf} /> : <MissingHunk hunkId={scene.hunkId} />}
+      {hunk ? (
+        <CodeBody scene={scene} hunk={hunk} durationInFrames={durationInFrames} segments={segments} inkOf={inkOf} />
+      ) : (
+        <MissingHunk hunkId={scene.hunkId} />
+      )}
     </SceneShell>
   );
 };

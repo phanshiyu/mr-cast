@@ -57,12 +57,15 @@ const page = (loaded) => `<svg xmlns="http://www.w3.org/2000/svg" width="960" he
   <rect width="960" height="64" fill="#ffffff"/>
   <rect x="32" y="22" width="120" height="20" rx="6" fill="#5b6cff"/>
   <rect x="700" y="24" width="220" height="16" rx="8" fill="#e3e7f0"/>
-  ${loaded
-    ? `<rect x="48" y="104" width="400" height="380" rx="18" fill="#ffd9a8"/><circle cx="248" cy="290" r="110" fill="#ff9f43"/><rect x="500" y="120" width="380" height="34" rx="8" fill="#1b2133"/><rect x="500" y="176" width="300" height="18" rx="6" fill="#9097a8"/><rect x="500" y="206" width="330" height="18" rx="6" fill="#9097a8"/><rect x="500" y="262" width="150" height="40" rx="8" fill="#1b2133"/><rect x="500" y="404" width="240" height="64" rx="14" fill="#3ddc97"/>`
-    : `<rect x="48" y="104" width="400" height="380" rx="18" fill="#e3e7f0"/><circle cx="248" cy="294" r="42" fill="none" stroke="#c4cad8" stroke-width="12" stroke-dasharray="180 90"/><rect x="500" y="120" width="380" height="34" rx="8" fill="#e3e7f0"/><rect x="500" y="176" width="300" height="18" rx="6" fill="#e3e7f0"/><rect x="500" y="206" width="330" height="18" rx="6" fill="#e3e7f0"/><rect x="500" y="262" width="150" height="40" rx="8" fill="#e3e7f0"/><rect x="500" y="404" width="240" height="64" rx="14" fill="#e3e7f0"/>`}
+  ${
+    loaded
+      ? `<rect x="48" y="104" width="400" height="380" rx="18" fill="#ffd9a8"/><circle cx="248" cy="290" r="110" fill="#ff9f43"/><rect x="500" y="120" width="380" height="34" rx="8" fill="#1b2133"/><rect x="500" y="176" width="300" height="18" rx="6" fill="#9097a8"/><rect x="500" y="206" width="330" height="18" rx="6" fill="#9097a8"/><rect x="500" y="262" width="150" height="40" rx="8" fill="#1b2133"/><rect x="500" y="404" width="240" height="64" rx="14" fill="#3ddc97"/>`
+      : `<rect x="48" y="104" width="400" height="380" rx="18" fill="#e3e7f0"/><circle cx="248" cy="294" r="42" fill="none" stroke="#c4cad8" stroke-width="12" stroke-dasharray="180 90"/><rect x="500" y="120" width="380" height="34" rx="8" fill="#e3e7f0"/><rect x="500" y="176" width="300" height="18" rx="6" fill="#e3e7f0"/><rect x="500" y="206" width="330" height="18" rx="6" fill="#e3e7f0"/><rect x="500" y="262" width="150" height="40" rx="8" fill="#e3e7f0"/><rect x="500" y="404" width="240" height="64" rx="14" fill="#e3e7f0"/>`
+  }
 </svg>`;
 
-const write = (svg, name) => sharp(Buffer.from(svg)).png({ palette: true, compressionLevel: 9 }).toFile(path.join(here, name));
+const write = (svg, name) =>
+  sharp(Buffer.from(svg)).png({ palette: true, compressionLevel: 9 }).toFile(path.join(here, name));
 await write(desk, 'desk.png');
 await write(page(false), 'slow.png');
 await write(page(true), 'fast.png');

@@ -31,25 +31,47 @@ function sliceTokens(tokens: readonly Token[], count: number): Token[] {
  * A typed line as the frame shows it: nothing before its first character, then its indent and the characters typed
  * so far, with the cursor after them while it is typing, and blinking there once its step's typing is done.
  */
-export const TypedCode: React.FC<{ text: string; tokens: Token[]; fontSize: number; frame: number; line: { from: number; chars: number; perFrame: number }; cursor: 'typing' | 'resting' | null }> = ({
-  text,
-  tokens,
-  fontSize,
-  frame,
-  line,
-  cursor,
-}) => {
+export const TypedCode: React.FC<{
+  text: string;
+  tokens: Token[];
+  fontSize: number;
+  frame: number;
+  line: { from: number; chars: number; perFrame: number };
+  cursor: 'typing' | 'resting' | null;
+}> = ({ text, tokens, fontSize, frame, line, cursor }) => {
   const typed = Math.min(line.chars, Math.max(0, Math.floor((frame - line.from) * line.perFrame) + 1));
   const shown = sliceTokens(tokens, indentOf(text) + typed);
   const on = cursor === 'typing' || (cursor === 'resting' && Math.floor(frame / BLINK) % 2 === 0);
   return (
-    <div style={{ whiteSpace: 'pre', tabSize: CODE_TAB_SIZE, fontFamily: fonts.mono, fontSize, flex: 1, minWidth: 0, color: plainCodeColor }}>
+    <div
+      style={{
+        whiteSpace: 'pre',
+        tabSize: CODE_TAB_SIZE,
+        fontFamily: fonts.mono,
+        fontSize,
+        flex: 1,
+        minWidth: 0,
+        color: plainCodeColor,
+      }}
+    >
       {shown.map((t, i) => (
         <span key={i} style={{ color: tokenColor(t.types) }}>
           {t.content}
         </span>
       ))}
-      {cursor ? <span style={{ display: 'inline-block', width: Math.max(3, fontSize * 0.12), height: fontSize * 1.25, marginLeft: 1, verticalAlign: 'text-bottom', background: colors.accent, opacity: on ? 1 : 0 }} /> : null}
+      {cursor ? (
+        <span
+          style={{
+            display: 'inline-block',
+            width: Math.max(3, fontSize * 0.12),
+            height: fontSize * 1.25,
+            marginLeft: 1,
+            verticalAlign: 'text-bottom',
+            background: colors.accent,
+            opacity: on ? 1 : 0,
+          }}
+        />
+      ) : null}
     </div>
   );
 };
@@ -65,7 +87,11 @@ export function cursorAt(schedule: TypingSchedule, frame: number): { row: number
 }
 
 /** When step k's output starts printing: at its `outputWhen` words, else once its lines are typed, else as its words start. */
-export function outputStarts(scene: CodeScene, segments: readonly SpokenSegment[], typedEnds: readonly number[] | null): number[] {
+export function outputStarts(
+  scene: CodeScene,
+  segments: readonly SpokenSegment[],
+  typedEnds: readonly number[] | null,
+): number[] {
   return (scene.steps ?? []).map((step, k) => {
     const segment = segments[k + 1];
     if (!segment) return Infinity;
@@ -82,7 +108,13 @@ const OUTPUT_TEXT = '#c3c8d4';
  * A terminal-like pane beside the code that each step's output prints into, a line every few frames, scrolling to
  * keep the newest line in view. The current step's lines are bright and earlier ones softer.
  */
-export const OutputPane: React.FC<{ layout: OutputPaneLayout; height: number; starts: readonly number[]; frame: number; current: number }> = ({ layout, height, starts, frame, current }) => {
+export const OutputPane: React.FC<{
+  layout: OutputPaneLayout;
+  height: number;
+  starts: readonly number[];
+  frame: number;
+  current: number;
+}> = ({ layout, height, starts, frame, current }) => {
   const viewH = height - OUTPUT_CHROME_H;
   const firstOf = new Map<number, number>();
   layout.lines.forEach((line, i) => (firstOf.has(line.step) ? null : firstOf.set(line.step, i)));
@@ -90,7 +122,12 @@ export const OutputPane: React.FC<{ layout: OutputPaneLayout; height: number; st
     const at = starts[line.step]! + (i - firstOf.get(line.step)!) * LINE_GAP;
     return interpolate(frame, [at, at + 3], [0, 1], clamp);
   });
-  const scroll = Math.max(0, ...layout.lines.map((line, i) => Math.max(0, line.y + line.h + OUTPUT_PAD.y - viewH) * Math.min(1, appearOf[i]! * 2)));
+  const scroll = Math.max(
+    0,
+    ...layout.lines.map(
+      (line, i) => Math.max(0, line.y + line.h + OUTPUT_PAD.y - viewH) * Math.min(1, appearOf[i]! * 2),
+    ),
+  );
   const appear = interpolate(frame, [2, 14], [0, 1], clamp);
   return (
     <div
@@ -107,7 +144,20 @@ export const OutputPane: React.FC<{ layout: OutputPaneLayout; height: number; st
         opacity: appear,
       }}
     >
-      <div style={{ position: 'absolute', left: 0, top: 0, right: 0, height: OUTPUT_CHROME_H, background: '#171a23', borderBottom: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          right: 0,
+          height: OUTPUT_CHROME_H,
+          background: '#171a23',
+          borderBottom: `1px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
         <div style={{ position: 'absolute', left: 20, display: 'flex', gap: 9 }}>
           {['#ff5f57', '#febc2e', '#28c840'].map((c) => (
             <div key={c} style={{ width: 12, height: 12, borderRadius: 6, background: c, opacity: 0.85 }} />
@@ -121,7 +171,13 @@ export const OutputPane: React.FC<{ layout: OutputPaneLayout; height: number; st
             <FitText
               key={i}
               fit={line.fit}
-              style={{ position: 'absolute', left: OUTPUT_PAD.x, top: line.y, color: OUTPUT_TEXT, opacity: appearOf[i]! * (line.step === current ? 1 : 0.62) }}
+              style={{
+                position: 'absolute',
+                left: OUTPUT_PAD.x,
+                top: line.y,
+                color: OUTPUT_TEXT,
+                opacity: appearOf[i]! * (line.step === current ? 1 : 0.62),
+              }}
             />
           ))}
         </div>

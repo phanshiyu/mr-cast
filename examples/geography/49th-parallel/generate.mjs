@@ -22,17 +22,23 @@
 import fs from 'node:fs';
 
 const here = (name) => new URL(name, import.meta.url);
-const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
+const assert = (ok, msg) => {
+  if (!ok) throw new Error(msg);
+};
 
 const R = 6371;
 const rad = (d) => (d * Math.PI) / 180;
 const alongParallel = (lat, west, east) => R * Math.cos(rad(lat)) * rad(east - west);
 const haversine = ([la1, lo1], [la2, lo2]) => {
-  const h = Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2;
+  const h =
+    Math.sin(rad(la2 - la1) / 2) ** 2 + Math.cos(rad(la1)) * Math.cos(rad(la2)) * Math.sin(rad(lo2 - lo1) / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 };
 
-const WOODS = -95.15, DIVIDE = -114.07, BLAINE = -122.75, STRAIT = -123.32;
+const WOODS = -95.15,
+  DIVIDE = -114.07,
+  BLAINE = -122.75,
+  STRAIT = -123.32;
 const straight = alongParallel(49, BLAINE, WOODS);
 assert(Math.round(straight) === 2013 && Math.round(straight / 100) * 100 === 2000, `straight part ${straight}`);
 const km1818 = alongParallel(49, DIVIDE, WOODS);
@@ -47,7 +53,8 @@ const scenes = [];
 scenes.push({
   type: 'text',
   chapter: 'A straight line',
-  narration: 'For about two thousand kilometres, the border between the United States and Canada is a dead straight line.',
+  narration:
+    'For about two thousand kilometres, the border between the United States and Canada is a dead straight line.',
   kicker: 'The US and Canada border',
   number: `${N(Math.round(straight / 100) * 100)} km`,
   note: 'along one line of latitude, 49° N',
@@ -67,8 +74,14 @@ scenes.push({
   type: 'map',
   chapter: '1818',
   title: 'The first stretch',
-  narration: 'In 1818 the United States and Britain, which still ran what is now Canada, needed a border across the plains.',
-  view: { box: [[36, -130], [60, -80]] },
+  narration:
+    'In 1818 the United States and Britain, which still ran what is now Canada, needed a border across the plains.',
+  view: {
+    box: [
+      [36, -130],
+      [60, -80],
+    ],
+  },
   tint: { USA: 'accent', CAN: 'warn' },
   places: [usName, brName, woods, { ...divide, hidden: true }],
   lines: [line1818],
@@ -89,18 +102,39 @@ scenes.push({
 
 // The Oregon Country: 42° N to 54°40′ N, the Pacific to the Continental Divide, sketched.
 const oregon = [
-  [42, -124.3], [42, -109.5], [44.5, -110.5], [46, -112.6], [47.5, -112.8], [49, DIVIDE], [51.4, -116.3],
-  [52.9, -118.4], [claimLat, -120.5], [claimLat, -130.6], [52, -128.4], [50.5, -128.4], [48.4, -124.7], [46.25, -124.05],
+  [42, -124.3],
+  [42, -109.5],
+  [44.5, -110.5],
+  [46, -112.6],
+  [47.5, -112.8],
+  [49, DIVIDE],
+  [51.4, -116.3],
+  [52.9, -118.4],
+  [claimLat, -120.5],
+  [claimLat, -130.6],
+  [52, -128.4],
+  [50.5, -128.4],
+  [48.4, -124.7],
+  [46.25, -124.05],
 ];
 scenes.push({
   type: 'map',
   chapter: 'Oregon',
   title: 'The land west of the Rockies',
-  narration: 'West of the mountains, nobody could agree. So the two countries shared that land, which they called the Oregon Country.',
-  view: { box: [[38, -136], [60, -100]] },
+  narration:
+    'West of the mountains, nobody could agree. So the two countries shared that land, which they called the Oregon Country.',
+  view: {
+    box: [
+      [38, -136],
+      [60, -100],
+    ],
+  },
   tint: { USA: 'accent', CAN: 'neutral' },
   places: [usName, { ...brName, at: [57, -108] }],
-  lines: [line1818, { id: 'claim', lat: claimLat, from: -130.6, to: -120.5, label: '54°40′ N', tone: 'bad', hidden: true }],
+  lines: [
+    line1818,
+    { id: 'claim', lat: claimLat, from: -130.6, to: -120.5, label: '54°40′ N', tone: 'bad', hidden: true },
+  ],
   regions: [{ id: 'oregon', outline: oregon, label: 'Oregon Country', tone: 'warn' }],
   steps: [
     {
@@ -120,17 +154,25 @@ scenes.push({
   ],
 });
 
-const strait = [[49, STRAIT], [48.77, -123.22], [48.42, -123.2], [48.29, -123.7], [48.49, -124.73]];
+const strait = [
+  [49, STRAIT],
+  [48.77, -123.22],
+  [48.42, -123.2],
+  [48.29, -123.7],
+  [48.49, -124.73],
+];
 scenes.push({
   type: 'map',
   chapter: '1846',
   title: 'On to the Pacific',
   narration: 'So they split the difference.',
-  view: { box: [[45.5, -131], [53, -112]] },
-  places: [
-    divide,
-    { id: 'vi', at: [49.75, -125.9], dot: false, label: 'Vancouver Island', hidden: true },
-  ],
+  view: {
+    box: [
+      [45.5, -131],
+      [53, -112],
+    ],
+  },
+  places: [divide, { id: 'vi', at: [49.75, -125.9], dot: false, label: 'Vancouver Island', hidden: true }],
   lines: [line1818, { id: 'line-1846', lat: 49, from: DIVIDE, to: STRAIT, label: '1846', tone: 'good' }],
   routes: [{ id: 'water', stops: strait, tone: 'good', hidden: true }],
   steps: [
@@ -148,7 +190,13 @@ scenes.push({
   ],
 });
 
-const drive = [[48.985, -123.07], [49.03, -123.065], [49.07, -123.0], [49.06, -122.9], [49.0, BLAINE]];
+const drive = [
+  [48.985, -123.07],
+  [49.03, -123.065],
+  [49.07, -123.0],
+  [49.06, -122.9],
+  [49.0, BLAINE],
+];
 const driveKm = drive.slice(1).reduce((km, p, i) => km + haversine(drive[i], p), 0);
 assert(driveKm > 25 && driveKm < 40, `drive sketch ${driveKm}`);
 scenes.push({
@@ -156,22 +204,40 @@ scenes.push({
   chapter: 'Point Roberts',
   title: 'The leftover tip',
   narration: 'But a straight line drawn on a map does not care what it cuts.',
-  view: { box: [[48.75, -123.6], [49.25, -122.6]] },
+  view: {
+    box: [
+      [48.75, -123.6],
+      [49.25, -122.6],
+    ],
+  },
   places: [
     { id: 'roberts', at: [48.955, -123.062], dot: false, label: 'Point Roberts', hidden: true },
     { id: 'blaine', at: [49.0, BLAINE], label: 'Blaine, WA', side: 'right', hidden: true },
   ],
   lines: [{ id: 'line', lat: 49, from: -122.6, to: STRAIT, label: '49° N', tone: 'good' }],
-  regions: [{
-    id: 'tip',
-    outline: [[49, -123.0905], [49, -123.0353], [48.9844, -123.0453], [48.9722, -123.0885], [48.988, -123.0893]],
-    tone: 'warn',
-    hidden: true,
-  }],
+  regions: [
+    {
+      id: 'tip',
+      outline: [
+        [49, -123.0905],
+        [49, -123.0353],
+        [48.9844, -123.0453],
+        [48.9722, -123.0885],
+        [48.988, -123.0893],
+      ],
+      tone: 'warn',
+      hidden: true,
+    },
+  ],
   routes: [{ id: 'drive', stops: drive, label: 'about 40 km by road', hidden: true }],
   steps: [
     {
-      view: { box: [[48.86, -123.32], [49.1, -122.8]] },
+      view: {
+        box: [
+          [48.86, -123.32],
+          [49.1, -122.8],
+        ],
+      },
       show: ['tip', 'roberts'],
       focus: ['tip', 'line', 'roberts'],
       say: 'Near the coast it slices the tip off a Canadian peninsula. That tip, Point Roberts, is in the United States.',
@@ -183,7 +249,12 @@ scenes.push({
       say: 'About twelve square kilometres, and some twelve hundred people.',
     },
     {
-      view: { box: [[48.85, -123.3], [49.15, -122.55]] },
+      view: {
+        box: [
+          [48.85, -123.3],
+          [49.15, -122.55],
+        ],
+      },
       show: ['blaine'],
       trace: [{ ref: 'drive', when: 'through Canada' }],
       focus: ['drive', 'tip', 'blaine'],

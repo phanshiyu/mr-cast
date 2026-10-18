@@ -43,7 +43,13 @@ export const NodeCard: React.FC<{
   const iconColor = changed?.color ?? tone?.color ?? (node.highlight ? EMPHASIS.color : colors.muted);
   const iconBg = changed?.bg ?? tone?.bg ?? (node.highlight ? EMPHASIS.soft : 'rgba(255,255,255,0.05)');
   const background =
-    node.change === 'added' ? 'linear-gradient(180deg, #14231f, #121a1a)' : node.change === 'modified' ? 'linear-gradient(180deg, #1c2033, #151826)' : !node.change && node.highlight ? EMPHASIS.card : colors.raised;
+    node.change === 'added'
+      ? 'linear-gradient(180deg, #14231f, #121a1a)'
+      : node.change === 'modified'
+        ? 'linear-gradient(180deg, #1c2033, #151826)'
+        : !node.change && node.highlight
+          ? EMPHASIS.card
+          : colors.raised;
   const glow =
     node.change === 'added'
       ? `0 0 0 ${m.ring[0]}px ${colors.addBg}, 0 0 ${m.ring[1]}px rgba(61,220,151,0.3)`
@@ -52,7 +58,10 @@ export const NodeCard: React.FC<{
         : !node.change && node.highlight
           ? emphasisRing(m.ring[0], m.ring[1])
           : '0 12px 32px rgba(0,0,0,0.4)';
-  const lit = emphasis.glow > 0 ? `, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}` : '';
+  const lit =
+    emphasis.glow > 0
+      ? `, 0 0 0 ${4 * emphasis.glow}px ${colors.accent}, 0 0 ${44 * emphasis.glow}px ${colors.accentGlow}`
+      : '';
   return (
     <div
       style={{
@@ -68,13 +77,26 @@ export const NodeCard: React.FC<{
         padding: `0 ${m.pad}px`,
         borderRadius: m.radius,
         background,
-        border: `2px ${removed ? 'dashed' : 'solid'} ${removed ? `${colors.del}cc` : tinted ? tones[tinted].color : mark?.color ?? colors.borderStrong}`,
+        border: `2px ${removed ? 'dashed' : 'solid'} ${removed ? `${colors.del}cc` : tinted ? tones[tinted].color : (mark?.color ?? colors.borderStrong)}`,
         boxShadow: glow + lit,
         opacity: appear * (removed ? 0.62 : 1) * emphasis.opacity * (tint ? dimOpacity(tint) : 1),
         transform: `translateY(${(1 - appear) * (size === 'large' ? 20 : 18)}px) scale(${(0.92 + 0.08 * appear) * (1 + 0.03 * emphasis.glow)})`,
       }}
     >
-      {tint?.tones.map((t, i) => (t.amount > 0 ? <div key={`t${i}`} style={{ position: 'absolute', inset: 0, borderRadius: m.radius - 2, background: tintFill(tones[t.tone].color), opacity: t.amount }} /> : null))}
+      {tint?.tones.map((t, i) =>
+        t.amount > 0 ? (
+          <div
+            key={`t${i}`}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: m.radius - 2,
+              background: tintFill(tones[t.tone].color),
+              opacity: t.amount,
+            }}
+          />
+        ) : null,
+      )}
       {Icon ? (
         <div
           style={{
@@ -103,7 +125,9 @@ export const NodeCard: React.FC<{
             textDecorationThickness: 3,
           }}
         />
-        {text.caption ? <FitText fit={text.caption} style={{ color: colors.faint, marginTop: size === 'large' ? 4 : 3 }} /> : null}
+        {text.caption ? (
+          <FitText fit={text.caption} style={{ color: colors.faint, marginTop: size === 'large' ? 4 : 3 }} />
+        ) : null}
       </div>
       <CornerBadges badges={badgesOf(node)} size={m.badge} top={m.badgeAt[0]} right={m.badgeAt[1]} />
     </div>

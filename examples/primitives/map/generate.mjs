@@ -24,7 +24,12 @@ const border = {
   chapter: 'One straight line',
   title: 'The 49th parallel',
   narration: 'Most of the border between the United States and Canada is one line of latitude.',
-  view: { box: [[38, -128], [58, -82]] },
+  view: {
+    box: [
+      [38, -128],
+      [58, -82],
+    ],
+  },
   tint: { USA: 'accent', CAN: 'warn' },
   places: [
     { id: 'woods', at: [49.38, -95.15], label: 'Lake of the Woods', side: 'right', hidden: true },
@@ -40,7 +45,13 @@ const border = {
   regions: [
     {
       id: 'tip',
-      outline: [[49, -123.0905], [49, -123.0353], [48.9844, -123.0453], [48.9722, -123.0885], [48.988, -123.0893]],
+      outline: [
+        [49, -123.0905],
+        [49, -123.0353],
+        [48.9844, -123.0453],
+        [48.9722, -123.0885],
+        [48.988, -123.0893],
+      ],
       tone: 'warn',
       hidden: true,
     },
@@ -56,7 +67,12 @@ const border = {
       say: 'West of the mountains the land stayed open to both until 1846, when the Oregon Treaty carried the line on to the coast.',
     },
     {
-      view: { box: [[48.86, -123.32], [49.1, -122.8]] },
+      view: {
+        box: [
+          [48.86, -123.32],
+          [49.1, -122.8],
+        ],
+      },
       show: ['tip', 'roberts'],
       focus: ['tip', 'line-1846', 'roberts'],
       say: 'Right at the end, the straight line cuts the tip off a Canadian peninsula.',
@@ -95,7 +111,11 @@ const flight = {
   ],
 };
 
-const storyboard = { title: 'Maps', subtitle: 'Countries, borders and routes on a real world map', scenes: [flight, border] };
+const storyboard = {
+  title: 'Maps',
+  subtitle: 'Countries, borders and routes on a real world map',
+  scenes: [flight, border],
+};
 fs.writeFileSync(here('storyboard.json'), `${JSON.stringify(storyboard, null, 2)}\n`);
 fs.writeFileSync(here('hunks.json'), '{}\n');
 fs.writeFileSync(here('meta.json'), `${JSON.stringify({ mode: 'explain' })}\n`);

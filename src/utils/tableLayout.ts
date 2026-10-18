@@ -32,7 +32,12 @@ const CODE_LIKE = /^[^\s]+$/;
 const CODE_MARKS = /[_./:=()[\]{}<>@#$\d]|[a-z][A-Z]/;
 const MATH = /^[OΘΩ]\(|[¹²³⁰-₟×÷∀-⋿]/u;
 const PERCENT = /^[~≈<>+\-−±]?\d[\d,]*(\.\d+)?%$/;
-const isCodeLike = (text: string) => CODE_LIKE.test(text.trim()) && CODE_MARKS.test(text) && !MATH.test(text) && !PERCENT.test(text.trim()) && !hasMarkup(text);
+const isCodeLike = (text: string) =>
+  CODE_LIKE.test(text.trim()) &&
+  CODE_MARKS.test(text) &&
+  !MATH.test(text) &&
+  !PERCENT.test(text.trim()) &&
+  !hasMarkup(text);
 /**
  * A header is upper-cased unless it holds a formula or code, whose case means something: an operator, a backtick,
  * a brace or bracket, an underscore, a call such as "f(x)", or camelCase. "Latency (ms)" is upper-cased.
@@ -76,7 +81,8 @@ const cellText = (cell: TableCell) => (typeof cell === 'string' ? cell : `${cell
 const cellChars = (cell: TableCell) => (typeof cell === 'string' ? cell.length : cellText(cell).length + 2);
 /** Code-like cells render in mono a little smaller than the body text. */
 export const cellFont = (font: number, mono: boolean) => (mono ? Math.round(font * 0.92) : font);
-const cellMono = (cell: TableCell) => (typeof cell === 'string' ? isCodeLike(cell) : isCodeLike(cell.before) && isCodeLike(cell.after));
+const cellMono = (cell: TableCell) =>
+  typeof cell === 'string' ? isCodeLike(cell) : isCodeLike(cell.before) && isCodeLike(cell.after);
 const advance = (mono: boolean) => (mono ? MONO_ADVANCE : SANS_ADVANCE);
 const charWidth = (font: number, mono: boolean) => cellFont(font, mono) * advance(mono);
 function rowChange(row: TableRow): PlacedRow['change'] {
@@ -123,7 +129,15 @@ function columnWidths(columns: readonly string[], rows: readonly TableRow[], tex
 export const ROW_BADGE = 13;
 
 /** A cell's text at the table's font, in at most `lines` lines of its column; the first column is bolder. */
-function fitCell(text: string, mono: boolean, first: boolean, width: number, font: number, lines: number, path: string): Fit {
+function fitCell(
+  text: string,
+  mono: boolean,
+  first: boolean,
+  width: number,
+  font: number,
+  lines: number,
+  path: string,
+): Fit {
   const slot = mono ? SLOTS.tableCode : SLOTS.tableCell;
   return fitTextAt(text, { ...sized(slot, width), lines, weight: first ? 650 : 450 }, path, cellFont(font, mono));
 }
@@ -139,7 +153,14 @@ interface Sizing {
   at: string;
 }
 
-function attempt(columns: readonly string[], rows: readonly TableRow[], width: number, font: number, maxLines = 2, sizing: Sizing = { every: rows, changes: null, at: '' }) {
+function attempt(
+  columns: readonly string[],
+  rows: readonly TableRow[],
+  width: number,
+  font: number,
+  maxLines = 2,
+  sizing: Sizing = { every: rows, changes: null, at: '' },
+) {
   const lineHeight = Math.round(font * LINE_HEIGHT);
   const pad = Math.round(font * 0.5);
   const textW = width - 2 * PAD_X - MARKER_W - (columns.length - 1) * COL_GAP - rowBadgeRoom(rows, ROW_BADGE);
@@ -167,18 +188,40 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
       const before = fitCell(cell.before, mono, first, widths[i]!, font, maxLines, `${path}.before`);
       const after = fitCell(cell.after, mono, true, widths[i]!, font, maxLines, `${path}.after`);
       const inlineW = before.widths[0]! + after.widths[0]! + INLINE_ARROW(cellFont(font, mono));
-      if (before.lines.length === 1 && after.lines.length === 1 && inlineW <= widths[i]!) return { kind: 'change', mono, inline: true, before, after };
+      if (before.lines.length === 1 && after.lines.length === 1 && inlineW <= widths[i]!)
+        return { kind: 'change', mono, inline: true, before, after };
       truncated ||= !before.fits || !after.fits;
       return { kind: 'change', mono, inline: false, before, after };
     });
-    const lines = Math.max(...cells.map((c) => (c.kind === 'text' ? c.text.lines.length : c.inline ? 1 : c.before.lines.length + c.after.lines.length)));
+    const lines = Math.max(
+      ...cells.map((c) =>
+        c.kind === 'text' ? c.text.lines.length : c.inline ? 1 : c.before.lines.length + c.after.lines.length,
+      ),
+    );
     const h = lines * lineHeight + 2 * pad;
     const out = { row, change: sizing.changes ? sizing.changes[r]! : rowChange(row), cells, y, h };
     y += h + ROW_GAP;
     return out;
   });
-  const headers = columns.map((c, i) => fitText(c, { ...sized(SLOTS.tableHeader, widths[i]! + COL_GAP / 2), upper: !CASED_HEADER.test(c) }, `columns[${i}]`));
-  return { font, lineHeight, cols, headers, rows: placed, width, height: y - ROW_GAP, truncated, scale: 1, room: fitBlock('rows', 'table', true, '') };
+  const headers = columns.map((c, i) =>
+    fitText(
+      c,
+      { ...sized(SLOTS.tableHeader, widths[i]! + COL_GAP / 2), upper: !CASED_HEADER.test(c) },
+      `columns[${i}]`,
+    ),
+  );
+  return {
+    font,
+    lineHeight,
+    cols,
+    headers,
+    rows: placed,
+    width,
+    height: y - ROW_GAP,
+    truncated,
+    scale: 1,
+    room: fitBlock('rows', 'table', true, ''),
+  };
 }
 
 /**
@@ -186,7 +229,12 @@ function attempt(columns: readonly string[], rows: readonly TableRow[], width: n
  * its two lines and the table fits the height; failing that, the smallest font with three lines a cell;
  * failing that, the smallest font laid out wider and scaled down, which `validate` reports.
  */
-export function layoutTable(columns: readonly string[], rows: readonly TableRow[], width: number, height: number): TableLayout {
+export function layoutTable(
+  columns: readonly string[],
+  rows: readonly TableRow[],
+  width: number,
+  height: number,
+): TableLayout {
   return layoutTableStates(columns, [rows], width, height)[0]!;
 }
 
@@ -196,10 +244,17 @@ export function layoutTable(columns: readonly string[], rows: readonly TableRow[
  * state fits. Each row keeps the change mark of its first state, so a value a step strikes is no diff.
  * `base` starts the path of each cell, such as "table." for the table beside a graph.
  */
-export function layoutTableStates(columns: readonly string[], states: readonly (readonly TableRow[])[], width: number, height: number, base = ''): TableLayout[] {
+export function layoutTableStates(
+  columns: readonly string[],
+  states: readonly (readonly TableRow[])[],
+  width: number,
+  height: number,
+  base = '',
+): TableLayout[] {
   const every = states.flat();
   const changes = states[0]!.map(rowChange);
-  const at = (k: number, font: number, lines: number, w = width) => attempt(columns, states[k]!, w, font, lines, { every, changes, at: k ? `steps[${k - 1}]: ${base}` : base });
+  const at = (k: number, font: number, lines: number, w = width) =>
+    attempt(columns, states[k]!, w, font, lines, { every, changes, at: k ? `steps[${k - 1}]: ${base}` : base });
   const all = (font: number, lines: number, w = width) => states.map((_, k) => at(k, font, lines, w));
   for (let font = MAX_FONT; font >= MIN_FONT; font--) {
     const result = all(font, 2);
@@ -218,7 +273,10 @@ export function layoutTableStates(columns: readonly string[], states: readonly (
 function cellExtent(cell: PlacedCell, font: number): { width: number; lines: number } {
   if (cell.kind === 'text') return { width: cell.text.width, lines: cell.text.lines.length };
   if (cell.inline) return { width: cell.before.width + cell.after.width + INLINE_ARROW(font), lines: 1 };
-  return { width: Math.max(cell.before.width, cell.after.width), lines: cell.before.lines.length + cell.after.lines.length };
+  return {
+    width: Math.max(cell.before.width, cell.after.width),
+    lines: cell.before.lines.length + cell.after.lines.length,
+  };
 }
 
 /**
@@ -228,21 +286,43 @@ function cellExtent(cell: PlacedCell, font: number): { width: number; lines: num
 export function tableBoxes(layout: TableLayout): LayoutBoxes {
   const boxes = new Map<string, Box>();
   const last = layout.rows[layout.rows.length - 1];
-  layout.cols.forEach((col, c) => boxes.set(`c:${c}`, { x: col.x - 10, y: 4, width: col.w + 20, height: (last ? last.y + last.h : HEADER_H) - 4 }));
+  layout.cols.forEach((col, c) =>
+    boxes.set(`c:${c}`, { x: col.x - 10, y: 4, width: col.w + 20, height: (last ? last.y + last.h : HEADER_H) - 4 }),
+  );
   layout.rows.forEach((row, r) => {
     boxes.set(`r:${r}`, { x: 0, y: row.y, width: layout.width, height: row.h });
     row.cells.forEach((cell, c) => {
       const extent = cellExtent(cell, cellFont(layout.font, cell.mono));
       const width = Math.min(layout.cols[c]!.w, extent.width);
       const height = extent.lines * layout.lineHeight;
-      boxes.set(`x:${r}/${c}`, { x: layout.cols[c]!.x, y: row.y + (row.h - height) / 2, width: Math.max(24, width), height });
+      boxes.set(`x:${r}/${c}`, {
+        x: layout.cols[c]!.x,
+        y: row.y + (row.h - height) / 2,
+        width: Math.max(24, width),
+        height,
+      });
     });
   });
-  const obstacles = [{ x: 0, y: 0, width: layout.width, height: HEADER_H }, ...[...boxes].flatMap(([key, b]) => (key.startsWith('x:') ? [b] : []))];
+  const obstacles = [
+    { x: 0, y: 0, width: layout.width, height: HEADER_H },
+    ...[...boxes].flatMap(([key, b]) => (key.startsWith('x:') ? [b] : [])),
+  ];
   return { boxes, obstacles };
 }
 
 /** A table's rows as each state shows them: every cell's value in that state ("x:row/col"), hidden rows kept in place. */
-export function stateRows(columns: readonly string[], rows: readonly TableRow[], states: readonly { values: Record<string, unknown> }[]): TableRow[][] {
-  return states.map((state) => rows.map((row, r) => ({ ...row, cells: columns.map((_, c) => (state.values[`x:${r}/${c}`] as TableCell | undefined) ?? row.cells[c] ?? '') }) as TableRow));
+export function stateRows(
+  columns: readonly string[],
+  rows: readonly TableRow[],
+  states: readonly { values: Record<string, unknown> }[],
+): TableRow[][] {
+  return states.map((state) =>
+    rows.map(
+      (row, r) =>
+        ({
+          ...row,
+          cells: columns.map((_, c) => (state.values[`x:${r}/${c}`] as TableCell | undefined) ?? row.cells[c] ?? ''),
+        }) as TableRow,
+    ),
+  );
 }

@@ -24,7 +24,9 @@ function glowOf(node: GraphNode, emphasis: Emphasis): string {
     node.change === 'modified' ? `drop-shadow(0 0 18px ${colors.accentGlow})` : '',
     !node.change && node.highlight ? `drop-shadow(0 0 16px ${EMPHASIS.glow})` : '',
     !node.change && !node.highlight ? 'drop-shadow(0 12px 24px rgba(0,0,0,0.4))' : '',
-    emphasis.glow > 0 ? `drop-shadow(0 0 ${18 * emphasis.glow}px ${colors.accentGlow}) drop-shadow(0 0 ${4 * emphasis.glow}px ${colors.accent})` : '',
+    emphasis.glow > 0
+      ? `drop-shadow(0 0 ${18 * emphasis.glow}px ${colors.accentGlow}) drop-shadow(0 0 ${4 * emphasis.glow}px ${colors.accent})`
+      : '',
   ];
   return shadows.filter(Boolean).join(' ');
 }
@@ -50,7 +52,13 @@ export const ShapeNode: React.FC<{
   const mark = nodeMark(node);
   const removed = node.change === 'removed';
   const tinted = tint ? mainTone(tint) : null;
-  const stroke = removed ? `${colors.del}cc` : emphasis.glow > 0 ? colors.accent : tinted ? tones[tinted].color : mark?.color ?? colors.borderStrong;
+  const stroke = removed
+    ? `${colors.del}cc`
+    : emphasis.glow > 0
+      ? colors.accent
+      : tinted
+        ? tones[tinted].color
+        : (mark?.color ?? colors.borderStrong);
   const fills = (tint?.tones ?? []).filter((t) => t.amount > 0);
   const strokeWidth = 2 + 2 * emphasis.glow;
   const words = (
@@ -58,9 +66,16 @@ export const ShapeNode: React.FC<{
       <FitText
         fit={text.title}
         align="center"
-        style={{ color: removed ? colors.muted : colors.text, textDecoration: removed ? 'line-through' : 'none', textDecorationColor: colors.del, textDecorationThickness: 3 }}
+        style={{
+          color: removed ? colors.muted : colors.text,
+          textDecoration: removed ? 'line-through' : 'none',
+          textDecorationColor: colors.del,
+          textDecorationThickness: 3,
+        }}
       />
-      {text.caption ? <FitText fit={text.caption} align="center" style={{ color: colors.faint, marginTop: 4 }} /> : null}
+      {text.caption ? (
+        <FitText fit={text.caption} align="center" style={{ color: colors.faint, marginTop: 4 }} />
+      ) : null}
     </div>
   );
   return (
@@ -76,7 +91,11 @@ export const ShapeNode: React.FC<{
       }}
     >
       {shape === 'decision' ? (
-        <svg width={width} height={height} style={{ position: 'absolute', inset: 0, overflow: 'visible', filter: glowOf(node, emphasis) }}>
+        <svg
+          width={width}
+          height={height}
+          style={{ position: 'absolute', inset: 0, overflow: 'visible', filter: glowOf(node, emphasis) }}
+        >
           <polygon
             points={`${width / 2},1 ${width - 1},${height / 2} ${width / 2},${height - 1} 1,${height / 2}`}
             fill={fillOf(node)}
@@ -86,7 +105,12 @@ export const ShapeNode: React.FC<{
             strokeLinejoin="round"
           />
           {fills.map((t, i) => (
-            <polygon key={i} points={`${width / 2},1 ${width - 1},${height / 2} ${width / 2},${height - 1} 1,${height / 2}`} fill={tintFill(tones[t.tone].color)} opacity={t.amount} />
+            <polygon
+              key={i}
+              points={`${width / 2},1 ${width - 1},${height / 2} ${width / 2},${height - 1} 1,${height / 2}`}
+              fill={tintFill(tones[t.tone].color)}
+              opacity={t.amount}
+            />
           ))}
         </svg>
       ) : (
@@ -103,10 +127,28 @@ export const ShapeNode: React.FC<{
         />
       )}
       {shape !== 'decision'
-        ? fills.map((t, i) => <div key={i} style={{ position: 'absolute', inset: 0, borderRadius: shape === 'terminal' ? height / 2 : 14, background: tintFill(tones[t.tone].color), opacity: t.amount }} />)
+        ? fills.map((t, i) => (
+            <div
+              key={i}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: shape === 'terminal' ? height / 2 : 14,
+                background: tintFill(tones[t.tone].color),
+                opacity: t.amount,
+              }}
+            />
+          ))
         : null}
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{words}</div>
-      <CornerBadges badges={badgesOf(node)} size={16} top={shape === 'decision' ? height * 0.12 - 16 : -16} right={shape === 'decision' ? width * 0.22 : 18} />
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {words}
+      </div>
+      <CornerBadges
+        badges={badgesOf(node)}
+        size={16}
+        top={shape === 'decision' ? height * 0.12 - 16 : -16}
+        right={shape === 'decision' ? width * 0.22 : 18}
+      />
     </div>
   );
 };

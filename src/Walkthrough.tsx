@@ -32,7 +32,35 @@ import { SAFE, colors, fonts } from './components/theme';
 import { FitText } from './components/FitText';
 import { sourceFit } from './fit/source';
 import './fonts';
-import type { ImageScene, ArrayScene, ChartScene, CodeScene, CompareScene, ErScene, FilesScene, FlowScene, GraphScene, TextScene, LayersScene, MemoryScene, MermaidScene, ReadingScene, ReviewScene, PlotScene, MapScene, SequenceScene, StateScene, SvgScene, TableScene, TerminalScene, TestsScene, TimelineScene, WalkthroughProps, Scene, HunkMap } from './types';
+import type {
+  ImageScene,
+  ArrayScene,
+  ChartScene,
+  CodeScene,
+  CompareScene,
+  ErScene,
+  FilesScene,
+  FlowScene,
+  GraphScene,
+  TextScene,
+  LayersScene,
+  MemoryScene,
+  MermaidScene,
+  ReadingScene,
+  ReviewScene,
+  PlotScene,
+  MapScene,
+  SequenceScene,
+  StateScene,
+  SvgScene,
+  TableScene,
+  TerminalScene,
+  TestsScene,
+  TimelineScene,
+  WalkthroughProps,
+  Scene,
+  HunkMap,
+} from './types';
 import { timeline } from './utils/timing';
 
 interface SceneByType {
@@ -100,7 +128,17 @@ const SourceLine: React.FC<{ scene: Scene; hunks: HunkMap }> = ({ scene, hunks }
   if (!fit) return null;
   return (
     <AbsoluteFill style={{ pointerEvents: 'none' }}>
-      <FitText fit={fit} style={{ position: 'absolute', top: 22, right: SAFE.right, lineHeight: 'normal', color: colors.muted, opacity: 0.85 }} />
+      <FitText
+        fit={fit}
+        style={{
+          position: 'absolute',
+          top: 22,
+          right: SAFE.right,
+          lineHeight: 'normal',
+          color: colors.muted,
+          opacity: 0.85,
+        }}
+      />
     </AbsoluteFill>
   );
 };
@@ -142,35 +180,49 @@ function useWorld(storyboard: WalkthroughProps['storyboard']): boolean {
   return ready;
 }
 
-export const Walkthrough: React.FC<WalkthroughProps> = (props) => (useWorld(props.storyboard) ? <Scenes {...props} /> : null);
+export const Walkthrough: React.FC<WalkthroughProps> = (props) =>
+  useWorld(props.storyboard) ? <Scenes {...props} /> : null;
 
-const Scenes: React.FC<WalkthroughProps> = ({ storyboard, hunks, showCaptions, voiceover, audioBaseUrl, images, imageBaseUrl }) => (
+const Scenes: React.FC<WalkthroughProps> = ({
+  storyboard,
+  hunks,
+  showCaptions,
+  voiceover,
+  audioBaseUrl,
+  images,
+  imageBaseUrl,
+}) => (
   <ImagesContext.Provider value={{ images: images ?? {}, baseUrl: imageBaseUrl }}>
-  <AbsoluteFill style={{ backgroundColor: colors.bg, fontFamily: fonts.sans }}>
-    <Backdrop />
-    {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, segments }) => (
-      <Sequence key={index} from={from} durationInFrames={durationInFrames} name={`${index + 1}. ${scene.chapter ?? scene.type}`}>
-        {renderScene(scene.type, { scene, hunks, storyboard, durationInFrames, segments })}
-        <SourceLine scene={scene} hunks={hunks} />
-        {audioBaseUrl === undefined
-          ? null
-          : segments.map((segment, k) =>
-              segment.clip ? (
-                // Ends with its segment, so a scene mounts one clip at a time; the Player shares only 5 audio tags.
-                <Sequence
-                  key={k}
-                  from={segment.voiceFrom}
-                  durationInFrames={segment.from + segment.durationInFrames - segment.voiceFrom}
-                  layout="none"
-                  name={`voice-over ${k + 1}`}
-                >
-                  <Html5Audio src={audioBaseUrl + segment.clip.src} />
-                </Sequence>
-              ) : null,
-            )}
-        {showCaptions ? <Captions segments={segments} durationInFrames={durationInFrames} /> : null}
-      </Sequence>
-    ))}
-  </AbsoluteFill>
+    <AbsoluteFill style={{ backgroundColor: colors.bg, fontFamily: fonts.sans }}>
+      <Backdrop />
+      {timeline(storyboard, voiceover).map(({ scene, index, from, durationInFrames, segments }) => (
+        <Sequence
+          key={index}
+          from={from}
+          durationInFrames={durationInFrames}
+          name={`${index + 1}. ${scene.chapter ?? scene.type}`}
+        >
+          {renderScene(scene.type, { scene, hunks, storyboard, durationInFrames, segments })}
+          <SourceLine scene={scene} hunks={hunks} />
+          {audioBaseUrl === undefined
+            ? null
+            : segments.map((segment, k) =>
+                segment.clip ? (
+                  // Ends with its segment, so a scene mounts one clip at a time; the Player shares only 5 audio tags.
+                  <Sequence
+                    key={k}
+                    from={segment.voiceFrom}
+                    durationInFrames={segment.from + segment.durationInFrames - segment.voiceFrom}
+                    layout="none"
+                    name={`voice-over ${k + 1}`}
+                  >
+                    <Html5Audio src={audioBaseUrl + segment.clip.src} />
+                  </Sequence>
+                ) : null,
+              )}
+          {showCaptions ? <Captions segments={segments} durationInFrames={durationInFrames} /> : null}
+        </Sequence>
+      ))}
+    </AbsoluteFill>
   </ImagesContext.Provider>
 );

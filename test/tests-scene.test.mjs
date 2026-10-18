@@ -7,10 +7,34 @@ import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { resolveRef } from '../shared/targets.mjs';
 import { testsMatrix, upgradeTests } from '../shared/tests.mjs';
 
-const bundled = await build({ entryPoints: [new URL('../src/utils/testsLayout.ts', import.meta.url).pathname], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
-const { layoutTests } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
+const bundled = await build({
+  entryPoints: [new URL('../src/utils/testsLayout.ts', import.meta.url).pathname],
+  bundle: true,
+  write: false,
+  format: 'esm',
+  platform: 'node',
+  logLevel: 'silent',
+});
+const { layoutTests } = await import(
+  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
+);
 
-const hunk = (id, file) => ({ id, file, oldFile: null, status: 'added', language: 'typescript', header: '', startLine: 1, oldStartLine: 0, endLine: 1, additions: 1, deletions: 0, beforeCode: '', afterCode: '', lines: [{ type: 'add', oldLine: null, newLine: 1, text: 'x();' }] });
+const hunk = (id, file) => ({
+  id,
+  file,
+  oldFile: null,
+  status: 'added',
+  language: 'typescript',
+  header: '',
+  startLine: 1,
+  oldStartLine: 0,
+  endLine: 1,
+  additions: 1,
+  deletions: 0,
+  beforeCode: '',
+  afterCode: '',
+  lines: [{ type: 'add', oldLine: null, newLine: 1, text: 'x();' }],
+});
 const hunks = { h1: hunk('h1', 'src/deliver.ts'), h2: hunk('h2', 'test/deliver.test.ts') };
 
 // The webhook delivery matrix from examples/primitives/tests, cut down.
@@ -36,11 +60,16 @@ const run = (scene, extra = {}) => validateStoryboard({ title: 'Retries', scenes
 const at = (list, prefix) => list.filter((m) => m.startsWith(prefix));
 
 test('a check naming a missing situation or outcome, and duplicate ids and outcomes, fail', async () => {
-  const { errors } = await run(matrix({
-    outcomes: ['Result', 'Calls', 'Result'],
-    situations: [...matrix().situations, { id: 'ok', when: 'answers 200 again', expect: { Result: 'delivered', Waits: 'none' } }],
-    tests: [{ name: 'a', checks: ['retyr.Calls', 'retry.Cals', 'ok.Result'] }],
-  }));
+  const { errors } = await run(
+    matrix({
+      outcomes: ['Result', 'Calls', 'Result'],
+      situations: [
+        ...matrix().situations,
+        { id: 'ok', when: 'answers 200 again', expect: { Result: 'delivered', Waits: 'none' } },
+      ],
+      tests: [{ name: 'a', checks: ['retyr.Calls', 'retry.Cals', 'ok.Result'] }],
+    }),
+  );
   assert.deepEqual(errors, [
     'scenes[0].outcomes[2]: duplicate outcome "Result"',
     'scenes[0].situations[3].id: duplicate id "ok"',
@@ -51,15 +80,22 @@ test('a check naming a missing situation or outcome, and duplicate ids and outco
 });
 
 test('a live test checking a cell with no promised value warns; a removed one, and gap beside expect, as said', async () => {
-  const { errors, warnings } = await run(matrix({
-    situations: [...matrix().situations, { id: 'bad', when: 'answers 400', expect: { Result: 'failed' }, gap: 'nobody checks the calls' }],
-    tests: [
-      { name: 'checks a bare cell', checks: ['bad.Calls'] },
-      { name: 'used to check a bare cell', status: 'removed', checks: ['silent.Result'], was: 'hung' },
-    ],
-  }));
+  const { errors, warnings } = await run(
+    matrix({
+      situations: [
+        ...matrix().situations,
+        { id: 'bad', when: 'answers 400', expect: { Result: 'failed' }, gap: 'nobody checks the calls' },
+      ],
+      tests: [
+        { name: 'checks a bare cell', checks: ['bad.Calls'] },
+        { name: 'used to check a bare cell', status: 'removed', checks: ['silent.Result'], was: 'hung' },
+      ],
+    }),
+  );
   assert.deepEqual(errors, []);
-  assert.deepEqual(at(warnings, 'scenes[0].situations'), ['scenes[0].situations[3].gap: is not drawn, since the situation has promises in expect; drop expect to draw the row as a gap, or drop gap']);
+  assert.deepEqual(at(warnings, 'scenes[0].situations'), [
+    'scenes[0].situations[3].gap: is not drawn, since the situation has promises in expect; drop expect to draw the row as a gap, or drop gap',
+  ]);
   assert.deepEqual(at(warnings, 'scenes[0].tests'), [
     'scenes[0].tests[0].checks[0]: "bad.Calls" is a cell with no expect value, so it draws a tick with nothing beside it; add "Calls" to situation "bad"\'s expect',
   ]);
@@ -68,8 +104,14 @@ test('a live test checking a cell with no promised value warns; a removed one, a
 test('each cell shows checked, unchecked, removed or nothing, with the status of the tests that check it', () => {
   const { rows, counts } = testsMatrix(matrix());
   const show = (r) => r.cells.map((c) => [c.outcome, c.state, c.status, c.was]);
-  assert.deepEqual(show(rows[0]), [['Result', 'checked', 'modified', ['threw']], ['Calls', 'unchecked', null, []]]);
-  assert.deepEqual(show(rows[1]), [['Result', 'checked', 'added', []], ['Calls', 'checked', 'added', []]]);
+  assert.deepEqual(show(rows[0]), [
+    ['Result', 'checked', 'modified', ['threw']],
+    ['Calls', 'unchecked', null, []],
+  ]);
+  assert.deepEqual(show(rows[1]), [
+    ['Result', 'checked', 'added', []],
+    ['Calls', 'checked', 'added', []],
+  ]);
   assert.equal(rows[2].gap, true);
   assert.deepEqual(counts, { tests: 3, added: 1, modified: 1, removed: 1, existing: 0, gaps: 1, unchecked: 1 });
 });
@@ -96,13 +138,16 @@ test('a step that focuses a test names it in the callout, as written, unless it 
     ],
   });
   const out = normalizeStoryboard({ title: 't', scenes: [scene] }, hunks).scenes[0];
-  assert.deepEqual(out.steps.map((s) => s.callout), [
-    '[NEW]{good} retries a 503 until it succeeds',
-    '[CHANGED]{accent} returns delivered on 200 · [REMOVED]{bad} throws when the receiver errors',
-    '[NEW]{good} keeps \\`\\*\\` and \\[x\\] as written',
-    '',
-    'my own',
-  ]);
+  assert.deepEqual(
+    out.steps.map((s) => s.callout),
+    [
+      '[NEW]{good} retries a 503 until it succeeds',
+      '[CHANGED]{accent} returns delivered on 200 · [REMOVED]{bad} throws when the receiver errors',
+      '[NEW]{good} keeps \\`\\*\\` and \\[x\\] as written',
+      '',
+      'my own',
+    ],
+  );
 });
 
 test('words naming a situation, an outcome or a test that the step leaves dark are warned', async () => {
@@ -122,36 +167,72 @@ test('a test links its hunk, which counts as shown, and the summary counts tests
   const result = await run(matrix());
   assert.deepEqual(result.coverage.tests, { shown: 1, total: 1 });
   assert.deepEqual(result.coverage.testsScene, { tests: 3, gaps: 1 });
-  const line = formatValidation(result, { storyboard: normalizeStoryboard({ title: 'Retries', scenes: [matrix()] }, hunks), hunks, seconds: 10 }).at(-1);
+  const line = formatValidation(result, {
+    storyboard: normalizeStoryboard({ title: 'Retries', scenes: [matrix()] }, hunks),
+    hunks,
+    seconds: 10,
+  }).at(-1);
   assert.match(line, /tests 1\/1 shown · tests scene: 3 tests, 1 gap$/);
 });
 
 test('a value too long for its cell, and a matrix too tall to read, are reported', async () => {
-  const long = matrix({ situations: [{ id: 'ok', when: 'answers 200', expect: { Result: 'delivered '.repeat(120), Calls: '1' } }], tests: [] });
+  const long = matrix({
+    situations: [{ id: 'ok', when: 'answers 200', expect: { Result: 'delivered '.repeat(120), Calls: '1' } }],
+    tests: [],
+  });
   const { errors } = await run(long);
-  assert.deepEqual(errors.map((e) => e.replace(/"delivered (delivered )+delivered "/, '"…"')), [
-    'scenes[0].situations[0].expect.Result: "…" does not fit its promised value, even at 15px; shorten the value to a word or a number, e.g. "3" or "1, 4, 16 s", or use fewer outcomes',
-  ]);
-  const many = matrix({ situations: Array.from({ length: 40 }, (_, i) => ({ id: `s${i}`, when: `situation ${i}`, expect: { Result: 'ok', Calls: '1' } })), tests: [] });
+  assert.deepEqual(
+    errors.map((e) => e.replace(/"delivered (delivered )+delivered "/, '"…"')),
+    [
+      'scenes[0].situations[0].expect.Result: "…" does not fit its promised value, even at 15px; shorten the value to a word or a number, e.g. "3" or "1, 4, 16 s", or use fewer outcomes',
+    ],
+  );
+  const many = matrix({
+    situations: Array.from({ length: 40 }, (_, i) => ({
+      id: `s${i}`,
+      when: `situation ${i}`,
+      expect: { Result: 'ok', Calls: '1' },
+    })),
+    tests: [],
+  });
   assert.deepEqual((await run(many)).errors, [
     'scenes[0].situations: the tests scene does not fit the screen at the smallest readable size; split the situations into two tests scenes, or use fewer outcomes',
   ]);
-  const twelve = matrix({ situations: Array.from({ length: 12 }, (_, i) => ({ id: `s${i}`, when: `situation ${i}`, expect: { Result: 'ok', Calls: '1' } })), tests: [] });
+  const twelve = matrix({
+    situations: Array.from({ length: 12 }, (_, i) => ({
+      id: `s${i}`,
+      when: `situation ${i}`,
+      expect: { Result: 'ok', Calls: '1' },
+    })),
+    tests: [],
+  });
   assert.deepEqual((await run(twelve)).errors, []);
 });
 
 test('test names show in a column when every value fits beside it, else a count per row', () => {
   const wide = layoutTests(matrix(), 1712, 700);
-  assert.deepEqual(wide.rows.map((r) => r.names.map((n) => [n.fit.text, n.removed])), [
-    [['returns delivered on 200', false], ['throws when the receiver errors', true]],
-    [['retries a 503 until it succeeds', false]],
-    [],
-  ]);
+  assert.deepEqual(
+    wide.rows.map((r) => r.names.map((n) => [n.fit.text, n.removed])),
+    [
+      [
+        ['returns delivered on 200', false],
+        ['throws when the receiver errors', true],
+      ],
+      [['retries a 503 until it succeeds', false]],
+      [],
+    ],
+  );
   const narrow = layoutTests(matrix(), 900, 700);
   assert.equal(narrow.namesCol, null);
-  assert.deepEqual(narrow.rows.map((r) => r.count), ['', '', '']);
+  assert.deepEqual(
+    narrow.rows.map((r) => r.count),
+    ['', '', ''],
+  );
   const shared = matrix({ tests: [...matrix().tests, { name: 'counts the calls on retry', checks: ['retry.Calls'] }] });
-  assert.deepEqual(layoutTests(shared, 900, 700).rows.map((r) => r.count), ['1 test', '2 tests', '']);
+  assert.deepEqual(
+    layoutTests(shared, 900, 700).rows.map((r) => r.count),
+    ['1 test', '2 tests', ''],
+  );
 });
 
 test('an older scene with cases and gaps reads as a matrix with one outcome, and still validates', async () => {
@@ -166,7 +247,11 @@ test('an older scene with cases and gaps reads as a matrix with one outcome, and
       { name: 'throws on 500', proves: 'A 500 threw', status: 'removed' },
     ],
     gaps: ['A receiver that never answers'],
-    steps: [{ focus: [0, 'waits'], say: 'Two tests.' }, { focus: 'gap:0', say: 'And a gap.' }, { focus: 'missing', say: 'Nothing.' }],
+    steps: [
+      { focus: [0, 'waits'], say: 'Two tests.' },
+      { focus: 'gap:0', say: 'And a gap.' },
+      { focus: 'missing', say: 'Nothing.' },
+    ],
   };
   assert.deepEqual(upgradeTests(old), {
     type: 'tests',
@@ -185,28 +270,56 @@ test('an older scene with cases and gaps reads as a matrix with one outcome, and
       { name: 'waits', status: 'existing', checks: ['case 2.Checks'] },
       { name: 'throws on 500', status: 'removed', checks: ['case 3.Checks'], was: 'A 500 threw' },
     ],
-    steps: [{ focus: ['case 1', 'case 2'], say: 'Two tests.' }, { focus: 'gap 1', say: 'And a gap.' }, { focus: 'missing', say: 'Nothing.' }],
+    steps: [
+      { focus: ['case 1', 'case 2'], say: 'Two tests.' },
+      { focus: 'gap 1', say: 'And a gap.' },
+      { focus: 'missing', say: 'Nothing.' },
+    ],
   });
   const { errors, coverage } = await run({ ...old, steps: old.steps.slice(0, 2) });
   assert.deepEqual(errors, []);
-  assert.deepEqual([coverage.tests, coverage.testsScene], [{ shown: 1, total: 1 }, { tests: 3, gaps: 1 }]);
+  assert.deepEqual(
+    [coverage.tests, coverage.testsScene],
+    [
+      { shown: 1, total: 1 },
+      { tests: 3, gaps: 1 },
+    ],
+  );
   const current = matrix();
   assert.equal(upgradeTests(current), current);
 });
 
 test('short test names fit under the TESTS header, in the matrix and in an older scene', async () => {
-  const short = matrix({ tests: [{ name: 'a', checks: ['retry.Result'] }, { name: 'ok', checks: ['ok.Result'] }] });
+  const short = matrix({
+    tests: [
+      { name: 'a', checks: ['retry.Result'] },
+      { name: 'ok', checks: ['ok.Result'] },
+    ],
+  });
   assert.deepEqual((await run(short)).errors, []);
   assert.equal(layoutTests(short, 1712, 700).namesCol.title.fits, true);
-  const old = { type: 'tests', narration: 'Two tests cover delivery.', cases: [{ name: 'a', proves: 'Retries' }, { name: 'ok', proves: 'Delivers' }] };
+  const old = {
+    type: 'tests',
+    narration: 'Two tests cover delivery.',
+    cases: [
+      { name: 'a', proves: 'Retries' },
+      { name: 'ok', proves: 'Delivers' },
+    ],
+  };
   assert.deepEqual((await run(old)).errors, []);
 });
 
 test('an older scene is reported in its own fields: cases, gaps and titles, not the matrix it reads as', async () => {
   const long = Array(40).fill('word').join(' ');
   const old = {
-    type: 'tests', narration: 'Some tests cover delivery.', titles: { proves: 'Checks' },
-    cases: [{ name: 'retries a 503', proves: 'delivered', hunkId: 'nope' }, { proves: 'unnamed', status: 'odd' }, { name: 'throws', proves: long, status: 'removed' }],
+    type: 'tests',
+    narration: 'Some tests cover delivery.',
+    titles: { proves: 'Checks' },
+    cases: [
+      { name: 'retries a 503', proves: 'delivered', hunkId: 'nope' },
+      { proves: 'unnamed', status: 'odd' },
+      { name: 'throws', proves: long, status: 'removed' },
+    ],
     gaps: [long, 7],
     steps: [{ focus: 9, say: 'Nothing.' }],
   };
@@ -217,9 +330,17 @@ test('an older scene is reported in its own fields: cases, gaps and titles, not 
     'scenes[0].cases[1].status: must be one of added, modified, removed, existing',
     'scenes[0].steps[0].focus: 9 names nothing in this scene, where a ref is a case\'s index or name, or "gap:0" for the first gap',
   ]);
-  const fitting = { ...old, cases: [old.cases[0], { name: 'waits', proves: 'p' }, old.cases[2]].map(({ hunkId, ...c }) => c), gaps: [`${long} ${long}`], steps: undefined };
-  assert.deepEqual((await run(fitting)).errors.map((m) => m.replace(`${long} ${long}`, 'LONGER').replace(long, 'LONG')), [
-    'scenes[0].cases[2].proves: "LONG" does not fit its row, even at 15px; shorten what it proves',
-    'scenes[0].gaps[0]: "LONGER" does not fit its row, even at 15px; shorten the gap',
-  ]);
+  const fitting = {
+    ...old,
+    cases: [old.cases[0], { name: 'waits', proves: 'p' }, old.cases[2]].map(({ hunkId, ...c }) => c),
+    gaps: [`${long} ${long}`],
+    steps: undefined,
+  };
+  assert.deepEqual(
+    (await run(fitting)).errors.map((m) => m.replace(`${long} ${long}`, 'LONGER').replace(long, 'LONG')),
+    [
+      'scenes[0].cases[2].proves: "LONG" does not fit its row, even at 15px; shorten what it proves',
+      'scenes[0].gaps[0]: "LONGER" does not fit its row, even at 15px; shorten the gap',
+    ],
+  );
 });

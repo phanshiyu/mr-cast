@@ -33,7 +33,6 @@ const CHANNEL = 34;
 const SPREAD = 44;
 const ENTRY_GAP = 74;
 
-
 function badgeWidth(text: string): number {
   return Math.ceil(text.length * (BADGE_FONT * 0.76 + 1) + 22);
 }
@@ -48,13 +47,22 @@ export interface LabelBox {
 const labelHeight = (lines: number, size = LABEL_FONT) => lines * LABEL_LINE_H * (size / LABEL_FONT) + 2 * LABEL_PAD_Y;
 
 function labelBox(t: StateTransition, path: string): LabelBox {
-  const text = fitText((t.change === 'added' ? '+ ' : '') + (t.label ?? ''), sized(SLOTS.transitionLabel, LABEL_MAX_CHARS * LABEL_FONT * MONO_ADVANCE), path);
+  const text = fitText(
+    (t.change === 'added' ? '+ ' : '') + (t.label ?? ''),
+    sized(SLOTS.transitionLabel, LABEL_MAX_CHARS * LABEL_FONT * MONO_ADVANCE),
+    path,
+  );
   const cells = Math.max(...text.lines.map((line) => line.reduce((n, run) => n + run.text.length, 0)));
-  return { text, w: Math.ceil(Math.max(cells * text.size * MONO_ADVANCE, text.width) + 26), h: labelHeight(text.lines.length, text.size) };
+  return {
+    text,
+    w: Math.ceil(Math.max(cells * text.size * MONO_ADVANCE, text.width) + 26),
+    h: labelHeight(text.lines.length, text.size),
+  };
 }
 
 /** Room a state's label has: its pill less the padding and its badges. */
-const labelRoom = (state: StateNode, w: number) => w - 2 * PAD_X - badgeWords(state).reduce((sum, word) => sum + badgeWidth(word) + 14, 0);
+const labelRoom = (state: StateNode, w: number) =>
+  w - 2 * PAD_X - badgeWords(state).reduce((sum, word) => sum + badgeWidth(word) + 14, 0);
 
 function stateWidth(state: StateNode): number {
   const badges = badgeWords(state).reduce((sum, word) => sum + badgeWidth(word) + 14, 0);
@@ -126,7 +134,10 @@ function assignLayers(
 ): { layerOf: Map<string, number>; unreachable: Set<string> } {
   const ids = new Set(states.map((s) => s.id));
   const hasIncoming = new Set(edges.filter((e) => e.from !== e.to).map((e) => e.to));
-  const start = (initial && ids.has(initial) ? initial : undefined) ?? states.find((s) => !hasIncoming.has(s.id))?.id ?? states[0]?.id;
+  const start =
+    (initial && ids.has(initial) ? initial : undefined) ??
+    states.find((s) => !hasIncoming.has(s.id))?.id ??
+    states[0]?.id;
   const layerOf = new Map<string, number>();
   if (start !== undefined) {
     layerOf.set(start, 0);
@@ -146,7 +157,9 @@ function assignLayers(
     changed = false;
     for (const id of unreachable) {
       if (layerOf.has(id)) continue;
-      const targets = edges.flatMap((e) => (e.from === id && e.to !== id && layerOf.has(e.to) ? [layerOf.get(e.to)!] : []));
+      const targets = edges.flatMap((e) =>
+        e.from === id && e.to !== id && layerOf.has(e.to) ? [layerOf.get(e.to)!] : [],
+      );
       if (targets.length) {
         layerOf.set(id, Math.max(0, Math.min(...targets) - 1));
         changed = true;
@@ -159,7 +172,12 @@ function assignLayers(
 }
 
 /** Alternating barycenter sweeps over transitions between adjacent columns; stable sort keeps ties in input order. */
-function orderColumns(columns: StateNode[][], edges: readonly StateTransition[], layerOf: Map<string, number>, unreachable: Set<string>): void {
+function orderColumns(
+  columns: StateNode[][],
+  edges: readonly StateTransition[],
+  layerOf: Map<string, number>,
+  unreachable: Set<string>,
+): void {
   const neighbours = (id: string, layer: number) =>
     edges.flatMap((e) => {
       const other = e.from === id ? e.to : e.to === id ? e.from : null;
@@ -207,7 +225,11 @@ function orth(points: Pt[], label: Route['label']): Route {
     const [prev, corner, next] = [pts[i - 1]!, pts[i]!, pts[i + 1]!];
     const inDir = unit(sub(corner, prev));
     const outDir = unit(sub(next, corner));
-    const r = Math.min(CORNER, Math.hypot(corner.x - prev.x, corner.y - prev.y) / 2, Math.hypot(next.x - corner.x, next.y - corner.y) / 2);
+    const r = Math.min(
+      CORNER,
+      Math.hypot(corner.x - prev.x, corner.y - prev.y) / 2,
+      Math.hypot(next.x - corner.x, next.y - corner.y) / 2,
+    );
     segs.push(['L', sub(corner, mul(inDir, r))], ['Q', corner, add(corner, mul(outDir, r))]);
   }
   segs.push(['L', pts[pts.length - 1]!]);
@@ -218,7 +240,15 @@ function cubicRoute(p0: Pt, c1: Pt, c2: Pt, tip: Pt, box: LabelBox | null): Rout
   const dir = unit(sub(tip, c2));
   const p3 = sub(tip, mul(dir, ARROW_LEN));
   const mid = { x: (p0.x + 3 * c1.x + 3 * c2.x + p3.x) / 8, y: (p0.y + 3 * c1.y + 3 * c2.y + p3.y) / 8 };
-  return { segs: [['M', p0], ['C', c1, c2, p3]], tip, dir, label: box === null ? null : { ...mid, ...box } };
+  return {
+    segs: [
+      ['M', p0],
+      ['C', c1, c2, p3],
+    ],
+    tip,
+    dir,
+    label: box === null ? null : { ...mid, ...box },
+  };
 }
 
 type Side = 'left' | 'right';
@@ -233,9 +263,22 @@ type Plan =
   /** Same column but not neighbours (or the lower one has a loop on top): a channel beside the column. */
   | { kind: 'channel'; t: StateTransition; a: PlacedState; b: PlacedState; side: Side; offset: number }
   /** Back across two or more columns: a lane above or below everything it spans. */
-  | { kind: 'arc'; t: StateTransition; a: PlacedState; b: PlacedState; above: boolean; level: number; topA: boolean; topB: boolean };
+  | {
+      kind: 'arc';
+      t: StateTransition;
+      a: PlacedState;
+      b: PlacedState;
+      above: boolean;
+      level: number;
+      topA: boolean;
+      topB: boolean;
+    };
 
-export function layoutState(states: readonly StateNode[], transitions: readonly StateTransition[], initial: string | undefined): StateLayout {
+export function layoutState(
+  states: readonly StateNode[],
+  transitions: readonly StateTransition[],
+  initial: string | undefined,
+): StateLayout {
   const labels = new Map(transitions.map((t, i) => [t, labelBox(t, `transitions[${i}].label`)]));
   const labelOf = (t: StateTransition) => labels.get(t)!;
   const ids = new Set(states.map((s) => s.id));
@@ -289,12 +332,24 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   for (const t of edges.filter((e) => span(e) >= 2).sort((x, y) => span(x) - span(y))) {
     const a = at(t.from);
     const b = at(t.to);
-    const above = isTop(a) && isTop(b) ? true : isBottom(a) && isBottom(b) ? false : cy(a) + cy(b) < 0 || (cy(a) + cy(b) === 0 && balance <= 0);
+    const above =
+      isTop(a) && isTop(b)
+        ? true
+        : isBottom(a) && isBottom(b)
+          ? false
+          : cy(a) + cy(b) < 0 || (cy(a) + cy(b) === 0 && balance <= 0);
     balance += above ? 1 : -1;
     const lo = Math.min(a.layer, b.layer);
     const hi = Math.max(a.layer, b.layer);
     const level =
-      Math.max(-1, ...[...arcPlans.values()].filter((o) => o.above === above && Math.min(o.a.layer, o.b.layer) <= hi && lo <= Math.max(o.a.layer, o.b.layer)).map((o) => o.level)) + 1;
+      Math.max(
+        -1,
+        ...[...arcPlans.values()]
+          .filter(
+            (o) => o.above === above && Math.min(o.a.layer, o.b.layer) <= hi && lo <= Math.max(o.a.layer, o.b.layer),
+          )
+          .map((o) => o.level),
+      ) + 1;
     const free = (p: PlacedState) => (above ? isTop(p) && !loopCount(p.state.id) : isBottom(p));
     arcPlans.set(t, { kind: 'arc', t, a, b, above, level, topA: free(a), topB: free(b) });
   }
@@ -311,7 +366,8 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
     if (Math.abs(b.layer - a.layer) === 1) return { kind: 'gap', t, a, b, offset: spread(t).offset };
     if (a.layer === b.layer) {
       const lower = b.row > a.row ? b : a;
-      if (Math.abs(b.row - a.row) === 1 && !loopCount(lower.state.id)) return { kind: 'vertical', t, a, b, ...spread(t) };
+      if (Math.abs(b.row - a.row) === 1 && !loopCount(lower.state.id))
+        return { kind: 'vertical', t, a, b, ...spread(t) };
       return { kind: 'channel', t, a, b, side: b.row > a.row ? 'right' : 'left', offset: spread(t).offset };
     }
     return arcPlans.get(t)!;
@@ -352,7 +408,8 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   for (const p of plans) {
     const lw = p.t.label ? labelOf(p.t).w : 0;
     if (p.kind === 'gap') widen(Math.min(p.a.layer, p.b.layer), lw + 64);
-    if (p.kind === 'channel') widen(p.side === 'right' ? p.a.layer : p.a.layer - 1, CHANNEL + Math.abs(p.offset) / 2 + lw + 40);
+    if (p.kind === 'channel')
+      widen(p.side === 'right' ? p.a.layer : p.a.layer - 1, CHANNEL + Math.abs(p.offset) / 2 + lw + 40);
   }
   const colW = columns.map((col) => Math.max(MIN_W, ...col.map(stateWidth)));
   const colX: number[] = [];
@@ -398,7 +455,10 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
         const x = edgeX + sign * (CHANNEL + Math.abs(p.offset) / 2);
         const p0 = sideTip(p.a, p.side, dy('from'));
         const tip = sideTip(p.b, p.side, dy('to'));
-        return orth([p0, { x, y: p0.y }, { x, y: tip.y }, tip], labelAt({ x: x + sign * ((lw ?? 0) / 2 + 10), y: (p0.y + tip.y) / 2 }));
+        return orth(
+          [p0, { x, y: p0.y }, { x, y: tip.y }, tip],
+          labelAt({ x: x + sign * ((lw ?? 0) / 2 + 10), y: (p0.y + tip.y) / 2 }),
+        );
       }
       case 'arc': {
         const { a, b, above } = p;
@@ -410,7 +470,8 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
         const edgeY = above ? Math.min(...spanned.map(colTop)) : Math.max(...spanned.map(colBottom));
         const lane = edgeY + sign * (ARC_CLEAR + p.level * LANE_STEP);
         const portY = (s: PlacedState) => (above ? s.y : s.y + STATE_H);
-        const channelX = (s: PlacedState, side: Side) => (side === 'left' ? colX[s.layer]! - CHANNEL : colX[s.layer]! + colW[s.layer]! + CHANNEL);
+        const channelX = (s: PlacedState, side: Side) =>
+          side === 'left' ? colX[s.layer]! - CHANNEL : colX[s.layer]! + colW[s.layer]! + CHANNEL;
         const outSide: Side = back ? 'left' : 'right';
         const inSide: Side = back ? 'right' : 'left';
         const start: Pt[] = p.topA
@@ -427,7 +488,10 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
             })();
         const s = start[start.length - 1]!;
         const e = end[0]!;
-        return orth([...start, { x: s.x, y: lane }, { x: e.x, y: lane }, ...end], labelAt({ x: (s.x + e.x) / 2, y: lane }));
+        return orth(
+          [...start, { x: s.x, y: lane }, { x: e.x, y: lane }, ...end],
+          labelAt({ x: (s.x + e.x) / 2, y: lane }),
+        );
       }
     }
   };
@@ -464,7 +528,10 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
   const minX = Math.min(...xs) - PAD;
   const minY = Math.min(...ys) - PAD;
   const shift = (p: Pt): Pt => ({ x: Math.round((p.x - minX) * 10) / 10, y: Math.round((p.y - minY) * 10) / 10 });
-  const path = (segs: Seg[]) => segs.map(([cmd, ...pts]) => `${cmd} ${(pts as Pt[]).map((p) => `${shift(p).x} ${shift(p).y}`).join(', ')}`).join(' ');
+  const path = (segs: Seg[]) =>
+    segs
+      .map(([cmd, ...pts]) => `${cmd} ${(pts as Pt[]).map((p) => `${shift(p).x} ${shift(p).y}`).join(', ')}`)
+      .join(' ');
 
   return {
     states: states.map((s) => {
@@ -478,7 +545,9 @@ export function layoutState(states: readonly StateNode[], transitions: readonly 
       dir: r.dir,
       label: r.label ? { ...r.label, ...shift(r.label) } : null,
     })),
-    entry: entryRoute ? { dot: shift(entryRoute.dot), d: path(entryRoute.segs), tip: shift(entryRoute.tip), dir: entryRoute.dir } : null,
+    entry: entryRoute
+      ? { dot: shift(entryRoute.dot), d: path(entryRoute.segs), tip: shift(entryRoute.tip), dir: entryRoute.dir }
+      : null,
     layerOf,
     width: Math.max(...xs) - minX + PAD,
     height: Math.max(...ys) - minY + PAD,
@@ -528,13 +597,19 @@ function separateLabels(routes: Route[], states: PlacedState[]): void {
 export function stateBoxes(layout: StateLayout): LayoutBoxes {
   const card = (p: PlacedState): Box => ({ x: p.x, y: p.y, width: p.w, height: p.h });
   const transition = (r: RoutedTransition): Box =>
-    r.label ? around(r.label, r.label.w, r.label.h) : around({ x: r.tip.x - r.dir.x * 40, y: r.tip.y - r.dir.y * 40 }, 36, 36);
+    r.label
+      ? around(r.label, r.label.w, r.label.h)
+      : around({ x: r.tip.x - r.dir.x * 40, y: r.tip.y - r.dir.y * 40 }, 36, 36);
   const boxes = new Map<string, Box>([
     ...layout.states.map((p): [string, Box] => [`s:${p.state.id}`, card(p)]),
     ...layout.transitions.map((r, i): [string, Box] => [`t:${i}`, transition(r)]),
   ]);
-  return { boxes, obstacles: [...layout.states.map(card), ...layout.transitions.flatMap((r) => (r.label ? [transition(r)] : []))] };
+  return {
+    boxes,
+    obstacles: [...layout.states.map(card), ...layout.transitions.flatMap((r) => (r.label ? [transition(r)] : []))],
+  };
 }
 
 /** The scale a state diagram draws at in `box`: as large as fits, up to 1.25. */
-export const stateScale = (layout: StateLayout, box: { width: number; height: number }): number => Math.min(box.width / layout.width, box.height / layout.height, 1.25);
+export const stateScale = (layout: StateLayout, box: { width: number; height: number }): number =>
+  Math.min(box.width / layout.width, box.height / layout.height, 1.25);

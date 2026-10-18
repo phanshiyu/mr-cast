@@ -13,7 +13,8 @@ import { SAFE, clamp, colors, fonts } from './theme';
 const ENTER_FRAMES = 12;
 /** How far past the content box a camera's view still paints, in px, as far as a drawing's glow bleeds; it fades out there. */
 const CAMERA_BLEED = 32;
-const fade = (side: string) => `linear-gradient(to ${side}, transparent, #000 ${CAMERA_BLEED}px, #000 calc(100% - ${CAMERA_BLEED}px), transparent)`;
+const fade = (side: string) =>
+  `linear-gradient(to ${side}, transparent, #000 ${CAMERA_BLEED}px, #000 calc(100% - ${CAMERA_BLEED}px), transparent)`;
 const EDGE_FADE = {
   maskImage: `${fade('right')}, ${fade('bottom')}`,
   maskComposite: 'intersect',
@@ -49,18 +50,33 @@ export function useCameraView(scene: Scene, source: CameraSource): View | null {
     return frameShot(shots[state] ?? null, (key) => t?.boxes.get(key) ?? t?.boxOf?.(key) ?? null, area);
   };
   const k = currentStep(source.segments, frame);
-  return k < 0 || !source.segments[k + 1] ? viewAt(0) : tweenView(viewAt(k), viewAt(k + 1), stepMove(frame, source.segments[k + 1]!.from));
+  return k < 0 || !source.segments[k + 1]
+    ? viewAt(0)
+    : tweenView(viewAt(k), viewAt(k + 1), stepMove(frame, source.segments[k + 1]!.from));
 }
 
 /** The content as a step's camera shows it, easing to each step's shot as the step starts. A scene whose pen targets live
  * below SceneShell, such as code's, wraps its content in it there. */
-export const Camera: React.FC<{ scene: Scene; source: CameraSource; children: ReactNode }> = ({ scene, source, children }) => {
+export const Camera: React.FC<{ scene: Scene; source: CameraSource; children: ReactNode }> = ({
+  scene,
+  source,
+  children,
+}) => {
   const view = useCameraView(scene, source);
   if (!view) return <>{children}</>;
   const area = headerBox(scene);
   return (
     <div style={{ position: 'absolute', inset: -CAMERA_BLEED, ...EDGE_FADE }}>
-      <div style={{ position: 'absolute', inset: CAMERA_BLEED, transformOrigin: '0 0', transform: viewTransform(view, area) }}>{children}</div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: CAMERA_BLEED,
+          transformOrigin: '0 0',
+          transform: viewTransform(view, area),
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };
@@ -70,7 +86,9 @@ export const SceneShell: React.FC<SceneShellProps> = ({ scene, durationInFrames,
   const frame = useCurrentFrame();
   const exitStart = Math.max(ENTER_FRAMES, durationInFrames - EXIT_FRAMES);
   const opacity = interpolate(frame, [0, ENTER_FRAMES, exitStart, durationInFrames], [0, 1, 1, 0], clamp);
-  const y = interpolate(frame, [0, ENTER_FRAMES], [28, 0], clamp) + interpolate(frame, [exitStart, durationInFrames], [0, -16], clamp);
+  const y =
+    interpolate(frame, [0, ENTER_FRAMES], [28, 0], clamp) +
+    interpolate(frame, [exitStart, durationInFrames], [0, -16], clamp);
   const { eyebrow, title } = shellFits(scene);
 
   return (
@@ -90,7 +108,15 @@ export const SceneShell: React.FC<SceneShellProps> = ({ scene, durationInFrames,
         </div>
         {aside}
       </div>
-      <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>{camera ? <Camera scene={scene} source={camera}>{children}</Camera> : children}</div>
+      <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+        {camera ? (
+          <Camera scene={scene} source={camera}>
+            {children}
+          </Camera>
+        ) : (
+          children
+        )}
+      </div>
     </AbsoluteFill>
   );
 };

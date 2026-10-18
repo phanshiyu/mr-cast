@@ -8,7 +8,10 @@ import { startServer } from '../bin/lib/server.mjs';
 import { createServing } from '../bin/lib/serving.mjs';
 
 const board = (title, narration) => ({ title, scenes: [{ type: 'intent', narration, bullets: ['a'] }] });
-const voiceFor = (sb) => ({ voice: 'af_heart', clips: { [sb.scenes[0].narration]: { src: 'audio/x.wav', seconds: 3 } } });
+const voiceFor = (sb) => ({
+  voice: 'af_heart',
+  clips: { [sb.scenes[0].narration]: { src: 'audio/x.wav', seconds: 3 } },
+});
 const voicedOf = (sb, voiceover) => sb.scenes.every((s) => voiceover.clips[s.narration]);
 
 /** A voicing the test finishes by hand: each call to `voice` waits until `finish()` or `fail()`. */
@@ -21,19 +24,23 @@ function handVoice({ onDisk = {} } = {}) {
       const voiceover = { voice: 'af_heart', clips: { ...clips } };
       return { voiceover, wait: !voicedOf(sb, voiceover) };
     },
-    voice: (sb, _voiced, signal) => new Promise((resolve) => calls.push({
-      signal,
-      stop: () => resolve(null),
-      finish: () => {
-        Object.assign(clips, voiceFor(sb).clips);
-        resolve({ voice: 'af_heart', clips: { ...clips } });
-      },
-      fail: () => resolve({ voice: 'af_heart', clips: {}, failed: true }),
-    })),
+    voice: (sb, _voiced, signal) =>
+      new Promise((resolve) =>
+        calls.push({
+          signal,
+          stop: () => resolve(null),
+          finish: () => {
+            Object.assign(clips, voiceFor(sb).clips);
+            resolve({ voice: 'af_heart', clips: { ...clips } });
+          },
+          fail: () => resolve({ voice: 'af_heart', clips: {}, failed: true }),
+        }),
+      ),
   };
 }
 
-const settledWithin = (promise, ms) => Promise.race([promise.then(() => true), new Promise((r) => setTimeout(() => r(false), ms))]);
+const settledWithin = (promise, ms) =>
+  Promise.race([promise.then(() => true), new Promise((r) => setTimeout(() => r(false), ms))]);
 const until = async (check) => {
   for (let i = 0; i < 200 && !check(); i++) await new Promise((r) => setTimeout(r, 10));
   assert.ok(check(), 'condition met within 2 s');
@@ -86,14 +93,19 @@ function listen(url) {
   return { names, close: () => req.destroy() };
 }
 
-const getJson = (url) => new Promise((resolve, reject) => {
-  http.get(url, (res) => {
-    let body = '';
-    res.setEncoding('utf8');
-    res.on('data', (c) => { body += c; });
-    res.on('end', () => resolve(JSON.parse(body)));
-  }).on('error', reject);
-});
+const getJson = (url) =>
+  new Promise((resolve, reject) => {
+    http
+      .get(url, (res) => {
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (c) => {
+          body += c;
+        });
+        res.on('end', () => resolve(JSON.parse(body)));
+      })
+      .on('error', reject);
+  });
 
 test('an edit keeps the page on the old storyboard and voice until it is voiced, then reloads it once', async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-serving-'));
@@ -103,14 +115,28 @@ test('an edit keeps the page on the old storyboard and voice until it is voiced,
   const fake = handVoice({ onDisk: voiceFor(before).clips });
 
   let server = null;
-  const serving = await createServing({ raw: before, storyboard: before, now: fake.now, voice: fake.voice, reload: () => server?.reload() });
+  const serving = await createServing({
+    raw: before,
+    storyboard: before,
+    now: fake.now,
+    voice: fake.voice,
+    reload: () => server?.reload(),
+  });
   serving.start();
   const onDataChange = (file) => {
     if (file !== 'storyboard.json') return;
     const raw = JSON.parse(fs.readFileSync(path.join(dataDir, 'storyboard.json'), 'utf8'));
     return serving.edit(raw, raw);
   };
-  server = await startServer({ distDir: dataDir, dataDir, port: 4900, onDataChange, holding: serving.holding, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard });
+  server = await startServer({
+    distDir: dataDir,
+    dataDir,
+    port: 4900,
+    onDataChange,
+    holding: serving.holding,
+    getVoiceover: serving.voiceover,
+    getStoryboard: serving.storyboard,
+  });
   const events = listen(server.url);
   try {
     await new Promise((r) => setTimeout(r, 100));
@@ -128,7 +154,10 @@ test('an edit keeps the page on the old storyboard and voice until it is voiced,
     await until(() => events.names.includes('change'));
     assert.deepEqual(events.names, ['updating', 'updating', 'change']);
     assert.equal((await getJson(`${server.url}/data/storyboard.json`)).title, 'After the edit');
-    assert.deepEqual(Object.keys((await getJson(`${server.url}/data/voiceover.json`)).clips).sort(), [before.scenes[0].narration, after.scenes[0].narration].sort());
+    assert.deepEqual(
+      Object.keys((await getJson(`${server.url}/data/voiceover.json`)).clips).sort(),
+      [before.scenes[0].narration, after.scenes[0].narration].sort(),
+    );
   } finally {
     events.close();
     await server.close();
@@ -145,7 +174,13 @@ async function servedRun(t, { voiced = [], beforeEdit = async () => {} } = {}) {
   fs.writeFileSync(path.join(dataDir, 'storyboard.json'), JSON.stringify(a));
   const fake = handVoice({ onDisk: Object.assign({}, ...[a, ...voiced].map((sb) => voiceFor(sb).clips)) });
   let server = null;
-  const serving = await createServing({ raw: a, storyboard: a, now: fake.now, voice: fake.voice, reload: () => server?.reload() });
+  const serving = await createServing({
+    raw: a,
+    storyboard: a,
+    now: fake.now,
+    voice: fake.voice,
+    reload: () => server?.reload(),
+  });
   serving.start();
   const onDataChange = async (file) => {
     await beforeEdit(file);
@@ -153,7 +188,15 @@ async function servedRun(t, { voiced = [], beforeEdit = async () => {} } = {}) {
     const raw = JSON.parse(fs.readFileSync(path.join(dataDir, 'storyboard.json'), 'utf8'));
     await serving.edit(raw, raw);
   };
-  server = await startServer({ distDir: dataDir, dataDir, port: 0, onDataChange, holding: serving.holding, getVoiceover: serving.voiceover, getStoryboard: serving.storyboard });
+  server = await startServer({
+    distDir: dataDir,
+    dataDir,
+    port: 0,
+    onDataChange,
+    holding: serving.holding,
+    getVoiceover: serving.voiceover,
+    getStoryboard: serving.storyboard,
+  });
   const events = listen(server.url);
   t.after(async () => {
     events.close();

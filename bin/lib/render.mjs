@@ -7,7 +7,14 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
-import { RenderInternals, ensureBrowser, openBrowser, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import {
+  RenderInternals,
+  ensureBrowser,
+  openBrowser,
+  renderMedia,
+  renderStill,
+  selectComposition,
+} from '@remotion/renderer';
 import { FPS, sceneDurationInFrames, sceneSegments, settledFrame } from '../../shared/timing.mjs';
 import { cacheDir, cacheLock } from './cache.mjs';
 import { whileUsing, withLock } from './lock.mjs';
@@ -61,7 +68,9 @@ async function pruneBundles(key) {
     const dir = path.join(BUNDLE_CACHE, name);
     try {
       if (now - (await stat(dir)).mtimeMs > BUNDLE_MAX_IDLE_MS) await rm(dir, { recursive: true, force: true });
-    } catch { /* another process removed it */ }
+    } catch {
+      /* another process removed it */
+    }
   }
 }
 
@@ -128,10 +137,11 @@ async function serveRunFiles(dataDir) {
   });
   return {
     url: `http://127.0.0.1:${server.address().port}/`,
-    close: () => new Promise((resolve) => {
-      server.close(() => resolve());
-      server.closeAllConnections();
-    }),
+    close: () =>
+      new Promise((resolve) => {
+        server.close(() => resolve());
+        server.closeAllConnections();
+      }),
   };
 }
 
@@ -142,19 +152,25 @@ async function serveRunFiles(dataDir) {
  */
 async function ensureChrome() {
   await mkdir(BROWSER_CACHE, { recursive: true });
-  return withLock(cacheLock('remotion'), async () => {
-    const pkg = path.join(BROWSER_CACHE, 'package.json');
-    if (!existsSync(pkg)) await writeFile(pkg, '{ "private": true }\n');
-    const cwd = process.cwd();
-    process.chdir(BROWSER_CACHE);
-    try {
-      const status = await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
-      if (!status.path) throw new Error(`Chrome Headless Shell is missing from ${BROWSER_CACHE} after downloading it`);
-      return status.path;
-    } finally {
-      process.chdir(cwd);
-    }
-  }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading Chrome Headless Shell`));
+  return withLock(
+    cacheLock('remotion'),
+    async () => {
+      const pkg = path.join(BROWSER_CACHE, 'package.json');
+      if (!existsSync(pkg)) await writeFile(pkg, '{ "private": true }\n');
+      const cwd = process.cwd();
+      process.chdir(BROWSER_CACHE);
+      try {
+        const status = await withRetry('downloading Chrome Headless Shell', () => ensureBrowser());
+        if (!status.path)
+          throw new Error(`Chrome Headless Shell is missing from ${BROWSER_CACHE} after downloading it`);
+        return status.path;
+      } finally {
+        process.chdir(cwd);
+      }
+    },
+    (pid) =>
+      console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading Chrome Headless Shell`),
+  );
 }
 
 /** The browsers open now, so a stopped render can close them: Chrome can outlive a render that exits without closing it. */
@@ -175,7 +191,12 @@ async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl, imag
   const browser = await withRetry('launching the browser', () => openBrowser('chrome', { browserExecutable }));
   browsers.add(browser);
   try {
-    const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, puppeteerInstance: browser });
+    const composition = await selectComposition({
+      serveUrl,
+      id: COMPOSITION_ID,
+      inputProps,
+      puppeteerInstance: browser,
+    });
     return { serveUrl, inputProps, browser, composition };
   } catch (err) {
     await closeBrowser(browser);
@@ -195,7 +216,14 @@ async function renderVideoUsingCaches({ hunks, storyboard, voiceover, images, da
   await mkdir(path.dirname(out), { recursive: true });
   const files = voiceover || hasImages(images) ? await serveRunFiles(dataDir) : null;
   try {
-    const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover, audioBaseUrl: voiceover ? files?.url : undefined, images, imageBaseUrl: files?.url });
+    const { serveUrl, inputProps, browser, composition } = await prepare({
+      hunks,
+      storyboard,
+      voiceover,
+      audioBaseUrl: voiceover ? files?.url : undefined,
+      images,
+      imageBaseUrl: files?.url,
+    });
     try {
       await renderMedia({
         composition,
@@ -242,17 +270,38 @@ async function addChapters(file, chapters) {
   const tmp = `${file}.chapters.mp4`;
   const quoted = `'${file.replaceAll("'", "'\\''")}'`;
   const lines = chapters.map((c, i) => `chapter ${i} ${c.start / 1000} ${c.end / 1000}`);
-  await writeFile(script, ['ffconcat version 1.0', `file ${quoted}`, 'stream', 'exact_stream_id 1', ...lines, ''].join('\n'));
+  await writeFile(
+    script,
+    ['ffconcat version 1.0', `file ${quoted}`, 'stream', 'exact_stream_id 1', ...lines, ''].join('\n'),
+  );
   try {
     await RenderInternals.callFf({
       bin: 'ffmpeg',
       args: [
-        '-y', '-v', 'error', '-i', file, '-f', 'concat', '-safe', '0', '-i', script,
-        '-map', '0', '-map_chapters', '1', '-codec', 'copy',
+        '-y',
+        '-v',
+        'error',
+        '-i',
+        file,
+        '-f',
+        'concat',
+        '-safe',
+        '0',
+        '-i',
+        script,
+        '-map',
+        '0',
+        '-map_chapters',
+        '1',
+        '-codec',
+        'copy',
         ...chapters.flatMap((c, i) => [`-metadata:c:${i}`, `title=${c.title}`]),
         tmp,
       ],
-      indent: false, logLevel: 'error', binariesDirectory: null, cancelSignal: undefined,
+      indent: false,
+      logLevel: 'error',
+      binariesDirectory: null,
+      cancelSignal: undefined,
     });
     await rename(tmp, file);
   } finally {
@@ -288,7 +337,13 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, d
   }
   const indices = scenes ?? storyboard.scenes.map((_, i) => i);
   const files = hasImages(images) && dataDir ? await serveRunFiles(dataDir) : null;
-  const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover, images, imageBaseUrl: files?.url }).catch(async (err) => {
+  const { serveUrl, inputProps, browser, composition } = await prepare({
+    hunks,
+    storyboard,
+    voiceover,
+    images,
+    imageBaseUrl: files?.url,
+  }).catch(async (err) => {
     await files?.close();
     throw err;
   });
@@ -297,7 +352,10 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, d
     for (const index of indices) {
       const timing = starts[index];
       if (!timing) throw new Error(`scene ${index} does not exist (storyboard has ${starts.length} scenes)`);
-      const output = path.join(dir, `scene-${String(index + 1).padStart(2, '0')}-${storyboard.scenes[index].type}${step === undefined ? '' : `-step-${step}`}.png`);
+      const output = path.join(
+        dir,
+        `scene-${String(index + 1).padStart(2, '0')}-${storyboard.scenes[index].type}${step === undefined ? '' : `-step-${step}`}.png`,
+      );
       await renderStill({
         composition,
         serveUrl,
@@ -314,4 +372,3 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, d
   }
   return written;
 }
-

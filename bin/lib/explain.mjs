@@ -11,9 +11,12 @@ const FILE_AND_RANGE = /^(.+):(\d+)(?:-(\d+))?$/;
 function toRange(file, a, b = a) {
   const start = Number(a);
   const end = Number(b);
-  if (start < 1 || end < start) throw new UserError(`${file}: range ${a}-${b} must run from line 1 or later, start before end`);
+  if (start < 1 || end < start)
+    throw new UserError(`${file}: range ${a}-${b} must run from line 1 or later, start before end`);
   if (end - start + 1 > SNIPPET_MAX_LINES) {
-    throw new UserError(`${file}:${start}-${end} is ${end - start + 1} lines; a snippet holds at most ${SNIPPET_MAX_LINES}, so add the part the explanation needs, or split it into several snippets`);
+    throw new UserError(
+      `${file}:${start}-${end} is ${end - start + 1} lines; a snippet holds at most ${SNIPPET_MAX_LINES}, so add the part the explanation needs, or split it into several snippets`,
+    );
   }
   return { file, start, end };
 }
@@ -30,7 +33,8 @@ export function parseSnippetArgs(args) {
       continue;
     }
     const joined = args[i].match(FILE_AND_RANGE);
-    if (!joined) throw new UserError(`"${args[i]}" is not a snippet; write <file> <start>-<end> or <file>:<start>-<end>`);
+    if (!joined)
+      throw new UserError(`"${args[i]}" is not a snippet; write <file> <start>-<end> or <file>:<start>-<end>`);
     out.push(toRange(joined[1], joined[2], joined[3]));
   }
   return out;
@@ -38,8 +42,11 @@ export function parseSnippetArgs(args) {
 
 /** A hunks.json entry for lines start..end of a file: every line context, numbered as in the file. */
 export function sourceHunk(id, { file, start, end }, fileLines) {
-  if (end > fileLines.length) throw new UserError(`${file} has ${fileLines.length} lines, so ${start}-${end} runs past its end`);
-  const lines = fileLines.slice(start - 1, end).map((text, k) => ({ type: 'context', oldLine: start + k, newLine: start + k, text }));
+  if (end > fileLines.length)
+    throw new UserError(`${file} has ${fileLines.length} lines, so ${start}-${end} runs past its end`);
+  const lines = fileLines
+    .slice(start - 1, end)
+    .map((text, k) => ({ type: 'context', oldLine: start + k, newLine: start + k, text }));
   const code = lines.map((l) => l.text).join('\n');
   return {
     id,
@@ -64,7 +71,9 @@ export function sourceHunk(id, { file, start, end }, fileLines) {
  * edits to the file show up), else the next free sN.
  */
 export function snippetId(hunks, { file, start, end }) {
-  const same = Object.values(hunks).find((h) => h.status === 'source' && h.file === file && h.startLine === start && h.endLine === end);
+  const same = Object.values(hunks).find(
+    (h) => h.status === 'source' && h.file === file && h.startLine === start && h.endLine === end,
+  );
   if (same) return same.id;
   const taken = Object.keys(hunks).map((id) => Number(id.match(/^s(\d+)$/)?.[1] ?? 0));
   return `s${Math.max(0, ...taken) + 1}`;

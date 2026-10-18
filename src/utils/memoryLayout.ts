@@ -95,7 +95,9 @@ function columns(scene: MemoryScene, states: readonly SceneState[]): Map<string,
   const keys = scene.objects.map((o) => `o:${o.id}`);
   const out = new Map<string, Set<string>>(keys.map((k) => [k, new Set()]));
   for (const s of states) {
-    for (const [key, v] of Object.entries(s.values)) if (key.startsWith('f:') && isPointer(v) && ownerOf(key) !== `o:${v.ref}`) out.get(ownerOf(key))!.add(`o:${v.ref}`);
+    for (const [key, v] of Object.entries(s.values))
+      if (key.startsWith('f:') && isPointer(v) && ownerOf(key) !== `o:${v.ref}`)
+        out.get(ownerOf(key))!.add(`o:${v.ref}`);
   }
   const pointed = new Set([...out.values()].flatMap((t) => [...t]));
   const order: string[] = [];
@@ -124,23 +126,76 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
   const note = (value: unknown, path: string) => {
     if (!isPointer(value) && !texts.has(String(value))) texts.set(String(value), path);
   };
-  scene.frames.forEach((f, i) => memoryMembers(f.vars).forEach(([k, v]) => note(v, `frames[${i}].vars[${JSON.stringify(k)}]`)));
-  scene.objects.forEach((o, i) => memoryMembers(o.fields).forEach(([k, v]) => note(v, `objects[${i}].fields[${JSON.stringify(k)}]`)));
-  (scene.steps ?? []).forEach((step, k) => Object.entries(step.set ?? {}).forEach(([ref, v]) => note(v, `steps[${k}].set[${JSON.stringify(ref)}]`)));
-  const values = new Map([...texts].map(([text, path]) => [text, fitText(text, sized(SLOTS.memoryValue, VALUE_MAX - 2 * VALUE_PAD), path)]));
+  scene.frames.forEach((f, i) =>
+    memoryMembers(f.vars).forEach(([k, v]) => note(v, `frames[${i}].vars[${JSON.stringify(k)}]`)),
+  );
+  scene.objects.forEach((o, i) =>
+    memoryMembers(o.fields).forEach(([k, v]) => note(v, `objects[${i}].fields[${JSON.stringify(k)}]`)),
+  );
+  (scene.steps ?? []).forEach((step, k) =>
+    Object.entries(step.set ?? {}).forEach(([ref, v]) => note(v, `steps[${k}].set[${JSON.stringify(ref)}]`)),
+  );
+  const values = new Map(
+    [...texts].map(([text, path]) => [text, fitText(text, sized(SLOTS.memoryValue, VALUE_MAX - 2 * VALUE_PAD), path)]),
+  );
   /** Width a row's value box needs for every value it holds in any state. */
   const valueWidth = (key: string) =>
-    Math.max(REF_W, ...states.map((s) => (isPointer(s.values[key]) ? REF_W : values.get(String(s.values[key]))!.width + 2 * VALUE_PAD)));
+    Math.max(
+      REF_W,
+      ...states.map((s) =>
+        isPointer(s.values[key]) ? REF_W : values.get(String(s.values[key]))!.width + 2 * VALUE_PAD,
+      ),
+    );
 
-  const card = (key: string, title: Fit, members: MemoryMembers, kind: 'v' | 'f', owner: string, path: string): MemoryCard => {
-    const rows = memoryMembers(members).map(([name], i) => ({ key: memberKey(kind, owner, name), name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`), y: HEAD_H + i * ROW_H }));
+  const card = (
+    key: string,
+    title: Fit,
+    members: MemoryMembers,
+    kind: 'v' | 'f',
+    owner: string,
+    path: string,
+  ): MemoryCard => {
+    const rows = memoryMembers(members).map(([name], i) => ({
+      key: memberKey(kind, owner, name),
+      name: fitText(name, sized(SLOTS.memoryName, 260), `${path}[${JSON.stringify(name)}]`),
+      y: HEAD_H + i * ROW_H,
+    }));
     const nameW = Math.max(0, ...rows.map((r) => r.name.width));
     const valueW = Math.max(0, ...rows.map((r) => valueWidth(r.key)));
     const w = Math.max(title.width + 2 * PAD, PAD + nameW + NAME_GAP + valueW + PAD);
-    return { key, title, column: -1, x: 0, y: 0, w, h: HEAD_H + rows.length * ROW_H + (rows.length ? 10 : 0), rows, valueX: w - PAD - valueW, valueW };
+    return {
+      key,
+      title,
+      column: -1,
+      x: 0,
+      y: 0,
+      w,
+      h: HEAD_H + rows.length * ROW_H + (rows.length ? 10 : 0),
+      rows,
+      valueX: w - PAD - valueW,
+      valueW,
+    };
   };
-  const frames = scene.frames.map((f, i) => card(`fr:${f.name}`, fitText(f.name, sized(SLOTS.frameName, 420), `frames[${i}].name`), f.vars, 'v', f.name, `frames[${i}].vars`));
-  const objects = scene.objects.map((o, i) => card(`o:${o.id}`, fitText(o.type ?? o.id, sized(SLOTS.objectType, 360), o.type ? `objects[${i}].type` : `objects[${i}].id`), o.fields, 'f', o.id, `objects[${i}].fields`));
+  const frames = scene.frames.map((f, i) =>
+    card(
+      `fr:${f.name}`,
+      fitText(f.name, sized(SLOTS.frameName, 420), `frames[${i}].name`),
+      f.vars,
+      'v',
+      f.name,
+      `frames[${i}].vars`,
+    ),
+  );
+  const objects = scene.objects.map((o, i) =>
+    card(
+      `o:${o.id}`,
+      fitText(o.type ?? o.id, sized(SLOTS.objectType, 360), o.type ? `objects[${i}].type` : `objects[${i}].id`),
+      o.fields,
+      'f',
+      o.id,
+      `objects[${i}].fields`,
+    ),
+  );
 
   // Frames stack down the left, all one width, outermost call first.
   const framesW = Math.max(0, ...frames.map((c) => c.w));
@@ -156,7 +211,11 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
   const placed = new Map<string, MemoryCard>(frames.map((c) => [c.key, c]));
   const rowY = new Map<string, number>();
   const sources = (c: MemoryCard) =>
-    states.flatMap((s) => Object.entries(s.values).flatMap(([key, v]) => (isPointer(v) && `o:${v.ref}` === c.key && rowY.has(key) ? [rowY.get(key)!] : [])));
+    states.flatMap((s) =>
+      Object.entries(s.values).flatMap(([key, v]) =>
+        isPointer(v) && `o:${v.ref}` === c.key && rowY.has(key) ? [rowY.get(key)!] : [],
+      ),
+    );
   const markRows = (c: MemoryCard) => c.rows.forEach((r) => rowY.set(r.key, c.y + r.y + ROW_H / 2));
   frames.forEach(markRows);
   const objectsX = framesW + (frames.length ? MAIN_GAP : 0);
@@ -192,7 +251,8 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
       if (kind !== 'next') found.set(`${key}>${target}`, { key, target, kind });
     }
   }
-  const span = (r: { key: string; target: string }) => Math.abs(placed.get(ownerOf(r.key))!.x - placed.get(r.target)!.x);
+  const span = (r: { key: string; target: string }) =>
+    Math.abs(placed.get(ownerOf(r.key))!.x - placed.get(r.target)!.x);
   const routed = [...found].sort(([, a], [, b]) => span(a) - span(b));
   let lanes = 0;
   const routes = new Map(routed.map(([pair, r], place) => [pair, { place, lane: r.kind === 'same' ? -1 : lanes++ }]));
@@ -200,7 +260,11 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
   const height = lanes ? laneY + (lanes - 1) * ROUTE_STEP + LANE_ROOM : cardsBottom;
   // A route out of the last column runs down the room to its right.
   const rightmost = Math.max(...cards.map((c) => c.x + c.w));
-  const width = Math.max(framesW, x - (objects.length ? COL_GAP : 0), routed.length ? rightmost + ROUTE_GAP + Math.min(routed.length, ROUTES_PER_GAP) * ROUTE_STEP : 0);
+  const width = Math.max(
+    framesW,
+    x - (objects.length ? COL_GAP : 0),
+    routed.length ? rightmost + ROUTE_GAP + Math.min(routed.length, ROUTES_PER_GAP) * ROUTE_STEP : 0,
+  );
   const scale = Math.min(SCALE_MAX, box.width / width, box.height / height);
   const row = new Map(cards.flatMap((c) => c.rows.map((r) => [r.key, { card: c, row: r }] as const)));
   const panels = {
@@ -209,7 +273,19 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
     objectsX,
   };
   const fix = 'show fewer frames, objects or variables, or split the program into two scenes';
-  return { cards, card: placed, row, values, panels, width, height, routes, laneY, scale, room: fitBlock('frames', 'memory', scale >= SCALE_MIN, fix) };
+  return {
+    cards,
+    card: placed,
+    row,
+    values,
+    panels,
+    width,
+    height,
+    routes,
+    laneY,
+    scale,
+    room: fitBlock('frames', 'memory', scale >= SCALE_MIN, fix),
+  };
 }
 
 /** A row's value box. */
@@ -257,7 +333,11 @@ function rounded(turns: Pt[]): Pt[] {
 }
 
 /** `points` with still segments at its start, up to SEGMENTS. */
-const padded = (points: Pt[]): Pt[] => [points[0]!, ...Array<Pt>(3 * (SEGMENTS - (points.length - 1) / 3)).fill(points[0]!), ...points.slice(1)];
+const padded = (points: Pt[]): Pt[] => [
+  points[0]!,
+  ...Array<Pt>(3 * (SEGMENTS - (points.length - 1) / 3)).fill(points[0]!),
+  ...points.slice(1),
+];
 
 /**
  * The arrow of each reference `state` shows, by its row key, from the dot in its value box. An arrow into the
@@ -288,7 +368,9 @@ export function arrowsOf(layout: MemoryLayout, state: SceneState): Map<string, A
     const ty = to.y + HEAD_H / 2 + spread * END_GAP;
     if (kind === 'next') {
       const reach = Math.max(60, (to.x - start.x) * 0.5);
-      out.set(key, { points: padded([start, { x: start.x + reach, y: start.y }, { x: to.x - reach, y: ty }, { x: to.x, y: ty }]) });
+      out.set(key, {
+        points: padded([start, { x: start.x + reach, y: start.y }, { x: to.x - reach, y: ty }, { x: to.x, y: ty }]),
+      });
       continue;
     }
     const offset = ROUTE_GAP + (route!.place % ROUTES_PER_GAP) * ROUTE_STEP;
@@ -309,7 +391,11 @@ export function arrowsOf(layout: MemoryLayout, state: SceneState): Map<string, A
 /** The last turns of a lane route that ends beside an object's header, on its left or right, up the gap there. */
 function beside(to: MemoryCard, side: string, offset: number, lane: number, ty: number): Pt[] {
   const [edge, x] = side === 'left' ? [to.x, to.x - offset] : [to.x + to.w, to.x + to.w + offset];
-  return [{ x, y: lane }, { x, y: ty }, { x: edge, y: ty }];
+  return [
+    { x, y: lane },
+    { x, y: ty },
+    { x: edge, y: ty },
+  ];
 }
 
 /** Points along an arrow's segments that move, for keeping notes off it. */
@@ -320,7 +406,10 @@ export function arrowSamples({ points }: Arrow): Pt[] {
     if (dist(p0, p1) === 0 && dist(p0, c1) === 0) continue;
     for (const t of [0.25, 0.5, 0.75, 1]) {
       const u = 1 - t;
-      out.push({ x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p1.x, y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p1.y });
+      out.push({
+        x: u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p1.x,
+        y: u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p1.y,
+      });
     }
   }
   return out;
@@ -337,8 +426,12 @@ export function memoryBoxes(layout: MemoryLayout, state: SceneState): LayoutBoxe
     boxes.set(c.key, { x: c.x, y: c.y, width: c.w, height: c.h });
     for (const r of c.rows) boxes.set(r.key, { x: c.x + 6, y: c.y + r.y, width: c.w - 12, height: ROW_H });
   }
-  const lines = [...arrowsOf(layout, state)].flatMap(([key, arrow]) =>
-    boxes.has(key) ? arrowSamples(arrow) : [],
-  );
-  return { boxes, obstacles: layout.cards.filter((c) => !state.hidden[c.key]).map((c) => ({ x: c.x, y: c.y, width: c.w, height: c.h })), lines };
+  const lines = [...arrowsOf(layout, state)].flatMap(([key, arrow]) => (boxes.has(key) ? arrowSamples(arrow) : []));
+  return {
+    boxes,
+    obstacles: layout.cards
+      .filter((c) => !state.hidden[c.key])
+      .map((c) => ({ x: c.x, y: c.y, width: c.w, height: c.h })),
+    lines,
+  };
 }

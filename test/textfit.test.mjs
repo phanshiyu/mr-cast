@@ -3,7 +3,17 @@ import assert from 'node:assert/strict';
 import { boldWeight, fitBlock, fitLines, fitText, fitTextAt, measure, runFont, wrapRuns } from '../shared/textfit.mjs';
 
 const mono = { family: 'mono', weight: 400, size: 10 };
-const slot = { name: 'card title', family: 'mono', weight: 400, size: 20, min: 10, lines: 2, lineHeight: 1.2, width: 60, fix: 'shorten it' };
+const slot = {
+  name: 'card title',
+  family: 'mono',
+  weight: 400,
+  size: 20,
+  min: 10,
+  lines: 2,
+  lineHeight: 1.2,
+  width: 60,
+  fix: 'shorten it',
+};
 const texts = (fit) => fit.lines.map((line) => line.map((r) => r.text).join(''));
 
 test('measures monospace text as a fixed advance per character', () => {
@@ -20,7 +30,11 @@ test('letter spacing adds to every character and upper draws capitals', () => {
 test('bold draws at 700, or 800 over text already 700 or heavier', () => {
   assert.equal(boldWeight(400), 700);
   assert.equal(boldWeight(700), 800);
-  assert.deepEqual(runFont({ text: 'x', code: true }, { family: 'sans', weight: 800, size: 20 }), { family: 'mono', weight: 600, size: 18 });
+  assert.deepEqual(runFont({ text: 'x', code: true }, { family: 'sans', weight: 800, size: 20 }), {
+    family: 'mono',
+    weight: 600,
+    size: 18,
+  });
 });
 
 test('wraps greedily at spaces and drops the breaking space', () => {

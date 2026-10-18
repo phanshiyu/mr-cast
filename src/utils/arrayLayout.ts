@@ -98,7 +98,8 @@ export function pointerLanes(scene: ArrayScene, state: SceneState): Map<string, 
 const POINTER_TONES: Tone[] = ['accent', 'warn', 'good', 'bad'];
 
 /** For each cell, how many of the array's splits come at or before it. */
-const cutsOf = (count: number, splits: readonly number[]) => Array.from({ length: count }, (_, i) => splits.filter((s) => s <= i).length);
+const cutsOf = (count: number, splits: readonly number[]) =>
+  Array.from({ length: count }, (_, i) => splits.filter((s) => s <= i).length);
 
 export function layoutArray(scene: ArrayScene, box: { width: number; height: number }): ArrayLayout {
   const states = sceneStates(scene);
@@ -113,14 +114,25 @@ export function layoutArray(scene: ArrayScene, box: { width: number; height: num
     const ghosts = { left: places.includes(-1), right: places.includes(a.values.length) };
     const cuts = cutsOf(a.values.length, a.splits);
     const slots = a.values.length + Number(ghosts.left) + Number(ghosts.right);
-    const stack = Math.max(0, ...states.map((s) => {
-      const lanes = pointerLanes(scene, s);
-      return Math.max(0, ...pointersOn(a.name).flatMap((p) => (lanes.has(p.name) ? [lanes.get(p.name)! + 1] : [])));
-    }));
+    const stack = Math.max(
+      0,
+      ...states.map((s) => {
+        const lanes = pointerLanes(scene, s);
+        return Math.max(0, ...pointersOn(a.name).flatMap((p) => (lanes.has(p.name) ? [lanes.get(p.name)! + 1] : [])));
+      }),
+    );
     const label = hex ? undefined : multi ? a.label : scene.label;
     return { a, k, ghosts, cuts, slots, stack, label };
   });
-  const labels = shape.map((r) => (r.label ? fitText(r.label, sized(SLOTS.arrayLabel, multi ? box.width / 4 : box.width), multi ? `arrays[${r.k}].label` : 'label') : null));
+  const labels = shape.map((r) =>
+    r.label
+      ? fitText(
+          r.label,
+          sized(SLOTS.arrayLabel, multi ? box.width / 4 : box.width),
+          multi ? `arrays[${r.k}].label` : 'label',
+        )
+      : null,
+  );
   /** Room left of the cells for the labels of several arrays. */
   const labelRoom = multi ? Math.max(0, ...labels.map((l) => (l ? l.width + LABEL_GAP : 0))) : 0;
   const widest = Math.max(...shape.map((r) => (hex ? r.a.values.length + 0.5 : r.slots)));
@@ -128,19 +140,41 @@ export function layoutArray(scene: ArrayScene, box: { width: number; height: num
 
   const place = (slotW: number) => {
     const cellW = slotW - (hex ? 6 : CELL_GAP);
-    const cellH = hex ? Math.round(slotW * HEX_H) - 6 : Math.max(Math.min(76, Math.round(cellW * 0.9)), Math.min(124, Math.round(cellW * 0.72)));
+    const cellH = hex
+      ? Math.round(slotW * HEX_H) - 6
+      : Math.max(Math.min(76, Math.round(cellW * 0.9)), Math.min(124, Math.round(cellW * 0.72)));
     let y = 0;
     const rows: PlacedRow[] = shape.map((r, n) => {
       const label = labels[n]!;
       const top = hex ? n * Math.round(slotW * HEX_H * HEX_PITCH) : y;
-      const cellsY = top + (label && !multi ? LABEL_H : 0) + (r.stack ? r.stack * (CHIP_H + CHIP_GAP) - CHIP_GAP + ARROW_LEN : 0) + (hex ? 0 : 8);
+      const cellsY =
+        top +
+        (label && !multi ? LABEL_H : 0) +
+        (r.stack ? r.stack * (CHIP_H + CHIP_GAP) - CHIP_GAP + ARROW_LEN : 0) +
+        (hex ? 0 : 8);
       const indexY = cellsY + cellH + 8;
       const below = (indexes ? indexY + INDEX_H : cellsY + cellH) + rangesOn(r.a.name).length * (BAND_H + BAND_GAP);
       if (!hex) y = below + ROW_GAP;
-      const width = hex ? (r.a.values.length + (n % 2) * 0.5) * slotW : r.slots * slotW - CELL_GAP + (r.cuts.at(-1) ?? 0) * SPLIT_GAP;
+      const width = hex
+        ? (r.a.values.length + (n % 2) * 0.5) * slotW
+        : r.slots * slotW - CELL_GAP + (r.cuts.at(-1) ?? 0) * SPLIT_GAP;
       // With several arrays a label stands left of its cells, centred on them, so the rows stack tighter.
       const labelY = multi && label ? Math.round(cellsY + (cellH - label.height) / 2) : top;
-      return { name: r.a.name, key: rowKey(r.a.name), count: r.a.values.length, cutsBefore: r.cuts, ghosts: r.ghosts, x: 0, label, labelX: 0, labelY, cellsY, indexY, hexRow: n, width };
+      return {
+        name: r.a.name,
+        key: rowKey(r.a.name),
+        count: r.a.values.length,
+        cutsBefore: r.cuts,
+        ghosts: r.ghosts,
+        x: 0,
+        label,
+        labelX: 0,
+        labelY,
+        cellsY,
+        indexY,
+        hexRow: n,
+        width,
+      };
     });
     const height = hex ? (rows.at(-1)?.cellsY ?? 0) + cellH : y - ROW_GAP;
     return { cellW, cellH, rows, height };
@@ -157,16 +191,31 @@ export function layoutArray(scene: ArrayScene, box: { width: number; height: num
     row.x = hex ? labelRoom : labelRoom + Math.round((cellsW - row.width) / 2);
     row.labelX = multi && row.label ? row.x - LABEL_GAP + CELL_GAP - row.label.width : row.x;
   }
-  const cells = new Map(rows.flatMap((row) => Array.from({ length: row.count }, (_, i) => [cellKey(row.name, i), { row, index: i }] as const)));
+  const cells = new Map(
+    rows.flatMap((row) =>
+      Array.from({ length: row.count }, (_, i) => [cellKey(row.name, i), { row, index: i }] as const),
+    ),
+  );
 
   // One size for every value the scene ever shows, so a value that changes keeps its size.
   const texts = new Map<string, string>();
-  source.forEach((a, k) => a.values.forEach((v, i) => texts.has(String(v)) || texts.set(String(v), multi ? `arrays[${k}].values[${i}]` : `values[${i}]`)));
-  (scene.steps ?? []).forEach((step, k) => Object.entries(step.set ?? {}).forEach(([ref, v]) => texts.has(String(v)) || texts.set(String(v), `steps[${k}].set[${JSON.stringify(ref)}]`)));
+  source.forEach((a, k) =>
+    a.values.forEach(
+      (v, i) => texts.has(String(v)) || texts.set(String(v), multi ? `arrays[${k}].values[${i}]` : `values[${i}]`),
+    ),
+  );
+  (scene.steps ?? []).forEach((step, k) =>
+    Object.entries(step.set ?? {}).forEach(
+      ([ref, v]) => texts.has(String(v)) || texts.set(String(v), `steps[${k}].set[${JSON.stringify(ref)}]`),
+    ),
+  );
   const { size: max, min, lineHeight } = SLOTS.arrayValue;
   const valueW = hex ? cellW * 0.7 : cellW - 2 * CELL_PAD;
   const fitAll = (size: number) => {
-    const lines = Math.max(1, Math.min(SLOTS.arrayValue.lines, Math.floor(((hex ? cellH * 0.55 : cellH) - 12) / (size * lineHeight))));
+    const lines = Math.max(
+      1,
+      Math.min(SLOTS.arrayValue.lines, Math.floor(((hex ? cellH * 0.55 : cellH) - 12) / (size * lineHeight))),
+    );
     const slot = { ...sized(SLOTS.arrayValue, valueW), lines };
     return new Map([...texts].map(([text, path]) => [text, fitTextAt(text, slot, path, size)]));
   };
@@ -199,32 +248,64 @@ export function layoutArray(scene: ArrayScene, box: { width: number; height: num
       y: (indexes ? row.indexY + INDEX_H : row.cellsY + cellH) + 8 + k * (BAND_H + BAND_GAP),
     };
   });
-  const fix = multi ? 'show fewer arrays or cells, or split the walk into two scenes' : 'show fewer cells, pointers or ranges, or split the walk into two scenes';
-  return { hex, indexes, slotW, cellW, cellH, rows, cells, values, pointers, ranges, width, height, room: fitBlock('values', 'array', height <= box.height, fix) };
+  const fix = multi
+    ? 'show fewer arrays or cells, or split the walk into two scenes'
+    : 'show fewer cells, pointers or ranges, or split the walk into two scenes';
+  return {
+    hex,
+    indexes,
+    slotW,
+    cellW,
+    cellH,
+    rows,
+    cells,
+    values,
+    pointers,
+    ranges,
+    width,
+    height,
+    room: fitBlock('values', 'array', height <= box.height, fix),
+  };
 }
 
 /** The box of a cell, by its item key. */
 export function cellBox(layout: ArrayLayout, key: string): Box {
   const { row, index } = layout.cells.get(key)!;
-  return { x: cellX(layout, row, index) + (layout.hex ? 3 : 0), y: row.cellsY, width: layout.cellW, height: layout.cellH };
+  return {
+    x: cellX(layout, row, index) + (layout.hex ? 3 : 0),
+    y: row.cellsY,
+    width: layout.cellW,
+    height: layout.cellH,
+  };
 }
 
 /**
  * How shown a slot past either end of a row is: as shown as the pointer standing on it, fading as the pointer
  * moves off, so the dashed slot is there only while a pointer sits there.
  */
-export const ghostShown = (pointers: readonly { row: string; at: number; shown: number }[], row: string, i: number): number =>
+export const ghostShown = (
+  pointers: readonly { row: string; at: number; shown: number }[],
+  row: string,
+  i: number,
+): number =>
   Math.max(0, ...pointers.filter((p) => p.row === row).map((p) => p.shown * Math.max(0, 1 - Math.abs(p.at - i))));
 
 /** A slot's box past either end of a row, where a pointer can stand. */
-export const ghostBox = (layout: ArrayLayout, row: PlacedRow, i: number): Box => ({ x: cellX(layout, row, i), y: row.cellsY, width: layout.cellW, height: layout.cellH });
+export const ghostBox = (layout: ArrayLayout, row: PlacedRow, i: number): Box => ({
+  x: cellX(layout, row, i),
+  y: row.cellsY,
+  width: layout.cellW,
+  height: layout.cellH,
+});
 
 /** A range's band under its array's cells, spanning cells `a` to `b` (fractional while it moves). */
 export function bandBox(layout: ArrayLayout, rowName: string, y: number, [a, b]: readonly [number, number]): Box {
   const row = rowOf(layout, rowName);
   const at = (i: number) => {
     const lo = Math.floor(i);
-    return cellX(layout, row, lo) + (cellX(layout, row, Math.min(row.count - 1, lo + 1)) - cellX(layout, row, lo)) * (i - lo);
+    return (
+      cellX(layout, row, lo) + (cellX(layout, row, Math.min(row.count - 1, lo + 1)) - cellX(layout, row, lo)) * (i - lo)
+    );
   };
   return { x: at(a), y, width: at(b) - at(a) + layout.cellW, height: BAND_H };
 }
@@ -262,6 +343,8 @@ export function arrayBoxes(scene: ArrayScene, layout: ArrayLayout, state: SceneS
     if (state.hidden[`rg:${r.name}`]) continue;
     boxes.set(`rg:${r.name}`, bandBox(layout, r.row, r.y, state.places[`rg:${r.name}`]!));
   }
-  const indexes = layout.indexes ? layout.rows.map((row) => ({ x: row.x, y: row.indexY, width: row.width, height: INDEX_H })) : [];
+  const indexes = layout.indexes
+    ? layout.rows.map((row) => ({ x: row.x, y: row.indexY, width: row.width, height: INDEX_H }))
+    : [];
   return { boxes, obstacles: [...boxes.values(), ...indexes] };
 }

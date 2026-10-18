@@ -4,10 +4,18 @@ import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { formatSteps } from '../bin/lib/highlight.mjs';
 
 const highlightWarnings = async (scene) =>
-  (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) => / not lit;|as the step starts, before its words/.test(w));
+  (await validateStoryboard({ title: 't', scenes: [scene] }, {}, { mode: 'explain' })).warnings.filter((w) =>
+    / not lit;|as the step starts, before its words/.test(w),
+  );
 
 /** Pass one of bubble sort on [5, 1, 4, 2, 8], written the way the writers wrote it before 0.23. */
-const passOne = (steps) => ({ type: 'array', narration: 'The first pass walks the list.', values: [5, 1, 4, 2, 8], pointers: [{ name: 'i', at: 0 }], steps });
+const passOne = (steps) => ({
+  type: 'array',
+  narration: 'The first pass walks the list.',
+  values: [5, 1, 4, 2, 8],
+  pointers: [{ name: 'i', at: 0 }],
+  steps,
+});
 
 test('a step whose words name a cell value it leaves dark warns with what is lit', async () => {
   const warnings = await highlightWarnings(
@@ -23,7 +31,9 @@ test('a step whose words name a cell value it leaves dark warns with what is lit
 });
 
 test('a swap with no step lighting the pair before it warns; a compare step first does not', async () => {
-  const swapFirst = await highlightWarnings(passOne([{ focus: '0-1', set: { 0: 1, 1: 5 }, say: 'Compare five and one. Five is bigger, so they swap.' }]));
+  const swapFirst = await highlightWarnings(
+    passOne([{ focus: '0-1', set: { 0: 1, 1: 5 }, say: 'Compare five and one. Five is bigger, so they swap.' }]),
+  );
   assert.deepEqual(swapFirst, [
     'scenes[0].steps[0]: swaps cell 0 and cell 1 as the step starts, before its words, and the step before did not light them, so the viewer never sees the pair before it moves; add a step before it that focuses them while the words compare them, then swap in this step',
   ]);
@@ -51,7 +61,12 @@ test('numbers that count or name something else do not warn, though the scene ho
 });
 
 test('a spelled number is read whole, so "twenty three" names 23 and not 20', async () => {
-  const scene = (say) => ({ type: 'array', narration: 'Sorted limits.', values: [5, 20, 23, 200, 205], steps: [{ focus: 2, say }] });
+  const scene = (say) => ({
+    type: 'array',
+    narration: 'Sorted limits.',
+    values: [5, 20, 23, 200, 205],
+    steps: [{ focus: 2, say }],
+  });
   assert.deepEqual(await highlightWarnings(scene('The middle cell holds twenty three.')), []);
   assert.deepEqual(await highlightWarnings(scene('Twenty-three sits left of two hundred and five.')), [
     'scenes[0].steps[0]: says "205" (cell 4 = 205), which is not lit; it lights cell 2 = 23. Focus what the words name, or say only what is lit',
@@ -83,7 +98,10 @@ test('a diagram label warns only when the words name it in full and do not deny 
       { id: 'svc', label: 'Orders service' },
       { id: 'db', label: 'Database' },
     ],
-    edges: [{ from: 'lim', to: 'svc' }, { from: 'svc', to: 'db' }],
+    edges: [
+      { from: 'lim', to: 'svc' },
+      { from: 'svc', to: 'db' },
+    ],
     steps: [
       { focus: 'lim', say: 'The rate limiter counts the request, and the service waits.' },
       { focus: 'lim', say: 'A refused request never reaches the orders service.' },
@@ -97,7 +115,16 @@ test('a diagram label warns only when the words name it in full and do not deny 
 
 test('steps prints each step beside what it lights and changes, then the highlight warnings', () => {
   const text = formatSteps(
-    { scenes: [{ type: 'intent', bullets: [] }, passOne([{ focus: '0-1', say: 'Compare five and one.' }, { set: { 0: 1, 1: 5 }, say: 'Five is bigger, so they swap.' }, { move: { i: 1 }, say: 'Next, five and four.' }])] },
+    {
+      scenes: [
+        { type: 'intent', bullets: [] },
+        passOne([
+          { focus: '0-1', say: 'Compare five and one.' },
+          { set: { 0: 1, 1: 5 }, say: 'Five is bigger, so they swap.' },
+          { move: { i: 1 }, say: 'Next, five and four.' },
+        ]),
+      ],
+    },
     {},
   );
   assert.equal(
@@ -147,13 +174,26 @@ test('a lit entity lights its fields, and a lit relation lights both entities wi
     relations: [{ from: 'orders', to: 'users', label: 'placed by', cardinality: 'one-to-many' }],
     steps,
   });
-  assert.deepEqual(await highlightWarnings(er([
-    { focus: 'orders', say: 'Each order stores a user_id.' },
-    { focus: 0, say: 'The user_id points at users.' },
-  ])), []);
-  assert.deepEqual(await highlightWarnings(er([{ focus: 'orders', say: 'An order never holds a cart_id, but the cart keeps its cart_id here.' }, { focus: 'users', say: 'Each cart has a cart_id.' }])), [
-    'scenes[0].steps[1]: says "cart id" (field carts.cart_id), which is not lit; it lights entity users. Focus what the words name, or say only what is lit',
-  ]);
+  assert.deepEqual(
+    await highlightWarnings(
+      er([
+        { focus: 'orders', say: 'Each order stores a user_id.' },
+        { focus: 0, say: 'The user_id points at users.' },
+      ]),
+    ),
+    [],
+  );
+  assert.deepEqual(
+    await highlightWarnings(
+      er([
+        { focus: 'orders', say: 'An order never holds a cart_id, but the cart keeps its cart_id here.' },
+        { focus: 'users', say: 'Each cart has a cart_id.' },
+      ]),
+    ),
+    [
+      'scenes[0].steps[1]: says "cart id" (field carts.cart_id), which is not lit; it lights entity users. Focus what the words name, or say only what is lit',
+    ],
+  );
 });
 
 test('a number after a move or a pointer name is the index it lands on, not a cell value', async () => {
@@ -174,7 +214,12 @@ test('a number after a move or a pointer name is the index it lands on, not a ce
 });
 
 test('an amount that ends a sentence and a denied value do not warn; a chart label lights with its series and keeps its case', async () => {
-  const array = await highlightWarnings({ type: 'array', narration: 'A search.', values: [50, 3], steps: [{ focus: 1, say: 'Done in 50.' }] });
+  const array = await highlightWarnings({
+    type: 'array',
+    narration: 'A search.',
+    values: [50, 3],
+    steps: [{ focus: 1, say: 'Done in 50.' }],
+  });
   assert.deepEqual(array, []);
   const memory = await highlightWarnings({
     type: 'memory',
@@ -189,7 +234,10 @@ test('an amount that ends a sentence and a denied value do not warn; a chart lab
     kind: 'bar',
     narration: 'Revenue by quarter.',
     labels: ['Q1', 'Q2', 'Q3'],
-    series: [{ name: 'Revenue 2024', values: [1, 2, 3] }, { name: 'Costs 2024', values: [1, 1, 1] }],
+    series: [
+      { name: 'Revenue 2024', values: [1, 2, 3] },
+      { name: 'Costs 2024', values: [1, 1, 1] },
+    ],
     steps: [{ focus, say: 'Revenue 2024 peaks in Q3.' }],
   });
   assert.deepEqual(await highlightWarnings(chart('series:Revenue 2024')), []);
@@ -198,13 +246,25 @@ test('an amount that ends a sentence and a denied value do not warn; a chart lab
   ]);
 });
 
-test('an error in another scene does not hide this scene\'s highlight warnings', async () => {
-  const sorting = { type: 'array', narration: 'A list.', values: [5, 1, 4], steps: [{ focus: 0, say: 'Compare five and four.' }] };
-  const { errors, warnings } = await validateStoryboard({ title: 't', scenes: [{ type: 'intent', bullets: ['a'] }, sorting] }, {}, { mode: 'explain' });
+test("an error in another scene does not hide this scene's highlight warnings", async () => {
+  const sorting = {
+    type: 'array',
+    narration: 'A list.',
+    values: [5, 1, 4],
+    steps: [{ focus: 0, say: 'Compare five and four.' }],
+  };
+  const { errors, warnings } = await validateStoryboard(
+    { title: 't', scenes: [{ type: 'intent', bullets: ['a'] }, sorting] },
+    {},
+    { mode: 'explain' },
+  );
   assert.ok(errors.some((e) => e.startsWith('scenes[0].narration')));
-  assert.deepEqual(warnings.filter((w) => / not lit;/.test(w)), [
-    'scenes[1].steps[0]: says "4" (cell 2 = 4), which is not lit; it lights cell 0 = 5. Focus what the words name, or say only what is lit',
-  ]);
+  assert.deepEqual(
+    warnings.filter((w) => / not lit;/.test(w)),
+    [
+      'scenes[1].steps[0]: says "4" (cell 2 = 4), which is not lit; it lights cell 0 = 5. Focus what the words name, or say only what is lit',
+    ],
+  );
 });
 
 test('steps leaves out code scenes, which the audit does not check', () => {

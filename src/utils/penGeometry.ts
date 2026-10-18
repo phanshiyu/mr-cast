@@ -30,7 +30,12 @@ export interface Sketch {
 export const right = (b: Box) => b.x + b.width;
 export const bottom = (b: Box) => b.y + b.height;
 export const center = (b: Box): Pt => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
-export const grow = (b: Box, by: number): Box => ({ x: b.x - by, y: b.y - by, width: b.width + 2 * by, height: b.height + 2 * by });
+export const grow = (b: Box, by: number): Box => ({
+  x: b.x - by,
+  y: b.y - by,
+  width: b.width + 2 * by,
+  height: b.height + 2 * by,
+});
 
 /**
  * What a scene tells the pen about step k, in its content box (SceneShell's children): the box of each
@@ -68,17 +73,30 @@ export interface Stage {
 }
 
 /** A layout of `size` centred in `area` and scaled about its centre, as the diagram scenes draw theirs. */
-export const centredStage = (area: { width: number; height: number }, size: { width: number; height: number }, scale: number): Stage => ({
+export const centredStage = (
+  area: { width: number; height: number },
+  size: { width: number; height: number },
+  scale: number,
+): Stage => ({
   left: (area.width - size.width * scale) / 2,
   top: (area.height - size.height * scale) / 2,
   scale,
 });
 
 /** A box in layout units as it lands in the content box. */
-export const onStage = ({ left, top, scale }: Stage, b: Box): Box => ({ x: left + b.x * scale, y: top + b.y * scale, width: b.width * scale, height: b.height * scale });
+export const onStage = ({ left, top, scale }: Stage, b: Box): Box => ({
+  x: left + b.x * scale,
+  y: top + b.y * scale,
+  width: b.width * scale,
+  height: b.height * scale,
+});
 
 /** A layout's boxes as they land in a content box of `size`. */
-export function staged({ boxes, obstacles, lines }: LayoutBoxes, stage: Stage, size: { width: number; height: number }): MarkTargets {
+export function staged(
+  { boxes, obstacles, lines }: LayoutBoxes,
+  stage: Stage,
+  size: { width: number; height: number },
+): MarkTargets {
   return {
     boxes: new Map([...boxes].map(([key, b]) => [key, onStage(stage, b)])),
     obstacles: obstacles?.map((b) => onStage(stage, b)),
@@ -88,10 +106,20 @@ export function staged({ boxes, obstacles, lines }: LayoutBoxes, stage: Stage, s
 }
 
 /** A content box of this size, from its top-left corner. */
-export const areaOf = (size: { width: number; height: number }): Box => ({ x: 0, y: 0, width: size.width, height: size.height });
+export const areaOf = (size: { width: number; height: number }): Box => ({
+  x: 0,
+  y: 0,
+  width: size.width,
+  height: size.height,
+});
 
 /** A box of `width` and `height` centred on a point. */
-export const around = (p: Pt, width: number, height: number): Box => ({ x: p.x - width / 2, y: p.y - height / 2, width, height });
+export const around = (p: Pt, width: number, height: number): Box => ({
+  x: p.x - width / 2,
+  y: p.y - height / 2,
+  width,
+  height,
+});
 
 /** The smallest box around every box given, or null for none. */
 export function union(boxes: readonly (Box | null | undefined)[]): Box | null {
@@ -112,7 +140,11 @@ const inside = (p: Pt, b: Box) => p.x > b.x && p.x < right(b) && p.y > b.y && p.
 const clampTo = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), Math.max(lo, hi));
 
 /** A box moved the least distance that puts it inside `area`. */
-const keepInside = (b: Box, area: Box): Box => ({ ...b, x: clampTo(b.x, area.x, right(area) - b.width), y: clampTo(b.y, area.y, bottom(area) - b.height) });
+const keepInside = (b: Box, area: Box): Box => ({
+  ...b,
+  x: clampTo(b.x, area.x, right(area) - b.width),
+  y: clampTo(b.y, area.y, bottom(area) - b.height),
+});
 
 /** A stable seed from any text. */
 export function seedOf(text: string): number {
@@ -140,7 +172,10 @@ function boundsOf(strokes: readonly Stroke[], pen: number): Box {
   const points = strokes.flatMap((s) => s.points);
   const x = Math.min(...points.map((p) => p.x));
   const y = Math.min(...points.map((p) => p.y));
-  return grow({ x, y, width: Math.max(...points.map((p) => p.x)) - x, height: Math.max(...points.map((p) => p.y)) - y }, pen);
+  return grow(
+    { x, y, width: Math.max(...points.map((p) => p.x)) - x, height: Math.max(...points.map((p) => p.y)) - y },
+    pen,
+  );
 }
 
 /** A line from `a` to `b` in `n` pieces that bows by `bow` (px, to the left of travel) and wavers by `waver`. */
@@ -212,7 +247,12 @@ function ring(t: Box, area: Box, obstacles: readonly Box[], rand: Random): Strok
 function frame(t: Box, rand: Random): Stroke {
   const m = 10;
   const corner = (x: number, y: number): Pt => ({ x: x + jitter(rand, 3), y: y + jitter(rand, 3) });
-  const [tl, tr, br, bl] = [corner(t.x - m, t.y - m), corner(right(t) + m, t.y - m), corner(right(t) + m, bottom(t) + m), corner(t.x - m, bottom(t) + m)];
+  const [tl, tr, br, bl] = [
+    corner(t.x - m, t.y - m),
+    corner(right(t) + m, t.y - m),
+    corner(right(t) + m, bottom(t) + m),
+    corner(t.x - m, bottom(t) + m),
+  ];
   const over = 7;
   const points = [
     { x: tl.x - over, y: tl.y + 1 },
@@ -229,7 +269,14 @@ function frame(t: Box, rand: Random): Stroke {
  * The strokes of a mark on `target`, kept inside `area` where the target leaves room, and a ring off the
  * `obstacles` beside it. Arrows are drawn by `arrowSketch`.
  */
-export function sketchMark(mark: Exclude<PenMark, 'arrow'>, target: Box, area: Box, obstacles: readonly Box[], seed: number, pen: number): Sketch {
+export function sketchMark(
+  mark: Exclude<PenMark, 'arrow'>,
+  target: Box,
+  area: Box,
+  obstacles: readonly Box[],
+  seed: number,
+  pen: number,
+): Sketch {
   const rand = random(seed);
   const t = target;
   const strokes: Stroke[] = (() => {
@@ -240,17 +287,48 @@ export function sketchMark(mark: Exclude<PenMark, 'arrow'>, target: Box, area: B
         return [frame(t, rand)];
       case 'underline': {
         const y = bottom(t) + 8;
-        return [{ points: line({ x: t.x - 6, y: y + jitter(rand, 2) }, { x: right(t) + 8, y: y + jitter(rand, 3) }, 10, -2 - rand() * 3, 0.8, rand) }];
+        return [
+          {
+            points: line(
+              { x: t.x - 6, y: y + jitter(rand, 2) },
+              { x: right(t) + 8, y: y + jitter(rand, 3) },
+              10,
+              -2 - rand() * 3,
+              0.8,
+              rand,
+            ),
+          },
+        ];
       }
       case 'strike': {
         const y = t.y + t.height / 2;
-        return [{ points: line({ x: t.x - 8, y: y + jitter(rand, 3) }, { x: right(t) + 8, y: y + jitter(rand, 3) }, 10, jitter(rand, 3), 0.8, rand) }];
+        return [
+          {
+            points: line(
+              { x: t.x - 8, y: y + jitter(rand, 3) },
+              { x: right(t) + 8, y: y + jitter(rand, 3) },
+              10,
+              jitter(rand, 3),
+              0.8,
+              rand,
+            ),
+          },
+        ];
       }
       case 'cross': {
         const g = grow(t, 6);
         return [
           { points: line({ x: g.x, y: g.y }, { x: right(g), y: bottom(g) }, 10, jitter(rand, 5), 1, rand) },
-          { points: line({ x: right(g), y: g.y + jitter(rand, 3) }, { x: g.x + jitter(rand, 3), y: bottom(g) }, 10, jitter(rand, 5), 1, rand) },
+          {
+            points: line(
+              { x: right(g), y: g.y + jitter(rand, 3) },
+              { x: g.x + jitter(rand, 3), y: bottom(g) },
+              10,
+              jitter(rand, 5),
+              1,
+              rand,
+            ),
+          },
         ];
       }
     }
@@ -275,8 +353,14 @@ export function arrowSketch(tail: Pt, target: Box, seed: number, pen: number): S
   const shaft = line(tail, tip, 16, (rand() < 0.5 ? -1 : 1) * len * (0.1 + rand() * 0.05), 0.8, rand);
   const last = shaft[shaft.length - 3]!;
   const angle = Math.atan2(tip.y - last.y, tip.x - last.x);
-  const barb = (turn: number): Pt => ({ x: tip.x - 22 * Math.cos(angle + turn), y: tip.y - 22 * Math.sin(angle + turn) });
-  const strokes: Stroke[] = [{ points: shaft }, { points: [barb(0.5 + jitter(rand, 0.06)), tip, barb(-0.5 + jitter(rand, 0.06))], sharp: true }];
+  const barb = (turn: number): Pt => ({
+    x: tip.x - 22 * Math.cos(angle + turn),
+    y: tip.y - 22 * Math.sin(angle + turn),
+  });
+  const strokes: Stroke[] = [
+    { points: shaft },
+    { points: [barb(0.5 + jitter(rand, 0.06)), tip, barb(-0.5 + jitter(rand, 0.06))], sharp: true },
+  ];
   return { strokes, bounds: boundsOf(strokes, pen) };
 }
 
@@ -339,14 +423,23 @@ function beside(side: Side, size: { width: number; height: number }, m: Box, t: 
 const SLIDES = [0, -0.3, 0.3, -0.6, 0.6, -1, 1];
 
 /** The least cluttered spot for a note of `size` beside a mark, inside `area`; nearer the reader's first choice on a tie. */
-export function placeNote(mark: Exclude<PenMark, 'arrow'>, size: { width: number; height: number }, sketch: Sketch, clutter: Omit<Clutter, 'mark'>, area: Box): Box {
+export function placeNote(
+  mark: Exclude<PenMark, 'arrow'>,
+  size: { width: number; height: number },
+  sketch: Sketch,
+  clutter: Omit<Clutter, 'mark'>,
+  area: Box,
+): Box {
   const all = { ...clutter, mark: sketch.bounds };
   let best: { box: Box; score: number } | null = null;
   SIDES[mark].forEach((side, i) => {
     const base = beside(side, size, sketch.bounds, clutter.target);
     const across = side === 'left' || side === 'right';
     SLIDES.forEach((f, j) => {
-      const box = keepInside({ ...base, x: base.x + (across ? 0 : f * size.width), y: base.y + (across ? f * (size.height + 8) : 0) }, area);
+      const box = keepInside(
+        { ...base, x: base.x + (across ? 0 : f * size.width), y: base.y + (across ? f * (size.height + 8) : 0) },
+        area,
+      );
       const score = cost(box, all) + 40 * i + 30 * j;
       if (!best || score < best.score) best = { box, score };
     });
@@ -370,7 +463,11 @@ const DIRECTIONS: Pt[] = [
  * Where an arrow starts and its note sits: a free spot some way off the target, with the note on the
  * far side of the tail, chosen so neither the note nor the shaft crosses anything else on screen.
  */
-export function placeArrow(size: { width: number; height: number }, given: Omit<Clutter, 'mark'>, area: Box): { tail: Pt; note: Box } {
+export function placeArrow(
+  size: { width: number; height: number },
+  given: Omit<Clutter, 'mark'>,
+  area: Box,
+): { tail: Pt; note: Box } {
   const { target, obstacles } = given;
   const c = center(target);
   const clutter = { ...given, mark: null };
@@ -391,8 +488,13 @@ export function placeArrow(size: { width: number; height: number }, given: Omit<
       const near = grow(placed, 8);
       const tail = { x: clampTo(c.x, near.x, right(near)), y: clampTo(c.y, near.y, bottom(near)) };
       const tip = edgePoint(tail, target, 10);
-      const shaft = Array.from({ length: 12 }, (_, i) => ({ x: tail.x + ((tip.x - tail.x) * (i + 0.5)) / 12, y: tail.y + ((tip.y - tail.y) * (i + 0.5)) / 12 }));
-      const crossed = shaft.filter((p) => obstacles.some((o) => inside(p, o) && overlap(o, target) < o.width * o.height * 0.5)).length;
+      const shaft = Array.from({ length: 12 }, (_, i) => ({
+        x: tail.x + ((tip.x - tail.x) * (i + 0.5)) / 12,
+        y: tail.y + ((tip.y - tail.y) * (i + 0.5)) / 12,
+      }));
+      const crossed = shaft.filter((p) =>
+        obstacles.some((o) => inside(p, o) && overlap(o, target) < o.width * o.height * 0.5),
+      ).length;
       const short = Math.hypot(tip.x - tail.x, tip.y - tail.y) < 70 ? 4000 : 0;
       const score = cost(placed, clutter) + 900 * crossed + short + reach;
       if (!best || score < best.score - 1) best = { tail, note: placed, score };
@@ -413,4 +515,5 @@ export function strokePath({ points, sharp }: Stroke): string {
   return d;
 }
 
-export const strokeLength = ({ points }: Stroke) => points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - points[i]!.x, p.y - points[i]!.y), 0);
+export const strokeLength = ({ points }: Stroke) =>
+  points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - points[i]!.x, p.y - points[i]!.y), 0);

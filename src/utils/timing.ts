@@ -27,7 +27,10 @@ export function timeline(storyboard: Storyboard, voiceover?: Voiceover | null): 
 }
 
 export function totalDurationInFrames(storyboard: Storyboard, voiceover?: Voiceover | null): number {
-  return Math.max(1, timeline(storyboard, voiceover).reduce((sum, t) => sum + t.durationInFrames, 0));
+  return Math.max(
+    1,
+    timeline(storyboard, voiceover).reduce((sum, t) => sum + t.durationInFrames, 0),
+  );
 }
 
 export function formatTime(frames: number): string {

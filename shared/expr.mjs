@@ -72,7 +72,13 @@ function tokenize(text) {
     else if (ch === '×' || ch === '·') tokens.push({ kind: 'op', text: '*', at });
     else if (ch === '*' && rest[1] === '*') return { error: { message: 'write a power with ^, as in x^2', at } };
     else if ('+-*/^(),'.includes(ch)) tokens.push({ kind: 'op', text: ch, at });
-    else return { error: { message: `unexpected ${JSON.stringify(ch)}${ch === '.' ? '; a name cannot be followed by a dot' : ''}`, at } };
+    else
+      return {
+        error: {
+          message: `unexpected ${JSON.stringify(ch)}${ch === '.' ? '; a name cannot be followed by a dot' : ''}`,
+          at,
+        },
+      };
     at += 1;
   }
   return { tokens };
@@ -102,7 +108,12 @@ export function parseExpr(text) {
   const expect = (op, opened) => {
     if (isOp(op)) return void i++;
     const t = peek();
-    throw new ParseError(opened ? `expected ")" to close the "(" at column ${opened.at + 1}, found ${describe(t)}` : `expected ${JSON.stringify(op)}, found ${describe(t)}`, t?.at ?? end);
+    throw new ParseError(
+      opened
+        ? `expected ")" to close the "(" at column ${opened.at + 1}, found ${describe(t)}`
+        : `expected ${JSON.stringify(op)}, found ${describe(t)}`,
+      t?.at ?? end,
+    );
   };
 
   const additive = () => {
@@ -126,7 +137,11 @@ export function parseExpr(text) {
   let depth = 0;
   // Unary minus binds looser than ^, so -x^2 is -(x^2), and a power's exponent may be negative: 2^-x.
   const unary = () => {
-    if (depth >= MAX_DEPTH) throw new ParseError(`nests more than ${MAX_DEPTH} levels deep in parentheses, minus signs, powers or calls; write it more simply`, peek()?.at ?? end);
+    if (depth >= MAX_DEPTH)
+      throw new ParseError(
+        `nests more than ${MAX_DEPTH} levels deep in parentheses, minus signs, powers or calls; write it more simply`,
+        peek()?.at ?? end,
+      );
     depth++;
     try {
       if (isOp('-') || isOp('+')) {
@@ -161,7 +176,11 @@ export function parseExpr(text) {
       expect(')', t);
     } else throw new ParseError(`unexpected ${describe(t)}`, t.at);
     const next = peek();
-    if (next && (next.kind !== 'op' || next.text === '(')) throw new ParseError(`expected an operator before ${describe(next)}; write ${JSON.stringify(`${text.slice(t.at, next.at).trim()}*${next.text}`)} to multiply`, next.at);
+    if (next && (next.kind !== 'op' || next.text === '('))
+      throw new ParseError(
+        `expected an operator before ${describe(next)}; write ${JSON.stringify(`${text.slice(t.at, next.at).trim()}*${next.text}`)} to multiply`,
+        next.at,
+      );
     return node;
   };
   const call = (name) => {
@@ -176,15 +195,29 @@ export function parseExpr(text) {
     }
     expect(')', open);
     if (name.text === 'sum') {
-      if (args.length !== 4) throw new ParseError(`sum takes 4 arguments, (index, from, to, term), as in sum(k, 1, n, sin(k*x)/k); found ${args.length}`, name.at);
-      if (args[0].kind !== 'name') throw new ParseError('sum\'s first argument is the name of its index, such as k', args[0].at);
-      if (RESERVED_NAMES.includes(args[0].name)) throw new ParseError(`"${args[0].name}" cannot be sum's index, since it already means something; use a name such as k`, args[0].at);
+      if (args.length !== 4)
+        throw new ParseError(
+          `sum takes 4 arguments, (index, from, to, term), as in sum(k, 1, n, sin(k*x)/k); found ${args.length}`,
+          name.at,
+        );
+      if (args[0].kind !== 'name')
+        throw new ParseError("sum's first argument is the name of its index, such as k", args[0].at);
+      if (RESERVED_NAMES.includes(args[0].name))
+        throw new ParseError(
+          `"${args[0].name}" cannot be sum's index, since it already means something; use a name such as k`,
+          args[0].at,
+        );
       return { kind: 'sum', index: args[0].name, from: args[1], to: args[2], term: args[3], at: name.at };
     }
     const fn = own(FUNCTIONS, name.text) ? FUNCTIONS[name.text] : null;
-    if (!fn) throw new ParseError(`"${name.text}" is no function; the functions are ${FUNCTION_NAMES.join(', ')}`, name.at);
+    if (!fn)
+      throw new ParseError(`"${name.text}" is no function; the functions are ${FUNCTION_NAMES.join(', ')}`, name.at);
     const [min, max] = fn;
-    if (args.length < min || args.length > max) throw new ParseError(`${name.text} takes ${min === max ? min : `at least ${min}`} argument${min === 1 && max === 1 ? '' : 's'}, found ${args.length}`, name.at);
+    if (args.length < min || args.length > max)
+      throw new ParseError(
+        `${name.text} takes ${min === max ? min : `at least ${min}`} argument${min === 1 && max === 1 ? '' : 's'}, found ${args.length}`,
+        name.at,
+      );
     return { kind: 'call', fn: name.text, args, at: name.at };
   };
 
@@ -203,13 +236,20 @@ export function parseExpr(text) {
 function children(node, bound) {
   switch (node.kind) {
     case 'bin':
-      return [[node.left, bound], [node.right, bound]];
+      return [
+        [node.left, bound],
+        [node.right, bound],
+      ];
     case 'neg':
       return [[node.arg, bound]];
     case 'call':
       return node.args.map((a) => [a, bound]);
     case 'sum':
-      return [[node.from, bound], [node.to, bound], [node.term, new Set([...bound, node.index])]];
+      return [
+        [node.from, bound],
+        [node.to, bound],
+        [node.term, new Set([...bound, node.index])],
+      ];
     default:
       return [];
   }
@@ -221,7 +261,8 @@ export function freeNames(ast) {
   const stack = [[ast, new Set()]];
   while (stack.length) {
     const [node, bound] = stack.pop();
-    if (node.kind === 'name' && !bound.has(node.name) && !own(CONSTANTS, node.name)) found.push({ name: node.name, at: node.at });
+    if (node.kind === 'name' && !bound.has(node.name) && !own(CONSTANTS, node.name))
+      found.push({ name: node.name, at: node.at });
     const next = children(node, bound);
     for (let k = next.length - 1; k >= 0; k--) stack.push(next[k]);
   }
@@ -248,7 +289,10 @@ function checkSumSizes(ast) {
       if (n !== null) {
         [inner, path] = [product * n, [...counts, n]];
         if (inner > MAX_TERMS) {
-          const many = path.length > 1 ? `these nested sums add ${path.join(' × ')} = ${inner} terms` : `this sum adds ${inner} terms`;
+          const many =
+            path.length > 1
+              ? `these nested sums add ${path.join(' × ')} = ${inner} terms`
+              : `this sum adds ${inner} terms`;
           throw new ParseError(`${many} at every point; at most ${MAX_TERMS} in all, so use fewer terms`, node.at);
         }
       }
@@ -273,7 +317,13 @@ function chainOf(node, ops) {
   return { first, rest: rest.reverse() };
 }
 
-const APPLY = { '+': (a, b) => a + b, '-': (a, b) => a - b, '*': (a, b) => a * b, '/': (a, b) => a / b, '^': (a, b) => a ** b };
+const APPLY = {
+  '+': (a, b) => a + b,
+  '-': (a, b) => a - b,
+  '*': (a, b) => a * b,
+  '/': (a, b) => a / b,
+  '^': (a, b) => a ** b,
+};
 
 /**
  * The tree as a function of a scope and the evaluation's term budget, `{ left, spent }`, which every sum draws from,
@@ -313,7 +363,8 @@ function build(ast) {
       const args = ast.args.map(build);
       if (args.length === 1) return (s, budget) => fn(args[0](s, budget));
       // Pairwise, so min or max of a long list never spreads it into one call's arguments.
-      if (FUNCTIONS[ast.fn][1] === Infinity) return (s, budget) => args.reduce((acc, arg) => fn(acc, arg(s, budget)), fn(args[0](s, budget)));
+      if (FUNCTIONS[ast.fn][1] === Infinity)
+        return (s, budget) => args.reduce((acc, arg) => fn(acc, arg(s, budget)), fn(args[0](s, budget)));
       return (s, budget) => fn(...args.map((arg) => arg(s, budget)));
     }
     case 'sum': {
@@ -379,7 +430,8 @@ export function exprOf(text) {
   let hit = compiled.get(key);
   if (!hit) {
     const parsed = parseExpr(key);
-    if (parsed.error) hit = { error: parsed.error, names: [], fn: () => NaN, evaluate: () => ({ value: NaN, overBudget: false }) };
+    if (parsed.error)
+      hit = { error: parsed.error, names: [], fn: () => NaN, evaluate: () => ({ value: NaN, overBudget: false }) };
     else {
       const evaluate = evaluatorOf(parsed.ast);
       hit = { error: null, names: freeNames(parsed.ast), fn: (scope) => evaluate(scope).value, evaluate };
