@@ -153,12 +153,16 @@ const MODELS = {
       return typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? null : 'must be text';
     },
     // A move's transform goes outside the element's own, so it moves the element from where the drawing puts it.
+    // `{ "to", "when" }` plays the move across the step's words instead of as the step starts.
     move(scene, name, value) {
       const { root, ids } = svgOf(scene.svg);
       if (!ids.has(name)) return null;
       if (ids.get(name) === root) return { problem: 'is the root <svg>, which the scene places on its stage; wrap what moves in a <g id="..."> and move that' };
-      if (typeof value !== 'string' || !parseTransform(value)) return { problem: `${JSON.stringify(value)} is no transform; a move is translate(x y), rotate(degrees cx cy) and scale(s), alone or in a row, such as "translate(300 0) rotate(90 50 50)", or "" to put it back` };
-      return { key: `s:${name}`, transform: value.trim() };
+      const spans = Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+      if (spans && (value.to === undefined || !Object.keys(value).every((k) => k === 'to' || k === 'when'))) return { problem: 'must be a transform, or { "to": transform, "when": words of the say } to play the move from those words to the end of the say' };
+      const to = spans ? value.to : value;
+      if (typeof to !== 'string' || !parseTransform(to)) return { problem: `${JSON.stringify(to)} is no transform; a move is translate(x y), rotate(degrees cx cy) and scale(s), alone or in a row, such as "translate(300 0) rotate(90 50 50)", or "" to put it back` };
+      return { key: `s:${name}`, transform: to.trim(), ...(spans ? { when: value.when ?? null } : {}) };
     },
     moveNames: (scene) => [...svgOf(scene.svg).ids.keys()],
     moveWhat: 'element id',
@@ -323,7 +327,7 @@ function oneKey(scene, ref, prefixes) {
 }
 
 // A trace draws during its own step only, so the next state starts with none.
-const copy = (state) => ({ values: { ...state.values }, places: { ...state.places }, hidden: { ...state.hidden }, tints: { ...state.tints }, callout: state.callout, transforms: { ...state.transforms }, shapes: { ...state.shapes }, traces: {}, ...(state.sort === undefined ? {} : { sort: state.sort }) });
+const copy = (state) => ({ values: { ...state.values }, places: { ...state.places }, hidden: { ...state.hidden }, tints: { ...state.tints }, callout: state.callout, transforms: { ...state.transforms }, shapes: { ...state.shapes }, traces: {}, spans: {}, ...(state.sort === undefined ? {} : { sort: state.sort }) });
 
 /** Elements a step can `trace`: lines and outlines, and a group, which traces every one inside it. */
 const SVG_TRACEABLE = ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'g'];
@@ -412,7 +416,7 @@ export function walkStates(scene) {
       problems.push({ step, field: step < 0 ? 'objects' : 'set', ref, level: 'error', names: [], message: `points at "${target}" ${when}, but "${target}" is hidden then; show it in this step or an earlier one, or start it shown` });
     }
   };
-  let state = { ...model.initial(scene), tints: {}, callout: typeof scene.callout === 'string' ? scene.callout : '', transforms: {}, shapes: {}, traces: {}, ...(model.sort ? { sort: scene.sort === true } : {}) };
+  let state = { ...model.initial(scene), tints: {}, callout: typeof scene.callout === 'string' ? scene.callout : '', transforms: {}, shapes: {}, traces: {}, spans: {}, ...(model.sort ? { sort: scene.sort === true } : {}) };
   if (scene.callout !== undefined && !model.callout) problems.push({ step: -1, field: 'callout', ref: '', message: `${aType(scene.type)} scene draws no callout`, names: [], level: 'error' });
   const applyTints = (record, next, problem) => {
     if (record === undefined) return;
@@ -488,7 +492,11 @@ export function walkStates(scene) {
         problem('move', name, model.move ? what : `${aType(scene.type)} scene has nothing to move; use set`, names);
       } else if (moved.problem) problem('move', name, moved.problem);
       else if (moved.error) problem('move', name, `${JSON.stringify(value)} is no place; ${moved.error}`);
-      else if (moved.transform !== undefined) next.transforms[moved.key] = moved.transform;
+      else if (moved.when !== undefined && moved.when !== null && (typeof moved.when !== 'string' || cueWord(step.say, moved.when) < 0)) problem('move', name, `has "when": ${JSON.stringify(moved.when)}, which is not in the step's say; copy the words the move should start on`);
+      else if (moved.transform !== undefined) {
+        next.transforms[moved.key] = moved.transform;
+        if (moved.when !== undefined) next.spans[moved.key] = moved.when;
+      }
       else next.places[moved.key] = moved.place;
     }
     for (const field of ['show', 'hide']) {

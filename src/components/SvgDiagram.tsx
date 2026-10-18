@@ -91,6 +91,8 @@ interface Draw {
   scale: number;
   /** How far the step's trace has drawn an element, by key, or null when the step does not trace it. */
   traced: (key: string) => number | null;
+  /** How far an element has moved to the step's transform, 0 to 1: across the step's words for a spanned move. */
+  moved: (key: string) => number;
   /** A path's `d` partway through a morph, or its own. */
   shape: (key: string, own: string | undefined) => string | undefined;
 }
@@ -157,7 +159,7 @@ function draw(node: SvgNode, key: string, d: Draw, up: Inherited): ReactNode {
   }
   if (own) {
     const [was, is] = [d.s.before.transforms[own], d.s.now.transforms[own]];
-    if (was !== undefined || is !== undefined) props.transform = `${tweenTransform(was ?? '', is ?? '', d.s.t)} ${a.transform ?? ''}`.trim();
+    if (was !== undefined || is !== undefined) props.transform = `${tweenTransform(was ?? '', is ?? '', d.moved(own))} ${a.transform ?? ''}`.trim();
     if (node.tag === 'path') props.d = d.shape(own, a.d);
   }
   const trace = (own ? d.traced(own) : null) ?? up.trace;
@@ -228,6 +230,19 @@ function traceProgress(state: SceneState, ids: Map<string, SvgNode>, segments: r
   return out;
 }
 
+/** How far each move the current step plays across its words has gone at `frame`: evenly, from its cue or the voice to the voice's end. */
+function spanProgress(state: SceneState, segments: readonly SpokenSegment[], k: number, frame: number) {
+  const segment = segments[k + 1];
+  const out = new Map<string, number>();
+  if (k < 0 || !segment) return out;
+  for (const [key, cue] of Object.entries(state.spans)) {
+    const start = (cue ? cueFrame(segment, cue) : null) ?? segment.voiceFrom;
+    const end = Math.max(start + STEP_SETTLE_FRAMES, segment.voiceFrom + segment.speakingFrames);
+    out.set(key, Math.min(1, Math.max(0, (frame - start) / (end - start))));
+  }
+  return out;
+}
+
 /** A short stable name for a drawing, from its markup, to prefix its ids. */
 function hashOf(text: string): string {
   let h = 5381;
@@ -252,7 +267,8 @@ export const SvgDiagram: React.FC<SceneProps<SvgScene>> = ({ scene, hunks, durat
     return was === is || !was || !is ? is : s.t >= 1 ? is : tweenShape(paired(was, is), s.t);
   };
   const traces = traceProgress(s.now, ids, segments, currentStep(segments, frame), frame, stage.scale, (key) => dOf(s.now, key, elementOf(ids, key.slice(2))?.attrs.d));
-  const d: Draw = { s, focus, prefix: hashOf(scene.svg), initial: states[0]!.values, frame, scale: stage.scale, traced: (key) => traces.get(key) ?? null, shape };
+  const spans = spanProgress(s.now, segments, currentStep(segments, frame), frame);
+  const d: Draw = { s, focus, prefix: hashOf(scene.svg), initial: states[0]!.values, frame, scale: stage.scale, traced: (key) => traces.get(key) ?? null, moved: (key) => spans.get(key) ?? s.t, shape };
   const base: Inherited = { fill: root.attrs.fill !== undefined, stroke: root.attrs.stroke !== undefined, emphasis: focus('#drawing'), tint: null, font: root.attrs['font-family'] ?? '', trace: null, flow: false };
   const parts = root.children;
   const stagger = Math.min(STAGGER, (STAGGER_END - START) / Math.max(1, parts.length - 1));

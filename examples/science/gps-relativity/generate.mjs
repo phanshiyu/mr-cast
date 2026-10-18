@@ -126,7 +126,7 @@ scenes.push({
   steps: [
     { camera: { on: 'you', zoom: 5 }, show: ['you-label'], focus: 'you', say: 'Your phone has no idea where it is. It has to be told.' },
     { camera: 'all', hide: ['you-label'], show: ['orbit', 'sat0', 'sat1', 'sat2', 'sat3', 'height'], focus: ['orbit', 'height'], say: 'Twenty thousand kilometres up, a ring of satellites circles the planet. The drawing is to scale.' },
-    { move: { sat1: `rotate(360 ${cx} ${cy})` }, show: ['speed', 'lap'], focus: ['sat1', 'speed', 'lap'], say: 'Each one moves at almost four kilometres a second, and goes all the way round in just under twelve hours.' },
+    { move: { sat1: { to: `rotate(360 ${cx} ${cy})`, when: 'goes all the way round' } }, show: ['speed', 'lap'], focus: ['sat1', 'speed', 'lap'], say: 'Each one moves at almost four kilometres a second, and goes all the way round in just under twelve hours.' },
     { show: ['signals'], focus: ['sat0', 'sat1', 'sat2', 'sat3', 'signals', 'you'], callout: `the signal takes ${Math.round(signalMs)} ms to arrive`, say: 'Every satellite carries an atomic clock, and keeps sending out the time. The signal takes about a fifteenth of a second to reach you.' },
   ],
 });
@@ -231,9 +231,9 @@ scenes.push({
   labels: { 'sat-hand': 'satellite clock', 'ground-hand': 'ground clock', freq: 'frequency', ahead: 'ahead' },
   hidden: ['ahead'],
   steps: [
-    { move: { 'ground-hand': 'rotate(360 420 400)', 'sat-hand': 'rotate(400 1180 400)' }, show: ['ahead'], focus: ['sat-hand', 'ground-hand', 'ahead'], say: 'Tuned like the ground clock, the satellite clock creeps ahead, a little more every day.' },
+    { move: { 'ground-hand': { to: 'rotate(360 420 400)' }, 'sat-hand': { to: 'rotate(400 1180 400)' } }, show: ['ahead'], focus: ['sat-hand', 'ground-hand', 'ahead'], say: 'Tuned like the ground clock, the satellite clock creeps ahead, a little more every day.' },
     { move: { 'ground-hand': '', 'sat-hand': '' }, hide: ['ahead'], set: { freq: 'tuned to 10.229 999 995 43 MHz' }, focus: 'freq', say: 'So before launch, it is tuned a hair slow: four parts in ten billion.' },
-    { move: { 'ground-hand': 'rotate(360 420 400)', 'sat-hand': 'rotate(360 1180 400)' }, set: { freq: 'seen from the ground: 10.23 MHz' }, focus: ['sat-hand', 'ground-hand', 'freq'], say: 'Up in orbit, relativity speeds it up by exactly that much, and seen from the ground it ticks in step.' },
+    { move: { 'ground-hand': { to: 'rotate(360 420 400)' }, 'sat-hand': { to: 'rotate(360 1180 400)' } }, set: { freq: 'seen from the ground: 10.23 MHz' }, focus: ['sat-hand', 'ground-hand', 'freq'], say: 'Up in orbit, relativity speeds it up by exactly that much, and seen from the ground it ticks in step.' },
     { callout: 'receivers add the rest: up to 23 ns', focus: 'sat-face', say: 'Orbits are not perfect circles, so your phone adds one last small correction, up to about twenty three billionths of a second. Relativity is not just a theory here. It is in your pocket.' },
   ],
 });

@@ -1067,6 +1067,15 @@ export interface MemoryScene extends SceneBase {
  */
 export type TraceEntry = string | { ref: string; when?: string };
 
+/**
+ * A move played across a step's words: the transform it ends on, and the words of the `say` it starts on (without
+ * them, when the voice starts). It runs at an even pace to the end of the say.
+ */
+export interface SvgMove {
+  to: string;
+  when?: string;
+}
+
 export interface SvgStep extends StateStep {
   /** New text for `<text>` elements by id, e.g. { "total": "312" }. */
   set?: Record<string, string>;
@@ -1075,9 +1084,10 @@ export interface SvgStep extends StateStep {
    * "rotate(40 200 200)" }: translate(x y), rotate(degrees cx cy) and scale(s), alone or in a row. A move goes outside
    * the element's own transform, so it moves the element from where the drawing puts it; it lasts until a later move,
    * and "" puts the element back. Two moves of the same functions in the same order tween argument by argument, so a
-   * rotate about a pivot turns about it.
+   * rotate about a pivot turns about it. A move given as { "to": transform } plays evenly across the step's words
+   * instead, and with "when" from those words of the `say` to its end, so a full turn takes as long as the sentence.
    */
-  move?: Record<string, string>;
+  move?: Record<string, string | SvgMove>;
   /**
    * Lines drawn on from their start at this step: a path, line, polyline, polygon, rect, circle or ellipse, or a group,
    * whose lines all draw at once; one that is hidden is shown. An entry is an id, or { "ref": "route", "when": "around
