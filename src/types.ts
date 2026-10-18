@@ -1184,7 +1184,7 @@ export interface PlotAxis {
  * Text drawn beside a part, in plain words. `{expr}` shows an expression's value, with up to 2 decimals and
  * thousands commas; `{expr:0}` gives the decimals, e.g. "${10000 * 1.07^t:0}" reads "$19,672" at t = 10.
  */
-export type PlotLabel = string;
+type PlotLabel = string;
 
 interface PlotPartBase {
   /** Named by `focus`, `show`, `hide`, `tint`, `trace` and the ink. Different from every other part's id and every parameter. */
