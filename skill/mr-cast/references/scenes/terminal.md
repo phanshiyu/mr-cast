@@ -28,4 +28,4 @@ A `focus` is an entry index, an `"a-b"` range, or one output line `"entry:line"`
 
 `{{MR_CAST}}/bin/mr-cast schema terminal` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/terminal/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/oauth/storyboard.json` (scenes 4, 6 and 7, real requests); `{{MR_CAST}}/examples/architecture/youtube/storyboard.json` (scene 3, a manifest).
+A whole demo: `{{MR_CAST}}/examples/primitives/terminal/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/oauth/storyboard.json` (scenes 4, 6 and 7, real requests); `{{MR_CAST}}/examples/architecture/youtube/storyboard.json` (scene 3, a manifest); `{{MR_CAST}}/examples/tech/docker-100s/storyboard.json` (scene 4, a container run).

@@ -26,4 +26,4 @@ A ref is an item index or `"a-b"` range, `"note"`, `"kicker"`, the lead's field 
 
 An `intent` scene from an older storyboard is drawn as a text scene: its `summary` as the `headline`, its `bullets` as the `items`, its `risk`, the storyboard's title and subtitle as the `kicker`, and `diffstat`. `validate` reports its problems by its own field names.
 
-`{{MR_CAST}}/bin/mr-cast schema text` prints its fields. A whole demo: `{{MR_CAST}}/examples/primitives/text/storyboard.json`.
+`{{MR_CAST}}/bin/mr-cast schema text` prints its fields. A whole demo: `{{MR_CAST}}/examples/primitives/text/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/language/ser-estar/storyboard.json` (scene 0, a `question` lead with `sides`); `{{MR_CAST}}/examples/cooking/bread/storyboard.json` (scene 1, hydration with `set`); `{{MR_CAST}}/examples/science/gps-relativity/storyboard.json` (scene 5).

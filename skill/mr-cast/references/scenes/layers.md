@@ -36,4 +36,4 @@ A `focus` is a layer id, an item id or `"layer.item"`, or a path stop index, whi
 
 `{{MR_CAST}}/bin/mr-cast schema layers` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/layers/storyboard.json`.
+A whole demo: `{{MR_CAST}}/examples/primitives/layers/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/tech/docker-100s/storyboard.json` (scene 3, an image's layers).

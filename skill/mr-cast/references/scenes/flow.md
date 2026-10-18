@@ -24,4 +24,4 @@ A flow takes no `focus`. Each stage is `{ actor, action, payload?, icon?, say? }
 
 `{{MR_CAST}}/bin/mr-cast schema flow` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/flow/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/explain/bitcoin/storyboard.json` (scene 1, a signature checked); `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 10, the whole update path).
+A whole demo: `{{MR_CAST}}/examples/primitives/flow/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/explain/bitcoin/storyboard.json` (scene 1, a signature checked); `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 10, the whole update path); `{{MR_CAST}}/examples/science/mrna-vaccine/storyboard.json` (scene 5, the immune response).

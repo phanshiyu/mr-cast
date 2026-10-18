@@ -29,4 +29,4 @@ A `focus` is a row index, an `"a-b"` range, `"side:After"`, or a cell `"2@After"
 
 `{{MR_CAST}}/bin/mr-cast schema compare` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/compare/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 1, JSX beside the object it becomes); `{{MR_CAST}}/examples/architecture/h3/storyboard.json` (scene 7).
+A whole demo: `{{MR_CAST}}/examples/primitives/compare/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 1, JSX beside the object it becomes); `{{MR_CAST}}/examples/architecture/h3/storyboard.json` (scene 7); `{{MR_CAST}}/examples/tech/docker-100s/storyboard.json` (scene 1, a container against a VM); `{{MR_CAST}}/examples/cooking/bread/storyboard.json` (scene 2, wet dough against dry); `{{MR_CAST}}/examples/language/ser-estar/storyboard.json` (scenes 1 and 4, ink on each side); `{{MR_CAST}}/examples/product/raspberry-pi/storyboard.json` (scene 3).

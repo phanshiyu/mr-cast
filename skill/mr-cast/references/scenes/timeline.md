@@ -35,4 +35,4 @@ A `focus` is an event index, an `"a-b"` range, or `"span:label"`. `unit` is one 
 
 `{{MR_CAST}}/bin/mr-cast schema timeline` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/timeline/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/youtube/storyboard.json` (scene 4, chunks during playback); `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 6, dropped frames); `{{MR_CAST}}/examples/architecture/oauth/storyboard.json` (scene 8, token expiry).
+A whole demo: `{{MR_CAST}}/examples/primitives/timeline/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/architecture/youtube/storyboard.json` (scene 4, chunks during playback); `{{MR_CAST}}/examples/architecture/react/storyboard.json` (scene 6, dropped frames); `{{MR_CAST}}/examples/architecture/oauth/storyboard.json` (scene 8, token expiry); `{{MR_CAST}}/examples/cooking/bread/storyboard.json` (scene 5, where a day of baking goes).

@@ -14,6 +14,7 @@ const SCENES = ['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'gra
 const EXPECTED = [
   'skills/mr-cast/SKILL.md',
   'skills/mr-cast/references/camera.md',
+  'skills/mr-cast/references/examples.md',
   'skills/mr-cast/references/ink.md',
   'skills/mr-cast/references/motion.md',
   'skills/mr-cast/references/plan.md',
