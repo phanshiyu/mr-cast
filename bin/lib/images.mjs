@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { imageSources } from '../../shared/images.mjs';
 import { findRepoRoot } from './git.mjs';
+import { getPublic, Refused } from './public-fetch.mjs';
 
 export const IMAGES_DIR = 'images';
 export const IMAGES_FILE = 'images.json';
@@ -19,6 +20,8 @@ const DOWNLOAD_TIMEOUT_MS = 20_000;
 /** The types an image may be, by the extension its copy gets, with the content type a server sends for it. */
 const TYPES = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
 const TYPE_NAMES = 'a PNG, JPEG, WebP or GIF image';
+/** Content types a server may send an image as; the first bytes then say which image it is. */
+const SENT_TYPES = new Set([...Object.values(TYPES), 'image/jpg', 'application/octet-stream', 'binary/octet-stream']);
 const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const LIMIT = `${MAX_IMAGE_BYTES / 1024 / 1024} MB`;
 
@@ -123,39 +126,46 @@ function cachedDownload(dir, src) {
   return null;
 }
 
-/** Why a fetch failed, in a few words: the system's error code, a timeout, or the message. */
+/** Why a download failed, in a few words: the refusal, a timeout, the system's error code, or the message. */
 function fetchReason(err) {
+  if (err instanceof Refused) return err.message;
   if (err?.name === 'TimeoutError' || err?.name === 'AbortError') return `no answer within ${DOWNLOAD_TIMEOUT_MS / 1000} s`;
-  const cause = err?.cause;
-  return cause?.code ? `${cause.code}${cause.hostname ? ` for ${cause.hostname}` : ''}` : cause?.message ?? err?.message ?? String(err);
+  const code = err?.code ?? err?.cause?.code;
+  const hostname = err?.hostname ?? err?.cause?.hostname;
+  return code ? `${code}${hostname ? ` for ${hostname}` : ''}` : err?.message ?? String(err);
 }
 
 /** Downloads `src`, at most MAX_IMAGE_BYTES, checking the server's content type and then the bytes themselves. */
 async function download(src) {
+  const signal = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
   let res;
   try {
-    res = await fetch(src, { redirect: 'follow', signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS), headers: { 'user-agent': 'mr-cast' } });
+    res = await getPublic(src, { signal, headers: { 'user-agent': 'mr-cast' } });
   } catch (err) {
     return { error: `could not be downloaded: ${fetchReason(err)}` };
   }
-  if (!res.ok) return { error: `could not be downloaded: the server answered HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}` };
-  const type = (res.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
-  if (!Object.values(TYPES).includes(type)) {
-    await res.body?.cancel();
+  const status = res.statusCode ?? 0;
+  if (status < 200 || status > 299) {
+    res.destroy();
+    return { error: `could not be downloaded: the server answered HTTP ${status}${res.statusMessage ? ` ${res.statusMessage}` : ''}` };
+  }
+  const type = (res.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  if (!SENT_TYPES.has(type)) {
+    res.destroy();
     return { error: `is not ${TYPE_NAMES}: the server sends it as ${type ? `"${type}"` : 'no content type'}` };
   }
-  const length = Number(res.headers.get('content-length'));
+  const length = Number(res.headers['content-length']);
   if (length > MAX_IMAGE_BYTES) {
-    await res.body?.cancel();
+    res.destroy();
     return { error: `is ${mb(length)}; an image may be up to ${LIMIT}` };
   }
   const chunks = [];
   let size = 0;
   try {
-    for await (const chunk of res.body) {
+    for await (const chunk of res) {
       size += chunk.length;
       if (size > MAX_IMAGE_BYTES) {
-        await res.body.cancel().catch(() => {});
+        res.destroy();
         return { error: `is over ${LIMIT}, the most an image may be` };
       }
       chunks.push(chunk);
@@ -166,15 +176,28 @@ async function download(src) {
   return { buf: Buffer.concat(chunks) };
 }
 
-/** The file a relative `src` names: in the run directory, else in the repository; with the places tried. */
+/**
+ * The file a relative `src` names: in the run directory, else in the repository; with the places tried. Links are
+ * followed before the check, so a link that leads out of both is refused rather than read.
+ */
 function localFile(dir, repo, src) {
   const roots = [dir, ...(repo && path.resolve(repo) !== path.resolve(dir) ? [repo] : [])];
+  const realRoots = roots.map((root) => {
+    try {
+      return fs.realpathSync(root) + path.sep;
+    } catch {
+      return path.resolve(root) + path.sep;
+    }
+  });
+  let leadsOut = false;
   for (const root of roots) {
     const file = path.resolve(root, src);
-    const inside = file.startsWith(path.resolve(root) + path.sep);
-    if (inside && fs.existsSync(file)) return { file };
+    if (!file.startsWith(path.resolve(root) + path.sep) || !fs.existsSync(file)) continue;
+    const real = fs.realpathSync(file);
+    if (realRoots.some((inside) => real.startsWith(inside))) return { file: real };
+    leadsOut = true;
   }
-  return { tried: roots };
+  return { tried: roots, leadsOut };
 }
 
 /**
@@ -198,6 +221,7 @@ async function resolveOne(dir, repo, src, { fetch: allowed }) {
     return { file: store(dir, keyOf(src), checked.type, got.buf, true), ...checked };
   }
   const found = localFile(dir, repo, src);
+  if (found.leadsOut) return { error: `is a link to a file outside the run directory and the repository, which mr-cast does not read` };
   if (!found.file) return { error: `is not a file in ${found.tried.join(' or in ')}` };
   const stat = fs.statSync(found.file);
   if (!stat.isFile()) return { error: `is a directory, not an image file` };

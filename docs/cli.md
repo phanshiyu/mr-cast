@@ -97,6 +97,12 @@ When `storyboard.json` changes, the page keeps playing its version and shows "Up
 
 The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`.
 
+## Picture downloads
+
+`mr-cast validate` downloads the http(s) URL of an image scene or a compare cell into the run's `images/` folder. It downloads only from the public internet. It resolves the host first and refuses the URL when any address of the host is loopback, private (RFC 1918 or IPv6 ULA), link-local (such as the cloud metadata address 169.254.169.254), `0.0.0.0`, `::` or another reserved block, IPv4-mapped IPv6 included. It then connects to the address it checked, so a second DNS answer cannot change it. It follows at most 5 redirects, and checks the scheme, host and address of each one again. A refused URL fails `validate` with the reason, such as `its host is a private, local or reserved address, which mr-cast does not download from`. To show a picture from your own network, save it in the run directory or the repository and give its path.
+
+`MR_CAST_IMAGES_ALLOW_LOOPBACK=1` lets downloads reach `127.0.0.0/8` and `::1`. It is a testing switch for mr-cast's own test suite, which serves pictures from 127.0.0.1. Leave it unset otherwise.
+
 ## The plan
 
 `plan.json` holds the topics of one walkthrough. Each topic has an `id`, a `title`, a one-line `summary`, its `files`, a suggested `depth` (`skip`, `brief` or `deep`), one to three `views` with the suggested one first, an optional `why`, and `seconds`: about how long it takes at `brief` and at `deep`. The schema is `Plan` in `src/types.ts`. `shared/views.mjs` lists the views, each with the label the page shows and the scene types that draw it.

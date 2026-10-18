@@ -7,6 +7,10 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { imageSize, readImages, resolveImages, sniffImage } from '../bin/lib/images.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { ALLOW_LOOPBACK_ENV, isAllowedAddress } from '../bin/lib/public-fetch.mjs';
+
+// The download tests serve from 127.0.0.1, which mr-cast refuses unless this switch is on.
+process.env[ALLOW_LOOPBACK_ENV] = '1';
 
 const png = (width, height) => sharp({ create: { width, height, channels: 3, background: '#3366cc' } }).png().toBuffer();
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-images-'));
@@ -19,7 +23,7 @@ async function serve(routes) {
     hits.push(req.url);
     const route = routes[req.url];
     if (!route) return res.writeHead(404, { 'Content-Type': 'text/plain' }).end('nope');
-    res.writeHead(route.status ?? 200, { 'Content-Type': route.type, ...(route.headers ?? {}) });
+    res.writeHead(route.status ?? 200, { ...(route.type ? { 'Content-Type': route.type } : {}), ...(route.headers ?? {}) });
     res.end(route.body);
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -120,6 +124,100 @@ test('a URL that cannot be downloaded or is no image is an error with the reason
   } finally {
     await server.close();
   }
+});
+
+test('only addresses on the public internet are allowed, IPv4 and IPv6 alike', () => {
+  const allowed = ['93.184.215.14', '8.8.8.8', '2606:4700::6810:85e5', '::ffff:8.8.8.8', '2002:0808:0808::1'];
+  const refused = [
+    '127.0.0.1', '10.1.2.3', '172.16.0.1', '172.31.255.255', '192.168.1.1', '169.254.169.254', '100.64.0.1', '0.0.0.0',
+    '224.0.0.1', '255.255.255.255', '198.18.0.1', '192.0.2.1', '::', '::1', '::ffff:127.0.0.1', '::ffff:7f00:1',
+    '::ffff:169.254.169.254', 'fc00::1', 'fd12:3456::1', 'fe80::1', 'fe80::1%en0', 'ff02::1', '2001:db8::1',
+    '64:ff9b::a9fe:a9fe', '2002:7f00:0001::1', 'not an address',
+  ];
+  assert.deepEqual(allowed.filter((a) => !isAllowedAddress(a)), []);
+  assert.deepEqual(refused.filter((a) => isAllowedAddress(a)), []);
+  assert.deepEqual(['127.0.0.1', '127.9.9.9', '::1', '::ffff:127.0.0.1', '10.0.0.1', '::'].map((a) => isAllowedAddress(a, { loopback: true })), [true, true, true, true, false, false]);
+});
+
+test('a URL whose host is private, local or reserved is refused before any connection, by name or by address', async () => {
+  const server = await serve({ '/cat.png': { type: 'image/png', body: await png(4, 4) } });
+  const port = new URL(server.url).port;
+  delete process.env[ALLOW_LOOPBACK_ENV];
+  try {
+    const srcs = [`${server.url}/cat.png`, `http://localhost:${port}/cat.png`, `http://[::ffff:127.0.0.1]:${port}/cat.png`, `http://0.0.0.0:${port}/cat.png`, `http://[::]:${port}/cat.png`, `http://2130706433:${port}/cat.png`, 'http://169.254.169.254/latest/meta-data/x.png', 'http://10.0.0.1/x.png', 'http://[fd00::1]/x.png'];
+    const { manifest, problems } = await resolveImages(tmp(), board(...srcs), { repo: null });
+    assert.deepEqual(manifest, {});
+    assert.deepEqual(problems.map((p) => p.message), srcs.map((src) => `${JSON.stringify(src)} could not be downloaded: its host is a private, local or reserved address, which mr-cast does not download from`));
+    assert.deepEqual(server.hits, []);
+  } finally {
+    process.env[ALLOW_LOOPBACK_ENV] = '1';
+    await server.close();
+  }
+});
+
+test('redirects are followed by hand, at most five, and each hop is checked like the first', async () => {
+  const body = await png(20, 10);
+  const redirect = (location) => ({ status: 302, headers: { Location: location } });
+  const server = await serve({
+    '/cat.png': { type: 'image/png', body },
+    '/moved': redirect('/cat.png'),
+    '/metadata': redirect('http://169.254.169.254/latest/meta-data/x.png'),
+    '/private': redirect('http://192.168.0.1/x.png'),
+    '/ftp': redirect('ftp://example.com/x.png'),
+    '/loop': redirect('/loop'),
+  });
+  try {
+    const src = (p) => server.url + p;
+    const { manifest, problems } = await resolveImages(tmp(), board(src('/moved'), src('/metadata'), src('/private'), src('/ftp'), src('/loop')), { repo: null });
+    assert.deepEqual(Object.keys(manifest), [src('/moved')]);
+    assert.equal(manifest[src('/moved')].width, 20);
+    const refused = 'could not be downloaded: its host is a private, local or reserved address, which mr-cast does not download from';
+    assert.deepEqual(problems.map((p) => p.message), [
+      `"${src('/metadata')}" ${refused}`,
+      `"${src('/private')}" ${refused}`,
+      `"${src('/ftp')}" could not be downloaded: it redirects to a URL that is not http(s)`,
+      `"${src('/loop')}" could not be downloaded: it redirects more than 5 times`,
+    ]);
+    assert.equal(server.hits.filter((h) => h === '/loop').length, 6);
+  } finally {
+    await server.close();
+  }
+});
+
+test('a server that sends an image as octet-stream or image/jpg is trusted to the first bytes', async () => {
+  const body = await png(30, 20);
+  const server = await serve({
+    '/a': { type: 'application/octet-stream', body },
+    '/b': { type: 'binary/octet-stream', body },
+    '/c.jpg': { type: 'image/jpg', body: await sharp({ create: { width: 30, height: 20, channels: 3, background: '#808080' } }).jpeg().toBuffer() },
+    '/d': { type: 'application/octet-stream', body: 'hello' },
+  });
+  try {
+    const srcs = ['/a', '/b', '/c.jpg', '/d'].map((p) => server.url + p);
+    const { manifest, problems } = await resolveImages(tmp(), board(...srcs), { repo: null });
+    assert.deepEqual(srcs.slice(0, 3).map((s) => manifest[s]?.file.split('.').pop()), ['png', 'png', 'jpg']);
+    assert.deepEqual(problems.map((p) => p.message), [`"${srcs[3]}" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows`]);
+  } finally {
+    await server.close();
+  }
+});
+
+test('a local path that is a link out of the run directory and the repository is refused, and one inside is read', async () => {
+  const root = tmp();
+  const repo = path.join(root, 'repo');
+  const dir = path.join(repo, 'run');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(root, 'secret.png'), await png(4, 4));
+  fs.writeFileSync(path.join(repo, 'shot.png'), await png(6, 6));
+  fs.symlinkSync(path.join(root, 'secret.png'), path.join(repo, 'out.png'));
+  fs.symlinkSync(path.join(root, 'secret.png'), path.join(dir, 'out-too.png'));
+  fs.symlinkSync(path.join(repo, 'shot.png'), path.join(dir, 'in.png'));
+  fs.symlinkSync(root, path.join(dir, 'up'));
+  const { manifest, problems } = await resolveImages(dir, board('out.png', 'out-too.png', 'in.png', 'up/secret.png'), { repo });
+  assert.deepEqual(Object.keys(manifest), ['in.png']);
+  assert.equal(manifest['in.png'].width, 6);
+  const out = 'is a link to a file outside the run directory and the repository, which mr-cast does not read';
+  assert.deepEqual(problems.map((p) => p.message), [`"out.png" ${out}`, `"out-too.png" ${out}`, `"up/secret.png" ${out}`]);
 });
 
 test('the read-only check downloads and writes nothing, and says a URL is not downloaded yet', async () => {

@@ -61,7 +61,7 @@ A code scene with `typing` types each step's lines in over the step's `say`, beh
 
 ## Pictures
 
-An `image` scene shows a picture, and a compare cell can be `{ "image": "before.png" }`. `src` is a path relative to the run directory or the repository, or an http(s) URL. `mr-cast validate` copies the file into the run's `images/` folder, or downloads the URL there once, and writes `images.json`; the player serves only that folder and renders read only the copies. A picture must be a PNG, JPEG, WebP or GIF file of up to 10 MB, checked by its first bytes; SVG files are refused because they can carry scripts. mr-cast does not make or change pictures: it shows the file given, and whoever makes the video owns the right to use it.
+An `image` scene shows a picture, and a compare cell can be `{ "image": "before.png" }`. `src` is a path relative to the run directory or the repository, or an http(s) URL. `mr-cast validate` copies the file into the run's `images/` folder, or downloads the URL there once from a public host (see [Picture downloads](cli.md#picture-downloads)), and writes `images.json`; the player serves only that folder and renders read only the copies. A picture must be a PNG, JPEG, WebP or GIF file of up to 10 MB, checked by its first bytes; SVG files are refused because they can carry scripts. mr-cast does not make or change pictures: it shows the file given, and whoever makes the video owns the right to use it.
 
 ## Code from a diff or from snippets
 
