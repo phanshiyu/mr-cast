@@ -707,7 +707,12 @@ async function render(argv) {
   const { dir, hunks, storyboard, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = await voiceoverFor(dir, storyboard, run.settings);
   reportPace(voiceover);
-  const { renderVideo } = await importRender();
+  const { renderVideo, closeBrowsers } = await importRender();
+  // `mr-cast stop` sends SIGTERM. Without a handler Node exits at once, and on Linux the Chrome it started runs on.
+  process.once('SIGTERM', async () => {
+    await closeBrowsers();
+    process.exit(143);
+  });
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
   const progress = progressReporter('rendering');

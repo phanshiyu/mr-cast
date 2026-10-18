@@ -504,6 +504,37 @@ test('a play that replaces one downloading the voice model leaves that download 
   await second.exited;
 });
 
+const RENDER_CACHE = process.env.MR_CAST_TEST_RENDER_CACHE;
+
+/** The processes descended from `pid` that `ps` shows now. */
+function descendants(pid) {
+  const rows = [...processTable().values()];
+  const found = [];
+  for (let parents = [pid]; parents.length;) {
+    const next = rows.filter((r) => parents.includes(r.ppid));
+    found.push(...next);
+    parents = next.map((r) => r.pid);
+  }
+  return found;
+}
+
+test('stop ends a render, which closes the Chrome it started before it exits', {
+  skip: RENDER_CACHE ? false : 'MR_CAST_TEST_RENDER_CACHE names no XDG_CACHE_HOME holding Chrome Headless Shell',
+}, async () => {
+  const { cwd, dir } = runIn('render-stop');
+  const scenes = Array.from({ length: 40 }, (_, i) => ({ type: 'text', narration: `Scene ${i} keeps the render busy for a few seconds more.`, headline: `Scene ${i}` }));
+  fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify({ title: 'render-stop', scenes }));
+  const render = await startCli(cwd, ['render', '--no-voice'], /rendering \d+%/, { XDG_CACHE_HOME: RENDER_CACHE });
+  const chrome = descendants(render.pid).filter((r) => /chrome-headless-shell/.test(r.command));
+  assert.ok(chrome.length > 0, 'Chrome runs under the render');
+  const stopped = cli(cwd, 'stop', String(render.pid), '--json');
+  assert.equal(stopped.status, 0, stopped.stderr);
+  // 143 is the handler's own exit; a render without one dies of the signal.
+  assert.deepEqual(await within(render.exited, 10_000), { code: 143, signal: null });
+  for (let i = 0; i < 50 && chrome.some((r) => processTable([r.pid])?.has(r.pid)); i++) await new Promise((r) => setTimeout(r, 100));
+  assert.deepEqual(chrome.filter((r) => processTable([r.pid])?.get(r.pid)?.started === r.started).map((r) => r.pid), [], 'no Chrome process is left');
+});
+
 test('play with --idle-exit stops by itself when no page opens, and removes its entry', async () => {
   const { cwd } = runIn('idle');
   const play = await startCli(cwd, ['play', '--no-voice', '--no-open', '--port', '5340', '--idle-exit', '0.01'], /mr-cast player:/);

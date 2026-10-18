@@ -155,16 +155,28 @@ async function ensureChrome() {
   }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading Chrome Headless Shell`));
 }
 
+/** The browsers open now, so a stopped render can close them: Chrome can outlive a render that exits without closing it. */
+const browsers = new Set();
+
+async function closeBrowser(browser) {
+  browsers.delete(browser);
+  await browser.close({ silent: true });
+}
+
+/** Closes every browser a render or still opened, as `mr-cast render` does when it is stopped. */
+export const closeBrowsers = () => Promise.all([...browsers].map((b) => closeBrowser(b).catch(() => {})));
+
 async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl }) {
   const browserExecutable = await ensureChrome();
   const serveUrl = await getServeUrl();
   const inputProps = { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl };
   const browser = await withRetry('launching the browser', () => openBrowser('chrome', { browserExecutable }));
+  browsers.add(browser);
   try {
     const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, puppeteerInstance: browser });
     return { serveUrl, inputProps, browser, composition };
   } catch (err) {
-    await browser.close({ silent: true });
+    await closeBrowser(browser);
     throw err;
   }
 }
@@ -191,7 +203,7 @@ async function renderVideoUsingCaches({ hunks, storyboard, voiceover, dataDir, o
         onProgress: ({ progress }) => onProgress?.(progress),
       });
     } finally {
-      await browser.close({ silent: true });
+      await closeBrowser(browser);
     }
   } finally {
     await audio?.close();
@@ -289,7 +301,7 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, s
       written.push(output);
     }
   } finally {
-    await browser.close({ silent: true });
+    await closeBrowser(browser);
   }
   return written;
 }
