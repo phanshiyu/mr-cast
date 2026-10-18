@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.28.0
+
+**Charts that move.** A chart step's `set` gives new values, a series by name or one value `"series@label"`, and the bars, points and slices move to them as the step starts while the printed values count. `sort` orders bars and slices by value, on the scene or per step, and bars that change places slide past each other, so `horizontal` bars with a `callout` for the year make a bar chart race. New `kind`s `pie` and `donut` draw one series as slices with a legend of values and shares, and `stacked` stacks bar series with each stack's total above it. Chart scenes take a `callout`. Existing charts render pixel for pixel as in 0.27 (ADR 0031).
+
+- **`validate`** fails on a set that names no series or value, a series set with the wrong number of values, a negative bar or slice, a pie or donut with other than one series or with every slice 0 at a step, `horizontal`, `stacked` or `sort` on a line, an `annotation` on a horizontal chart or a pie, and `show` or `hide` on a chart. It warns past 8 slices, and on value labels that run together in any step's values.
+- A chart step with no `focus` lights what it sets. `mr-cast steps` lists each step's new values and sorting.
+
+**Code that types itself.** `typing: true` on a code scene types each step's lines in behind a cursor over its `say`; lines no step names are there from the start, and removed lines are not drawn, so a diff hunk shows its new code being written. A step's `output` prints into a terminal-like pane beside the code, at the words of `outputWhen` or once the step is typed, and `outputTitle` names the pane. Existing code scenes render pixel for pixel as in 0.27 (ADR 0031).
+
+**Pictures.** A new `image` scene shows a photo, screenshot or figure, and a compare cell can be `{ "image": ... }` (ADR 0032).
+
+- **Sources.** `src` is a path relative to the run directory or the repository, or an http(s) URL. `validate` copies a local file into the run's `images/` folder by its content hash, or downloads a URL there once by the URL's hash, and writes `images.json`. The player serves only those copies and renders read only them, so nothing loads from the network at play or render time. The validate hook downloads nothing.
+- **Checks.** A picture must be a PNG, JPEG, WebP or GIF file of up to 10 MB, checked by its first bytes and, for a URL, by the server's content type too. SVG files are refused because they can carry scripts. `validate` fails on a missing file, a file outside the run directory and the repository, a file of the wrong type, an oversized one, and a URL it cannot download, with the reason. It warns when a picture is drawn more than twice its own size.
+- **The scene.** `fit` (`contain` or `cover`), a `caption`, a `credit`, `kenBurns` for a slow pan and zoom between two regions or boxes, and `regions` as fractional boxes that steps light, ink draws on, and the highlight check reads by `label`.
+- mr-cast does not make or change pictures; it shows the file given, and whoever makes the video owns the right to use it.
+
+New demos: `examples/primitives/chart-motion`, `examples/primitives/code-typing` and `examples/primitives/image`, whose pictures its own `make-pictures.mjs` draws.
+
 ## 0.27.0
 
 Four changes. mr-cast voices with Kitten TTS by default, the tests scene is a behaviour matrix, a new `text` scene puts words on screen as the picture, and Claude can write and draw on any stepped scene with ink that stays until a step erases it.
