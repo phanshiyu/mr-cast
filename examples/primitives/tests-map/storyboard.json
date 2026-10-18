@@ -1,0 +1,173 @@
+{
+  "title": "Retry failed webhooks",
+  "subtitle": "The paths the delivery tests take through deliver, and the two no test takes",
+  "scenes": [
+    {
+      "type": "graph",
+      "chapter": "Where the tests go",
+      "title": "Paths the tests take",
+      "narration": "Each branch of deliver is green when a test takes it, and red when none does.",
+      "nodes": [
+        {
+          "id": "post",
+          "label": "Post the event",
+          "shape": "step",
+          "caption": "as JSON",
+          "badge": "1 test"
+        },
+        {
+          "id": "answer",
+          "label": "Answer?",
+          "shape": "decision"
+        },
+        {
+          "id": "delivered",
+          "label": "Delivered",
+          "shape": "terminal",
+          "badge": "3 tests"
+        },
+        {
+          "id": "refused",
+          "label": "Failed, 1 call",
+          "shape": "terminal",
+          "badge": "1 test"
+        },
+        {
+          "id": "last",
+          "label": "Last try?",
+          "shape": "decision"
+        },
+        {
+          "id": "gaveup",
+          "label": "Failed after 4 calls",
+          "shape": "terminal",
+          "badge": "2 tests"
+        },
+        {
+          "id": "wait",
+          "label": "Wait 1, 4 or 16 s",
+          "shape": "step",
+          "caption": "then posts again",
+          "badge": "1 test"
+        },
+        {
+          "id": "hang",
+          "label": "Hangs forever",
+          "shape": "terminal",
+          "badge": "no test",
+          "tone": "bad"
+        },
+        {
+          "id": "twice",
+          "label": "Event sent twice",
+          "shape": "terminal",
+          "badge": "no test",
+          "tone": "bad"
+        }
+      ],
+      "edges": [
+        {
+          "from": "post",
+          "to": "answer"
+        },
+        {
+          "from": "answer",
+          "to": "delivered",
+          "label": "2xx"
+        },
+        {
+          "from": "answer",
+          "to": "refused",
+          "label": "4xx"
+        },
+        {
+          "from": "answer",
+          "to": "last",
+          "label": "5xx"
+        },
+        {
+          "from": "answer",
+          "to": "hang",
+          "label": "no answer",
+          "style": "dashed"
+        },
+        {
+          "from": "last",
+          "to": "gaveup",
+          "label": "yes"
+        },
+        {
+          "from": "last",
+          "to": "wait",
+          "label": "no"
+        },
+        {
+          "from": "delivered",
+          "to": "twice",
+          "label": "reply lost",
+          "style": "dashed"
+        }
+      ],
+      "tint": {
+        "post": "good",
+        "answer": "good",
+        "delivered": "good",
+        "refused": "good",
+        "last": "good",
+        "gaveup": "good",
+        "wait": "good",
+        "post->answer": "good",
+        "answer->delivered": "good",
+        "answer->refused": "good",
+        "answer->last": "good",
+        "last->gaveup": "good",
+        "last->wait": "good",
+        "hang": "bad",
+        "twice": "bad",
+        "answer->hang": "bad",
+        "delivered->twice": "bad"
+      },
+      "steps": [
+        {
+          "focus": [
+            "post",
+            "post->answer",
+            "answer",
+            "answer->last",
+            "last",
+            "last->wait",
+            "wait",
+            "answer->delivered",
+            "delivered"
+          ],
+          "callout": "[NEW]{good} retries a 503 until it succeeds",
+          "say": "The first new test sends two server errors, then a good answer. It waits, tries again, and ends delivered."
+        },
+        {
+          "focus": [
+            "answer->refused",
+            "refused"
+          ],
+          "callout": "[NEW]{good} does not retry a 400",
+          "say": "A bad request takes the short branch and fails at once."
+        },
+        {
+          "focus": [
+            "answer->hang",
+            "hang"
+          ],
+          "callout": "[NO TEST]{bad} a receiver that never answers",
+          "say": "No test takes the branch where the receiver never answers. Each try waits for it with no limit."
+        },
+        {
+          "focus": [
+            "delivered->twice",
+            "twice"
+          ],
+          "callout": "[NO TEST]{bad} the reply is lost",
+          "say": "And none covers a delivery that worked but whose reply was lost, which sends the event twice."
+        }
+      ]
+    }
+  ]
+}

@@ -101,8 +101,6 @@ const rowCount = (scene: TestsScene, row: MatrixRow) => {
   return row.gap ? '' : live === 0 ? 'no test' : live === 1 ? '1 test' : `${live} tests`;
 };
 
-/** Whether rows list the names of the tests that check them, in a column of their own, when every value still fits one line beside it. */
-const NAMES_ENABLED = true;
 
 /**
  * Column widths for `room`: every column its natural width and an equal part of what is left; when they do not
@@ -153,13 +151,13 @@ function attempt(scene: TestsScene, matrix: TestsMatrix, width: number, font: nu
     ),
   );
 
-  // The names column: every test's name in mono, when the outcomes keep enough room beside it.
   const nameFont: Font = { family: 'mono', weight: 500, size: Math.max(MIN_FONT, Math.round(font * 0.76)) };
   const namesNat = scene.tests.length ? Math.max(...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX : 0;
   const outcomeRoom = (namesW: number) => width - whenW - namesW - COL_GAP * (outcomes.length + (namesW ? 1 : 0));
   const natSum = colNat.reduce((a, b) => a + b, 0);
   const namesFit = Math.round(Math.min(namesNat, width * 0.3));
-  const namesW = NAMES_ENABLED && namesNat && outcomeRoom(namesFit) >= natSum ? namesFit : 0;
+  // The names column only when every value still fits one line beside it.
+  const namesW = namesNat && outcomeRoom(namesFit) >= natSum ? namesFit : 0;
   const room = outcomeRoom(namesW);
   const colW = shareWidths(colNat, room);
 
