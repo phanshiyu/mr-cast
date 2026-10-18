@@ -38,20 +38,25 @@ function where(scene, i, fitPath) {
 /**
  * Text that does not fit at its slot's smallest readable size, and markup errors. `storyboard` is normalized and otherwise valid.
  */
-export async function checkFit(storyboard, hunks, errors, warnings) {
+export async function checkFit(storyboard, hunks, errors, warnings, images = {}) {
   if (!fs.existsSync(ENTRY)) return;
   let reports;
   let stages;
+  let upscaled;
   try {
-    const { fitReport, inkStages } = await reportModule();
-    reports = fitReport(storyboard, hunks);
-    stages = inkStages(storyboard, hunks);
+    const { fitReport, imageScales, inkStages } = await reportModule();
+    reports = fitReport(storyboard, hunks, images);
+    stages = inkStages(storyboard, hunks, images);
+    upscaled = imageScales(storyboard, images);
   } catch (err) {
     warnings.push(`could not check that the text fits (${err.message}); run \`mr-cast still\` and look for text running past its box`);
     return;
   }
   checkInkPoints(storyboard, hunks, stages, warnings);
   checkCameraCrops(storyboard, hunks, stages, warnings);
+  for (const { scene: i, natural, drawn, scale } of upscaled) {
+    warnings.push(`${where(storyboard.scenes[i], i, 'src')}: the picture is ${natural.width}×${natural.height} and is drawn ${drawn.width}×${drawn.height}, ${scale.toFixed(1)} times its size, so it looks soft; use a larger image`);
+  }
   for (const { scene: i, fits, scaled } of reports) {
     const scene = storyboard.scenes[i];
     for (const part of scaled) {

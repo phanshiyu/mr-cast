@@ -10,7 +10,7 @@ process.env.CLAUDE_CONFIG_DIR = path.join(tmp, 'never-used');
 const { installSkill, refreshSkills, skillsInstalledFrom, uninstallSkill } = await import('../bin/lib/install-skill.mjs');
 
 const root = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
-const SCENES = ['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'layers', 'map', 'memory', 'mermaid', 'plot', 'reading', 'review', 'sequence', 'state', 'svg', 'table', 'terminal', 'tests', 'text', 'timeline'];
+const SCENES = ['array', 'chart', 'code', 'compare', 'er', 'files', 'flow', 'graph', 'image', 'layers', 'map', 'memory', 'mermaid', 'plot', 'reading', 'review', 'sequence', 'state', 'svg', 'table', 'terminal', 'tests', 'text', 'timeline'];
 const EXPECTED = [
   'skills/mr-cast/SKILL.md',
   'skills/mr-cast/references/camera.md',

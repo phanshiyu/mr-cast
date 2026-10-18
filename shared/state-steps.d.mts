@@ -1,4 +1,4 @@
-import type { ArrayStep, GraphStep, MemoryStep, MemoryValue, Scene, TableCell, Tint } from '../src/types';
+import type { ArrayStep, ChartStep, GraphStep, MemoryStep, MemoryValue, Scene, TableCell, Tint } from '../src/types';
 
 /**
  * What a scene shows at one step: values by item key, places of pointers and ranges, hidden items, the
@@ -19,6 +19,8 @@ export interface SceneState {
    * on a map the words a route arrives on; a plot's trace is timed by the step's own `when`. Only the step's own.
    */
   traces: Record<string, string | null>;
+  /** A chart's bars or slices are ordered by value. */
+  sort?: boolean;
 }
 
 export interface StateProblem {
@@ -37,6 +39,6 @@ export declare function sameValue(a: MemoryValue | TableCell | undefined, b: Mem
 export declare const TINTS: readonly Tint[];
 export declare function walkStates(scene: Scene): { states: SceneState[]; problems: StateProblem[] };
 export declare function sceneStates(scene: Scene): SceneState[];
-export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | undefined): boolean;
+export declare function changesState(step: ArrayStep | MemoryStep | GraphStep | ChartStep | undefined): boolean;
 export declare function changedRefs(scene: Scene, step: ArrayStep | MemoryStep | GraphStep): string[];
 export declare function traceEntry(entry: unknown): { ref: unknown; when: unknown };

@@ -10,7 +10,8 @@ import { plotAxes, plotGeometry, plotLabels, stateParams } from '../../shared/pl
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
 import { sceneFiles } from '../../shared/files.mjs';
-import type { ArrayScene, ErScene, FilesScene, GraphScene, HunkMap, LayersScene, MapScene, MemoryScene, PlotScene, StateScene, SvgScene, TableScene, TestsScene, TimelineScene } from '../types';
+import type { ArrayScene, ErScene, FilesScene, GraphScene, HunkMap, ImageManifest, ImageScene, LayersScene, MapScene, MemoryScene, PlotScene, StateScene, SvgScene, TableScene, TestsScene, TimelineScene } from '../types';
+import { cameraFor, layoutImage, regionOnScreen, viewAt } from './imageLayout';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { erBoxes, erScale, layoutEr } from './erLayout';
 import { filesBoxes, layoutFiles, treeRows } from './filesLayout';
@@ -139,4 +140,14 @@ export function timelineTargets(scene: TimelineScene): MarkTargets {
   const layout = layoutTimeline(scene, box.width);
   const scale = timelineScale(layout, box);
   return staged(timelineBoxes(layout), { left: (box.width - layout.width * scale) / 2, top: Math.max(0, box.height - layout.height * scale) * 0.4, scale }, box);
+}
+
+/** A picture's regions, as the camera frames them at the start of each step (`starts`, fractions of the scene). */
+export function imageTargets(scene: ImageScene, images: ImageManifest, starts: readonly number[]): MarkTargets[] {
+  const box = headerBox(scene);
+  const layout = layoutImage(scene, box, images);
+  return starts.map((t) => {
+    const camera = cameraFor(layout, viewAt(scene, t));
+    return { boxes: new Map((scene.regions ?? []).map((r) => [`im:${r.id}`, regionOnScreen(layout, r.box, camera)])), obstacles: [], area: { x: 0, y: 0, width: box.width, height: box.height } };
+  });
 }

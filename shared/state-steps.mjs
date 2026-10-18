@@ -1,4 +1,4 @@
-// Scenes whose steps change what they show: `array`, `memory` and `graph`. A scene's state at step k is its
+// Scenes whose steps change what they show: `array`, `memory`, `graph`, `table`, `svg`, `text` and `chart`. A scene's state at step k is its
 // initial state with the changes of steps 0 to k applied in order; a step's changes land at its start. State
 // keys are the item keys of shared/targets.mjs, so the item a step changes and the item it focuses share a name.
 // Shared by the scenes (which draw each state) and `validate` (which reports every change that names nothing).
@@ -254,6 +254,20 @@ const MODELS = {
     move: null,
     moveNames: () => [],
   },
+  chart: {
+    initial(scene) {
+      return { values: Object.fromEntries(list(scene.series).flatMap((series, s) => list(series?.values).map((v, l) => [`p:${s}/${l}`, v]))), places: {}, hidden: {} };
+    },
+    // A set key is a series by name, to one number per label, or one value "series@label", to a number.
+    set: { prefixes: ['p:'], what: 'series or value', help: () => 'a series name, to one number per label, or a value "series@label", to a number', entries: chartSetEntries },
+    show: null,
+    tint: null,
+    callout: true,
+    sort: (scene) => (scene.kind === 'bar' || scene.kind === 'pie' || scene.kind === 'donut' ? null : `a ${scene.kind ?? 'line'} chart keeps its labels in order; sort orders bars and slices`),
+    checkValue: (value, scene) => (typeof value === 'number' && Number.isFinite(value) ? (value < 0 && scene.kind !== 'line' ? `is below 0; ${scene.kind === 'bar' ? 'bars start at zero' : 'a slice is a share'}, so values must be 0 or more` : null) : 'must be a number'),
+    move: null,
+    moveNames: () => [],
+  },
   memory: {
     initial(scene) {
       const owners = [...list(scene.frames).map((f) => [`fr:${f?.name}`, 'v', f?.name, f?.vars, f?.hidden]), ...list(scene.objects).map((o) => [`o:${o?.id}`, 'f', o?.id, o?.fields, o?.hidden])];
@@ -278,6 +292,27 @@ const MODELS = {
   },
 };
 
+/**
+ * The values a chart step's set key writes, as [item key, value], or why it writes none. "share" (a series name)
+ * takes one number per label; "share@2010" takes one number.
+ */
+function chartSetEntries(scene, ref, value) {
+  const names = list(scene.series).map((s) => s?.name);
+  const labels = list(scene.labels);
+  const series = names.indexOf(ref);
+  if (series >= 0) {
+    if (!Array.isArray(value)) return { error: `is a series, so it takes one number per label, e.g. [${labels.map((_, i) => i + 1).join(', ')}]` };
+    if (value.length !== labels.length) return { error: `has ${value.length} values for ${labels.length} labels; give one value per label` };
+    return { entries: value.map((v, l) => [`p:${series}/${l}`, v]) };
+  }
+  const keys = resolveRef(scene, ref);
+  if (keys?.length === 1 && keys[0].startsWith('p:')) {
+    if (Array.isArray(value)) return { error: 'is one value, so it takes one number; set the series by its name to give every label a value' };
+    return { entries: [[keys[0], value]] };
+  }
+  return { error: `names no series or value; a set key is a series name (${names.map((n) => JSON.stringify(n)).join(', ')}), or a value "series@label"`, names: [...names, ...names.flatMap((n) => labels.map((l) => `${n}@${l}`))] };
+}
+
 /** Scene types whose steps change state. */
 export const STATE_TYPES = Object.keys(MODELS);
 
@@ -288,7 +323,7 @@ function oneKey(scene, ref, prefixes) {
 }
 
 // A trace draws during its own step only, so the next state starts with none.
-const copy = (state) => ({ values: { ...state.values }, places: { ...state.places }, hidden: { ...state.hidden }, tints: { ...state.tints }, callout: state.callout, transforms: { ...state.transforms }, shapes: { ...state.shapes }, traces: {} });
+const copy = (state) => ({ values: { ...state.values }, places: { ...state.places }, hidden: { ...state.hidden }, tints: { ...state.tints }, callout: state.callout, transforms: { ...state.transforms }, shapes: { ...state.shapes }, traces: {}, ...(state.sort === undefined ? {} : { sort: state.sort }) });
 
 /** Elements a step can `trace`: lines and outlines, and a group, which traces every one inside it. */
 const SVG_TRACEABLE = ['path', 'line', 'polyline', 'polygon', 'rect', 'circle', 'ellipse', 'g'];
@@ -377,7 +412,7 @@ export function walkStates(scene) {
       problems.push({ step, field: step < 0 ? 'objects' : 'set', ref, level: 'error', names: [], message: `points at "${target}" ${when}, but "${target}" is hidden then; show it in this step or an earlier one, or start it shown` });
     }
   };
-  let state = { ...model.initial(scene), tints: {}, callout: typeof scene.callout === 'string' ? scene.callout : '', transforms: {}, shapes: {}, traces: {} };
+  let state = { ...model.initial(scene), tints: {}, callout: typeof scene.callout === 'string' ? scene.callout : '', transforms: {}, shapes: {}, traces: {}, ...(model.sort ? { sort: scene.sort === true } : {}) };
   if (scene.callout !== undefined && !model.callout) problems.push({ step: -1, field: 'callout', ref: '', message: `${aType(scene.type)} scene draws no callout`, names: [], level: 'error' });
   const applyTints = (record, next, problem) => {
     if (record === undefined) return;
@@ -413,11 +448,27 @@ export function walkStates(scene) {
     const refsOf = (field) => {
       const value = step?.[field];
       if (value === undefined) return [];
+      if (!model.show) {
+        problem(field, '', `${aType(scene.type)} scene draws every part from the start, so it takes no ${field}${scene.type === 'chart' ? '; set values from 0 to grow them' : ''}`);
+        return [];
+      }
       if (Array.isArray(value) && value.every((r) => typeof r === 'string' || Number.isInteger(r))) return value;
       problem(field, '', `must be an array of refs: ${model.show.help(scene)}`);
       return [];
     };
     for (const [ref, value] of record('set')) {
+      if (model.set.entries) {
+        const set = model.set.entries(scene, ref, value);
+        if (set.error) {
+          problem('set', ref, set.error, set.names ?? []);
+          continue;
+        }
+        const bad = set.entries.map(([key, v]) => model.checkValue(v, scene, key)).find(Boolean);
+        if (bad) problem('set', ref, Array.isArray(value) ? `has a value that ${bad}` : bad);
+        else if (set.entries.every(([key, v]) => sameValue(next.values[key], v))) problem('set', ref, `already holds ${JSON.stringify(value)}, so nothing changes; drop it or set a new value`, [], 'warning');
+        else for (const [key, v] of set.entries) next.values[key] = v;
+        continue;
+      }
       const named = model.set.resolve ? model.set.resolve(scene, ref) : oneKey(scene, ref, model.set.prefixes);
       if (!named) {
         problem('set', ref, `names no ${model.set.what}; a set key is ${model.set.help(scene)}`, setNames(scene, model));
@@ -455,6 +506,12 @@ export function walkStates(scene) {
     if (step?.morph !== undefined) {
       if (!model.motion) problem('morph', '', `${aType(scene.type)} scene takes no morph; morph is a step of an svg scene`);
       else applyMorph(scene, step, next, problem);
+    }
+    if (step?.sort !== undefined) {
+      const refused = model.sort ? model.sort(scene) : `${aType(scene.type)} scene has nothing to sort`;
+      if (refused) problem('sort', '', refused);
+      else if (typeof step.sort !== 'boolean') problem('sort', '', 'must be true or false');
+      else next.sort = step.sort;
     }
     if (step?.callout !== undefined) {
       if (!model.callout) problem('callout', '', `${aType(scene.type)} scene draws no callout`);
@@ -531,7 +588,7 @@ function refNamesOf(scene, prefixes) {
 export const sceneStates = (scene) => walkStates(scene).states;
 
 /** Whether a step changes anything. */
-export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace', 'morph', 'view'].some((field) => step?.[field] !== undefined);
+export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'callout', 'trace', 'morph', 'view', 'sort'].some((field) => step?.[field] !== undefined);
 
 /**
  * The refs a step changes, as focus refs: what it sets, the pointers and ranges it moves, what it shows
@@ -540,9 +597,11 @@ export const changesState = (step) => ['set', 'move', 'show', 'hide', 'tint', 'c
 export function changedRefs(scene, step) {
   const moved = Object.keys(step?.move ?? {}).map((name) => (scene.type === 'svg' ? name : list(scene.ranges).some((r) => r?.name === name) ? `range:${name}` : `ptr:${name}`));
   const tints = tintEntries(step?.tint);
+  // A chart sets a whole series by its name, which a focus names "series:name".
+  const set = Object.keys(step?.set ?? {}).map((key) => (scene.type === 'chart' && list(scene.series).some((s) => s?.name === key) ? `series:${key}` : key));
   const traced = list(step?.trace).map((entry) => traceEntry(entry).ref);
   const morphed = scene.type === 'svg' && step?.morph && typeof step.morph === 'object' ? Object.keys(step.morph) : [];
-  const refs = [...Object.keys(step?.set ?? {}), ...moved, ...list(step?.show), ...[...traced, ...morphed].filter((ref) => typeof ref === 'string'), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
+  const refs = [...set, ...moved, ...list(step?.show), ...[...traced, ...morphed].filter((ref) => typeof ref === 'string'), ...tints.flatMap(([ref, tint]) => (tint === 'clear' || tint === 'dim' ? [] : [ref]))];
   // What a step rules out recedes rather than lights, unless ruling it out is all the step does.
   const dimmed = tints.flatMap(([ref, tint]) => (tint === 'dim' ? [ref] : []));
   // A map step that only moves the view lights what it frames, or the whole map.

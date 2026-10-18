@@ -35,7 +35,9 @@ import { FitText } from './FitText';
 import { StepDiagram } from './StepDiagram';
 import type { SceneProps } from './sceneProps';
 import type { SpokenSegment } from '../utils/timing';
-import { stepMove } from '../utils/spotlight';
+import { currentStep, stepMove } from '../utils/spotlight';
+import { cursorAt, OutputPane, outputStarts, TypedCode } from './CodeTyping';
+import { typingSchedule, type TypingSchedule } from '../utils/codeTyping';
 import { clamp, CODE_TAB_SIZE, codeColumns, colors, contentBox, fonts, severityInk } from './theme';
 
 const STEP_FADE = 14;
@@ -224,6 +226,29 @@ function morphModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number
   });
 }
 
+/** Rows of a typing scene: lines no step names are there from the start; a step's lines appear as it types them. */
+function typingModels(hunk: Hunk, tokens: Token[][], slots: Slot[], frame: number, schedule: TypingSchedule, { fontSize, rowH }: CodeMetrics): RowModel[] {
+  const cursor = cursorAt(schedule, frame);
+  return slots.map(({ left, step }, r) => {
+    const i = left!;
+    const line = hunk.lines[i]!;
+    const typed = schedule.lines[r];
+    const shown = !typed || frame >= typed.from;
+    return {
+      key: `t${i}`,
+      height: rowH,
+      finalHeight: rowH,
+      step,
+      content: shown ? (
+        <div style={{ display: 'flex', alignItems: 'center', height: rowH, background: lineBg(line) }}>
+          <Gutter line={line} numbers={morphNumbers(hunk, line)} fontSize={fontSize} />
+          {typed ? <TypedCode text={line.text} tokens={tokens[i]!} fontSize={fontSize} frame={frame} line={typed} cursor={cursor?.row === r ? cursor.state : null} /> : <Code tokens={tokens[i]!} fontSize={fontSize} />}
+        </div>
+      ) : null,
+    };
+  });
+}
+
 /** Advance of `fonts.mono` per em as the render browser draws it (Menlo), for placing a token on its line. */
 const MONO_DRAWN = 0.602;
 
@@ -384,7 +409,12 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
   const introFrames = steps ? segments[1]?.from ?? durationInFrames : durationInFrames;
   const pacedMorph = morphTimeline(hunk, introFrames, segments[0]?.voiceFrom ?? 0);
   const morph = steps ? steppedMorphTimeline(hunk, steps, segments, introFrames, pacedMorph) : pacedMorph;
-  const rows = view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, morph, metrics);
+  const typing = useMemo(
+    () => (scene.typing && steps ? typingSchedule(slots.map((slot) => hunk.lines[slot.left!]!.text), slots, stepCount, segments, durationInFrames) : null),
+    [scene.typing, steps, slots, hunk, stepCount, segments, durationInFrames],
+  );
+  const rows = typing ? typingModels(hunk, tokens, slots, frame, typing, metrics) : view === 'split' ? splitModels(hunk, tokens, slots, metrics) : morphModels(hunk, tokens, slots, frame, morph, metrics);
+  const outputFrom = useMemo(() => (layout.output ? outputStarts(scene, segments, typing?.ends ?? null) : []), [layout.output, scene, segments, typing]);
   const morphEnd = view === 'morph' ? pacedMorph.growEnd : 0;
   const introEnd = steps ? introFrames : Math.max(Math.round(durationInFrames * 0.15), Math.min(morphEnd, durationInFrames * 0.5));
   const stepsEnd = Math.max(introEnd, Math.round(durationInFrames * 0.9));
@@ -516,7 +546,8 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
           <div style={{ position: 'absolute', left: 0, right: 0, top: PANEL_PAD, height: viewportH, overflow: 'hidden' }}>
             <div style={{ position: 'relative', transform: `translateY(${-scroll}px)` }}>
               {placed.map(({ row, top }) => {
-                const { opacity, bar, glow } = emphasis(row.step);
+                // A line a typing step has not reached yet draws nothing, not even its step's light.
+                const { opacity, bar, glow } = row.content === null ? { opacity: 0, bar: 0, glow: 0 } : emphasis(row.step);
                 return (
                   <div
                     key={row.key}
@@ -539,6 +570,7 @@ const CodeBody: React.FC<{ scene: CodeScene; hunk: Hunk; durationInFrames: numbe
             </div>
           </div>
         </div>
+        {layout.output ? <OutputPane layout={layout.output} height={panelH} starts={outputFrom} frame={frame} current={currentStep(segments, frame)} /> : null}
         {stepLayout ? (
           <StepDiagram
             layout={stepLayout}

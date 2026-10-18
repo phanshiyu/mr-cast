@@ -1,0 +1,58 @@
+{
+  "title": "Charts that move",
+  "subtitle": "A bar chart race, a donut whose slices change, and stacked bars, with made-up numbers",
+  "scenes": [
+    {
+      "type": "chart",
+      "chapter": "The race",
+      "title": "Services by language at a made-up company",
+      "kind": "bar",
+      "horizontal": true,
+      "sort": true,
+      "narration": "Here is how many services a made-up company ran in each language, year by year.",
+      "labels": ["Python", "Java", "Go", "TypeScript", "Ruby", "Rust"],
+      "series": [{ "name": "services", "values": [24, 31, 6, 9, 14, 0] }],
+      "callout": "2020",
+      "steps": [
+        { "set": { "services": [27, 30, 14, 16, 12, 1] }, "callout": "2021", "focus": "Go", "say": "In twenty twenty one, Go more than doubles." },
+        { "set": { "services": [29, 27, 25, 24, 9, 3] }, "callout": "2022", "focus": "Python", "say": "A year later Python passes Java and takes the lead." },
+        { "set": { "services": [30, 24, 33, 31, 6, 7] }, "callout": "2023", "focus": "Go", "say": "Then Go overtakes them both." },
+        { "set": { "services": [31, 20, 38, 40, 4, 12] }, "callout": "2024", "focus": "TypeScript", "say": "By twenty twenty four TypeScript runs the most services, and Rust is growing fast." }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Where the time goes",
+      "title": "One page load, before and after the cache",
+      "kind": "donut",
+      "unit": "ms",
+      "sort": true,
+      "narration": "This donut splits one page load into its parts. The middle shows the total.",
+      "labels": ["Server", "Download", "Render", "TLS", "DNS"],
+      "series": [{ "name": "page load", "values": [620, 180, 140, 60, 40] }],
+      "steps": [
+        { "focus": "Server", "say": "Before the cache, the server takes more than half of the load." },
+        { "set": { "page load": [90, 180, 140, 60, 40] }, "focus": "Server", "say": "With the cache, the server answers in ninety milliseconds, and the whole load drops to about half a second." },
+        { "focus": "Download", "say": "Now the download is the biggest part." }
+      ]
+    },
+    {
+      "type": "chart",
+      "chapter": "Errors",
+      "title": "Responses a day in thousands, by status",
+      "kind": "bar",
+      "stacked": true,
+      "narration": "Each bar is one day of responses, stacked by how they ended.",
+      "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],
+      "series": [
+        { "name": "2xx", "values": [92, 95, 90, 94, 97], "tone": "good" },
+        { "name": "4xx", "values": [6, 5, 7, 6, 5], "tone": "warn" },
+        { "name": "5xx", "values": [1, 1, 1, 1, 1], "tone": "bad" }
+      ],
+      "steps": [
+        { "focus": "series:2xx", "say": "Most responses succeed, about ninety thousand a day." },
+        { "set": { "5xx@Wed": 18, "2xx@Wed": 73 }, "focus": "5xx@Wed", "say": "On Wednesday a bad deploy turned eighteen thousand of them into server errors." }
+      ]
+    }
+  ]
+}

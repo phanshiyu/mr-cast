@@ -56,6 +56,7 @@ export const BUILD_SECONDS = {
   svg: 1.2,
   plot: 1.2,
   map: 1.2,
+  image: 1.0,
 };
 /**
  * Frames every scene has, from a step's start, to bring the step's items to rest: move its camera, draw

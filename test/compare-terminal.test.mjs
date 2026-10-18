@@ -86,7 +86,7 @@ test('compare rows need two cells, known verdicts and two distinct sides', async
   });
   has(errors, 'scenes[1].sides: both sides are titled "A"');
   has(errors, 'scenes[1].rows[0].cells: required array of two cells');
-  has(errors, 'scenes[1].rows[1].cells[1]: must be text, or { code, lang? }');
+  has(errors, 'scenes[1].rows[1].cells[1]: must be text, { code, lang? } for a short snippet, or { image, fit? }');
   has(errors, 'scenes[1].rows[1].verdict[0]: must be one of good, bad, warn, or null');
 });
 

@@ -376,6 +376,16 @@ export interface CodeStep extends PenMarks, Framing {
    * circle unless `mark` says otherwise, with `note` or else the finding's claim, under its severity.
    */
   flag?: string;
+  /**
+   * Text printed into an output pane beside the code during this step, like a terminal's output, lines separated by
+   * "\n"; each step's output goes under the last. Markup colours a line or a word, e.g. "[✓ 3 passed]{good}".
+   */
+  output?: DisplayText;
+  /**
+   * Words of the step's `say` at which its output starts printing, e.g. "and it prints". Without it the output prints
+   * once the step's lines are typed, or as its words start when the scene does not type.
+   */
+  outputWhen?: string;
 }
 
 export interface CodeScene extends SceneBase {
@@ -394,6 +404,14 @@ export interface CodeScene extends SceneBase {
   /** A short flow diagram beside the code: one step per focus range, in the same top-to-bottom order.
    *  Each step says in plain words what that range does, e.g. "count the request in Redis". */
   flow?: { label: string; outcome?: string }[];
+  /**
+   * Each step types its lines in, a character at a time behind a cursor, over its `say`, instead of lighting lines
+   * already on screen; lines no step names are there from the start. Removed lines are not drawn, so a diff hunk
+   * shows its new code being written. Needs `steps`, each on `lines`; the code is drawn in one column.
+   */
+  typing?: boolean;
+  /** The title bar of the output pane that steps' `output` prints into, e.g. "zsh" or "node index.js". Defaults to "Output". */
+  outputTitle?: string;
 }
 
 export interface FlowStep {
@@ -706,36 +724,67 @@ export type Tone = 'neutral' | 'accent' | 'good' | 'bad' | 'warn';
 export interface ChartSeries {
   /** Shown in the legend, e.g. "before" and "after". */
   name: string;
-  /** One number per label, in the same order. Bars need values of 0 or more. */
+  /** One number per label, in the same order. Bars and slices need values of 0 or more. */
   values: number[];
   /** Defaults: one series is accent; two are neutral then accent (before, after); more cycle through the tones. */
   tone?: Tone;
 }
 
+export interface ChartStep extends Omit<StateStep, 'show' | 'hide'> {
+  /**
+   * New values from this step on, which the bars, points or slices move to as the step starts: a series name to
+   * one number per label, e.g. { "share": [35, 32, 18, 15] }, or one value "series@label" to a number.
+   */
+  set?: Record<string, number[] | number>;
+  /** From this step on, `true` orders the bars or slices by value and `false` puts them back in the order of `labels`; they slide to their new places. */
+  sort?: boolean;
+}
+
 export interface ChartScene extends SceneBase {
   type: 'chart';
-  /** "bar" for categories (p50, p95, p99), "line" for a trend over ordered labels (dates, versions, load). */
-  kind: 'bar' | 'line';
+  /**
+   * "bar" for categories (p50, p95, p99), "line" for a trend over ordered labels (dates, versions, load), "pie" or
+   * "donut" for the shares of one whole, one slice per label from one series. A donut prints the total in its hole.
+   */
+  kind: 'bar' | 'line' | 'pie' | 'donut';
   title?: string;
   /** Unit printed after each value, e.g. "ms", "MB", "%", "req/s". */
   unit?: string;
-  /** X-axis categories, left to right. Up to 12. */
+  /** Categories: the x axis left to right, a horizontal chart's rows top to bottom, or a pie's slices clockwise from the top. Up to 12. */
   labels: string[];
-  /** Up to 4. With exactly two, each label gets a badge with the change from the first to the second, e.g. "−42%". */
+  /** Up to 4; a pie or donut takes exactly one. With exactly two, each label of a bar or line chart gets a badge with the change from the first to the second, e.g. "−42%". */
   series: ChartSeries[];
+  /**
+   * Bars run left to right from their labels, one row per label, with each value printed at the end of its bar and
+   * no axis. Each bar is as long as its value against the largest value on screen at that moment, so the bars fill
+   * the width as values change.
+   */
+  horizontal?: boolean;
+  /** Bar series stack on one bar per label, in the order of `series`, with the label's total above (or after) it. */
+  stacked?: boolean;
+  /**
+   * Bars or slices are ordered by value, largest first: the leftmost bar, the top row, or the first slice clockwise
+   * from the top. A stacked chart orders by each label's total, otherwise by the last series. Steps change it with
+   * `sort`; with steps that `set` values, bars overtake each other as a bar chart race.
+   */
+  sort?: boolean;
   /** `false` hides the change badges of a two-series chart. Default true. */
   badges?: boolean;
   /** Which direction is an improvement, so the change badges read green or red. Without it they stay neutral. */
   better?: 'lower' | 'higher';
-  /** Calls out one point: the value at label `at` of series `series` (a series name, default the last series). */
+  /** Calls out one point of a vertical bar or line chart: the value at label `at` of series `series` (a series name, default the last series). */
   annotation?: { at: string; series?: string; text: string };
+  /** A boxed line in the top right, such as the year a race has reached. Steps replace it with `callout`. */
+  callout?: DisplayText;
   /**
    * Move the viewer's attention as the voice explains: the whole chart draws first, then each step lights
    * what it focuses just before its `say` is spoken while the rest dims; the annotation appears with the
    * first step that focuses its point or label. `narration` is then the intro.
    * A ref is a label, a series "series:after", or one value "series@label", e.g. "after@p99".
+   * A step can also change the chart at its start: `set` values, `sort` the bars, and replace the `callout`; a
+   * step with no `focus` lights what it sets.
    */
-  steps?: FocusStep[];
+  steps?: ChartStep[];
 }
 
 export interface TimelineEvent extends Pick<Marks, 'highlight' | 'badge'> {
@@ -1365,8 +1414,11 @@ export interface FilesScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-/** One side's cell in a compare row: display text, or a short code snippet of a few lines drawn with syntax colours. */
-export type CompareCell = DisplayText | { code: string; lang?: string };
+/**
+ * One side's cell in a compare row: display text, a short code snippet of a few lines drawn with syntax colours, or a
+ * picture, such as a screenshot of each side, in a 16:9 box (see ImageScene for what `image` may be).
+ */
+export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit };
 
 /** Which side of a compare row is better: a green check, a red cross, or an amber warning on that side's cell. */
 export type Verdict = 'good' | 'bad' | 'warn';
@@ -1449,7 +1501,55 @@ export interface TerminalScene extends SceneBase {
   steps?: FocusStep[];
 }
 
-export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene | MapScene;
+/** "contain" shows all of the picture, with bands of the background beside or above it; "cover" fills the box and crops the edges. */
+export type ImageFit = 'contain' | 'cover';
+
+/** A box on a picture, as fractions of its width and height from its top left: [x, y, width, height], e.g. [0.1, 0.2, 0.3, 0.25]. */
+export type ImageBox = [x: number, y: number, width: number, height: number];
+
+/** A part of the picture that steps light and ink draws on, such as a face, a button or a building. */
+export interface ImageRegion {
+  /** Named by steps' `focus`, ink, and `kenBurns`. */
+  id: string;
+  box: ImageBox;
+  /** A short name drawn beside the region while a step lights it, e.g. "the load balancer"; a step's `say` may name the region by it. */
+  label?: string;
+}
+
+/**
+ * A picture: a photo, a screenshot, a diagram from elsewhere. mr-cast does not make or change images; it shows the
+ * file given, and whoever makes the video owns the right to use it. `validate` copies a local file into the run, or
+ * downloads a URL once, and the player and renders read only that copy.
+ */
+export interface ImageScene extends SceneBase {
+  type: 'image';
+  title?: string;
+  /**
+   * A path relative to the run directory or the repository, or an http(s) URL. A PNG, JPEG, WebP or GIF file of up to
+   * 10 MB; an SVG file is refused, since it can carry scripts (draw it in an svg scene instead).
+   */
+  src: string;
+  /** Defaults to "contain". */
+  fit?: ImageFit;
+  /** A line under the picture. */
+  caption?: DisplayText;
+  /** Where the picture comes from, e.g. "Photo: NASA, public domain", drawn small under its right edge. */
+  credit?: string;
+  /**
+   * A slow pan and zoom over the whole scene. `true` moves in a little toward the centre; `from` and `to` frame a
+   * region id or a box at the scene's start and end, each the whole picture when left out.
+   */
+  kenBurns?: boolean | { from?: string | ImageBox; to?: string | ImageBox };
+  /** Parts of the picture that steps light and ink draws on. */
+  regions?: ImageRegion[];
+  /**
+   * Each step lights the regions it focuses just before its `say` is spoken, and the rest of the picture dims. A ref
+   * is a region id. `narration` is then the intro.
+   */
+  steps?: FocusStep[];
+}
+
+export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene | MapScene | ImageScene;
 
 export interface Storyboard {
   title: string;
@@ -1557,6 +1657,11 @@ export interface Voiceover {
   failed?: boolean;
 }
 
+// ─── images.json (written by `mr-cast validate`) ─────────────────────────────
+
+/** Each image source of the storyboard, by its `src` as written, as the copy in the run's images/ folder. */
+export type ImageManifest = Record<string, { file: string; width: number; height: number }>;
+
 // ─── Composition props ───────────────────────────────────────────────────────
 
 export interface WalkthroughProps {
@@ -1568,5 +1673,9 @@ export interface WalkthroughProps {
   voiceover?: Voiceover | null;
   /** URL prefix for clip `src` paths: "./data/" in the player, a local server in renders. Without it no audio plays (stills). */
   audioBaseUrl?: string;
+  /** The run's images.json, so image scenes and cells find their local copies. */
+  images?: ImageManifest;
+  /** URL prefix for an image's `file`: "./data/" in the player, a local server in renders. Without it pictures draw as placeholders. */
+  imageBaseUrl?: string;
   [key: string]: unknown;
 }

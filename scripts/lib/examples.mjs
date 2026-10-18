@@ -23,8 +23,8 @@ function flagsFor(dir) {
   return meta.audience ? ['--audience', meta.audience] : [];
 }
 
-/** Copies an example's JSON files into `dir`, so a command can run on the copy and never write into examples/. */
+/** Copies an example's JSON files and pictures into `dir`, so a command can run on the copy and never write into examples/. */
 export function copyExample(example, dir) {
   fs.mkdirSync(dir, { recursive: true });
-  for (const file of fs.readdirSync(example.dir).filter((f) => f.endsWith('.json'))) fs.copyFileSync(path.join(example.dir, file), path.join(dir, file));
+  for (const file of fs.readdirSync(example.dir).filter((f) => /\.(?:json|png|jpe?g|webp|gif)$/i.test(f))) fs.copyFileSync(path.join(example.dir, file), path.join(dir, file));
 }

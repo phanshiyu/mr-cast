@@ -27,6 +27,7 @@ const REF_HELP = {
   memory: 'a frame "frame:name", a variable "frame.var", an object id, or a field "object.field"',
   svg: 'an element id in the drawing',
   plot: 'a part\'s id, or a parameter\'s name for the parts it moves',
+  image: 'a region id',
 };
 
 /** The ref help for a scene, which for some types depends on its fields. */
@@ -63,7 +64,7 @@ export function checkFocusSteps(s, p, hunks, errors, warnings) {
     if (value === undefined && STATE_TYPES.includes(s.type) && step.camera !== undefined) return;
     if (value === undefined && STATE_TYPES.includes(s.type) && changesState(step)) {
       if (changedRefs(s, step).length) return;
-      const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : 'changes nothing';
+      const what = Array.isArray(step.hide) && step.hide.length ? 'only hides, and what it hides cannot be lit' : step.sort !== undefined ? 'only sorts, which lights nothing' : 'changes nothing';
       return errors.push(`${q}.focus: required, ${refHelp(s)}, or an array of them, since this step ${what}, so it lights nothing`);
     }
     if (value === undefined) return errors.push(`${q}.focus: required, ${refHelp(s)}, or an array of them${STATE_TYPES.includes(s.type) ? ', unless the step changes something, which it then focuses' : ''}`);

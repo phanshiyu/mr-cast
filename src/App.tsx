@@ -1,5 +1,5 @@
 import { Player, type PlayerRef } from '@remotion/player';
-import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, ChartSpline, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, Earth, FlaskConical, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, PenTool, Play, Sheet, Table2, Type, Workflow, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, Brackets, ChartColumn, ChartGantt, ChartSpline, CircleDot, Columns2, SquareTerminal, FolderTree, Code2, Earth, FlaskConical, Image as ImageIcon, Shapes, GitBranch, Layers, ListChecks, MemoryStick, MessageCircleWarning, Network, PenTool, Play, Sheet, Table2, Type, Workflow, type LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
@@ -8,7 +8,7 @@ import { checkPlan } from '../shared/plan.mjs';
 import { PlanPage, type BuiltPicks } from './PlanPage';
 import { ReadingPanel } from './ReadingPanel';
 import { readingOrder } from '../shared/reading.mjs';
-import type { HunkMap, Plan, Scene, Voiceover, WalkthroughProps } from './types';
+import type { HunkMap, ImageManifest, Plan, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
 import { FPS, HEIGHT, WIDTH, formatTime, spokenAt, timeline, totalDurationInFrames, type SpokenSegment, type TimedScene } from './utils/timing';
 import { Walkthrough } from './Walkthrough';
@@ -39,7 +39,7 @@ type LoadState =
 
 type Tab = 'video' | 'plan';
 
-const typeIcon: Record<Scene['type'], LucideIcon> = { text: Type, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, reading: ListChecks, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick, svg: PenTool, plot: ChartSpline, map: Earth };
+const typeIcon: Record<Scene['type'], LucideIcon> = { text: Type, graph: Network, code: Code2, flow: Workflow, sequence: ArrowRightLeft, er: Table2, state: CircleDot, mermaid: Shapes, tests: FlaskConical, table: Sheet, chart: ChartColumn, timeline: ChartGantt, files: FolderTree, review: MessageCircleWarning, reading: ListChecks, compare: Columns2, terminal: SquareTerminal, layers: Layers, array: Brackets, memory: MemoryStick, svg: PenTool, plot: ChartSpline, map: Earth, image: ImageIcon };
 
 class DataError extends Error {
   constructor(readonly file: string, message: string) {
@@ -98,10 +98,14 @@ async function loadAll(): Promise<LoadState> {
     if (!Array.isArray(storyboard.scenes) || storyboard.scenes.length === 0) {
       throw new DataError('storyboard.json', 'expected a non-empty "scenes" array');
     }
-    const [hunks, voiceover] = await Promise.all([fetchJson<HunkMap>('hunks.json'), fetchJson<Voiceover>('voiceover.json').catch(() => null)]);
+    const [hunks, voiceover, images] = await Promise.all([
+      fetchJson<HunkMap>('hunks.json'),
+      fetchJson<Voiceover>('voiceover.json').catch(() => null),
+      fetchOptional<ImageManifest>('images.json').catch(() => null),
+    ]);
     return {
       status: 'ready',
-      walkthrough: { storyboard: normalizeStoryboard(storyboard, hunks), hunks, showCaptions: false, voiceover, audioBaseUrl: './data/' },
+      walkthrough: { storyboard: normalizeStoryboard(storyboard, hunks), hunks, showCaptions: false, voiceover, audioBaseUrl: './data/', images: images ?? {}, imageBaseUrl: './data/' },
       meta,
       plan,
       settings,

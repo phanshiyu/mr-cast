@@ -1,0 +1,37 @@
+{
+  "title": "Pictures in a video",
+  "subtitle": "A picture whose parts the voice points at, and two screenshots side by side, all drawn by this demo's own script",
+  "scenes": [
+    {
+      "type": "image",
+      "chapter": "The home lab",
+      "title": "Where the side project runs",
+      "src": "desk.png",
+      "caption": "One laptop, one router and one small server",
+      "credit": "Drawn by make-pictures.mjs",
+      "kenBurns": true,
+      "narration": "This is the whole setup: a desk, a laptop, a router and a small server.",
+      "regions": [
+        { "id": "laptop", "box": [0.33, 0.37, 0.36, 0.37], "label": "the laptop" },
+        { "id": "router", "box": [0.72, 0.48, 0.17, 0.22], "label": "the router" },
+        { "id": "server", "box": [0.79, 0.11, 0.135, 0.45], "label": "the server" }
+      ],
+      "steps": [
+        { "focus": "laptop", "say": "You write the code on the laptop." },
+        { "focus": "server", "say": "The server runs it, all day and all night.", "draw": [{ "circle": "server", "note": "one disk is failing", "when": "all night" }] },
+        { "focus": "router", "say": "Everything reaches it through the router." }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "Before and after",
+      "title": "The product page two seconds after a click",
+      "sides": [{ "title": "Without the cache", "tone": "bad" }, { "title": "With the cache", "tone": "good" }],
+      "narration": "Here is the same page, two seconds after the click, without and with the cache.",
+      "rows": [
+        { "cells": [{ "image": "slow.png" }, { "image": "fast.png" }], "verdict": ["bad", "good"] },
+        { "label": "Ready after", "cells": ["4.1 s", "0.6 s"], "verdict": ["bad", "good"] }
+      ]
+    }
+  ]
+}

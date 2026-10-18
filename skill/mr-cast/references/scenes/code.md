@@ -23,6 +23,16 @@ The lines of one hunk or snippet, the rest dimmed, walked a range at a time, wit
 
 Each step names its `lines` (or `oldLines` for removed code) and its `say`; with a `label` on every step, a step diagram is drawn beside the code, with an `outcome` where a step branches. The scene's `narration` is the intro before the first step. Reference the code by `hunkId`; the lines come from hunks.json. Without steps, `focusLinesAfter` (and `focusLinesBefore` for removed code) take the printed line numbers as numbers or `"start-end"` strings, each string its own range, and `flow` gives one labelled step per range, in the same order. A pen `token` is text that occurs once on the step's lines, such as `"max: 20"`. `{{MR_CAST}}/bin/mr-cast validate` fails on lines outside the hunk, overlapping steps, steps out of top-to-bottom order (the light follows the code down), labels on only some steps, and a `flow` whose length differs from the ranges. It warns past 6 labelled steps, which is what the step diagram holds.
 
+`"typing": true` makes each step type its lines in, a character at a time behind a cursor, over its `say`, instead of lighting lines already on screen. Lines no step names are there from the start, and removed lines are not drawn, so a diff hunk shows its new code being written. A step's `output` prints into a terminal-like pane beside the code, under the output of the steps before it, with markup colours such as `"[✓ 3 passed]{good}"`; it starts at the words of `outputWhen`, else once the step's lines are typed, else as its words start. `outputTitle` names the pane. Validate fails on `typing` without steps, with `view: "split"` or on a step's `oldLines`, on an `outputWhen` the `say` does not contain, and on output beside labelled steps, since the step diagram takes the same room.
+
+```
+{ "type": "code", "hunkId": "s1", "typing": true, "outputTitle": "zsh", "narration": "FizzBuzz from scratch.",
+  "steps": [
+    { "lines": "1-8", "say": "Count to n and print Fizz, Buzz or the number." },
+    { "lines": 10, "say": "Call it, run it, and it prints them.", "output": "$ node fizzbuzz.js\n1\n2\nFizz", "outputWhen": "run it" }
+  ] }
+```
+
 `{{MR_CAST}}/bin/mr-cast schema code` prints its fields.
 
-A whole demo: `{{MR_CAST}}/examples/primitives/code/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/algorithms/quicksort/storyboard.json` (scene 3, the partition in Java).
+A whole demo: `{{MR_CAST}}/examples/primitives/code/storyboard.json`; typing and output, on a snippet and on a diff: `{{MR_CAST}}/examples/primitives/code-typing/storyboard.json`. In the worked examples: `{{MR_CAST}}/examples/algorithms/quicksort/storyboard.json` (scene 3, the partition in Java).

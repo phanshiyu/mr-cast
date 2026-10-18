@@ -13,6 +13,7 @@ import { cacheDir, cacheLock } from './cache.mjs';
 import { whileUsing, withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
+import { IMAGE_NAME } from './images.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/remotion/index.ts');
@@ -108,17 +109,18 @@ async function withRetry(label, fn) {
 }
 
 /**
- * Serves .mr-cast/audio/*.wav on a random local port for the length of a render. The bundle is cached
- * by source hash, so clips cannot go into its public dir.
+ * Serves the run's voice clips (audio/*.wav) and its pictures' copies (images/) on a random local port for the length
+ * of a render. The bundle is cached by source hash, so they cannot go into its public dir.
  */
-async function serveAudio(dataDir) {
+async function serveRunFiles(dataDir) {
   const server = http.createServer((req, res) => {
-    const name = new URL(req.url, 'http://127.0.0.1').pathname.match(/^\/audio\/([^/]+)$/)?.[1];
-    if (req.method !== 'GET' || !name || !AUDIO_NAME.test(name)) {
+    const [, dir, name] = new URL(req.url, 'http://127.0.0.1').pathname.match(/^\/(audio|images)\/([^/]+)$/) ?? [];
+    const allowed = dir === 'audio' ? AUDIO_NAME : IMAGE_NAME;
+    if (req.method !== 'GET' || !name || !allowed.test(name)) {
       res.writeHead(404);
       return res.end();
     }
-    sendFile(req, res, path.join(dataDir, 'audio', name));
+    sendFile(req, res, path.join(dataDir, dir, name));
   });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -155,10 +157,10 @@ async function ensureChrome() {
   }, (pid) => console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish downloading Chrome Headless Shell`));
 }
 
-async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl }) {
+async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl, images = {}, imageBaseUrl }) {
   const browserExecutable = await ensureChrome();
   const serveUrl = await getServeUrl();
-  const inputProps = { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl };
+  const inputProps = { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl, images, imageBaseUrl };
   const browser = await withRetry('launching the browser', () => openBrowser('chrome', { browserExecutable }));
   try {
     const composition = await selectComposition({ serveUrl, id: COMPOSITION_ID, inputProps, puppeteerInstance: browser });
@@ -174,12 +176,14 @@ const usingCaches = (fn) => whileUsing([BUNDLE_CACHE, BROWSER_CACHE], fn);
 
 export const renderVideo = (options) => usingCaches(() => renderVideoUsingCaches(options));
 
-async function renderVideoUsingCaches({ hunks, storyboard, voiceover, dataDir, outFile, onProgress }) {
+const hasImages = (images) => Object.keys(images ?? {}).length > 0;
+
+async function renderVideoUsingCaches({ hunks, storyboard, voiceover, images, dataDir, outFile, onProgress }) {
   const out = path.resolve(outFile);
   await mkdir(path.dirname(out), { recursive: true });
-  const audio = voiceover ? await serveAudio(dataDir) : null;
+  const files = voiceover || hasImages(images) ? await serveRunFiles(dataDir) : null;
   try {
-    const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover, audioBaseUrl: audio?.url });
+    const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover, audioBaseUrl: voiceover ? files?.url : undefined, images, imageBaseUrl: files?.url });
     try {
       await renderMedia({
         composition,
@@ -194,7 +198,7 @@ async function renderVideoUsingCaches({ hunks, storyboard, voiceover, dataDir, o
       await browser.close({ silent: true });
     }
   } finally {
-    await audio?.close();
+    await files?.close();
   }
   await addChapters(out, videoChapters(storyboard, voiceover));
   return out;
@@ -260,7 +264,7 @@ export function stillFrame(scene, voiceover, step) {
   return Math.min(segment.from + segment.durationInFrames - 2, settledFrame(sceneDurationInFrames(scene, voiceover)));
 }
 
-async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, scenes, step }) {
+async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, dataDir, outDir, scenes, step }) {
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
   const starts = [];
@@ -271,7 +275,11 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, s
     from += duration;
   }
   const indices = scenes ?? storyboard.scenes.map((_, i) => i);
-  const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover });
+  const files = hasImages(images) && dataDir ? await serveRunFiles(dataDir) : null;
+  const { serveUrl, inputProps, browser, composition } = await prepare({ hunks, storyboard, voiceover, images, imageBaseUrl: files?.url }).catch(async (err) => {
+    await files?.close();
+    throw err;
+  });
   const written = [];
   try {
     for (const index of indices) {
@@ -290,6 +298,7 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, outDir, s
     }
   } finally {
     await browser.close({ silent: true });
+    await files?.close();
   }
   return written;
 }

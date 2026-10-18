@@ -23,6 +23,7 @@ const STEPS_OF = {
   svg: own,
   plot: own,
   map: own,
+  image: own,
   flow: (scene) => (Array.isArray(scene.steps) && scene.steps.some((step) => step?.say !== undefined) ? scene.steps : undefined),
 };
 

@@ -4,12 +4,13 @@ import http from 'node:http';
 import path from 'node:path';
 import { BUILT_FILE, PLAN_FILE, writeChoice } from './plan.mjs';
 import { AUDIO_NAME } from './voice.mjs';
+import { IMAGE_NAME, IMAGES_DIR, IMAGES_FILE } from './images.mjs';
 
 const HOST = '127.0.0.1';
 const PORT_ATTEMPTS = 21;
 const DEBOUNCE_MS = 150;
 const KEEPALIVE_MS = 25_000;
-const DATA_FILES = new Set(['hunks.json', 'storyboard.json', 'meta.json', PLAN_FILE, BUILT_FILE]);
+const DATA_FILES = new Set(['hunks.json', 'storyboard.json', 'meta.json', IMAGES_FILE, PLAN_FILE, BUILT_FILE]);
 // A choice is a topic id and two words; anything near this size is not one.
 const BODY_MAX = 4096;
 export const TOKEN_HEADER = 'x-mr-cast-token';
@@ -161,6 +162,13 @@ export async function startServer({ distDir, dataDir, port, onDataChange, holdin
       if (!AUDIO_NAME.test(audio[1])) return send(res, 404, 'not found');
       // Clip names are content hashes, so a cached clip never goes stale.
       return sendFile(req, res, path.join(dataDir, 'audio', audio[1]), { 'Cache-Control': 'max-age=31536000, immutable' });
+    }
+
+    // Only the run's copies of its pictures, by their hashed names; nothing else of the run directory is served.
+    const image = pathname.match(/^\/data\/images\/([^/]+)$/);
+    if (image) {
+      if (!IMAGE_NAME.test(image[1])) return send(res, 404, 'not found');
+      return sendFile(req, res, path.join(dataDir, IMAGES_DIR, image[1]), { 'Cache-Control': 'max-age=31536000, immutable' });
     }
 
     const data = pathname.match(/^\/data\/([^/]+)$/);

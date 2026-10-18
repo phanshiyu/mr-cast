@@ -120,7 +120,7 @@ test('validate fails on items that draw nothing, two things, or a write with no 
 
 test('validate fails on draw on a scene type without refs', async () => {
   const flow = { type: 'flow', narration: 'x', steps: [{ actor: 'a', action: 'b', say: 'c', draw: [{ circle: 0 }] }] };
-  assert.ok((await errorsOf(flow)).includes('scenes[0].steps[0].draw: flow steps take no draw; ink goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, svg, plot, map, text, code'));
+  assert.ok((await errorsOf(flow)).includes('scenes[0].steps[0].draw: flow steps take no draw; ink goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, image, svg, plot, map, text, code'));
 });
 
 test('a code step names lines by number or range, and any other string as text on its own lines', () => {

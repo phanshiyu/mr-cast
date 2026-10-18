@@ -322,6 +322,10 @@ const TARGETS = {
       ...list(scene.objects).flatMap((o) => memoryMembers(o?.fields).map(([k]) => `${o?.id}.${k}`)),
     ],
   },
+  image: {
+    resolve: (scene, ref) => (typeof ref === 'string' && list(scene.regions).some((r) => r?.id === ref) ? [`im:${ref}`] : null),
+    names: (scene) => list(scene.regions).map((r) => r?.id),
+  },
   svg: {
     resolve: (scene, ref) => (typeof ref === 'string' && svgIds(scene.svg).includes(ref) ? [`s:${ref}`] : null),
     names: (scene) => svgIds(scene.svg),

@@ -124,14 +124,19 @@ const ITEMS = {
       ...list(scene.spans).map((s, i) => ({ key: `sp:${i}`, label: `span "${text(s?.label)}" ${s?.from}-${s?.to}`, terms: [text(s?.label)] })),
     ];
   },
-  chart(scene) {
+  chart(scene, state) {
     const labels = list(scene.labels);
+    // A value reads as the step leaves it, after any set.
+    const valueAt = (s, k, i) => state?.values?.[`p:${k}/${i}`] ?? list(s?.values)[i];
     return [
       ...labels.map((l, i) => ({ key: `l:${i}`, label: `label ${l}`, terms: [text(l)] })),
       // A lit series is read against its labels, so they light with it.
       ...list(scene.series).map((s, k) => ({ key: `s:${k}`, label: `series ${s?.name}`, terms: [text(s?.name)], parts: labels.map((_, i) => `p:${k}/${i}`), with: labels.map((_, i) => `l:${i}`) })),
-      ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${list(s?.values)[i]}`, terms: [text(String(list(s?.values)[i] ?? ''))], with: [`l:${i}`] }))),
+      ...list(scene.series).flatMap((s, k) => labels.map((l, i) => ({ key: `p:${k}/${i}`, label: `${s?.name} at ${l} = ${valueAt(s, k, i)}`, terms: [text(String(valueAt(s, k, i) ?? ''))], with: [`l:${i}`] }))),
     ];
+  },
+  image(scene) {
+    return list(scene.regions).map((r) => ({ key: `im:${r?.id}`, label: `region ${r?.id}${r?.label ? ` "${text(r.label)}"` : ''}`, names: [text(r?.label), r?.id] }));
   },
   table(scene, state) {
     return tableItems(scene, state, '');
@@ -169,7 +174,7 @@ const ITEMS = {
   },
   compare(scene) {
     const titles = compareTitles(scene);
-    const cell = (c) => (c && typeof c === 'object' ? `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}` : text(c));
+    const cell = (c) => (c && typeof c === 'object' ? ('image' in c ? `image: ${c.image}` : `code: ${String(c.code).replace(/\s+/g, ' ').trim().slice(0, 60)}`) : text(c));
     return [
       ...list(scene.rows).map((r, i) => ({ key: `r:${i}`, label: `row ${i}${r?.label ? ` "${text(r.label)}"` : ''}: ${list(r?.cells).map(cell).join(' | ')}`, terms: [text(r?.label)], parts: titles.map((_, s) => `x:${i}/${s}`) })),
       ...titles.map((t, s) => ({ key: `s:${s}`, label: `side ${t}`, terms: [text(t)], parts: list(scene.rows).map((_, i) => `x:${i}/${s}`) })),
@@ -234,6 +239,7 @@ function changesOf(scene, before, after) {
       : key.startsWith('s:') ? `text ${key.slice(2)}`
       : key.startsWith('k:') ? key.slice(2)
       : /^m[prlg]:/.test(key) ? `label of ${key.slice(3)}`
+      : scene.type === 'chart' && key.startsWith('p:') ? (([k, i]) => `${list(scene.series)[k]?.name}@${list(scene.labels)[i]}`)(key.slice(2).split('/').map(Number))
       : (({ owner, name }) => `${owner}.${name}`)(splitMemberKey(key));
     return [`${where} ${shown(before.values[key])} → ${shown(after.values[key])}`];
   });
@@ -251,7 +257,8 @@ function changesOf(scene, before, after) {
   // An svg line starts drawing on its cue; a map route arrives on it.
   const traces = Object.entries(after.traces ?? {}).map(([key, cue]) => `traces ${key.replace(/^[a-z]+:/, '')}${cue ? ` ${scene.type === 'map' ? 'until' : 'from'} "${cue}"` : ''}`);
   const morphs = [...new Set([...keysOf(before.shapes), ...keysOf(after.shapes)])].flatMap((key) => (before.shapes?.[key] === after.shapes?.[key] ? [] : [`morphs ${key.slice(2)} into ${after.shapes?.[key] ?? 'its own shape'}`]));
-  return [...values, ...places, ...shows, ...tints, ...callout, ...moves, ...traces, ...morphs];
+  const sort = before.sort === after.sort ? [] : [after.sort ? 'sorts by value' : 'puts the labels back in order'];
+  return [...values, ...places, ...shows, ...tints, ...callout, ...sort, ...moves, ...traces, ...morphs];
 }
 
 /** A step's camera as words: "camera on ribosome", "camera on a, b at 3x", "camera on the whole scene". */
@@ -282,7 +289,7 @@ export function stepViews(scene, hunks) {
     const items = ITEMS[scene.type]?.(scene, state, hunks) ?? [];
     const litKeys = withRelated(items, targets[k] ?? []);
     // The dump lists what a step names; in an array or memory it adds the cells and values that light with it.
-    const listed = STATE_TYPES.includes(scene.type) ? litKeys : new Set(targets[k]);
+    const listed = STATE_TYPES.includes(scene.type) && scene.type !== 'chart' ? litKeys : new Set(targets[k]);
     return {
       say: text(step?.say),
       lit: items.filter((it) => listed.has(it.key)).map((it) => it.label),
@@ -412,7 +419,7 @@ function namedIn(say, items) {
 }
 
 /** The scene types whose words the highlight check reads. Code, terminal and text have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'plot', 'map', 'tests'];
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'plot', 'map', 'tests', 'image'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:

@@ -1,6 +1,66 @@
 import type { ChartScene } from '../types';
+import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { fitText, fitTextAt, measure, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
+
+/** What a chart shows at one step: each series' values by label, whether bars and slices are sorted, and the callout. */
+export interface ChartState {
+  values: number[][];
+  sort: boolean;
+  callout: string;
+}
+
+/** A chart's state as the shared step model holds it, by item key, as values by series and label. */
+export const chartStateOf = (scene: ChartScene, state: SceneState): ChartState => ({
+  values: scene.series.map((series, s) => series.values.map((v, l) => Number(state.values[`p:${s}/${l}`] ?? v))),
+  sort: state.sort === true,
+  callout: state.callout,
+});
+
+/** Every state of a chart, `[initial, during step 0, ...]`. */
+export const chartStates = (scene: ChartScene): ChartState[] => sceneStates(scene).map((state) => chartStateOf(scene, state));
+
+/** The scene with its series holding `values`, for the layout of one state. */
+export const withValues = (scene: ChartScene, values: readonly (readonly number[])[]): ChartScene =>
+  values.every((v, s) => v === scene.series[s]!.values) ? scene : { ...scene, series: scene.series.map((series, s) => ({ ...series, values: [...values[s]!] })) };
+
+/** Decimal places a value is written with, so a value partway between two keeps no more digits than they have. */
+const places = (v: number) => {
+  const text = String(v);
+  return text.includes('e') ? 6 : (text.split('.')[1]?.length ?? 0);
+};
+
+/** A value `t` of the way from `a` to `b`, rounded to the places the two are written with. */
+export function between(a: number, b: number, t: number): number {
+  if (t >= 1 || a === b) return b;
+  if (t <= 0) return a;
+  const digits = Math.max(places(a), places(b));
+  return Number((a + (b - a) * t).toFixed(digits));
+}
+
+/** Values `t` of the way from one state's to another's: exact, for the bars and points to move smoothly. */
+export const valuesBetween = (a: readonly (readonly number[])[], b: readonly (readonly number[])[], t: number): number[][] =>
+  t >= 1 ? b.map((row) => [...row]) : b.map((row, s) => row.map((v, l) => a[s]![l]! + (v - a[s]![l]!) * t));
+
+/** The same values as printed: rounded to the places their two ends are written with, so a label counts. */
+export const shownBetween = (a: readonly (readonly number[])[], b: readonly (readonly number[])[], t: number): number[][] => b.map((row, s) => row.map((v, l) => between(a[s]![l]!, v, t)));
+
+/** A label's total over every series, as a stack draws it. */
+export const labelTotal = (values: readonly (readonly number[])[], label: number) => values.reduce((sum, row) => sum + row[label]!, 0);
+
+/**
+ * Each label's place, 0 first, in one state: in the order of `labels`, or sorted by value, largest first, by the
+ * label's total when stacked, else by the last series. Ties keep the order of `labels`.
+ */
+export function chartOrder(scene: ChartScene, values: readonly (readonly number[])[], sort: boolean): number[] {
+  const n = scene.labels.length;
+  if (!sort) return Array.from({ length: n }, (_, i) => i);
+  const key = (i: number) => (scene.stacked ? labelTotal(values, i) : values[values.length - 1]![i]!);
+  const ranked = Array.from({ length: n }, (_, i) => i).sort((a, b) => key(b) - key(a) || a - b);
+  const place = new Array<number>(n);
+  ranked.forEach((label, rank) => (place[label] = rank));
+  return place;
+}
 
 const MINUS = '−';
 /** Units that sit against the number rather than after a space. */
@@ -111,8 +171,17 @@ export interface ValueLabel {
 }
 
 /** The value labels a chart draws: every bar's, and a line's at each point, or at its last point past two series or eight labels. */
-export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueFits'>): ValueLabel[] {
+export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueFits'>, shown: readonly (readonly number[])[] = scene.series.map((s) => s.values)): ValueLabel[] {
   const k = scene.series.length;
+  if (scene.stacked) {
+    // A stack carries its total, labelled as its top series.
+    const size = layout.barW < 64 ? NARROW_VALUE_FONT : VALUE_FONT;
+    const values = scene.series.map((s) => s.values);
+    return scene.labels.map((_, i) => {
+      const y = layout.y(labelTotal(values, i));
+      return { series: k - 1, label: i, text: formatValue(labelTotal(shown, i), scene.unit), x: layout.xs[i]!, y, top: y - 14 - size * 1.25, size, below: false };
+    });
+  }
   const size = scene.kind === 'bar' && layout.barW < 64 ? NARROW_VALUE_FONT : VALUE_FONT;
   const labelEvery = k <= 2 && scene.labels.length <= 8;
   return scene.series.flatMap((series, s) =>
@@ -121,7 +190,7 @@ export function valueLabels(scene: ChartScene, layout: Omit<ChartLayout, 'valueF
       const below = scene.kind === 'line' && k === 2 && scene.series.some((o, j) => j !== s && o.values[i]! > v);
       const x = scene.kind === 'bar' ? barX(layout, layout.xs[i]!, s, k) + layout.barW / 2 : layout.xs[i]!;
       const y = layout.y(v);
-      return [{ series: s, label: i, text: formatValue(v, scene.unit), x, y, top: below ? y + 14 : y - 14 - size * 1.25, size, below }];
+      return [{ series: s, label: i, text: formatValue(shown[s]?.[i] ?? v, scene.unit), x, y, top: below ? y + 14 : y - 14 - size * 1.25, size, below }];
     }),
   );
 }
@@ -139,13 +208,28 @@ function valueFits(labels: ValueLabel[]): Fit[] {
   });
 }
 
+/** A vertical bar or line chart: one axis for every state, and each state's value labels fitted in the room they leave. */
 export function layoutChart(scene: ChartScene, width: number, height: number): ChartLayout {
-  const layout = placeChart(scene, width, height);
-  return { ...layout, valueFits: valueFits(valueLabels(scene, layout)) };
+  const states = chartStates(scene);
+  const layout = placeChart(scene, width, height, states);
+  const same = (a: ChartState, b: ChartState) => a.sort === b.sort && a.values.every((row, s) => row.every((v, l) => v === b.values[s]![l]));
+  const fits = states.flatMap((state, k) => {
+    if (k > 0 && same(state, states[k - 1]!)) return [];
+    const order = chartOrder(scene, state.values, state.sort);
+    const fitted = valueFits(valueLabels(withValues(scene, state.values), { ...layout, xs: order.map((place) => layout.xs[place]!) }));
+    // A later state's labels are reported at the step that sets them, and only when they run together.
+    return k === 0 ? fitted : fitted.flatMap((fit) => (fit.fits ? [] : [{ ...fit, path: `steps[${k - 1}].set` }]));
+  });
+  return { ...layout, valueFits: fits };
 }
 
-function placeChart(scene: ChartScene, width: number, height: number): Omit<ChartLayout, 'valueFits'> {
-  const values = scene.series.flatMap((s) => s.values);
+/** Every value the chart's axis must reach in any state: each bar or point, or each stack's total. */
+function axisValues(scene: ChartScene, states: readonly ChartState[]): number[] {
+  return states.flatMap((state) => (scene.stacked ? scene.labels.map((_, l) => labelTotal(state.values, l)) : state.values.flat()));
+}
+
+function placeChart(scene: ChartScene, width: number, height: number, states: readonly ChartState[]): Omit<ChartLayout, 'valueFits'> {
+  const values = axisValues(scene, states);
   const ticks = niceTicks(Math.min(...values), Math.max(...values));
   const lo = ticks[0]!;
   const hi = ticks[ticks.length - 1]!;
@@ -162,7 +246,8 @@ function placeChart(scene: ChartScene, width: number, height: number): Omit<Char
   const belowLabels = scene.kind === 'line' && scene.series.length === 2 ? 36 : 0;
   const y0 = (scene.annotation ? ANNOTATION_BAND : 0) + HEADROOM;
   const y1 = height - 18 - belowLabels - labelLines * Math.round(xLabelFont * 1.3);
-  const k = scene.series.length;
+  // A stack is one bar a label, as wide as a single series' bar.
+  const k = scene.stacked ? 1 : scene.series.length;
   const barGap = k > 1 ? 10 : 0;
   const barW = scene.kind === 'bar' ? Math.min(150, (slotW * 0.72 - (k - 1) * barGap) / k) : 0;
   return {
@@ -182,8 +267,9 @@ function placeChart(scene: ChartScene, width: number, height: number): Omit<Char
   };
 }
 
-/** Left edge of series `s`'s bar in a slot centred on `cx`. */
-export function barX(layout: Pick<ChartLayout, 'barW' | 'barGap'>, cx: number, s: number, seriesCount: number): number {
+/** Left edge of series `s`'s bar in a slot centred on `cx`; every series of a stack shares one bar. */
+export function barX(layout: Pick<ChartLayout, 'barW' | 'barGap'>, cx: number, s: number, seriesCount: number, stacked = false): number {
+  if (stacked) return cx - layout.barW / 2;
   const group = seriesCount * layout.barW + (seriesCount - 1) * layout.barGap;
   return cx - group / 2 + s * (layout.barW + layout.barGap);
 }

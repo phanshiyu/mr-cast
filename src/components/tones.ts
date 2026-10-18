@@ -18,3 +18,7 @@ export function seriesTone(series: readonly { tone?: Tone }[], index: number): T
   if (series.length === 2) return index === 0 ? 'neutral' : 'accent';
   return CYCLE[index % CYCLE.length]!;
 }
+
+/** Distinct colours for the slices of a pie or the rows of a one-series horizontal chart, in order; past eight they repeat. */
+const SLICES = [colors.accent, colors.add, '#fbbf24', colors.del, '#5ec8f2', '#c084fc', '#ff9f43', '#8f98ad'];
+export const sliceColor = (index: number): string => SLICES[index % SLICES.length]!;

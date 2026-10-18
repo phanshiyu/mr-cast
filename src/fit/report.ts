@@ -1,11 +1,14 @@
 import { sceneFiles } from '../../shared/files.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
-import type { HunkMap, Scene, Storyboard } from '../types';
+import type { HunkMap, ImageManifest, Scene, Storyboard } from '../types';
+import { layoutImage } from '../utils/imageLayout';
+import { sceneDurationInFrames, sceneSegments } from '../../shared/timing.mjs';
 import { contentBox } from '../components/theme';
 import { calloutFits } from './callout';
 import { fitSceneGraph, graphAreas } from '../utils/graphLayout';
 import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
+import { layoutBarRows, layoutPie } from '../utils/chartShapes';
 import { layoutCompare } from '../utils/compareLayout';
 import { layoutCode } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
@@ -26,7 +29,7 @@ import { layoutTerminal } from '../utils/terminalLayout';
 import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
 import { headerBox, shellFits } from './shell';
 import { sourceFit } from './source';
-import { arrayTargets, erTargets, filesTargets, graphTargets, layersTargets, mapTargets, memoryTargets, plotTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
+import { arrayTargets, erTargets, filesTargets, graphTargets, imageTargets, layersTargets, mapTargets, memoryTargets, plotTargets, stateTargets, svgTargets, tableTargets, testsTargets, timelineTargets } from '../utils/sceneTargets';
 import type { Box, MarkTargets } from '../utils/penGeometry';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
@@ -38,7 +41,7 @@ class Scaled {
 const scaledTables = (name: string, tables: readonly { scale: number }[]) => tables.map((t) => new Scaled(name, t.scale, t));
 
 /** Everything a scene type fits its text into, given its scene: the layouts its component draws from. */
-type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap) => unknown };
+type SceneFits = { [T in Scene['type']]: (scene: Extract<Scene, { type: T }>, storyboard: Storyboard, hunks: HunkMap, images: ImageManifest) => unknown };
 
 const SCENE_FITS: SceneFits = {
   text: (scene) => textStates(scene).map((state) => layoutText(scene, state.values, state.paths)),
@@ -75,8 +78,9 @@ const SCENE_FITS: SceneFits = {
     return scaledTables('table', layoutTableStates(scene.columns, stateRows(scene.columns, scene.rows, sceneStates(scene)), box.width, box.height));
   },
   chart: (scene) => {
-    const box = contentBox(Boolean(scene.title));
-    return layoutChart(scene, box.width, box.height);
+    const box = headerBox(scene);
+    if (scene.kind === 'pie' || scene.kind === 'donut') return layoutPie(scene, box.width, box.height);
+    return scene.horizontal ? layoutBarRows(scene, box.width, box.height) : layoutChart(scene, box.width, box.height);
   },
   timeline: (scene) => {
     const box = contentBox(Boolean(scene.title));
@@ -118,6 +122,7 @@ const SCENE_FITS: SceneFits = {
   plot: () => null,
   // A map's labels are one line at one size; bin/lib/validate-map.mjs checks where they land.
   map: () => null,
+  image: (scene, _storyboard, _hunks, images) => layoutImage(scene, headerBox(scene), images),
   terminal: (scene) => {
     const box = contentBox(Boolean(scene.title));
     return layoutTerminal(scene, box.width, box.height);
@@ -158,12 +163,12 @@ export interface FitReport {
 }
 
 /** Every text each scene draws, fitted exactly as the player fits it. Expects a normalized, valid storyboard. */
-export function fitReport(storyboard: Storyboard, hunks: HunkMap): FitReport[] {
+export function fitReport(storyboard: Storyboard, hunks: HunkMap, images: ImageManifest = {}): FitReport[] {
   return storyboard.scenes.map((scene, i) => {
     const out: Fit[] = [];
     const scaled: ScaledFits[] = [];
-    const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap) => unknown;
-    collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks)], out, scaled, new Set());
+    const fits = SCENE_FITS[scene.type] as (s: Scene, sb: Storyboard, h: HunkMap, i: ImageManifest) => unknown;
+    collect([shellFits(scene), sourceFit(scene, hunks), calloutFits(scene), fits(scene, storyboard, hunks, images)], out, scaled, new Set());
     return { scene: i, fits: out, scaled };
   });
 }
@@ -195,9 +200,25 @@ export interface InkStage {
 }
 
 /** Per scene, each step's stage and item boxes, where ink at a point would land; null for a scene type without them. */
-export function inkStages(storyboard: Storyboard, hunks: HunkMap): (InkStage[] | null)[] {
+export function inkStages(storyboard: Storyboard, hunks: HunkMap, images: ImageManifest = {}): (InkStage[] | null)[] {
   return storyboard.scenes.map((scene) => {
+    if (scene.type === 'image') {
+      // Each step's ink lands as the step's pen starts, the pan and zoom that far along.
+      const segments = sceneSegments(scene, null);
+      const total = sceneDurationInFrames(scene, null);
+      return imageTargets(scene, images, segments.slice(1).map((s) => s.markFrom / total)).map((t) => ({ area: t.area, boxes: [...t.boxes] }));
+    }
     const targets = (STEP_TARGETS[scene.type] as ((s: Scene, h: HunkMap) => MarkTargets[]) | undefined)?.(scene, hunks);
     return targets ? targets.map((t) => ({ area: t.area, boxes: [...t.boxes] })) : null;
+  });
+}
+
+/** Pictures drawn more than twice their own size, which look soft: the scene, the picture's size, and its drawn size. */
+export function imageScales(storyboard: Storyboard, images: ImageManifest): { scene: number; natural: { width: number; height: number }; drawn: { width: number; height: number }; scale: number }[] {
+  return storyboard.scenes.flatMap((scene, i) => {
+    if (scene.type !== 'image') return [];
+    const layout = layoutImage(scene, headerBox(scene), images);
+    if (!layout.natural || layout.upscale <= 2) return [];
+    return [{ scene: i, natural: layout.natural, drawn: { width: Math.round(layout.base.width), height: Math.round(layout.base.height) }, scale: layout.upscale }];
   });
 }

@@ -2,7 +2,7 @@
 
 import { expandLineRefs, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
-import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
+import { cueWord, FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
 import { checkFocusSteps } from './validate-focus.mjs';
 import { checkHighlight } from './highlight.mjs';
@@ -20,6 +20,7 @@ import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
 import { checkSvg } from './validate-svg.mjs';
 import { checkPlot } from './validate-plot.mjs';
 import { checkMap } from './validate-map.mjs';
+import { checkImage } from './validate-image.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
@@ -29,7 +30,7 @@ import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
-const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg', 'plot', 'map'];
+const TYPES = ['text', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg', 'plot', 'map', 'image'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
 const TEXT_ITEMS_MAX = 6;
@@ -160,7 +161,15 @@ function checkCodeSteps(scene, hunk, p, errors, warnings) {
       else labelled++;
     }
     if (step.outcome !== undefined && typeof step.outcome !== 'string') errors.push(`${q}.outcome: must be a string`);
+    if (scene.typing === true && step.oldLines !== undefined) errors.push(`${q}.oldLines: a typing scene writes the new code and draws no removed lines; type new lines with lines, or drop typing`);
+    if (step.output !== undefined && typeof step.output !== 'string') errors.push(`${q}.output: must be a string, lines separated by "\n"`);
+    if (step.outputWhen !== undefined) {
+      if (typeof step.outputWhen !== 'string' || !step.outputWhen.trim()) errors.push(`${q}.outputWhen: must be words of the step's say`);
+      else if (step.output === undefined) errors.push(`${q}.outputWhen: the step has no output to print`);
+      else if (isStr(step.say) && cueWord(step.say, step.outputWhen) < 0) errors.push(`${q}.outputWhen: ${JSON.stringify(step.outputWhen)} is not in the step's say`);
+    }
   });
+  if (labelled && steps.some((step) => step?.output !== undefined)) errors.push(`${p}.steps: the output pane and the step diagram both sit beside the code; drop the labels or the output`);
   if (labelled && labelled < steps.length) errors.push(`${p}.steps: ${labelled} of ${steps.length} steps have a label; label every step to draw the flow diagram beside the code, or none`);
   else if (labelled > LABELLED_STEPS_MAX) warnings.push(`${p}.steps: ${labelled} labelled steps; the step diagram beside the code fits ${LABELLED_STEPS_MAX}, so split the scene or drop the labels`);
   if (!refsOk) return;
@@ -271,11 +280,12 @@ async function checkMermaid(diagrams, errors, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null }} meta  The mode from meta.json:
+ * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null, images?: object | null }} meta  The mode from meta.json:
  *   "explain" (`mr-cast init`) narrates source snippets instead of a diff, so it has no coverage, risk or `skipped`.
  *   A pre-read (`audience` "preread") shows no code and lists the diff in its reading order; any other audience
  *   is a plain video. The run's plan.json as `readPlan` read it, when it has one: each scene's topic must name one
- *   of its topics. Errors are what would not render or name something that does not exist; warnings report what
+ *   of its topics. `images` is what bin/lib/images.mjs found making the pictures local: `manifest`, their copies and
+ *   sizes, and `problems`, one for each picture that cannot be shown. Errors are what would not render or name something that does not exist; warnings report what
  *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
  */
 export async function validateStoryboard(raw, hunks, meta = {}) {
@@ -356,7 +366,7 @@ function intentMessage(message, intents) {
   return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
 }
 
-async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null } = {}) {
+async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null, images = null } = {}) {
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -391,6 +401,10 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
         else if (!hunk) errors.push(`${p}.hunkId: "${s.hunkId}" not found in hunks.json`);
         if (s.view !== undefined && !VIEWS.includes(s.view)) errors.push(`${p}.view: must be one of ${VIEWS.join(', ')}`);
         if (s.calloutText !== undefined && typeof s.calloutText !== 'string') errors.push(`${p}.calloutText: must be a string`);
+        if (s.outputTitle !== undefined && typeof s.outputTitle !== 'string') errors.push(`${p}.outputTitle: must be a string`);
+        if (s.typing !== undefined && typeof s.typing !== 'boolean') errors.push(`${p}.typing: must be true or false`);
+        else if (s.typing === true && s.steps === undefined) errors.push(`${p}.typing: each step types its lines, so the scene needs steps`);
+        else if (s.typing === true && s.view === 'split') errors.push(`${p}.view: a typing scene draws its code in one column; drop view "split"`);
         if (s.steps !== undefined) {
           checkCodeSteps(s, hunk, p, errors, warnings);
           break;
@@ -520,6 +534,10 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
         checkMap(s, p, errors, warnings);
         break;
 
+      case 'image':
+        checkImage(s, p, errors);
+        break;
+
       case 'reading':
         break;
 
@@ -544,12 +562,14 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null 
 
   const preread = audience === 'preread';
   const listed = checkPreread(sb, hunks ?? {}, { preread, mode }, errors, warnings);
+  // Whether each picture can be shown, as bin/lib/images.mjs found when it made them local.
+  for (const { path: at, message, level } of images?.problems ?? []) (level === 'warning' ? warnings : errors).push(`${at}: ${message}`);
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   checkTopics(sb, plan, errors, warnings, { preread });
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
-  if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings);
+  if (!errors.length) await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings, images?.manifest ?? {});
   checkSpokenCounts(sb.scenes, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined) warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');

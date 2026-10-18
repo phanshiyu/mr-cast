@@ -2,12 +2,15 @@
 // src/types.ts. Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
 import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+import { walkStates } from '../../shared/state-steps.mjs';
 import { checkStateSteps } from './validate-state.mjs';
 
 const TABLE_COLUMNS_MAX = 6;
 const TABLE_ROWS_MAX = 10;
 export const TONES = ['neutral', 'accent', 'good', 'bad', 'warn'];
-const CHART_KINDS = ['bar', 'line'];
+const CHART_KINDS = ['bar', 'line', 'pie', 'donut'];
+/** Past this many slices the palette repeats a colour. */
+const PIE_SLICES_MAX = 8;
 const CHART_LABELS_MAX = 12;
 const CHART_SERIES_MAX = 4;
 // Past this many bars each one gets too thin to carry its value label.
@@ -65,14 +68,19 @@ export function checkTable(s, p, errors, warnings) {
 }
 
 export function checkChart(s, p, errors, warnings) {
-  for (const k of ['title', 'unit']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
+  const before = errors.length;
+  for (const k of ['title', 'unit', 'callout']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
   if (!CHART_KINDS.includes(s.kind)) errors.push(`${p}.kind: must be one of ${CHART_KINDS.join(', ')}`);
+  const pie = s.kind === 'pie' || s.kind === 'donut';
   if (s.better !== undefined && !['lower', 'higher'].includes(s.better)) errors.push(`${p}.better: must be "lower" or "higher"`);
-  if (s.badges !== undefined && typeof s.badges !== 'boolean') errors.push(`${p}.badges: must be true or false`);
-  if (!Array.isArray(s.labels) || s.labels.length === 0 || !s.labels.every(isStr)) return errors.push(`${p}.labels: required non-empty array of strings, one per x position`);
+  for (const k of ['badges', 'horizontal', 'stacked', 'sort']) if (s[k] !== undefined && typeof s[k] !== 'boolean') errors.push(`${p}.${k}: must be true or false`);
+  for (const k of ['horizontal', 'stacked']) if (s[k] === true && s.kind !== 'bar') errors.push(`${p}.${k}: only a bar chart is drawn ${k === 'horizontal' ? 'horizontally' : 'stacked'}; drop it, or use kind "bar"`);
+  if (s.sort === true && s.kind === 'line') errors.push(`${p}.sort: a line chart keeps its labels in order; sort orders bars and slices`);
+  if (!Array.isArray(s.labels) || s.labels.length === 0 || !s.labels.every(isStr)) return errors.push(`${p}.labels: required non-empty array of strings, one per ${pie ? 'slice' : 'x position'}`);
   const n = s.labels.length;
   if (new Set(s.labels).size !== n) errors.push(`${p}.labels: each label must be different`);
   if (n > CHART_LABELS_MAX) warnings.push(`${p}.labels: ${n} labels; more than ${CHART_LABELS_MAX} get cramped`);
+  else if (pie && n > PIE_SLICES_MAX) warnings.push(`${p}.labels: ${n} slices; past ${PIE_SLICES_MAX} their colours are hard to tell apart`);
   if (s.kind === 'line' && n < 2) warnings.push(`${p}.labels: a line needs at least two labels; use kind "bar" for one`);
   if (!Array.isArray(s.series) || s.series.length === 0) return errors.push(`${p}.series: required non-empty array of { name, values, tone? }`);
   const names = new Set();
@@ -85,15 +93,30 @@ export function checkChart(s, p, errors, warnings) {
     if (!Array.isArray(series?.values) || !series.values.every((v) => typeof v === 'number' && Number.isFinite(v))) return errors.push(`${q}.values: required array of numbers`);
     if (series.values.length !== n) errors.push(`${q}.values: ${series.values.length} values for ${n} labels; give one value per label`);
     if (s.kind === 'bar' && series.values.some((v) => v < 0)) errors.push(`${q}.values: bars start at zero, so values must be 0 or more; use kind "line" for negative values`);
+    if (pie && series.values.some((v) => v < 0)) errors.push(`${q}.values: a slice is a share of the whole, so values must be 0 or more`);
   });
+  if (pie && s.series.length !== 1) errors.push(`${p}.series: a ${s.kind} draws one series, one slice per label; give one series, or use kind "bar"`);
   if (s.series.length > CHART_SERIES_MAX) warnings.push(`${p}.series: ${s.series.length} series; more than ${CHART_SERIES_MAX} are hard to tell apart`);
-  if (s.kind === 'bar' && n * s.series.length > CHART_BARS_MAX) warnings.push(`${p}: ${n * s.series.length} bars; past ${CHART_BARS_MAX} a bar is too thin to carry its value`);
+  const bars = n * (s.stacked === true ? 1 : s.series.length);
+  if (s.kind === 'bar' && bars > CHART_BARS_MAX) warnings.push(`${p}: ${bars} bars; past ${CHART_BARS_MAX} a bar is too thin to carry its value`);
+  if (s.stacked === true && s.series.length === 1) warnings.push(`${p}.stacked: one series has nothing to stack, so the chart draws as without it`);
   const note = s.annotation;
-  if (note === undefined) return;
-  if (!note || typeof note !== 'object') return errors.push(`${p}.annotation: must be { at, series?, text }`);
-  if (!isStr(note.text)) errors.push(`${p}.annotation.text: required string`);
-  if (!s.labels.includes(note.at)) errors.push(`${p}.annotation.at: ${JSON.stringify(note.at)} is not one of the labels (${s.labels.map((l) => JSON.stringify(l)).join(', ')})`);
-  if (note.series !== undefined && !names.has(note.series)) errors.push(`${p}.annotation.series: ${JSON.stringify(note.series)} is not a series name`);
+  if (note !== undefined) {
+    if (pie || s.horizontal === true) errors.push(`${p}.annotation: only a vertical bar or line chart draws an annotation; say it, or put it in the callout`);
+    else if (!note || typeof note !== 'object') errors.push(`${p}.annotation: must be { at, series?, text }`);
+    else {
+      if (!isStr(note.text)) errors.push(`${p}.annotation.text: required string`);
+      if (!s.labels.includes(note.at)) errors.push(`${p}.annotation.at: ${JSON.stringify(note.at)} is not one of the labels (${s.labels.map((l) => JSON.stringify(l)).join(', ')})`);
+      if (note.series !== undefined && !names.has(note.series)) errors.push(`${p}.annotation.series: ${JSON.stringify(note.series)} is not a series name`);
+    }
+  }
+  if (errors.length > before) return;
+  checkStateSteps(s, p, errors, warnings);
+  if (!pie || errors.length > before) return;
+  walkStates(s).states.forEach((state, k) => {
+    if (Object.values(state.values).some((v) => v > 0)) return;
+    errors.push(k === 0 ? `${p}.series[0].values: every slice is 0, so the ${s.kind} has nothing to draw` : `${p}.steps[${k - 1}].set: every slice is 0 from this step, so the ${s.kind} has nothing to draw`);
+  });
 }
 
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);

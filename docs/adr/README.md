@@ -37,3 +37,5 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0028](0028-camera-and-svg-motion.md) | A step camera on every scene with refs, and move, trace, morph and flow on svg | Accepted |
 | [0029](0029-plot-scene.md) | A plot scene: numeric axes, parts placed by expressions in parameters, and steps that set and trace | Accepted |
 | [0030](0030-map-scene.md) | A map scene on a bundled Natural Earth outline, with views, great-circle routes and traces on steps | Accepted |
+| [0031](0031-chart-and-code-motion.md) | Chart steps set values that move and sort bars into a race, with pies, donuts and stacks; code steps type their lines and print output beside them | Accepted |
+| [0032](0032-images.md) | Pictures in an image scene and compare cells, from local copies that validate makes of files and URLs | Accepted |
