@@ -249,7 +249,7 @@ function applyMorph(scene, step, next, problem) {
   for (const [id, target] of Object.entries(step.morph)) {
     const key = `s:${id}`;
     if (!ids.has(id)) problem('morph', id, 'names no element id in the drawing', known);
-    else if (ids.get(id).tag !== 'path') problem('morph', id, `is a <${ids.get(id).tag}>; only a <path> morphs, so draw it as one`, paths);
+    else if (ids.get(id).tag !== 'path') problem('morph', id, `is a <${ids.get(id).tag}>; only a <path> morphs, so draw it as one`);
     else if (typeof target !== 'string' || !ids.has(target)) problem('morph', id, `${JSON.stringify(target)} names no element id; give the id of the path whose shape it takes${paths.length ? `, one of ${paths.map((n) => JSON.stringify(n)).join(', ')}` : ''}`);
     else if (ids.get(target).tag !== 'path') problem('morph', id, `"${target}" is a <${ids.get(target).tag}>; a morph takes the shape of a <path>${paths.length > 1 ? `, one of ${paths.filter((n) => n !== id).map((n) => JSON.stringify(n)).join(', ')}` : ''}`);
     else {
@@ -350,8 +350,8 @@ export function walkStates(scene) {
       const moved = model.move?.(scene, name, value);
       if (!moved) {
         const names = model.moveNames(scene);
-        const listed = names.length > 12 ? 'the drawing gives its elements ids' : `they are ${names.map((n) => JSON.stringify(n)).join(', ')}`;
-        problem('move', name, model.move ? `names no ${model.moveWhat ?? 'pointer or range'}; ${names.length ? listed : 'the scene has none'}` : `${aType(scene.type)} scene has nothing to move; use set`, names);
+        const what = model.moveWhat ? `names no ${model.moveWhat}` : `names no pointer or range; ${names.length ? `they are ${names.map((n) => JSON.stringify(n)).join(', ')}` : 'the scene has none'}`;
+        problem('move', name, model.move ? what : `${aType(scene.type)} scene has nothing to move; use set`, names);
       } else if (moved.problem) problem('move', name, moved.problem);
       else if (moved.error) problem('move', name, `${JSON.stringify(value)} is no place; ${moved.error}`);
       else if (moved.transform !== undefined) next.transforms[moved.key] = moved.transform;
