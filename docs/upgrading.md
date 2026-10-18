@@ -6,6 +6,8 @@ Storyboards from older versions keep working. Steps from 0.10 that named `messag
 
 ## From 0.26
 
+- The default voice is Kitten TTS, `kitten:luna`. Its first voice-over downloads about 82 MB into `~/.cache/mr-cast/kitten`. A Kokoro name on its own, such as `--voice af_heart`, still picks Kokoro, and so does `--engine kokoro`. Clips voiced with Kokoro before 0.27 are voiced again on the next voice-over.
+- A `tests` scene with `cases` and `gaps` is read as a behaviour matrix: each case is a situation named by its test, with one outcome, "Proves", and each gap is a gap row. A case's `badge` and `tone`, and the `subject` and `none` titles, are no longer drawn.
 - The `intent` scene is now drawn as a `text` scene: its `summary` as the `headline`, its `bullets` as the `items`, and the storyboard's title line as the `kicker`. Old storyboards need no change, and `validate` reports them by their own field names. New storyboards write `text`; `mr-cast schema intent` no longer prints a schema.
 
 ## From 0.24
