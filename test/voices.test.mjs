@@ -21,7 +21,7 @@ function cli(...args) {
   const home = tmp();
   const env = {
     ...process.env, MR_CAST_NO_UPDATE_CHECK: '1',
-    XDG_CONFIG_HOME: path.join(home, 'config'), XDG_CACHE_HOME: path.join(home, 'cache'), XDG_STATE_HOME: path.join(home, 'state'), CLAUDE_CONFIG_DIR: path.join(home, 'claude'),
+    XDG_CONFIG_HOME: path.join(home, 'config'), XDG_CACHE_HOME: path.join(home, 'cache'), XDG_STATE_HOME: path.join(home, 'state'), CLAUDE_CONFIG_DIR: path.join(home, 'claude'), MR_CAST_PROCS_SCAN: '0',
   };
   const run = (...more) => spawnSync(process.execPath, [BIN, ...more], { cwd: home, env, encoding: 'utf8' });
   return { home, env, run, result: run(...args) };

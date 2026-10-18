@@ -11,8 +11,21 @@ const tmp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-procs
 const env = {
   ...process.env, XDG_CONFIG_HOME: path.join(tmp, 'config'), XDG_CACHE_HOME: path.join(tmp, 'cache'), XDG_STATE_HOME: path.join(tmp, 'state'),
   CLAUDE_CONFIG_DIR: path.join(tmp, 'claude'), MR_CAST_NO_UPDATE_CHECK: '1', MR_CAST_DIST: path.join(tmp, 'dist'),
+  // Other mr-cast processes on this machine (other checkouts, other agents) must never be listed, replaced or stopped.
+  MR_CAST_PROCS_SCAN: '0',
 };
 process.env.XDG_STATE_HOME = env.XDG_STATE_HOME;
+process.env.MR_CAST_PROCS_SCAN = '0';
+
+/** `fn` with the scan for unregistered processes on: only for listing, and only against a fake ps or with a filter. */
+function withScan(fn) {
+  process.env.MR_CAST_PROCS_SCAN = '1';
+  try {
+    return fn();
+  } finally {
+    process.env.MR_CAST_PROCS_SCAN = '0';
+  }
+}
 fs.mkdirSync(env.MR_CAST_DIST, { recursive: true });
 fs.writeFileSync(path.join(env.MR_CAST_DIST, 'index.html'), '<!doctype html>');
 
@@ -95,12 +108,12 @@ const self = (started) => [process.pid, row(process.pid, started, `${process.exe
 
 test('an entry counts only while ps shows the same mr-cast process of this user; one ps shows exited or reused is removed', () => {
   const T = 'Sun Oct 18 10:00:00 2026';
-  writeEntry({ pid: 90001, kind: 'play', started: T, run: 'live' });
+  writeEntry({ pid: 90001, kind: 'play', started: T, command: mrCast('play'), run: 'live' });
   writeEntry({ pid: 90002, kind: 'play', started: T, run: 'dead' });
   writeEntry({ pid: 90003, kind: 'play', started: T, run: 'reused' });
   writeEntry({ pid: 90004, kind: 'render', started: T, run: 'not-mr-cast' });
   writeEntry({ pid: 90005, kind: 'plan', started: T, run: 'other-user' });
-  writeEntry({ pid: 90006, kind: 'voice', started: T, ppid: 90001, run: 'live' });
+  writeEntry({ pid: 90006, kind: 'voice', started: T, command: `${process.execPath} ${ROOT}/bin/lib/voice-child.mjs --voice-child`, ppid: 90001, run: 'live' });
   const table = new Map([
     self(T),
     [90001, row(90001, T, mrCast('play'))],
@@ -111,7 +124,7 @@ test('an entry counts only while ps shows the same mr-cast process of this user;
     [90007, row(90007, 'Sun Oct 18 09:00:00 2026', `${process.execPath} ${BIN} render`)],
     [90008, row(90008, T, `${process.execPath} /elsewhere/bin/mr-cast.mjs play`)],
   ]);
-  const listed = listProcesses({ ps: () => table });
+  const listed = withScan(() => listProcesses({ ps: () => table }));
   assert.deepEqual(listed.map((p) => [p.pid, p.kind, p.registered, p.parent]), [
     [90007, 'render', false, null],
     [90001, 'play', true, null],
@@ -154,8 +167,76 @@ test('a play started under another TZ stays listed and is replaced by the next p
   await second.exited;
 });
 
+test('only node running mr-cast counts: a wrapper whose arguments name mr-cast is not listed, and an entry needs its exact command', () => {
+  const T = 'Sun Oct 18 10:00:00 2026';
+  const node = process.execPath;
+  writeEntry({ pid: 90021, kind: 'play', started: T, command: `${node} ${BIN} play --port 4747`, run: 'recorded' });
+  const table = new Map([
+    self(T),
+    [90021, row(90021, T, `${node} ${BIN} play --port 4748`)],
+    [90022, row(90022, T, `/bin/zsh -c source /Users/me/.claude/shell-snapshots/snapshot.sh && eval '${node} ${BIN} play --no-open' < /dev/null`)],
+    [90023, row(90023, T, `caffeinate -i ${node} ${BIN} play`)],
+    [90024, row(90024, T, `timeout 600 ${node} ${BIN} render`)],
+    [90025, row(90025, T, `/bin/sh -c ${node} ${BIN} plan`)],
+    [90026, row(90026, T, `${node} -e require('x') ${BIN} play`)],
+    [90027, row(90027, T, `${node} --enable-source-maps ${BIN} render`)],
+  ]);
+  // 90021 runs another command line than its entry records, so it counts as a process that wrote no entry.
+  assert.deepEqual(withScan(() => listProcesses({ ps: () => table })).map((p) => [p.pid, p.kind, p.registered]), [[90021, 'play', false], [90027, 'render', false]]);
+  assert.equal(fs.existsSync(entryOf(90021)), true, 'same pid and start: not trusted, but not removed either');
+  fs.rmSync(entryOf(90021));
+});
+
+/** Starts `command` with `args` in `cwd`, and resolves once its output matches `ready`. */
+function startProcess(command, args, cwd, ready, more = {}) {
+  const child = spawn(command, args, { cwd, env: { ...env, ...more }, stdio: ['ignore', 'pipe', 'pipe'] });
+  started.add(child);
+  child.output = '';
+  child.exited = new Promise((resolve) => child.on('exit', (code, signal) => resolve({ code, signal })));
+  return new Promise((resolve, reject) => {
+    const check = (chunk) => {
+      child.output += chunk;
+      if (ready.test(child.output)) resolve(child);
+    };
+    child.stdout.on('data', check);
+    child.stderr.on('data', check);
+    child.exited.then(() => reject(new Error(`exited before ${ready}: ${child.output}`)));
+  });
+}
+
+test('a shell that runs play is not listed, and stopping the play by pid leaves the shell running on', async () => {
+  const { cwd } = runIn('wrapped');
+  const shell = await startProcess('/bin/sh', ['-c', `${process.execPath} ${BIN} play --no-voice --no-open --port 5520; echo shell went on`], cwd, /mr-cast player:/);
+  const mine = (list) => list.filter((p) => p.pid === shell.pid || p.ppid === shell.pid);
+  const listed = mine(withScan(() => listProcesses()));
+  assert.deepEqual(listed.map((p) => [p.kind, p.registered, p.pid === shell.pid]), [['play', true, false]]);
+  const stopped = cli(cwd, 'stop', String(listed[0].pid), '--json');
+  assert.equal(stopped.status, 0, stopped.stderr);
+  assert.deepEqual(JSON.parse(stopped.stdout).processes.map((p) => [p.pid, p.outcome]), [[listed[0].pid, 'stopped']]);
+  assert.deepEqual(await within(shell.exited, 5000), { code: 0, signal: null });
+  assert.match(shell.output, /shell went on/);
+});
+
+test('a play started with a relative script path is registered, listed and replaced, and one that recorded elsewhere is found', async () => {
+  const { dir } = runIn('relative');
+  const args = ['bin/mr-cast.mjs', 'play', '--dir', dir, '--no-voice', '--no-open'];
+  const first = await startProcess(process.execPath, [...args, '--port', '5550'], ROOT, /mr-cast player:/);
+  assert.deepEqual(listProcesses().filter((p) => p.pid === first.pid).map((p) => [p.kind, p.registered, p.dir]), [['play', true, dir]]);
+  const second = await startProcess(process.execPath, [...args, '--port', '5580'], ROOT, /mr-cast player:/);
+  assert.match(second.output, new RegExp(`stopping the play server already running for this run \\(pid ${first.pid}, `));
+  assert.deepEqual(await within(first.exited, 2000), { code: 0, signal: null });
+  second.kill('SIGTERM');
+  await second.exited;
+
+  const { dir: other } = runIn('relative-elsewhere');
+  const elsewhere = await startProcess(process.execPath, ['bin/mr-cast.mjs', 'play', '--dir', other, '--no-voice', '--no-open', '--port', '5610'], ROOT, /mr-cast player:/, { XDG_STATE_HOME: path.join(tmp, 'state-elsewhere') });
+  assert.deepEqual(withScan(() => listProcesses()).filter((p) => p.pid === elsewhere.pid).map((p) => [p.kind, p.registered, p.repo]), [['play', false, ROOT]]);
+  elsewhere.kill('SIGTERM');
+  await elsewhere.exited;
+});
+
 const proc = (pid, kind, fields = {}) => ({
-  pid, ppid: 1, kind, started: 'x', version: '0.28.0', url: null, dir: null, run: null, repo: null, registered: true,
+  pid, ppid: 1, kind, started: 'x', command: 'x', version: '0.28.0', url: null, dir: null, run: null, repo: null, registered: true,
   startedAt: 0, viewers: kind === 'play' || kind === 'plan' ? 0 : null, idleSince: null, idleExit: 30, parent: null, ...fields,
 });
 const HOUR = 3_600_000;

@@ -1,8 +1,8 @@
 // Which mr-cast processes are running, and stopping them. Each long-lived process (the play and plan servers, render,
 // and play's voice and download children) writes <pid>.json into procsDir() as it starts and removes it as it exits.
 // A listing trusts an entry only while `ps` shows that pid owned by this user, started at the recorded time and running
-// mr-cast; any other entry is stale and removed. mr-cast 0.27 and older wrote no entry, so `ps` is also scanned for
-// them. `mr-cast stop` signals only processes that pass the same check again just before each signal.
+// the recorded mr-cast command line. mr-cast 0.27.0 and older wrote no entry, so `ps` is also scanned for node running
+// mr-cast. `mr-cast stop` signals only processes that pass the same check again just before each signal.
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -17,10 +17,11 @@ import { plural } from './summary.mjs';
  * @typedef {'play' | 'plan' | 'render' | 'voice' | 'download'} ProcKind
  * @typedef {{ pid: number, ppid: number, uid: number, started: string, command: string }} Row  One line of `ps`.
  * @typedef {{
- *   pid: number, ppid: number, kind: ProcKind, started: string, version: string | null, url: string | null,
+ *   pid: number, ppid: number, kind: ProcKind, started: string, command: string, version: string | null, url: string | null,
  *   dir: string | null, run: string | null, repo: string | null, viewers?: number, idleSince?: string | null,
  *   idleExit?: number,
- * }} Entry  What a process writes about itself. `started` is its start time as `ps` prints it.
+ * }} Entry  What a process writes about itself. `started` is its start time and `command` its command line, both as
+ *   `ps` prints them.
  * @typedef {Entry & {
  *   registered: boolean, startedAt: number, viewers: number | null, idleSince: number | null,
  *   idleExit: number | null, parent: number | null,
@@ -33,8 +34,11 @@ const PACKAGE = '@shiyuphan/mr-cast';
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 const SERVERS = new Set(['play', 'plan']);
 const CHILDREN = new Set(['voice', 'download']);
-const SCRIPT = /(?:^|\s)(\S*\/bin\/mr-cast\.mjs)\s+(?:explain\s+)?(\S+)/;
-const CHILD_SCRIPT = /(?:^|\s)(\S*\/bin\/lib\/voice-child\.mjs)\s+--voice-child(?:\s|$)/;
+const NODE = /^node(?:js)?[\d.]*$/;
+/** Node options that run code instead of a script, so what follows them is not the script. */
+const EVAL = new Set(['-e', '--eval', '-p', '--print']);
+const MAIN = /(?:^|\/)bin\/mr-cast\.mjs$/;
+const CHILD = /(?:^|\/)bin\/lib\/voice-child\.mjs$/;
 const OLD_KINDS = new Set(['play', 'plan', 'render']);
 
 /** Per user, beside other state that outlives a command; a stale entry is dropped by the next listing. */
@@ -67,8 +71,25 @@ export function processTable(pids = null) {
 
 const ownUid = () => process.getuid?.() ?? -1;
 
-/** Whether `row` is the process `entry` describes: this user's, started then, and running mr-cast. */
-const same = (row, entry) => Boolean(row) && row.uid === ownUid() && row.started === entry.started && (SCRIPT.test(row.command) || CHILD_SCRIPT.test(row.command));
+/**
+ * What `command`, a command line as `ps` prints it, runs when it is node running mr-cast or its voice child: the
+ * script as written, which may be relative to the process's working directory, the kind, and what follows the script.
+ * Null for anything else, such as a shell, `caffeinate` or `timeout` whose arguments name mr-cast. Arguments are split
+ * on spaces, so a path holding a space never matches, which only hides that process.
+ */
+export function mrCastCommand(command) {
+  const [bin, ...args] = command.trim().split(/\s+/);
+  if (!NODE.test(path.basename(bin ?? ''))) return null;
+  const at = args.findIndex((a) => !a.startsWith('-'));
+  if (at < 0 || args.slice(0, at).some((a) => EVAL.has(a.split('=')[0]))) return null;
+  const [script, ...rest] = args.slice(at);
+  if (CHILD.test(script)) return rest[0] === '--voice-child' ? { script, kind: 'voice', rest } : null;
+  if (!MAIN.test(script)) return null;
+  return { script, kind: rest[0] === 'explain' ? rest[1] ?? null : rest[0] ?? null, rest };
+}
+
+/** Whether `row` is the process `entry` describes: this user's, started then, and running the mr-cast it recorded. */
+const same = (row, entry) => Boolean(row) && row.uid === ownUid() && row.started === entry.started && row.command === entry.command && mrCastCommand(row.command) !== null;
 
 /** The run fields of a process working on run directory `dir`. */
 export const runFields = (dir) => {
@@ -81,13 +102,13 @@ export const runFields = (dir) => {
 /**
  * Records this process in the registry until it exits. `update` rewrites the entry, as a server does when a page
  * connects or leaves. Without `ps` nothing is recorded.
- * @param {Omit<Entry, 'pid' | 'ppid' | 'started' | 'version'>} fields
+ * @param {Omit<Entry, 'pid' | 'ppid' | 'started' | 'command' | 'version'>} fields
  */
 export function register(fields) {
   const row = processTable([process.pid])?.get(process.pid);
   if (!row) return { update() {}, remove() {} };
   const file = entryFile(process.pid);
-  let entry = { pid: process.pid, ppid: process.ppid, started: row.started, version: VERSION, ...fields };
+  let entry = { pid: process.pid, ppid: process.ppid, started: row.started, command: row.command, version: VERSION, ...fields };
   const write = () => {
     try {
       fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -134,23 +155,22 @@ const packageOf = (root) => {
   try { return JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')); } catch { return null; }
 };
 
-/** A process of this user running an mr-cast that wrote no entry, as 0.27 and older do; null for anything else. */
+/** A process of this user running an mr-cast that wrote no entry, as 0.27.0 and older do; null for anything else. */
 function unregistered(row) {
   if (row.uid !== ownUid()) return null;
-  const main = row.command.match(SCRIPT);
-  const child = main ? null : row.command.match(CHILD_SCRIPT);
-  if (!(main && OLD_KINDS.has(main[2])) && !child) return null;
+  const found = mrCastCommand(row.command);
+  if (!found || !(found.kind === 'voice' || OLD_KINDS.has(found.kind))) return null;
   const { cwd, port } = lsofOf(row.pid);
-  const script = path.resolve(cwd ?? '/', (main ?? child)[1]);
-  const root = path.dirname(path.dirname(main ? script : path.dirname(script)));
-  const pkg = packageOf(root);
-  if (pkg?.name !== PACKAGE) return null;
-  const kind = /** @type {ProcKind} */ (main ? main[2] : 'voice');
+  if (!cwd && !path.isAbsolute(found.script)) return null;
+  const script = path.resolve(cwd ?? '/', found.script);
+  const root = path.dirname(path.dirname(found.kind === 'voice' ? path.dirname(script) : script));
+  if (packageOf(root)?.name !== PACKAGE) return null;
+  const kind = /** @type {ProcKind} */ (found.kind);
   const name = row.command.match(/\s--name\s+(\S+)/)?.[1] ?? null;
   return {
-    pid: row.pid, ppid: row.ppid, kind, started: row.started, version: null, registered: false,
+    pid: row.pid, ppid: row.ppid, kind, started: row.started, command: row.command, version: null, registered: false,
     url: port && SERVERS.has(kind) ? `http://127.0.0.1:${port}${kind === 'plan' ? '/plan' : ''}` : null,
-    dir: null, run: name, repo: main ? cwd : null, startedAt: parseStarted(row.started),
+    dir: null, run: name, repo: kind === 'voice' ? null : cwd, startedAt: parseStarted(row.started),
     viewers: null, idleSince: null, idleExit: null, parent: null,
   };
 }
@@ -191,7 +211,8 @@ export function listProcesses({ ps = processTable } = {}) {
     }
   }
   const known = new Set(procs.map((p) => p.pid));
-  for (const row of table.values()) {
+  // The scan sees every mr-cast of this user on the machine, so tests and sandboxes turn it off to touch only their own.
+  for (const row of process.env.MR_CAST_PROCS_SCAN === '0' ? [] : table.values()) {
     const old = known.has(row.pid) || row.pid === process.pid ? null : unregistered(row);
     if (old) procs.push(old);
   }
