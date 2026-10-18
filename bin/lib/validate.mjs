@@ -581,9 +581,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
         break;
 
       case 'sequence': {
-        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) =>
-          checkNodeFields(n, q, errors),
-        );
+        const ids = checkIds(s.participants, `${p}.participants`, errors, (n, q) => checkNodeFields(n, q, errors));
         if (!ids) break;
         if (ids.size > 6) warnings.push(`${p}.participants: ${ids.size} participants; more than 6 get cramped`);
         if (!Array.isArray(s.messages) || s.messages.length === 0) {

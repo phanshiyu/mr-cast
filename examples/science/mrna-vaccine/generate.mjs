@@ -300,9 +300,7 @@ scenes.push({
     },
     {
       show: ['clone0', 'clone1', 'clone2', 'clone3', 'clone4'],
-      move: Object.fromEntries(
-        clonesTo.map(([x, y], i) => [`clone${i}`, `translate(${x - home[0]} ${y - home[1]})`]),
-      ),
+      move: Object.fromEntries(clonesTo.map(([x, y], i) => [`clone${i}`, `translate(${x - home[0]} ${y - home[1]})`])),
       focus: ['clone0', 'clone1', 'clone2', 'clone3', 'clone4'],
       say: 'That match tells it to make copies of itself, again and again.',
     },

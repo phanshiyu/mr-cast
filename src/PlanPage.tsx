@@ -221,7 +221,8 @@ export const PlanPage: React.FC<{
           className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-100"
         >
           Could not save. Is <code className="font-mono text-rose-50">mr-cast plan</code> still running?
-          <button type="button"
+          <button
+            type="button"
             onClick={() => void send(save.body)}
             className="rounded-md bg-white/10 px-3 py-1 text-xs hover:bg-white/20"
           >
@@ -380,7 +381,11 @@ const TopicRow: React.FC<TopicRowProps> = ({
             </details>
           ) : null}
           {changed && editable ? (
-            <button type="button" onClick={onReset} className="flex items-center gap-1 text-slate-400 hover:text-slate-200">
+            <button
+              type="button"
+              onClick={onReset}
+              className="flex items-center gap-1 text-slate-400 hover:text-slate-200"
+            >
               <RotateCcw size={12} /> Back to suggested
             </button>
           ) : null}
@@ -414,7 +419,8 @@ const DepthControl: React.FC<{
     className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5"
   >
     {DEPTHS.map((depth) => (
-      <button type="button"
+      <button
+        type="button"
         key={depth}
         role="radio"
         aria-checked={depth === value}
@@ -460,7 +466,8 @@ const ViewPicker: React.FC<{
         const Icon = viewIcon[view];
         const on = view === value;
         return (
-          <button type="button"
+          <button
+            type="button"
             key={view}
             role="radio"
             aria-checked={on}
@@ -507,7 +514,8 @@ const HandBack: React.FC<{ hasVideo: boolean; changed: boolean }> = ({ hasVideo,
           <>
             <span>In the terminal, say:</span>
             <code className="rounded-md bg-white/10 px-2 py-0.5 font-mono">{say}</code>
-            <button type="button"
+            <button
+              type="button"
               onClick={copy}
               className="flex items-center gap-1 rounded-md border border-white/15 px-2.5 py-1 text-xs hover:bg-white/10"
             >

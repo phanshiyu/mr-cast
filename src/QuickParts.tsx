@@ -37,7 +37,8 @@ export const QuickEndCard: React.FC = () => {
                 <div className="font-mono text-sm text-white">"{say}"</div>
                 <div className="text-xs text-slate-400">{what}</div>
               </div>
-              <button type="button"
+              <button
+                type="button"
                 onClick={() => copy(say)}
                 aria-label={`Copy "${say}"`}
                 className="rounded-md p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
