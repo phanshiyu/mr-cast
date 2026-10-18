@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.28.0
+## 0.27.1
 
 mr-cast can list and stop the servers it left running. Agents start `mr-cast play` and `mr-cast plan` in the background and forget them, so players piled up on ports 4747, 4748 and on, with nothing to say which run each served (ADR 0027).
 
