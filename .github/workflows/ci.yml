@@ -18,13 +18,17 @@ env:
 
 jobs:
   typecheck:
-    name: Typecheck and text lint
+    name: Typecheck, lint, format and unused code
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
-      - run: pnpm typecheck
+      - run: pnpm check
+      - name: Report duplication and complexity
+        run: |
+          pnpm exec fallow dupes --format github-summary >> "$GITHUB_STEP_SUMMARY"
+          pnpm exec fallow health --report-only --format github-summary >> "$GITHUB_STEP_SUMMARY"
 
   build:
     name: Build the player
