@@ -69,7 +69,12 @@ export interface PartGeometry {
   centre?: Px | null;
   along?: Px[];
 }
-export declare function plotGeometry(scene: PlotScene, axes: PlotAxes, scope: Record<string, number>, progress?: (id: string) => number): Map<string, PartGeometry>;
+/** The part of the content box a camera shows, and its zoom. */
+export interface PlotView {
+  rect: Box;
+  zoom: number;
+}
+export declare function plotGeometry(scene: PlotScene, axes: PlotAxes, scope: Record<string, number>, progress?: (id: string) => number, view?: PlotView | null): Map<string, PartGeometry>;
 
 export interface PlacedLabel {
   id: string;

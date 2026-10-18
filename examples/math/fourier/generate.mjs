@@ -158,11 +158,8 @@ const jump = {
   type: 'plot',
   chapter: 'The jump',
   title: 'Zoom in on the jump',
-  narration: `Here is the middle of the picture, around the jump. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is ${f2(middle(13))}, almost exactly one.`,
-  // Half a period around the jump at π: the plot samples each line at a fixed count across its range, so a narrower
-  // range keeps fifty waves smooth under the camera's zoom.
-  x: { from: Math.PI / 2, to: (3 * Math.PI) / 2, ticks: 'pi' },
-  y: AXES.y,
+  narration: `Here is the sum again, with the jump down at pi in the middle. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is ${f2(middle(13))}, almost exactly one.`,
+  ...AXES,
   params: { n: 13 },
   functions: [SQUARE, { id: 'wave', y: SUM, label: 'waves added: {n:0}' }],
   points: [

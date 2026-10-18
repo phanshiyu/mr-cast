@@ -3,6 +3,7 @@ import { Easing, interpolate, spring, useCurrentFrame, useVideoConfig } from 're
 import { plotAxes, plotGeometry, plotLabels, plotParts, partTone, stateParams, AXIS_FONT, LABEL_FONT, POINT_R, TICK_FONT, TICK_LEN, type PartGeometry, type Px } from '../../shared/plot.mjs';
 import { sceneStates, type SceneState } from '../../shared/state-steps.mjs';
 import { cueFrame, STEP_SETTLE_FRAMES } from '../../shared/timing.mjs';
+import { viewRect, wholeView } from '../../shared/camera.mjs';
 import { headerBox } from '../fit/shell';
 import type { PlotScene, PlotStep } from '../types';
 import { currentStep, focusSpotlight } from '../utils/spotlight';
@@ -12,7 +13,7 @@ import type { SpokenSegment } from '../utils/timing';
 import { plotTargets } from '../utils/sceneTargets';
 import { HeaderCallout } from './HeaderCallout';
 import { PenMarks } from './PenMarks';
-import { SceneShell } from './SceneShell';
+import { SceneShell, useCameraView, type CameraSource } from './SceneShell';
 import type { SceneProps } from './sceneProps';
 import { colors, fonts } from './theme';
 import { tones } from './tones';
@@ -59,13 +60,15 @@ export const PlotDiagram: React.FC<SceneProps<PlotScene>> = ({ scene, hunks, dur
   const states = useMemo(() => sceneStates(scene), [scene]);
   const axes = useMemo(() => plotAxes(scene, box), [scene, box.width, box.height]);
   const marks = useMemo(() => plotTargets(scene), [scene]);
+  const camera: CameraSource = { hunks, segments, targets: (step) => marks[step] ?? null };
+  const view = useCameraView(scene, camera) ?? wholeView(box);
   const { k, t } = stepProgress(scene, states, segments, frame);
   const s: StateFrame = { ...stateFrame(states, segments, frame), t };
   const focus = focusSpotlight(scene, hunks, segments, frame);
   const [was, now] = [stateParams(scene, s.before), stateParams(scene, s.now)];
   const scope = Object.fromEntries(Object.keys(now).map((name) => [name, was[name]! + (now[name]! - was[name]!) * t]));
   const traced = new Set(k >= 0 ? Object.keys(states[k + 1]!.traces).map((key) => key.slice(2)) : []);
-  const geometry = plotGeometry(scene, axes, scope, (id) => (traced.has(id) ? t : 1));
+  const geometry = plotGeometry(scene, axes, scope, (id) => (traced.has(id) ? t : 1), { rect: viewRect(view, box), zoom: view.zoom });
   const order = plotParts(scene);
   const appear = (i: number) => Math.min(1, spring({ frame: frame - START - i * STAGGER, fps, config: { damping: 18, stiffness: 140 } }));
   const build = appear(0);
@@ -130,7 +133,7 @@ export const PlotDiagram: React.FC<SceneProps<PlotScene>> = ({ scene, hunks, dur
   const tickText = (font: typeof TICK_FONT) => ({ fontFamily: fonts.sans, fontWeight: font.weight, fontSize: font.size });
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (step) => marks[step] ?? null }} aside={<HeaderCallout scene={scene} s={s} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={camera} aside={<HeaderCallout scene={scene} s={s} />}>
       <svg width={box.width} height={box.height} viewBox={`0 0 ${box.width} ${box.height}`} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
         <defs>
           <clipPath id={clip}>

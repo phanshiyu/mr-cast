@@ -329,10 +329,10 @@
       "type": "plot",
       "chapter": "The jump",
       "title": "Zoom in on the jump",
-      "narration": "Here is the middle of the picture, around the jump. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is 1.02, almost exactly one.",
+      "narration": "Here is the sum again, with the jump down at pi in the middle. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is 1.02, almost exactly one.",
       "x": {
-        "from": 1.5707963267948966,
-        "to": 4.71238898038469,
+        "from": 0,
+        "to": 6.283185307179586,
         "ticks": "pi"
       },
       "y": {

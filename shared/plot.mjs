@@ -263,26 +263,41 @@ const inside = (inner, outer) => inner.x >= outer.x - 0.5 && inner.y >= outer.y 
 
 // ─── Parts in a frame ───
 
-/** A function's or curve's samples in data space, as runs between the places it has no value, over `progress` of its domain. */
-export function sampleFunction(item, scene, scope, progress = 1) {
+/**
+ * A function's or curve's samples in data space, as runs between the places it has no value, over `progress` of its
+ * domain. `pieces`, given two neighbouring samples, says into how many pieces to split the stretch between them.
+ */
+export function sampleFunction(item, scene, scope, progress = 1, pieces = null) {
   const runs = [];
   let run = [];
   let undefinedAt = null;
-  const push = (px, py, at) => {
+  const push = ([px, py, at]) => {
     if (Number.isFinite(px) && Number.isFinite(py)) return run.push([px, py]);
     if (undefinedAt === null) undefinedAt = at;
     if (run.length) runs.push(run);
     run = [];
   };
+  /** Samples `pointAt(u)` for u from 0 to 1, SAMPLES evenly, and `pieces` more between two where it asks. */
+  const sweep = (pointAt) => {
+    let prev = pointAt(0);
+    push(prev);
+    for (let i = 1; i <= SAMPLES; i++) {
+      const next = pointAt(i / SAMPLES);
+      const n = pieces ? pieces(prev, next) : 1;
+      for (let j = 1; j < n; j++) push(pointAt((i - 1 + j / n) / SAMPLES));
+      push(next);
+      prev = next;
+    }
+  };
   if (item.x !== undefined) {
     const [t0, t1] = list(item.t).map((s) => numOf(s).fn(scope));
     const [fx, fy] = [numOf(item.x).fn, numOf(item.y).fn];
     const end = t0 + (t1 - t0) * progress;
-    for (let i = 0; i <= SAMPLES; i++) {
-      const t = t0 + ((end - t0) * i) / SAMPLES;
+    sweep((u) => {
+      const t = t0 + (end - t0) * u;
       const s = { ...scope, t };
-      push(fx(s), fy(s), t);
-    }
+      return [fx(s), fy(s), t];
+    });
   } else {
     const ax = scene.x;
     const lo = Math.max(Math.min(ax.from, ax.to), item.from !== undefined ? numOf(item.from).fn(scope) : -Infinity);
@@ -291,14 +306,35 @@ export function sampleFunction(item, scene, scope, progress = 1) {
     const end = lo + (hi - lo) * progress;
     if (Number.isFinite(lo) && Number.isFinite(hi) && hi > lo) {
       const log = ax.log === true;
-      for (let i = 0; i <= SAMPLES; i++) {
-        const x = log ? 10 ** (Math.log10(lo) + ((Math.log10(end) - Math.log10(lo)) * i) / SAMPLES) : lo + ((end - lo) * i) / SAMPLES;
-        push(x, f({ ...scope, x }), x);
-      }
+      sweep((u) => {
+        const x = log ? 10 ** (Math.log10(lo) + (Math.log10(end) - Math.log10(lo)) * u) : lo + (end - lo) * u;
+        return [x, f({ ...scope, x }), x];
+      });
     }
   }
   if (run.length) runs.push(run);
   return { runs, undefinedAt };
+}
+
+/** Screen pixels between the points a line is drawn through where the camera shows it, so a zoomed line stays smooth. */
+const DRAW_PX = 2;
+
+/**
+ * How finely a line is drawn under a camera: a stretch between two samples on screen is split so its points are
+ * DRAW_PX apart at the view's zoom, along x for a function of x and along either axis for a curve, and a stretch off
+ * screen is not split.
+ */
+function screenPieces(item, axes, view) {
+  const { rect, zoom } = view;
+  const curve = item.x !== undefined;
+  return (a, b) => {
+    const [ax, bx, ay, by] = [axes.sx(a[0]), axes.sx(b[0]), axes.sy(a[1]), axes.sy(b[1])];
+    if (!Number.isFinite(ax) || !Number.isFinite(bx) || (curve && !(Number.isFinite(ay) && Number.isFinite(by)))) return 1;
+    const span = curve ? Math.max(Math.abs(bx - ax), Math.abs(by - ay)) : Math.abs(bx - ax);
+    if (Math.max(ax, bx) + span < rect.x || Math.min(ax, bx) - span > rect.x + rect.width) return 1;
+    if (curve && (Math.max(ay, by) + span < rect.y || Math.min(ay, by) - span > rect.y + rect.height)) return 1;
+    return Math.min(64, Math.max(1, Math.ceil((span * zoom) / DRAW_PX)));
+  };
 }
 
 /** Data-space runs as pixel runs, broken where a jump leaves the plot (a pole), and held near it so huge values stay drawable. */
@@ -355,9 +391,10 @@ export function partTone(scene, part) {
 /**
  * Where each part draws at a set of parameter values: its pixel runs (a line), polygon (an area), dot (a point) or
  * arrow (a vector), its box on the plot, and the data-space facts validate reports. `progress` maps an id to how
- * much of it a trace has drawn.
+ * much of it a trace has drawn. `view`, the part of the box the camera shows and its zoom, draws lines finely enough
+ * to stay smooth there; a line's box, end and label spots do not depend on it, so the camera never moves a label.
  */
-export function plotGeometry(scene, axes, scope, progress = () => 1) {
+export function plotGeometry(scene, axes, scope, progress = () => 1, view = null) {
   const { plot } = axes;
   const out = new Map();
   const parts = plotParts(scene).filter((p) => typeof p.id === 'string' && isRecord(p.item));
@@ -372,7 +409,8 @@ export function plotGeometry(scene, axes, scope, progress = () => 1) {
       const { runs, undefinedAt } = sampleFunction(item, scene, scope, p);
       const px = toPixels(runs, axes);
       const visible = px.flatMap((r) => r.filter((q) => insidePlot(q, plot)));
-      out.set(id, { part, runs: px, undefinedAt, visible: visible.length > 0, box: boundsOf(visible), end: visible.at(-1) ?? null, along: visible });
+      const drawn = view ? toPixels(sampleFunction(item, scene, scope, p, screenPieces(item, axes, view)).runs, axes) : px;
+      out.set(id, { part, runs: drawn, undefinedAt, visible: visible.length > 0, box: boundsOf(visible), end: visible.at(-1) ?? null, along: visible });
     } else if (kind === 'series') {
       const pts = list(item.points).filter((q) => Array.isArray(q)).map((q) => [axes.sx(q[0]), axes.numberLine ? axes.xAxisY : axes.sy(q[1])]);
       const shown = pts.slice(0, Math.max(1, Math.ceil(pts.length * p - 1e-9)));

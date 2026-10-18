@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { exprOf } from '../shared/expr.mjs';
-import { plotAxes } from '../shared/plot.mjs';
+import { plotAxes, plotGeometry } from '../shared/plot.mjs';
+import { viewRect } from '../shared/camera.mjs';
 import { walkStates } from '../shared/state-steps.mjs';
 import { resolveRef } from '../shared/targets.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
@@ -169,4 +170,26 @@ test('a traced step moves its parameter across its words, so the marker rides th
   assert.match(html, />\$31,895<\/text>/);
   assert.match(html, />\$20k<\/text>/);
   assert.match(html, />seven percent growth<\/text>/);
+});
+
+test('a line under a zoomed camera is drawn through enough points to stay smooth on screen, and its label spots do not move', () => {
+  const sum = 'sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))';
+  const scene = { type: 'plot', x: { from: Math.PI / 2, to: 1.5 * Math.PI, ticks: 'pi' }, y: { from: -1.5, to: 1.5, ticks: 0.5 }, params: { n: 50 }, functions: [{ id: 'wave', y: sum }] };
+  const axes = plotAxes(scene, { width: 1760, height: 760 });
+  const rect = viewRect({ x: axes.sx(Math.PI - Math.PI / 100), y: 130, zoom: 3 }, axes.box);
+  const still = plotGeometry(scene, axes, { n: 50 }).get('wave');
+  const zoomed = plotGeometry(scene, axes, { n: 50 }, () => 1, { rect, zoom: 3 }).get('wave');
+  const f = exprOf(sum).fn;
+  const dataX = (px) => scene.x.from + ((px - axes.plot.x) / axes.plot.width) * (scene.x.to - scene.x.from);
+  const onScreen = (p) => p[0] >= rect.x && p[0] <= rect.x + rect.width && p[1] >= rect.y && p[1] <= rect.y + rect.height;
+  // How far, in screen pixels, the drawn line strays from the true curve halfway between two of its points.
+  const worstMiss = (runs) => Math.max(...runs.flatMap((run) => run.slice(1).flatMap((b, i) => {
+    const a = run[i];
+    if (!onScreen(a) || !onScreen(b)) return [];
+    return [Math.abs(axes.sy(f({ n: 50, x: dataX((a[0] + b[0]) / 2) })) - (a[1] + b[1]) / 2) * 3];
+  })));
+  assert.equal(Math.round(worstMiss(still.runs)), 11);
+  assert.ok(worstMiss(zoomed.runs) < 0.5, `strays ${worstMiss(zoomed.runs)} px`);
+  assert.equal(still.runs.flat().length, 481);
+  assert.deepEqual([zoomed.box, zoomed.end, zoomed.along.length], [still.box, still.end, 481]);
 });
