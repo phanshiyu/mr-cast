@@ -3,7 +3,7 @@
 // docs/assets/examples/<name>.png; each scene type gets one still of its demo, examples/primitives/<type>/, into
 // docs/assets/scenes/<type>.png. Descriptions come from the storyboards' subtitles and the scene references.
 // `node scripts/gallery.mjs [name...]` re-renders only those examples or types; the gallery always lists every one.
-// Each run of mr-cast gets a temporary config directory; XDG_CACHE_HOME passes through, so a caller can lend it caches.
+// Each run of mr-cast gets temporary config and state directories; XDG_CACHE_HOME passes through, so a caller can lend it caches.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -68,7 +68,7 @@ try {
     copyExample(example, dir);
     const res = spawnSync(process.execPath, [path.join(ROOT, 'bin/mr-cast.mjs'), 'still', String(scene), '--dir', dir, '--out', path.join(dir, 'stills'), '--no-voice', ...example.flags], {
       encoding: 'utf8',
-      env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(work, 'config'), CLAUDE_CONFIG_DIR: path.join(work, 'claude') },
+      env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1', XDG_CONFIG_HOME: path.join(work, 'config'), XDG_STATE_HOME: path.join(work, 'state'), CLAUDE_CONFIG_DIR: path.join(work, 'claude') },
     });
     if (res.status !== 0) throw new Error(`still for ${key} failed:\n${res.stdout}\n${res.stderr}`);
     const png = res.stdout.trim().split('\n').at(-1);

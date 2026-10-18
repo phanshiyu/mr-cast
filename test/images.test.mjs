@@ -192,6 +192,35 @@ test('the player serves the run\'s picture copies by their hashed names and noth
   }
 });
 
+test('picture requests are not pages: an idle player exits while they come, and a closed one refuses them', async () => {
+  const { startServer } = await import('../bin/lib/server.mjs');
+  const dir = tmp();
+  fs.mkdirSync(path.join(dir, 'images'));
+  fs.writeFileSync(path.join(dir, 'images', '0123456789abcdef.png'), await png(4, 4));
+  const viewers = [];
+  let closed = null;
+  const idled = new Promise((resolve) => { closed = resolve; });
+  const server = await startServer({ distDir: dir, dataDir: dir, port: 0, onViewers: (n) => viewers.push(n), idle: { ms: 200, onIdle: () => closed() } });
+  const url = `${server.url}/data/images/0123456789abcdef.png`;
+  const started = Date.now();
+  let fetched = 0;
+  const fetching = (async () => {
+    while (Date.now() - started < 1_000) {
+      const res = await fetch(url);
+      assert.equal(res.status, 200);
+      await res.arrayBuffer();
+      fetched++;
+    }
+  })();
+  await Promise.race([idled, fetching.then(() => assert.fail('the server never went idle'))]);
+  assert.ok(Date.now() - started < 600, `idle after ${Date.now() - started} ms`);
+  assert.ok(fetched > 0, 'pictures were fetched while it counted down');
+  assert.deepEqual(viewers, []);
+  await server.close();
+  await fetching.catch(() => {});
+  await assert.rejects(fetch(url));
+});
+
 test('ink written at a point on a region of a picture warns, as on any scene with boxes', async () => {
   const scene = imageScene({ regions: [{ id: 'laptop', box: [0.3, 0.3, 0.4, 0.4] }], steps: [{ focus: 'laptop', say: 'The laptop.', draw: [{ write: 'here', at: [0.45, 0.45] }] }] });
   assert.deepEqual((await check(scene)).warnings, ['scenes[0].steps[0].draw[0].at: the text lands on "laptop"; move it to free space, or write it near a ref']);
