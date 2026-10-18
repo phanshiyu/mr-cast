@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from 'remotion';
-import { FACES } from '../fonts';
+import { FACES, handWidth } from '../fonts';
 import { plainText } from '../../shared/markup.mjs';
 import { markedKeys } from '../../shared/pen-marks.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
@@ -27,22 +27,6 @@ const NOTE_FONT = 34;
 const HAND = FACES.hand;
 /** A mark fades over these frames once the next step starts. */
 const CLEAR_FRAMES = 8;
-
-let measurer: CanvasRenderingContext2D | null | undefined;
-/** Width of a note in the handwriting, or an estimate before the font has loaded. */
-function noteWidth(text: string): number {
-  const font = `600 ${NOTE_FONT}px ${HAND}`;
-  try {
-    measurer ??= document.createElement('canvas').getContext('2d');
-    if (measurer && document.fonts.check(font)) {
-      measurer.font = font;
-      return Math.ceil(measurer.measureText(text).width);
-    }
-  } catch {
-    // No DOM: fall through to the estimate.
-  }
-  return Math.ceil(text.length * NOTE_FONT * 0.42);
-}
 
 /** A review flag's pen: its severity's colour, and the severity written before its note. */
 export interface Ink {
@@ -124,7 +108,10 @@ const Mark: React.FC<{
   const text = plainText(step.note ?? '').trim();
   const note = ink ? `${ink.label}: ${text}` : text || null;
   const color = ink?.color ?? INK;
-  const noteSize = { width: note ? noteWidth(note) + 8 : 0, height: note ? Math.round(NOTE_FONT * 1.25) : 0 };
+  const noteSize = {
+    width: note ? handWidth(note, NOTE_FONT) + 8 : 0,
+    height: note ? Math.round(NOTE_FONT * 1.25) : 0,
+  };
   const arrow = step.mark === 'arrow' ? placeArrow(noteSize, clutter, area) : null;
   const sketch = arrow
     ? arrowSketch(arrow.tail, target, seed, PEN)

@@ -3,7 +3,7 @@
 // its step on and of the ink already there.
 
 import { interpolate, useCurrentFrame } from 'remotion';
-import { FACES } from '../fonts';
+import { FACES, handWidth } from '../fonts';
 import { inkBoard, type BoardItem, type InkTarget } from '../../shared/ink.mjs';
 import { plainText } from '../../shared/markup.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
@@ -59,21 +59,6 @@ const FRAMES_PER_CHAR = 2.2;
 /** Frames between one item finishing and the next starting, when neither has a cue. */
 const ITEM_GAP = 4;
 
-let measurer: CanvasRenderingContext2D | null | undefined;
-function textWidth(text: string, size: number): number {
-  const font = `600 ${size}px ${HAND}`;
-  try {
-    measurer ??= document.createElement('canvas').getContext('2d');
-    if (measurer && document.fonts.check(font)) {
-      measurer.font = font;
-      return Math.ceil(measurer.measureText(text).width);
-    }
-  } catch {
-    // No DOM: fall through to the estimate.
-  }
-  return Math.ceil(text.length * size * 0.42);
-}
-
 interface Text {
   lines: string[];
   box: Box;
@@ -101,7 +86,7 @@ function textBlock(text: string, size: number) {
   const lines = plainText(text).split('\n');
   return {
     lines,
-    width: Math.max(...lines.map((l) => textWidth(l, size))) + 10,
+    width: Math.max(...lines.map((l) => handWidth(l, size))) + 10,
     height: Math.round(size * 1.2) * lines.length,
   };
 }
@@ -328,7 +313,7 @@ const Writing: React.FC<{ text: Text; written: number; color: string }> = ({ tex
         const p = raw > 0.995 ? 1 : Math.max(0, raw);
         before += share;
         if (p <= 0) return null;
-        const w = textWidth(line, text.size) + 10;
+        const w = handWidth(line, text.size) + 10;
         const edge = p * w;
         const writing = p < 1;
         const mask = writing ? `linear-gradient(to right, #000 ${edge - 8}px, transparent ${edge + 4}px)` : undefined;

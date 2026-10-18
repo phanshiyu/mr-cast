@@ -14,6 +14,22 @@ const SOURCES = [
   { family: FACES.hand, url: hand, weight: '600' },
 ];
 
+let measurer: CanvasRenderingContext2D | null | undefined;
+/** Width of text in the handwriting at `size`, or an estimate without a DOM or before the face has loaded. */
+export function handWidth(text: string, size: number): number {
+  const font = `600 ${size}px ${FACES.hand}`;
+  try {
+    measurer ??= document.createElement('canvas').getContext('2d');
+    if (measurer && document.fonts.check(font)) {
+      measurer.font = font;
+      return Math.ceil(measurer.measureText(text).width);
+    }
+  } catch {
+    // No DOM: fall through to the estimate.
+  }
+  return Math.ceil(text.length * size * 0.42);
+}
+
 /** Settles once every face is loaded and added to the document, or has failed to load and warned. */
 export const fontsReady: Promise<void> =
   typeof document === 'undefined' || typeof FontFace === 'undefined'
