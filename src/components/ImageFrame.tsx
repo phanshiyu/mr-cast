@@ -36,7 +36,7 @@ export const ImageFrame: React.FC<SceneProps<ImageScene>> = ({ scene, hunks, dur
   // Ink lands where each step's region is as the step's pen starts.
   const marks = (k: number): MarkTargets => imageTargets(scene, images, [(segments[k + 1]?.markFrom ?? 0) / Math.max(1, durationInFrames)])[0]!;
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: marks }}>
       <div
         style={{
           position: 'absolute',

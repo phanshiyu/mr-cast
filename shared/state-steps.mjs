@@ -164,7 +164,7 @@ const MODELS = {
     moveWhat: 'element id',
     motion: true,
     trace: {
-      what: 'element id',
+      what: 'an element id',
       when: 'the line should start drawing on',
       resolve(scene, ref) {
         const { ids } = svgOf(scene.svg);
@@ -197,7 +197,7 @@ const MODELS = {
     checkValue: (value) => (typeof value === 'number' && Number.isFinite(value) ? null : 'must be a number'),
     // A plot traces across the step's words, its changes with it, so the cue is the step's own `when`.
     trace: {
-      what: 'part id',
+      what: 'a part id',
       when: null,
       resolve(scene, ref) {
         const part = partOf(scene, ref);
@@ -225,7 +225,7 @@ const MODELS = {
     tint: { prefixes: ['mc:', 'mp:', 'mr:', 'ml:', 'mg:'], what: 'country, place, route, line or region', help: () => 'a country code such as "CAN", or the id of a place, route, line or region', expand: (_scene, key) => [key] },
     // A traced route or line is shown, and draws on from its first stop until its `when` words.
     trace: {
-      what: 'route or line id',
+      what: 'a route or line id',
       when: 'the route should arrive on',
       resolve(scene, ref) {
         const key = oneKey(scene, ref, ['mr:', 'ml:']);
@@ -342,7 +342,7 @@ export const traceEntry = (entry) => (entry && typeof entry === 'object' && !Arr
 function applyTrace(scene, model, step, next, problem) {
   const trace = model.trace;
   if (!trace) return problem('trace', '', `${aType(scene.type)} scene has nothing to trace; trace goes on the steps of ${TRACE_TYPES().join(', ')}`);
-  const shape = trace.when ? `an ${trace.what}, or { "ref": "...", "when": "words of the say" }` : `an ${trace.what}; the step's own "when" times the trace`;
+  const shape = trace.when ? `${trace.what}, or { "ref": "...", "when": "words of the say" }` : `${trace.what}; the step's own "when" times the trace`;
   if (!Array.isArray(step.trace)) return problem('trace', '', `must be a list, each ${shape}`);
   step.trace.forEach((entry, j) => {
     const object = Boolean(entry) && typeof entry === 'object' && !Array.isArray(entry);

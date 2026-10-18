@@ -100,7 +100,7 @@ test('validate names a camera it cannot point', async () => {
     'scenes[0].steps[3].camera: "all" frames the whole scene on its own; write "camera": "all"',
     'scenes[0].steps[4].camera.at: is not a camera field; a camera is { "on": refs, "zoom": 3 }; did you mean "on"?',
     'scenes[0].steps[5].camera.on: required: the ref or refs to frame',
-    'scenes[1].steps[0].camera: a flow scene has no refs to frame; camera goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, image, svg, plot, map, text, code',
+    'scenes[1].steps[0].camera: a flow scene has no refs to frame; camera goes on the steps of graph, sequence, er, state, table, chart, timeline, files, tests, compare, terminal, layers, array, memory, image, svg, plot, text, code',
   ]);
 });
 

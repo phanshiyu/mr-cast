@@ -8,8 +8,11 @@ import { sceneSteps } from './steps.mjs';
 import { refNames } from './targets.mjs';
 import { aType } from './words.mjs';
 
-/** Scene types whose steps take `camera`: the ones whose steps take ink, every scene with refs and code. */
-export const CAMERA_TYPES = INK_TYPES;
+/**
+ * Scene types whose steps take `camera`: the ones whose steps take ink, every scene with refs and code, but a map,
+ * whose `view` is its camera: it zooms the geography and keeps its labels at their size.
+ */
+export const CAMERA_TYPES = INK_TYPES.filter((type) => type !== 'map');
 /** The most a camera zooms, by `zoom`. */
 export const ZOOM_MAX = 40;
 /** The most a camera zooms when it fits its refs by itself, so one small item does not fill the screen. */
@@ -39,7 +42,8 @@ export function cameraShots(scene, hunks = {}) {
   steps.forEach((step, k) => {
     const value = step?.camera;
     if (value !== undefined) {
-      const next = CAMERA_TYPES.includes(scene.type) ? readShot(scene, hunks, step, k, value, names, problem) : problem(k, 'camera', `${aType(scene.type)} scene has no refs to frame; camera goes on the steps of ${CAMERA_TYPES.join(', ')}`);
+      const refused = scene.type === 'map' ? 'a map moves its camera with `view`, which keeps labels their size as it zooms; write "view": refs, "world" or { "box": [[lat, lng], [lat, lng]] }' : `${aType(scene.type)} scene has no refs to frame; camera goes on the steps of ${CAMERA_TYPES.join(', ')}`;
+      const next = scene.type === 'image' && scene.kenBurns ? problem(k, 'camera', 'the picture already pans and zooms with kenBurns; drop kenBurns to move the camera by step, or drop camera') : CAMERA_TYPES.includes(scene.type) ? readShot(scene, hunks, step, k, value, names, problem) : problem(k, 'camera', refused);
       if (next !== undefined) shot = next;
     }
     shots.push(shot);

@@ -130,7 +130,7 @@ export const PlotDiagram: React.FC<SceneProps<PlotScene>> = ({ scene, hunks, dur
   const tickText = (font: typeof TICK_FONT) => ({ fontFamily: fonts.sans, fontWeight: font.weight, fontSize: font.size });
 
   return (
-    <SceneShell scene={scene} durationInFrames={durationInFrames} aside={<HeaderCallout scene={scene} s={s} />}>
+    <SceneShell scene={scene} durationInFrames={durationInFrames} camera={{ hunks, segments, targets: (step) => marks[step] ?? null }} aside={<HeaderCallout scene={scene} s={s} />}>
       <svg width={box.width} height={box.height} viewBox={`0 0 ${box.width} ${box.height}`} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
         <defs>
           <clipPath id={clip}>
