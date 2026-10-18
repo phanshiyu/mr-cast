@@ -130,11 +130,11 @@ const LOADERS = {
   },
 };
 
-const SOURCES = { kitten: `huggingface.co/${KITTEN_REPO}`, kokoro: `huggingface.co/${KOKORO_MODEL_ID}` };
+const SOURCES = { kitten: KITTEN_REPO, kokoro: KOKORO_MODEL_ID };
 
 const loadFailure = (engine, err) => {
   const { mb, dir } = ENGINES[engine];
-  return new UserError(`could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${SOURCES[engine]} into ${dir()}`);
+  return new UserError(`could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${hubUrl().replace(/^https?:\/\//, '')}/${SOURCES[engine]} into ${dir()}`);
 };
 
 function loadEngine(engine, onProgress) {
