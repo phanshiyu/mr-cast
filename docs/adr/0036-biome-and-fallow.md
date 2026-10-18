@@ -31,7 +31,7 @@ Two candidates were run on a copy of the repository, on an M-series Mac with Nod
 ## Decision
 
 - **Biome is the linter and the formatter**, `@biomejs/biome` pinned to 2.5.15 in `devDependencies`, configured in
-  `biome.json`. It is one fast tool with one config, it needs no install script, it needs no second TypeScript, and
+  `biome.jsonc`. It is one fast tool with one config, it needs no install script, it needs no second TypeScript, and
   its floating-promise rule covers the CLI's `.mjs`, where most of the async code is. The cost is the React Compiler
   rules, which mr-cast does not use, and Markdown and YAML formatting, which the docs do not need.
 - **The format follows the existing style**: 2 spaces, single quotes, semicolons, 120 columns. Formatting all the code
@@ -41,17 +41,30 @@ Two candidates were run on a copy of the repository, on an M-series Mac with Nod
   `generate.mjs` scripts write with `JSON.stringify(…, null, 2)` or that people write compactly; formatting would
   rewrite them unlike their generators and fight every regeneration. The verify skill's fixtures, the evaluation keys
   and fixtures, the vendored `bin/lib/kokoro`, the bundled outline in `shared/world`, and the generated
-  `shared/font-metrics.mjs` are left out too. `dist/` is ignored through `.gitignore`.
+  `shared/font-metrics.mjs` are left out too. `dist/` is ignored through `.gitignore`. `src/types.ts` is linted
+  but not formatted, since `bin/lib/schema.mjs` reads it line by line and prints it to the agent as written.
 - **Rules**: Biome's recommended set, `noFloatingPromises` and `noMisusedPromises` from nursery, `noDoubleEquals`
-  (eqeqeq, allowing `== null`), and unused variables and imports as errors. Rules that fire on a deliberate style
-  are turned off in `biome.json` with the reason beside them, never by ignoring files.
-- **fallow checks unused code**, `fallow` pinned to 3.31.0, configured in `.fallowrc.json` with every real entry point
+  (eqeqeq, allowing `== null`), `noUndeclaredVariables` (tsc does not compile the `.mjs`), and unused variables
+  and imports as errors. `pnpm lint` fails on warnings too. Eight rules that fire on a deliberate style are turned
+  off in `biome.jsonc` with the reason beside each: `noNonNullAssertion` (over 700 bounded indexes under
+  `noUncheckedIndexedAccess`), `noArrayIndexKey`, `useIterableCallbackReturn`, `noAssignInExpressions`,
+  `useTemplate`, `noCommaOperator`, `useOptionalChain` and `noSvgWithoutTitle`. A finding that is right in
+  general but deliberate on one line gets a `biome-ignore` comment with its reason. No file is ignored to quiet a
+  rule.
+- **fallow checks unused code**, `fallow` pinned to 3.31.0, configured in `.fallowrc.jsonc` with every real entry point
   (the CLI, the voice and update-check children, the player, the render and fit-report bundles, scripts, example
   generators, tests and the evaluation scripts). `pnpm fallow` runs `fallow dead-code` and fails on any unused file,
-  export, dependency or type, so new dead code fails CI. Its native binary also comes from an optional dependency
-  with no install script.
+  export, dependency (dev dependencies included), type or import cycle. The repository starts at zero findings, so
+  any new one fails CI. Exports fallow cannot see used (those of `render.mjs`, which the CLI imports on demand, and
+  five layout functions that tests reach by bundling their module with esbuild from a path string) are listed under
+  `ignoreExports` with the reason. `duplicate-exports` is off: each scene's layout module has its own `ROW_H`,
+  `PAD_X` and `Placed*` types. Duplication (`fallow dupes`) and complexity (`fallow health`) are reported in the
+  CI job summary and never fail it: 755 functions are over the default complexity thresholds, so a gate would
+  need a baseline that every refactor rewrites. Its native binary also comes from an optional dependency with no
+  install script.
 - **`pnpm check`** runs typecheck, lint, format check and fallow, and CI runs it in the `typecheck` job that `ci-ok`
-  needs.
+  needs. `scripts/git-hooks/pre-commit` runs it before each commit for whoever sets
+  `git config core.hooksPath scripts/git-hooks`; it needs no dependency.
 - Renovate groups Biome and fallow updates; majors still wait for a review.
 
 ## Consequences
@@ -62,11 +75,14 @@ Two candidates were run on a copy of the repository, on an M-series Mac with Nod
   `.git-blame-ignore-revs` itself.
 - Biome's `noFloatingPromises` is a nursery rule and may change between minor releases; Renovate's grouped update
   shows it in CI before it lands.
+- The fallow package ships agent skills, so pnpm 12 lists `fallow skills` as awaiting approval after an install.
+  Left unapproved, nothing is installed and the CLI works; `pnpm approve '!fallow'` records the denial in
+  `pnpm-workspace.yaml` beside the denied builds.
 - The React Compiler's own lint rules are not run. If the player adopts the compiler, revisit ESLint for those rules.
 
 ## Alternatives considered
 
-- **ESLint, typescript-eslint and Prettier.** The standard choice, with the richest React rules, but 13 times slower,
-  70 more packages, a second TypeScript pinned below 6.1 for type-aware rules that would still skip every `.mjs`, and
+- **ESLint, typescript-eslint and Prettier.** The standard choice, with the richest React rules, but 13 times slower to lint,
+  138 more packages, a second TypeScript pinned below 6.1 for type-aware rules that would still skip every `.mjs`, and
   two configs.
 - **No formatter, lint only.** Leaves quote and wrap style to review, which is what the user asked to end.
