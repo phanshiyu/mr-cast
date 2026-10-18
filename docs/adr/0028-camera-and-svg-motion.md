@@ -1,6 +1,6 @@
 # 28. A step camera on every scene, and move, trace, morph and flow on svg
 
-- Status: Accepted; amended by [0033](0033-one-trace-camera-and-ink-across-scenes.md)
+- Status: Accepted; amended by [0033](0033-one-trace-camera-and-ink-across-scenes.md) and [0034](0034-fixes-from-the-worked-examples.md)
 - Date: 2026-10-18
 
 ## Context

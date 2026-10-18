@@ -26,7 +26,7 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0016](0016-picker-as-references.md) | The primitive picker lives in the mr-cast skill's references, not in a skill of its own | Superseded by 0019 |
 | [0017](0017-article-shape.md) | The article's shape: claim headings with ids, questions with answers, and scenes that name their section | Superseded by 0019 |
 | [0018](0018-validate-hook.md) | A PostToolUse hook in the skill runs the checks after every write | Accepted; article part superseded by 0019 |
-| [0019](0019-tools-not-opinions.md) | Tools, not opinions: the skill and `validate` give the model tools and leave the teaching to it | Accepted; the 10-test-case warning superseded by 0024; the intent scene by 0026 |
+| [0019](0019-tools-not-opinions.md) | Tools, not opinions: the skill and `validate` give the model tools and leave the teaching to it | Accepted; the 10-test-case warning superseded by 0024; the intent scene by 0026; the example index amended by 0034 |
 | [0020](0020-stepped-scene-additions-and-svg.md) | Callout, tint, growing diagrams, several arrays, changing tables, and an svg scene | Accepted |
 | [0021](0021-example-videos-as-release-assets.md) | Example videos are rendered in CI and attached to the GitHub release; stills are committed | Accepted; the single job superseded by 0022 |
 | [0022](0022-shard-the-example-renders.md) | Render the examples on six runners from their meta.json flags, and keep the release a draft until all finish | Accepted; amended: a draft is finished by a rerun, renders run read-only |
@@ -34,9 +34,10 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0024](0024-tests-scene-as-behaviour-matrix.md) | The tests scene is a behaviour matrix of situations, promised outcomes and the tests that check them | Accepted |
 | [0025](0025-ink-board.md) | Ink: a step's `draw` stays on the board until a step erases it, timed to the words and placed clear of the scene | Accepted |
 | [0026](0026-text-scene.md) | A text scene whose lead field says how it is drawn, with intent as its alias | Accepted |
-| [0028](0028-camera-and-svg-motion.md) | A step camera on every scene with refs, and move, trace, morph and flow on svg | Accepted; amended by 0033 |
-| [0029](0029-plot-scene.md) | A plot scene: numeric axes, parts placed by expressions in parameters, and steps that set and trace | Accepted; amended by 0033 |
+| [0028](0028-camera-and-svg-motion.md) | A step camera on every scene with refs, and move, trace, morph and flow on svg | Accepted; amended by 0033 and 0034 |
+| [0029](0029-plot-scene.md) | A plot scene: numeric axes, parts placed by expressions in parameters, and steps that set and trace | Accepted; amended by 0033 and 0034 |
 | [0030](0030-map-scene.md) | A map scene on a bundled Natural Earth outline, with views, great-circle routes and traces on steps | Accepted; amended by 0033 |
 | [0031](0031-chart-and-code-motion.md) | Chart steps set values that move and sort bars into a race, with pies, donuts and stacks; code steps type their lines and print output beside them | Accepted |
 | [0032](0032-images.md) | Pictures in an image scene and compare cells, from local copies that validate makes of files and URLs | Accepted |
 | [0033](0033-one-trace-camera-and-ink-across-scenes.md) | One trace across svg, plot and map; the camera on the new scenes, a map's being its view; ink that follows its parts | Accepted |
+| [0034](0034-fixes-from-the-worked-examples.md) | What ten worked examples changed: traced plot parts start undrawn, moves span words, tspan boxes, chart prefix, and nine more fixes | Accepted |
