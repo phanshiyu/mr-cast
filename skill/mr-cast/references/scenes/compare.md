@@ -25,7 +25,7 @@ Two sides in one layout, row by row. Rows that differ get an arrow between the s
 
 ## Schema and validate notes
 
-A `focus` is a row index, an `"a-b"` range, `"side:After"`, or a cell `"2@After"`. A cell is text, `{ "code": "...", "lang": "ts" }`, or a picture `{ "image": "before.png" }`, such as a screenshot of each side, drawn in a 16:9 box (`"fit": "cover"` fills it); see [image](image.md) for where a picture may come from. `sides` names the two sides; they default to Before and After. `{{MR_CAST}}/bin/mr-cast validate` fails on a row without exactly two cells and on two sides with one title, and warns past 6 rows, on a code cell over 6 lines, and on a row no step names, which then appears unnamed with a neighbouring step.
+A `focus` is a row index, an `"a-b"` range, `"side:After"`, or a cell `"2@After"`. A cell is text (up to 3 lines; a `"\n"` in it starts a new line, and its row grows to hold the lines), `{ "code": "...", "lang": "ts" }`, or a picture `{ "image": "before.png" }`, such as a screenshot of each side, drawn in a 16:9 box (`"fit": "cover"` fills it); see [image](image.md) for where a picture may come from. `sides` names the two sides; they default to Before and After. `{{MR_CAST}}/bin/mr-cast validate` fails on a row without exactly two cells and on two sides with one title, and warns past 6 rows, on a code cell over 6 lines, and on a row no step names, which then appears unnamed with a neighbouring step.
 
 `{{MR_CAST}}/bin/mr-cast schema compare` prints its fields.
 

@@ -148,10 +148,10 @@ function layoutChars(runs, font) {
 }
 
 /**
- * Greedy wrap of `chars` at `width`: each line takes as many words as fit. A word wider than a line on
- * its own breaks at its level-2 points; one still too wide breaks between characters when `force` is
- * set, and otherwise runs past the width. Either way the wrap reports `ok: false`. Spaces where a line
- * breaks are dropped.
+ * Greedy wrap of `chars` at `width`: each line takes as many words as fit, and a written "\n" always
+ * ends one. A word wider than a line on its own breaks at its level-2 points; one still too wide breaks
+ * between characters when `force` is set, and otherwise runs past the width. Either way the wrap reports
+ * `ok: false`. Spaces where a line breaks are dropped.
  */
 function greedy(chars, breaks, width, force) {
   const lines = [];
@@ -169,13 +169,18 @@ function greedy(chars, breaks, width, force) {
     while (i < chars.length - 1 && !(breaks[i] && breaks[i] <= level)) i++;
     return i;
   };
+  /** Whether a written line break ends chars a to b: a piece holds one only in the spaces at its end. */
+  const broken = (a, b) => {
+    for (let i = a; i <= b; i++) if (chars[i].ch === '\n') return true;
+    return false;
+  };
   let start = 0;
   while (start < chars.length) {
     while (start < chars.length && /\s/.test(chars[start].ch)) start++;
     if (start >= chars.length) break;
     let end = pieceEnd(start, 1);
     if (span(start, end) <= width + 0.01) {
-      while (end < chars.length - 1) {
+      while (end < chars.length - 1 && !broken(start, end)) {
         const next = pieceEnd(end + 1, 1);
         if (span(start, next) > width + 0.01) break;
         end = next;

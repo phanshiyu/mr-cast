@@ -1,9 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { build } from 'esbuild';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { formatOutline } from '../bin/lib/summary.mjs';
 import { compareRowSame } from '../shared/compare.mjs';
 import { resolveRef, stepTargets } from '../shared/targets.mjs';
+
+const bundled = await build({ entryPoints: [new URL('../src/utils/compareLayout.ts', import.meta.url).pathname], bundle: true, write: false, format: 'esm', platform: 'node', logLevel: 'silent' });
+const { layoutCompare } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 
 const compare = {
   type: 'compare',
@@ -133,4 +137,16 @@ test('a prompt too long to leave the command room is reported, and a usual one f
   ]);
   const usual = await check({ ...terminal, entries: [{ prompt: 'deploy@build-01:~/projects/app $', command: 'ls' }] });
   assert.deepEqual(usual.errors, []);
+});
+
+test('a compare cell breaks its line where it says "\\n", its row grows to hold it, and too many lines are reported', async () => {
+  const scene = (cell) => ({ ...compare, rows: [{ label: 'Rise', cells: [cell, 'Fast'] }, { label: 'Crumb', cells: ['Tight', 'Open'] }] });
+  const one = layoutCompare(scene('Slow, even'), 1712, 600);
+  const two = layoutCompare(scene('Slow\neven'), 1712, 600);
+  assert.deepEqual(two.rows[0].cells[0].text.lines.map((l) => l.map((r) => r.text).join('')), ['Slow', 'even']);
+  assert.equal(two.rows[0].h - one.rows[0].h, 39);
+  assert.equal(two.rows[1].y - one.rows[1].y, 39);
+  assert.deepEqual((await validateStoryboard({ title: 't', scenes: [scene('Slow\neven')] }, {}, { mode: 'explain' })).errors, []);
+  const { errors } = await validateStoryboard({ title: 't', scenes: [scene('One\ntwo\nthree\nfour')] }, {}, { mode: 'explain' });
+  assert.deepEqual(errors, ['scenes[0].rows[0].cells[0]: "One\\ntwo\\nthree\\nfour" does not fit its compare cell, even at 18px; shorten the cell, or split the comparison into two scenes']);
 });
