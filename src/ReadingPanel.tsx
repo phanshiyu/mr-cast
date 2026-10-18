@@ -32,7 +32,7 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
           <ListChecks size={15} className="text-indigo-300" />
           Reading order
         </h2>
-        <button
+        <button type="button"
           onClick={() => void copy()}
           className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200 hover:bg-white/10"
         >
@@ -76,7 +76,7 @@ export const ReadingPanel: React.FC<{ order: ReadingOrder; onScene: (scene: numb
                     </div>
                   ) : null}
                   {item.explainedIn ? (
-                    <button
+                    <button type="button"
                       onClick={() => onScene(item.explainedIn!.scene)}
                       className="block text-xs text-slate-500 hover:text-indigo-300"
                     >

@@ -328,7 +328,7 @@ export const App: React.FC = () => {
             Could not load {state.file}
           </div>
           <pre className="mt-3 whitespace-pre-wrap font-mono text-sm text-rose-100/90">{state.message}</pre>
-          <button
+          <button type="button"
             onClick={() => void reload()}
             className="mt-5 rounded-lg bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
           >
@@ -394,7 +394,7 @@ export const App: React.FC = () => {
                 const progress = isActive ? Math.min(1, (frame - c.from) / c.durationInFrames) : 0;
                 return (
                   <li key={c.index}>
-                    <button
+                    <button type="button"
                       onClick={() => seekChapter(c.index)}
                       className={`relative w-full overflow-hidden rounded-xl border px-3 py-2.5 text-left transition ${
                         isActive ? 'border-indigo-400/40 bg-indigo-400/10' : 'border-transparent hover:bg-white/5'
@@ -471,7 +471,7 @@ const Backdrop: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 const Tabs: React.FC<{ tab: Tab; onChange: (tab: Tab) => void }> = ({ tab, onChange }) => (
   <nav aria-label="View" className="flex gap-1 border-b border-white/5 px-4 pt-3 sm:px-6">
     {(['video', 'plan'] as const).map((t) => (
-      <button
+      <button type="button"
         key={t}
         onClick={() => onChange(t)}
         aria-current={t === tab ? 'page' : undefined}
@@ -526,7 +526,7 @@ const PlaybackRate: React.FC<{ rate: number; onChange: (rate: number) => void }>
   <div role="group" aria-label="Playback speed" className="flex items-center gap-1">
     <span className="mr-1">Speed</span>
     {RATES.map((r) => (
-      <button
+      <button type="button"
         key={r}
         onClick={() => onChange(r)}
         aria-pressed={r === rate}
