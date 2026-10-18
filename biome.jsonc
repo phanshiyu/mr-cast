@@ -26,7 +26,35 @@
   "css": { "parser": { "tailwindDirectives": true } },
   "linter": {
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "correctness": { "noUnusedVariables": "error", "noUnusedImports": "error" },
+      "nursery": { "noFloatingPromises": "error", "noMisusedPromises": "error" },
+      "suspicious": {
+        // eqeqeq; `== null` is still allowed, for null or undefined.
+        "noDoubleEquals": "error",
+        // The scenes draw fixed lists from the storyboard, which never reorder within a video, so an index is a stable key.
+        "noArrayIndexKey": "off",
+        // It fires on `forEach((x) => set.add(x))`, whose value is dropped, and on switches TypeScript knows are exhaustive.
+        "useIterableCallbackReturn": "off",
+        // `while ((m = re.exec(s)))`, `cache[k] ??= …` and a seeded `rnd = () => (seed = …)` are deliberate.
+        "noAssignInExpressions": "off"
+      },
+      "style": {
+        // With noUncheckedIndexedAccess, `!` marks an index the code has already bounded; there are over 700.
+        "noNonNullAssertion": "off",
+        // Concatenation or a template literal is the writer's choice.
+        "useTemplate": "off"
+      },
+      "complexity": {
+        // The validators report and return in one expression: `return errors.push(…), false`.
+        "noCommaOperator": "off",
+        // `a && a.x` keeps a falsy a, such as '', where `a?.x` gives undefined, so the rewrite is not always the same.
+        "useOptionalChain": "off"
+      },
+      "a11y": {
+        // The svgs are diagram frames of a video; the narration and subtitles carry what they show.
+        "noSvgWithoutTitle": "off"
+      }
     }
   }
 }
