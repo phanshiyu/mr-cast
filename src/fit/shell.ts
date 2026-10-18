@@ -10,7 +10,7 @@ const ASIDE_RESERVE = 560;
 const ASIDE_GAP = 32;
 /** Smallest size a title beside a callout keeps on one line before it wraps. */
 const TITLE_ONE_LINE_MIN = 42;
-const WITH_ASIDE = new Set<Scene['type']>(['intent', 'graph', 'state', 'table', 'er', 'chart', 'files', 'tests', 'review']);
+const WITH_ASIDE = new Set<Scene['type']>(['intent', 'graph', 'state', 'table', 'er', 'chart', 'files', 'review']);
 
 export interface ShellFits {
   eyebrow: Fit;

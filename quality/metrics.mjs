@@ -7,6 +7,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { sceneDurationInFrames, spokenTexts, wordCount, FPS } = await import(pathToFileURL(path.join(root, 'shared/timing.mjs')));
 const { expandLineRefs } = await import(pathToFileURL(path.join(root, 'shared/focus.mjs')));
 const { isTestFile } = await import(pathToFileURL(path.join(root, 'shared/test-files.mjs')));
+const { upgradeScenes } = await import(pathToFileURL(path.join(root, 'shared/normalize.mjs')));
+const { isGapRow } = await import(pathToFileURL(path.join(root, 'shared/tests.mjs')));
 
 const work = path.resolve(process.argv[2] ?? '');
 if (!process.argv[2] || !fs.existsSync(work)) {
@@ -35,7 +37,7 @@ function measure(name, dir) {
   let current = '';
   try { current = fs.readFileSync(path.join(runs, '.current'), 'utf8').trim(); } catch { /* no run yet */ }
   const repo = path.join(runs, current);
-  const sb = readJson(path.join(repo, 'storyboard.json'));
+  const sb = upgradeScenes(readJson(path.join(repo, 'storyboard.json')));
   const hunks = readJson(path.join(repo, 'hunks.json')) ?? {};
   if (!sb) return { fixture: name, hasStoryboard: false };
   const status = fs.existsSync(path.join(dir, 'validate.status')) ? fs.readFileSync(path.join(dir, 'validate.status'), 'utf8').trim() : 'unknown';
@@ -43,7 +45,7 @@ function measure(name, dir) {
   const mix = {};
   let words = 0, lines = 0, maxLines = 0, codeScenes = 0, frames = 0;
   const covered = new Set();
-  const testsScene = { present: false, cases: 0, gaps: 0 };
+  const testsScene = { present: false, tests: 0, gaps: 0 };
   for (const s of scenes) {
     mix[s.type] = (mix[s.type] ?? 0) + 1;
     words += spokenTexts(s).reduce((n, text) => n + wordCount(text), 0);
@@ -57,10 +59,10 @@ function measure(name, dir) {
     }
     if (s.type === 'tests') {
       testsScene.present = true;
-      testsScene.cases += s.cases?.length ?? 0;
-      testsScene.gaps += s.gaps?.length ?? 0;
-      // validate counts a case's linked hunk as shown, so the coverage columns do too.
-      for (const c of s.cases ?? []) if (c.hunkId) covered.add(c.hunkId);
+      testsScene.tests += s.tests?.length ?? 0;
+      testsScene.gaps += (s.situations ?? []).filter(isGapRow).length;
+      // validate counts a test's linked hunk as shown, so the coverage columns do too.
+      for (const t of s.tests ?? []) if (t.hunkId) covered.add(t.hunkId);
     }
   }
   const all = Object.values(hunks);
@@ -95,7 +97,7 @@ const total = have.length ? {
   testHunksShown: sum('testHunksShown'), testHunksTotal: sum('testHunksTotal'),
   testsScene: {
     present: have.filter((r) => r.testsScene.present).length,
-    cases: have.reduce((a, r) => a + r.testsScene.cases, 0),
+    tests: have.reduce((a, r) => a + r.testsScene.tests, 0),
     gaps: have.reduce((a, r) => a + r.testsScene.gaps, 0),
   },
 } : null;
@@ -106,9 +108,9 @@ const mixStr = (m) => Object.entries(m).map(([t, n]) => `${t}:${n}`).join(' ');
 // Share of changed lines that sit in shown hunks, so one big unshown hunk outweighs several small ones.
 const linePct = (r) => (r.linesTotal ? `${Math.round((100 * r.linesCovered) / r.linesTotal)}%` : '-');
 const testCol = (r) => (r.testHunksTotal ? `${r.testHunksShown}/${r.testHunksTotal}` : '-');
-// "yes 4c/2g": has a tests scene with 4 cases and 2 gaps. The total row counts fixtures with one instead.
+// "yes 4t/2g": has a tests scene with 4 tests and 2 gaps. The total row counts fixtures with one instead.
 const testsSceneCol = ({ testsScene: t, fixtures }) => {
-  const counts = `${t.cases}c/${t.gaps}g`;
+  const counts = `${t.tests}t/${t.gaps}g`;
   if (fixtures) return `${t.present}/${fixtures} ${counts}`;
   return t.present ? `yes ${counts}` : 'no';
 };

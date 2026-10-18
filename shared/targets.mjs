@@ -10,6 +10,7 @@ import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
 import { outputLines } from './terminal.mjs';
 import { memoryMembers } from './storyboard-json.mjs';
+import { resolveTestsRef, testsRefNames } from './tests.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
@@ -221,16 +222,8 @@ const TARGETS = {
     names: (scene, hunks) => sceneFiles(scene, hunks ?? {}).map((f) => f.path),
   },
   tests: {
-    resolve(scene, ref) {
-      const cases = list(scene.cases);
-      if (isIndex(ref, cases.length)) return [`c:${ref}`];
-      if (typeof ref !== 'string') return null;
-      const gap = /^gap:\s*(\d+)$/.exec(ref);
-      if (gap) return isIndex(Number(gap[1]), list(scene.gaps).length) ? [`g:${Number(gap[1])}`] : null;
-      const named = cases.flatMap((c, i) => (c?.name === ref ? [`c:${i}`] : []));
-      return named.length ? named : null;
-    },
-    names: (scene) => [...list(scene.cases).map((c) => c?.name), ...list(scene.gaps).map((_, i) => `gap:${i}`)],
+    resolve: (scene, ref) => resolveTestsRef(scene, ref),
+    names: (scene) => testsRefNames(scene),
   },
   compare: {
     resolve(scene, ref) {

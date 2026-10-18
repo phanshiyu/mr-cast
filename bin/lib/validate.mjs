@@ -12,13 +12,15 @@ import { checkPenMarks } from './validate-pen-marks.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
-import { normalizeStoryboard, upgradeTypes } from '../../shared/normalize.mjs';
+import { normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
+import { isGapRow } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory } from './validate-state.mjs';
 import { checkSvg } from './validate-svg.mjs';
 import { TONES, checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
+import { checkTests } from './validate-tests.mjs';
 import { checkPreread } from './validate-preread.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
@@ -26,8 +28,6 @@ const VIEWS = ['split', 'morph'];
 const TYPES = ['intent', 'graph', 'code', 'flow', 'sequence', 'er', 'state', 'mermaid', 'tests', 'table', 'chart', 'timeline', 'files', 'review', 'reading', 'compare', 'terminal', 'layers', 'array', 'memory', 'svg'];
 const MESSAGE_KINDS = ['call', 'return', 'async'];
 const CARDINALITIES = ['one-to-one', 'one-to-many', 'many-to-many'];
-const TEST_STATUSES = ['added', 'modified', 'removed', 'existing'];
-const TEST_CASES_MAX = 10;
 const INTENT_BULLETS_MAX = 6;
 const MAX_LINE_RANGE = 10000;
 // The step diagram beside the code fits this many labelled nodes above the callout at its smallest font.
@@ -153,7 +153,7 @@ function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
   const shownIds = sb.scenes.flatMap((s) => {
     if (s?.type === 'code') return [s.hunkId];
     if (s?.type === 'reading' && preread) return [...listed];
-    if (s?.type === 'tests' && Array.isArray(s.cases)) return s.cases.map((c) => c?.hunkId);
+    if (s?.type === 'tests' && Array.isArray(s.tests)) return s.tests.map((t) => t?.hunkId);
     return [];
   });
   const shown = new Set(shownIds.filter((id) => typeof id === 'string' && Object.hasOwn(hunks, id)));
@@ -176,9 +176,9 @@ function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
     tests.total++;
     if (shown.has(h.id)) tests.shown++;
   }
-  const testsScenes = sb.scenes.filter((s) => s?.type === 'tests' && Array.isArray(s.cases) && Array.isArray(s.gaps));
+  const testsScenes = sb.scenes.filter((s) => s?.type === 'tests' && Array.isArray(s.tests) && Array.isArray(s.situations));
   const testsScene = testsScenes.length
-    ? { cases: testsScenes.reduce((n, s) => n + s.cases.length, 0), gaps: testsScenes.reduce((n, s) => n + s.gaps.length, 0) }
+    ? { tests: testsScenes.reduce((n, s) => n + s.tests.length, 0), gaps: testsScenes.reduce((n, s) => n + s.situations.filter(isGapRow).length, 0) }
     : null;
   return { shown: [...shown].filter((id) => hunks[id].status !== 'source').length, skipped: skipped.size, total: changes.length, tests, testsScene, preread };
 }
@@ -242,8 +242,8 @@ async function checkMermaid(diagrams, errors, warnings) {
  *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
  */
 export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, plan = null } = {}) {
-  // An older `arch` scene is a `graph`: renamed here so every check below sees one name.
-  const sb = upgradeTypes(raw);
+  // An older `arch` scene is a `graph`, and an older tests scene a matrix: upgraded here so every check below sees one shape.
+  const sb = upgradeScenes(raw);
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -358,24 +358,9 @@ export async function validateStoryboard(raw, hunks, { mode = 'diff', audience, 
         break;
       }
 
-      case 'tests': {
-        for (const k of ['title', 'subject']) if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
-        const casesOk = Array.isArray(s.cases);
-        const gapsOk = Array.isArray(s.gaps) && s.gaps.every(isStr);
-        if (!casesOk) errors.push(`${p}.cases: required array of { name, proves } (use [] when the change has no tests)`);
-        else {
-          s.cases.forEach((c, j) => {
-            const q = `${p}.cases[${j}]`;
-            if (!isStr(c?.name)) errors.push(`${q}.name: required string, the test's name as written in code`);
-            if (!isStr(c?.proves)) errors.push(`${q}.proves: required string, the behavior the test proves in plain words`);
-            if (c?.status !== undefined && !TEST_STATUSES.includes(c.status)) errors.push(`${q}.status: must be one of ${TEST_STATUSES.join(', ')}`);
-            if (c?.hunkId !== undefined && !(isStr(c.hunkId) && hunks && Object.hasOwn(hunks, c.hunkId))) errors.push(`${q}.hunkId: "${c.hunkId}" not found in hunks.json`);
-          });
-          if (s.cases.length > TEST_CASES_MAX) warnings.push(`${p}.cases: ${s.cases.length} cases; more than ${TEST_CASES_MAX} get cramped`);
-        }
-        if (!gapsOk) errors.push(`${p}.gaps: required array of strings, the behaviors no test covers (may be empty)`);
+      case 'tests':
+        checkTests(s, p, hunks, errors, warnings);
         break;
-      }
 
       case 'table':
         checkTable(s, p, errors, warnings);

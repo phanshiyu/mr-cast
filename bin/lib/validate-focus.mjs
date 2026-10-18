@@ -18,7 +18,7 @@ const REF_HELP = {
   chart: 'a label, a series "series:name", or a value "series@label"',
   timeline: 'an event index, an "a-b" range of them, or a span "span:label"',
   files: 'a path the scene lists',
-  tests: 'a case index, a case name, or a gap "gap:0"',
+  tests: 'a situation id, a cell "situation.Outcome", an outcome, or a test\'s name',
   layers: 'a layer id, an item id or "layer.item", or a path stop index',
   intent: 'a bullet index',
   compare: 'a row index, an "a-b" range of them, a side "side:After", or a cell "row@side" such as "2@After"',

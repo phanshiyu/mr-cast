@@ -13,6 +13,7 @@ import { compareTitles } from '../../shared/compare.mjs';
 import { outputLines } from '../../shared/terminal.mjs';
 import { arrayRows, cellKey, cellName, markerRow, rowKey, splitCellKey } from '../../shared/arrays.mjs';
 import { svgOf, textOf } from '../../shared/svg.mjs';
+import { outcomeKey, testKey, testKeys, testsMatrix } from '../../shared/tests.mjs';
 
 const list = (v) => (Array.isArray(v) ? v : []);
 const text = (v) => (typeof v === 'string' ? plainText(v) : typeof v === 'number' ? String(v) : '');
@@ -157,9 +158,13 @@ const ITEMS = {
     return sceneFiles(scene, hunks ?? {}).map((f) => ({ key: `f:${f.path}`, label: `file ${f.path}`, terms: [] }));
   },
   tests(scene) {
+    const { outcomes, rows } = testsMatrix(scene);
+    const cells = rows.filter((r) => !r.gap).flatMap((r) => r.cells);
     return [
-      ...list(scene.cases).map((c, i) => ({ key: `c:${i}`, label: `case ${i} ${c?.name}: ${text(c?.proves)}`, terms: [] })),
-      ...list(scene.gaps).map((g, i) => ({ key: `g:${i}`, label: `gap ${i}: ${text(g)}`, terms: [] })),
+      ...rows.map((r) => ({ key: r.key, label: `situation ${r.situation.id} "${text(r.situation.when)}"${r.gap ? ` gap: ${text(r.situation.gap)}` : ''}`, terms: [text(r.situation.when), text(r.gap ? r.situation.gap : '')], parts: r.gap ? [] : r.cells.map((c) => c.key) })),
+      ...outcomes.map((o, col) => ({ key: outcomeKey(col), label: `outcome ${o}`, terms: [text(o)], parts: cells.filter((c) => c.col === col).map((c) => c.key) })),
+      ...list(scene.tests).map((t, n) => ({ key: testKey(n), label: `test "${t?.name}"`, terms: [String(t?.name ?? '')], parts: testKeys(scene, n).slice(1) })),
+      ...cells.map((c) => ({ key: c.key, label: `${c.outcome} of ${rows[c.row].situation.id} = ${c.value === undefined ? '(none)' : JSON.stringify(text(c.value))} ${c.state}`, terms: [text(c.value ?? '')] })),
     ];
   },
   terminal(scene) {
@@ -368,8 +373,8 @@ function namedIn(say, items) {
   return found;
 }
 
-/** The scene types whose words the highlight check reads. Code, terminal, tests and intent have no names it can match. */
-export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg'];
+/** The scene types whose words the highlight check reads. Code, terminal and intent have no names it can match. */
+export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg', 'tests'];
 
 /**
  * Where a scene's words and its light disagree, as warnings at `p`. Two checks, both exact on the scene's data:
