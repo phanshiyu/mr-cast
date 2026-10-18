@@ -132,7 +132,7 @@ A step can also write and draw on the scene, like a teacher at a whiteboard. Its
 
 An item can add a `note`, a `when` (words of the step's `say` at which it starts), a `tone`, a `side` and an `id`. Without `when`, a step's items draw one after another once its items have settled. A stroke draws at about 60 pixels a frame, an arrow at 40, and handwriting at 2.2 frames a character, with the pen's tip at the end of the line. `"erase": true` takes everything off the board as the step starts, before the step's own `draw`, and `"erase": ["id"]` takes the named items. Ink fades out over 10 frames.
 
-Each item goes where it covers least of what the scene shows from its step on, including pointers that move later and ink already up. Text with no clear spot beside its target goes to free space with a leader arrow back. A long arrow bends, or swings round the side, to cross the fewest things. On a code, terminal or sequence step, ink moves with the camera, and on code it is clipped to the code's viewport.
+Each item goes where it covers least of what the scene shows from its step on, including pointers that move later and ink already up. Text with no clear spot beside its target goes to the end of its row, as a comment ends a line of code, or else to free space with a leader arrow back. A long arrow bends, or swings round the side, to cross the fewest things. On a code, terminal or sequence step, ink moves with the camera, and on code it is clipped to the code's viewport.
 
 A step's `mark` and `note` are the shorthand for one item on the first focus ref, drawn in the half second before the words and cleared at the next step. They draw as before. Ink is not lit: the highlight check reads only `focus` and what a step changes.
 

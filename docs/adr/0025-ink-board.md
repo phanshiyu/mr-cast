@@ -27,11 +27,12 @@ any step whose items stay on the board, and B, a separate whiteboard scene. The 
   caption's word count). Without `when`, items draw one after another from the step's settled frame. Strokes draw at
   60 px a frame and arrows at 40, 1.5 times slower than the prototype so the eye follows them; handwriting reveals left
   to right at 2.2 frames a character, with the pen's tip at the edge.
-- **Placement keeps off what the scene shows from the step on.** Each item's obstacles are every box of its step and of
-  every later step, so a pointer that moves later is kept clear, plus the ink still up. Text with no clear spot goes to
-  free space with a leader arrow. A long arrow tries bends either way and a swing round the side of its ends, and takes
-  the one that crosses the fewest things. On a scene whose camera moves (code, terminal, sequence), an item moves with
-  the step it was drawn on, and code clips ink to its viewport.
+- **Placement keeps off what the scene shows from the step on.** Each item's obstacles are every box of its step and
+  of every later step, so a pointer that moves later is kept clear, plus the ink still up. Text with no clear spot
+  goes to the end of its target's row, as a comment ends a line of code, or else to free space with a leader arrow. A
+  long arrow tries bends either way and a swing round the side of its ends, and takes the one that crosses the fewest
+  things. On a scene whose camera moves (code, terminal, sequence), an item moves with the step it was drawn on, and
+  code clips ink to its viewport.
 - **`mark` and `note` stay** as the shorthand for one item on the first focus ref that clears at the next step, drawn
   by the same code as before. Old storyboards and review flags render pixel for pixel as in 0.26: 19 step stills with a
   mark or flag, across the review, demo, people, binary search and seven primitive examples, compare equal.
