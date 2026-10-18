@@ -1,0 +1,565 @@
+{
+  "title": "How a CPU adds",
+  "subtitle": "Five plus three, one gate at a time",
+  "scenes": [
+    {
+      "type": "array",
+      "chapter": "Five and three",
+      "title": "Two numbers, as lights",
+      "narration": "Inside a computer, a number is a row of wires, each one on or off. Let's add five and three, in four bits.",
+      "arrays": [
+        {
+          "name": "worth",
+          "label": "worth",
+          "values": [
+            8,
+            4,
+            2,
+            1
+          ]
+        },
+        {
+          "name": "five",
+          "label": "5",
+          "values": [
+            0,
+            1,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "three",
+          "label": "3",
+          "values": [
+            0,
+            0,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "sum",
+          "label": "sum",
+          "values": [
+            "?",
+            "?",
+            "?",
+            "?"
+          ],
+          "hidden": true
+        }
+      ],
+      "indexes": false,
+      "tint": {
+        "array:worth": "dim"
+      },
+      "steps": [
+        {
+          "tint": {
+            "five[1]": "warn",
+            "five[3]": "warn"
+          },
+          "focus": [
+            "five[1]",
+            "five[3]",
+            "worth[1]",
+            "worth[3]"
+          ],
+          "say": "Five is a four plus a one, so the four light and the one light are on."
+        },
+        {
+          "tint": {
+            "three[2]": "warn",
+            "three[3]": "warn"
+          },
+          "focus": [
+            "three[2]",
+            "three[3]",
+            "worth[2]",
+            "worth[3]"
+          ],
+          "say": "Three is a two plus a one."
+        },
+        {
+          "show": [
+            "array:sum"
+          ],
+          "focus": [
+            "five[3]",
+            "three[3]",
+            "sum[3]"
+          ],
+          "say": "To add them, the computer works like you would on paper: one column at a time, starting from the right.",
+          "draw": [
+            {
+              "box": [
+                "five[3]",
+                "sum[3]"
+              ],
+              "when": "one column"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "chapter": "One column",
+      "title": "Adding three bits",
+      "narration": "One column adds three bits: the two digits, and a carry from the column before. The answer is at most three, so it fits in two bits, a carry and a sum.",
+      "columns": [
+        "A",
+        "B",
+        "Carry in",
+        "Carry out",
+        "Sum"
+      ],
+      "rows": [
+        {
+          "cells": [
+            "0",
+            "0",
+            "0",
+            "0",
+            "0"
+          ]
+        },
+        {
+          "cells": [
+            "0",
+            "0",
+            "1",
+            "0",
+            "1"
+          ]
+        },
+        {
+          "cells": [
+            "0",
+            "1",
+            "0",
+            "0",
+            "1"
+          ]
+        },
+        {
+          "cells": [
+            "0",
+            "1",
+            "1",
+            "1",
+            "0"
+          ]
+        },
+        {
+          "cells": [
+            "1",
+            "0",
+            "0",
+            "0",
+            "1"
+          ]
+        },
+        {
+          "cells": [
+            "1",
+            "0",
+            "1",
+            "1",
+            "0"
+          ]
+        },
+        {
+          "cells": [
+            "1",
+            "1",
+            "0",
+            "1",
+            "0"
+          ]
+        },
+        {
+          "cells": [
+            "1",
+            "1",
+            "1",
+            "1",
+            "1"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": 2,
+          "say": "Zero plus one is one. Sum one, no carry."
+        },
+        {
+          "focus": 6,
+          "tint": {
+            "6": "warn"
+          },
+          "say": "One plus one is two, which in binary is one zero. Sum zero, carry one."
+        },
+        {
+          "focus": 7,
+          "say": "All three on makes three, one one. Sum one, carry one."
+        },
+        {
+          "focus": "col:Sum",
+          "tint": {
+            "Sum@1": "accent",
+            "Sum@2": "accent",
+            "Sum@4": "accent",
+            "Sum@7": "accent"
+          },
+          "callout": "Sum = A ⊕ B ⊕ Cin",
+          "say": "Look down the sum. It's on whenever an odd number of inputs are on. That's what an XOR gate does."
+        },
+        {
+          "focus": "col:Carry out",
+          "tint": {
+            "Carry out@3": "accent",
+            "Carry out@5": "accent",
+            "Carry out@6": "accent",
+            "Carry out@7": "accent"
+          },
+          "callout": "Carry = A·B + Cin·(A ⊕ B)",
+          "say": "The carry is on whenever at least two are on. AND gates can catch that."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "A full adder",
+      "title": "One column, in five gates",
+      "narration": "Here are those rules as five gates: two XORs, two ANDs and an OR. This circuit is called a full adder.",
+      "svg": "<svg viewBox=\"0 0 1600 820\"><path d=\"M160 175 H444\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M300 175 V415 H460\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M160 225 H444\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M240 225 V465 H460\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M160 700 H760 V285 H864\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M760 625 H880\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M600 200 H700 V235 H864\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M700 235 V575 H880\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M580 440 H1000 V495 H1180\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M1000 600 H1060 V545 H1180\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M1020 260 H1390\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M1320 520 H1390\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><g id=\"live-a\" class=\"flow\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"><path d=\"M160 175 H444\"/><path d=\"M300 175 V415 H460\"/></g><g id=\"live-b\" class=\"flow\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"><path d=\"M160 225 H444\"/><path d=\"M240 225 V465 H460\"/></g><g id=\"live-g\" class=\"flow\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"><path d=\"M580 440 H1000 V495 H1180\"/></g><g id=\"live-co\" class=\"flow\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"><path d=\"M1320 520 H1390\"/></g><g id=\"xor1\"><path d=\"M460 150 Q550 150 600 200 Q550 250 460 250 Q490 200 460 150 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><path d=\"M444 150 Q474 200 444 250\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"518\" y=\"208.66666666666666\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--text)\" font-family=\"mono\">XOR</text></g><g id=\"and1\"><path d=\"M460 390 H530 A50 50 0 0 1 530 490 H460 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"518\" y=\"448.6666666666667\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--text)\" font-family=\"mono\">AND</text></g><g id=\"xor2\"><path d=\"M880 210 Q970 210 1020 260 Q970 310 880 310 Q910 260 880 210 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><path d=\"M864 210 Q894 260 864 310\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"938\" y=\"268.6666666666667\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--text)\" font-family=\"mono\">XOR</text></g><g id=\"and2\"><path d=\"M880 550 H950 A50 50 0 0 1 950 650 H880 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"938\" y=\"608.6666666666666\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--text)\" font-family=\"mono\">AND</text></g><g id=\"or\"><path d=\"M1180 470 Q1270 470 1320 520 Q1270 570 1180 570 Q1210 520 1180 470 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"1238\" y=\"528.6666666666666\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--text)\" font-family=\"mono\">OR</text></g><text id=\"in-a\" x=\"40\" y=\"187\" font-size=\"34\" text-anchor=\"start\" font-family=\"mono\" fill=\"var(--text)\">A</text><text id=\"in-b\" x=\"40\" y=\"237\" font-size=\"34\" text-anchor=\"start\" font-family=\"mono\" fill=\"var(--text)\">B</text><text id=\"in-c\" x=\"16\" y=\"712\" font-size=\"34\" text-anchor=\"start\" font-family=\"mono\" fill=\"var(--text)\">Cin</text><text id=\"bit-a\" x=\"122\" y=\"187\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text id=\"bit-b\" x=\"122\" y=\"237\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text id=\"bit-c\" x=\"135\" y=\"712\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text id=\"bit-p\" x=\"640\" y=\"185\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text id=\"bit-g\" x=\"640\" y=\"425\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text id=\"bit-h\" x=\"1050\" y=\"630\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text id=\"out-s\" x=\"1405\" y=\"272\" font-size=\"34\" text-anchor=\"start\" font-family=\"mono\" fill=\"var(--text)\">Sum 0</text><text id=\"out-c\" x=\"1405\" y=\"532\" font-size=\"34\" text-anchor=\"start\" font-family=\"mono\" fill=\"var(--text)\">Carry 1</text></svg>",
+      "hidden": [
+        "live-a",
+        "live-b",
+        "live-g",
+        "live-co",
+        "bit-a",
+        "bit-b",
+        "bit-c",
+        "bit-p",
+        "bit-g",
+        "bit-h",
+        "out-s",
+        "out-c"
+      ],
+      "labels": {
+        "xor1": "first XOR",
+        "and1": "first AND",
+        "xor2": "second XOR",
+        "and2": "second AND",
+        "or": "OR gate",
+        "in-c": "carry in"
+      },
+      "steps": [
+        {
+          "show": [
+            "bit-a",
+            "bit-b",
+            "bit-c"
+          ],
+          "trace": [
+            {
+              "ref": "live-a",
+              "when": "a one on A"
+            },
+            {
+              "ref": "live-b",
+              "when": "a one on B"
+            }
+          ],
+          "focus": [
+            "live-a",
+            "live-b",
+            "in-c"
+          ],
+          "say": "Take the right-hand column: a one on A, a one on B, and no carry in."
+        },
+        {
+          "camera": [
+            "xor1",
+            "and1",
+            "bit-p",
+            "bit-g"
+          ],
+          "show": [
+            "bit-p",
+            "bit-g"
+          ],
+          "trace": [
+            {
+              "ref": "live-g",
+              "when": "Are both on"
+            }
+          ],
+          "focus": [
+            "xor1",
+            "and1"
+          ],
+          "say": "The first XOR asks, is exactly one of them on? No, so it outputs zero. The first AND asks, are both on? Yes."
+        },
+        {
+          "camera": [
+            "xor2",
+            "and2",
+            "out-s"
+          ],
+          "show": [
+            "out-s",
+            "bit-h"
+          ],
+          "focus": [
+            "xor2",
+            "and2",
+            "out-s"
+          ],
+          "say": "The second XOR mixes in the carry. Zero and zero, so the sum is zero."
+        },
+        {
+          "camera": "all",
+          "show": [
+            "out-c"
+          ],
+          "trace": [
+            {
+              "ref": "live-co",
+              "when": "carry"
+            }
+          ],
+          "focus": [
+            "or",
+            "out-c"
+          ],
+          "say": "And the OR passes the first AND's one out as the carry. One plus one: write zero, carry one."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "The ripple",
+      "title": "Four full adders, one per bit",
+      "narration": "Now copy that full adder four times, one per column, and wire each carry out into the next column's carry in.",
+      "svg": "<svg viewBox=\"0 0 1600 700\"><path d=\"M1560 360 H1480\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><text id=\"c-in\" x=\"1520\" y=\"345\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><line x1=\"1310\" y1=\"150\" x2=\"1310\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"1410\" y1=\"150\" x2=\"1410\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"1360\" y1=\"460\" x2=\"1360\" y2=\"560\" stroke=\"var(--border)\" stroke-width=\"6\"/><rect id=\"fa0\" x=\"1240\" y=\"260\" width=\"240\" height=\"200\" rx=\"18\"/><text id=\"name0\" x=\"1360\" y=\"372\" text-anchor=\"middle\" font-size=\"34\" fill=\"var(--muted)\">full adder</text><text id=\"a0\" x=\"1310\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text id=\"b0\" x=\"1410\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text x=\"1310\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">A0</text><text x=\"1410\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">B0</text><text id=\"s0\" x=\"1360\" y=\"610\" font-size=\"44\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text x=\"1360\" y=\"660\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">worth 1</text><g id=\"inside-0\" transform=\"translate(1248 300) scale(0.14)\"><path d=\"M160 175 H444\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M300 175 V415 H460\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M160 225 H444\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M240 225 V465 H460\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M160 700 H760 V285 H864\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M760 625 H880\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M600 200 H700 V235 H864\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M700 235 V575 H880\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M580 440 H1000 V495 H1180\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M1000 600 H1060 V545 H1180\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M1020 260 H1390\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path d=\"M1320 520 H1390\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><g id=\"m0-xor1\"><path d=\"M460 150 Q550 150 600 200 Q550 250 460 250 Q490 200 460 150 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><path d=\"M444 150 Q474 200 444 250\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"518\" y=\"216\" text-anchor=\"middle\" font-size=\"48\" fill=\"var(--text)\" font-family=\"mono\">XOR</text></g><g id=\"m0-and1\"><path d=\"M460 390 H530 A50 50 0 0 1 530 490 H460 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"518\" y=\"456\" text-anchor=\"middle\" font-size=\"48\" fill=\"var(--text)\" font-family=\"mono\">AND</text></g><g id=\"m0-xor2\"><path d=\"M880 210 Q970 210 1020 260 Q970 310 880 310 Q910 260 880 210 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><path d=\"M864 210 Q894 260 864 310\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"938\" y=\"276\" text-anchor=\"middle\" font-size=\"48\" fill=\"var(--text)\" font-family=\"mono\">XOR</text></g><g id=\"m0-and2\"><path d=\"M880 550 H950 A50 50 0 0 1 950 650 H880 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"938\" y=\"616\" text-anchor=\"middle\" font-size=\"48\" fill=\"var(--text)\" font-family=\"mono\">AND</text></g><g id=\"m0-or\"><path d=\"M1180 470 Q1270 470 1320 520 Q1270 570 1180 570 Q1210 520 1180 470 Z\" fill=\"var(--surface)\" stroke=\"var(--muted)\" stroke-width=\"5\"/><text x=\"1238\" y=\"536\" text-anchor=\"middle\" font-size=\"48\" fill=\"var(--text)\" font-family=\"mono\">OR</text></g></g><path d=\"M1240 360 H1120\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path id=\"carry0\" class=\"flow\" d=\"M1240 360 H1120\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"/><text id=\"c0\" x=\"1180\" y=\"345\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><line x1=\"950\" y1=\"150\" x2=\"950\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"1050\" y1=\"150\" x2=\"1050\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"1000\" y1=\"460\" x2=\"1000\" y2=\"560\" stroke=\"var(--border)\" stroke-width=\"6\"/><rect id=\"fa1\" x=\"880\" y=\"260\" width=\"240\" height=\"200\" rx=\"18\"/><text id=\"name1\" x=\"1000\" y=\"372\" text-anchor=\"middle\" font-size=\"34\" fill=\"var(--muted)\">full adder</text><text id=\"a1\" x=\"950\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text id=\"b1\" x=\"1050\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text x=\"950\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">A1</text><text x=\"1050\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">B1</text><text id=\"s1\" x=\"1000\" y=\"610\" font-size=\"44\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text x=\"1000\" y=\"660\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">worth 2</text><path d=\"M880 360 H760\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path id=\"carry1\" class=\"flow\" d=\"M880 360 H760\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"/><text id=\"c1\" x=\"820\" y=\"345\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><line x1=\"590\" y1=\"150\" x2=\"590\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"690\" y1=\"150\" x2=\"690\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"640\" y1=\"460\" x2=\"640\" y2=\"560\" stroke=\"var(--border)\" stroke-width=\"6\"/><rect id=\"fa2\" x=\"520\" y=\"260\" width=\"240\" height=\"200\" rx=\"18\"/><text id=\"name2\" x=\"640\" y=\"372\" text-anchor=\"middle\" font-size=\"34\" fill=\"var(--muted)\">full adder</text><text id=\"a2\" x=\"590\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text id=\"b2\" x=\"690\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text x=\"590\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">A2</text><text x=\"690\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">B2</text><text id=\"s2\" x=\"640\" y=\"610\" font-size=\"44\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text x=\"640\" y=\"660\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">worth 4</text><path d=\"M520 360 H400\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path id=\"carry2\" class=\"flow\" d=\"M520 360 H400\" fill=\"none\" stroke=\"var(--warn)\" stroke-width=\"8\"/><text id=\"c2\" x=\"460\" y=\"345\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><line x1=\"230\" y1=\"150\" x2=\"230\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"330\" y1=\"150\" x2=\"330\" y2=\"260\" stroke=\"var(--border)\" stroke-width=\"6\"/><line x1=\"280\" y1=\"460\" x2=\"280\" y2=\"560\" stroke=\"var(--border)\" stroke-width=\"6\"/><rect id=\"fa3\" x=\"160\" y=\"260\" width=\"240\" height=\"200\" rx=\"18\"/><text id=\"name3\" x=\"280\" y=\"372\" text-anchor=\"middle\" font-size=\"34\" fill=\"var(--muted)\">full adder</text><text id=\"a3\" x=\"230\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text id=\"b3\" x=\"330\" y=\"130\" font-size=\"34\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text><text x=\"230\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">A3</text><text x=\"330\" y=\"80\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">B3</text><text id=\"s3\" x=\"280\" y=\"610\" font-size=\"44\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">1</text><text x=\"280\" y=\"660\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">worth 8</text><path d=\"M160 360 H60\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"6\"/><path id=\"carry3\" class=\"flow\" d=\"M160 360 H60\" fill=\"none\" stroke=\"var(--border)\" stroke-width=\"8\"/><text id=\"c3\" x=\"110\" y=\"345\" font-size=\"30\" text-anchor=\"middle\" font-family=\"mono\" fill=\"var(--text)\">0</text></svg>",
+      "hidden": [
+        "s0",
+        "c0",
+        "carry0",
+        "s1",
+        "c1",
+        "carry1",
+        "s2",
+        "c2",
+        "carry2",
+        "s3",
+        "c3",
+        "carry3",
+        "inside-0"
+      ],
+      "labels": {
+        "fa0": "column worth 1",
+        "fa1": "column worth 2",
+        "fa2": "column worth 4",
+        "fa3": "column worth 8"
+      },
+      "steps": [
+        {
+          "camera": "fa0",
+          "show": [
+            "inside-0"
+          ],
+          "hide": [
+            "name0"
+          ],
+          "focus": "fa0",
+          "say": "Each box is the same five gates we just traced."
+        },
+        {
+          "camera": [
+            "fa0",
+            "fa1",
+            "a0",
+            "b1",
+            "s0",
+            "c0"
+          ],
+          "hide": [
+            "inside-0"
+          ],
+          "show": [
+            "name0",
+            "s0",
+            "c0"
+          ],
+          "trace": [
+            {
+              "ref": "carry0",
+              "when": "carry one"
+            }
+          ],
+          "focus": [
+            "s0",
+            "carry0"
+          ],
+          "say": "The ones column gets one and one. It writes zero, and passes a carry one to its left."
+        },
+        {
+          "camera": [
+            "fa1",
+            "a1",
+            "b1",
+            "fa2",
+            "s1",
+            "c1"
+          ],
+          "show": [
+            "s1",
+            "c1"
+          ],
+          "trace": [
+            {
+              "ref": "carry1"
+            }
+          ],
+          "focus": [
+            "s1",
+            "carry1"
+          ],
+          "say": "The twos column could not start until that carry arrived. Zero, one and the carry make two again: zero, carry one."
+        },
+        {
+          "camera": [
+            "fa2",
+            "a2",
+            "b2",
+            "fa3",
+            "s2",
+            "c2"
+          ],
+          "show": [
+            "s2",
+            "c2"
+          ],
+          "trace": [
+            {
+              "ref": "carry2"
+            }
+          ],
+          "focus": [
+            "s2",
+            "carry2"
+          ],
+          "say": "The fours column: one, zero and the carry. Again zero, carry one."
+        },
+        {
+          "camera": [
+            "fa3",
+            "a3",
+            "b3",
+            "s3",
+            "c3"
+          ],
+          "show": [
+            "s3",
+            "c3"
+          ],
+          "trace": [
+            {
+              "ref": "carry3"
+            }
+          ],
+          "focus": [
+            "s3",
+            "carry3"
+          ],
+          "say": "The eights column has only the carry, so it writes one, and nothing carries out."
+        },
+        {
+          "camera": "all",
+          "focus": [
+            "s0",
+            "s1",
+            "s2",
+            "s3"
+          ],
+          "say": "Each carry had to wait for the one before it, rippling from right to left. That's why this is called a ripple carry adder."
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "chapter": "Eight",
+      "title": "Five plus three",
+      "narration": "Read the sum lights from left to right.",
+      "arrays": [
+        {
+          "name": "worth",
+          "label": "worth",
+          "values": [
+            8,
+            4,
+            2,
+            1
+          ]
+        },
+        {
+          "name": "five",
+          "label": "5",
+          "values": [
+            0,
+            1,
+            0,
+            1
+          ]
+        },
+        {
+          "name": "three",
+          "label": "3",
+          "values": [
+            0,
+            0,
+            1,
+            1
+          ]
+        },
+        {
+          "name": "sum",
+          "label": "sum",
+          "values": [
+            1,
+            0,
+            0,
+            0
+          ]
+        }
+      ],
+      "indexes": false,
+      "tint": {
+        "array:worth": "dim",
+        "five[1]": "warn",
+        "five[3]": "warn",
+        "three[2]": "warn",
+        "three[3]": "warn"
+      },
+      "callout": "0101 + 0011 = ?",
+      "steps": [
+        {
+          "tint": {
+            "sum[0]": "warn"
+          },
+          "focus": [
+            "array:sum",
+            "worth[0]"
+          ],
+          "callout": "0101 + 0011 = 1000",
+          "say": "One zero zero zero. Only the eights light is on, so the answer is eight. Five plus three, done with nothing but on and off."
+        }
+      ]
+    }
+  ]
+}

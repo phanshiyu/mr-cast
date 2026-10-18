@@ -1,0 +1,197 @@
+{
+  "title": "Docker in 100 seconds",
+  "subtitle": "Containers, images and layers, fast",
+  "scenes": [
+    {
+      "type": "text",
+      "chapter": "What it is",
+      "narration": "It works on my machine. Docker is how you stop saying that.",
+      "kicker": "Docker",
+      "headline": "“It works on my machine.”",
+      "note": "first shown at PyCon, 15 March 2013",
+      "hidden": [
+        "note"
+      ],
+      "steps": [
+        {
+          "set": {
+            "headline": "Your app, plus everything it needs, in one box"
+          },
+          "show": [
+            "note"
+          ],
+          "focus": "headline",
+          "say": "It packs your app and everything it needs into one box, which runs the same on any computer."
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "Not a VM",
+      "title": "Two ways to keep apps apart",
+      "sides": [
+        {
+          "title": "Virtual machine"
+        },
+        {
+          "title": "Container"
+        }
+      ],
+      "narration": "So it's a virtual machine? No.",
+      "rows": [
+        {
+          "label": "Kernel",
+          "cells": [
+            "Its own",
+            "Shares the host's"
+          ],
+          "verdict": [
+            null,
+            "good"
+          ]
+        },
+        {
+          "label": "Inside",
+          "cells": [
+            "A whole operating system",
+            "One process and its files"
+          ],
+          "verdict": [
+            null,
+            "good"
+          ]
+        },
+        {
+          "label": "Ten apps",
+          "cells": [
+            "Ten operating systems",
+            "Ten processes, one kernel"
+          ],
+          "verdict": [
+            "bad",
+            "good"
+          ]
+        }
+      ],
+      "steps": [
+        {
+          "focus": [
+            0,
+            1
+          ],
+          "say": "A virtual machine runs a whole operating system, kernel and all. A container is one walled off process that shares the host's kernel."
+        },
+        {
+          "focus": 2,
+          "say": "So many more of them fit on one machine."
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "chapter": "The Dockerfile",
+      "hunkId": "s1",
+      "typing": true,
+      "outputTitle": "zsh",
+      "narration": "You describe the box in a Dockerfile.",
+      "steps": [
+        {
+          "lines": 1,
+          "say": "Start from a small image that has Node."
+        },
+        {
+          "lines": "2-5",
+          "say": "Install your packages, then copy in your code."
+        },
+        {
+          "lines": 6,
+          "say": "Say what to run, then build it.",
+          "output": "$ docker build -t my-app .\n => [1/5] FROM docker.io/library/node:22-alpine\n => [2/5] WORKDIR /app\n => [3/5] COPY package*.json ./\n => [4/5] RUN npm install\n => [5/5] COPY . .\n => naming to docker.io/library/[my-app]{good}",
+          "outputWhen": "build it"
+        }
+      ]
+    },
+    {
+      "type": "layers",
+      "chapter": "Layers",
+      "title": "The image, one layer per step",
+      "narration": "That build makes an image: read only layers, one for each step, stacked on the base.",
+      "layers": [
+        {
+          "id": "code",
+          "label": "COPY . .",
+          "caption": "your code",
+          "tone": "warn"
+        },
+        {
+          "id": "deps",
+          "label": "RUN npm install",
+          "caption": "node_modules"
+        },
+        {
+          "id": "pkg",
+          "label": "COPY package*.json",
+          "caption": "the package list"
+        },
+        {
+          "id": "dir",
+          "label": "WORKDIR /app",
+          "caption": "a folder"
+        },
+        {
+          "id": "base",
+          "label": "FROM node:22-alpine",
+          "caption": "Linux files and Node",
+          "tone": "accent"
+        }
+      ],
+      "steps": [
+        {
+          "focus": "code",
+          "say": "Change your code, and only the top layer is built again. The rest come from the cache."
+        }
+      ]
+    },
+    {
+      "type": "terminal",
+      "chapter": "Run it",
+      "title": "An image becomes a container",
+      "window": "zsh: ~/my-app",
+      "narration": "Run the image, and you get a container.",
+      "entries": [
+        {
+          "command": "docker run -d -p 8080:3000 my-app",
+          "output": "a49313c02ae4a44e7a5439432f12f93f71ab9b2556ef346659cb8a37bac47027",
+          "exit": 0
+        },
+        {
+          "command": "docker ps --format \"{{.Image}}  {{.Ports}}\"",
+          "output": "my-app  0.0.0.0:8080->3000/tcp",
+          "exit": 0
+        },
+        {
+          "command": "curl localhost:8080",
+          "output": "[hello from a container]{good}",
+          "exit": 0
+        }
+      ],
+      "steps": [
+        {
+          "focus": "0-2",
+          "say": "It starts in the background, port eighty eighty reaches the app inside, and it answers."
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "chapter": "Recap",
+      "narration": "The Dockerfile is the recipe. The image is what it builds. A container is that image, running, the same on every machine.",
+      "headline": "Three words",
+      "items": [
+        "**Dockerfile**: the recipe, one layer per step",
+        "**Image**: a read-only template built from it",
+        "**Container**: a running copy of an image"
+      ]
+    }
+  ]
+}

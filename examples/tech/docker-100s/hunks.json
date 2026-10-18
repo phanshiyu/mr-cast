@@ -1,0 +1,55 @@
+{
+  "s1": {
+    "id": "s1",
+    "file": "Dockerfile",
+    "oldFile": null,
+    "status": "source",
+    "language": "docker",
+    "header": "",
+    "startLine": 1,
+    "oldStartLine": 1,
+    "endLine": 6,
+    "additions": 0,
+    "deletions": 0,
+    "beforeCode": "FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD [\"node\", \"server.js\"]",
+    "afterCode": "FROM node:22-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD [\"node\", \"server.js\"]",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 1,
+        "newLine": 1,
+        "text": "FROM node:22-alpine"
+      },
+      {
+        "type": "context",
+        "oldLine": 2,
+        "newLine": 2,
+        "text": "WORKDIR /app"
+      },
+      {
+        "type": "context",
+        "oldLine": 3,
+        "newLine": 3,
+        "text": "COPY package*.json ./"
+      },
+      {
+        "type": "context",
+        "oldLine": 4,
+        "newLine": 4,
+        "text": "RUN npm install"
+      },
+      {
+        "type": "context",
+        "oldLine": 5,
+        "newLine": 5,
+        "text": "COPY . ."
+      },
+      {
+        "type": "context",
+        "oldLine": 6,
+        "newLine": 6,
+        "text": "CMD [\"node\", \"server.js\"]"
+      }
+    ]
+  }
+}
