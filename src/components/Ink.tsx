@@ -15,7 +15,6 @@ import {
   type InkSide,
   braceSketch,
   clearOf,
-  edgeToward,
   keepIn,
   leader,
   linkSketch,
@@ -28,6 +27,7 @@ import {
 } from '../utils/inkGeometry';
 import {
   center,
+  edgeToward,
   grow,
   seedOf,
   sketchMark,

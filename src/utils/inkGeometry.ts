@@ -1,7 +1,19 @@
 // Geometry of the ink a step draws, beyond the shared pen marks: ticks, braces, arrows between two things, and a spot
 // for handwriting that keeps off everything the scene shows. Pure and seeded, so a frame always draws the same ink.
 
-import { bottom, center, grow, random, right, union, type Box, type Pt, type Sketch, type Stroke } from './penGeometry';
+import {
+  bottom,
+  center,
+  edgeToward,
+  grow,
+  random,
+  right,
+  union,
+  type Box,
+  type Pt,
+  type Sketch,
+  type Stroke,
+} from './penGeometry';
 
 export type InkSide = 'above' | 'below' | 'left' | 'right';
 type Size = { width: number; height: number };
@@ -32,15 +44,6 @@ function boundsOf(strokes: readonly Stroke[], pen: number): Box {
     },
     pen,
   );
-}
-
-/** Where a line from the centre of `b` towards `p` leaves `b` grown by 10px. */
-export function edgeToward(b: Box, p: Pt): Pt {
-  const c = center(b);
-  const g = grow(b, 10);
-  const [dx, dy] = [p.x - c.x, p.y - c.y];
-  const s = Math.min(dx ? g.width / 2 / Math.abs(dx) : Infinity, dy ? g.height / 2 / Math.abs(dy) : Infinity, 1);
-  return { x: c.x + dx * s, y: c.y + dy * s };
 }
 
 /** A check mark just right of the target. */

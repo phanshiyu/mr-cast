@@ -336,11 +336,11 @@ export function sketchMark(
   return { strokes, bounds: boundsOf(strokes, pen) };
 }
 
-/** Where a line from `from` towards the target's centre meets the target grown by `gap`. */
-function edgePoint(from: Pt, target: Box, gap: number): Pt {
-  const g = grow(target, gap);
-  const c = center(g);
-  const [dx, dy] = [from.x - c.x, from.y - c.y];
+/** Where a line from the centre of `b` towards `p` leaves `b` grown by 10px. */
+export function edgeToward(b: Box, p: Pt): Pt {
+  const c = center(b);
+  const g = grow(b, 10);
+  const [dx, dy] = [p.x - c.x, p.y - c.y];
   const s = Math.min(dx ? g.width / 2 / Math.abs(dx) : Infinity, dy ? g.height / 2 / Math.abs(dy) : Infinity, 1);
   return { x: c.x + dx * s, y: c.y + dy * s };
 }
@@ -348,7 +348,7 @@ function edgePoint(from: Pt, target: Box, gap: number): Pt {
 /** A curved shaft from `tail` to just short of the target, then the two barbs of its head in one stroke. */
 export function arrowSketch(tail: Pt, target: Box, seed: number, pen: number): Sketch {
   const rand = random(seed);
-  const tip = edgePoint(tail, target, 10);
+  const tip = edgeToward(target, tail);
   const len = Math.hypot(tip.x - tail.x, tip.y - tail.y);
   const shaft = line(tail, tip, 16, (rand() < 0.5 ? -1 : 1) * len * (0.1 + rand() * 0.05), 0.8, rand);
   const last = shaft[shaft.length - 3]!;
@@ -474,7 +474,7 @@ export function placeArrow(
   let best: { tail: Pt; note: Box; score: number } | null = null;
   for (const reach of [130, 200, 280]) {
     for (const d of DIRECTIONS) {
-      const edge = edgePoint({ x: c.x + d.x * 1e4, y: c.y + d.y * 1e4 }, target, 10);
+      const edge = edgeToward(target, { x: c.x + d.x * 1e4, y: c.y + d.y * 1e4 });
       const want = { x: edge.x + d.x * reach, y: edge.y + d.y * reach };
       const horizontal = Math.abs(d.x) > 0.5;
       const placed = keepInside(
@@ -487,7 +487,7 @@ export function placeArrow(
       );
       const near = grow(placed, 8);
       const tail = { x: clampTo(c.x, near.x, right(near)), y: clampTo(c.y, near.y, bottom(near)) };
-      const tip = edgePoint(tail, target, 10);
+      const tip = edgeToward(target, tail);
       const shaft = Array.from({ length: 12 }, (_, i) => ({
         x: tail.x + ((tip.x - tail.x) * (i + 0.5)) / 12,
         y: tail.y + ((tip.y - tail.y) * (i + 0.5)) / 12,
