@@ -125,7 +125,7 @@ test('the built picks are exactly the storyboard\'s plan, in plan order, whateve
   fs.rmSync(dir, { recursive: true });
 });
 
-const intent = { type: 'intent', narration: 'Orders now have a rate limit.', summary: 'Limit orders', risk: 'low', bullets: ['Twenty a minute'] };
+const opening = { type: 'text', narration: 'Orders now have a rate limit.', headline: 'Limit orders', risk: 'low', items: ['Twenty a minute'] };
 const sequence = (topicId) => ({
   type: 'sequence', topic: topicId, narration: 'The client sends an order to the server.',
   participants: [{ id: 'c', label: 'Client' }, { id: 's', label: 'Server' }], messages: [{ from: 'c', to: 's', label: 'POST /orders' }],
@@ -137,13 +137,13 @@ const about = (list) => list.filter((m) => /topic|^plan[.:]/.test(m));
 
 test('a storyboard that follows the picks has no topic problems', async () => {
   const p = plan(topic('limit'), topic('orders', { choice: { depth: 'brief', view: 'compare' } }), topic('logs', { choice: { depth: 'skip', view: 'calls' } }));
-  const { errors, warnings } = await topicsOf([intent, sequence('limit'), compare('orders')], p);
+  const { errors, warnings } = await topicsOf([opening, sequence('limit'), compare('orders')], p);
   assert.deepEqual([...errors, ...about(warnings)], []);
 });
 
 test('a storyboard without a plan entry for each topic is warned about', async () => {
   const p = plan(topic('limit'), topic('orders', { choice: { depth: 'brief', view: 'compare' } }));
-  const scenes = [intent, sequence('limit'), compare('orders')];
+  const scenes = [opening, sequence('limit'), compare('orders')];
   const unrecorded = await validateStoryboard({ title: 'Limits', scenes }, {}, { plan: { plan: p, ...checkPlan(p) } });
   assert.deepEqual(about(unrecorded.warnings), [
     'plan: missing; copy the pick of each topic in plan.json into the storyboard\'s "plan", such as { "limit": {"depth":"brief","view":"calls"} }',
@@ -155,7 +155,7 @@ test('a storyboard without a plan entry for each topic is warned about', async (
 
 test('a plan entry for an unknown topic or with a pick the topic does not offer is an error', async () => {
   const p = plan(topic('limit'));
-  const { errors } = await topicsOf([intent, sequence('limit')], p, { limit: { depth: 'brief', view: 'states' }, nope: { depth: 'brief', view: 'calls' } });
+  const { errors } = await topicsOf([opening, sequence('limit')], p, { limit: { depth: 'brief', view: 'states' }, nope: { depth: 'brief', view: 'calls' } });
   assert.deepEqual(errors, [
     "plan.limit: view must be one of the topic's views, calls, compare (got \"states\")",
     'plan.nope: no topic "nope" in plan.json; use one of limit',
@@ -167,7 +167,7 @@ test('a pick flipped after the storyboard was written warns, and stays marked un
   const built = () => JSON.parse(fs.readFileSync(path.join(dir, 'plan-built.json'), 'utf8')).topics;
   const written = { a: { depth: 'brief', view: 'calls' }, b: { depth: 'brief', view: 'calls' } };
   const flipped = plan(topic('a'), topic('b', { title: 'Orders', choice: { depth: 'deep', view: 'compare' } }));
-  const before = [intent, sequence('a'), sequence('b')];
+  const before = [opening, sequence('a'), sequence('b')];
   const stale = await topicsOf(before, flipped, written);
   assert.deepEqual(stale.errors, []);
   assert.deepEqual(about(stale.warnings), ['plan.b: the plan changed since the storyboard was written: "Orders" is now deep, Before vs after; update its scenes and this entry']);
@@ -175,7 +175,7 @@ test('a pick flipped after the storyboard was written warns, and stays marked un
   assert.deepEqual(built().b, { depth: 'brief', view: 'calls' });
 
   const rebuilt = { ...written, b: { depth: 'deep', view: 'compare' } };
-  const after = [intent, sequence('a'), compare('b')];
+  const after = [opening, sequence('a'), compare('b')];
   const fresh = await topicsOf(after, flipped, rebuilt);
   assert.deepEqual([...fresh.errors, ...about(fresh.warnings)], []);
   recordBuilt(dir, flipped, rebuilt);
@@ -185,17 +185,17 @@ test('a pick flipped after the storyboard was written warns, and stays marked un
 
 test('the scenes are checked against the pick the storyboard was written from', async () => {
   const p = plan(topic('b', { choice: { depth: 'deep', view: 'compare' } }));
-  const { warnings } = await topicsOf([intent, sequence('b')], p, { b: { depth: 'brief', view: 'calls' } });
+  const { warnings } = await topicsOf([opening, sequence('b')], p, { b: { depth: 'brief', view: 'calls' } });
   assert.deepEqual(about(warnings), ['plan.b: the plan changed since the storyboard was written: "Topic b" is now deep, Before vs after; update its scenes and this entry']);
 });
 
 test('a storyboard plan without a plan.json is warned about', async () => {
-  const { warnings } = await validateStoryboard({ title: 'Limits', scenes: [intent], plan: { a: { depth: 'brief', view: 'calls' } } }, {}, {});
+  const { warnings } = await validateStoryboard({ title: 'Limits', scenes: [opening], plan: { a: { depth: 'brief', view: 'calls' } } }, {}, {});
   assert.ok(warnings.includes('plan: this run has no plan.json, so there are no picks to record; remove "plan"'), warnings.join('\n'));
 });
 
 test('an unknown topic id is an error', async () => {
-  const { errors } = await topicsOf([intent, sequence('nope')], plan(topic('limit')));
+  const { errors } = await topicsOf([opening, sequence('nope')], plan(topic('limit')));
   assert.deepEqual(errors, ['scenes[1].topic: no topic "nope" in plan.json; use one of limit']);
 });
 
@@ -205,7 +205,7 @@ test('a missing, skipped or wrongly drawn topic is warned about', async () => {
     topic('orders', { choice: { depth: 'deep', view: 'compare' } }),
     topic('logs', { choice: { depth: 'skip', view: 'calls' } }),
   );
-  const { errors, warnings } = await topicsOf([intent, sequence('orders'), sequence('logs')], p);
+  const { errors, warnings } = await topicsOf([opening, sequence('orders'), sequence('logs')], p);
   assert.deepEqual(errors, []);
   assert.deepEqual(about(warnings), [
     'scenes[1] is a sequence scene in "orders", which the viewer chose to see as "Before vs after"; draw it as a compare scene, or move this scene to another topic',
@@ -217,14 +217,14 @@ test('a missing, skipped or wrongly drawn topic is warned about', async () => {
 
 test('an invalid plan.json fails validate', async () => {
   const p = plan(topic('limit', { views: [] }));
-  const { errors } = await topicsOf([intent, sequence('limit')], p);
+  const { errors } = await topicsOf([opening, sequence('limit')], p);
   assert.deepEqual(errors, ['plan.json: topics[0].views: required array of 1 to 3 views, your suggestion first']);
 });
 
 test('the outline groups scenes under their topic and lists skipped topics', () => {
   const p = plan(topic('limit', { title: 'Rate limiter' }), topic('logs', { title: 'Logging', choice: { depth: 'skip', view: 'calls' } }));
-  const storyboard = { title: 'Limits', scenes: [intent, sequence('limit')] };
+  const storyboard = { title: 'Limits', scenes: [opening, sequence('limit')] };
   const out = formatOutline({ storyboard, hunks: {}, coverage: null, seconds: 30, voiced: false, plan: p });
-  assert.deepEqual(out.split('\n').slice(2, 7), ['No topic', '1. intent      low risk · Limit orders', '', 'Rate limiter (brief, who calls whom, in order)', '2. sequence    2 participants, 1 message']);
+  assert.deepEqual(out.split('\n').slice(2, 7), ['No topic', '1. text        headline Limit orders · low risk · 1 item', '', 'Rate limiter (brief, who calls whom, in order)', '2. sequence    2 participants, 1 message']);
   assert.match(out, /\nskipped topics: Logging$/);
 });
