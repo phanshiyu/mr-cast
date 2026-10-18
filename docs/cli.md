@@ -87,7 +87,7 @@ If the model cannot load, for example offline on the first run, `play` and `rend
 
 `mr-cast play` prints the URL at once and opens the browser when the voice is ready. A page opened earlier waits for the voice. If the voice fails, the page opens silent and says so.
 
-A second `play` of the same run stops the first player and its voicing, then starts, so it runs with the new command's flags. A player exits by itself once no page has been open for 30 minutes, counted from the last page closing, or from the start when none opened. It does not count while the first voicing runs. `--idle-exit <minutes>` changes the limit, and `--idle-exit 0` keeps it running until stopped.
+A second `play` of the same run stops the first player and its voicing, then starts, so it runs with the new command's flags. A voice model download the first player started keeps running, and the second waits for it instead of starting over. A player exits by itself once no page has been open for 30 minutes, counted from the last page closing, or from the start when none opened. It does not count while any voicing runs, the first or an edit's, and counts from the start again once the voicing ends. `--idle-exit <minutes>` changes the limit, and `--idle-exit 0` keeps it running until stopped.
 
 When `storyboard.json` changes, the page keeps playing its version and shows "Updating..." until the changed narration is voiced, then reloads once. The speed control goes from 0.75x to 1.5x. With a `plan.json`, the player has a **Plan** tab. For a pre-read, it has a **Reading order** panel.
 
@@ -147,20 +147,21 @@ pid    kind     age  page                 url                                   
 stop with `mr-cast stop <pid|run|all>`; --idle and --older-than 2h narrow it, --dry-run only prints
 ```
 
-- `page` is the number of pages open on a server, or `none` with the time until it exits by itself. A process that wrote no record shows `?`.
-- A process counts only while `ps` shows its pid owned by you, started at the recorded time and running mr-cast. Any other record is stale, for example from a process that was killed, and the listing removes it. A reused pid is never taken for the process that had it.
-- `unregistered` marks an mr-cast process with no record: one started by mr-cast 0.27 or older, or one that records itself under another `XDG_STATE_HOME`. `ps` finds these in the process list, with their port and working directory from `lsof`.
-- `--json` prints `stateDir` and `processes`, each with `pid`, `ppid`, `kind`, `registered`, `parent`, `startedAt`, `url`, `repo`, `run`, `dir`, `version`, `viewers`, `idleSince` and `idleExit`.
+- `page` is the number of pages open on a server, or `none` with the time until it exits by itself, or `none · voicing` while a voicing holds that off. A process that wrote no record shows `?`.
+- A process counts only while `ps` shows its pid owned by you, started at the recorded time and running the command line it recorded. A record is removed only when `ps` shows that pid gone or started at another time, for example after the process was killed or its pid reused. When `ps` fails, nothing is listed and nothing is removed. Start times are read in UTC, so a process started under another `TZ` still counts.
+- `unregistered` marks an mr-cast process with no record: one started by mr-cast 0.27.0 or older, or one that records itself under another `XDG_STATE_HOME`. `ps` finds these in the process list: node running `bin/mr-cast.mjs play`, `plan` or `render`, or a voice child, as its script. A shell, `caffeinate` or `timeout` whose arguments name mr-cast is not one. A relative script path is resolved against the process's working directory, which `lsof` gives with its port. `MR_CAST_PROCS_SCAN=0` turns this scan off, so a test or sandbox sees only the processes in its own state directory.
+- The records are in a directory of yours with mode 0700. If it is a symlink or another user's, nothing is recorded or read.
+- `--json` prints `stateDir` and `processes`, each with `pid`, `ppid`, `kind`, `registered`, `parent`, `startedAt`, `url`, `repo`, `run`, `dir`, `version`, `viewers`, `idleSince`, `idleExit` and `exitsAt`.
 
 `mr-cast stop` stops what its targets pick, and they combine:
 
-- A pid, a run name such as `rate-limit`, or `all`. Several can be given.
+- A pid, a run name such as `rate-limit`, or `all`. Several can be given. A run name matches only the processes of the current repository, or of the current directory outside one; `--any-repo` matches that run in every repository.
 - `--idle` keeps only servers with no page open.
 - `--older-than <30m|2h|1d>` keeps only processes started longer ago than that.
 
-A process's voice and download children always go with it. `stop` sends SIGTERM, waits up to 5 seconds, and sends SIGKILL only to a process still running. Before each signal it checks the pid again, and it never signals a process that is not an mr-cast process of yours. A pid or run that matches nothing stops nothing and exits 1. Each line it prints says `stopped`, `killed` (SIGKILL was needed), `already gone` or `could not stop`.
+A process's voice and download children always go with it. `stop` sends SIGTERM, waits up to 5 seconds, and sends SIGKILL only to a process still running. Before each signal it checks the pid again, and it never signals a process that is not an mr-cast process of yours. A pid that has exited since it was listed prints `skipped pid <pid>: it has exited already`, and the other targets are still stopped. A pid that runs something other than an mr-cast process of yours, or a run that matches nothing, stops nothing and exits 1. Each line it prints says `stopped`, `killed` (SIGKILL was needed), `already gone` or `could not stop`. A render stopped this way closes its Chrome before it exits.
 
-`--dry-run` prints `would stop` lines and stops nothing. `--json` prints `dryRun` and the `processes`, each with its `outcome`. `mr-cast stop --choices --json` prints a menu in the shape of prune's: one group, `Running processes`, with up to 4 options, such as every process, the servers with no page open, those running for over 2 hours, or each process. Each option has the exact `command` that stops it and the pids it stops as `ids`. `mr-cast prune --choices` adds the same group after its own.
+`--dry-run` prints `would stop` lines and stops nothing. `--json` prints `dryRun`, the `processes`, each with its `outcome`, and the `exited` pids it skipped. `mr-cast stop --choices --json` prints a menu in the shape of prune's: one group, `Running processes`, with up to 4 options, such as every process, the servers with no page open, those running for over 2 hours, or each process. Each option's `command` is `stop` with the pids of the processes it names, and its `ids` are those pids. Their children are not in `ids`; `stop` takes them with each pid. An option stops only what ran when the menu was printed. `mr-cast prune --choices` adds the same group after its own.
 
 `mr-cast status` adds a line such as `running: 2 players and 1 render` when anything is running.
 
