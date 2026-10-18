@@ -143,6 +143,15 @@ test('the installed prune skill deletes only through mr-cast prune', () => {
   for (const word of [/\brm[ -]/, /-delete\b/, /\bunlink\b/, /rmSync|rmdir|trash/]) assert.doesNotMatch(rest, word);
 });
 
+test('the installed prune skill stops processes only through mr-cast stop', () => {
+  const dir = freshDir();
+  installSkill(root, dir);
+  const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast-prune/SKILL.md'), 'utf8');
+  const RULE = 'Never signal a process with `kill`, `pkill`, `killall` or any other command or tool';
+  assert.ok(skill.includes(RULE), 'states the rule');
+  assert.doesNotMatch(skill.replace(RULE, ''), /\b(kill|pkill|killall|lsof)\b|SIGKILL|SIGTERM/);
+});
+
 test('a recorded file whose content mr-cast did not write is kept', () => {
   const dir = freshDir();
   installSkill(root, dir);
