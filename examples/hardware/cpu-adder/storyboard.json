@@ -19,7 +19,7 @@
           ]
         },
         {
-          "name": "five",
+          "name": "a",
           "label": "5",
           "values": [
             0,
@@ -29,7 +29,7 @@
           ]
         },
         {
-          "name": "three",
+          "name": "b",
           "label": "3",
           "values": [
             0,
@@ -57,12 +57,12 @@
       "steps": [
         {
           "tint": {
-            "five[1]": "warn",
-            "five[3]": "warn"
+            "a[1]": "warn",
+            "a[3]": "warn"
           },
           "focus": [
-            "five[1]",
-            "five[3]",
+            "a[1]",
+            "a[3]",
             "worth[1]",
             "worth[3]"
           ],
@@ -70,12 +70,12 @@
         },
         {
           "tint": {
-            "three[2]": "warn",
-            "three[3]": "warn"
+            "b[2]": "warn",
+            "b[3]": "warn"
           },
           "focus": [
-            "three[2]",
-            "three[3]",
+            "b[2]",
+            "b[3]",
             "worth[2]",
             "worth[3]"
           ],
@@ -86,15 +86,15 @@
             "array:sum"
           ],
           "focus": [
-            "five[3]",
-            "three[3]",
+            "a[3]",
+            "b[3]",
             "sum[3]"
           ],
           "say": "To add them, the computer works like you would on paper: one column at a time, starting from the right.",
           "draw": [
             {
               "box": [
-                "five[3]",
+                "a[3]",
                 "sum[3]"
               ],
               "when": "one column"
@@ -508,7 +508,7 @@
           ]
         },
         {
-          "name": "five",
+          "name": "a",
           "label": "5",
           "values": [
             0,
@@ -518,7 +518,7 @@
           ]
         },
         {
-          "name": "three",
+          "name": "b",
           "label": "3",
           "values": [
             0,
@@ -541,10 +541,10 @@
       "indexes": false,
       "tint": {
         "array:worth": "dim",
-        "five[1]": "warn",
-        "five[3]": "warn",
-        "three[2]": "warn",
-        "three[3]": "warn"
+        "a[1]": "warn",
+        "a[3]": "warn",
+        "b[2]": "warn",
+        "b[3]": "warn"
       },
       "callout": "0101 + 0011 = ?",
       "steps": [
