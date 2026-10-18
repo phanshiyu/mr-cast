@@ -17,7 +17,7 @@ const hunks = { h2: demoHunks.h2 };
 function sceneTypes() {
   const types = fs.readFileSync(path.join(root, 'src/types.ts'), 'utf8');
   const union = types.match(/^export type Scene = ([^;]+);/m)[1].split('|').map((s) => s.trim());
-  return union.map((name) => types.match(new RegExp(`^export interface ${name} extends SceneBase \\{\\n\\s+type: '(\\w+)';`, 'm'))[1]).sort();
+  return union.map((name) => types.match(new RegExp(`^export interface ${name} extends SceneBase(?:, \\w+)* \\{\\n\\s+type: '(\\w+)';`, 'm'))[1]).sort();
 }
 
 const leaves = () => fs.readdirSync(leafDir).filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3)).sort();
@@ -32,10 +32,10 @@ function example(type) {
   return JSON.parse(blocks[0][1]);
 }
 
-const intent = { type: 'intent', narration: 'Each visitor now gets twenty requests a minute.', summary: 'Limit each visitor to 20 requests a minute', risk: 'low', bullets: ['Visitors behind one proxy share one count'] };
+const opening = { type: 'text', narration: 'Each visitor now gets twenty requests a minute.', headline: 'Limit each visitor to 20 requests a minute', risk: 'low', items: ['Visitors behind one proxy share one count'] };
 
-/** The example as a storyboard: a whole one as written, or a lone scene after an intent. */
-const storyboard = (ex) => (ex.scenes ? ex : { title: 'Rate limiting', scenes: ex.type === 'intent' ? [ex] : [intent, ex] });
+/** The example as a storyboard: a whole one as written, or a lone scene after an opening text scene. */
+const storyboard = (ex) => (ex.scenes ? ex : { title: 'Rate limiting', scenes: ex.type === 'text' ? [ex] : [opening, ex] });
 
 // A pre-read's reading order is the one place its example needs the pre-read audience.
 const OPTIONS = { reading: { audience: 'preread' } };

@@ -6,7 +6,7 @@ import { VIEWS, isView } from './views.mjs';
 export const DEPTHS = ['skip', 'brief', 'deep'];
 const TOPIC_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VIEWS_MAX = 3;
-// The opening intent and the closing tests scene, which every video has whatever the picks.
+// The opening text scene and the closing tests scene, which every video has whatever the picks.
 export const FIXED_SECONDS = 40;
 
 const isStr = (v) => typeof v === 'string' && v.trim().length > 0;

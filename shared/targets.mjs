@@ -352,10 +352,6 @@ const TARGETS = {
       ...(list(scene.sides).length ? ['left', 'right'] : []),
     ],
   },
-  intent: {
-    resolve: (scene, ref) => (isIndex(ref, list(scene.bullets).length) ? [`b:${ref}`] : null),
-    names: (scene) => list(scene.bullets).map((_, i) => String(i)),
-  },
 };
 
 /**

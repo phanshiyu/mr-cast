@@ -2,7 +2,6 @@
 // chapter list, `validate`'s fit check, and the reading order, which names the chapter that explains each hunk.
 
 export const DEFAULT_CHAPTERS = {
-  intent: 'Overview',
   text: 'Overview',
   graph: 'Architecture',
   code: 'Code change',

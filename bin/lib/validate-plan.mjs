@@ -7,7 +7,7 @@ import { aType } from '../../shared/words.mjs';
 
 // Scenes that frame the whole video rather than draw one topic, so any view allows them. A code scene
 // shows a topic's lines whatever its view.
-const ANY_VIEW = ['intent', 'files', 'tests', 'review', 'reading', 'code'];
+const ANY_VIEW = ['text', 'files', 'tests', 'review', 'reading', 'code'];
 
 // The scenes a pre-read's deep topic traces its concrete case in, whatever its view.
 const TRACE = ['flow', 'array', 'table'];

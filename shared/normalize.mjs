@@ -92,7 +92,7 @@ const literal = (text) => String(text ?? '').replace(/[\\*`=[\]{}]/g, (c) => `\\
  * An intent scene is a text scene: its summary the headline, its bullets the items, the storyboard's title line
  * above, and the diff's size at the top right.
  */
-function intentAsText(scene, storyboard) {
+export function intentAsText(scene, storyboard) {
   const { type, summary, bullets, ...rest } = scene;
   const kicker = storyboard.subtitle ? `${literal(storyboard.title)} · [${literal(storyboard.subtitle)}]{neutral}` : literal(storyboard.title);
   return { ...rest, type: 'text', kicker, headline: summary, items: bullets, diffstat: true };

@@ -171,9 +171,6 @@ const ITEMS = {
   text(scene) {
     return list(scene.items).map((b, i) => ({ key: `b:${i}`, label: `item ${i} "${text(b)}"`, terms: [] }));
   },
-  intent(scene) {
-    return list(scene.bullets).map((b, i) => ({ key: `b:${i}`, label: `bullet ${i} "${text(b)}"`, terms: [] }));
-  },
 };
 
 /** Whether drawing element `outer` holds `inner` somewhere inside it. */
@@ -371,7 +368,7 @@ function namedIn(say, items) {
   return found;
 }
 
-/** The scene types whose words the highlight check reads. Code, terminal, tests and intent have no names it can match. */
+/** The scene types whose words the highlight check reads. Code, terminal, tests and text have no names it can match. */
 export const HIGHLIGHT_TYPES = ['array', 'memory', 'graph', 'sequence', 'state', 'er', 'layers', 'timeline', 'chart', 'table', 'compare', 'svg'];
 
 /**

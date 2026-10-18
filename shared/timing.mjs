@@ -30,10 +30,9 @@ export const SCENE_EXIT_FRAMES = 8;
 /**
  * Seconds each scene type takes to draw in, from the scene's first frame. With steps, the scene draws
  * its base (lifelines, axes, every node) in this time, and each step shows or lights its own items.
- * Code and intent scenes pace their entrance against the voice themselves, so they have none here.
+ * Code and text scenes pace their entrance against the voice themselves, so they have none here.
  */
 export const BUILD_SECONDS = {
-  intent: 0,
   text: 0,
   code: 0,
   graph: 1.5,
