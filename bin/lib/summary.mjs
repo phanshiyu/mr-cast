@@ -97,7 +97,7 @@ export function formatIndex({
     ? `${ctx.branch} + working tree vs ${ctx.base} (merge-base ${ctx.mergeBase.slice(0, 7)})`
     : `${ctx.branch} vs ${ctx.base} (${plural(ctx.ahead, 'commit')})`;
   const out = [
-    `mr-cast: ${what} · ${plural(files.length, 'file')} · ${plural(all.length, 'hunk')} · +${adds} ${MINUS}${dels}`,
+    `mr-cast: ${what} · ${plural(files.length, 'file')} · ${plural(all.length, 'hunk')} · +${adds} ${MINUS}${dels} · line numbers are the file's own, what \`lines\` takes`,
   ];
 
   for (const f of files) {
@@ -123,7 +123,7 @@ export function formatIndex({
       `large diff: each hunk shows its header and first ${plural(maxLines, 'changed line')} only; \`mr-cast hunk <id>...${runArgs}\` prints hunks in full`,
     );
   out.push(
-    `line numbers: + is the new-file line (use in steps or focusLinesAfter), - is the old-file line (oldLines or focusLinesBefore)`,
+    `line numbers: + is the new-file line (lines in code, flow and compare, focusLinesAfter), - is the old-file line (oldLines, focusLinesBefore, compare side old)`,
   );
   out.push(
     `wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${runArgs}\` and \`mr-cast play${runArgs}\``,

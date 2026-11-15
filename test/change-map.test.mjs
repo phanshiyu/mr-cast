@@ -74,6 +74,10 @@ test('the map prints commit subjects and bodies, oldest first, and map.json hold
     assert.ok(stdout.indexOf('Sum the items') < stdout.indexOf('Rename a file'));
     assert.match(stdout, /Counting items gave the wrong total/);
     assert.ok(stdout.indexOf('change map') < stdout.indexOf('mr-cast: feature vs main'));
+    assert.match(
+      stdout.split('\n').find((l) => l.startsWith('mr-cast: feature vs main')),
+      /line numbers are the file's own, what `lines` takes$/,
+    );
     assert.deepEqual(
       mapOf(t).commits.map((c) => c.subject),
       ['Sum the items', 'Rename a file'],
