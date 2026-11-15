@@ -38,7 +38,7 @@ const fmt = (n) => String(Math.round(n * 100) / 100);
 function checkPoint(v, at, errors) {
   if (isLatLng(v)) return true;
   if (!Array.isArray(v) || v.length !== 2 || !v.every(isNum))
-    return errors.push(`${at}: must be [lat, lng] in degrees, e.g. [1.36, 103.99]`), false;
+    return (errors.push(`${at}: must be [lat, lng] in degrees, e.g. [1.36, 103.99]`), false);
   const swapped = Math.abs(v[0]) > 90 && Math.abs(v[0]) <= 180 && Math.abs(v[1]) <= 90;
   errors.push(
     `${at}: [${v.join(', ')}] is no point; latitude runs -90 to 90 and longitude -180 to 180${swapped ? `, so this reads as [lng, lat]; write [${v[1]}, ${v[0]}]` : ''}`,

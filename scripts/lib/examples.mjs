@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export const EXAMPLES = path.join(ROOT, 'examples');
+const EXAMPLES = path.join(ROOT, 'examples');
 
 /** Every example, sorted by path. `name` is the path under examples/ with slashes as dashes, as release assets are flat. */
 export function findExamples(rel = '') {

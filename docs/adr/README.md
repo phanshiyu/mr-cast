@@ -19,7 +19,7 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0009](0009-highlight-check.md) | The lit part matches the words: a linter plus one fresh audit subagent | Accepted; audit superseded by 0019 |
 | [0010](0010-primitive-picker.md) | A primitive picker: one hidden skill, an index by kind of idea, one file per scene | Superseded by 0016, then 0019 |
 | [0011](0011-deterministic-prune.md) | Pruning is decided by the CLI; the agent never deletes by hand | Accepted |
-| [0012](0012-publish-from-ci.md) | Publish to npm only from CI, with trusted publishing | Accepted |
+| [0012](0012-publish-from-ci.md) | Publish to npm only from CI, with trusted publishing | Accepted; amended by 0041 |
 | [0013](0013-evaluation-harness.md) | Evaluate skill changes with blind graded reviewers, in isolated config | Accepted |
 | [0014](0014-article-first-pipeline.md) | Article first: write a teaching article, test it with a reader, then adapt it | Superseded by 0019 |
 | [0015](0015-skill-restructure.md) | Restructure the skill: schema out, branches into references, checks into the CLI | Accepted; references superseded by 0019 |
@@ -47,3 +47,5 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0037](0037-reviewer-brief.md) | A brief for the reviewer: six questions, a change map from git, and answers in the storyboard that `validate` checks | Accepted; amended by 0038; a decision carries its source (2026-11-15) |
 | [0038](0038-facts-about-the-mix.md) | Facts about the mix of scenes, and what the hook says on success | Proposed |
 | [0039](0039-parts-as-a-map.md) | The parts of a change drawn as a map: what each part does, how parts link, and which hold a place to check | Accepted |
+| [0040](0040-advisories-do-not-block-their-fix.md) | An advisory on main must not block the pull request that fixes it: audits compare with the base, and main is audited on a schedule | Accepted |
+| [0041](0041-release-dependency-updates-from-ci.md) | Release dependency updates from CI when a shipped package changed, without a manual step | Accepted |

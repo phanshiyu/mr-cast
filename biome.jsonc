@@ -22,6 +22,10 @@
     // one line per type alias.
     "includes": ["**", "!src/types.ts"]
   },
+  // Biome 2.6 formats Markdown and YAML by default. The docs, the skill files an agent reads as written and the
+  // workflows keep their own style (docs/adr/0036-biome-and-fallow.md), so only code, CSS and JSON are formatted.
+  "markdown": { "formatter": { "enabled": false } },
+  "yaml": { "formatter": { "enabled": false } },
   "javascript": { "formatter": { "quoteStyle": "single", "semicolons": "always" } },
   "css": { "parser": { "tailwindDirectives": true } },
   "linter": {

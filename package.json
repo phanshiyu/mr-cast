@@ -71,30 +71,30 @@
     "node": ">=22.12"
   },
   "dependencies": {
-    "@huggingface/transformers": "4.3.1",
-    "@remotion/bundler": "4.0.537",
-    "@remotion/player": "4.0.537",
-    "@remotion/renderer": "4.0.537",
-    "d3-geo": "3.1.1",
+    "@huggingface/transformers": "4.3.2",
+    "@remotion/bundler": "4.0.543",
+    "@remotion/player": "4.0.543",
+    "@remotion/renderer": "4.0.543",
+    "d3-geo": "3.1.2",
     "dompurify": "^3.4.17",
     "esbuild": "0.28.2",
     "lucide-react": "^1.57.0",
     "mermaid": "12.2.0",
-    "onnxruntime-node": "1.30.0",
+    "onnxruntime-node": "1.31.1",
     "phonemizer": "1.2.1",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "remotion": "4.0.537"
+    "remotion": "4.0.543"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
+    "@biomejs/biome": "2.6.7",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "fallow": "3.33.1",
+    "fallow": "3.42.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "~7.0.2",
@@ -103,5 +103,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "packageManager": "pnpm@12.14.0"
+  "packageManager": "pnpm@12.20.0"
 }
