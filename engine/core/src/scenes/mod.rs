@@ -7,6 +7,7 @@ use crate::timing::Segment;
 use serde_json::Value;
 
 pub mod code;
+pub mod er;
 pub mod flow;
 pub mod graph;
 pub mod placeholder;
@@ -52,6 +53,7 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("flow", flow::prepare),
     ("graph", graph::prepare),
     ("state", state::prepare),
+    ("er", er::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
