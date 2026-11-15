@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { buildHunkIndex, parseUnifiedDiff } from './lib/diff.mjs';
 import { UserError } from './lib/errors.mjs';
+import { buildChangeMap, formatChangeMap, orderByKind } from './lib/change-map.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
@@ -57,6 +58,7 @@ import { upgrade } from './lib/upgrade.mjs';
 import {
   changedHunkIds,
   formatDuration,
+  formatHunks,
   formatIndex,
   formatOutline,
   formatSnippets,
@@ -111,9 +113,15 @@ commands under "Used by the Claude Code skills" for you.
 
 Used by the Claude Code skills:
   status            the branch's changes against its base, uncommitted files, and the last pace and voice
-  extract [base] [--working]
-                    start a walkthrough of the branch's diff in .mr-cast/<branch> and print a hunk index;
-                    --working diffs the merge base against uncommitted changes
+  extract [base] [--working] [--description file]
+                    start a walkthrough of the branch's diff in .mr-cast/<branch>, print a change map (the
+                    commit messages, files by kind, tests and what they cover, where changed names are used
+                    elsewhere) and a hunk index, and write map.json; --working diffs the merge base
+                    against uncommitted changes; --description reads the merge request's title and text
+                    from a file you saved
+  hunk <id>...      print the named hunks in full, with line numbers (a diff over 600 changed lines shows
+                    the index short)
+  map               print the run's change map again
   init --title text [--reset] [--quick]
                     start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
                     it and keeps its storyboard unless --reset; --quick starts a quick video in
@@ -311,6 +319,8 @@ async function loadValidProject(dir, settings) {
   return project;
 }
 
+const LARGE_DIFF_LINES = 600;
+
 function extract(argv) {
   const { values, positionals } = parseArgs({
     args: argv,
@@ -318,7 +328,8 @@ function extract(argv) {
     options: {
       working: { type: 'boolean', default: false },
       context: { type: 'string', default: '4' },
-      'max-lines': { type: 'string', default: '14' },
+      'max-lines': { type: 'string' },
+      description: { type: 'string' },
       'all-files': { type: 'boolean', default: false },
       ...SETTINGS_OPTIONS,
       name: DIR_OPTION.name,
@@ -326,7 +337,8 @@ function extract(argv) {
   });
   if (positionals.length > 1) throw new UserError(`extract takes at most one base, got: ${positionals.join(' ')}`);
   const context = intOption(values.context, 'context', 0);
-  const maxLines = intOption(values['max-lines'], 'max-lines', 1);
+  const explicitMax = values['max-lines'] !== undefined;
+  const maxLines = intOption(values['max-lines'] ?? '14', 'max-lines', 1);
   settingsFrom(values); // rejects a bad flag before anything is written
 
   const root = repoRoot();
@@ -358,6 +370,16 @@ function extract(argv) {
   const runArgs = nameArg + settingsArgs(values);
   const hunks = buildHunkIndex(parsed);
   const files = summarizeFiles(parsed, hunks);
+  const map = buildChangeMap({
+    root,
+    mergeBase: diff.mergeBase,
+    working: values.working,
+    files,
+    hunks,
+    skipped: diff.skipped,
+    descriptionFile: values.description,
+  });
+  const condensed = map.changedLines > LARGE_DIFF_LINES && !explicitMax;
   const hunksPath = path.join(dir, 'hunks.json');
   const storyboardPath = path.join(dir, 'storyboard.json');
 
@@ -375,6 +397,7 @@ function extract(argv) {
   // The audience of the run's latest start, for the hook; a plain video when no flag names one.
   const { audience } = settingsFrom(values);
   writeJson(hunksPath, written);
+  writeJson(path.join(dir, 'map.json'), map);
   writeJson(path.join(dir, 'meta.json'), {
     mode: 'diff',
     base,
@@ -409,6 +432,7 @@ function extract(argv) {
       );
   }
 
+  console.log(`${formatChangeMap(map)}\n`);
   console.log(
     formatIndex({
       ctx: {
@@ -419,10 +443,11 @@ function extract(argv) {
         mergeBase: diff.mergeBase,
         untracked: diff.untracked,
       },
-      files,
+      files: orderByKind(files),
       hunks,
       skipped: diff.skipped,
-      maxLines,
+      maxLines: condensed ? 2 : maxLines,
+      condensed,
       hunksPath: rel(hunksPath),
       storyboardPath: rel(storyboardPath),
       runArgs,
@@ -1467,11 +1492,29 @@ async function voices(argv) {
   console.log(`✓ ${voice} · ${seconds.toFixed(1)}s · ${out}`);
 }
 
+function hunk(argv) {
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
+  if (!positionals.length) throw new UserError('hunk needs at least one id, such as `mr-cast hunk h3 h4`');
+  const { dir } = currentRun(values);
+  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
+  const { text, missing } = formatHunks(hunks, positionals);
+  if (missing.length) throw new UserError(`no hunk ${missing.join(', ')} in ${rel(path.join(dir, 'hunks.json'))}`);
+  console.log(text);
+}
+
+function mapCommand(argv) {
+  const { values } = parseArgs({ args: argv, options: DIR_OPTION });
+  const { dir } = currentRun(values);
+  console.log(formatChangeMap(readJson(path.join(dir, 'map.json'), 'run `mr-cast extract` first')));
+}
+
 const COMMANDS = {
   hook,
   schema,
   status,
   extract,
+  hunk,
+  map: mapCommand,
   init,
   snippet,
   plan,
