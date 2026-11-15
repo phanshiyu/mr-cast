@@ -991,10 +991,10 @@ async function render(argv) {
   const { dir, hunks, storyboard, images, plan: planFile } = await loadValidProject(run.dir, run.settings);
   const voiceover = await voiceoverFor(dir, storyboard, run.settings);
   reportPace(voiceover);
-  const { renderVideo, closeBrowsers } = await importRender();
-  // `mr-cast stop` sends SIGTERM. Without a handler Node exits at once, and on Linux the Chrome it started runs on.
+  const { renderVideo, stopRenders } = await importRender();
+  // `mr-cast stop` sends SIGTERM. Without a handler Node exits at once, and the engine it started runs on.
   process.once('SIGTERM', async () => {
-    await closeBrowsers();
+    await stopRenders();
     process.exit(143);
   });
   const outFile = path.resolve(values.out ?? path.join(dir, videoName(storyboard, run)));
@@ -1081,10 +1081,12 @@ async function still(argv) {
     return;
   }
   const tiles = files.map((f, i) => ({
+    scene: i,
     still: path.basename(f),
     label: `${i} ${storyboard.scenes[i].type} · ${sceneChapter(storyboard.scenes[i])}`,
   }));
-  for (const f of await renderSheets({ outDir, tiles })) console.log(path.resolve(f));
+  for (const f of await renderSheets({ hunks, storyboard, voiceover, images, dataDir: dir, outDir, tiles }))
+    console.log(path.resolve(f));
 }
 
 async function steps(argv) {

@@ -18,7 +18,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 async function load() {
   const entry = `
     export { SLOTS } from './src/fit/slots';
-    export { tokenizeHunkLines, tokenizeLines, tokenColor, plainCodeColor } from './src/utils/highlight';
+    export { syntaxColours } from './src/engine/highlight';
     export * as textfit from './shared/textfit.mjs';
     export * as timing from './shared/timing.mjs';
     export * as metrics from './shared/font-metrics.mjs';
@@ -50,32 +50,11 @@ const write = (file, value) => {
   console.log(path.relative(process.cwd(), file));
 };
 
-/** Each line's tokens as [text, colour] pairs; the engine draws them in exactly these colours. */
-const colored = (m, lines) =>
-  lines.map((tokens) => tokens.map((t) => [t.content, m.tokenColor(t.types) ?? m.plainCodeColor]));
-
-/** Pretty-printed JSON when the payload parses, otherwise the raw text, as src/utils/flowLayout.ts formats it. */
-function formatPayload(payload) {
-  try {
-    return { text: JSON.stringify(JSON.parse(payload), null, 2), language: 'json' };
-  } catch {
-    return { text: payload, language: 'plain' };
-  }
-}
-
 async function props(m, dir, out) {
   const hunks = JSON.parse(fs.readFileSync(path.join(dir, 'hunks.json'), 'utf8'));
   const raw = m.parseStoryboard(fs.readFileSync(path.join(dir, 'storyboard.json'), 'utf8'));
   const storyboard = m.normalizeStoryboard(raw, hunks);
-  const highlight = { plain: m.plainCodeColor, hunks: {}, snippets: {} };
-  for (const [id, hunk] of Object.entries(hunks))
-    highlight.hunks[id] = colored(m, m.tokenizeHunkLines(hunk.lines, hunk.language));
-  for (const scene of storyboard.scenes)
-    for (const step of scene.type === 'flow' ? (scene.steps ?? []) : [])
-      if (typeof step.payload === 'string') {
-        const { text, language } = formatPayload(step.payload);
-        highlight.snippets[`${language}\n${text}`] = colored(m, m.tokenizeLines(text, language));
-      }
+  const highlight = m.syntaxColours(storyboard, hunks);
   write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight });
 }
 

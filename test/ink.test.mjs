@@ -286,7 +286,7 @@ test('validate warns that markup in handwritten ink is dropped', async () => {
 });
 
 test('a step still shows the frame before the next step starts, and the last step its settled frame', async () => {
-  const { stillFrame } = await import('../bin/lib/render.mjs');
+  const { stillFrame } = await import('../bin/lib/stills.mjs');
   const scene = graph([
     { focus: 'S', say: 'Start at S.' },
     { focus: 'A', say: 'Then A.' },

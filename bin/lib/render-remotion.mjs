@@ -1,4 +1,5 @@
-// Renders the Walkthrough composition (src/remotion/index.ts) to MP4 or PNG stills.
+// Renders the Walkthrough composition (src/remotion/index.ts) to MP4 or PNG stills with Remotion. Only
+// MR_CAST_RENDERER=remotion uses it now, until every scene type is drawn by the engine (see render.mjs).
 
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -15,12 +16,13 @@ import {
   renderStill,
   selectComposition,
 } from '@remotion/renderer';
-import { FPS, sceneDurationInFrames, sceneSegments, settledFrame } from '../../shared/timing.mjs';
+import { FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 import { cacheDir, cacheLock } from './cache.mjs';
 import { whileUsing, withLock } from './lock.mjs';
 import { sendFile } from './server.mjs';
 import { AUDIO_NAME } from './voice.mjs';
 import { IMAGE_NAME } from './images.mjs';
+import { SHEET_SCENES, sheetNames, stillFrame } from './stills.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENTRY = path.join(ROOT, 'src/remotion/index.ts');
@@ -30,8 +32,6 @@ const COMPOSITION_ID = 'Walkthrough';
 const SHEET_ID = 'ContactSheet';
 /** A still's file name, as `renderStills` writes it. */
 const STILL_NAME = /^scene-\d+-[a-z]+(?:-step-\d+)?\.png$/;
-/** Scenes to a contact sheet; more go on further sheets. */
-const SHEET_SCENES = 12;
 /** Bundles of other source hashes (another install, an older version) unused this long are deleted. */
 const BUNDLE_MAX_IDLE_MS = 60 * 60 * 1000;
 const TMP_PREFIX = '.tmp-';
@@ -334,15 +334,6 @@ async function addChapters(file, chapters) {
  */
 export const renderStills = (options) => usingCaches(() => renderStillsUsingCaches(options));
 
-/** The frame of a scene a still shows: its settled end, or the end of step `step`, two frames before the next starts. */
-export function stillFrame(scene, voiceover, step) {
-  if (step === undefined) return settledFrame(sceneDurationInFrames(scene, voiceover));
-  const segment = sceneSegments(scene, voiceover)[step + 1];
-  if (!segment) throw new Error(`the ${scene.type} scene has no step ${step}`);
-  // The last step ends as the scene fades out, so its still is the settled frame before the fade.
-  return Math.min(segment.from + segment.durationInFrames - 2, settledFrame(sceneDurationInFrames(scene, voiceover)));
-}
-
 async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, dataDir, outDir, scenes, step }) {
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
@@ -389,12 +380,6 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, d
     await files?.close();
   }
   return written;
-}
-
-/** The sheets' file names for `count` scenes: `sheet.png`, or `sheet-1.png`, `sheet-2.png` and on past SHEET_SCENES. */
-export function sheetNames(count) {
-  const n = Math.max(1, Math.ceil(count / SHEET_SCENES));
-  return n === 1 ? ['sheet.png'] : Array.from({ length: n }, (_, i) => `sheet-${i + 1}.png`);
 }
 
 /**
