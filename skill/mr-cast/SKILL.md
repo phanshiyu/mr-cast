@@ -72,22 +72,22 @@ The run becomes the current one, which every later command works on; pass `--nam
 
 ## A video of a branch
 
-Someone will review this change after watching. The video is done when they can answer six questions without opening the diff. Answer them first, in the storyboard's `brief`, from the map and the code. Then make the scenes.
+Someone will review this change after watching. The video is done when they can answer six questions without opening the diff. Answer them first, in the storyboard's `brief`, from the map and the code, then make the scenes. Say only what the code or the author says.
 
 | | The viewer can answer | A good answer |
 | --- | --- | --- |
-| `why` | Why does this change exist? | The problem in the author's words, with its source: a commit or the description. When nothing says, the source is `"unknown"`. Do not make one up. |
+| `why` | Why does this change exist? | The problem in the author's words, with its source: a commit or the description. When nothing says, the source is `"unknown"`; do not make one up. |
 | `case` | On one real case, what happened before and what happens now? | One input with real values, taken from a test or the code, and both outcomes. |
-| `approach` | What is the idea, and what did the author decide? | The idea in a sentence or two. Each choice where another way was open, such as "one bad place refuses the whole answer". |
+| `approach` | What is the idea, and what did the author decide? | The idea in a sentence or two, and each choice the author states or the code shows. A way not taken that nobody names is your own idea: say so, never "the author considered". |
 | `parts` | Which parts are there, and which matter? | Every hunk of source and tests in a part named for what it does, each `core`, `support` or `routine`. Existing code whose behaviour changed is never routine. |
 | `proof` | How do we know it works? | What a named test shows, and what no test shows. |
 | `check` | What could break, and what do I open first? | Places by file and line, each with what to look at and why: changed behaviour of existing code, callers outside the diff, a case no test tries, anything you would question. |
 
 Put what only the author can answer in `ask`. `{{MR_CAST}}/bin/mr-cast schema` prints the `brief`'s fields.
 
-Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. The order, the scenes and the length are yours. What you found goes in the video: a problem you noticed belongs in `check`, whether or not the user asked for a review.
+Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. The order, the scenes and the length are yours. What you found goes in the video: a problem you noticed belongs in `check`, review or not.
 
-Read [references/branch.md](references/branch.md) before you write the scenes: it says what each scene that suits these answers can hold, such as real lines of a hunk in a compare cell, a path through several files in a flow, and the brief's parts in a files scene.
+Read [references/branch.md](references/branch.md) before you write the scenes: it says what each scene that suits these answers can hold.
 
 ## Write the storyboard
 
@@ -100,7 +100,7 @@ Write `storyboard.json` in the run's directory. Print the fields:
 
 The scene types, each with an example: [array](references/scenes/array.md), [chart](references/scenes/chart.md), [code](references/scenes/code.md), [compare](references/scenes/compare.md), [er](references/scenes/er.md), [files](references/scenes/files.md), [flow](references/scenes/flow.md), [graph](references/scenes/graph.md), [image](references/scenes/image.md), [layers](references/scenes/layers.md), [map](references/scenes/map.md), [memory](references/scenes/memory.md), [mermaid](references/scenes/mermaid.md), [plot](references/scenes/plot.md), [reading](references/scenes/reading.md), [review](references/scenes/review.md), [sequence](references/scenes/sequence.md), [state](references/scenes/state.md), [svg](references/scenes/svg.md), [table](references/scenes/table.md), [terminal](references/scenes/terminal.md), [tests](references/scenes/tests.md), [text](references/scenes/text.md), [timeline](references/scenes/timeline.md). Any stepped scene can also write and draw on itself with a step's `draw`, which stays until a step's `erase`: [ink](references/ink.md); and zoom and pan to what a step names with its `camera`: [camera](references/camera.md). An svg step can `move`, `trace` and `morph` its elements: [motion](references/motion.md); plot and map steps `trace` too, chart steps `set` values that move, and a code scene can type itself. Whole storyboards: `{{MR_CAST}}/examples/demo/storyboard.json` (a branch), `{{MR_CAST}}/examples/people/storyboard.json` (an explanation), `{{MR_CAST}}/examples/review/storyboard.json` (review on), `{{MR_CAST}}/examples/preread/storyboard.json` (a pre-read), and a short demo of each scene type in `{{MR_CAST}}/examples/primitives/<type>/storyboard.json`.
 
-Longer explanations with real numbers, in algorithms, architecture, science, math, money, hardware, geography, cooking, language and more: [examples](references/examples.md) lists each with the scenes it uses.
+Worked explanations with real numbers, each with the scenes it uses: [examples](references/examples.md).
 
 Write every narration and `say` in plain words. Stop using jargon and speak coherently. State it more simply and concisely, like one human talking to another.
 
