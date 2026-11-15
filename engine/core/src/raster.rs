@@ -375,6 +375,19 @@ impl Renderer {
                     self.stroke(path, s, op, t, target, clip);
                 }
             }
+            Item::TextPaint { run, x, y, paint } => {
+                let size = run.style.size * t.sy.abs();
+                let inv = t.invert().unwrap_or_default();
+                for g in &run.glyphs {
+                    let (dx, dy) = t.map_xy(x + g.x, y + g.y);
+                    if let Some((m, ix, iy)) = self.glyph(run, g.id, size, dx, dy) {
+                        blit_with(target, &m, ix, iy, clip, &|px, py| {
+                            let (ux, uy) = inv.map_xy(px + 0.5, py + 0.5);
+                            paint_at(paint, ux, uy).fade(op)
+                        });
+                    }
+                }
+            }
             Item::Text { run, x, y, color, glow } => {
                 if let Some((radius, gc)) = glow
                     && let Some(m) = self.glow(run, *radius, t)
@@ -652,6 +665,75 @@ impl Renderer {
             if let Some((m, ix, iy)) = self.glyph(run, g.id, size, dx, dy) {
                 blit(target, &m, ix, iy, color, clip);
             }
+        }
+    }
+}
+
+/// The colour of a paint at a point of its own coordinates, as tiny-skia would shade it (pad spread).
+fn paint_at(paint: &Paint, x: f32, y: f32) -> Color {
+    let at = |stops: &[(f32, Color)], t: f32| -> Color {
+        let t = t.clamp(0.0, 1.0);
+        let mut prev = stops[0];
+        if t <= prev.0 {
+            return prev.1;
+        }
+        for &s in &stops[1..] {
+            if t <= s.0 {
+                let k = if s.0 > prev.0 { (t - prev.0) / (s.0 - prev.0) } else { 1.0 };
+                let (a, b) = (prev.1, s.1);
+                return Color {
+                    r: a.r + (b.r - a.r) * k,
+                    g: a.g + (b.g - a.g) * k,
+                    b: a.b + (b.b - a.b) * k,
+                    a: a.a + (b.a - a.a) * k,
+                };
+            }
+            prev = s;
+        }
+        prev.1
+    };
+    match paint {
+        Paint::Solid(c) => *c,
+        Paint::Linear { start, end, stops } => {
+            let (dx, dy) = (end.0 - start.0, end.1 - start.1);
+            let len2 = dx * dx + dy * dy;
+            let t = if len2 > 0.0 { ((x - start.0) * dx + (y - start.1) * dy) / len2 } else { 1.0 };
+            at(stops, t)
+        }
+        Paint::Radial { center, radius, stops } => {
+            let (ux, uy) = ((x - center.0) / radius.0, (y - center.1) / radius.1);
+            at(stops, (ux * ux + uy * uy).sqrt())
+        }
+    }
+}
+
+/// Like [`blit`], with each pixel's colour from `color_at(device x, device y)`.
+fn blit_with(target: &mut Pixmap, m: &AlphaMask, ox: i32, oy: i32, clip: &Clip, color_at: &dyn Fn(f32, f32) -> Color) {
+    let (w, h) = (target.width() as i32, target.height() as i32);
+    let (sx0, sy0, sx1, sy1) = clip.scissor;
+    let x0 = (ox + m.left).max(sx0).max(0);
+    let y0 = (oy + m.top).max(sy0).max(0);
+    let x1 = (ox + m.left + m.w as i32).min(sx1).min(w);
+    let y1 = (oy + m.top + m.h as i32).min(sy1).min(h);
+    let mask = clip.mask.as_deref();
+    let data = target.data_mut();
+    for y in y0.max(0)..y1 {
+        for x in x0..x1 {
+            let mut cov = m.data[((y - oy - m.top) as usize) * m.w + (x - ox - m.left) as usize] as f32 / 255.0;
+            if let Some(mk) = mask {
+                cov *= mk.data()[(y * w + x) as usize] as f32 / 255.0;
+            }
+            if cov <= 0.0 {
+                continue;
+            }
+            let c = color_at(x as f32, y as f32);
+            let a = (c.a.clamp(0.0, 1.0) * cov).min(1.0);
+            let i = ((y * w + x) * 4) as usize;
+            let px = &mut data[i..i + 4];
+            for (k, v) in [c.r, c.g, c.b].into_iter().enumerate() {
+                px[k] = (v.clamp(0.0, 1.0) * 255.0 * a + px[k] as f32 * (1.0 - a) + 0.5) as u8;
+            }
+            px[3] = (255.0 * a + px[3] as f32 * (1.0 - a) + 0.5) as u8;
         }
     }
 }

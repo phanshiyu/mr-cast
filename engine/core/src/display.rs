@@ -138,6 +138,14 @@ pub enum Item {
         color: Color,
         glow: Option<(f32, Color)>,
     },
+    /// A shaped run filled with a gradient, as CSS `background-clip: text` draws it; the paint is in the item's
+    /// coordinates.
+    TextPaint {
+        run: Arc<ShapedRun>,
+        x: f32,
+        y: f32,
+        paint: Paint,
+    },
     /// Clips what follows, until the matching `PopClip`, to a rounded rect.
     PushClip {
         rect: Rect,
@@ -257,6 +265,10 @@ impl DisplayList {
     }
     pub fn run_glow(&mut self, run: Arc<ShapedRun>, x: f32, y: f32, color: Color, glow: (f32, Color)) {
         self.push(Item::Text { run, x, y, color, glow: Some(glow) });
+    }
+    /// A run filled with a gradient (or any paint) instead of a colour.
+    pub fn run_paint(&mut self, run: Arc<ShapedRun>, x: f32, y: f32, paint: Paint) {
+        self.push(Item::TextPaint { run, x, y, paint });
     }
     /// Shapes and draws `text` with its baseline origin at (x, y); returns its advance.
     pub fn text(&mut self, text: &str, style: Style, x: f32, y: f32, color: Color) -> f32 {
@@ -414,6 +426,13 @@ impl DisplayList {
                         h.f(*r);
                         h.color(*c);
                     }
+                }
+                Item::TextPaint { run, x, y, paint } => {
+                    h.u(18);
+                    h.u(run.key);
+                    h.f(*x);
+                    h.f(*y);
+                    h.paint(paint);
                 }
                 Item::PushClip { rect, radius } => {
                     h.u(13);
