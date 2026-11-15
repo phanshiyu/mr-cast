@@ -45,8 +45,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      # As in the render job: the checkout is the head of main, and the commit CI passed is moved to only when it is
+      # on main.
+      - name: Check out the commit CI passed, if it is on main
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main."; exit 1; }
+          git checkout --detach "$SHA"
       - name: Check the version
         id: check
         run: |
@@ -72,9 +80,8 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - { platform: darwin-arm64, os: macos-14, target: aarch64-apple-darwin }
-          # Built on Apple silicon for Intel: Apple's toolchain links both.
-          - { platform: darwin-x64, os: macos-14, target: x86_64-apple-darwin }
+          - { platform: darwin-arm64, os: macos-15, target: aarch64-apple-darwin }
+          - { platform: darwin-x64, os: macos-15-intel, target: x86_64-apple-darwin }
           # The oldest Ubuntu runner, so the binary needs no newer glibc than 2.35.
           - { platform: linux-x64, os: ubuntu-22.04, target: x86_64-unknown-linux-gnu }
           - { platform: linux-arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
@@ -82,8 +89,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
           persist-credentials: false
+      - name: Check out the commit CI passed, if it is on main
+        shell: bash
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main."; exit 1; }
+          git checkout --detach "$SHA"
       - uses: ./.github/actions/rust
         with:
           targets: ${{ matrix.target }}
