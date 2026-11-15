@@ -130,11 +130,17 @@ export function readDiff(root, { base, working, context, allFiles }) {
 /** Keep .mr-cast/ out of `git status` without touching the user's .gitignore. */
 export function ensureExcluded(root) {
   const file = path.resolve(root, git(root, ['rev-parse', '--git-path', 'info/exclude']).trim());
-  const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-  if (current.split('\n').some((l) => ['.mr-cast/', '/.mr-cast/', '.mr-cast'].includes(l.trim()))) return;
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const sep = current === '' || current.endsWith('\n') ? '' : '\n';
-  fs.appendFileSync(file, `${sep}.mr-cast/\n`);
+  // One handle for the read and the append: no gap between looking and writing for another process to change.
+  const fd = fs.openSync(file, 'a+');
+  try {
+    const current = fs.readFileSync(fd, 'utf8');
+    if (current.split('\n').some((l) => ['.mr-cast/', '/.mr-cast/', '.mr-cast'].includes(l.trim()))) return;
+    const sep = current === '' || current.endsWith('\n') ? '' : '\n';
+    fs.writeSync(fd, `${sep}.mr-cast/\n`);
+  } finally {
+    fs.closeSync(fd);
+  }
 }
 
 /** `git diff --numstat` lines as { file, additions, deletions }; binary files count 0. */
