@@ -22,11 +22,132 @@ test('no publish job that checks out the repository can write to it', () => {
   const checkouts = Object.entries(jobs)
     .filter(([, text]) => /actions\/checkout@/.test(text))
     .map(([name]) => name);
-  assert.deepEqual(writers, ['release', 'upload']);
+  assert.deepEqual(writers, ['dependency-push', 'release', 'upload']);
   assert.deepEqual(
     checkouts.filter((name) => writers.includes(name)),
     [],
   );
+});
+
+test('the job that pushes a dependency release runs nothing from the repository', () => {
+  const push = jobs['dependency-push'];
+  assert.doesNotMatch(push, /uses: \.\//);
+  assert.doesNotMatch(push, /\bpnpm\b|\bnpm (install|ci|run)\b|\bnode\b/);
+  assert.doesNotMatch(jobs['dependency-plan'], /contents: write|id-token: write/);
+  assert.doesNotMatch(jobs['dependency-release'], /contents: write/);
+  assert.match(jobs['dependency-plan'], /persist-credentials: false/);
+});
+
+test('the dependency jobs run only on main, and the publish job still runs on a bare manual start', () => {
+  assert.match(jobs['dependency-plan'], /github\.ref == 'refs\/heads\/main'/);
+  assert.match(
+    jobs['dependency-plan'],
+    /contains\(github\.event\.workflow_run\.head_commit\.message, '\[SECURITY\]'\)/,
+  );
+  assert.match(jobs.publish, /github\.event_name == 'workflow_dispatch' && !inputs\.dependencies/);
+});
+
+const lockFile = (foo, eslint) => `lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    dependencies:
+      foo:
+        specifier: ${foo}
+        version: ${foo}
+    devDependencies:
+      eslint:
+        specifier: ${eslint}
+        version: ${eslint}
+
+snapshots:
+
+  foo@${foo}: {}
+
+  eslint@${eslint}: {}
+`;
+
+/**
+ * The plan job's gate, run in a throwaway repository whose tag v1.0.0 holds foo 1.0.0 and eslint 9.0.0, with a `gh` that
+ * says whether CI passed and an `npm` that says whether the next version is already on npm.
+ */
+function gate({
+  foo = '1.0.0',
+  eslint = '9.0.0',
+  subject = 'Update dependency',
+  version = '1.0.0',
+  green = true,
+  tagHead = false,
+  onNpm = false,
+}) {
+  const script = jobs['dependency-plan']
+    .match(/id: gate\n\s+env:\n(?: {10}.*\n)+\s+run: \|\n((?: {10}.*\n?)+)/)[1]
+    .replace(/^ {10}/gm, '');
+  const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-gate-')));
+  try {
+    const repo = path.join(dir, 'repo');
+    fs.mkdirSync(path.join(repo, 'scripts', 'lib'), { recursive: true });
+    for (const file of [
+      'scripts/dependency-release.mjs',
+      'scripts/lib/dependency-release.mjs',
+      'scripts/lib/pnpm-lock.mjs',
+    ]) {
+      fs.copyFileSync(new URL(`../${file}`, import.meta.url), path.join(repo, file));
+    }
+    const manifest = (v) =>
+      JSON.stringify({ name: 'pkg', version: v, type: 'module', dependencies: { foo: '1.0.0' } }, null, 2);
+    const git = (...args) => {
+      const res = spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+      assert.equal(res.status, 0, res.stderr);
+    };
+    git('init', '-q');
+    git('config', 'user.email', 'a@b.c');
+    git('config', 'user.name', 'a');
+    fs.writeFileSync(path.join(repo, 'package.json'), manifest('1.0.0'));
+    fs.writeFileSync(path.join(repo, 'pnpm-lock.yaml'), lockFile('1.0.0', '9.0.0'));
+    git('add', '.');
+    git('commit', '-q', '-m', 'Release 1.0.0');
+    git('tag', 'v1.0.0');
+    if (!tagHead) {
+      fs.writeFileSync(path.join(repo, 'package.json'), manifest(version));
+      fs.writeFileSync(path.join(repo, 'pnpm-lock.yaml'), lockFile(foo, eslint));
+      git('commit', '-q', '--allow-empty', '-am', subject);
+    }
+    const bin = path.join(dir, 'bin');
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\necho ${green ? 1 : 0}\n`, { mode: 0o755 });
+    fs.writeFileSync(path.join(bin, 'npm'), `#!/bin/sh\nexit ${onNpm ? 0 : 1}\n`, { mode: 0o755 });
+    const out = path.join(dir, 'out');
+    const res = spawnSync('bash', ['-e', '-c', script], {
+      cwd: repo,
+      env: { PATH: `${bin}:${process.env.PATH}`, GITHUB_OUTPUT: out, RUNNER_TEMP: dir, GH_REPO: 'o/r' },
+      encoding: 'utf8',
+    });
+    assert.equal(res.status, 0, res.stderr);
+    const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).stdout.trim();
+    return { output: fs.readFileSync(out, 'utf8').trim().split('\n'), head };
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('a shipped package that moved since the tag makes a release from the head commit', () => {
+  const { output, head } = gate({ foo: '1.0.1' });
+  assert.ok(output.includes('release=true') && output.includes('version=1.0.1') && output.includes(`base=${head}`));
+});
+
+test('no release when nothing that ships changed, however much else did', () => {
+  assert.deepEqual(gate({ eslint: '9.5.0' }).output, ['release=false']);
+  assert.deepEqual(gate({}).output, ['release=false']);
+});
+
+test('no release from a release commit, a tagged head, a pending version bump, red CI, or a version npm has', () => {
+  assert.deepEqual(gate({ foo: '1.0.1', subject: 'Release 1.0.1' }).output, ['release=false']);
+  assert.deepEqual(gate({ tagHead: true }).output, ['release=false']);
+  assert.deepEqual(gate({ foo: '1.0.1', version: '1.1.0' }).output, ['release=false']);
+  assert.deepEqual(gate({ foo: '1.0.1', green: false }).output, ['release=false']);
+  assert.deepEqual(gate({ foo: '1.0.1', onNpm: true }).output, ['release=false']);
 });
 
 /** The release job's decision, run with a `gh` that answers `release view` from `state`: none, draft or published. */

@@ -5,12 +5,25 @@ name: Publish
 # (docs/adr/0021-example-videos-as-release-assets.md, docs/adr/0022-shard-the-example-renders.md).
 # Started by hand, it also re-renders the examples for the version in package.json. A run that finds the version's
 # release still a draft, such as "Re-run all jobs" after a shard failed, renders and attaches the videos again.
+#
+# A release is also made without a version bump by hand when a package that ships with mr-cast changed
+# (docs/adr/0038-release-dependency-updates-from-ci.md): after CI passes on a push to main whose head commit is a
+# Renovate security update, every Monday, and when started by hand with "dependencies" ticked. The dependency-release
+# job bumps the patch version, commits, tags and pushes as github-actions, then publishes in the same run, because a
+# tag or commit pushed with the workflow token starts no other workflow.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
   workflow_dispatch:
+    inputs:
+      dependencies:
+        description: Release the dependency updates since the last tag, if a shipped package changed, instead of re-rendering this version
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,7 +34,7 @@ env:
 jobs:
   publish:
     name: Publish to npm
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    if: (github.event_name == 'workflow_dispatch' && !inputs.dependencies) || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # Only the npm publish is serialized, so a version bump never waits behind an earlier version's renders.
@@ -71,13 +84,185 @@ jobs:
           cat "$RUNNER_TEMP/publish.log"
           echo "::notice::Published ${{ steps.check.outputs.version }}"
 
+  # A release without a version bump by hand is three jobs, so that the job that runs the repository's code (the install
+  # and the build, with the dependencies that just changed) holds no write access, and the job that pushes to main runs
+  # none of it: plan, then push, then publish. docs/adr/0038-release-dependency-updates-from-ci.md says why.
+  dependency-plan:
+    name: Plan a dependency release
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'schedule' ||
+        (github.event_name == 'workflow_dispatch' && inputs.dependencies) ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && contains(github.event.workflow_run.head_commit.message, '[SECURITY]'))
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # One release at a time, queued behind a running one. GitHub keeps only the newest queued run, which is enough:
+    # every run decides from the head of main, and the push below is refused if main moved.
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    # actions: read lets the gate see that CI passed on main's head.
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      version: ${{ steps.gate.outputs.version }}
+      base: ${{ steps.gate.outputs.base }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide whether a release is due
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          skip() { echo "::notice::$1"; echo "release=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          sha=$(git rev-parse HEAD)
+          if git log -1 --format=%s | grep -Eq '^Release [0-9]+\.[0-9]+\.[0-9]+'; then
+            skip "The head of main is a release commit."
+          fi
+          tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          [ -n "$tag" ] || skip "There is no v* tag to compare with."
+          [ "$(git rev-parse "$tag^{commit}")" != "$sha" ] || skip "The head of main is already tagged $tag."
+          git merge-base --is-ancestor "$tag" HEAD || skip "$tag is not behind the head of main."
+          version=$(node -p "require('./package.json').version")
+          [ "v$version" = "$tag" ] || skip "package.json says $version but the latest tag is $tag, so a version bump is waiting for the publish job."
+          green=$(gh run list --workflow ci.yml --commit "$sha" --event push --status success --json databaseId --jq length)
+          [ "$green" -gt 0 ] || skip "CI has not passed on $sha, so nothing is released from it."
+          git show "$tag:pnpm-lock.yaml" > "$RUNNER_TEMP/old-lock.yaml"
+          node scripts/dependency-release.mjs "$RUNNER_TEMP/old-lock.yaml" pnpm-lock.yaml > "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
+          [ "$(node -p "require('$RUNNER_TEMP/plan.json').release")" = true ] || skip "No package that ships changed since $tag."
+          next=$(node -p "require('$RUNNER_TEMP/plan.json').version")
+          name=$(node -p "require('./package.json').name")
+          ! npm view "$name@$next" version > /dev/null 2>&1 || skip "$name@$next is already on npm."
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "base=$sha" >> "$GITHUB_OUTPUT"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - if: steps.gate.outputs.release == 'true'
+        uses: ./.github/actions/setup
+      - name: Bump the patch version and note the packages in the changelog
+        if: steps.gate.outputs.release == 'true'
+        run: |
+          node scripts/dependency-release.mjs "$RUNNER_TEMP/old-lock.yaml" pnpm-lock.yaml --apply > /dev/null
+          git diff --stat
+      - name: Pack
+        if: steps.gate.outputs.release == 'true'
+        run: pnpm pack --out mr-cast.tgz
+      - name: Keep what the next jobs need
+        if: steps.gate.outputs.release == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-release
+          path: |
+            mr-cast.tgz
+            package.json
+            CHANGELOG.md
+          if-no-files-found: error
+          retention-days: 3
+
+  # Pushes the release commit and tag. It has the only write access, checks nothing out and runs nothing from the
+  # repository: it takes two files from the plan and refuses anything but a version line and new changelog lines.
+  dependency-push:
+    name: Commit, tag and push the release
+    needs: dependency-plan
+    if: needs.dependency-plan.outputs.release == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # contents: write needs the GitHub Actions app on the bypass list of the ruleset that requires ci-ok on main,
+    # because the release commit has no CI run of its own (CONTRIBUTING.md says what to set).
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.push.outputs.sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.dependency-plan.outputs.version }}
+      BASE: ${{ needs.dependency-plan.outputs.base }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-release
+          path: ${{ runner.temp }}/release
+      # One atomic push, so the commit and its tag land together or not at all. If main moved since the plan, the push
+      # is refused and the run fails; the next run starts from the new head.
+      - name: Commit, tag and push as github-actions
+        id: push
+        run: |
+          git init -q repo && cd repo
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth=1 origin "$BASE"
+          git checkout -q --detach FETCH_HEAD
+          cp "$RUNNER_TEMP/release/package.json" "$RUNNER_TEMP/release/CHANGELOG.md" .
+          [ "$(git diff --name-only | sort | tr '\n' ' ')" = 'CHANGELOG.md package.json ' ] || { echo "::error::The plan changed more than package.json and CHANGELOG.md"; exit 1; }
+          [ "$(git diff --numstat -- package.json | cut -f1,2)" = "$(printf '1\t1')" ] || { echo "::error::The plan changed more than one line of package.json"; exit 1; }
+          git diff -U0 -- package.json | grep -qx "+  \"version\": \"$VERSION\"," || { echo "::error::The line it changed is not the version $VERSION"; exit 1; }
+          [ "$(git diff --numstat -- CHANGELOG.md | cut -f2)" = 0 ] || { echo "::error::The plan removed lines from CHANGELOG.md"; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json CHANGELOG.md
+          git commit -q -m "Release $VERSION" -m "Dependency updates since the last release changed a package that ships with mr-cast. Released by CI from publish.yml."
+          git tag "v$VERSION"
+          git push --atomic origin HEAD:refs/heads/main "refs/tags/v$VERSION"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  # Publishes the tarball the plan packed. The version is on main and tagged by now, so a failure here leaves main
+  # holding a version npm lacks, which the next CI success on main publishes through the publish job.
+  dependency-release:
+    name: Publish the dependency release to npm
+    needs: [dependency-plan, dependency-push]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Must match the environment in the package's trusted publisher on npmjs.com.
+    environment: prod
+    permissions:
+      id-token: write
+    outputs:
+      version: ${{ steps.done.outputs.version }}
+      sha: ${{ steps.done.outputs.sha }}
+    steps:
+      # Trusted publishing needs npm 11.5.1 or later, which Node 24 ships (.nvmrc says 24 too).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-release
+          path: ${{ runner.temp }}/release
+      - name: Publish
+        run: |
+          npm --version
+          if ! npm publish "$RUNNER_TEMP/release/mr-cast.tgz" --access public > "$RUNNER_TEMP/publish.log" 2>&1; then
+            cat "$RUNNER_TEMP/publish.log"
+            # Job logs need auth to read; annotations are public.
+            grep -E 'npm (error|ERR!)' "$RUNNER_TEMP/publish.log" | head -8 | while IFS= read -r line; do echo "::error::$line"; done
+            echo "::error::The release commit and tag are on main but ${{ needs.dependency-plan.outputs.version }} is not on npm. The next Publish run after CI passes on main publishes it."
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/publish.log"
+          echo "::notice::Published ${{ needs.dependency-plan.outputs.version }}"
+      # Set only after the publish, so the release job below runs only for a version that is on npm.
+      - name: Hand the release on
+        id: done
+        run: |
+          echo "version=${{ needs.dependency-plan.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "sha=${{ needs.dependency-push.outputs.sha }}" >> "$GITHUB_OUTPUT"
+
   release:
     name: Open the release as a draft
-    needs: publish
+    needs: [publish, dependency-release]
+    if: ${{ !cancelled() && (needs.publish.result == 'success' || needs.dependency-release.outputs.version != '') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     concurrency:
-      group: release-v${{ needs.publish.outputs.version }}
+      group: release-v${{ needs.dependency-release.outputs.version || needs.publish.outputs.version }}
       cancel-in-progress: false
     permissions:
       contents: write
@@ -86,9 +271,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      TAG: v${{ needs.publish.outputs.version }}
-      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      PUBLISHED: ${{ needs.publish.outputs.published }}
+      TAG: v${{ needs.dependency-release.outputs.version || needs.publish.outputs.version }}
+      SHA: ${{ needs.dependency-release.outputs.sha || github.event.workflow_run.head_sha || github.sha }}
+      PUBLISHED: ${{ needs.dependency-release.outputs.version != '' || needs.publish.outputs.published }}
       DISPATCHED: ${{ github.event_name == 'workflow_dispatch' }}
     # A new release stays a draft until every shard's videos are attached, so the latest/download links never
     # point at a release without them. A draft left by a failed run is finished by the next run of this version.
@@ -110,8 +295,8 @@ jobs:
 
   render:
     name: Render examples, shard ${{ matrix.shard }} of 6
-    needs: [publish, release]
-    if: needs.release.outputs.render == 'true'
+    needs: [dependency-release, release]
+    if: ${{ !cancelled() && needs.release.result == 'success' && needs.release.outputs.render == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # Installs, builds and renders the repository's code, so it holds no write access; the upload job attaches its videos.
@@ -123,7 +308,7 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6]
     env:
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
-      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      SHA: ${{ needs.dependency-release.outputs.sha || github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -154,11 +339,12 @@ jobs:
 
   upload:
     name: Attach the videos and publish the release
-    needs: [publish, render]
+    needs: [publish, dependency-release, render]
+    if: ${{ !cancelled() && needs.render.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     concurrency:
-      group: release-v${{ needs.publish.outputs.version }}
+      group: release-v${{ needs.dependency-release.outputs.version || needs.publish.outputs.version }}
       cancel-in-progress: false
     # Runs no code from the repository: it downloads the six shards' videos and hands them to gh.
     permissions:
@@ -166,7 +352,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      TAG: v${{ needs.publish.outputs.version }}
+      TAG: v${{ needs.dependency-release.outputs.version || needs.publish.outputs.version }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
