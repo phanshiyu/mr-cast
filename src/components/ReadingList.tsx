@@ -9,6 +9,7 @@ import {
   MORE_H,
   NUMBER_W,
   ROW_PAD_X,
+  WHY_GAP,
   layoutReading,
   moreText,
   type PlacedItem,
@@ -27,7 +28,11 @@ const Row: React.FC<{ row: PlacedItem; layout: ReadingLayout; at: number }> = ({
   const land = spring({ frame: frame - at, fps, config: { damping: 17, stiffness: 120 } });
   const ink = row.item.finding ? severityInk[row.item.finding.severity] : colors.accent;
   const pad =
-    (row.h - Math.max(1, row.check.lines.length) * layout.lineHeight - (row.flag ? 6 + row.flag.height : 0)) / 2;
+    (row.h -
+      Math.max(1, row.check.lines.length) * layout.lineHeight -
+      (row.why ? WHY_GAP + row.why.height : 0) -
+      (row.flag ? 6 + row.flag.height : 0)) /
+    2;
   const leftPad = (row.h - row.where.height - (row.explained ? row.explained.height + 4 : 0)) / 2;
   return (
     <div
@@ -71,6 +76,7 @@ const Row: React.FC<{ row: PlacedItem; layout: ReadingLayout; at: number }> = ({
       </div>
       <div style={{ position: 'absolute', left: layout.checkX, width: layout.checkW, top: pad }}>
         <FitText fit={row.check} style={{ lineHeight: `${layout.lineHeight}px`, color: colors.text }} />
+        {row.why ? <FitText fit={row.why} style={{ marginTop: WHY_GAP, color: colors.muted }} /> : null}
         {row.flag ? <FitText fit={row.flag} style={{ marginTop: 6, color: ink }} /> : null}
       </div>
     </div>

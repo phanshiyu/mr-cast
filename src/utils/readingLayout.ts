@@ -8,6 +8,8 @@ export const NUMBER_W = 52;
 export const ROW_PAD_X = 22;
 export const COL_GAP = 28;
 const ROW_GAP = 12;
+/** The gap between a check and the quiet why under it. */
+export const WHY_GAP = 4;
 /** "Read first" above the rows, and the line that counts the rest below them. */
 export const HEAD_H = 40;
 export const MORE_H = 44;
@@ -21,6 +23,7 @@ export interface PlacedItem {
   where: Fit;
   explained: Fit | null;
   check: Fit;
+  why: Fit | null;
   flag: Fit | null;
 }
 
@@ -57,6 +60,7 @@ function attempt(
   const whereFont = Math.round(font * 0.8);
   const noteFont = Math.round(font * 0.62);
   const flagFont = Math.round(font * 0.76);
+  const whyFont = Math.round(font * 0.72);
   const pad = Math.round(font * 0.5);
   const whereX = ROW_PAD_X + NUMBER_W + COL_GAP;
   const widest = Math.max(
@@ -86,13 +90,15 @@ function attempt(
         )
       : null;
     const check = fitTextAt(item.check, sized(SLOTS.readingCheck, checkW), `${k}.check`, font);
+    const why = item.why ? fitTextAt(item.why, sized(SLOTS.readingWhy, checkW), `${k}.why`, whyFont) : null;
     const flag = item.finding
       ? fitTextAt(flagText(item.finding), sized(SLOTS.readingFlag, checkW), `${k}.flag`, flagFont)
       : null;
     const left = where.height + (explained ? explained.height + 4 : 0);
-    const right = Math.max(1, check.lines.length) * lineHeight + (flag ? 6 + flag.height : 0);
+    const right =
+      Math.max(1, check.lines.length) * lineHeight + (why ? WHY_GAP + why.height : 0) + (flag ? 6 + flag.height : 0);
     const h = Math.max(left, right) + 2 * pad;
-    const row = { item, y, h, where, explained, check, flag };
+    const row = { item, y, h, where, explained, check, why, flag };
     y += h + ROW_GAP;
     return row;
   });
@@ -116,7 +122,8 @@ export function layoutReading(
   const room = height - (moreToRead || routine ? MORE_H : 0);
   const index = (item: ReadingEntry) => items.findIndex((i) => i.hunkId === item.hunkId);
   const fits = (l: Omit<ReadingLayout, 'moreToRead' | 'routine' | 'room'>) =>
-    l.height <= room && l.rows.every((r) => r.check.fits && (r.flag?.fits ?? true) && (r.explained?.fits ?? true));
+    l.height <= room &&
+    l.rows.every((r) => r.check.fits && (r.why?.fits ?? true) && (r.flag?.fits ?? true) && (r.explained?.fits ?? true));
   let last = attempt(shown, index, width, SLOTS.readingCheck.min);
   for (let font = MAX_FONT; font >= SLOTS.readingCheck.min; font--) {
     last = attempt(shown, index, width, font);

@@ -529,6 +529,17 @@ export const SLOTS = {
     width: 0,
     fix: 'shorten the check to what to verify there',
   },
+  readingWhy: {
+    ...LABEL,
+    name: 'reading why',
+    weight: 400,
+    size: 23,
+    min: 16,
+    lines: 2,
+    lineHeight: 1.3,
+    width: 0,
+    fix: 'shorten the why to one short line',
+  },
   readingFlag: {
     ...LABEL,
     name: 'reading flag',
