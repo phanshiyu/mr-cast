@@ -41,6 +41,7 @@
       {
         "name": "The rate limiter",
         "weight": "core",
+        "does": "Counts each visitor's orders in Redis and answers the 21st in a minute with a 429",
         "hunks": [
           "h2",
           "h3"
@@ -49,6 +50,7 @@
       {
         "name": "Real prices",
         "weight": "core",
+        "does": "Prices an order from the pricing module, and refuses an empty one",
         "hunks": [
           "h6"
         ]
@@ -56,13 +58,18 @@
       {
         "name": "The order event",
         "weight": "support",
+        "does": "Publishes order.created to the queue after an order is saved",
         "hunks": [
           "h5"
+        ],
+        "after": [
+          "Real prices"
         ]
       },
       {
         "name": "Cleanup and docs",
         "weight": "routine",
+        "does": "Drops the old throttle and fixes a docs line",
         "hunks": [
           "h4",
           "h1"

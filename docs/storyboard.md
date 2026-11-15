@@ -20,7 +20,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. A changed cell shows its old value struck through beside the new one. Steps can show rows that start `hidden`, `set` cells and `tint` rows and cells. |
 | `chart` | A bar, line, pie or donut chart of one or more series, bars side by side or `stacked`, upright or `horizontal`. Steps `set` new values, which the bars, points and slices move to, and `sort` orders bars and slices by value, so bars overtake each other as a race. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`, unless `badges` is `false`. A value under 10,000 prints with up to four significant digits, as written when it has four or fewer, with its `unit` after it and its `prefix` (such as `$`) before it. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. Cards of events close in time move apart, and a bent leader joins each card to its dot, so no card covers another. |
-| `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. With `parts`, the files are grouped by what they are for, core parts first, and not by directory. |
+| `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. With `parts`, a map of cards, one for each part, with what it does, its largest files and the links between parts, and not a tree by directory. |
 | `compare` | Two sides, such as before and after or two designs, row by row at the same height. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text, a short code snippet, a picture, or real lines of a hunk. `mode: "options"` sets a decision against the way not taken. With `steps`, rows show as the voice reaches them. See [Compare with real code](#compare-with-real-code). |
 | `terminal` | A shell session in a window. Each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls. With `steps`, each step types its entries and the camera follows. |
 | `layers` | Stacked bands in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply. `skip` answers early at one stop, turns the token back there, and fades the stops it never reached. |
@@ -60,7 +60,7 @@ A video of a branch answers six questions, and the storyboard's `brief` holds th
 | `why` | `{ text, source }`: why the change exists. `source` is `"description"`, `"commit <sha>"`, `"code"`, `"test"`, `"inferred"` or `"unknown"`. With `"unknown"`, `text` can be left out. |
 | `case` | `{ before, after, cite }`: one real input, what happened to it and what happens now. `cite` is hunk ids, `path:line` or `path:a-b`, or a short sha. |
 | `approach` | `{ text, decisions }`: the idea, and the choices where another way was open. A decision is `{ text, source, cite? }`. `source` is `"description"` or `"commit <sha>"` when the author wrote it, `"code"` when the choice shows in the code (give a `cite`), or `"mine"` for your own observation: a way not taken that nobody names. A plain string is read as `"mine"`. |
-| `parts` | A list of `{ name, weight, hunks }`. `weight` is `core` (the change itself), `support` or `routine` (may be skimmed). The files come from the hunks. |
+| `parts` | A list of `{ name, weight, does, after, hunks }`. `weight` is `core` (the change itself), `support` or `routine` (may be skimmed). `does` is one sentence, under about 90 characters, on what the part does; `after` optionally names the parts it builds on or is called by. The files come from the hunks. |
 | `proof` | `{ tested, untested, cite }`: what a test shows, with the test's name, and what nothing shows. `tested` is empty when no test does. |
 | `check` | A list of `{ file, line, what, why }`: the places to open first, `what` in under 80 characters. |
 | `ask` | Questions for the author that the commits, description and code do not answer. |
@@ -75,7 +75,7 @@ The `reading` scene is not only for a pre-read. In a branch video it draws `brie
 
 ## Compare with real code
 
-A compare cell can be `{ "hunk": "h11", "side": "old", "lines": "4-6" }`: lines read from `hunks.json`, so the cell cannot drift from the diff. `side: "old"` shows the removed and context lines by old-file line numbers, and `"new"` the added and context lines by new-file numbers. A snippet id works for `"new"`. The cell names its file and lines quietly above the code. Up to 8 lines read well, and a line of more than about 60 characters fails `validate` as not fitting, so choose short lines or put a short text in the other cells.
+A compare cell can be `{ "hunk": "h11", "side": "old", "lines": "4-6" }`: lines read from `hunks.json`, so the cell cannot drift from the diff. `side: "old"` shows the removed and context lines by old-file line numbers, and `"new"` the added and context lines by new-file numbers. A snippet id works for `"new"`. The cell names its file and lines quietly above the code. Up to 8 lines read well. The code takes the side's whole width and steps down to 15px, the smallest size the project reads code at: a line can be about 86 characters in a row with no label, about 73 with one, and the frame holds about 26 to 30 lines of code in all, shared by the rows. `validate` fails a line that does not fit and states those numbers for the cell, so choose shorter lines, drop the row label, or show the code in a code scene.
 
 With `"mode": "options"`, a compare sets a decision beside the alternative not taken. There are no arrows between the sides. Mark the side that was taken with `"chosen": true` on it, or mark each row with `"chosen": 0` or `1`, the side that row took (0 is the left). The side taken is drawn as chosen, and the other quieter and labelled "Not taken". When the way not taken is the writer's own idea and no commit or description names it, set `"alternative": "mine"` on the scene, and the label reads "Another way". `validate` warns when a scene in this mode answers `approach`, every decision in the brief is `"mine"`, and the scene is not marked. Marking both sides, or marking sides and rows, fails `validate`, and so does `chosen` without `"mode": "options"`.
 
@@ -92,13 +92,13 @@ A `flow` step's `payload` is drawn as one line of code in large type, so it hold
 
 ## Files grouped by part
 
-A `files` scene with `parts` groups its files by what they are for. Each file names its `part`, and a part is `{ name, weight }`. Core parts come first and draw strongest, routine parts last and quietest, each with its file count and its `+` and `−` totals.
+A `files` scene with `parts` draws a map of the change: a card for each part instead of a tree by directory. A part is `{ name, weight, does?, after?, check? }`, and each file names its `part`. A card shows the part's name, its weight (core strongest, routine quietest), its `does` line, its file count and `+` and `−` totals, and its largest files with "+ N more" for the rest. A part sits after the parts its `after` names, with a thin connector from each; with no `after` the cards fill a grid, core first. A part with `"check": true` carries a "check" marker.
 
 ```json
 { "type": "files", "parts": "brief", "narration": "..." }
 ```
 
-`"parts": "brief"` takes the parts, and the files of their hunks, from the brief's `parts`, so nothing is typed twice. A step's `focus` can name a part to light it and its files.
+`"parts": "brief"` takes the parts, with their `does` and `after`, and the files of their hunks, from the brief's `parts`, so nothing is typed twice; a part that holds a file named in `brief.check` is marked "check". A step's `focus` can name a part to light its card. `notes` are not drawn on the map, and `validate` says so. `validate` warns on an `after` that names no part. A scene with no `parts` is still the tree by directory.
 
 ## Charts that move
 

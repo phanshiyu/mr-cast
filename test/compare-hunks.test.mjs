@@ -224,3 +224,64 @@ test('alternative "mine" is carried by the layout of an options compare, and by 
   assert.equal(layoutCompare(options(), 1700, 760, hunks).mine, false);
   assert.equal(layoutCompare({ ...options({ alternative: 'mine' }), mode: 'changes' }, 1700, 760, hunks).mine, false);
 });
+
+// Two rows of two lines each, as real code reads: a hunk of `n`-character lines, old and new, in each row.
+const wide = (n) => {
+  const lines = (type, key, text) =>
+    [0, 1].map((i) => ({ type, oldLine: key === 'old' ? 10 + i : null, newLine: key === 'new' ? 10 + i : null, text }));
+  const hunk = {
+    ...hunks.h8,
+    lines: [...lines('del', 'old', 'o'.repeat(n)), ...lines('add', 'new', 'n'.repeat(n))],
+  };
+  return { h1: { ...hunk, id: 'h1' }, h2: { ...hunk, id: 'h2' } };
+};
+const wideScene = (label) => ({
+  type: 'compare',
+  narration: 'The same two lines, twice.',
+  rows: ['h1', 'h2'].map((h) => ({
+    ...(label ? { label: 'The key' } : {}),
+    cells: [
+      { hunk: h, side: 'old', lines: '10-11' },
+      { hunk: h, side: 'new', lines: '10-11' },
+    ],
+  })),
+});
+const fitting = (n, label) => validateStoryboard({ title: 'T', scenes: [wideScene(label)] }, wide(n), { mode: 'diff' });
+
+test("a hunk cell uses the side's width: lines up to 86 characters fit with no row label, 73 with one", async () => {
+  assert.deepEqual((await fitting(86, false)).errors, []);
+  assert.equal((await fitting(87, false)).errors.length, 4);
+  assert.deepEqual((await fitting(73, true)).errors, []);
+  assert.equal((await fitting(74, true)).errors.length, 4);
+});
+
+test('lines too long for the cell say how many characters fit at the smallest readable size and how many lines fit', async () => {
+  const { errors } = await fitting(100, false);
+  has(errors, 'scenes[0].rows[0].cells[0].code');
+  has(errors, 'this cell holds lines of up to 86 characters at 15px, the smallest readable size (its longest is 100)');
+  has(errors, 'the frame holds 30 lines of code in all, shared by the rows');
+  const labelled = await fitting(100, true);
+  has(labelled.errors, 'up to 73 characters at 15px');
+});
+
+test("hunk code steps down to the smallest readable size and no further, at the cell's full width", () => {
+  const layout = layoutCompare(wideScene(false), 1712, 734, wide(86));
+  const [left] = layout.rows[0].cells;
+  assert.equal(left.lines.size, 15);
+  assert.equal(layout.scale, 1);
+  assert.equal(left.bleed, 16, 'the code block reaches 16px left of the cell column');
+  assert.equal(left.codeW, layout.cellW + 32);
+  const short = layoutCompare(wideScene(false), 1712, 734, wide(30)).rows[0].cells[0];
+  assert.ok(short.lines.size > 15, 'short lines keep a larger size');
+});
+
+test('a typed code cell keeps its width and its own smallest size', () => {
+  const typed = {
+    type: 'compare',
+    narration: 'x',
+    rows: [{ cells: [{ code: 'const a = 1;' }, { code: 'const a = 2;' }] }],
+  };
+  const cell = layoutCompare(typed, 1712, 734, {}).rows[0].cells[0];
+  assert.equal(cell.bleed, 0);
+  assert.equal(cell.codeW, layoutCompare(typed, 1712, 734, {}).cellW);
+});

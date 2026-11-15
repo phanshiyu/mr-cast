@@ -17,8 +17,19 @@ const bundled = await build({
   platform: 'node',
   logLevel: 'silent',
 });
-const { layoutFiles, treeRows } = await import(
+const { treeRows } = await import(
   `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
+);
+const mapped = await build({
+  entryPoints: [new URL('../src/utils/partsLayout.ts', import.meta.url).pathname],
+  bundle: true,
+  write: false,
+  format: 'esm',
+  platform: 'node',
+  logLevel: 'silent',
+});
+const { layoutParts, partsBoxes } = await import(
+  `data:text/javascript;base64,${Buffer.from(mapped.outputFiles[0].text).toString('base64')}`
 );
 
 const PARTS = [
@@ -191,34 +202,125 @@ test('validate warns about files that name no part, and about a part with no fil
   has(warnings, '"Callers", "Checking" hold no file, so they are not drawn');
 });
 
-test('parts lay out as headings with their files indented beneath, a gap above each but the first', () => {
-  const s = scene();
+const mapOf = (s, w = 1712, h = 734) => {
   const files = sceneFiles(s, hunks);
-  const rows = treeRows(files, {}, sceneParts(s, files));
+  return layoutParts(sceneParts(s, files), w, h);
+};
+const card = (layout, name) => layout.cards.find((c) => c.part.name === name);
+
+test('a part card holds the part, its counts and its largest files, with the rest counted', () => {
+  const s = scene();
+  const layout = mapOf(s);
   assert.deepEqual(
-    rows.map((r) => r.kind),
-    ['part', 'file', 'file', 'part', 'file', 'part', 'file'],
+    layout.cards.map((c) => [c.part.name, c.tags]),
+    [
+      ['Checking', ['core']],
+      ['Callers', ['support']],
+      ['Docs', ['routine']],
+    ],
   );
-  assert.deepEqual(rows[0], {
-    kind: 'part',
-    name: 'Checking',
-    depth: 0,
-    weight: 'core',
-    count: 2,
-    additions: 14,
-    deletions: 0,
-    counted: true,
-  });
-  assert.equal(rows[1].name, 'schema.ts', 'files by name, not by path');
-  const layout = layoutFiles(rows, 1700, 700);
-  const at = (i) => layout.rows[i];
-  assert.ok(at(3).y - at(2).y > layout.rowH, 'room above the second part');
-  assert.equal(at(2).y - at(1).y, layout.rowH, 'no gap inside a part');
-  const [core, , routine] = layout.rows.filter((r) => r.row.kind === 'part');
-  assert.ok(core.name.size > routine.name.size, 'the core heading is drawn larger than the routine one');
+  const core = card(layout, 'Checking');
+  assert.deepEqual(
+    core.files.map((f) => f.file.path),
+    ['src/config/schema.ts', 'src/config/index.ts'].sort(
+      (a, b) =>
+        (sceneFiles(s, hunks).find((f) => f.path === b).additions ?? 0) -
+        (sceneFiles(s, hunks).find((f) => f.path === a).additions ?? 0),
+    ),
+    'the largest first',
+  );
+  assert.equal(core.more, 0);
+  assert.ok(core.name.size > card(layout, 'Docs').name.size, 'the core name is drawn larger than the routine one');
 });
 
-test('two files that share a name show their whole path under a part', () => {
+test('parts with after links sit in columns after the parts they follow, with a link from each', () => {
+  const s = scene({
+    parts: [
+      { name: 'Checking', weight: 'core', does: 'Checks the settings once' },
+      { name: 'Callers', weight: 'support', does: 'Hands them out', after: ['Checking'] },
+      { name: 'Docs', weight: 'routine', after: ['Callers', 'Checking'] },
+    ],
+  });
+  const layout = mapOf(s);
+  const [a, b, c] = ['Checking', 'Callers', 'Docs'].map((n) => card(layout, n));
+  assert.ok(a.x < b.x && b.x < c.x, 'each sits right of the one it follows');
+  assert.deepEqual(
+    layout.links.map((l) => [l.from, l.to]),
+    [
+      [0, 1],
+      [1, 2],
+    ],
+    'Checking to Docs is implied by the path through Callers, so it is not drawn',
+  );
+  assert.ok(layout.links.every((l) => l.path.startsWith('M') && l.head.split(' ').length === 3));
+  assert.ok(a.does.fits && b.does.fits);
+});
+
+test('parts with no links fill a grid in order, core first, with no link drawn', () => {
+  const layout = mapOf(scene());
+  assert.deepEqual(layout.links, []);
+  const [a, b, c] = layout.cards;
+  assert.ok(a.x < b.x && b.x < c.x, 'three in a row');
+  assert.equal(a.y, b.y);
+});
+
+test('a link to a name that is no part, to itself, or in a loop never breaks the layout', () => {
+  const s = scene({
+    parts: [
+      { name: 'Checking', weight: 'core', after: ['Callers', 'Nowhere', 'Checking'] },
+      { name: 'Callers', weight: 'support', after: ['Checking'] },
+      { name: 'Docs', weight: 'routine' },
+    ],
+  });
+  const layout = mapOf(s);
+  assert.equal(layout.cards.length, 3);
+  assert.ok(layout.links.length >= 1);
+  assert.ok(layout.cards.every((c) => Number.isFinite(c.x) && Number.isFinite(c.y)));
+});
+
+test('a part that holds a file named in brief.check is marked "check"', () => {
+  const sb = {
+    brief: { ...brief, check: [{ file: 'src/server.ts', line: 1, what: 'x', why: 'y' }] },
+  };
+  const read = expandBriefParts({ type: 'files', narration: 'x', parts: 'brief' }, sb, hunks);
+  assert.deepEqual(
+    read.parts.map((p) => [p.name, p.check === true]),
+    [
+      ['Checking the settings once', false],
+      ['Callers', true],
+      ['Docs', false],
+    ],
+  );
+  const layout = mapOf(read);
+  assert.deepEqual(card(layout, 'Callers').tags, ['support', 'check']);
+  assert.deepEqual(card(layout, 'Docs').tags, ['routine']);
+});
+
+test('parts "brief" carries each part\'s does and after into the scene', () => {
+  const withDoes = {
+    parts: [
+      { name: 'A', weight: 'core', does: ' Checks things ', hunks: ['h3'] },
+      { name: 'B', weight: 'support', after: ['A'], hunks: ['h8'] },
+    ],
+  };
+  const read = expandBriefParts({ type: 'files', narration: 'x', parts: 'brief' }, { brief: withDoes }, hunks);
+  assert.deepEqual(read.parts, [
+    { name: 'A', weight: 'core', does: 'Checks things' },
+    { name: 'B', weight: 'support', after: ['A'] },
+  ]);
+  const groups = sceneParts(read, sceneFiles(read, hunks));
+  assert.deepEqual([groups[0].does, groups[1].after], ['Checks things', ['A']]);
+});
+
+test('a step can light a file a card does not list, and its box is the card', () => {
+  const s = scene();
+  const layout = mapOf(s);
+  const { boxes } = partsBoxes(layout);
+  assert.ok(boxes.has('p:Checking'));
+  for (const f of sceneFiles(s, hunks)) assert.ok(boxes.has(`f:${f.path}`), f.path);
+});
+
+test('two files that share a name show their whole path on a card', () => {
   const s = {
     type: 'files',
     narration: 'x',
@@ -229,67 +331,89 @@ test('two files that share a name show their whole path under a part', () => {
       { path: 'c/other.ts', part: 'P' },
     ],
   };
-  const files = sceneFiles(s, {});
-  const names = treeRows(files, {}, sceneParts(s, files)).flatMap((r) => (r.kind === 'file' ? [r.name] : []));
-  assert.deepEqual(names, ['a/index.ts', 'b/index.ts', 'other.ts']);
+  const names = mapOf(s, 1712, 734).cards[0].files.map((f) => f.name.text);
+  assert.deepEqual(names.sort(), ['a/index.ts', 'b/index.ts', 'other.ts']);
 });
 
 test('without parts the scene is still a tree by directory', () => {
   const plain = { type: 'files', narration: 'x' };
-  const files = sceneFiles(plain, hunks);
-  assert.ok(treeRows(files, {}, sceneParts(plain, files)).some((r) => r.kind === 'dir'));
+  assert.ok(treeRows(sceneFiles(plain, hunks), {}).some((r) => r.kind === 'dir'));
 });
 
-// 30 files in 5 parts: a core part of 9, a support part of 8, another of 6, and routine parts of 4 and 3.
-const manyParts = () => {
-  const spec = [
-    ['Core', 'core', 9],
-    ['Callers', 'support', 8],
-    ['Tests', 'support', 6],
-    ['Docs', 'routine', 4],
-    ['Config', 'routine', 3],
-  ];
-  const files = spec.flatMap(([part, , n]) =>
-    Array.from({ length: n }, (_, i) => ({ path: `src/${part}/f${i}.ts`, part, additions: 100 - i, deletions: 0 })),
+// 27 files in 6 parts: two core parts, two support parts and two routine ones, linked in a line.
+const SIX = [
+  ['Core', 'core', 5, []],
+  ['Reply', 'core', 4, ['Core']],
+  ['CLI', 'support', 5, ['Reply']],
+  ['Config', 'support', 3, ['Core', 'CLI']],
+  ['Tests', 'routine', 4, []],
+  ['Docs', 'routine', 6, []],
+];
+const six = () => {
+  const files = SIX.flatMap(([part, , n]) =>
+    Array.from({ length: n }, (_, i) => ({ path: `src/${part}/f${i}.ts`, part, additions: 100 - i, deletions: i })),
   );
-  return { type: 'files', narration: 'x', parts: spec.map(([name, weight]) => ({ name, weight })), files };
+  const parts = SIX.map(([name, weight, , after]) => ({
+    name,
+    weight,
+    does: `Does what ${name} does, in one sentence of about ninety characters, more or less`,
+    ...(after.length ? { after } : {}),
+  }));
+  return { type: 'files', narration: 'x', parts, files };
 };
 
-test('a part lists its largest files, core parts more, and counts the rest in a "+ N more" line', () => {
-  const s = manyParts();
-  const files = sceneFiles(s, {});
-  const rows = treeRows(files, {}, sceneParts(s, files));
-  const listed = (part) => rows.filter((r) => r.kind === 'file' && r.file.part === part);
-  const more = (part) =>
-    rows.find((r) => r.kind === 'more' && r.weight === s.parts.find((p) => p.name === part).weight);
-  assert.ok(listed('Core').length > listed('Docs').length);
-  assert.ok(listed('Core').length >= listed('Config').length);
-  assert.equal(
-    rows.filter((r) => r.kind === 'file').length +
-      rows.filter((r) => r.kind === 'more').reduce((n, r) => n + Number(r.name.match(/\d+/)[0]), 0),
-    30,
-    'every file is listed or counted',
+test('27 files in 6 parts fit without scaling, every text at a readable size', async () => {
+  const s = six();
+  assert.equal(s.files.length, 27);
+  const layout = mapOf(s);
+  assert.equal(layout.cards.length, 6);
+  const texts = layout.cards.flatMap((c) => [c.name, c.does, c.room, ...c.files.map((f) => f.name)]);
+  assert.ok(
+    texts.every((t) => t.fits),
+    'every text fits',
   );
-  const docs = rows.filter((r) => r.kind === 'file' && r.file.part === 'Docs');
-  assert.deepEqual(
-    docs.map((r) => r.file.path),
-    ['src/Docs/f0.ts', 'src/Docs/f1.ts', 'src/Docs/f2.ts', 'src/Docs/f3.ts'].slice(0, docs.length),
-    'the largest come first',
-  );
-  assert.match(more('Docs')?.name ?? '', /^\+ \d+ more$/);
-  assert.ok(rows.filter((r) => r.kind === 'file').length <= 26);
-  const layout = layoutFiles(rows, 1712, 734);
-  assert.equal(layout.scale, 1, 'it fits without scaling');
-  assert.ok(layout.font >= 21, `at a readable size, not ${layout.font}`);
+  assert.ok(texts.filter((t) => t.text).every((t) => t.size >= 15));
+  assert.ok(layout.width <= 1712 && layout.height <= 734);
+  for (const c of layout.cards) assert.equal(c.files.length + c.more, c.part.files.length);
+  const { warnings, errors } = await check({}, s);
+  assert.deepEqual(errors, []);
+  assert.ok(!warnings.some((w) => w.includes('get cramped')), warnings.join('\n'));
 });
 
-test('few enough files are all listed, and the 18-file warning does not apply with parts', async () => {
-  const s = manyParts();
-  const few = { ...s, files: s.files.filter((_f, i) => i % 2 === 0) };
-  const files = sceneFiles(few, {});
-  assert.ok(!treeRows(files, {}, sceneParts(few, files)).some((r) => r.kind === 'more'));
-  const { warnings } = await check({}, s);
-  assert.ok(!warnings.some((w) => w.includes('get cramped')), warnings.join('\n'));
-  const plain = await check({}, { ...s, parts: undefined, files: s.files.map(({ part, ...f }) => f) });
-  assert.ok(plain.warnings.some((w) => w.includes('30 files; more than 18 get cramped')));
+test('a note is not drawn on the parts map, and an after naming no part is warned about', async () => {
+  const { errors, warnings } = await check(
+    {},
+    scene({
+      notes: { 'src/server.ts': 'wires it in' },
+      parts: [
+        { name: 'Docs', weight: 'routine', after: ['Nowhere'] },
+        { name: 'Callers', weight: 'support' },
+        { name: 'Checking', weight: 'core' },
+      ],
+    }),
+  );
+  assert.deepEqual(errors, []);
+  has(warnings, 'scenes[0].notes["src/server.ts"]: a note is not drawn on the parts map');
+  has(warnings, 'scenes[0].parts[0].after[0]: "Nowhere" is not one of the scene\'s parts');
+});
+
+test('a does that is not a string is an error', async () => {
+  const { errors } = await check({}, scene({ parts: [{ name: 'Docs', weight: 'routine', does: 3 }] }));
+  has(errors, 'scenes[0].parts[0].does: must be a non-empty string');
+});
+
+test('without parts a note is still drawn, and warns of nothing', async () => {
+  const { warnings } = await check({}, { type: 'files', narration: 'x', notes: { 'src/server.ts': 'wires it in' } });
+  assert.ok(!warnings.some((w) => w.includes('not drawn')));
+});
+
+test('a card too short for its text is reported, naming the part', async () => {
+  const crowd = {
+    type: 'files',
+    narration: 'x',
+    parts: Array.from({ length: 16 }, (_, i) => ({ name: `Part ${i}`, weight: 'support', does: 'Does a thing' })),
+    files: Array.from({ length: 16 }, (_, i) => ({ path: `src/p${i}.ts`, part: `Part ${i}` })),
+  };
+  const { errors } = await check({}, crowd);
+  has(errors, 'part card');
 });

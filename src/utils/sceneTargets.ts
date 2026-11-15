@@ -32,6 +32,7 @@ import { cameraFor, layoutImage, regionOnScreen, viewAt } from './imageLayout';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { erBoxes, erScale, layoutEr } from './erLayout';
 import { filesBoxes, layoutFiles, treeRows } from './filesLayout';
+import { layoutParts, partsBoxes } from './partsLayout';
 import { layersBoxes, layersScale, layoutLayers } from './layersLayout';
 import { layoutTimeline, timelineBoxes, timelineScale } from './timelineLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
@@ -215,7 +216,16 @@ export function erTargets(scene: ErScene): MarkTargets {
 export function filesTargets(scene: FilesScene, hunks: HunkMap): MarkTargets {
   const box = contentBox(Boolean(scene.title));
   const files = sceneFiles(scene, hunks);
-  const layout = layoutFiles(treeRows(files, scene.notes ?? {}, sceneParts(scene, files)), box.width, box.height);
+  const parts = sceneParts(scene, files);
+  if (parts) {
+    const layout = layoutParts(parts, box.width, box.height);
+    return staged(
+      partsBoxes(layout),
+      { left: Math.max(0, box.width - layout.width) / 2, top: Math.max(0, box.height - layout.height) * 0.3, scale: 1 },
+      box,
+    );
+  }
+  const layout = layoutFiles(treeRows(files, scene.notes ?? {}), box.width, box.height);
   return staged(
     filesBoxes(layout),
     { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale },

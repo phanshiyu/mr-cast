@@ -49,14 +49,21 @@ const OTHER_PART = 'Other files';
 
 /**
  * The parts a files scene groups its files under, in drawing order (core, then support, then routine, each in the
- * order written), with the files each holds and their + and - totals. Parts holding no file are left out; files that
+ * order written), with the files each holds and their + and - totals, and the `does`, `after` and `check` each names. Parts holding no file are left out; files that
  * name no part, or one the scene does not list, go under "Other files". Null when the scene has no parts.
  */
 export function sceneParts(scene, files) {
   if (!Array.isArray(scene?.parts)) return null;
   const named = scene.parts.filter((p) => typeof p?.name === 'string' && PART_WEIGHTS.includes(p.weight));
   const known = new Set(named.map((p) => p.name));
-  const groups = named.map((p) => ({ name: p.name, weight: p.weight, files: files.filter((f) => f.part === p.name) }));
+  const groups = named.map((p) => ({
+    name: p.name,
+    weight: p.weight,
+    ...(typeof p.does === 'string' && p.does.trim() ? { does: p.does.trim() } : {}),
+    ...(Array.isArray(p.after) ? { after: p.after.filter((n) => typeof n === 'string') } : {}),
+    ...(p.check === true ? { check: true } : {}),
+    files: files.filter((f) => f.part === p.name),
+  }));
   const rest = files.filter((f) => !known.has(f.part));
   if (rest.length) groups.push({ name: OTHER_PART, weight: 'routine', files: rest });
   return PART_WEIGHTS.flatMap((weight) => groups.filter((g) => g.weight === weight && g.files.length)).map((g) => ({
@@ -67,9 +74,10 @@ export function sceneParts(scene, files) {
 }
 
 /**
- * A files scene with `"parts": "brief"` read into plain `parts` and `files`: the parts of `storyboard.brief.parts`,
- * and the files their hunks change, each under the part that holds most of its changed lines (the first, on a tie)
- * with the file's whole line counts. Any other scene, or one with no brief to read, comes back as it is.
+ * A files scene with `"parts": "brief"` read into plain `parts` and `files`: the parts of `storyboard.brief.parts`
+ * with their `does` and `after`, `check: true` on a part that holds a file named in `brief.check`, and the files
+ * their hunks change, each under the part that holds most of its changed lines (the first, on a tie) with the
+ * file's whole line counts. Any other scene, or one with no brief to read, comes back as it is.
  */
 export function expandBriefParts(scene, storyboard, hunks) {
   const list = storyboard?.brief?.parts;
@@ -83,7 +91,12 @@ export function expandBriefParts(scene, storyboard, hunks) {
       parts.some((p) => p.name === part.name)
     )
       continue;
-    parts.push({ name: part.name, weight: part.weight });
+    parts.push({
+      name: part.name,
+      weight: part.weight,
+      ...(typeof part.does === 'string' && part.does.trim() ? { does: part.does.trim() } : {}),
+      ...(Array.isArray(part.after) ? { after: part.after.filter((n) => typeof n === 'string') } : {}),
+    });
     for (const id of Array.isArray(part.hunks) ? part.hunks : []) {
       const h = hunks?.[id];
       if (!h || h.status === 'source') continue;
@@ -98,5 +111,10 @@ export function expandBriefParts(scene, storyboard, hunks) {
     const { change, additions, deletions } = diff.get(path);
     return { path, part: part.name, change, additions, deletions };
   });
-  return files.length ? { ...scene, parts, files } : scene;
+  if (!files.length) return scene;
+  const risky = new Set((Array.isArray(storyboard.brief.check) ? storyboard.brief.check : []).map((c) => c?.file));
+  const marked = parts.map((p) =>
+    files.some((f) => f.part === p.name && risky.has(f.path)) ? { ...p, check: true } : p,
+  );
+  return { ...scene, parts: marked, files };
 }

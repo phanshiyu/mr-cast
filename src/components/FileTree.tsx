@@ -1,22 +1,22 @@
 import { FileCode2, FlaskConical, Folder } from 'lucide-react';
 import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
-import { sceneFiles, sceneParts } from '../../shared/files.mjs';
+import { sceneFiles } from '../../shared/files.mjs';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { FilesScene } from '../types';
 import {
   BAR_MAX,
   MARKER_W,
   PAD_X,
-  PART_OPACITY,
   layoutFiles,
   treeRows,
   type FilesLayout,
   type PlacedRow,
 } from '../utils/filesLayout';
+import { FilesTotals } from './FilesTotals';
+import { PartsMap } from './PartsMap';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
-import type { PartWeight } from '../types';
 import { Badge, badgesOf, changeTone } from './marks';
 import { SceneShell } from './SceneShell';
 import { filesTargets } from '../utils/sceneTargets';
@@ -28,117 +28,6 @@ const START = 10;
 /** Every row has started landing by this frame, so the rows, bars and notes are in by the end of the build. */
 const ROWS_END = 22;
 const MINUS = '−';
-
-/** A part's heading takes its colour from how much the part matters: the change itself in the accent, the routine in grey. */
-const PART_COLOR: Record<PartWeight, string> = { core: colors.accent, support: colors.text, routine: colors.muted };
-/** A heading stays readable even for a routine part; its files carry the quiet. */
-const HEADING_OPACITY: Record<PartWeight, number> = { core: 1, support: 1, routine: 0.78 };
-
-const PartHeading: React.FC<{
-  placed: PlacedRow;
-  layout: FilesLayout;
-  row: Extract<PlacedRow['row'], { kind: 'part' }>;
-  land: number;
-  emphasis: Emphasis;
-}> = ({ placed, layout, row, land, emphasis }) => {
-  const color = PART_COLOR[row.weight];
-  const countFont = Math.round(layout.font * 0.88);
-  const tagFont = Math.round(layout.font * 0.58);
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        left: placed.x,
-        top: placed.y,
-        width: layout.width,
-        height: layout.rowH,
-        borderRadius: 12,
-        background: emphasis.glow > 0 ? `rgba(124, 140, 255, ${0.1 * emphasis.glow})` : undefined,
-        boxShadow:
-          emphasis.glow > 0
-            ? `inset 0 0 0 2px ${colors.accent}${Math.round(emphasis.glow * 150)
-                .toString(16)
-                .padStart(2, '0')}, 0 0 ${30 * emphasis.glow}px ${colors.accent}33`
-            : undefined,
-        opacity: land * emphasis.opacity * HEADING_OPACITY[row.weight],
-        transform: `translateX(${(1 - land) * -30}px)`,
-      }}
-    >
-      {row.weight === 'core' ? (
-        <div
-          style={{ position: 'absolute', left: 0, top: 6, bottom: 6, width: 5, borderRadius: 3, background: color }}
-        />
-      ) : null}
-      <div
-        style={{
-          position: 'absolute',
-          left: PAD_X,
-          right: PAD_X,
-          bottom: 0,
-          height: row.weight === 'core' ? 2 : 1.5,
-          background: row.weight === 'core' ? `${colors.accent}66` : colors.border,
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          left: PAD_X,
-          top: 0,
-          bottom: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: Math.round(layout.font * 0.5),
-        }}
-      >
-        <FitText fit={placed.name} inline style={{ color }} />
-        <span
-          style={{
-            flexShrink: 0,
-            padding: '2px 9px',
-            borderRadius: 999,
-            border: `1px solid ${color}77`,
-            color,
-            fontSize: tagFont,
-            fontWeight: 800,
-            letterSpacing: 1.2,
-            textTransform: 'uppercase',
-          }}
-        >
-          {row.weight}
-        </span>
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          right: PAD_X,
-          top: 0,
-          bottom: 3,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.9em',
-          fontFamily: fonts.mono,
-          fontSize: countFont,
-          fontWeight: 700,
-          color: colors.muted,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <span>
-          {row.count} {row.count === 1 ? 'file' : 'files'}
-        </span>
-        {row.counted ? (
-          <>
-            <span style={{ color: colors.add }}>+{row.additions}</span>
-            <span style={{ color: colors.del }}>
-              {MINUS}
-              {row.deletions}
-            </span>
-          </>
-        ) : null}
-      </div>
-    </div>
-  );
-};
 
 /** Grows a file's diffstat bar and counts its lines up as the row lands. */
 const Counts: React.FC<{ layout: FilesLayout; additions: number; deletions: number; grow: number }> = ({
@@ -213,9 +102,6 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
   const left = layout.nameX + row.depth * layout.indent;
   const guides = Array.from({ length: row.depth }, (_, d) => layout.nameX + d * layout.indent + iconSize / 2);
 
-  if (row.kind === 'part')
-    return <PartHeading placed={placed} layout={layout} row={row} land={land} emphasis={emphasis} />;
-
   if (row.kind === 'dir') {
     return (
       <div
@@ -253,37 +139,6 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
     );
   }
 
-  if (row.kind === 'more')
-    return (
-      <div
-        style={{
-          position: 'absolute',
-          left: placed.x,
-          top: placed.y,
-          width: layout.width,
-          height: layout.rowH,
-          opacity: land * emphasis.opacity * PART_OPACITY[row.weight] * 0.8,
-          transform: `translateX(${(1 - land) * -30}px)`,
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            left,
-            top: 0,
-            bottom: 0,
-            display: 'flex',
-            alignItems: 'center',
-            fontFamily: fonts.mono,
-            fontSize: Math.round(layout.font * 0.88),
-            color: colors.faint,
-          }}
-        >
-          {row.name}
-        </div>
-      </div>
-    );
-
   const { file } = row;
   const { note } = placed;
   const tone = file.change ? changeTone[file.change] : null;
@@ -305,7 +160,7 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
                 .toString(16)
                 .padStart(2, '0')}, 0 0 ${30 * emphasis.glow}px ${colors.accent}33`
             : undefined,
-        opacity: land * emphasis.opacity * (row.weight ? PART_OPACITY[row.weight] : 1),
+        opacity: land * emphasis.opacity,
         transform: `translateX(${(1 - land) * -30}px)`,
       }}
     >
@@ -421,47 +276,14 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
   );
 };
 
-const Totals: React.FC<{ files: ReturnType<typeof sceneFiles> }> = ({ files }) => {
-  const add = files.reduce((n, f) => n + (f.additions ?? 0), 0);
-  const del = files.reduce((n, f) => n + (f.deletions ?? 0), 0);
-  const tests = files.filter((f) => f.test).length;
-  const counted = files.some((f) => f.additions !== undefined || f.deletions !== undefined);
-  return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 22,
-        fontSize: 21,
-        color: colors.muted,
-        flexShrink: 0,
-        paddingBottom: 6,
-        alignItems: 'baseline',
-      }}
-    >
-      <span>
-        {files.length} {files.length === 1 ? 'file' : 'files'}
-      </span>
-      {counted ? (
-        <span style={{ fontFamily: fonts.mono, fontWeight: 700 }}>
-          <span style={{ color: colors.add }}>+{add}</span> <span style={{ color: colors.del }}>{MINUS + del}</span>
-        </span>
-      ) : null}
-      {tests ? (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: colors.accent }}>
-          <FlaskConical size={20} strokeWidth={2.2} />
-          {tests} {tests === 1 ? 'test' : 'tests'}
-        </span>
-      ) : null}
-    </div>
-  );
-};
+export const FileTree: React.FC<SceneProps<FilesScene>> = (props) =>
+  props.scene.parts ? <PartsMap {...props} /> : <Tree {...props} />;
 
-export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durationInFrames, segments }) => {
+const Tree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const files = useMemo(() => sceneFiles(scene, hunks), [scene, hunks]);
-  const parts = useMemo(() => sceneParts(scene, files), [scene, files]);
-  const rows = useMemo(() => treeRows(files, scene.notes ?? {}, parts), [files, scene.notes, parts]);
+  const rows = useMemo(() => treeRows(files, scene.notes ?? {}), [files, scene.notes]);
   const layout = useMemo(() => layoutFiles(rows, box.width, box.height), [rows, box.width, box.height]);
   const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
   const marks = useMemo(() => filesTargets(scene, hunks), [scene, hunks]);
@@ -474,9 +296,9 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
   const rowAt = (i: number) => START + 4 + i * rowStagger;
   const { emphasis } = spotlight(frame, spotlightStarts(segments, walked.length, buildFrames('files')));
   const focus = focusSpotlight(scene, hunks, segments, frame);
-  const fileEmphasis = (path: string | null, part?: string) =>
+  const fileEmphasis = (path: string | null) =>
     scene.steps?.length
-      ? focus(part === undefined ? `f:${path}` : `p:${part}`)
+      ? focus(`f:${path}`)
       : emphasis(path !== null && walked.includes(path) ? [walked.indexOf(path)] : []);
 
   return (
@@ -484,7 +306,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
       scene={scene}
       durationInFrames={durationInFrames}
       camera={{ hunks, segments, targets: () => marks }}
-      aside={<Totals files={files} />}
+      aside={<FilesTotals files={files} />}
     >
       <div
         style={{
@@ -498,10 +320,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
         }}
       >
         {layout.rows.map((placed, i) => {
-          const e =
-            placed.row.kind === 'part'
-              ? fileEmphasis(null, placed.row.name)
-              : fileEmphasis(placed.row.kind === 'file' ? placed.row.file.path : null);
+          const e = fileEmphasis(placed.row.kind === 'file' ? placed.row.file.path : null);
           // Directories stay readable while files are spotlit: they are the map, not the subject.
           const shown = placed.row.kind !== 'file' ? { ...e, opacity: Math.max(e.opacity, 0.7) } : e;
           return <Row key={i} placed={placed} layout={layout} at={rowAt(i)} emphasis={shown} frame={frame} />;

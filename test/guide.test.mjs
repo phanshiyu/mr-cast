@@ -14,7 +14,7 @@ const brief = {
   case: { before: 'The twenty-first order was accepted', after: 'It is refused with a 429.', cite: [] },
   approach: { text: 'Count orders per address.', decisions: [] },
   parts: [
-    { name: 'The limiter', weight: 'core', hunks: ['h1'] },
+    { name: 'The limiter', weight: 'core', does: 'Counts orders per address.', hunks: ['h1'] },
     { name: 'Wiring', weight: 'support', hunks: ['h2'] },
   ],
   proof: { tested: ['A twenty-first order is refused'], untested: ['Two servers'] },
@@ -105,4 +105,10 @@ test("the guide labels each decision as the author's, the code's or the writer's
     { kind: 'mine', lead: "Another way, not the author's", text: 'A shared store.' },
   ]);
   assert.deepEqual(guidePanel({ title: 'T', scenes, brief }, hunks).decisions, []);
+});
+
+test("the guide lists each part that says what it does, in the brief's order", () => {
+  const guide = guidePanel({ title: 'T', scenes, brief }, hunks);
+  assert.deepEqual(guide.parts, [{ name: 'The limiter', weight: 'core', does: 'Counts orders per address.' }]);
+  assert.deepEqual(guidePanel({ title: 'T', scenes: [], brief: { parts: 'unknown' } }, hunks).parts, []);
 });

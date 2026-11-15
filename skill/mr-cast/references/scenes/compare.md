@@ -39,7 +39,7 @@ To show existing code whose behaviour changed, old lines against new, name the l
 ] }
 ```
 
-`hunk` is an id from the hunk index (a snippet id works for `"new"`), `lines` a number or an `"a-b"` range. `"old"` shows the removed and context lines of that range by old-file line numbers, `"new"` the added and context lines by new-file numbers. The cell draws the file name and line numbers quietly above the code. A cell holds up to 8 lines; two rows of 8 still read, and the fit check in `validate` reports a comparison that no longer fits. `validate` fails on a hunk, a side or a range that does not exist, and says which lines the hunk does have. A demo: `{{MR_CAST}}/examples/primitives/compare-diff/storyboard.json`.
+`hunk` is an id from the hunk index (a snippet id works for `"new"`), `lines` a number or an `"a-b"` range. `"old"` shows the removed and context lines of that range by old-file line numbers, `"new"` the added and context lines by new-file numbers. The cell draws the file name and line numbers quietly above the code. A cell holds up to 8 lines; two rows of 8 still read. The code takes the side's whole width and steps down to 15px, the smallest size code is read at: a line can be about 86 characters in a row with no `label`, about 73 with one, and the frame holds about 26 to 30 lines of code in all, shared by the rows. The fit check in `validate` reports a line or a row that no longer fits, and says those numbers for the cell. `validate` fails on a hunk, a side or a range that does not exist, and says which lines the hunk does have. A demo: `{{MR_CAST}}/examples/primitives/compare-diff/storyboard.json`.
 
 ### A decision and the alternative not taken
 

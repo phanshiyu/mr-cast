@@ -48,6 +48,23 @@ export const GuidePanel: React.FC<{ guide: Guide; scene: number; onScene: (scene
         })}
       </ol>
       <div className="flex flex-col gap-4">
+        {guide.parts.length ? (
+          <div>
+            <h3 className="mb-1.5 text-xs font-medium text-slate-500">What each part does</h3>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {guide.parts.map((p) => (
+                <li key={p.name} className="px-2">
+                  <span
+                    className={p.weight === 'routine' ? 'font-medium text-slate-400' : 'font-medium text-slate-200'}
+                  >
+                    {p.name}
+                  </span>
+                  <span className="text-slate-400"> {p.does}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {guide.check.length ? (
           <div>
             <h3 className="mb-1.5 text-xs font-medium text-slate-500">Open first</h3>

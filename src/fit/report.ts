@@ -16,6 +16,7 @@ import { layoutCompare } from '../utils/compareLayout';
 import { frameRows, layoutCode, unseenLines } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
+import { layoutParts } from '../utils/partsLayout';
 import { layoutFlow } from '../utils/flowLayout';
 import { layoutText, textStates } from '../utils/textLayout';
 import { layersScale, layoutLayers } from '../utils/layersLayout';
@@ -132,7 +133,9 @@ const SCENE_FITS: SceneFits = {
   files: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
     const files = sceneFiles(scene, hunks);
-    const layout = layoutFiles(treeRows(files, scene.notes ?? {}, sceneParts(scene, files)), box.width, box.height);
+    const parts = sceneParts(scene, files);
+    if (parts) return layoutParts(parts, box.width, box.height);
+    const layout = layoutFiles(treeRows(files, scene.notes ?? {}), box.width, box.height);
     return new Scaled('file tree', layout.scale, layout);
   },
   layers: (scene) => {
