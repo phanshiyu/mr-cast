@@ -1,6 +1,7 @@
 # 42. Draw and encode videos with a Rust engine, not Remotion
 
-- Status: Accepted
+- Status: Accepted; amended by [ADR 43](0043-engine-ships-in-the-package.md) (the engine ships inside the package, and
+  Remotion stays behind a switch until every scene type is ported)
 - Date: 2026-11-16
 
 ## Context

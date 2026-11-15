@@ -27,7 +27,8 @@ engine/
       chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit), captions, fittext
       scenes/            mod.rs (registry and contract), one module per scene type, placeholder.rs
     tests/js_fixtures.rs timing, speech, text fitting, springs and easings against the JS's own outputs
-  cli/                   mr-cast-engine: render (parallel, repeats skipped, ffmpeg) and still
+  cli/                   mr-cast-engine: render (parallel, repeats skipped, voice mix, chapters, ffmpeg), still, sheet
+  wasm/                  mrc_wasm: the core for the browser player (wasm-bindgen); scripts/build-wasm.mjs builds wasm/pkg
 ```
 
 ## Running it
@@ -36,12 +37,22 @@ engine/
 node scripts/engine-dump.mjs props <run dir> props.json     # the props, as bin/lib/render.mjs builds them, plus syntax colours
 cargo build --release --manifest-path engine/Cargo.toml
 engine/target/release/mr-cast-engine render --props props.json --out video.mp4 [--frames a..b | --scenes 1,4..12]
-                                            [--encoder x264|videotoolbox|none] [--cfr yes] [--scale 0.5]
+                                            [--media-dir <run dir>] [--encoder x264|videotoolbox|none] [--cfr yes]
+                                            [--scale 0.5] [--progress yes]
 engine/target/release/mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out still.png
+engine/target/release/mr-cast-engine still --props props.json --scenes 1,3..6 [--step k] --out-dir stills/
+engine/target/release/mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
 ```
 
-`--scene N` and `--step k` pick the frame `mr-cast still` shows (N is 1-based here). ffmpeg comes from
-`MR_CAST_FFMPEG` or the PATH.
+The Node CLI runs these (bin/lib/engine.mjs and render.mjs): `mr-cast render`, `still` and `still --sheet` write the
+props into the run's directory, call the engine and remove them (`MR_CAST_DEBUG=1` keeps them and shows the engine's
+output). `--scene N` and `--step k` pick the frame `mr-cast still` shows (N is 1-based here); `--scenes` writes
+`scene-NN-<type>[-step-k].png` for each. `sheet` lays `[{ "scene": N, "label": "..." }]` out as contact sheets did.
+ffmpeg comes from `MR_CAST_FFMPEG` (the Node CLI sets it from the ffmpeg-static package) or the PATH.
+
+With `--media-dir`, `render` mixes each segment's voice clip (`clip.src` under that directory) into one track from the
+segment's voice frame to its end, as Walkthrough.tsx played them, encodes it as AAC while the frames render, and copies
+it into the MP4. A whole-video render also writes a chapter per run of scenes with one chapter title.
 
 By default a frame that draws exactly what the frame before drew (equal display-list fingerprints) is neither drawn
 nor encoded again: frames go to ffmpeg as a Matroska stream with timestamps, and the MP4 is timestamped per frame
@@ -187,4 +198,3 @@ on every sampled frame of the demo.
   gradient fills (solid colour instead), flow steps with real `code` and step icons, code `typing` and output panes,
   and every scene's pen marks, ink and camera.
 - The source line of pre-read diagrams (`SourceLine` in src/Walkthrough.tsx) and images.
-- Audio: the engine writes silent video; the Node CLI would mux the voice as it does today.
