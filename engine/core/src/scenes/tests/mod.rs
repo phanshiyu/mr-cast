@@ -4,7 +4,7 @@
 
 mod layout;
 mod matrix;
-mod names;
+pub mod names;
 
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Spring, interpolate, spring};

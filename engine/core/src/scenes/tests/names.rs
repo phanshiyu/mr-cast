@@ -104,7 +104,7 @@ fn test_names(lines: &[DiffLine]) -> Vec<String> {
     tests
 }
 
-fn is_test_file(file: &str) -> bool {
+pub fn is_test_file(file: &str) -> bool {
     patterns().files.iter().any(|p| matches(p, file))
 }
 
