@@ -136,3 +136,39 @@ Measures what a walkthrough saves a reviewer who then reads the code, against no
 - `harvest.sh` and `report.mjs` gather answers, transcripts and grades into per-arm tables (mean [min-max]).
 
 Run every writer and mr-cast command with temporary `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `CLAUDE_CONFIG_DIR`.
+
+## Understanding (ADR 0037)
+
+The recall quiz above scores near its ceiling, so it cannot tell a video that explains a change from one that lists
+facts. This measures understanding: a viewer who has only the video answers eight questions, and a critic with the
+code grades those answers. Two prompts, two roles:
+
+- `understanding.md` is the viewer prompt. Questions `u1` to `u8` (why, how it works, one case, risks, proof, a
+  15-minute review, decisions, open questions) and three ratings: `ease`, `confident`, `weakest_scene`.
+- `critic.md` is the critic prompt, a template with `{REPO}`, `{BASE}`, `{BRANCH}`, `{PACKET_DIR}`, `{ANSWERS_MD}` and
+  `{OUT_JSON}`. The critic can read the repo and the packet but runs no mr-cast command and changes nothing. It writes
+  `critic.json`: a grade per answer (`correct`, `partly`, `wrong`, `not_shown` for `u1` to `u7`), the claims the video
+  makes that the code contradicts, up to eight things a reviewer needs that the video never says (with `file:line`),
+  how well the video answers each of why, case, approach, parts, proof and check, and the viewer's `ease` and `confident`.
+
+Steps:
+
+1. Variant: `quality/variant.sh skill/mr-cast/SKILL.md /path/to/variants/current`.
+2. Prepare. For the fixtures, `quality/prepare.sh <workdir> <variant>`. For any local repository:
+
+       quality/prepare-repo.sh <workdir> <variant> <name> <repo-path> <base> <branch>
+
+   This makes `<workdir>/<name>/{repo,notes,bin,config}`: a clone with only those two branches, origin removed, the
+   feature branch checked out, the variant skill in `notes/mr-cast` and the shim from `shim.sh`.
+3. Writer: prompt (a) above, in `<workdir>/<name>/repo`.
+4. Collect: `quality/collect.sh <workdir>` (validate, stills, `packet/`).
+5. Viewer: one fresh agent per packet, cwd `<name>/packet`, prompt `understanding.md`. Save the reply as `<name>/answers.md`.
+6. Critic: one fresh agent per video with `critic.md` filled in (`{REPO}` is `<name>/repo`, `{PACKET_DIR}` is
+   `<name>/packet`, `{OUT_JSON}` is `<name>/critic.json`). Give it read access only.
+7. Numbers: `quality/node.sh quality/understanding.mjs <workdir>` prints a table and writes `understanding.json`:
+   per video and overall, the counts of correct / partly / wrong / not_shown over `u1` to `u7`, a score (correct 1,
+   partly 0.5, else 0) out of 7, the number of contradicted claims, how many of the six questions are answered
+   well / weakly / not at all, and ease and confident. Missing or broken `critic.json` files are skipped with a note.
+
+Fixtures small enough to read in one diff understate the problem: a reviewer can just read them. Include at least one
+real branch of a thousand lines or more, through `prepare-repo.sh`.
