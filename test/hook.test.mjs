@@ -190,3 +190,26 @@ test('the hook shows what stopped validate when no line is an error, such as bro
     done();
   }
 });
+
+test('on success the hook exits 0 and hands Claude the scene mix line as added context', () => {
+  const { start, hook, done } = setup();
+  try {
+    const dir = start(['--title', 'Quicksort'], 'quicksort');
+    const ok = hook(dir);
+    assert.deepEqual([ok.status, ok.stderr], [0, '']);
+    const { hookSpecificOutput } = JSON.parse(ok.stdout);
+    assert.deepEqual(hookSpecificOutput, {
+      hookEventName: 'PostToolUse',
+      additionalContext: 'scenes: 1 · code 1 · longest run: 1 code',
+    });
+    fs.writeFileSync(
+      path.join(dir, 'storyboard.json'),
+      JSON.stringify({ ...CODE_ONLY, brief: { why: { source: 'unknown' } } }),
+    );
+    const lines = JSON.parse(hook(dir).stdout).hookSpecificOutput.additionalContext.split('\n');
+    assert.match(lines[0], /^brief: why unknown · case ✗/);
+    assert.equal(lines[1], 'scenes: 1 · code 1 · longest run: 1 code');
+  } finally {
+    done();
+  }
+});

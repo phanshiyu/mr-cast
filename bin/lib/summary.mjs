@@ -7,6 +7,7 @@ import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { pickOf } from '../../shared/plan.mjs';
 import { briefLine } from '../../shared/brief.mjs';
+import { mixLine } from './validate-mix.mjs';
 import { readingLines, readingOrder } from '../../shared/reading.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
 import { VIEWS } from '../../shared/views.mjs';
@@ -185,6 +186,8 @@ export function formatValidation({ errors, warnings, coverage }, { storyboard, h
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
   if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
+  const mix = mixLine(storyboard.scenes);
+  if (mix) out.push(mix);
   if (errors.length)
     out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
   else
@@ -443,6 +446,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pa
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
   if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
   if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
+  out.push(mixLine(scenes));
   const skipped = [...topics.values()].filter((t) => pickOf(t).depth === 'skip').map((t) => t.title);
   if (skipped.length) out.push(`skipped topics: ${skipped.join(', ')}`);
   const order = readingOrder(storyboard, hunks, plan);

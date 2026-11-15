@@ -33,6 +33,8 @@ const hunks = {
   h3: hunk('h3', 'test/limiter.test.js', ["test('limits', () => {", ...filler(3, 'expect'), '});'], 1),
   h4: hunk('h4', 'README.md', ['Orders are limited to twenty a minute.'], 7),
 };
+// The limiter replaces a line, so a code scene on h1 shows both the before and the after of the case.
+hunks.h1.lines[0] = { ...hunks.h1.lines[0], type: 'del', oldLine: 10, newLine: null };
 // What `extract` writes beside hunks.json (docs/adr/0037-reviewer-brief.md, section 1).
 const map = {
   commits: [{ sha: '7376000', subject: 'Limit orders', body: 'Bots were placing thousands of orders a minute.' }],
@@ -42,7 +44,7 @@ const map = {
     { path: 'test/limiter.test.js', kind: 'tests', status: 'new', added: 5, removed: 0, hunks: ['h3'] },
     { path: 'README.md', kind: 'docs', status: 'modified', added: 1, removed: 0, hunks: ['h4'] },
   ],
-  tests: [{ path: 'test/limiter.test.js', covers: ['src/limiter.js'], names: ['limits'] }],
+  tests: [{ path: 'test/limiter.test.js', covers: ['src/limiter.js'] }],
   untestedSource: ['src/server.js'],
   usedElsewhere: [],
 };
