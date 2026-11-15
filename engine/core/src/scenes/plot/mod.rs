@@ -7,10 +7,13 @@ mod layout;
 
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Easing, Spring, interpolate, spring};
+use crate::camera::Camera;
 use crate::chrome::callout::HeaderCallout;
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::display::{DisplayList, Path, PathBuilder, Stroke};
+use crate::marks::geometry::Bx;
+use crate::marks::{Board, MarkTargets, Refs, StepRefs};
 use crate::model::Voiceover;
 use crate::states::{BoundModel, FnModel as StateModel, SceneState, SetEntry, StateFrame, TintMix, walk_states};
 use crate::steps::FocusSpotlight as Focus;
@@ -135,6 +138,48 @@ struct PlotView {
     states: Vec<SceneState>,
     steps: HashMap<String, Vec<usize>>,
     callout: Option<HeaderCallout>,
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
+}
+
+/// A plot's refs, resolved with its model.
+struct PlotRefs<'a> {
+    sm: &'a StateModel,
+    scene: &'a Value,
+}
+
+impl Refs for PlotRefs<'_> {
+    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
+        (self.sm.resolve)(self.scene, r)
+    }
+}
+
+/// A plot's parts where each step leaves them, with every label kept clear of (`plotTargets`).
+fn plot_targets(m: &Model, axes: &Axes, states: &[SceneState]) -> Vec<MarkTargets> {
+    let area = Bx::new(0.0, 0.0, axes.width, axes.height);
+    let bx = |r: &layout::Rect| Bx::new(r.x, r.y, r.width, r.height);
+    states[1..]
+        .iter()
+        .map(|state| {
+            let mut scope = expr::Scope::new();
+            scope.0.extend(m.state_params(state));
+            let geos = geometry(m, axes, &scope, &|_| 1.0, None);
+            let shown = |id: &str| !state.hidden.contains(&format!("p:{id}"));
+            let boxes: Vec<(String, Bx)> = geos
+                .iter()
+                .filter_map(|g| {
+                    let id = &m.parts[g.part].id;
+                    let b = g.box_.as_ref().filter(|_| g.visible && shown(id))?;
+                    Some((format!("p:{id}"), bx(b)))
+                })
+                .collect();
+            let mut obstacles: Vec<Bx> = boxes.iter().map(|(_, b)| *b).collect();
+            obstacles.extend(labels(m, axes, &geos, &scope, &shown).iter().map(|l| bx(&l.box_)));
+            obstacles.extend(axes.ticks_x.iter().chain(&axes.ticks_y).map(|t| bx(&t.box_)));
+            MarkTargets { obstacles: Some(obstacles), ..MarkTargets::new(boxes, area) }
+        })
+        .collect()
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -144,7 +189,6 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let sm = state_model();
     let states = walk_states(&BoundModel { model: &sm, scene: input.scene }, input.scene);
     let steps = crate::targets::target_steps_with(input.scene, |r| (sm.resolve)(input.scene, r));
-    CURRENT.with(|c| *c.borrow_mut() = None);
     let shell = Shell::new(input.scene);
     let callout = HeaderCallout::new(input.scene);
     let (w, mut h) = content_box(shell.title.is_some() || callout.is_some());
@@ -152,8 +196,25 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         h -= (t.lines.len() as f64 - 1.0) * crate::timing::js_round(t.size * t.line_height);
     }
     let axes = Axes::new(&model, w, h);
+    let marks = plot_targets(&model, &axes, &states);
+    let refs = PlotRefs { sm: &sm, scene: input.scene };
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(input.scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(input.scene, &step_refs, (w, h));
+    CURRENT.with(|c| *c.borrow_mut() = None);
     let model = Arc::try_unwrap(model).map_err(|_| "plot model shared".to_string())?;
-    Ok(Box::new(PlotView { shell, scene: input.scene.clone(), model, axes, states, steps, callout }))
+    Ok(Box::new(PlotView {
+        shell,
+        scene: input.scene.clone(),
+        model,
+        axes,
+        states,
+        steps,
+        callout,
+        marks,
+        board,
+        camera,
+    }))
 }
 
 fn px(p: Px) -> (f32, f32) {
@@ -316,7 +377,18 @@ impl SceneView for PlotView {
             None => Vec::new(),
         };
         let is_traced = |id: &str| traced.iter().any(|t| t == id);
-        let geos = geometry(m, axes, &scope, &|id| if is_traced(id) { t } else { 1.0 });
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
+        let shows = view.map(|v| {
+            let (w, h) = (axes.width, axes.height);
+            let rect = layout::Rect {
+                x: v.x - w / (2.0 * v.zoom),
+                y: v.y - h / (2.0 * v.zoom),
+                width: w / v.zoom,
+                height: h / v.zoom,
+            };
+            (rect, v.zoom)
+        });
+        let geos = geometry(m, axes, &scope, &|id| if is_traced(id) { t } else { 1.0 }, shows);
         let appear =
             |i: f64| spring(frame - START - i * STAGGER, FPS, Spring::damping(18.0).with_stiffness(140.0)).min(1.0);
         let build = appear(0.0);
@@ -344,213 +416,212 @@ impl SceneView for PlotView {
             }
         };
         let aside = callout.map(|_| Aside { height: aside_h, draw: &aside_draw });
-        // The pen marks, ink and camera of the scene go over this content.
-        // TODO(camera): a step's `camera` zooms and pans the content (SceneShell's Camera) and the plot's view.
         self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| {
-            let layer = |dl: &mut DisplayList, opacity: f64, body: &dyn Fn(&mut DisplayList)| {
-                if opacity < 0.999 {
-                    dl.push_layer(opacity as f32);
-                    body(dl);
-                    dl.pop_layer();
-                } else {
-                    body(dl);
-                }
-            };
-            let stroke_line = |dl: &mut DisplayList, a: Px, b: Px, color: Color, w: f32| {
-                if let Some(p) = line_path(a, b) {
-                    dl.path(p, None, Some(Stroke::solid(color, w)));
-                }
-            };
-            // The grid.
-            layer(dl, build, &|dl| {
-                if m.x.grid {
-                    for tk in &axes.ticks_x {
-                        stroke_line(dl, [tk.at, plot.y], [tk.at, plot.y + plot.height], BORDER_STRONG, 1.5);
+            self.camera.draw(dl, view, |dl| {
+                let layer = |dl: &mut DisplayList, opacity: f64, body: &dyn Fn(&mut DisplayList)| {
+                    if opacity < 0.999 {
+                        dl.push_layer(opacity as f32);
+                        body(dl);
+                        dl.pop_layer();
+                    } else {
+                        body(dl);
                     }
-                }
-                if m.y.as_ref().is_some_and(|y| y.grid) {
-                    for tk in &axes.ticks_y {
-                        stroke_line(dl, [plot.x, tk.at], [plot.x + plot.width, tk.at], BORDER_STRONG, 1.5);
+                };
+                let stroke_line = |dl: &mut DisplayList, a: Px, b: Px, color: Color, w: f32| {
+                    if let Some(p) = line_path(a, b) {
+                        dl.path(p, None, Some(Stroke::solid(color, w)));
                     }
-                }
-            });
-            let clip = |dl: &mut DisplayList, body: &dyn Fn(&mut DisplayList)| {
-                dl.push_clip(
-                    (plot.x - 4.0) as f32,
-                    (plot.y - 4.0) as f32,
-                    (plot.width + 8.0) as f32,
-                    (plot.height + 8.0) as f32,
-                    0.0,
-                );
-                body(dl);
-                dl.pop_clip();
-            };
-            let draw_geo = |dl: &mut DisplayList, geo: &Geo| {
-                let part: &Part = &m.parts[geo.part];
-                let Look { color, opacity, glow } = look(&part.id, geo.part);
-                if opacity <= 0.001 {
-                    return;
-                }
-                let width = 5.0 + 2.0 * glow;
-                match (&part.kind, &part.item) {
-                    (Kind::Areas, _) => {
-                        if let Some(poly) = &geo.polygon
-                            && let Some(path) = run_closed(poly)
-                        {
-                            let a = (0.22 * opacity + 0.12 * glow) as f32;
-                            dl.path(path, Some(color.alpha(color.a * a).into()), None);
+                };
+                // The grid.
+                layer(dl, build, &|dl| {
+                    if m.x.grid {
+                        for tk in &axes.ticks_x {
+                            stroke_line(dl, [tk.at, plot.y], [tk.at, plot.y + plot.height], BORDER_STRONG, 1.5);
                         }
                     }
-                    (Kind::Functions | Kind::Series, item) => {
-                        let dashed =
-                            matches!(item, Item::Function { dashed: true, .. } | Item::Series { dashed: true, .. });
-                        layer(dl, opacity, &|dl| {
-                            let runs: Vec<&Vec<Px>> = geo.runs.iter().filter(|r| r.len() > 1).collect();
-                            let paint = |dl: &mut DisplayList, extra: f32, c: Color| {
-                                let sw = width as f32 + extra;
-                                for r in &runs {
-                                    if let Some(p) = run_path(r) {
-                                        let st = if dashed {
-                                            Stroke::dashed(c, sw, 16.0, 11.0)
-                                        } else {
-                                            Stroke::solid(c, sw)
-                                        };
-                                        dl.path(p, None, Some(st.rounded()));
-                                    }
-                                }
-                                for d in &geo.dots {
-                                    let r = 7.0 + extra / 2.0;
-                                    if extra > 0.0 {
-                                        dl.circle(d[0] as f32, d[1] as f32, r, c);
-                                    }
-                                }
-                            };
-                            glowed(dl, glow, color, width, &paint);
-                            for d in &geo.dots {
-                                if let Some(c) = PathBuilder::from_circle(d[0] as f32, d[1] as f32, 7.0) {
-                                    dl.path(c, Some(color.into()), Some(Stroke::solid(BG, 2.0)));
-                                }
+                    if m.y.as_ref().is_some_and(|y| y.grid) {
+                        for tk in &axes.ticks_y {
+                            stroke_line(dl, [plot.x, tk.at], [plot.x + plot.width, tk.at], BORDER_STRONG, 1.5);
+                        }
+                    }
+                });
+                let clip = |dl: &mut DisplayList, body: &dyn Fn(&mut DisplayList)| {
+                    dl.push_clip(
+                        (plot.x - 4.0) as f32,
+                        (plot.y - 4.0) as f32,
+                        (plot.width + 8.0) as f32,
+                        (plot.height + 8.0) as f32,
+                        0.0,
+                    );
+                    body(dl);
+                    dl.pop_clip();
+                };
+                let draw_geo = |dl: &mut DisplayList, geo: &Geo| {
+                    let part: &Part = &m.parts[geo.part];
+                    let Look { color, opacity, glow } = look(&part.id, geo.part);
+                    if opacity <= 0.001 {
+                        return;
+                    }
+                    let width = 5.0 + 2.0 * glow;
+                    match (&part.kind, &part.item) {
+                        (Kind::Areas, _) => {
+                            if let Some(poly) = &geo.polygon
+                                && let Some(path) = run_closed(poly)
+                            {
+                                let a = (0.22 * opacity + 0.12 * glow) as f32;
+                                dl.path(path, Some(color.alpha(color.a * a).into()), None);
                             }
-                        });
-                    }
-                    (Kind::Vectors, _) => {
-                        let Some([a, b]) = geo.arrow else { return };
-                        layer(dl, opacity, &|dl| {
-                            let paint = |dl: &mut DisplayList, extra: f32, c: Color| {
-                                if let Some(p) = line_path(a, b) {
-                                    dl.path(p, None, Some(Stroke::solid(c, width as f32 + extra).rounded()));
-                                }
-                                if extra > 0.0 {
-                                    arrow_head(dl, a, b, c, extra / 2.0);
-                                }
-                            };
-                            glowed(dl, glow, color, width, &paint);
-                            arrow_head(dl, a, b, color, 0.0);
-                        });
-                    }
-                    (Kind::Points, Item::Point { guides, .. }) => {
-                        let Some(dot) = geo.dot.filter(|_| geo.visible) else { return };
-                        layer(dl, opacity, &|dl| {
-                            let r = POINT_R + 2.0 * glow;
-                            let paint = |dl: &mut DisplayList, extra: f32, c: Color| {
-                                dl.circle(dot[0] as f32, dot[1] as f32, r as f32 + extra / 2.0, c);
-                            };
-                            glowed(dl, glow, color, 2.0 * r, &paint);
-                            if *guides {
-                                dl.group(|dl| {
-                                    dl.fade(0.7);
-                                    let dash = |dl: &mut DisplayList, a: Px, b: Px| {
-                                        if let Some(p) = line_path(a, b) {
-                                            dl.path(p, None, Some(Stroke::dashed(color, 2.5, 8.0, 8.0)));
+                        }
+                        (Kind::Functions | Kind::Series, item) => {
+                            let dashed =
+                                matches!(item, Item::Function { dashed: true, .. } | Item::Series { dashed: true, .. });
+                            layer(dl, opacity, &|dl| {
+                                let runs: Vec<&Vec<Px>> = geo.runs.iter().filter(|r| r.len() > 1).collect();
+                                let paint = |dl: &mut DisplayList, extra: f32, c: Color| {
+                                    let sw = width as f32 + extra;
+                                    for r in &runs {
+                                        if let Some(p) = run_path(r) {
+                                            let st = if dashed {
+                                                Stroke::dashed(c, sw, 16.0, 11.0)
+                                            } else {
+                                                Stroke::solid(c, sw)
+                                            };
+                                            dl.path(p, None, Some(st.rounded()));
                                         }
-                                    };
-                                    dash(dl, dot, [dot[0], axes.x_axis_y]);
-                                    if let Some(yx) = axes.y_axis_x {
-                                        dash(dl, dot, [yx, dot[1]]);
                                     }
-                                });
-                            }
-                            if let Some(c) = PathBuilder::from_circle(dot[0] as f32, dot[1] as f32, r as f32) {
-                                dl.path(c, Some(color.into()), Some(Stroke::solid(BG, 3.0)));
-                            }
-                        });
+                                    for d in &geo.dots {
+                                        let r = 7.0 + extra / 2.0;
+                                        if extra > 0.0 {
+                                            dl.circle(d[0] as f32, d[1] as f32, r, c);
+                                        }
+                                    }
+                                };
+                                glowed(dl, glow, color, width, &paint);
+                                for d in &geo.dots {
+                                    if let Some(c) = PathBuilder::from_circle(d[0] as f32, d[1] as f32, 7.0) {
+                                        dl.path(c, Some(color.into()), Some(Stroke::solid(BG, 2.0)));
+                                    }
+                                }
+                            });
+                        }
+                        (Kind::Vectors, _) => {
+                            let Some([a, b]) = geo.arrow else { return };
+                            layer(dl, opacity, &|dl| {
+                                let paint = |dl: &mut DisplayList, extra: f32, c: Color| {
+                                    if let Some(p) = line_path(a, b) {
+                                        dl.path(p, None, Some(Stroke::solid(c, width as f32 + extra).rounded()));
+                                    }
+                                    if extra > 0.0 {
+                                        arrow_head(dl, a, b, c, extra / 2.0);
+                                    }
+                                };
+                                glowed(dl, glow, color, width, &paint);
+                                arrow_head(dl, a, b, color, 0.0);
+                            });
+                        }
+                        (Kind::Points, Item::Point { guides, .. }) => {
+                            let Some(dot) = geo.dot.filter(|_| geo.visible) else { return };
+                            layer(dl, opacity, &|dl| {
+                                let r = POINT_R + 2.0 * glow;
+                                let paint = |dl: &mut DisplayList, extra: f32, c: Color| {
+                                    dl.circle(dot[0] as f32, dot[1] as f32, r as f32 + extra / 2.0, c);
+                                };
+                                glowed(dl, glow, color, 2.0 * r, &paint);
+                                if *guides {
+                                    dl.group(|dl| {
+                                        dl.fade(0.7);
+                                        let dash = |dl: &mut DisplayList, a: Px, b: Px| {
+                                            if let Some(p) = line_path(a, b) {
+                                                dl.path(p, None, Some(Stroke::dashed(color, 2.5, 8.0, 8.0)));
+                                            }
+                                        };
+                                        dash(dl, dot, [dot[0], axes.x_axis_y]);
+                                        if let Some(yx) = axes.y_axis_x {
+                                            dash(dl, dot, [yx, dot[1]]);
+                                        }
+                                    });
+                                }
+                                if let Some(c) = PathBuilder::from_circle(dot[0] as f32, dot[1] as f32, r as f32) {
+                                    dl.path(c, Some(color.into()), Some(Stroke::solid(BG, 3.0)));
+                                }
+                            });
+                        }
+                        _ => {}
                     }
-                    _ => {}
-                }
-            };
-            let of_kinds =
-                |kinds: &[Kind]| geos.iter().filter(|g| kinds.contains(&m.parts[g.part].kind)).collect::<Vec<_>>();
+                };
+                let of_kinds =
+                    |kinds: &[Kind]| geos.iter().filter(|g| kinds.contains(&m.parts[g.part].kind)).collect::<Vec<_>>();
 
-            clip(dl, &|dl| of_kinds(&[Kind::Areas]).into_iter().for_each(|g| draw_geo(dl, g)));
-            // The axes.
-            layer(dl, build, &|dl| {
-                let w = 2.5;
-                stroke_line(dl, [plot.x, axes.x_axis_y], [plot.x + plot.width * build, axes.x_axis_y], MUTED, w);
-                if let Some(yx) = axes.y_axis_x {
-                    stroke_line(
+                clip(dl, &|dl| of_kinds(&[Kind::Areas]).into_iter().for_each(|g| draw_geo(dl, g)));
+                // The axes.
+                layer(dl, build, &|dl| {
+                    let w = 2.5;
+                    stroke_line(dl, [plot.x, axes.x_axis_y], [plot.x + plot.width * build, axes.x_axis_y], MUTED, w);
+                    if let Some(yx) = axes.y_axis_x {
+                        stroke_line(
+                            dl,
+                            [yx, plot.y + plot.height],
+                            [yx, plot.y + plot.height - plot.height * build],
+                            MUTED,
+                            w,
+                        );
+                    }
+                    for tk in &axes.ticks_x {
+                        let top = axes.x_axis_y - if axes.number_line { TICK_LEN } else { 0.0 };
+                        stroke_line(dl, [tk.at, top], [tk.at, axes.x_axis_y + TICK_LEN], MUTED, w);
+                    }
+                    if let Some(yx) = axes.y_axis_x {
+                        for tk in &axes.ticks_y {
+                            stroke_line(dl, [yx - TICK_LEN, tk.at], [yx, tk.at], MUTED, w);
+                        }
+                    }
+                });
+                clip(dl, &|dl| of_kinds(&[Kind::Functions, Kind::Series]).into_iter().for_each(|g| draw_geo(dl, g)));
+                // The axis text sits over the lines, on a halo of the background.
+                let tick_style = Style::sans(TICK_FONT.weight as f32, TICK_FONT.size as f32);
+                for tk in axes.ticks_x.iter().chain(axes.ticks_y.iter()) {
+                    halo(
                         dl,
-                        [yx, plot.y + plot.height],
-                        [yx, plot.y + plot.height - plot.height * build],
+                        &tk.text,
+                        tick_style,
+                        tk.box_.x as f32,
+                        (tk.box_.y + tk.box_.height / 2.0) as f32,
                         MUTED,
-                        w,
+                        build as f32,
                     );
                 }
-                for tk in &axes.ticks_x {
-                    let top = axes.x_axis_y - if axes.number_line { TICK_LEN } else { 0.0 };
-                    stroke_line(dl, [tk.at, top], [tk.at, axes.x_axis_y + TICK_LEN], MUTED, w);
+                let axis_style = Style::sans(AXIS_FONT.weight as f32, AXIS_FONT.size as f32);
+                for l in [&axes.label_x, &axes.label_y].into_iter().flatten() {
+                    halo(
+                        dl,
+                        &l.text,
+                        axis_style,
+                        l.box_.x as f32,
+                        (l.box_.y + l.box_.height / 2.0) as f32,
+                        TEXT,
+                        build as f32,
+                    );
                 }
-                if let Some(yx) = axes.y_axis_x {
-                    for tk in &axes.ticks_y {
-                        stroke_line(dl, [yx - TICK_LEN, tk.at], [yx, tk.at], MUTED, w);
-                    }
+                of_kinds(&[Kind::Vectors, Kind::Points]).into_iter().for_each(|g| draw_geo(dl, g));
+                let label_style = Style::sans(LABEL_FONT.weight as f32, LABEL_FONT.size as f32);
+                for l in &placed {
+                    let index = m.parts.iter().position(|p| p.id == l.id).unwrap_or(0);
+                    let Look { color, opacity, .. } = look(&l.id, index);
+                    // A label waits for its line to finish drawing, rather than riding the pen across the plot.
+                    let written = if is_traced(&l.id) { interpolate(t, &[0.85, 1.0], &[0.0, 1.0], CLAMP) } else { 1.0 };
+                    let _ = &l.tone;
+                    halo(
+                        dl,
+                        &l.text,
+                        label_style,
+                        l.box_.x as f32,
+                        (l.box_.y + l.box_.height / 2.0) as f32,
+                        color,
+                        (opacity * written) as f32,
+                    );
                 }
-            });
-            clip(dl, &|dl| of_kinds(&[Kind::Functions, Kind::Series]).into_iter().for_each(|g| draw_geo(dl, g)));
-            // The axis text sits over the lines, on a halo of the background.
-            let tick_style = Style::sans(TICK_FONT.weight as f32, TICK_FONT.size as f32);
-            for tk in axes.ticks_x.iter().chain(axes.ticks_y.iter()) {
-                halo(
-                    dl,
-                    &tk.text,
-                    tick_style,
-                    tk.box_.x as f32,
-                    (tk.box_.y + tk.box_.height / 2.0) as f32,
-                    MUTED,
-                    build as f32,
-                );
-            }
-            let axis_style = Style::sans(AXIS_FONT.weight as f32, AXIS_FONT.size as f32);
-            for l in [&axes.label_x, &axes.label_y].into_iter().flatten() {
-                halo(
-                    dl,
-                    &l.text,
-                    axis_style,
-                    l.box_.x as f32,
-                    (l.box_.y + l.box_.height / 2.0) as f32,
-                    TEXT,
-                    build as f32,
-                );
-            }
-            of_kinds(&[Kind::Vectors, Kind::Points]).into_iter().for_each(|g| draw_geo(dl, g));
-            let label_style = Style::sans(LABEL_FONT.weight as f32, LABEL_FONT.size as f32);
-            for l in &placed {
-                let index = m.parts.iter().position(|p| p.id == l.id).unwrap_or(0);
-                let Look { color, opacity, .. } = look(&l.id, index);
-                // A label waits for its line to finish drawing, rather than riding the pen across the plot.
-                let written = if is_traced(&l.id) { interpolate(t, &[0.85, 1.0], &[0.0, 1.0], CLAMP) } else { 1.0 };
-                let _ = &l.tone;
-                halo(
-                    dl,
-                    &l.text,
-                    label_style,
-                    l.box_.x as f32,
-                    (l.box_.y + l.box_.height / 2.0) as f32,
-                    color,
-                    (opacity * written) as f32,
-                );
-            }
-            // TODO(marks): PenMarks of the scene's steps.
-            // TODO(ink): the scene's ink.
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            })
         });
     }
 }

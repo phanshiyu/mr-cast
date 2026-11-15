@@ -868,11 +868,18 @@ fn clamp_y(y: f64, plot: &Rect) -> f64 {
     (plot.y + plot.height).min(plot.y.max(y))
 }
 
-/// Where each part draws (`plotGeometry`), with the whole view under the camera.
-pub fn geometry(m: &Model, axes: &Axes, scope: &Scope, progress: &dyn Fn(&str) -> f64) -> Vec<Geo> {
+/// Where each part draws (`plotGeometry`); `view` is the part of the box the camera shows and its zoom (the whole box
+/// when None), so lines are sampled finely enough to stay smooth there.
+pub fn geometry(
+    m: &Model,
+    axes: &Axes,
+    scope: &Scope,
+    progress: &dyn Fn(&str) -> f64,
+    view: Option<(Rect, f64)>,
+) -> Vec<Geo> {
     let plot = &axes.plot;
     let mut out: Vec<Geo> = Vec::new();
-    let (rect, zoom) = (Rect { x: 0.0, y: 0.0, width: axes.width, height: axes.height }, 1.0);
+    let (rect, zoom) = view.unwrap_or((Rect { x: 0.0, y: 0.0, width: axes.width, height: axes.height }, 1.0));
     for (index, part) in m.parts.iter().enumerate() {
         if part.kind == Kind::Areas {
             continue;
