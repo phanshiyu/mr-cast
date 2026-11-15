@@ -1,6 +1,6 @@
 # compare
 
-Two sides in one layout, row by row. Rows that differ get an arrow between the sides, rows that match dim.
+Two sides in one layout, row by row. Rows that differ get an arrow between the sides, rows that match dim; or, as options, a decision beside the alternative not taken.
 
 ## Example
 
@@ -39,6 +39,10 @@ To show existing code whose behaviour changed, old lines against new, name the l
 ```
 
 `hunk` is an id from the hunk index (a snippet id works for `"new"`), `lines` a number or an `"a-b"` range. `"old"` shows the removed and context lines of that range by old-file line numbers, `"new"` the added and context lines by new-file numbers. The cell draws the file name and line numbers quietly above the code. A cell holds up to 8 lines; two rows of 8 still read, and the fit check in `validate` reports a comparison that no longer fits. `validate` fails on a hunk, a side or a range that does not exist, and says which lines the hunk does have. A demo: `{{MR_CAST}}/examples/primitives/compare-diff/storyboard.json`.
+
+### A decision and the alternative not taken
+
+An arrow between the sides reads as "becomes", which is the wrong meaning for two options. Set `"mode": "options"` and nothing is drawn between the sides. Mark the one taken with `"chosen": true` on a side, or `"chosen": 0` or `1` on a row (the side that row took, 0 the left); the one taken is drawn strong and labelled "Chosen", the other quieter and labelled "Not taken". Mark sides or rows, not both. Without `chosen`, the options sit side by side unmarked. `validate` fails on `chosen` without `"mode": "options"`. A demo: scene 2 of `{{MR_CAST}}/examples/primitives/compare/storyboard.json`.
 
 `{{MR_CAST}}/bin/mr-cast schema compare` prints its fields.
 

@@ -7,12 +7,14 @@ import type { CompareScene, Verdict } from '../types';
 import {
   CODE_PAD,
   HEADER_H,
+  TAG_H,
   VERDICT_W,
   compareBoxes,
   layoutCompare,
   type CompareLayout,
   type PlacedCompareCell,
   type PlacedCompareRow,
+  type Taken,
 } from '../utils/compareLayout';
 import { plainCodeColor, tokenColor, tokenizeLines } from '../utils/highlight';
 import { staged } from '../utils/penGeometry';
@@ -36,6 +38,35 @@ const SAME_OPACITY = 0.5;
 const CUE_COLOR = colors.accent;
 /** A row's label draws with the frames, softer until its row is shown, so the labels read as the agenda. */
 const UNSHOWN_LABEL = 0.55;
+
+/** A side or cell that was not taken draws quieter, so the one taken carries the eye. */
+const NOT_TAKEN_OPACITY = 0.55;
+
+const TAG_TEXT: Record<Taken, string> = { chosen: 'Chosen', notTaken: 'Not taken' };
+
+/** The small label that says an option was taken or not. */
+const TakenTag: React.FC<{ taken: Taken; height?: number }> = ({ taken, height = 26 }) => (
+  <div
+    style={{
+      height,
+      boxSizing: 'border-box',
+      padding: '0 12px',
+      borderRadius: 999,
+      display: 'flex',
+      alignItems: 'center',
+      fontSize: 15,
+      fontWeight: 800,
+      letterSpacing: 1.2,
+      textTransform: 'uppercase',
+      whiteSpace: 'nowrap',
+      color: taken === 'chosen' ? '#0b0d18' : colors.muted,
+      background: taken === 'chosen' ? colors.accent : 'transparent',
+      boxShadow: taken === 'chosen' ? undefined : `inset 0 0 0 1.5px ${colors.border}`,
+    }}
+  >
+    {TAG_TEXT[taken]}
+  </div>
+);
 
 const VERDICT_ICON: Record<Verdict, LucideIcon> = { good: Check, bad: X, warn: TriangleAlert };
 
@@ -122,6 +153,20 @@ const Cell: React.FC<{
           }}
         />
       ) : null}
+      {cell.taken === 'chosen' && cell.tagged ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 10,
+            right: 10,
+            top: 6,
+            bottom: 6,
+            borderRadius: 12,
+            background: 'rgba(124, 140, 255, 0.07)',
+            boxShadow: `inset 0 0 0 1.5px ${colors.accent}99`,
+          }}
+        />
+      ) : null}
       {glow > 0 ? (
         <div
           style={{
@@ -147,10 +192,15 @@ const Cell: React.FC<{
           flexDirection: 'column',
           justifyContent: 'center',
           alignItems: 'flex-start',
-          opacity: row.same ? SAME_OPACITY : 1,
+          opacity: (row.same ? SAME_OPACITY : 1) * (cell.taken === 'notTaken' ? NOT_TAKEN_OPACITY : 1),
           transform: `translateY(${(1 - appear) * 10}px)`,
         }}
       >
+        {cell.tagged && cell.taken ? (
+          <div style={{ height: TAG_H, display: 'flex', alignItems: 'flex-start' }}>
+            <TakenTag taken={cell.taken} />
+          </div>
+        ) : null}
         {cell.kind === 'text' ? (
           <FitText fit={cell.text} style={{ color: colors.text }} />
         ) : cell.kind === 'code' ? (
@@ -269,8 +319,8 @@ const Panel: React.FC<{ layout: CompareLayout; side: 0 | 1; appear: number; titl
         height: layout.height,
         borderRadius: 20,
         background: colors.surface,
-        boxShadow: `inset 0 0 0 1.5px ${emphasis.glow > 0 ? colors.accent : `${tone.color}55`}, 0 18px 50px rgba(0,0,0,0.4)${emphasis.glow > 0 ? `, 0 0 ${40 * emphasis.glow}px ${colors.accentGlow}` : ''}`,
-        opacity: appear,
+        boxShadow: `inset 0 0 0 ${panel.taken === 'chosen' ? 2.5 : 1.5}px ${emphasis.glow > 0 ? colors.accent : panel.taken === 'chosen' ? colors.accent : `${tone.color}55`}, 0 18px 50px rgba(0,0,0,0.4)${emphasis.glow > 0 ? `, 0 0 ${40 * emphasis.glow}px ${colors.accentGlow}` : ''}`,
+        opacity: appear * (panel.taken === 'notTaken' ? NOT_TAKEN_OPACITY + 0.2 : 1),
         transform: `translateY(${(1 - appear) * 16}px)`,
       }}
     >
@@ -296,6 +346,18 @@ const Panel: React.FC<{ layout: CompareLayout; side: 0 | 1; appear: number; titl
           opacity: titleIn * Math.max(emphasis.opacity, 0.7),
         }}
       />
+      {panel.taken ? (
+        <div
+          style={{
+            position: 'absolute',
+            right: layout.cellX,
+            top: (HEADER_H - 30) / 2,
+            opacity: titleIn,
+          }}
+        >
+          <TakenTag taken={panel.taken} height={30} />
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -421,7 +483,9 @@ export const Compare: React.FC<SceneProps<CompareScene>> = ({ scene, hunks, dura
                 emphasis={{ ...cellE[0]!, opacity: cellOpacity(0) }}
                 glow={cellE[0]!.glow}
               />
-              <Cue layout={layout} row={row} draw={cue} opacity={rowOpacity * (row.same ? SAME_OPACITY + 0.2 : 1)} />
+              {layout.options ? null : (
+                <Cue layout={layout} row={row} draw={cue} opacity={rowOpacity * (row.same ? SAME_OPACITY + 0.2 : 1)} />
+              )}
               <Cell
                 layout={layout}
                 row={row}

@@ -121,3 +121,90 @@ test('eight lines in two rows still fit the frame at a readable size', () => {
   assert.equal(layout.scale, 1);
   assert.ok(layout.rows[0].cells[1].lines.size >= 18, `code drawn at ${layout.rows[0].cells[1].lines.size}px`);
 });
+
+const options = (extra = {}) => ({
+  type: 'compare',
+  mode: 'options',
+  narration: 'Two ways, and the one taken.',
+  sides: [{ title: 'Delete the row', chosen: true }, { title: 'Rotate the key' }],
+  rows: [{ label: 'Cost', cells: ['One delete', 'A rollout'] }],
+  ...extra,
+});
+
+test('options mode draws no cue between the sides and marks the side taken and the one not', () => {
+  const layout = layoutCompare(options(), 1700, 760, hunks);
+  assert.equal(layout.options, true);
+  assert.deepEqual(
+    layout.sides.map((side) => side.taken),
+    ['chosen', 'notTaken'],
+  );
+  assert.deepEqual(
+    layout.rows[0].cells.map((cell) => cell.taken),
+    ['chosen', 'notTaken'],
+  );
+  assert.equal(layout.rows[0].same, false);
+  const same = options({ rows: [{ cells: ['Both', 'Both'] }] });
+  assert.equal(layoutCompare(same, 1700, 760, hunks).rows[0].same, false, 'no "=" between options either');
+  assert.equal(
+    layoutCompare({ ...same, mode: undefined }, 1700, 760, hunks).rows[0].same,
+    true,
+    'default mode is unchanged',
+  );
+});
+
+test('options mode without chosen marks nothing, and a row can say which side it took', () => {
+  const none = layoutCompare(options({ sides: undefined }), 1700, 760, hunks);
+  assert.deepEqual(
+    none.rows[0].cells.map((c) => c.taken),
+    [null, null],
+  );
+  const rows = layoutCompare(
+    options({ sides: undefined, rows: [{ cells: ['a', 'b'], chosen: 1 }, { cells: ['c', 'd'] }] }),
+    1700,
+    760,
+    hunks,
+  );
+  assert.deepEqual(
+    rows.rows[0].cells.map((c) => [c.taken, c.tagged]),
+    [
+      ['notTaken', true],
+      ['chosen', true],
+    ],
+  );
+  assert.deepEqual(
+    rows.rows[1].cells.map((c) => c.taken),
+    [null, null],
+  );
+  assert.ok(rows.rows[0].h > rows.rows[1].h, 'a tagged row makes room for its labels');
+});
+
+test('the default mode ignores nothing: sides carry no taken marks', () => {
+  const plain = layoutCompare({ ...options(), mode: undefined }, 1700, 760, hunks);
+  assert.deepEqual(
+    plain.sides.map((side) => side.taken),
+    [null, null],
+  );
+  assert.equal(plain.options, false);
+});
+
+test('validate accepts options with chosen on a side or on rows, and rejects the rest', async () => {
+  const ok = await check(options(), options({ sides: undefined, rows: [{ cells: ['a', 'b'], chosen: 0 }] }));
+  assert.deepEqual(ok.errors, []);
+  const bad = await check(
+    options({ mode: 'versus' }),
+    options({
+      sides: [
+        { title: 'A', chosen: true },
+        { title: 'B', chosen: true },
+      ],
+    }),
+    options({ rows: [{ cells: ['a', 'b'], chosen: 2 }] }),
+    options({ rows: [{ cells: ['a', 'b'], chosen: 1 }] }),
+    { ...options(), mode: undefined },
+  );
+  has(bad.errors, 'scenes[0].mode: must be one of changes, options');
+  has(bad.errors, 'scenes[1].sides: both sides are chosen');
+  has(bad.errors, 'scenes[2].rows[0].chosen: must be 0 or 1');
+  has(bad.errors, 'scenes[3].rows[0].chosen: the sides are already marked chosen');
+  has(bad.errors, 'scenes[4].sides[0].chosen: only means something with "mode": "options"');
+});

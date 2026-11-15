@@ -10,6 +10,11 @@ export const HEADER_H = 66;
 const PANEL_PAD = 26;
 /** Room between the two sides, where each row's "=" or arrow sits. */
 const GUTTER = 88;
+/** In `mode: "options"` nothing sits between the sides, so they sit closer. */
+const OPTIONS_GUTTER = 40;
+/** Room for the "Chosen" or "Not taken" label in a side's title band, and over a row's cell. */
+const TAG_W = 150;
+export const TAG_H = 32;
 const LABEL_GAP = 30;
 const LABEL_MIN = 200;
 const LABEL_MAX = 360;
@@ -21,12 +26,18 @@ const BOTTOM_PAD = 14;
 const MAX_FONT = 30;
 const MIN_FONT = 18;
 
+export type Taken = 'chosen' | 'notTaken';
+
 export type PlacedCompareCell = (
   | { kind: 'text'; text: Fit }
   | { kind: 'code'; code: string; lang: string; lines: Fit; caption: Fit | null; capH: number }
   | { kind: 'image'; src: string; fit: ImageFit }
 ) & {
   verdict: Verdict | null;
+  /** In `mode: "options"`: the option taken, or the one not taken. */
+  taken: Taken | null;
+  /** Whether the cell carries its own "Chosen" or "Not taken" label above its content, as a row's `chosen` asks. */
+  tagged: boolean;
   /** Height of its text or code block, in layout pixels. */
   h: number;
 };
@@ -46,12 +57,16 @@ export interface CompareSidePlaced {
   w: number;
   title: Fit;
   tone: Tone;
+  /** In `mode: "options"`, when the side is marked taken or the other is. */
+  taken: Taken | null;
 }
 
 export interface CompareLayout {
   width: number;
   height: number;
   font: number;
+  /** `mode: "options"`: no cue between the sides. */
+  options: boolean;
   /** Width of the row label column, 0 when no row has a label. */
   labelW: number;
   sides: [CompareSidePlaced, CompareSidePlaced];
@@ -73,7 +88,7 @@ function fitCell(cell: CompareCell, width: number, font: number, path: string, h
   }
   if (typeof cell === 'string') {
     const text = fitTextAt(cell.trim(), sized(SLOTS.compareCell, width), path, font);
-    return { kind: 'text', text, verdict: null, h: text.height };
+    return { kind: 'text', text, verdict: null, taken: null, tagged: false, h: text.height };
   }
   // A picture takes a 16:9 box the cell's width, the same on both sides whatever each picture's shape.
   if ('image' in cell)
@@ -82,6 +97,8 @@ function fitCell(cell: CompareCell, width: number, font: number, path: string, h
       src: cell.image,
       fit: cell.fit ?? 'contain',
       verdict: null,
+      taken: null,
+      tagged: false,
       h: Math.round((width * 9) / 16),
     };
   return fitCode(cell.code, cell.lang ?? 'plain', null, width, font, path);
@@ -116,6 +133,8 @@ function fitCode(
     caption: cap,
     capH,
     verdict: null,
+    taken: null,
+    tagged: false,
     h: lines.height + capH + 2 * CODE_PAD,
   };
 }
@@ -148,15 +167,23 @@ function labelWidth(rows: readonly CompareRow[], width: number): number {
 
 function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMap) {
   const labelW = labelWidth(scene.rows, width);
-  const sideW = (width - labelW - (labelW ? LABEL_GAP : 0) - GUTTER) / 2;
+  const options = scene.mode === 'options';
+  const gutter = options ? OPTIONS_GUTTER : GUTTER;
+  const sideW = (width - labelW - (labelW ? LABEL_GAP : 0) - gutter) / 2;
   const x0 = labelW ? labelW + LABEL_GAP : 0;
   const titles = compareTitles(scene);
+  const sideChosen = options ? [0, 1].findIndex((j) => scene.sides?.[j]?.chosen === true) : -1;
   const sides = [0, 1].map(
     (j): CompareSidePlaced => ({
-      x: j === 0 ? x0 : x0 + sideW + GUTTER,
+      x: j === 0 ? x0 : x0 + sideW + gutter,
       w: sideW,
-      title: fitText(titles[j]!, sized(SLOTS.sideTitle, sideW - 2 * PANEL_PAD), `sides[${j}].title`),
-      tone: scene.sides?.[j]?.tone ?? (j === 0 ? 'neutral' : 'accent'),
+      title: fitText(
+        titles[j]!,
+        sized(SLOTS.sideTitle, sideW - 2 * PANEL_PAD - (sideChosen >= 0 ? TAG_W : 0)),
+        `sides[${j}].title`,
+      ),
+      tone: scene.sides?.[j]?.tone ?? ((sideChosen < 0 ? j === 1 : sideChosen === j) ? 'accent' : 'neutral'),
+      taken: sideChosen < 0 ? null : sideChosen === j ? 'chosen' : 'notTaken',
     }),
   ) as [CompareSidePlaced, CompareSidePlaced];
   const verdicts = scene.rows.some((r) => r.verdict?.some(Boolean));
@@ -171,7 +198,11 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
       row.cells.slice(0, 2).map((cell, k) => fitCell(cell, cellW, font, `${path}.cells[${k}]`, hunks)),
       cellW,
       path,
-    ).map((c, k) => ({ ...c, verdict: row.verdict?.[k] ?? null }));
+    ).map((c, k): PlacedCompareCell => {
+      const tagged = options && (row.chosen === 0 || row.chosen === 1);
+      const taken: Taken | null = tagged ? (row.chosen === k ? 'chosen' : 'notTaken') : (sides[k]!.taken ?? null);
+      return { ...c, verdict: row.verdict?.[k] ?? null, taken, tagged, h: c.h + (tagged ? TAG_H : 0) };
+    });
     const label =
       typeof row.label === 'string' && row.label.trim()
         ? fitTextAt(row.label, sized(SLOTS.compareLabel, labelW), `${path}.label`, labelFont)
@@ -183,7 +214,7 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
     const placed = {
       row,
       index: i,
-      same: compareRowSame(row),
+      same: !options && compareRowSame(row),
       label,
       cells: fitted as PlacedCompareRow['cells'],
       y,
@@ -196,6 +227,7 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
     width,
     height: y + BOTTOM_PAD,
     font,
+    options,
     labelW,
     sides,
     cellX: PANEL_PAD,
