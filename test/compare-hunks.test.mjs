@@ -285,3 +285,36 @@ test('a typed code cell keeps its width and its own smallest size', () => {
   assert.equal(cell.bleed, 0);
   assert.equal(cell.codeW, layoutCompare(typed, 1712, 734, {}).cellW);
 });
+
+// A row label takes up to 360px and a verdict mark 44px from every cell, so a cell holds fewer than 86 characters.
+const labelled = (mode, title) => ({
+  type: 'compare',
+  narration: 'The same two lines, twice.',
+  ...(title ? { title: 'A scene title' } : {}),
+  ...(mode ? { mode, sides: [{ title: 'Delete the row' }, { title: 'Rotate the key' }] } : {}),
+  rows: ['h1', 'h2'].map((h) => ({
+    label: 'What the reviewer sees in the reply',
+    verdict: [null, 'good'],
+    cells: [
+      { hunk: h, side: 'old', lines: '10-11' },
+      { hunk: h, side: 'new', lines: '10-11' },
+    ],
+  })),
+});
+
+test('a cell narrowed by a long row label and verdict marks states its real limit and why, in every mode', async () => {
+  for (const mode of [undefined, 'options'])
+    for (const title of [false, true]) {
+      const run = (n) => {
+        return validateStoryboard({ title: 'T', scenes: [labelled(mode, title)] }, wide(n), { mode: 'diff' });
+      };
+      const said =
+        /holds lines of up to (\d+) characters[^;]*; the row labels and the verdict marks take room from it, and without them a cell holds up to (\d+)/;
+      let limit = 0;
+      for (let n = 40; n < 100 && (await run(n)).errors.length === 0; n++) limit = n;
+      const { errors } = await run(limit + 1);
+      const [, said1, free] = said.exec(errors[0]) ?? [];
+      assert.equal(Number(said1), limit, `${mode ?? 'default'}, title ${title}: the message says the number that fits`);
+      assert.ok(Number(free) > limit, 'and the number with no labels or verdicts is larger');
+    }
+});

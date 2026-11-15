@@ -105,6 +105,10 @@ interface Room {
   bleed: number;
   extra: number;
   frameH: number;
+  /** The width a hunk's code would have with no row labels and no verdict marks, which take room from every cell. */
+  free: number;
+  /** What narrows it, as words: "the row labels", "the verdict marks" or both. */
+  narrowedBy: string;
 }
 
 function fitCell(cell: CompareCell, room: Room, font: number, path: string, hunks: HunkMap): PlacedCompareCell {
@@ -140,14 +144,18 @@ function codeSlot(width: number, size: number, hunk: Room | null, widest: number
   const slot = { ...sized(SLOTS.compareCode, width - 2 * CODE_PAD), size };
   if (!hunk) return slot;
   const font = { family: 'mono' as const, weight: slot.weight, size: CODE_READABLE_MIN };
-  const chars = Math.floor((slot.width as number) / (measure('0'.repeat(100), font) / 100));
+  const charW = measure('0'.repeat(100), font) / 100;
+  const chars = Math.floor((slot.width as number) / charW);
+  const free = Math.floor((hunk.free - 2 * CODE_PAD) / charW);
+  const cause =
+    free > chars ? `; ${hunk.narrowedBy} take room from it, and without them a cell holds up to ${free}` : '';
   const lineH = CODE_READABLE_MIN * slot.lineHeight;
   const room =
     hunk.frameH - HEADER_H - BOTTOM_PAD - 2 * Math.round(MIN_FONT * 0.62) - 2 * CODE_PAD - (captioned ? 24 : 0);
   return {
     ...slot,
     min: CODE_READABLE_MIN,
-    fix: `this cell holds lines of up to ${chars} characters at ${CODE_READABLE_MIN}px, the smallest readable size (its longest is ${widest}), and the frame holds ${Math.floor(room / lineH)} lines of code in all, shared by the rows; narrow \`lines\` to fewer or shorter lines, or show the code in a code scene`,
+    fix: `this cell holds lines of up to ${chars} characters at ${CODE_READABLE_MIN}px, the smallest readable size (its longest is ${widest})${cause}, and the frame holds ${Math.floor(room / lineH)} lines of code in all, shared by the rows; narrow \`lines\` to fewer or shorter lines, or show the code in a code scene`,
   };
 }
 
@@ -245,7 +253,15 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
   const cellW = sideW - 2 * PANEL_PAD - (verdicts ? VERDICT_W : 0);
   // A hunk's code gives up less of the side to padding; with a verdict mark at the right it keeps that room.
   const bleed = PANEL_PAD - HUNK_EDGE;
-  const room: Room = { width: cellW, bleed, extra: bleed + (verdicts ? 0 : bleed), frameH };
+  const free = (width - gutter) / 2 - 2 * PANEL_PAD + 2 * bleed;
+  const room: Room = {
+    width: cellW,
+    bleed,
+    extra: bleed + (verdicts ? 0 : bleed),
+    frameH,
+    free,
+    narrowedBy: [labelW ? 'the row labels' : '', verdicts ? 'the verdict marks' : ''].filter(Boolean).join(' and '),
+  };
   const labelFont = Math.max(SLOTS.compareLabel.min, Math.min(SLOTS.compareLabel.size, Math.round(font * 0.87)));
   const pad = Math.round(font * 0.62);
   let y = HEADER_H;
