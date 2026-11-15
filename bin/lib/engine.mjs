@@ -1,9 +1,8 @@
-// Runs the Rust render engine (engine/, see docs/adr/0042-rust-engine.md): finds its binary and an ffmpeg, writes
-// the props it draws from, and reports its progress.
+// Runs the Rust render engine (engine/, see docs/adr/0042-rust-engine.md): finds its binary, writes the props it
+// draws from, and reports its progress. The engine encodes the MP4 itself (docs/adr/0044-encode-in-the-engine.md).
 
 import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { UserError } from './errors.mjs';
@@ -90,30 +89,6 @@ function engineBinary() {
   return binary;
 }
 
-/** The binary the `ffmpeg-static` package downloaded at install, or null. */
-function staticFfmpeg() {
-  try {
-    const found = createRequire(import.meta.url)('ffmpeg-static');
-    return typeof found === 'string' && fs.existsSync(found) ? found : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * The ffmpeg the engine encodes with: `MR_CAST_FFMPEG`, the `ffmpeg-static` package's (it has libx264), or `ffmpeg`
- * on the PATH.
- */
-export function findFfmpeg({ env = process.env, bundled = staticFfmpeg, onPath = () => runs('ffmpeg') } = {}) {
-  if (env.MR_CAST_FFMPEG) return env.MR_CAST_FFMPEG;
-  const found = bundled();
-  if (found) return found;
-  if (onPath()) return 'ffmpeg';
-  throw new UserError(
-    'no ffmpeg to encode the video with: reinstall mr-cast so its ffmpeg downloads (`npm i -g @shiyuphan/mr-cast`), install one (`brew install ffmpeg`, `apt install ffmpeg`, `winget install ffmpeg`), or set MR_CAST_FFMPEG to its path',
-  );
-}
-
 let colours;
 /** src/engine/highlight.ts, bundled with esbuild on first use: the player's own highlighter. */
 async function highlighter() {
@@ -172,12 +147,8 @@ export function parseProgress(line) {
  */
 export function runEngine(args, { onProgress } = {}) {
   const bin = engineBinary();
-  const ffmpeg = args[0] === 'render' ? findFfmpeg() : undefined;
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, ...(ffmpeg ? { MR_CAST_FFMPEG: ffmpeg } : {}) },
-    });
+    const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     running.add(child);
     let stdout = '';
     let rest = '';

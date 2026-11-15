@@ -80,7 +80,6 @@
     "d3-geo": "3.1.2",
     "dompurify": "^3.4.17",
     "esbuild": "0.28.2",
-    "ffmpeg-static": "5.3.0",
     "lucide-react": "^1.57.0",
     "mermaid": "12.3.0",
     "onnxruntime-node": "1.31.1",

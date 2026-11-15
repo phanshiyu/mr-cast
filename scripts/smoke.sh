@@ -38,11 +38,15 @@ if [ "$VOICE" = 1 ]; then
   node -e "process.exit($seconds > 5 ? 0 : 1)" || { cat "$OUT/voice.txt"; fail "voice clip is ${seconds}s"; }
   echo "smoke: ok voice (${seconds}s)"
   "${MRC[@]}" render --dir "$OUT/work/voice" --out "$OUT/voice.mp4" > "$OUT/render.txt" 2>&1 || { cat "$OUT/render.txt"; fail "render exited non-zero"; }
-  FFMPEG="$(node -p "require('$ROOT/node_modules/ffmpeg-static')")"
-  "$FFMPEG" -hide_banner -i "$OUT/voice.mp4" > "$OUT/probe.txt" 2>&1 || true
-  grep -q 'Video: h264' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 has no h264 video"; }
-  grep -q 'Audio: aac' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 has no voice"; }
-  grep -q 'Chapter #0:0' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 has no chapters"; }
+  # The engine reads its own MP4 back: an H.264 track, the voice as AAC, and the chapters both ways.
+  ENGINE="$(node --input-type=module -e "import('$ROOT/bin/lib/engine.mjs').then((m) => console.log(m.locateEngine().path))")"
+  "$ENGINE" probe --in "$OUT/voice.mp4" > "$OUT/probe.txt" 2>&1 || { cat "$OUT/probe.txt"; fail "the MP4 does not read back"; }
+  node -e '
+    const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+    const codecs = p.tracks.map((t) => t.codec).join(" ");
+    if (codecs !== "avc1 mp4a text") throw new Error(`tracks: ${codecs}`);
+    if (!p.chapters.length || p.chapters.length !== p.tracks[2].chapters.length) throw new Error("no chapters");
+  ' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 lacks video, voice or chapters"; }
   echo "smoke: ok render"
 fi
 

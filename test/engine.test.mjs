@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { findFfmpeg, locateEngine, parseProgress } from '../bin/lib/engine.mjs';
+import { locateEngine, parseProgress } from '../bin/lib/engine.mjs';
 import { sceneSegments, spokenTexts } from '../shared/timing.mjs';
 import { narrationKey } from '../shared/voice.mjs';
 
@@ -73,16 +73,6 @@ test('an install without a binary for its platform says so', () => {
   );
 });
 
-test('ffmpeg comes from MR_CAST_FFMPEG, then the ffmpeg-static package, then the PATH', () => {
-  const never = () => {
-    throw new Error('not reached');
-  };
-  assert.equal(findFfmpeg({ env: { MR_CAST_FFMPEG: '/x/ffmpeg' }, bundled: never, onPath: never }), '/x/ffmpeg');
-  assert.equal(findFfmpeg({ env: {}, bundled: () => '/static/ffmpeg', onPath: never }), '/static/ffmpeg');
-  assert.equal(findFfmpeg({ env: {}, bundled: () => null, onPath: () => true }), 'ffmpeg');
-  assert.throws(() => findFfmpeg({ env: {}, bundled: () => null, onPath: () => false }), /brew install ffmpeg/);
-});
-
 test("the engine's progress lines become fractions; other lines are not progress", () => {
   assert.equal(parseProgress('progress 64/128'), 0.5);
   assert.equal(parseProgress('progress 0/0'), 0);
@@ -139,26 +129,31 @@ test('a voiced render plays each clip from its frame', { skip: !engine() && 'no 
     const props = path.join(work, 'props.json');
     fs.writeFileSync(props, JSON.stringify({ storyboard: { title: 'T', scenes }, hunks: {}, voiceover }));
     const out = path.join(work, 'v.mp4');
-    const ffmpeg = findFfmpeg();
-    execFileSync(engine(), ['render', '--props', props, '--out', out, '--media-dir', work], {
-      env: { ...process.env, MR_CAST_FFMPEG: ffmpeg },
-      stdio: 'ignore',
-    });
-    const pcm = execFileSync(ffmpeg, ['-v', 'error', '-i', out, '-f', 's16le', '-ac', '1', '-ar', '24000', '-'], {
-      maxBuffer: 1 << 28,
-    });
+    execFileSync(engine(), ['render', '--props', props, '--out', out, '--media-dir', work], { stdio: 'ignore' });
+    // The engine reads its MP4 back and decodes the voice-over as it plays: 48 kHz mono.
+    const raw = path.join(work, 'voice.raw');
+    const probe = JSON.parse(execFileSync(engine(), ['probe', '--in', out, '--pcm', raw], { encoding: 'utf8' }));
+    assert.deepEqual(
+      probe.tracks.map((t) => t.codec),
+      ['avc1', 'mp4a', 'text'],
+    );
+    assert.deepEqual(
+      probe.chapters.map((c) => c.start),
+      [0],
+    );
+    const pcm = fs.readFileSync(raw);
     const samples = new Int16Array(pcm.buffer, pcm.byteOffset, pcm.length / 2);
     const onsets = [];
     for (let i = 0; i < samples.length; i++)
-      if (Math.abs(samples[i]) > 2000 && (onsets.length === 0 || i - onsets.at(-1).end > 2400))
+      if (Math.abs(samples[i]) > 2000 && (onsets.length === 0 || i - onsets.at(-1).end > 4800))
         onsets.push({ start: i, end: i });
       else if (Math.abs(samples[i]) > 2000) onsets.at(-1).end = i;
     const second = segments[0].at(-1).from + segments[0].at(-1).durationInFrames;
-    const expected = [segments[0][0].voiceFrom, second + segments[1][0].voiceFrom].map((f) => (f / 30) * 24000);
+    const expected = [segments[0][0].voiceFrom, second + segments[1][0].voiceFrom].map((f) => (f / 30) * 48000);
     assert.equal(onsets.length, 2);
-    // AAC smears an onset by a few milliseconds; a frame is 800 samples.
+    // AAC smears an onset by a few milliseconds; a frame is 1600 samples.
     for (const [k, e] of expected.entries())
-      assert.ok(Math.abs(onsets[k].start - e) < 200, `${onsets[k].start} vs ${e}`);
+      assert.ok(Math.abs(onsets[k].start - e) < 400, `${onsets[k].start} vs ${e}`);
   } finally {
     fs.rmSync(work, { recursive: true, force: true });
   }
