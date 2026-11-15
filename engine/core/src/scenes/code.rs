@@ -683,17 +683,12 @@ impl CodeView {
             return;
         }
         self.marks = (0..steps.len()).map(|k| self.code_targets(&steps, k)).collect();
-        let findings = input.props.storyboard.findings.clone();
+        // A review flag draws in its finding's severity (`flaggedFinding`).
+        let findings = crate::review::findings(&input.props.storyboard);
         let ink_of = |step: &Value| -> Option<InkOf> {
             let id = step.get("flag")?.as_str()?;
-            let f = findings.as_ref()?.as_array()?.iter().find(|f| f.get("id").and_then(Value::as_str) == Some(id))?;
-            let sev = f.get("severity")?.as_str()?;
-            let color = match sev {
-                "bug" => Color::css("#ff6b7a"),
-                "risk" => Color::css("#ff9f43"),
-                _ => Color::css("#8fa0ff"),
-            };
-            Some(InkOf { color, label: sev.to_string() })
+            let f = findings.iter().find(|f| f.id == id)?;
+            Some(InkOf { color: Color::css(crate::review::severity_ink(&f.severity)), label: f.severity.clone() })
         };
         let refs = StepRefs::Code(&self.hunk);
         let board = Board::new(input.scene, input.segments, &refs, &|k| self.marks.get(k).cloned().flatten(), &ink_of);
