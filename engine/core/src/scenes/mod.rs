@@ -11,6 +11,7 @@ pub mod flow;
 pub mod placeholder;
 pub mod reading;
 pub mod review;
+pub mod tests;
 pub mod text;
 
 /// What a scene is prepared from, once per project.
@@ -52,6 +53,7 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("flow", flow::prepare),
     ("review", review::prepare),
     ("reading", reading::prepare),
+    ("tests", tests::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
