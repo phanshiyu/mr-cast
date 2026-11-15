@@ -11,7 +11,8 @@ engine/
     data/                font-metrics.json and slots.json, written by scripts/engine-dump.mjs from the JS and TS
     src/
       lib.rs             Project, build_frame, render_frame (and _with/_into variants for reused buffers)
-      model.rs           Props: storyboard (scenes kept as JSON), hunks, voiceover, highlight (syntax colours)
+      model.rs           Props: storyboard (scenes kept as JSON, findings), hunks, voiceover, highlight (syntax colours),
+                         icons (the storyboard's Lucide icons)
       timing.rs          shared/timing.mjs + steps.mjs + voice lookup: segments, durations, spoken_at
       speech.rs, markup.rs   shared/speech.mjs and shared/markup.mjs
       textfit.rs         shared/textfit.mjs over the measured advances: fit_text, fit_text_at, fit_lines, measure, Slot::named
@@ -23,10 +24,15 @@ engine/
       text.rs            fonts, swash shaping (Chrome's wght/opsz/kerning/ligatures), line metrics, baselines
       display.rs         the display list and its builder; svg_path; fingerprint (frame equality)
       raster.rs          tiny-skia for paths, hand-rolled box fills, cached glyph/shadow/glow masks, clips, layers
-      icons.rs           lucide icons as path data
-      chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit), captions, fittext
+      icons.rs           built-in Lucide icons as path data, and the storyboard's own (`props.icons`)
+      marks/             pen marks and ink: MarkTargets, Board, ref resolution (mod.rs); their geometry (geometry.rs)
+      camera.rs          shared/camera.mjs: Camera, View, frame_shot, tween_view; draws a scene's content through a view
+      states.rs          shared/state-steps.mjs's walk: StateModel, walk_states, StateFrame (shown, place, tint, changed)
+      chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit, header_box,
+                         HeaderCallout, source line), captions, fittext
       scenes/            mod.rs (registry and contract), one module per scene type, placeholder.rs
     tests/js_fixtures.rs timing, speech, text fitting, springs and easings against the JS's own outputs
+    tests/marks_geometry.rs  pen and ink geometry against src/utils/penGeometry.ts and inkGeometry.ts
   cli/                   mr-cast-engine: render (parallel, repeats skipped, ffmpeg) and still
 ```
 
@@ -113,8 +119,10 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
   `Paint::Linear`, `Paint::Radial` (elliptical), `Paint::css_linear(angle, w, h, stops)`, `Paint::vertical`.
 - paths: `path(Path, fill, Some(Stroke::solid(c, w)))`, `Stroke::dashed`, `.rounded()`; `circle`; `display::svg_path(d)`.
 - text: `text(str, Style, x, baseline_y, color)` returns the advance; `run(shape(..), ..)`; `run_glow` for a
-  text-shadow glow.
-- clips: `push_clip(x, y, w, h, radius)`/`pop_clip` (CSS `overflow: hidden`; square clips snap to pixels).
+  text-shadow glow (a transparent colour draws the glow alone, as a halo); `run_paint(run, x, y, Paint)` for
+  gradient-filled text (`background-clip: text`).
+- clips: `push_clip(x, y, w, h, radius)`/`pop_clip` (CSS `overflow: hidden`; square clips snap to pixels);
+  `push_fade_layer(x, y, w, h, fade)`/`pop_layer` for content masked to a rect with soft edges (the camera's view).
 
 ### Helpers that mirror the TSX
 
@@ -129,8 +137,56 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
   `spring(frame - delay, FPS, Spring::damping(18.0).with_stiffness(120.0))`, `spring_full(.., Some(duration))`.
 - Steps: `steps::Spotlight::new(frame, &starts).emphasis(&[k])`, `spotlight_starts`, `current_step`, `step_move`,
   `step_spring`, `timing::build_frames(type)`, `timing::index_range`; `focus::line_focus_ranges` for code refs.
-- Look: `theme::*` colours and `theme::tone(name)`, `icons::draw(dl, "Check", x, y, size, color, stroke_width)`
-  (add icons to `icons.rs` from lucide-react), `color::Color::css("...")` for colours written in the TSX.
+- Look: `theme::*` colours and `theme::tone(name)`, `color::Color::css("...")` for colours written in the TSX.
+- Icons: a component's fixed icon (`<Check/>`) is `icons::draw(dl, "Check", x, y, size, color, stroke_width)`; add
+  it to `icons.rs` from lucide-react. An icon the storyboard names (a node's `icon: "server"`) is
+  `icons::draw_named(dl, &props.icons, name, ...)`: Node puts every `icon` the storyboard names into `props.icons`
+  (`scripts/engine-dump.mjs`, `iconNames`/`iconPaths`; the CLI must do the same).
+- Steps that change what a scene shows (`set`, `show`, `hide`, `tint`, `move`, `callout`, `sort`): implement
+  `states::StateModel` for the type (its MODELS entry in shared/state-steps.mjs: `initial`, `set_prefixes`,
+  `show_prefixes`, `tint_prefixes`, `callout`, `apply_move`, `apply_extra` for trace/morph), call
+  `walk_states(&model, scene)` in `prepare`, and `StateFrame::at(&states, segments, frame)` in `draw` for
+  `before`/`now`/`t`/`lit`, `shown(key)`, `place(key)`, `changed(key)` and `tint(key)` (`TintMix`, `main_tone`,
+  `opacity`, `states::tint_fill`). `scenes/text.rs` (`TextModel`) is the worked example.
+- The header callout (HeaderCallout.tsx): `chrome::shell::HeaderCallout::new(scene)`, drawn as the shell's aside with
+  `.draw(dl, right, top, &state_frame)`; `shell::header_box(scene)` is the content box the TS layouts and camera use.
+
+### Pen marks, ink and the camera
+
+Every scene whose steps take `focus` (and code) gets pen marks (`mark`, `note`, code `token`, review `flag`), ink
+(`draw`, `erase`) and the camera (`camera`) from the same boxes. In the TSX the scene computes
+`targets(k): MarkTargets` and passes it to `SceneShell`'s `camera` and to `<PenMarks>`. In Rust:
+
+1. Refs. Implement `marks::Refs` for the type: `resolve(&Value) -> Option<Vec<String>>` is the type's `resolve` in
+   shared/targets.mjs (item keys such as `"n:api"`, `"b:2"`). Wrap it as `StepRefs::Scene(&refs)`; a code scene uses
+   `StepRefs::Code(&hunk)`, which resolves lines (`ln:<i>`) and text (`tx:<i>:<at>:<len>`). `marks::resolve_ref`
+   adds the "a digit string is an index" fallback.
+2. Targets. In `prepare`, build each step's `MarkTargets` in content-box px, as the TSX's targets give them for step k
+   once it has settled: `boxes` (key, `geometry::Bx`) in the TS map's order, `obstacles` (None for every box),
+   `lines` (points on connectors), `area` (the content box, usually `0, 0, w, h`), `box_of` for keys not listed
+   (code lines), `clip` (where ink shows, if content scrolls), `shifts: true` if the scene scrolls towards the step
+   while it plays. `MarkTargets::new(boxes, area)` covers the common case; a diagram that scales its layout onto the
+   stage (`staged`/`centredStage` in penGeometry.ts) scales its boxes the same way here.
+3. Board. `let board = Board::new(scene, segments, &step_refs, &|k| targets[k].clone(), &|step| ink_of(step))`
+   lays out every mark and ink item once (`ink_of` returns `Some(InkOf { color, label })` for a review flag; `|_| None`
+   elsewhere).
+4. Camera. `let camera = Camera::new(scene, &step_refs, shell::header_box(scene))`.
+5. Draw. Inside the shell's content closure:
+
+```rust
+let view = self.camera.view(frame, f.segments, &|k| self.targets.get(k).cloned().flatten());
+self.shell.draw(dl, frame, f.duration, aside, |dl, bx| {
+    self.camera.draw(dl, view, |dl| {
+        // ... the scene's content ...
+        self.board.draw(dl, frame, f.segments, &|_k| None); // or Some(Pt) per step, while it scrolls
+    });
+});
+```
+
+The board draws last, over the content, inside the camera, so marks zoom and pan with what they mark, as `<PenMarks>`
+inside `<SceneShell camera>` does. Ink that marks parts a later step moves follows them by itself (`follow`); a scene
+that scrolls (code) passes the shift instead. Text, code and flow are wired this way: `scenes/text.rs` measures its
+parts only when a step marks or draws, as TextCard does, and `scenes/code.rs` is the scrolling case.
 
 ### CSS that needs care
 
@@ -172,8 +228,8 @@ anti-aliasing never matches exactly); a misplaced or missing element shows as a 
 compare image of every still whose numbers stand out.
 
 Remotion's stills are cached in `~/.cache/mr-cast-engine-compare/<hash>`, keyed by the run's files and by `src/`,
-`shared/` and `bin/`, so the first run takes Chrome a few seconds per step index and a re-run only redraws the
-engine's side (about 2 s for 14 stills). The mr-cast commands run with temporary config, state and Claude
+`shared/` and `bin/`, one file per still, so a run only asks Chrome for the stills it lacks and a re-run only redraws
+the engine's side (about 2 s for 14 stills). The mr-cast commands run with temporary config, state and Claude
 directories; the real `~/.cache/mr-cast` is kept so Chrome and the bundle are not fetched again.
 
 `mr-cast-engine compare --remotion a.png --engine b.png [--out-compare c.png] [--out-diff d.png]` is the
@@ -183,8 +239,7 @@ on every sampled frame of the demo.
 
 ## What is not ported yet
 
-- 21 scene types draw a placeholder. Of the three ported: text steps that `set` new text, number and question
-  gradient fills (solid colour instead), flow steps with real `code` and step icons, code `typing` and output panes,
-  and every scene's pen marks, ink and camera.
-- The source line of pre-read diagrams (`SourceLine` in src/Walkthrough.tsx) and images.
-- Audio: the engine writes silent video; the Node CLI would mux the voice as it does today.
+- Scene types other than text, code and flow draw a placeholder until their ports merge.
+- Images (`ImagesContext` of src/Walkthrough.tsx) belong to the image scene's port.
+- Audio: the engine writes silent video; the Node CLI muxes the voice.
+- Handwriting (Caveat) is shaped by swash, where the TS measures notes with a canvas: a note can sit a few pixels off.
