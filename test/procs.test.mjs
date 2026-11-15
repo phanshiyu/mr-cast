@@ -321,8 +321,8 @@ function startProcess(command, args, cwd, ready, more = {}) {
 test('a shell that runs play is not listed, and stopping the play by pid leaves the shell running on', async () => {
   const { cwd } = runIn('wrapped');
   const shell = await startProcess(
-    '/bin/sh',
-    ['-c', '"$0" "$1" play --no-voice --no-open --port 5520; echo shell went on', process.execPath, BIN],
+    path.join(ROOT, 'test', 'fixtures', 'play-then-echo.sh'),
+    [process.execPath, BIN, '5520'],
     cwd,
     /mr-cast player:/,
   );

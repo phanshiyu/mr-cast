@@ -47,31 +47,27 @@ test('the dependency jobs run only on main, and the publish job still runs on a 
   assert.match(jobs.publish, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
 });
 
-const setupAction = fs.readFileSync(new URL('../.github/actions/setup/action.yml', import.meta.url), 'utf8');
+const workflowDir = new URL('../.github/workflows/', import.meta.url);
+const uncachedSetup = fs.readFileSync(new URL('../.github/actions/setup-uncached/action.yml', import.meta.url), 'utf8');
+const hasCache = (text) => /actions\/cache(\/\w+)?@|^\s+cache(-dependency-path)?:|package-manager-cache/m.test(text);
 
 test('no job that can write, publish or hold an id-token restores or saves a cache, through the setup action too', () => {
-  // The setup action caches the pnpm store unless told not to, so a job that calls it must pass cache: 'false'.
-  assert.match(setupAction, /cache: \$\{\{ inputs\.cache == 'true' \}\}/);
-  assert.match(setupAction, /inputs:[\s\S]*\n {2}cache:\n[\s\S]*default: 'true'/);
-  assert.doesNotMatch(setupAction, /actions\/cache/);
+  // CodeQL reads a cache option anywhere in a composite action as a cache a privileged job can poison, so the jobs
+  // here call a setup action that has none; ../setup (with the pnpm store cached) is for CI's unprivileged jobs.
+  assert.equal(hasCache(uncachedSetup), false);
+  assert.match(fs.readFileSync(new URL('../.github/actions/setup/action.yml', import.meta.url), 'utf8'), /cache: true/);
   const privileged = Object.entries(jobs).filter(([, text]) => /(contents|id-token): write/.test(text));
   assert.ok(privileged.length >= 4);
   for (const [name, text] of privileged) {
-    assert.doesNotMatch(text, /actions\/cache(\/\w+)?@/, `${name} uses actions/cache`);
-    assert.doesNotMatch(text, /^\s+cache:\s*(?!'false')\S/m, `${name} turns on a cache option`);
-    assert.doesNotMatch(text, /cache-dependency-path|package-manager-cache/, `${name} configures a cache`);
-    for (const use of text.split(/\n(?=\s+- )/).filter((step) => /uses: \.\/\.github\/actions\/setup/.test(step))) {
-      assert.match(use, /cache: 'false'/, `${name} calls the setup action with its cache on`);
-    }
+    assert.equal(hasCache(text), false, `${name} restores or saves a cache`);
+    assert.doesNotMatch(text, /uses: \.\/\.github\/actions\/setup\n/, `${name} calls the setup action that caches`);
   }
 });
 
-test('no job in the publish workflow, checked out from a ref it was handed, restores or saves a cache', () => {
-  // Jobs run code from a ref that a manual start names, so a poisoned cache entry would reach the next run on main.
-  assert.doesNotMatch(workflow, /actions\/cache(\/\w+)?@/);
-  for (const use of workflow.split(/\n(?=\s+- )/).filter((step) => /uses: \.\/\.github\/actions\/setup/.test(step))) {
-    assert.match(use, /cache: 'false'/);
-  }
+test('no job in the publish workflow restores or saves a cache, because jobs run a ref a manual start can name', () => {
+  assert.equal(hasCache(workflow), false);
+  assert.doesNotMatch(workflow, /uses: \.\/\.github\/actions\/setup\n/);
+  assert.match(workflow, /uses: \.\/\.github\/actions\/setup-uncached\n/);
 });
 
 test('a manual start publishes only from main, and no run step interpolates an expression', () => {
@@ -80,7 +76,7 @@ test('a manual start publishes only from main, and no run step interpolates an e
     /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main' && !inputs\.dependencies/,
   );
   for (const file of ['publish.yml', 'ci.yml', 'audit.yml']) {
-    const text = fs.readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
+    const text = fs.readFileSync(new URL(file, workflowDir), 'utf8');
     const runs = text.match(/^ +(?:- )?run: (?:\|\n(?: {8,}.*\n?|\n)+|.*)/gm) ?? [];
     assert.ok(runs.length > 0);
     for (const run of runs) {

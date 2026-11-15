@@ -53,9 +53,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: ./.github/actions/setup
-        with:
-          cache: 'false'
+      - uses: ./.github/actions/setup-uncached
       # Trusted publishing: npm checks this run's GitHub OIDC identity against the package's trusted
       # publisher (phanshiyu/mr-cast, publish.yml), so no token is stored. Needs npm 11.5.1 or later.
       - name: Check the version
@@ -151,9 +149,7 @@ jobs:
           echo "version=$next" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - if: steps.gate.outputs.release == 'true'
-        uses: ./.github/actions/setup
-        with:
-          cache: 'false'
+        uses: ./.github/actions/setup-uncached
       - name: Bump the patch version and note the packages in the changelog
         if: steps.gate.outputs.release == 'true'
         run: |
@@ -325,9 +321,7 @@ jobs:
         with:
           ref: ${{ env.SHA }}
           persist-credentials: false
-      - uses: ./.github/actions/setup
-        with:
-          cache: 'false'
+      - uses: ./.github/actions/setup-uncached
       - run: pnpm build
       - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "$SHARD/6"
         env:
