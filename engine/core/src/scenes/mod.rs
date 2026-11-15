@@ -7,12 +7,17 @@ use crate::timing::Segment;
 use serde_json::Value;
 
 pub mod array;
+pub mod callout;
+pub mod chart;
 pub mod code;
 pub mod compare;
 pub mod flow;
 pub mod memory;
 pub mod placeholder;
 pub mod terminal;
+pub mod plot;
+pub mod state;
+pub mod table;
 pub mod text;
 
 /// What a scene is prepared from, once per project.
@@ -56,6 +61,9 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("terminal", terminal::prepare),
     ("array", array::prepare),
     ("memory", memory::prepare),
+    ("plot", plot::prepare),
+    ("chart", chart::prepare),
+    ("table", table::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
