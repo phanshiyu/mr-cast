@@ -17,7 +17,7 @@ use std::time::Instant;
 
 fn usage() -> ExitCode {
     eprintln!(
-        "usage:\n  mr-cast-engine render --props props.json --out file.mp4 [--frames a..b] [--scenes a..b] [--encoder x264|videotoolbox|none] [--scale s]\n  mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out file.png [--scale s]"
+        "usage:\n  mr-cast-engine render --props props.json --out file.mp4 [--frames a..b] [--scenes a..b] [--encoder x264|videotoolbox|none] [--cfr yes] [--skip-repeats no] [--scale s]\n  mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out file.png [--scale s]"
     );
     ExitCode::from(2)
 }
@@ -119,6 +119,7 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
     }
     // A frame whose display list matches the frame before draws the same pixels, so it reuses them: most frames
     // of a scene that has settled, between caption words, are such repeats.
+    let skip = f.get("skip-repeats").is_none_or(|v| v != "no");
     let mut last: Option<(u64, Arc<Vec<u8>>)> = None;
     let mut repeats = 0usize;
     for part in frames.chunks(chunk) {
@@ -133,7 +134,7 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
         let fresh: Vec<bool> = (0..lists.len())
             .map(|i| {
                 let prev = if i == 0 { last.as_ref().map(|l| l.0) } else { Some(lists[i - 1].1) };
-                prev != Some(lists[i].1)
+                !skip || prev != Some(lists[i].1)
             })
             .collect();
         let rendered: Vec<Option<Arc<Vec<u8>>>> = lists
