@@ -1,6 +1,92 @@
 {
   "title": "Rate limiting for the Orders API",
   "subtitle": "feature/rate-limit → main",
+  "brief": {
+    "why": {
+      "text": "One visitor could flood POST /orders and take the API down, so each IP is limited to 20 orders a minute, counted in Redis so every server shares the count.",
+      "source": "description"
+    },
+    "case": {
+      "before": "The 21st order request from one IP in a minute was saved like the first twenty, and an item was always priced at 10.",
+      "after": "The 21st gets a 429 with Retry-After, and an item is priced by the pricing module.",
+      "cite": [
+        "h2",
+        "h6"
+      ]
+    },
+    "approach": {
+      "text": "A Redis counter per IP and per one-minute window, checked in a middleware in front of the orders route.",
+      "decisions": [
+        "The count lives in Redis, not in memory, so every server shares it",
+        "The key expires with its window, so nothing is cleaned up by hand",
+        "Past the limit the request is refused, never queued"
+      ]
+    },
+    "parts": [
+      {
+        "name": "The rate limiter",
+        "weight": "core",
+        "hunks": [
+          "h2",
+          "h3"
+        ]
+      },
+      {
+        "name": "Real prices",
+        "weight": "core",
+        "hunks": [
+          "h6"
+        ]
+      },
+      {
+        "name": "The order event",
+        "weight": "support",
+        "hunks": [
+          "h5"
+        ]
+      },
+      {
+        "name": "Cleanup and docs",
+        "weight": "routine",
+        "hunks": [
+          "h4",
+          "h1"
+        ]
+      }
+    ],
+    "proof": {
+      "tested": [],
+      "untested": [
+        "The 21st request in a minute is refused",
+        "Redis down",
+        "Queue down after the insert",
+        "An empty order is refused"
+      ]
+    },
+    "check": [
+      {
+        "file": "src/api/rate-limit.ts",
+        "line": "12-17",
+        "what": "A Redis error here fails every order request",
+        "why": "There is no fallback, so Redis down means the API down"
+      },
+      {
+        "file": "src/api/server.ts",
+        "line": 12,
+        "what": "`publish` runs after the order is saved",
+        "why": "A queue outage returns an error for an order that exists"
+      },
+      {
+        "file": "src/services/orders.ts",
+        "line": 10,
+        "what": "`createOrder` now throws on an empty order",
+        "why": "Callers that sent one used to get a saved order back"
+      }
+    ],
+    "ask": [
+      "Where do `src/db/redis` and `src/services/pricing` come from? This branch imports them and does not add them."
+    ]
+  },
   "scenes": [
     {
       "type": "text",
@@ -14,7 +100,10 @@
         "`publish` runs after the insert, so a queue outage returns an error for an order that was saved",
         "No tests cover the limiter, the pricing lookup, or the new event"
       ],
-      "diffstat": true
+      "diffstat": true,
+      "answers": [
+        "why"
+      ]
     },
     {
       "type": "graph",
@@ -132,6 +221,9 @@
           ],
           "say": "The event queue is also new. Other services read the queue to learn about new orders."
         }
+      ],
+      "answers": [
+        "approach"
       ]
     },
     {
@@ -254,7 +346,11 @@
         {
           "actor": "rateLimit",
           "action": "Counts the request in Redis",
-          "payload": "rl:10.0.0.7:29384112 → 3"
+          "code": {
+            "hunk": "h2",
+            "lines": "12-14",
+            "light": "12"
+          }
         },
         {
           "actor": "createOrder",
@@ -269,6 +365,58 @@
         {
           "actor": "API",
           "action": "Responds 201 Created"
+        }
+      ]
+    },
+    {
+      "type": "compare",
+      "chapter": "One case",
+      "answers": [
+        "case"
+      ],
+      "title": "The 21st request, and a two-tea order",
+      "sides": [
+        {
+          "title": "Before"
+        },
+        {
+          "title": "After"
+        }
+      ],
+      "narration": "Take one visitor who sends twenty-one orders in a minute. Before, every one of them was saved. Now the twenty-first is refused with a too many requests error, and a header says to wait sixty seconds. Take an order of two teas as well. Before, each item cost ten, so the total was twenty. Now the total comes from the pricing module.",
+      "rows": [
+        {
+          "label": "21st request in a minute",
+          "cells": [
+            "Saved like the rest",
+            {
+              "hunk": "h2",
+              "side": "new",
+              "lines": "16"
+            }
+          ],
+          "verdict": [
+            "bad",
+            "good"
+          ]
+        },
+        {
+          "label": "Total for two teas",
+          "cells": [
+            "20, ten for each item",
+            "8.4, each price from the pricing module"
+          ]
+        },
+        {
+          "label": "An order with no items",
+          "cells": [
+            "Saved, with a total of 0",
+            "Refused, with `empty order`"
+          ],
+          "verdict": [
+            "bad",
+            "good"
+          ]
         }
       ]
     },
@@ -372,6 +520,16 @@
       ]
     },
     {
+      "type": "files",
+      "chapter": "The parts",
+      "answers": [
+        "parts"
+      ],
+      "title": "Four parts, two that matter",
+      "narration": "The change falls into four parts. The limiter and the real prices are the core, and they change how the API behaves. The order event is something they lean on. The old throttle and the docs line are routine, so a reviewer can skim them.",
+      "parts": "brief"
+    },
+    {
       "type": "code",
       "chapter": "The limiter",
       "narration": "The rate limiter counts each visitor's requests in the current minute, by IP address. The count starts again at zero every new minute, because Redis deletes the count when the minute ends. Past twenty requests, the limiter answers with a too many requests error, and says when to try again. Otherwise the request goes on.",
@@ -439,7 +597,18 @@
         "When Redis is down the limiter throws, so every order request [fails]{bad}",
         "When the queue is down after the insert, the client gets an error for an order that was saved",
         "Empty orders are rejected and totals use prices from the pricing service"
+      ],
+      "answers": [
+        "proof"
       ]
+    },
+    {
+      "type": "reading",
+      "chapter": "Check first",
+      "answers": [
+        "check"
+      ],
+      "narration": "If you read only three places, read these. The limiter has no answer for a Redis outage. The route waits on the queue after the order is saved. And an empty order is now refused, where it used to be saved."
     }
   ]
 }

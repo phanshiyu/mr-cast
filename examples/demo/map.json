@@ -1,0 +1,116 @@
+{
+  "commits": [
+    {
+      "sha": "770604e",
+      "subject": "Add Redis rate limiting and order.created events",
+      "body": ""
+    }
+  ],
+  "description": {
+    "file": "description.md",
+    "text": "Rate limiting for the Orders API\n\nSomeone hammering POST /orders can take the API down. This limits each visitor to 20 orders a minute, counted in Redis so every server shares the count, and answers the 21st with a 429 and a Retry-After header.\n\nAlso: orders are priced from the pricing module instead of a flat 10 per item, an empty order is refused, and a new order publishes order.created to the queue. The old in-memory throttle is deleted, since nothing used it."
+  },
+  "files": {
+    "source": [
+      {
+        "file": "src/api/rate-limit.ts",
+        "oldFile": null,
+        "kind": "source",
+        "status": "new",
+        "additions": 20,
+        "deletions": 0,
+        "hunkIds": [
+          "h2"
+        ]
+      },
+      {
+        "file": "src/services/orders.ts",
+        "oldFile": null,
+        "kind": "source",
+        "status": "modified",
+        "additions": 5,
+        "deletions": 2,
+        "hunkIds": [
+          "h6"
+        ]
+      },
+      {
+        "file": "src/legacy-throttle.ts",
+        "oldFile": null,
+        "kind": "source",
+        "status": "removed",
+        "additions": 0,
+        "deletions": 6,
+        "hunkIds": [
+          "h4"
+        ]
+      },
+      {
+        "file": "src/api/server.ts",
+        "oldFile": null,
+        "kind": "source",
+        "status": "modified",
+        "additions": 4,
+        "deletions": 0,
+        "hunkIds": [
+          "h3"
+        ]
+      },
+      {
+        "file": "src/queue/events.ts",
+        "oldFile": null,
+        "kind": "source",
+        "status": "new",
+        "additions": 3,
+        "deletions": 0,
+        "hunkIds": [
+          "h5"
+        ]
+      }
+    ],
+    "tests": [],
+    "docs": [
+      {
+        "file": "docs.md",
+        "oldFile": "README.md",
+        "kind": "docs",
+        "status": "renamed",
+        "additions": 2,
+        "deletions": 0,
+        "hunkIds": [
+          "h1"
+        ]
+      }
+    ],
+    "config": [],
+    "routine": []
+  },
+  "skipped": [],
+  "changedLines": 42,
+  "tests": [],
+  "untested": [
+    "src/api/rate-limit.ts",
+    "src/api/server.ts",
+    "src/queue/events.ts",
+    "src/services/orders.ts"
+  ],
+  "usedElsewhere": {
+    "method": "text search (git grep -w), not a call graph",
+    "names": [
+      {
+        "name": "throttle",
+        "file": "src/legacy-throttle.ts",
+        "count": 0,
+        "paths": []
+      },
+      {
+        "name": "createOrder",
+        "file": "src/services/orders.ts",
+        "count": 0,
+        "paths": []
+      }
+    ],
+    "omitted": 0,
+    "stopped": false
+  }
+}
