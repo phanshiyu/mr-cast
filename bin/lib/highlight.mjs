@@ -8,7 +8,7 @@ import { focusSteps } from '../../shared/normalize.mjs';
 import { STATE_TYPES, isPointer, sceneStates } from '../../shared/state-steps.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { splitMemberKey, stepTargets } from '../../shared/targets.mjs';
-import { sceneFiles } from '../../shared/files.mjs';
+import { sceneFiles, sceneParts } from '../../shared/files.mjs';
 import { compareTitles } from '../../shared/compare.mjs';
 import { outputLines } from '../../shared/terminal.mjs';
 import { arrayRows, cellKey, cellName, markerRow, rowKey, splitCellKey } from '../../shared/arrays.mjs';
@@ -390,7 +390,11 @@ const ITEMS = {
     ];
   },
   files(scene, _state, hunks) {
-    return sceneFiles(scene, hunks ?? {}).map((f) => ({ key: `f:${f.path}`, label: `file ${f.path}`, terms: [] }));
+    const files = sceneFiles(scene, hunks ?? {});
+    return [
+      ...(sceneParts(scene, files) ?? []).map((g) => ({ key: `p:${g.name}`, label: `part "${g.name}"`, terms: [] })),
+      ...files.map((f) => ({ key: `f:${f.path}`, label: `file ${f.path}`, terms: [] })),
+    ];
   },
   tests(scene) {
     const { outcomes, rows } = testsMatrix(scene);

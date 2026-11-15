@@ -1438,6 +1438,16 @@ export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Lines added and removed. In a diff walkthrough default to the counts in hunks.json. */
   additions?: number;
   deletions?: number;
+  /** The name of the part this file belongs to, one of the scene's `parts`, e.g. "Finding and checking places". */
+  part?: string;
+}
+
+/** How much a part of the change matters to a reviewer: "core" is the change itself, "support" what it needs, "routine" what may be skimmed. */
+export type PartWeight = 'core' | 'support' | 'routine';
+
+export interface FilePart {
+  name: string;
+  weight: PartWeight;
 }
 
 export interface FilesScene extends SceneBase {
@@ -1448,6 +1458,14 @@ export interface FilesScene extends SceneBase {
    * with its line counts, tests marked. Required in an explanation.
    */
   files?: FileEntry[];
+  /**
+   * The parts of the change, to group the files by importance and not by directory: each file names its `part`.
+   * Core parts come first and draw strongest, routine parts last and quietest, each with its file count and its
+   * + and − totals. `"brief"` takes the parts, and the files of their hunks, from the storyboard's `brief.parts`,
+   * so nothing is typed twice (the scene's own `files` is then ignored). A step's `focus` may name a part to light
+   * it and its files.
+   */
+  parts?: FilePart[] | 'brief';
   /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. */
   notes?: Record<string, string>;
   /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
@@ -1455,7 +1473,7 @@ export interface FilesScene extends SceneBase {
   /**
    * Move the viewer's attention as the voice explains: each step lights the files it focuses just before
    * its `say` is spoken while the rest dims. `narration` is then the intro. Replaces `highlight`.
-   * A ref is a path in the tree.
+   * A ref is a path in the tree, or the name of a part.
    */
   steps?: FocusStep[];
 }
@@ -1464,7 +1482,20 @@ export interface FilesScene extends SceneBase {
  * One side's cell in a compare row: display text, a short code snippet of a few lines drawn with syntax colours, or a
  * picture, such as a screenshot of each side, in a 16:9 box (see ImageScene for what `image` may be).
  */
-export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit };
+export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit } | HunkCell;
+
+/**
+ * A cell whose code is read from hunks.json, so it cannot drift from the real diff. `side: "old"` shows the removed
+ * and context lines in `lines` by old-file line numbers, `"new"` the added and context lines by new-file numbers.
+ * The cell names its file and line numbers quietly above the code. Up to 8 lines read well.
+ */
+export interface HunkCell {
+  /** A hunk id from `mr-cast extract`, or a snippet id from `explain snippet` (for "new"). */
+  hunk: string;
+  side: 'old' | 'new';
+  /** A line number or "a-b" range in that side's file, e.g. "4-6". */
+  lines: string | number;
+}
 
 /** Which side of a compare row is better: a green check, a red cross, or an amber warning on that side's cell. */
 export type Verdict = 'good' | 'bad' | 'warn';
@@ -1474,6 +1505,8 @@ export interface CompareSide {
   title: string;
   /** Colour of the side's title and frame. Defaults to neutral for the first side and accent for the second. */
   tone?: Tone;
+  /** In `mode: "options"`, true for the side that was taken: drawn as the one chosen, the other quieter and labelled "Not taken". */
+  chosen?: boolean;
 }
 
 export interface CompareRow {
@@ -1488,6 +1521,8 @@ export interface CompareRow {
   same?: boolean;
   /** Which side is better on this row, one entry per side, null for no verdict, e.g. ["bad", "good"]. */
   verdict?: (Verdict | null)[];
+  /** In `mode: "options"`, which side this row took, 0 or 1: that cell is drawn as the one chosen, the other quieter and labelled "Not taken". */
+  chosen?: 0 | 1;
 }
 
 /**
@@ -1500,6 +1535,12 @@ export interface CompareScene extends SceneBase {
   title?: string;
   /** The two sides, left then right. Defaults to "Before" and "After". */
   sides?: CompareSide[];
+  /**
+   * "changes" (the default) is old against new: a row that differs gets an arrow between the sides, a row that
+   * matches dims. "options" is a decision against the alternative not taken: no arrows between the sides, and
+   * `chosen` on a side or a row marks the one taken.
+   */
+  mode?: 'changes' | 'options';
   /** Up to 6. */
   rows: CompareRow[];
   /**

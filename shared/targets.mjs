@@ -7,7 +7,7 @@ import { plainText } from './markup.mjs';
 import { svgIds } from './svg.mjs';
 import { paramNames, plotModel, plotParts, resolvePlotRef } from './plot.mjs';
 import { mapRef, mapRefNames } from './map.mjs';
-import { sceneFiles } from './files.mjs';
+import { sceneFiles, sceneParts } from './files.mjs';
 import { compareTitles } from './compare.mjs';
 import { indexRange } from './steps.mjs';
 import { outputLines } from './terminal.mjs';
@@ -241,11 +241,18 @@ const TARGETS = {
   },
   files: {
     resolve(scene, ref, hunks) {
-      return typeof ref === 'string' && sceneFiles(scene, hunks ?? {}).some((f) => f.path === ref)
-        ? [`f:${ref}`]
-        : null;
+      if (typeof ref !== 'string') return null;
+      const files = sceneFiles(scene, hunks ?? {});
+      if (files.some((f) => f.path === ref)) return [`f:${ref}`];
+      // A part lights its heading and every file under it.
+      const name = ref.startsWith('part:') ? ref.slice(5).trim() : ref;
+      const part = sceneParts(scene, files)?.find((g) => g.name === name);
+      return part ? [`p:${part.name}`, ...part.files.map((f) => `f:${f.path}`)] : null;
     },
-    names: (scene, hunks) => sceneFiles(scene, hunks ?? {}).map((f) => f.path),
+    names: (scene, hunks) => {
+      const files = sceneFiles(scene, hunks ?? {});
+      return [...files.map((f) => f.path), ...(sceneParts(scene, files) ?? []).map((g) => g.name)];
+    },
   },
   tests: {
     resolve: (scene, ref) => resolveTestsRef(scene, ref),

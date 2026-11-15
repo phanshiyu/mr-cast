@@ -31,6 +31,26 @@
       ]
     },
     {
+      "type": "compare",
+      "chapter": "The other way",
+      "mode": "options",
+      "title": "Signing someone out everywhere",
+      "narration": "There were two ways to sign a user out of every device. We took the first, and left the second.",
+      "sides": [
+        { "title": "Delete their sessions", "chosen": true },
+        { "title": "Change the signing key" }
+      ],
+      "rows": [
+        { "label": "Who is signed out", "cells": ["Only that user", "Every user, all at once"] },
+        { "label": "What it takes", "cells": ["One delete on the server", "A key rollout, and a restart"] },
+        { "label": "Why", "cells": ["Support can do it for one user, with no deploy", "Too blunt for a single account"] }
+      ],
+      "steps": [
+        { "focus": 0, "say": "Deleting a user's sessions signs out that one person. Changing the signing key signs out everyone." },
+        { "focus": "1-2", "say": "We took the delete, since support can do it without a deploy. The key change is left for an emergency." }
+      ]
+    },
+    {
       "type": "text",
       "chapter": "What we picked",
       "kicker": "Where to keep a signed-in session",

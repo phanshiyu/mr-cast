@@ -74,6 +74,36 @@
       ]
     },
     {
+      "type": "files",
+      "chapter": "By importance",
+      "title": "The same change, by part",
+      "narration": "Here are the same files grouped by what matters, with the core first and the routine last.",
+      "parts": [
+        { "name": "Checking the settings once", "weight": "core" },
+        { "name": "Reading config everywhere", "weight": "support" },
+        { "name": "Docs and the example file", "weight": "routine" }
+      ],
+      "files": [
+        { "path": "src/config/schema.ts", "part": "Checking the settings once" },
+        { "path": "src/config/index.ts", "part": "Checking the settings once" },
+        { "path": "src/server.ts", "part": "Reading config everywhere" },
+        { "path": "src/db/pool.ts", "part": "Reading config everywhere" },
+        { "path": "src/mail/send.ts", "part": "Reading config everywhere" },
+        { "path": "src/env.ts", "part": "Reading config everywhere" },
+        { "path": "test/config.test.ts", "part": "Reading config everywhere" },
+        { "path": "README.md", "part": "Docs and the example file" },
+        { "path": "config/example.env", "part": "Docs and the example file" }
+      ],
+      "notes": {
+        "src/config/schema.ts": "every setting, its type and default"
+      },
+      "steps": [
+        { "focus": "Checking the settings once", "say": "The core is two new files: one lists every setting, the other checks them all at start-up." },
+        { "focus": "Reading config everywhere", "say": "Everything else changes to read from that one object, and the old helper goes." },
+        { "focus": "Docs and the example file", "say": "The readme and the example settings file only follow along, and may be skimmed." }
+      ]
+    },
+    {
       "type": "code",
       "chapter": "The settings",
       "hunkId": "h4",

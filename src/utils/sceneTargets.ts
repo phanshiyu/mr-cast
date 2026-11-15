@@ -9,7 +9,7 @@ import { stateMotion } from '../../shared/svg-motion.mjs';
 import { plotAxes, plotGeometry, plotLabels, stateParams } from '../../shared/plot.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import { sceneFiles } from '../../shared/files.mjs';
+import { sceneFiles, sceneParts } from '../../shared/files.mjs';
 import type {
   ArrayScene,
   ErScene,
@@ -214,7 +214,8 @@ export function erTargets(scene: ErScene): MarkTargets {
 
 export function filesTargets(scene: FilesScene, hunks: HunkMap): MarkTargets {
   const box = contentBox(Boolean(scene.title));
-  const layout = layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+  const files = sceneFiles(scene, hunks);
+  const layout = layoutFiles(treeRows(files, scene.notes ?? {}, sceneParts(scene, files)), box.width, box.height);
   return staged(
     filesBoxes(layout),
     { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale },

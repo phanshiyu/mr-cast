@@ -1,4 +1,4 @@
-import { sceneFiles } from '../../shared/files.mjs';
+import { sceneFiles, sceneParts } from '../../shared/files.mjs';
 // validate bundles this file with its own copy of shared/map.mjs, whose outline it loads through these.
 export { loadWorld, needsWorld } from '../../shared/map.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
@@ -131,7 +131,8 @@ const SCENE_FITS: SceneFits = {
   },
   files: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
-    const layout = layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+    const files = sceneFiles(scene, hunks);
+    const layout = layoutFiles(treeRows(files, scene.notes ?? {}, sceneParts(scene, files)), box.width, box.height);
     return new Scaled('file tree', layout.scale, layout);
   },
   layers: (scene) => {
@@ -153,9 +154,9 @@ const SCENE_FITS: SceneFits = {
     const order = readingOrder(storyboard, hunks);
     return order ? layoutReading(order, scene.items ?? order.items, box.width, box.height) : null;
   },
-  compare: (scene) => {
+  compare: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
-    const layout = layoutCompare(scene, box.width, box.height);
+    const layout = layoutCompare(scene, box.width, box.height, hunks);
     return new Scaled('comparison', layout.scale, layout);
   },
   // A drawing's text is checked against its viewBox in bin/lib/validate-svg.mjs; nothing here wraps it.
