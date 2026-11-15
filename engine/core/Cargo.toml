@@ -1,0 +1,15 @@
+[package]
+name = "mrc_core"
+description = "mr-cast's frame renderer: the props model, timing, text fitting, scenes and a CPU rasterizer. No threads, files or processes, so it builds for wasm32-unknown-unknown."
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd", "png-format"] }
+swash = "0.2"
+kurbo = "0.11"
+fancy-regex = "0.14"
+unicode-normalization = "0.1"
