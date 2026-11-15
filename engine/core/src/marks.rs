@@ -153,6 +153,10 @@ pub fn pill(text: &str, size: f32, pad: Option<(f32, f32)>) -> Pill {
 
 /// Draws a pill with its top left at (x, y), scaled about its centre by `scale`; returns its width.
 pub fn draw_pill(dl: &mut DisplayList, p: &Pill, color: Color, x: f32, y: f32, scale: f32) -> f32 {
+    // `scale(0)` draws nothing; a singular transform must not reach the rasterizer.
+    if scale.abs() < 1e-4 {
+        return p.w;
+    }
     dl.group(|dl| {
         if scale != 1.0 {
             dl.scale_about(scale, x + p.w / 2.0, y + p.h / 2.0);

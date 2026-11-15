@@ -413,7 +413,7 @@ impl ErView {
                 );
             }
             let badges = badges_of(&entity.marks, true);
-            if !badges.is_empty() {
+            if !badges.is_empty() && pill_scale.abs() >= 1e-4 {
                 let ps: Vec<_> = badges.iter().map(|b| (pill(&b.text, 15.0, Some((12.0, 3.0))), b.color)).collect();
                 let total: f32 = ps.iter().map(|(p, _)| p.w).sum::<f32>() + 6.0 * (ps.len() as f32 - 1.0);
                 let right = w - 2.0 - 18.0;
