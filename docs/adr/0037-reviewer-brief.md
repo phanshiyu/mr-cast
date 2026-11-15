@@ -78,6 +78,12 @@ All of it is fact, read from git and the working tree. Nothing in it needs a net
   lists as added and warns "no test this branch adds has this name". When the diff adds named tests, the scene's footer
   reads "5 of 23 tests this branch adds" without the writer typing it (the number is counted from the same added lines
   as `tests[].adds` in `map.json`), and `validate` warns when a count of tests the scene states disagrees with the map.
+- **Amended 2026-11-15: groups are not tests, and a test "names or imports" a file.** A branch that adds 9 tests in 4
+  `describe` groups was counted as 13, and the footer read "4 of 13 tests this branch adds". Only tests are counted now
+  (`it(`, `test(` and their `.each`/`.only`/`.skip`/`.todo` forms, `def test_`, `func Test`, `#[test]` fns, `@Test`
+  methods, Ruby `it '...'`/`test '...'`); `describe`, `context`, `suite`, `RSpec.describe` and `class Test...` go to
+  `tests[].groups` in `map.json`, printed apart. A video also said a test "covers" a file the test only mocked, so every
+  message and heading now says the test names or imports the file and may mock it; the `covers` key keeps its name.
 - **The hunk index** as today, but source first, then tests, then docs, config and routine. Over 600 changed lines,
   the index prints each hunk's header and first two changed lines only, and `mr-cast hunk <id>...` prints hunks in full.
 

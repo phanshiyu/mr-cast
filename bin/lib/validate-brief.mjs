@@ -351,9 +351,9 @@ function namesFile(text, file, all) {
 }
 
 /**
- * The map lists a source file as covered when a changed test file names or imports it, and that is all it says: a
- * test may reach a file without naming it. It also does not say a file is untested when it lists none, so the other
- * way is a plain contradiction: `brief.proof.untested`, or a tests scene's gap, names a file a changed test covers.
+ * The map lists a source file when a changed test file names or imports it, and that is all it says: a
+ * test may reach a file without naming it, and may name it only to mock it. It also does not say a file is untested when it lists none, so the other
+ * way is a plain contradiction: `brief.proof.untested`, or a tests scene's gap, names a file a changed test names or imports.
  */
 function checkCoveredClaims(sb, brief, map, warnings) {
   const covers = new Map();
@@ -364,7 +364,7 @@ function checkCoveredClaims(sb, brief, map, warnings) {
   const say = (where, text) => {
     for (const file of files.filter((f) => namesFile(text, f, files)))
       warnings.push(
-        `${where}: says "${text.length > 70 ? `${text.slice(0, 69)}…` : text}", but the map lists ${file} as covered by ${named(covers.get(file))}, which names or imports it; read ${covers.get(file).length === 1 ? 'that test' : 'those tests'} before saying nothing tests ${path.basename(file)}`,
+        `${where}: says "${text.length > 70 ? `${text.slice(0, 69)}…` : text}", but the map lists ${file} as named or imported by ${named(covers.get(file))}, which may only mock it; read ${covers.get(file).length === 1 ? 'that test' : 'those tests'} before saying anything about whether a test reaches ${path.basename(file)}`,
       );
   };
   if (isObj(brief.proof) && Array.isArray(brief.proof.untested))

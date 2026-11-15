@@ -52,7 +52,7 @@ function branchRepo() {
   t.write('src/fresh.js', 'export function brandNew() {\n  return 1;\n}\n');
   t.write(
     'test/price.test.mjs',
-    "import { total } from '../src/price.js';\ntest('adds the items up', () => total([1]));\n",
+    "import { total } from '../src/price.js';\ndescribe('total', () => {\ntest('adds the items up', () => total([1]));\n});\n",
   );
   t.git('add', '.');
   t.git('commit', '-q', '-m', 'Sum the items', '-m', 'Counting items gave the wrong total for priced items.');
@@ -110,6 +110,8 @@ test('a test file is tied to the source it imports, and untouched-by-tests sourc
     const map = (t.run('extract', 'main'), mapOf(t));
     assert.deepEqual(map.tests[0].covers, ['src/price.js']);
     assert.deepEqual(map.tests[0].adds, ['adds the items up']);
+    assert.deepEqual(map.tests[0].groups, ['total']);
+    assert.match(t.run('map').stdout, /groups, not counted as tests: "total"/);
     assert.deepEqual(map.untested.sort(), ['src/fresh.js', 'src/untested.js']);
     assert.match(
       t.run('map').stdout,

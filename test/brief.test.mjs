@@ -630,7 +630,7 @@ const tests = (gap) => ({
   ],
   tests: [{ name: 'limits', checks: ['ok.Result'] }],
 });
-const claims = async (sb) => (await check(sb)).warnings.filter((w) => /covered by/.test(w));
+const claims = async (sb) => (await check(sb)).warnings.filter((w) => /named or imported by/.test(w));
 
 test('a source file the map lists as covered by a changed test is not called untested, and the test is named', async () => {
   const said = brief({
@@ -640,7 +640,7 @@ test('a source file the map lists as covered by a changed test is not called unt
   assert.equal(w.length, 1);
   assert.match(
     w[0],
-    /^brief\.proof\.untested\[0\]: says "src\/limiter\.js handles a burst", but the map lists src\/limiter\.js as covered by test\/limiter\.test\.js, which names or imports it; read that test before saying nothing tests limiter\.js$/,
+    /^brief\.proof\.untested\[0\]: says "src\/limiter\.js handles a burst", but the map lists src\/limiter\.js as named or imported by test\/limiter\.test\.js, which may only mock it; read that test before saying anything about whether a test reaches limiter\.js$/,
   );
   // A bare file name, as writers write it, and a tests scene's gap.
   const bare = await claims(
@@ -657,7 +657,7 @@ test('a source file the map lists as covered by a changed test is not called unt
   assert.deepEqual(await claims(board({ brief: brief({ proof: { tested: ['x'], untested: ['Two servers'] } }) })), []);
   // Not a branch run with a map, no claim is checked.
   assert.deepEqual(
-    (await check(board({ brief: said }), { map: null })).warnings.filter((m) => /covered by/.test(m)),
+    (await check(board({ brief: said }), { map: null })).warnings.filter((m) => /named or imported by/.test(m)),
     [],
   );
 });

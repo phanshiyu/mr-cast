@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isTestFile } from '../../shared/test-files.mjs';
-import { testNames } from '../../shared/test-names.mjs';
+import { groupNames, testNames } from '../../shared/test-names.mjs';
 import { detectLanguage } from './diff.mjs';
 import { UserError } from './errors.mjs';
 import { tryGit } from './git.mjs';
@@ -197,14 +197,15 @@ function testsAndCoverage(root, files, hunks, working) {
     const text = readNewText(root, f.file, working);
     const covers = sources.filter((s) => coversSource(f.file, text, s));
     for (const s of covers) named.add(s);
-    tests.push({ file: f.file, covers, adds: testNames(f.hunkIds.flatMap((id) => hunks[id]?.lines ?? [])) });
+    const lines = f.hunkIds.flatMap((id) => hunks[id]?.lines ?? []);
+    tests.push({ file: f.file, covers, adds: testNames(lines), groups: groupNames(lines) });
   }
   // `untested` keeps its name in map.json, but it only means no changed test file names or imports the file.
   return { tests, untested: sources.filter((s) => !named.has(s)) };
 }
 
 /**
- * The change map: commits, the merge request's description, files by kind, tests and what they cover, and where
+ * The change map: commits, the merge request's description, files by kind, tests and the files they name or import, and where
  * the names declared in modified source files are used outside the diff.
  */
 export function buildChangeMap({ root, mergeBase, working, files, hunks, skipped, descriptionFile }) {
@@ -286,12 +287,14 @@ const NOT_NAMED =
 function formatTests(map) {
   const out = [];
   if (map.tests.length) {
-    out.push('tests and what they cover');
+    out.push('tests and the changed source files they name or import (a test may mock a file it names)');
     for (const t of map.tests) {
-      out.push(`  ${t.file}  covers ${t.covers.length ? t.covers.join(', ') : 'no changed source file'}`);
+      out.push(`  ${t.file}  names or imports ${t.covers.length ? t.covers.join(', ') : 'no changed source file'}`);
       const shown = t.adds.slice(0, MAX_NAMES_PER_TEST).map((n) => `"${clip(n, 80)}"`);
       const more = t.adds.length > shown.length ? `, … ${t.adds.length - shown.length} more` : '';
       if (shown.length) out.push(`    adds ${count(t.adds.length, 'test')}: ${shown.join(', ')}${more}`);
+      if (t.groups?.length)
+        out.push(`    groups, not counted as tests: ${t.groups.map((n) => `"${clip(n, 60)}"`).join(', ')}`);
     }
   }
   if (map.untested.length) out.push(`${NOT_NAMED}: ${map.untested.join(', ')}`);

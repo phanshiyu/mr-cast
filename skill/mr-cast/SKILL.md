@@ -48,7 +48,7 @@ For the branch:
 
 It prints the run's directory, `.mr-cast/<branch-slug>/`, then a change map, then a hunk index. Pass a base when the user names one. Add `--working` for uncommitted changes. For a PR or MR that is not checked out, run `gh pr checkout <n>` or `glab mr checkout <n>` first. When `gh` or `glab` can read the branch's PR or MR, save its title and description to a file (`gh pr view --json title,body`, `glab mr view`) and pass `--description <file>`. When they cannot (not logged in, no network), carry on without it: the commit messages are in the map. Running `extract` again refreshes the diff and keeps the storyboard and snippets.
 
-The change map is what the diff alone does not show: what the author said in the commits and the description, the files by kind with existing code that changed first, which tests cover which files, and where changed names are used outside the diff.
+The change map is what the diff alone does not show: what the author said in the commits and the description, the files by kind with existing code that changed first, which tests name or import which files, and where changed names are used outside the diff.
 
 The hunk index lists each file's hunk ids (`h1`, `h2`, ...) and changed lines. A diff over 600 changed lines prints it short. `{{MR_CAST}}/bin/mr-cast hunk h12 h13` prints hunks in full, and `{{MR_CAST}}/bin/mr-cast map` prints the map again. Full hunks are in `hunks.json`, the map in `map.json`.
 

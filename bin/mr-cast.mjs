@@ -117,7 +117,7 @@ Used by the Claude Code skills:
   status            the branch's changes against its base, uncommitted files, and the last pace and voice
   extract [base] [--working] [--description file]
                     start a walkthrough of the branch's diff in .mr-cast/<branch>, print a change map (the
-                    commit messages, files by kind, tests and what they cover, where changed names are used
+                    commit messages, files by kind, tests and the files they name or import, where changed names are used
                     elsewhere) and a hunk index, and write map.json; --working diffs the merge base
                     against uncommitted changes; --description reads the merge request's title and text
                     from a file you saved
