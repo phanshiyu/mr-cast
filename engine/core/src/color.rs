@@ -95,6 +95,11 @@ fn parse(s: &str) -> Option<Color> {
     }
 }
 
+/// A colour with its alpha written as two hex digits, as `${color}aa` in the TSX.
+pub fn hex_alpha(c: Color, a: u32) -> Color {
+    c.alpha(a.min(255) as f32 / 255.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::Color;
@@ -106,9 +111,4 @@ mod tests {
         let c = Color::css("hsl(220, 14%, 71%)");
         assert!((c.r * 255.0 - 171.0).abs() < 1.0 && (c.b * 255.0 - 191.0).abs() < 1.0);
     }
-}
-
-/// A colour with its alpha written as two hex digits, as `${color}aa` in the TSX.
-pub fn hex_alpha(c: Color, a: u32) -> Color {
-    c.alpha(a.min(255) as f32 / 255.0)
 }
