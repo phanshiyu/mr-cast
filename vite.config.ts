@@ -46,5 +46,7 @@ export default defineConfig({
   // Data edits arrive through /events; letting Vite see them would reload the page and lose the frame.
   server: { watch: { ignored: [`${dataDir}/**`] } },
   plugins: [react(), tailwindcss(), mrCastData(dataDir)],
+  // The engine compiled to WebAssembly, which `pnpm build:wasm` writes (see src/engine/mrc-wasm.d.ts).
+  resolve: { alias: { 'mrc-wasm': path.resolve('engine/wasm/pkg/mrc_wasm.js') } },
   build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 1500 },
 });

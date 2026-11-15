@@ -1,4 +1,3 @@
-import { Player, type PlayerRef } from '@remotion/player';
 import {
   ArrowRightLeft,
   Brackets,
@@ -28,7 +27,7 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
 import { loadWorld, needsWorld } from '../shared/map.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
@@ -41,10 +40,9 @@ import { guidePanel, sceneQuestions } from '../shared/guide.mjs';
 import { readingOrder } from '../shared/reading.mjs';
 import type { HunkMap, ImageManifest, Plan, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
+import { CanvasPlayer } from './player/CanvasPlayer';
+import type { PlayerHandle } from './player/types';
 import {
-  FPS,
-  HEIGHT,
-  WIDTH,
   formatTime,
   spokenAt,
   timeline,
@@ -52,7 +50,6 @@ import {
   type SpokenSegment,
   type TimedScene,
 } from './utils/timing';
-import { Walkthrough } from './Walkthrough';
 import { QuickEndCard, VoiceFailed } from './QuickParts';
 
 interface Meta {
@@ -69,7 +66,11 @@ type PlanData = { status: 'ok'; plan: Plan; built: BuiltPicks | null } | { statu
 /** What the command serving the page was run with (`settings.json`). */
 interface ServedSettings {
   audience?: string;
+  /** `remotion` under MR_CAST_RENDERER=remotion, until every scene type is drawn by the engine. */
+  renderer?: string;
 }
+
+const RemotionPlayer = lazy(() => import('./player/RemotionPlayer'));
 
 type LoadState =
   | { status: 'loading' }
@@ -213,7 +214,7 @@ function activeIndex(chapters: readonly TimedScene[], frame: number): number {
 
 export const App: React.FC = () => {
   const [state, setState] = useState<LoadState>({ status: 'loading' });
-  const playerRef = useRef<PlayerRef>(null);
+  const playerRef = useRef<PlayerHandle>(null);
   const resumeFrame = useRef<number | null>(null);
   const [frame, setFrame] = useState(0);
   const [rate, setRate] = useState(1);
@@ -375,6 +376,15 @@ export const App: React.FC = () => {
 
   const { storyboard } = shown;
   const active = chapters[current]!;
+  const playerProps = {
+    walkthrough: shown,
+    durationInFrames: total,
+    // Browsers block autoplay with sound, so a voiced walkthrough waits for a click.
+    autoPlay: !voiced,
+    initiallyMuted: !voiced,
+    poster: voiced ? renderPlayPoster : undefined,
+    playbackRate: rate,
+  };
 
   return (
     <Backdrop>
@@ -447,27 +457,13 @@ export const App: React.FC = () => {
 
           <main className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
-              <Player
-                ref={playerRef}
-                component={Walkthrough}
-                inputProps={shown}
-                durationInFrames={total}
-                compositionWidth={WIDTH}
-                compositionHeight={HEIGHT}
-                fps={FPS}
-                controls
-                showVolumeControls
-                // Browsers block autoplay with sound, so a voiced walkthrough waits for a click.
-                autoPlay={!voiced}
-                initiallyMuted={!voiced}
-                renderPoster={voiced ? renderPlayPoster : undefined}
-                showPosterWhenUnplayed
-                posterFillMode="player-size"
-                spaceKeyToPlayOrPause={false}
-                playbackRate={rate}
-                acknowledgeRemotionLicense
-                style={{ width: '100%', aspectRatio: '16 / 9' }}
-              />
+              {settings?.renderer === 'remotion' ? (
+                <Suspense fallback={null}>
+                  <RemotionPlayer ref={playerRef} {...playerProps} />
+                </Suspense>
+              ) : (
+                <CanvasPlayer ref={playerRef} {...playerProps} />
+              )}
               {meta?.quick && ended ? <QuickEndCard /> : null}
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
