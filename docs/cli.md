@@ -18,8 +18,8 @@ Run the commands from inside the repository the video is about. Output goes to `
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Each snippet holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. A later `extract` keeps the snippets. |
 | `mr-cast plan [--port N] [--no-open] [--idle-exit minutes]` | Checks the run's `plan.json`, serves the plan page at `http://127.0.0.1:4747/plan`, and opens the browser. The page writes each pick into `plan.json`, and reloads when `plan.json` changes. It replaces a plan server already running for the run, and exits like `play` when no page is open. See [The plan](#the-plan). |
 | `mr-cast schema [type\|all]` | Prints the storyboard's TypeScript schema from `src/types.ts`. With a scene type such as `array`, it prints that scene and every type it uses. Alone, it prints the storyboard and what every scene shares. `all` prints everything. |
-| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against `plan.json` when the run has one. Prints the length. Exits 1 on errors. `--read-only` writes nothing: no `review.md`, `reading.md`, `guide.md` or plan picks, and no remembered choice. For a branch video with a `brief`, it also prints one line on the six answers and writes `guide.md`, the brief in plain words. |
-| `mr-cast outline` | Prints a short plan of a valid storyboard to show before rendering: the title, one line per scene with its type, chapter and contents, and the length. |
+| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against `plan.json` when the run has one. Prints the length. Exits 1 on errors. `--read-only` writes nothing: no `review.md`, `reading.md`, `guide.md` or plan picks, and no remembered choice. For a branch video with a `brief`, it also prints one line on the six answers and writes `guide.md`, the brief in plain words. Every video gets a `scenes:` line with the count of each scene type. See [Checks on a branch video](#checks-on-a-branch-video). |
+| `mr-cast outline` | Prints a short plan of a valid storyboard to show before rendering: the title, one line per scene with its type, chapter and contents, and the length, with the `brief:` and `scenes:` lines. |
 | `mr-cast steps [sceneIndex...]` | Prints each step's words beside what it lights and what it changes on screen, with the highlight warnings. Code scenes are left out. |
 | `mr-cast still [sceneIndex...] [--out dir] [--step k]` | Renders a PNG of each scene's end state, just before it fades out, into the run's `stills/`. Scene indexes start at 0. With `--step k`, it renders each scene as its step k ends, just before the next step starts, into `scene-NN-type-step-k.png`; every scene it renders must have that step. |
 | `mr-cast voice` | Speaks each scene's narration and each step into the run's `audio/` and writes `voiceover.json`. Only changed text is spoken again. |
@@ -42,6 +42,24 @@ Run the commands from inside the repository the video is about. Output goes to `
 - **Files by kind:** source, tests, docs, config and routine (lockfiles, generated files, snapshots, pure renames). Each file shows new or modified, `+` and `−`, and its hunk ids, largest first. Modified source files are listed apart from new ones.
 - **Tests and what they cover:** for each changed test file, the changed source files it imports or names (or is named after), and the test names it adds. Changed source files that no changed test names are listed.
 - **Used elsewhere:** for names declared on changed or removed lines of modified source files, the count of files outside the diff that use the name, and up to three paths. This is a text search (`git grep -w`), not a call graph, so it can list false matches. It searches at most 40 names, skips names under 4 characters, and gives each search 3 seconds.
+
+## Checks on a branch video
+
+`validate` warns about these, and none stops a render, so a storyboard written before the brief still passes. Each warning states a fact and what to look at; none says which scene to use. `validate`, `outline` and the skill's hook print two lines:
+
+```
+brief: why ✓ (description) · case ✓ · approach ✓ 3 decisions · parts 4, core 2 · proof ✓ 0 tested, 4 untested · check 3 · ask 1
+scenes: 12 · code 3, text 1, graph 1 · longest run: 3 code
+```
+
+An answer that is `"unknown"` reads `proof unknown`, and a missing one `proof ✗`. The hook prints both lines after a write that passes, as context for Claude. When the write fails, it prints the errors instead.
+
+- **The brief:** a branch video with no `brief`; a question with no answer and no `"unknown"`; a question no scene `answers`.
+- **Places that do not exist:** a `cite`, a commit in `why.source`, a part's hunk, or a `check` line that is not in the diff or the repository.
+- **Parts:** a hunk of a source or test file that is in no part and not in `skipped`; a modified source file no part holds; a `core` part none of whose hunks a scene shows or cites.
+- **Proof:** `proof.tested` empty (or `"unknown"`) while the map lists changed tests; `why.source` of `inferred` or `unknown` while the map has a commit body or a description.
+- **The mix of scenes:** 4 or more scenes of one type in a row; a flow `payload` that reads as a sentence (6 or more words and no digit, quote, bracket, equals sign or colon); a diagram that repeats an earlier one (at least 3 labels, 70% of them in the earlier diagram); a `case` with a before and an after that no scene puts on screen; changed tests whose names no scene draws and no scene shows as a hunk.
+- **Code never seen:** a code scene whose hunk is longer than the frame draws and no step brings the rest into view. The lines never seen are named.
 
 ## Runs
 
@@ -100,7 +118,9 @@ If the model cannot load, for example offline on the first run, `play` and `rend
 
 A second `play` of the same run stops the first player and its voicing, then starts, so it runs with the new command's flags. A voice model download the first player started keeps running, and the second waits for it instead of starting over. A player exits by itself once no page has been open for 30 minutes, counted from the last page closing, or from the start when none opened. It does not count while any voicing runs, the first or an edit's, and counts from the start again once the voicing ends. `--idle-exit <minutes>` changes the limit, and `--idle-exit 0` keeps it running until stopped.
 
-When `storyboard.json` changes, the page keeps playing its version and shows "Updating..." until the changed narration is voiced, then reloads once. The speed control goes from 0.75x to 1.5x. With a `plan.json`, the player has a **Plan** tab. For a pre-read, it has a **Reading order** panel.
+When `storyboard.json` changes, the page keeps playing its version and shows "Updating..." until the changed narration is voiced, then reloads once. The speed control goes from 0.75x to 1.5x. With a `plan.json`, the player has a **Plan** tab. For a pre-read, it has a **Reading order** panel. A branch video's reading panel lists its check-first places.
+
+A branch video with a `brief` has a **guide panel** where the reading panel sits (a pre-read keeps its reading panel). It lists the six questions with the brief's short answer to each, marks the ones the video has reached, and jumps to the first scene that answers one when you click it. An answer that is `"unknown"` reads "Not stated". Under the questions are **Open first**, one line for each `check` place, which jumps to the scene that shows it, and **Ask the author**. The `G` key shows or hides the panel. It is part of the page and not of the video, so the MP4 never has it, and on a small screen it stacks under the video. Each chapter in the sidebar carries a small label for the question its scene answers: Why, One case, The idea, The parts, Proof or Check first.
 
 ## Render
 

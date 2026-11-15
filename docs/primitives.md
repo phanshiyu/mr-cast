@@ -94,7 +94,7 @@ Today: `sequence` with `participants`, `messages` (`call`, `return`, `async`) an
 
 Beats: OA the `/authorize` query string, the `/token` request and response bodies, the `Authorization: Bearer` header; YT the HLS manifest lines; YT `UPDATE videos SET views = views + 1`; RE the JSX beside the object it compiles to.
 
-Today: `compare` cells take `{ "code": "...", "lang": "jsx" }`; `terminal` entries wrap long commands and output; `code` shows a snippet. **Fully**. Probed: the JSX and its object side by side in `compare`, and the URL and JSON in `terminal`, both render readably at full size. The payload sits in its own scene, apart from the swimlane that sends it.
+Today: `compare` cells take `{ "code": "...", "lang": "jsx" }`; `terminal` entries wrap long commands and output; `code` shows a snippet. **Fully**. Probed: the JSX and its object side by side in `compare`, and the URL and JSON in `terminal`, both render readably at full size. The payload sits in its own scene, apart from the swimlane that sends it. A `flow` step can also show real lines of a hunk or snippet in place of its `payload`, and a `compare` cell can show lines of a hunk (see [Real code in a flow](storyboard.md#real-code-in-a-flow) and [Compare with real code](storyboard.md#compare-with-real-code)).
 
 ### 12. Two or three things compared
 
@@ -337,7 +337,7 @@ The user picked P1 to P5 with option A, and P6 as an `svg` scene. All of them sh
 
 All eleven blueprints were then built as worked examples under `examples/algorithms/`, `examples/architecture/` and `examples/explain/`, each with a `generate.mjs` that computes its numbers and writes the storyboard. The facts above are fixed in them: binary search's chart gives the most looks, 5 for 16 items; YouTube keeps `.ts` chunks with H.264; OAuth uses the RFC 7636 verifier and its real challenge; and Bitcoin's three blocks were mined for 30 zero bits. Libraries the numbers came from, h3-js and js-tiktoken, left their results in a committed `facts.json`, so a generator runs with plain `node`.
 
-Building them found eleven problems in the scenes, all fixed in 0.26.0:
+Building them found eleven problems in the scenes, all fixed in 0.26.0 (later scenes for a video of a branch are in the [storyboard reference](storyboard.md#the-brief-of-a-branch-video)):
 
 - A graph ranked into one line drew every edge that skips a node on one shared lane; each now takes its own lane, and Dijkstra lost the hidden spacer node it used to get around this.
 - A graph or other diagram scaled to fit could draw its text under the readable size without a warning; `validate` now warns, with the scale and the sizes.
