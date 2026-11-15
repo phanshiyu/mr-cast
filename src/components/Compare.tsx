@@ -43,9 +43,11 @@ const UNSHOWN_LABEL = 0.55;
 const NOT_TAKEN_OPACITY = 0.55;
 
 const TAG_TEXT: Record<Taken, string> = { chosen: 'Chosen', notTaken: 'Not taken' };
+/** The way not taken is the writer's own idea, which no commit or description names. */
+const MINE_TEXT = 'Another way';
 
 /** The small label that says an option was taken or not. */
-const TakenTag: React.FC<{ taken: Taken; height?: number }> = ({ taken, height = 26 }) => (
+const TakenTag: React.FC<{ taken: Taken; mine: boolean; height?: number }> = ({ taken, mine, height = 26 }) => (
   <div
     style={{
       height,
@@ -64,7 +66,7 @@ const TakenTag: React.FC<{ taken: Taken; height?: number }> = ({ taken, height =
       boxShadow: taken === 'chosen' ? undefined : `inset 0 0 0 1.5px ${colors.border}`,
     }}
   >
-    {TAG_TEXT[taken]}
+    {taken === 'notTaken' && mine ? MINE_TEXT : TAG_TEXT[taken]}
   </div>
 );
 
@@ -198,7 +200,7 @@ const Cell: React.FC<{
       >
         {cell.tagged && cell.taken ? (
           <div style={{ height: TAG_H, display: 'flex', alignItems: 'flex-start' }}>
-            <TakenTag taken={cell.taken} />
+            <TakenTag taken={cell.taken} mine={layout.mine} />
           </div>
         ) : null}
         {cell.kind === 'text' ? (
@@ -355,7 +357,7 @@ const Panel: React.FC<{ layout: CompareLayout; side: 0 | 1; appear: number; titl
             opacity: titleIn,
           }}
         >
-          <TakenTag taken={panel.taken} height={30} />
+          <TakenTag taken={panel.taken} mine={layout.mine} height={30} />
         </div>
       ) : null}
     </div>

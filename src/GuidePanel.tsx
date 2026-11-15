@@ -69,6 +69,23 @@ export const GuidePanel: React.FC<{ guide: Guide; scene: number; onScene: (scene
             </ul>
           </div>
         ) : null}
+        {guide.decisions.length ? (
+          <div>
+            <h3 className="mb-1.5 text-xs font-medium text-slate-500">Decisions</h3>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {guide.decisions.map((d) => (
+                <li key={d.text}>
+                  <span
+                    className={d.kind === 'mine' ? 'block text-xs text-amber-300/90' : 'block text-xs text-slate-500'}
+                  >
+                    {d.lead}
+                  </span>
+                  <span className="text-slate-300">{d.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {guide.ask.length ? (
           <div>
             <h3 className="mb-1.5 text-xs font-medium text-slate-500">Ask the author</h3>

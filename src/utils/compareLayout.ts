@@ -67,6 +67,8 @@ export interface CompareLayout {
   font: number;
   /** `mode: "options"`: no cue between the sides. */
   options: boolean;
+  /** `alternative: "mine"`: the way not taken is the writer's own idea, so its label reads "Another way". */
+  mine: boolean;
   /** Width of the row label column, 0 when no row has a label. */
   labelW: number;
   sides: [CompareSidePlaced, CompareSidePlaced];
@@ -228,6 +230,7 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
     height: y + BOTTOM_PAD,
     font,
     options,
+    mine: options && scene.alternative === 'mine',
     labelW,
     sides,
     cellX: PANEL_PAD,

@@ -51,6 +51,11 @@ export function checkCompare(s, p, errors, warnings, hunks = {}) {
       `${p}.mode: must be one of ${MODES.join(', ')}; "options" is a decision against the alternative not taken`,
     );
   const options = s.mode === 'options';
+  if (s.alternative !== undefined) {
+    if (s.alternative !== 'mine') errors.push(`${p}.alternative: must be "mine", or left out`);
+    else if (!options)
+      errors.push(`${p}.alternative: only means something with "mode": "options"; add it, or remove alternative`);
+  }
   const notOptions = (q) => `${q}.chosen: only means something with "mode": "options"; add it, or remove chosen`;
   if (s.sides !== undefined) {
     if (!Array.isArray(s.sides) || s.sides.length !== 2)

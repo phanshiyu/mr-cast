@@ -82,3 +82,27 @@ test('an answer of "unknown", or none, has no text, and a question no scene tell
     [null, null, null, null, null, null],
   );
 });
+
+test("the guide labels each decision as the author's, the code's or the writer's own", () => {
+  const sb = {
+    title: 'T',
+    scenes,
+    brief: {
+      ...brief,
+      approach: {
+        text: 'x',
+        decisions: [
+          { text: 'Keys expire.', source: 'commit 7376000' },
+          { text: 'Count per server.', source: 'code', cite: ['h1', 'src/limiter.js:12'] },
+          'A shared store.',
+        ],
+      },
+    },
+  };
+  assert.deepEqual(guidePanel(sb, hunks).decisions, [
+    { kind: 'stated', lead: 'The author says (commit 7376000)', text: 'Keys expire.' },
+    { kind: 'code', lead: 'The code shows (h1, src/limiter.js:12)', text: 'Count per server.' },
+    { kind: 'mine', lead: "Another way, not the author's", text: 'A shared store.' },
+  ]);
+  assert.deepEqual(guidePanel({ title: 'T', scenes, brief }, hunks).decisions, []);
+});

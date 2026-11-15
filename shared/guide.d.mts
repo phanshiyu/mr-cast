@@ -22,9 +22,17 @@ export interface GuideCheck {
   scene: number | null;
 }
 
+export interface GuideDecision {
+  kind: 'stated' | 'code' | 'mine';
+  /** Who says it: "The author says (commit 7376000)", "The code shows (h2)", "Another way, not the author's". */
+  lead: string;
+  text: string;
+}
+
 export interface GuidePanel {
   questions: GuideQuestion[];
   check: GuideCheck[];
+  decisions: GuideDecision[];
   ask: string[];
 }
 

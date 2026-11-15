@@ -218,3 +218,9 @@ test('a side written as a plain string is an error that says to write an object 
     [],
   );
 });
+
+test('alternative "mine" is carried by the layout of an options compare, and by no other', () => {
+  assert.equal(layoutCompare(options({ alternative: 'mine' }), 1700, 760, hunks).mine, true);
+  assert.equal(layoutCompare(options(), 1700, 760, hunks).mine, false);
+  assert.equal(layoutCompare({ ...options({ alternative: 'mine' }), mode: 'changes' }, 1700, 760, hunks).mine, false);
+});

@@ -13,6 +13,47 @@ const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' &&
 const object = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
 const oneLine = (text) => plainText(String(text)).replace(/\s+/g, ' ').trim();
 
+/**
+ * One decision as `{ text, source, cite }`. A plain string is the writer's own observation, so source "mine".
+ * `kind` is "stated" (a commit or the description), "code" or "mine".
+ */
+function readDecision(d) {
+  const o = object(d);
+  const text = typeof d === 'string' ? d : typeof o?.text === 'string' ? o.text : '';
+  const source = o && typeof o.source === 'string' && o.source.trim() ? o.source.trim() : 'mine';
+  const kind = source === 'code' ? 'code' : source === 'mine' ? 'mine' : 'stated';
+  return { text, source, kind, cite: o ? list(o.cite) : [] };
+}
+
+/** The decisions of an approach, each read by `readDecision`; empty text is dropped. */
+export const decisionsOf = (approach) =>
+  (Array.isArray(approach?.decisions) ? approach.decisions : []).map(readDecision).filter((d) => d.text.trim());
+
+/** What each kind of decision is called where a person reads it. */
+const DECISION_LABELS = {
+  stated: 'The author says',
+  code: 'The code shows',
+  mine: "Another way, not the author's",
+};
+
+/** The words before a decision: "The author says (commit 7376000)", "The code shows (h2)", "Another way, not the author's". */
+export function decisionLead(d) {
+  const detail = d.kind === 'stated' ? d.source : d.kind === 'code' ? d.cite.join(', ') : '';
+  return `${DECISION_LABELS[d.kind]}${detail ? ` (${detail})` : ''}`;
+}
+
+/** "3 decisions (2 stated, 1 mine)": the count with the kinds that are there. */
+function decisionCount(approach) {
+  const ds = decisionsOf(approach);
+  const by = (k) => ds.filter((d) => d.kind === k).length;
+  const parts = [
+    [by('stated'), 'stated'],
+    [by('code'), 'code'],
+    [by('mine'), 'mine'],
+  ].filter(([n]) => n > 0);
+  return `${plural(ds.length, 'decision')}${parts.length ? ` (${parts.map(([n, w]) => `${n} ${w}`).join(', ')})` : ''}`;
+}
+
 /** Whether `brief` answers `question`, with something other than "unknown": a missing answer is not an answer. */
 function answered(brief, question) {
   const a = brief?.[question];
@@ -29,7 +70,7 @@ const unknown = (brief, question) =>
 export const missingQuestions = (brief) => QUESTIONS.filter((q) => !answered(brief, q));
 
 /**
- * One line for validate, outline and the hook: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions ·
+ * One line for validate, outline and the hook: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 3 decisions (2 stated, 1 mine) ·
  * parts 3, core 2 · proof ✗ · check 2 · ask 1`.
  */
 export function briefLine(brief) {
@@ -41,7 +82,7 @@ export function briefLine(brief) {
   return `brief: ${[
     word('why', source),
     word('case', ''),
-    word('approach', ` ${plural(list(object(brief?.approach)?.decisions).length, 'decision')}`),
+    word('approach', ` ${decisionCount(object(brief?.approach))}`),
     parts ? `parts ${parts.length}, core ${core}` : word('parts', ''),
     word('proof', proof ? ` ${list(proof.tested).length} tested, ${list(proof.untested).length} untested` : ''),
     answered(brief, 'check') ? `check ${brief.check.length}` : 'check ✗',
@@ -94,7 +135,9 @@ function sections(brief, hunks) {
   else
     add('What is the idea, and what did the author decide?', [
       md(approach.text ?? ''),
-      ...(list(approach.decisions).length ? ['', 'Decisions:', ...bullets(approach.decisions)] : []),
+      ...(decisionsOf(approach).length
+        ? ['', 'Decisions:', ...decisionsOf(approach).map((d) => `- ${decisionLead(d)}: ${md(d.text)}`)]
+        : []),
     ]);
 
   if (brief.parts === 'unknown') add('What are the parts?', ['Not known.']);

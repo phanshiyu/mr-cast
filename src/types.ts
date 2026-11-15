@@ -1541,6 +1541,11 @@ export interface CompareScene extends SceneBase {
    * `chosen` on a side or a row marks the one taken.
    */
   mode?: 'changes' | 'options';
+  /**
+   * In "options" mode: "mine" says the way not taken is your own idea and no commit or description names it. The
+   * label then reads "Another way" where it would read "Not taken".
+   */
+  alternative?: 'mine';
   /** Up to 6. */
   rows: CompareRow[];
   /**
@@ -1665,8 +1670,24 @@ export interface BriefCase {
 export interface BriefApproach {
   /** The idea, in one or two sentences. */
   text: string;
-  /** Choices the author made where another way was open, one short sentence each. */
-  decisions: string[];
+  /**
+   * Choices where another way was open, one short sentence each, with where it comes from. A plain string is read
+   * as `{ text, source: "mine" }`.
+   */
+  decisions: (BriefDecision | string)[];
+}
+
+/**
+ * One choice and who says it was one. `source` is "description" or "commit 7376000" when the author wrote it, "code"
+ * when the choice is visible in the code (give a `cite`), and "mine" for your own observation: a way not taken that
+ * nobody names. The player and guide.md label a "mine" decision as not the author's, so do not make one up to fill
+ * the list; leave the list short.
+ */
+export interface BriefDecision {
+  text: string;
+  source: string;
+  /** Where to see it: hunk ids, `path:line` or `path:a-b`. Expected when `source` is "code". */
+  cite?: string[];
 }
 
 /** One part of the change: the hunks that belong together. */

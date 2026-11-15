@@ -2,6 +2,14 @@ import type { Brief, HunkMap, Storyboard } from '../src/types';
 
 export declare const QUESTIONS: string[];
 export declare const GUIDE_HEADING: string;
+export interface ReadDecision {
+  text: string;
+  source: string;
+  kind: 'stated' | 'code' | 'mine';
+  cite: string[];
+}
+export declare function decisionLead(d: ReadDecision): string;
+export declare function decisionsOf(approach: unknown): ReadDecision[];
 export declare function missingQuestions(brief: Brief | undefined): string[];
 export declare function briefLine(brief: Brief | undefined): string;
 export declare function guideMarkdown(

@@ -56,7 +56,10 @@ const brief = (over = {}) => ({
     after: 'It is refused with a 429.',
     cite: ['h1', 'test/limiter.test.js:2'],
   },
-  approach: { text: 'Count orders per address in a minute.', decisions: ['The count is per server'] },
+  approach: {
+    text: 'Count orders per address in a minute.',
+    decisions: [{ text: 'The count is per server', source: 'commit 7376000' }],
+  },
   parts: [
     { name: 'The limiter', weight: 'core', hunks: ['h1'] },
     { name: 'Wiring', weight: 'support', hunks: ['h2'] },
@@ -126,7 +129,7 @@ test('a question with no answer is named, and "unknown" is an answer', async () 
   );
   assert.equal(
     briefLine(sb.brief),
-    'brief: why unknown · case unknown · approach ✓ 1 decision · parts 3, core 1 · proof ✗ · check ✗ · ask 1',
+    'brief: why unknown · case unknown · approach ✓ 1 decision (1 stated) · parts 3, core 1 · proof ✗ · check ✗ · ask 1',
   );
 });
 
@@ -306,7 +309,7 @@ test('lines within the frame of a step are not warned, nor the context rows kept
 test('the brief line of a full brief matches the ADR', () => {
   assert.equal(
     briefLine(brief({ proof: undefined, why: { text: 'x', source: 'commit 7376000' }, parts: brief().parts })),
-    'brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 1 decision · parts 3, core 1 · proof ✗ · check 1 · ask 1',
+    'brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 1 decision (1 stated) · parts 3, core 1 · proof ✗ · check 1 · ask 1',
   );
 });
 
@@ -356,7 +359,7 @@ test('guide.md names the six answers, the parts with their files and what to ope
       'Count orders per address in a minute.',
       '',
       'Decisions:',
-      '- The count is per server',
+      '- The author says (commit 7376000): The count is per server',
       '',
       '## What are the parts?',
       '',
@@ -409,7 +412,7 @@ test('validate prints the brief line and writes guide.md, outline prints the lin
     const lines = validated.stdout.trim().split('\n');
     assert.ok(
       lines.includes(
-        'brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 1 decision · parts 3, core 1 · proof ✗ · check 1 · ask 1',
+        'brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 1 decision (1 stated) · parts 3, core 1 · proof ✗ · check 1 · ask 1',
       ),
       validated.stdout,
     );
@@ -480,4 +483,104 @@ test('outline reads a reading scene with no items, which draws the brief check l
   const storyboard = board({ scenes: [text(ALL), code('h1'), code('h2'), reading] });
   const out = formatOutline({ storyboard, hunks, coverage: null, seconds: 30, voiced: false });
   assert.match(out, /1 place to open first, from the brief/);
+});
+
+const withDecisions = (decisions) => brief({ approach: { text: 'Count orders per address.', decisions } });
+
+test('a decision with source "code" and no cite is warned, and so is a commit that is not the branch\'s', async () => {
+  const sb = board({
+    brief: withDecisions([
+      { text: 'The count is per server', source: 'code' },
+      { text: 'Refuse, never queue', source: 'code', cite: ['h2', 'src/ghost.js:3'] },
+      { text: 'Keys expire', source: 'commit 9999999' },
+      { text: 'Stated', source: 'commit 7376000' },
+    ]),
+  });
+  assert.deepEqual(await warningsOf(sb), [
+    'brief.approach.decisions[0]: source "code" but no cite; name the hunk id or path:line where the choice shows',
+    'brief.approach.decisions[1].cite[1]: "src/ghost.js:3" names src/ghost.js, which is not a file of the diff',
+    'brief.approach.decisions[2].source: "9999999" is not a commit of this branch',
+  ]);
+});
+
+test('a decision of the wrong shape is an error, and a plain string is read as "mine"', async () => {
+  const bad = await check(board({ brief: withDecisions([{ text: 'x' }, 3]) }));
+  assert.deepEqual(
+    bad.errors.filter((e) => e.startsWith('brief.approach')),
+    [
+      'brief.approach.decisions[0].source: required, "description", "code", "mine" or "commit <sha>"',
+      'brief.approach.decisions[1]: must be { text, source, cite? } or a string',
+    ],
+  );
+  assert.equal(
+    briefLine(withDecisions(['a', { text: 'b', source: 'description' }, { text: 'c', source: 'code', cite: ['h1'] }])),
+    'brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 3 decisions (1 stated, 1 code, 1 mine) · parts 3, core 1 · proof ✓ 1 tested, 1 untested · check 1 · ask 1',
+  );
+});
+
+test('every decision "mine" while the commits state something is warned, one that is stated is not', async () => {
+  const mine = await warningsOf(board({ brief: withDecisions(['One way', { text: 'Two', source: 'mine' }]) }));
+  assert.equal(mine.length, 1);
+  assert.match(
+    mine[0],
+    /^brief\.approach\.decisions: every decision is "mine", but a commit body is in map\.json; the commits or description may state choices, so read them/,
+  );
+  assert.deepEqual(
+    await warningsOf(board({ brief: withDecisions(['One way', { text: 'Two', source: 'description' }]) })),
+    [],
+  );
+  // With nothing written by the author, a writer's own observation is all there is.
+  assert.deepEqual(
+    await warningsOf(board({ brief: withDecisions(['One way']) }), {
+      map: { ...map, commits: [{ sha: '7376000', subject: 'x', body: '' }] },
+    }),
+    [],
+  );
+});
+
+test('guide.md labels each decision by who says it', () => {
+  const sb = board({
+    brief: withDecisions([
+      { text: 'Keys expire', source: 'description' },
+      { text: 'Count per server', source: 'code', cite: ['h2'] },
+      'A shared store',
+    ]),
+  });
+  const md = guideMarkdown(sb, hunks);
+  assert.match(md, /- The author says \(description\): Keys expire\n/);
+  assert.match(md, /- The code shows \(h2\): Count per server\n/);
+  assert.match(md, /- Another way, not the author's: A shared store\n/);
+});
+
+test('a compare of options that answers "approach" with every decision "mine" must say the alternative is mine', async () => {
+  const compare = (over = {}) => ({
+    type: 'compare',
+    mode: 'options',
+    answers: ['approach'],
+    sides: [{ title: 'Per server', chosen: true }, { title: 'Shared store' }],
+    rows: [{ cells: ['Counts in memory', 'Counts in Redis'] }],
+    narration: 'The author counts per server.',
+    ...over,
+  });
+  const mineBrief = withDecisions(['A shared store']);
+  const unmarked = await warningsOf(board({ scenes: [...scenes, compare()], brief: mineBrief }));
+  assert.ok(
+    unmarked.some((w) =>
+      /^scenes\[3\]: shows a way not taken for "approach", but every decision in the brief is "mine"/.test(w),
+    ),
+    unmarked.join('\n'),
+  );
+  const marked = await warningsOf(board({ scenes: [...scenes, compare({ alternative: 'mine' })], brief: mineBrief }));
+  assert.ok(!marked.some((w) => w.startsWith('scenes[3]')), marked.join('\n'));
+  // One decision that is stated, and the alternative may be the author's.
+  const stated = await warningsOf(
+    board({ scenes: [...scenes, compare()], brief: withDecisions(['x', { text: 'y', source: 'description' }]) }),
+  );
+  assert.ok(!stated.some((w) => w.startsWith('scenes[3]')));
+  const wrong = await check(
+    board({ scenes: [...scenes, compare({ mode: undefined, alternative: 'mine', sides: undefined })] }),
+  );
+  assert.ok(wrong.errors.some((e) => e.includes('alternative: only means something with "mode": "options"')));
+  const bad = await check(board({ scenes: [...scenes, compare({ alternative: 'theirs' })] }));
+  assert.ok(bad.errors.some((e) => e.includes('alternative: must be "mine"')));
 });

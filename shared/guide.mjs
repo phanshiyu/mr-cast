@@ -2,7 +2,7 @@
 // the six questions with their short answers and the first scene that tells each, the places to open first with the
 // scene that shows each, and the questions for the author. Plain data, so the page only draws it and a test can check it.
 
-import { QUESTIONS } from './brief.mjs';
+import { QUESTIONS, decisionLead, decisionsOf } from './brief.mjs';
 import { lineSpan } from './review.mjs';
 import { plainText } from './markup.mjs';
 
@@ -79,7 +79,7 @@ function sceneShowing(scenes, hunks, file, line) {
 
 /**
  * The guide of a storyboard with a `brief`, or null without one:
- * `{ questions: [{ id, label, answer, scene }], check: [{ where, what, why, scene }], ask }`. `answer` is null where the
+ * `{ questions: [{ id, label, answer, scene }], check: [{ where, what, why, scene }], decisions: [{ kind, lead, text }], ask }`. `answer` is null where the
  * brief does not state it (the page says "Not stated"); `scene` is the index to seek to, or null.
  */
 export function guidePanel(storyboard, hunks) {
@@ -99,6 +99,11 @@ export function guidePanel(storyboard, hunks) {
       what: oneLine(c.what ?? ''),
       why: oneLine(c.why ?? ''),
       scene: sceneShowing(scenes, hunks, c.file, c.line),
+    })),
+    decisions: decisionsOf(object(brief.approach)).map((d) => ({
+      kind: d.kind,
+      lead: decisionLead(d),
+      text: oneLine(d.text),
     })),
     ask: strings(brief.ask),
   };

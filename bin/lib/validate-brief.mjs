@@ -5,7 +5,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { QUESTIONS, missingQuestions } from '../../shared/brief.mjs';
+import { QUESTIONS, decisionsOf, missingQuestions } from '../../shared/brief.mjs';
 import { shownHunkIds } from '../../shared/shown-hunks.mjs';
 import { lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
@@ -26,6 +26,18 @@ const named = (items) =>
 
 function stringList(v, path, errors) {
   if (!Array.isArray(v) || !v.every(isStr)) errors.push(`${path}: must be an array of strings`);
+}
+
+/** A decision is a string (the writer's own) or `{ text, source, cite? }`. */
+function checkDecisions(v, q, errors) {
+  if (!Array.isArray(v)) return errors.push(`${q}: must be an array of { text, source, cite? } or strings`);
+  v.forEach((d, i) => {
+    if (isStr(d)) return;
+    if (!isObj(d)) return errors.push(`${q}[${i}]: must be { text, source, cite? } or a string`);
+    if (!isStr(d.text)) errors.push(`${q}[${i}].text: required string`);
+    if (!isStr(d.source)) errors.push(`${q}[${i}].source: required, "description", "code", "mine" or "commit <sha>"`);
+    if (d.cite !== undefined) stringList(d.cite, `${q}[${i}].cite`, errors);
+  });
 }
 
 /** The shape of every answer; wrong types are errors, since nothing downstream can read them. */
@@ -53,7 +65,7 @@ function checkShape(brief, errors) {
     if (!isObj(approach)) errors.push(`${at('approach')}: must be { text, decisions } or "unknown"`);
     else {
       if (!isStr(approach.text)) errors.push(`${at('approach')}.text: required string`);
-      stringList(approach.decisions, `${at('approach')}.decisions`, errors);
+      checkDecisions(approach.decisions, `${at('approach')}.decisions`, errors);
     }
   }
   if (parts !== undefined && parts !== 'unknown') {
@@ -132,6 +144,28 @@ function refProblem(ref, hunks, look, { lineOnly = false } = {}) {
   return lineOnly ? 'is not a path:line' : 'is not a hunk id in hunks.json, a path:line, or a short commit sha';
 }
 
+/** A decision's `source` and `cite`: a "code" decision names where it shows, and a commit is one of the branch's. */
+function checkDecisionSources(approach, hunks, look, warnings) {
+  const raw = Array.isArray(approach.decisions) ? approach.decisions : [];
+  raw.forEach((d, i) => {
+    if (!isObj(d)) return;
+    const at = `brief.approach.decisions[${i}]`;
+    const source = typeof d.source === 'string' ? d.source.trim() : '';
+    const sha = /^commit (\S+)$/.exec(source);
+    if (sha) {
+      const problem = SHA.test(sha[1]) ? refProblem(sha[1], hunks, look) : 'is not a short commit sha';
+      if (problem) warnings.push(`${at}.source: "${sha[1]}" ${problem}`);
+    } else if (source && !['description', 'code', 'mine'].includes(source))
+      warnings.push(`${at}.source: "${source}" is not one of description, code, mine or "commit <sha>"`);
+    if (source === 'code' && !(Array.isArray(d.cite) && d.cite.length))
+      warnings.push(`${at}: source "code" but no cite; name the hunk id or path:line where the choice shows`);
+    (Array.isArray(d.cite) ? d.cite : []).forEach((ref, j) => {
+      const problem = refProblem(ref, hunks, look);
+      if (problem) warnings.push(`${at}.cite[${j}]: "${ref}" ${problem}`);
+    });
+  });
+}
+
 function checkRefs(brief, hunks, look, warnings) {
   const warn = (path, ref, problem) => warnings.push(`${path}: "${ref}" ${problem}`);
   const cites = [
@@ -152,6 +186,7 @@ function checkRefs(brief, hunks, look, warnings) {
     } else if (!SOURCES.includes(source))
       warnings.push(`brief.why.source: "${source}" is not one of ${SOURCES.join(', ')} or "commit <sha>"`);
   }
+  if (isObj(brief.approach)) checkDecisionSources(brief.approach, hunks, look, warnings);
   if (Array.isArray(brief.parts))
     brief.parts.forEach((p, i) =>
       (Array.isArray(p?.hunks) ? p.hunks : []).forEach((id, j) => {
@@ -202,6 +237,19 @@ function checkAnswers(sb, brief, warnings) {
       );
 }
 
+/** A compare of options that answers "approach" shows a way not taken; when every decision is the writer's own, say so. */
+function checkAlternatives(sb, brief, warnings) {
+  const decisions = decisionsOf(brief.approach);
+  if (!decisions.length || !decisions.every((d) => d.kind === 'mine')) return;
+  sb.scenes.forEach((s, i) => {
+    if (s?.type !== 'compare' || s.mode !== 'options' || s.alternative === 'mine') return;
+    if (Array.isArray(s.answers) && s.answers.includes('approach'))
+      warnings.push(
+        `scenes[${i}]: shows a way not taken for "approach", but every decision in the brief is "mine", so the alternative is yours and no commit or description names it; add "alternative": "mine" so the video labels it "Another way"`,
+      );
+  });
+}
+
 function checkParts(sb, brief, map, warnings) {
   if (!Array.isArray(brief.parts)) return;
   const shown = shownHunks(sb);
@@ -237,6 +285,12 @@ function checkParts(sb, brief, map, warnings) {
 }
 
 function checkEvidence(brief, map, warnings) {
+  const decisions = decisionsOf(brief.approach);
+  const said = (Array.isArray(map?.commits) && map.commits.some((c) => isStr(c?.body))) || isStr(map?.description);
+  if (said && decisions.length && decisions.every((d) => d.kind === 'mine'))
+    warnings.push(
+      `brief.approach.decisions: every decision is "mine", but ${isStr(map?.description) ? 'the description' : 'a commit body'} is in map.json; the commits or description may state choices, so read them, and cite a choice they state as "description" or "commit <sha>"`,
+    );
   if (
     Array.isArray(map?.tests) &&
     map.tests.length &&
@@ -250,7 +304,6 @@ function checkEvidence(brief, map, warnings) {
     warnings.push(
       `brief.proof: "unknown", but this branch changes ${map.tests.length} test ${map.tests.length === 1 ? 'file' : 'files'} (${named(map.tests.map((t) => t?.path))}); say what they show`,
     );
-  const said = (Array.isArray(map?.commits) && map.commits.some((c) => isStr(c?.body))) || isStr(map?.description);
   if (said && ['inferred', 'unknown'].includes(brief.why?.source))
     warnings.push(
       `brief.why.source: "${brief.why.source}", but ${isStr(map?.description) ? 'the description' : 'a commit body'} is in map.json; read it, and cite it as "description" or "commit <sha>"`,
@@ -306,6 +359,7 @@ export function checkBrief(sb, hunks, { branch, map: written = null, root = null
   const look = lookup(hunks, map, root);
   checkRefs(sb.brief, hunks, look, warnings);
   checkAnswers(sb, sb.brief, warnings);
+  checkAlternatives(sb, sb.brief, warnings);
   checkParts(sb, sb.brief, map, warnings);
   checkEvidence(sb.brief, map, warnings);
 }
