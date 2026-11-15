@@ -117,7 +117,9 @@ line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions �
 For a branch the skill says: read the map, answer the six questions in the `brief` before writing scenes, say
 "unknown" where the map and the code do not say, make scenes that answer them in whatever order and form fit, then
 look at the stills before showing the video. It gives one line per question on what a good answer holds. It dictates
-no order, scene type, count or length. Explanations and quick videos are unchanged.
+no order, scene type, count or length. Explanations and quick videos are unchanged. What each scene that suits an answer
+can hold is in `references/branch.md`. The installed SKILL.md may be 3,600 tokens, up from 3,000, to hold the six
+questions; Claude Code keeps a skill's first 5,000 tokens after compaction.
 
 ### 5. The player
 

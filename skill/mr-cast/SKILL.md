@@ -48,12 +48,7 @@ For the branch:
 
 It prints the run's directory, `.mr-cast/<branch-slug>/`, then a change map, then a hunk index. Pass a base when the user names one. Add `--working` for uncommitted changes. For a PR or MR that is not checked out, run `gh pr checkout <n>` or `glab mr checkout <n>` first. When the branch has a PR or MR, save its title and description to a file (`gh pr view --json title,body`, `glab mr view`) and pass `--description <file>`. Running `extract` again refreshes the diff and keeps the storyboard and snippets.
 
-The change map is what the diff alone does not show:
-
-- what the author said: every commit message, and the description;
-- the files by kind, existing code that changed first, then new files, tests, docs and routine files;
-- which changed tests cover which changed files, the test names they add, and the files no changed test names;
-- where names from changed code are used outside the diff, by a text search.
+The change map is what the diff alone does not show: what the author said in the commits and the description, the files by kind with existing code that changed first, which tests cover which files, and where changed names are used outside the diff.
 
 The hunk index lists each file's hunk ids (`h1`, `h2`, ...) and changed lines. A diff over 600 changed lines prints it short. `{{MR_CAST}}/bin/mr-cast hunk h12 h13` prints hunks in full, and `{{MR_CAST}}/bin/mr-cast map` prints the map again. Full hunks are in `hunks.json`, the map in `map.json`.
 
@@ -92,15 +87,7 @@ Put what only the author can answer in `ask`. `{{MR_CAST}}/bin/mr-cast schema` p
 
 Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. The order, the scenes and the length are yours. What you found goes in the video: a problem you noticed belongs in `check`, whether or not the user asked for a review.
 
-What a scene can hold decides whether it suits an answer:
-
-- **compare** puts two states side by side. A cell can show real lines of a hunk, old or new: `{ "hunk": "h11", "side": "old", "lines": "4-6" }`, up to 8 lines. With `"mode": "options"` it is a decision beside the way not taken.
-- **tests** is a grid of situations against outcomes, with the named tests that check each and the gaps nothing checks.
-- **files** with `"parts": "brief"` draws the brief's parts, core first, each with its files and line counts.
-- **flow** is a rail of stops. A stop's `code` shows real lines of any hunk or snippet, up to 14, so one request can be followed through several files. A stop's `payload` is drawn as one line of code: a value, not a sentence.
-- **code** shows one hunk or snippet, about 28 lines at a time. Steps bring lines into view; lines no step reaches are never seen.
-- **reading** with no items draws the brief's `check` list.
-- **graph**, **sequence**, **state** and **table** carry change marks, so what is new or changed stands out from what was there.
+Read [references/branch.md](references/branch.md) before you write the scenes: it says what each scene that suits these answers can hold, such as real lines of a hunk in a compare cell, a path through several files in a flow, and the brief's parts in a files scene.
 
 ## Write the storyboard
 
@@ -135,7 +122,7 @@ A hook runs `validate` after every write to `storyboard.json` and shows you the 
 
 Fix every error until it prints `✓ storyboard ok`. Errors are what would not render or names that do not exist. Warnings report what you cannot see without rendering, such as text that does not fit, a step whose words name something it does not light, or lines of a code scene that never come into view.
 
-For a branch it also prints two lines. `brief:` shows which of the six questions have an answer and a scene. `scenes:` shows how many scenes of each type there are and the longest run of one type. `validate` writes `guide.md` in the run's directory: the six answers, the parts with their files, what to open first, and the questions for the author.
+For a branch it also prints `brief:`, the questions that have an answer and a scene, and `scenes:`, the count of each scene type and the longest run of one. It writes `guide.md` in the run's directory: the six answers, the parts, what to open first, and the questions for the author.
 
 Look at the video before you show it. Render the stills and read every one: a still is what the viewer sees, and the storyboard is not.
 
