@@ -276,8 +276,11 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
     s.files.forEach((f, j) => {
       const q = `${p}.files[${j}]`;
       if (!isStr(f?.path)) return errors.push(`${q}.path: required string`);
-      if (seen.has(f.path)) errors.push(`${q}.path: "${f.path}" is listed twice`);
-      seen.add(f.path);
+      // With parts, a file whose hunks sit in two parts is listed once under each (`"parts": "brief"` does this).
+      const key = Array.isArray(s.parts) ? `${f.path}\0${f.part ?? ''}` : f.path;
+      if (seen.has(key))
+        errors.push(`${q}.path: "${f.path}" is listed twice${Array.isArray(s.parts) ? ' under the same part' : ''}`);
+      seen.add(key);
       for (const k of ['additions', 'deletions'])
         if (f[k] !== undefined && !isCount(f[k])) errors.push(`${q}.${k}: must be a whole number of lines, 0 or more`);
       if (mode !== 'explain' && !known.has(f.path)) unknown.push(f.path);

@@ -472,3 +472,42 @@ test('a part card says what its first check item risks, with "+ N more", and a s
   const none = mapOf(scene());
   assert.ok(none.cards.every((c) => c.risk === null));
 });
+
+test('a file whose hunks sit in two parts is not listed twice, but the same file twice in one part is', async () => {
+  const two = {
+    ...hunks,
+    h20: { ...hunks.h8, id: 'h20', additions: 5, deletions: 1 },
+  };
+  const split = {
+    parts: [
+      { name: 'A', weight: 'core', hunks: ['h8'] },
+      { name: 'B', weight: 'support', hunks: ['h20'] },
+    ],
+  };
+  const board = (files) => ({
+    title: 'T',
+    brief: split,
+    scenes: [{ type: 'files', narration: 'x', parts: files ?? 'brief' }],
+  });
+  const twice = (await validateStoryboard(board(), two, { mode: 'diff' })).errors.filter((e) => /listed twice/.test(e));
+  assert.deepEqual(twice, []);
+  const dup = await validateStoryboard(
+    {
+      title: 'T',
+      scenes: [
+        {
+          type: 'files',
+          narration: 'x',
+          parts: [{ name: 'A', weight: 'core' }],
+          files: [
+            { path: 'src/server.ts', part: 'A' },
+            { path: 'src/server.ts', part: 'A' },
+          ],
+        },
+      ],
+    },
+    two,
+    { mode: 'diff' },
+  );
+  assert.ok(dup.errors.some((e) => /"src\/server.ts" is listed twice under the same part/.test(e)));
+});
