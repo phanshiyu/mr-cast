@@ -22,14 +22,19 @@ const code = (text) =>
     .replace(/\/\/.*$/gm, '')
     .replace(/'[^'\n]*'/g, "''");
 
-test('every type a printed declaration names is printed with it, from anywhere in src/types.ts', () => {
+test('every type a printed declaration names is printed with it or by schema alone, from anywhere in src/types.ts', () => {
+  const shared = new Set(declared(formatSchema(root)));
   for (const what of [undefined, 'all', 'Storyboard', ...sceneTypes(decls).keys()]) {
     const out = formatSchema(root, what);
     const printed = new Set(declared(out));
-    const named = new Set(code(out).match(/\b[A-Z]\w*\b/g));
+    const named = new Set(code(out.replace(/\n\/\/ Shared types used above.*$/s, '')).match(/\b[A-Z]\w*\b/g));
     // Schema alone, and Storyboard, name the scene types instead of printing Scene.
     const missing = [...named].filter(
-      (n) => !printed.has(n) && !BUILTINS.has(n) && !([undefined, 'Storyboard'].includes(what) && n === 'Scene'),
+      (n) =>
+        !printed.has(n) &&
+        !BUILTINS.has(n) &&
+        !(what !== 'all' && what !== undefined && shared.has(n)) &&
+        !([undefined, 'Storyboard'].includes(what) && n === 'Scene'),
     );
     assert.deepEqual(missing, [], `mr-cast schema ${what ?? ''}`);
   }
@@ -39,32 +44,29 @@ test('every type a printed declaration names is printed with it, from anywhere i
   );
 });
 
-test('a scene type prints its interface with its doc comments and the types it uses, once each', () => {
+test('a scene type prints its interface with its doc comments and the types only it uses, then names the shared ones', () => {
   const out = formatSchema(root, 'array');
-  assert.deepEqual(declared(out), [
-    'DisplayText',
-    'SceneBase',
-    'FocusRef',
-    'PenMark',
-    'PenMarks',
-    'InkPoint',
-    'InkItem',
-    'Camera',
-    'Framing',
-    'FocusStep',
-    'Tone',
-    'StateValue',
-    'StateStep',
-    'Tint',
-    'Tints',
-    'ArrayPointer',
-    'ArrayRange',
-    'ArrayStep',
-    'ArrayRow',
-    'ArrayScene',
-  ]);
+  assert.deepEqual(declared(out), ['ArrayPointer', 'ArrayRange', 'ArrayStep', 'ArrayRow', 'ArrayScene']);
   assert.match(out, /\/\*\*[\s\S]*\*\/\ninterface ArrayScene extends SceneBase \{\n {2}type: 'array';/);
   assert.equal(out.includes('export '), false);
+  const note = out.split('\n').at(-1);
+  assert.match(note, /^\/\/ Shared types used above: .*SceneBase.*`mr-cast schema` prints them\.$/);
+  const shared = new Set(declared(formatSchema(root)));
+  for (const n of note.match(/: (.*)\. `/)[1].split(', ')) assert.ok(shared.has(n), `${n} is printed by schema alone`);
+  assert.ok(out.length < formatSchema(root, 'all').length / 5);
+});
+
+test('several scene types print each scene once and the shared part never', () => {
+  const out = formatSchema(root, ['array', 'flow', 'array']);
+  const names = declared(out);
+  assert.equal(new Set(names).size, names.length);
+  assert.ok(names.includes('ArrayScene') && names.includes('FlowScene'));
+  const shared = declared(formatSchema(root));
+  assert.deepEqual(
+    names.filter((n) => shared.includes(n)),
+    [],
+  );
+  assert.equal(out.match(/Shared types used above/g).length, 1);
 });
 
 test('schema alone prints the storyboard and names every scene type to ask for', () => {

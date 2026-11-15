@@ -1,6 +1,6 @@
 # Storyboard reference
 
-A storyboard is the `storyboard.json` file in a run's directory. Claude writes it, and mr-cast plays or renders it. `src/types.ts` defines the schema, and `mr-cast schema` prints it: `mr-cast schema graph` for one scene type, `mr-cast schema all` for everything. This page describes what the fields do on screen.
+A storyboard is the `storyboard.json` file in a run's directory. Claude writes it, and mr-cast plays or renders it. `src/types.ts` defines the schema, and `mr-cast schema` prints it: `mr-cast schema graph` for one scene type (its own fields, then the shared types it names, which bare `mr-cast schema` prints), `mr-cast schema all` for everything. This page describes what the fields do on screen.
 
 A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and a `narration`, the words the voice speaks over it.
 

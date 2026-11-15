@@ -135,8 +135,9 @@ Used by the Claude Code skills:
   plan [--port N] [--no-open] [--idle-exit minutes]
                     check the run's plan.json and open the page where the user picks each topic's depth
                     and view; the picks are written back into plan.json; replaces and exits like play
-  schema [type|all] print the storyboard's TypeScript schema: with a scene type, such as array, that scene's
-                    fields and every type they use; with none, the storyboard and what every scene shares
+  schema [type...|all] print the storyboard's TypeScript schema: with a scene type, such as array, that scene's
+                    fields and the types only it uses (several types print each once); with none, the
+                    storyboard and the types scenes share
   validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
   play [--port N] [--no-open] [--idle-exit minutes]
@@ -1169,8 +1170,7 @@ function hook() {
 
 function schema(argv) {
   const { positionals } = parseArgs({ args: argv, allowPositionals: true, options: SETTINGS_OPTIONS });
-  if (positionals.length > 1) throw new UserError(`schema takes at most one type, got: ${positionals.join(' ')}`);
-  console.log(formatSchema(ROOT, positionals[0]));
+  console.log(formatSchema(ROOT, positionals.length > 1 ? positionals : positionals[0]));
 }
 
 function installSkillCommand(argv) {

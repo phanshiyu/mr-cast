@@ -94,7 +94,7 @@ Read [references/branch.md](references/branch.md) before you write the scenes: w
 Write `storyboard.json` in the run's directory. Print the fields:
 
 ```bash
-{{MR_CAST}}/bin/mr-cast schema          # the storyboard and what every scene shares
+{{MR_CAST}}/bin/mr-cast schema          # the storyboard and shared types
 {{MR_CAST}}/bin/mr-cast schema <type>   # one scene type
 ```
 
