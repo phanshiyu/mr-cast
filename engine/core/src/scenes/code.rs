@@ -685,7 +685,7 @@ impl CodeView {
         let findings = input.props.storyboard.findings.clone();
         let ink_of = |step: &Value| -> Option<InkOf> {
             let id = step.get("flag")?.as_str()?;
-            let f = findings.as_ref()?.iter().find(|f| f.get("id").and_then(Value::as_str) == Some(id))?;
+            let f = findings.as_ref()?.as_array()?.iter().find(|f| f.get("id").and_then(Value::as_str) == Some(id))?;
             let sev = f.get("severity")?.as_str()?;
             let color = match sev {
                 "bug" => Color::css("#ff6b7a"),

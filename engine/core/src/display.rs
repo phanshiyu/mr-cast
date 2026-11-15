@@ -69,18 +69,25 @@ pub struct Stroke {
     pub width: f32,
     /// Dash and gap lengths, as SVG `stroke-dasharray`.
     pub dash: Option<(f32, f32)>,
+    /// Where in the dash pattern the line starts, as SVG `stroke-dashoffset`.
+    pub dash_offset: f32,
     pub round: bool,
 }
 
 impl Stroke {
     pub fn solid(color: Color, width: f32) -> Stroke {
-        Stroke { color, width, dash: None, round: false }
+        Stroke { color, width, dash: None, dash_offset: 0.0, round: false }
     }
     pub fn dashed(color: Color, width: f32, dash: f32, gap: f32) -> Stroke {
-        Stroke { color, width, dash: Some((dash, gap)), round: false }
+        Stroke { color, width, dash: Some((dash, gap)), dash_offset: 0.0, round: false }
     }
     pub fn rounded(mut self) -> Stroke {
         self.round = true;
+        self
+    }
+    /// Starts the dash pattern `offset` along the line (SVG `stroke-dashoffset`).
+    pub fn offset(mut self, offset: f32) -> Stroke {
+        self.dash_offset = offset;
         self
     }
 }
@@ -366,6 +373,7 @@ impl Fingerprint {
         if let Some((d, g)) = s.dash {
             self.f(d);
             self.f(g);
+            self.f(s.dash_offset);
         }
         self.u(s.round as u64);
     }

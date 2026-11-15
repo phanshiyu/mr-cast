@@ -18,10 +18,6 @@ pub struct Props {
     pub voiceover: Option<Voiceover>,
     #[serde(default)]
     pub highlight: Highlight,
-    /// Every Lucide icon the storyboard names (an `icon` field anywhere), as SVG path data on its 24 by 24 grid, from
-    /// lucide-react by Node (see engine/README.md). Draw one with `icons::draw_named`.
-    #[serde(default)]
-    pub icons: HashMap<String, Vec<String>>,
 }
 
 fn yes() -> bool {
@@ -36,9 +32,12 @@ pub struct Storyboard {
     pub subtitle: Option<String>,
     /// Scenes stay JSON: each scene module reads its own fields with serde (see `scenes`).
     pub scenes: Vec<Value>,
-    /// A reviewed storyboard's findings (shared/review.mjs); a code step's `flag` names one.
+    /// Review mode's findings (shared/review.mjs); an array when the storyboard is a reviewed one.
     #[serde(default)]
-    pub findings: Option<Vec<Value>>,
+    pub findings: Option<Value>,
+    /// The brief (what the change is for, what to check first, its parts), kept as JSON.
+    #[serde(default)]
+    pub brief: Option<Value>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]

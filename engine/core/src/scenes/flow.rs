@@ -19,7 +19,6 @@ use crate::theme::{
 use crate::timing::{FPS, build_frames, js_round};
 use serde::Deserialize;
 use serde_json::Value;
-use std::collections::HashMap;
 
 const LIST_W: f64 = 600.0;
 const CODE_LIST_W: f64 = 420.0;
@@ -170,8 +169,6 @@ struct FlowView {
     steps: Vec<FlowStep>,
     step_h: f32,
     list_w: f32,
-    /// The storyboard's icons (`props.icons`).
-    icons: HashMap<String, Vec<String>>,
     panel_w: f32,
     card_h: f32,
     rows: Vec<Row>,
@@ -286,7 +283,6 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         steps: scene.steps,
         step_h: step_h as f32,
         list_w: list_w as f32,
-        icons: input.props.icons.clone(),
         panel_w: panel_w as f32,
         card_h: card_h as f32,
         rows,
@@ -349,7 +345,7 @@ impl FlowView {
             let chip_line = line_metrics(Face::Mono, size).normal;
             let chip_h = chip_line + 6.0;
             let step = &self.steps[i];
-            let icon = step.icon.as_deref().filter(|n| self.icons.contains_key(*n));
+            let icon = step.icon.as_deref().filter(|n| icons::has_lucide(n));
             let chip_w =
                 drawn_width(&row.actor, &row.actor.lines[0], None) + 24.0 + if icon.is_some() { 27.0 } else { 0.0 };
             let tone = step.tone.as_deref().map(theme::tone);
@@ -360,7 +356,7 @@ impl FlowView {
             if let Some(name) = icon {
                 // An inline-block 19px icon, `vertical-align: -3px`: its bottom 3px under the baseline.
                 let base = top + 3.0 + baseline_in(Face::Mono, size, chip_line);
-                icons::draw_named(dl, &self.icons, name, tx, base + 3.0 - 19.0, 19.0, ink, 2.2);
+                icons::draw_named(dl, name, tx, base + 3.0 - 19.0, 19.0, ink, 2.2);
                 tx += 27.0;
             }
             draw_fit(dl, &row.actor, tx, top + 3.0, TextOpts::new(ink).normal());

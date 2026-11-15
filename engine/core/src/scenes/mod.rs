@@ -6,10 +6,29 @@ use crate::model::Props;
 use crate::timing::Segment;
 use serde_json::Value;
 
+pub mod array;
+pub mod callout;
+pub mod chart;
 pub mod code;
+pub mod compare;
+pub mod er;
+pub mod files;
 pub mod flow;
+pub mod graph;
+pub mod layers;
+pub mod memory;
 pub mod placeholder;
+pub mod plot;
+pub mod reading;
+pub mod review;
+pub mod sequence;
+pub mod state;
+pub mod step_state;
+pub mod table;
+pub mod terminal;
+pub mod tests;
 pub mod text;
+pub mod timeline;
 
 /// What a scene is prepared from, once per project.
 pub struct SceneInput<'a> {
@@ -44,7 +63,28 @@ pub trait SceneView: Send + Sync {
 pub type Prepare = fn(&SceneInput) -> Result<Box<dyn SceneView>, String>;
 
 /// Scene types the engine draws; any other type draws a placeholder card.
-pub const REGISTRY: &[(&str, Prepare)] = &[("text", text::prepare), ("code", code::prepare), ("flow", flow::prepare)];
+pub const REGISTRY: &[(&str, Prepare)] = &[
+    ("text", text::prepare),
+    ("code", code::prepare),
+    ("flow", flow::prepare),
+    ("compare", compare::prepare),
+    ("terminal", terminal::prepare),
+    ("array", array::prepare),
+    ("memory", memory::prepare),
+    ("plot", plot::prepare),
+    ("chart", chart::prepare),
+    ("table", table::prepare),
+    ("review", review::prepare),
+    ("reading", reading::prepare),
+    ("tests", tests::prepare),
+    ("files", files::prepare),
+    ("sequence", sequence::prepare),
+    ("timeline", timeline::prepare),
+    ("layers", layers::prepare),
+    ("graph", graph::prepare),
+    ("state", state::prepare),
+    ("er", er::prepare),
+];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
 pub fn prepare(input: &SceneInput) -> Box<dyn SceneView> {

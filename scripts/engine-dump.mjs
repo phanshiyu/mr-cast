@@ -7,9 +7,12 @@
 //   node scripts/engine-dump.mjs data                          engine/core/data: font metrics and text slots
 //   node scripts/engine-dump.mjs fixtures                      engine/core/tests/fixtures: timing and text
 //                                                              fitting as the JS computes them
+//   node scripts/engine-dump.mjs icons                         engine/core/data/lucide.json: every Lucide icon
+//                                                              as path data, by component name
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,13 +27,11 @@ async function load() {
     export * as metrics from './shared/font-metrics.mjs';
     export { speechText } from './shared/speech.mjs';
     export * as pen from './src/utils/penGeometry';
-    export { renderToStaticMarkup } from 'react-dom/server';
-    export { createElement } from 'react';
-    export { lucideIcon } from './src/components/icons';
     export * as inkg from './src/utils/inkGeometry';
     export { interpolate, spring, Easing } from 'remotion';
     export { normalizeStoryboard } from './shared/normalize.mjs';
     export { parseStoryboard } from './shared/storyboard-json.mjs';
+    export { isHunkCell, resolveHunkCell } from './shared/compare.mjs';
   `;
   const out = await build({
     stdin: { contents: entry, resolveDir: REPO, loader: 'ts' },
@@ -70,55 +71,6 @@ function formatPayload(payload) {
   }
 }
 
-/** A Lucide icon's elements as SVG path data on its 24 by 24 grid, one string per element. */
-function iconPaths(m, name) {
-  const Icon = m.lucideIcon(name);
-  if (!Icon) return null;
-  const svg = m.renderToStaticMarkup(m.createElement(Icon));
-  const attr = (s, k) => {
-    const v = new RegExp(`\\b${k}="([^"]*)"`).exec(s)?.[1];
-    return v === undefined ? undefined : Number.isNaN(Number(v)) ? v : Number(v);
-  };
-  const out = [];
-  for (const [, tag, rest] of svg.matchAll(/<(path|circle|line|rect|polyline|polygon|ellipse)([^>]*)\/?>/g)) {
-    if (tag === 'path') out.push(attr(rest, 'd'));
-    else if (tag === 'line')
-      out.push(`M${attr(rest, 'x1')} ${attr(rest, 'y1')}L${attr(rest, 'x2')} ${attr(rest, 'y2')}`);
-    else if (tag === 'circle' || tag === 'ellipse') {
-      const [cx, cy] = [attr(rest, 'cx'), attr(rest, 'cy')];
-      const [rx, ry] = tag === 'circle' ? [attr(rest, 'r'), attr(rest, 'r')] : [attr(rest, 'rx'), attr(rest, 'ry')];
-      out.push(`M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`);
-    } else if (tag === 'polyline' || tag === 'polygon') {
-      const p = String(attr(rest, 'points'))
-        .trim()
-        .split(/[\s,]+/);
-      let d = `M${p[0]} ${p[1]}`;
-      for (let i = 2; i < p.length; i += 2) d += `L${p[i]} ${p[i + 1]}`;
-      out.push(tag === 'polygon' ? `${d}Z` : d);
-    } else if (tag === 'rect') {
-      const [x, y, w, h] = ['x', 'y', 'width', 'height'].map((k) => attr(rest, k) ?? 0);
-      const r = attr(rest, 'rx') ?? 0;
-      out.push(
-        r
-          ? `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`
-          : `M${x} ${y}h${w}v${h}h${-w}Z`,
-      );
-    }
-  }
-  return out;
-}
-
-/** Every `icon` a storyboard names, anywhere in it. */
-function iconNames(value, out = new Set()) {
-  if (Array.isArray(value)) for (const v of value) iconNames(v, out);
-  else if (value && typeof value === 'object')
-    for (const [k, v] of Object.entries(value)) {
-      if (k === 'icon' && typeof v === 'string') out.add(v);
-      else iconNames(v, out);
-    }
-  return out;
-}
-
 async function props(m, dir, out) {
   // An explanation run may have no hunks.json; it then shows no code.
   const hunksFile = path.join(dir, 'hunks.json');
@@ -134,12 +86,20 @@ async function props(m, dir, out) {
         const { text, language } = formatPayload(step.payload);
         highlight.snippets[`${language}\n${text}`] = colored(m, m.tokenizeLines(text, language));
       }
-  const icons = {};
-  for (const name of iconNames(storyboard)) {
-    const paths = iconPaths(m, name);
-    if (paths) icons[name] = paths;
-  }
-  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight, icons });
+  // A compare scene's code cells: inline snippets, and the lines its hunk cells read from hunks.json.
+  for (const scene of storyboard.scenes)
+    for (const row of scene.type === 'compare' ? (scene.rows ?? []) : [])
+      for (const cell of (row.cells ?? []).slice(0, 2)) {
+        const read = m.isHunkCell(cell)
+          ? m.resolveHunkCell(cell, hunks)
+          : cell && typeof cell === 'object' && !('image' in cell)
+            ? { code: cell.code, lang: cell.lang ?? 'plain' }
+            : null;
+        if (!read || 'error' in read || typeof read.code !== 'string') continue;
+        const code = read.code.replace(/\s+$/, '');
+        highlight.snippets[`${read.lang}\n${code}`] = colored(m, m.tokenizeLines(code, read.lang));
+      }
+  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight });
 }
 
 function data(m) {
@@ -367,12 +327,76 @@ function fixtures(m) {
   write(path.join(dir, 'marks.json'), geometry);
 }
 
+/** An icon element as SVG path data, so the engine draws every Lucide icon with one primitive. */
+function elementPath(tag, a) {
+  const n = (k, d = 0) => Number(a[k] ?? d);
+  const pts = (s) =>
+    String(s)
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
+  const poly = (close) => {
+    const p = pts(a.points);
+    let d = '';
+    for (let i = 0; i + 1 < p.length; i += 2) d += `${i ? 'L' : 'M'}${p[i]} ${p[i + 1]}`;
+    return close ? `${d}Z` : d;
+  };
+  switch (tag) {
+    case 'path':
+      return a.d;
+    case 'line':
+      return `M${n('x1')} ${n('y1')}L${n('x2')} ${n('y2')}`;
+    case 'polyline':
+      return poly(false);
+    case 'polygon':
+      return poly(true);
+    case 'circle':
+    case 'ellipse': {
+      const [cx, cy] = [n('cx'), n('cy')];
+      const [rx, ry] = tag === 'circle' ? [n('r'), n('r')] : [n('rx'), n('ry')];
+      return `M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+    }
+    case 'rect': {
+      const [x, y, w, h] = [n('x'), n('y'), n('width'), n('height')];
+      const rx = Math.min(n('rx', a.ry ?? 0), w / 2);
+      const ry = Math.min(n('ry', a.rx ?? 0), h / 2);
+      if (!rx && !ry) return `M${x} ${y}h${w}v${h}h${-w}Z`;
+      return `M${x + rx} ${y}h${w - 2 * rx}a${rx} ${ry} 0 0 1 ${rx} ${ry}v${h - 2 * ry}a${rx} ${ry} 0 0 1 ${-rx} ${ry}h${-(w - 2 * rx)}a${rx} ${ry} 0 0 1 ${-rx} ${-ry}v${-(h - 2 * ry)}a${rx} ${ry} 0 0 1 ${rx} ${-ry}Z`;
+    }
+    default:
+      throw new Error(`icon element <${tag}>`);
+  }
+}
+
+/** Every Lucide icon, by component name, as a list of path data; aliases share one entry. */
+function icons() {
+  const require = createRequire(path.join(REPO, 'package.json'));
+  const { icons: all } = require('lucide-react');
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const shapes = [];
+  const seen = new Map();
+  const names = {};
+  for (const [name, Icon] of Object.entries(all).sort(([a], [b]) => a.localeCompare(b))) {
+    const html = renderToStaticMarkup(React.createElement(Icon));
+    const paths = [...html.matchAll(/<(path|line|polyline|polygon|circle|ellipse|rect)\b([^>]*)>/g)].map(
+      ([, tag, attrs]) =>
+        elementPath(tag, Object.fromEntries([...attrs.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, k, v]) => [k, v]))),
+    );
+    const key = JSON.stringify(paths);
+    if (!seen.has(key)) seen.set(key, shapes.push(paths) - 1);
+    names[name] = seen.get(key);
+  }
+  write(path.join(REPO, 'engine/core/data/lucide.json'), { names, shapes });
+}
+
 const [cmd, ...args] = process.argv.slice(2);
 const m = await load();
 if (cmd === 'props' && args.length === 2) await props(m, path.resolve(args[0]), path.resolve(args[1]));
 else if (cmd === 'data') data(m);
 else if (cmd === 'fixtures') fixtures(m);
+else if (cmd === 'icons') icons();
 else {
-  console.error('usage: engine-dump.mjs props <run dir> <out.json> | data | fixtures');
+  console.error('usage: engine-dump.mjs props <run dir> <out.json> | data | fixtures | icons');
   process.exit(2);
 }
