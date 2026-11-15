@@ -10,6 +10,7 @@ pub mod code;
 pub mod flow;
 pub mod image;
 pub mod media;
+pub mod mermaid;
 pub mod placeholder;
 pub mod svg;
 pub mod text;
@@ -53,6 +54,7 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("flow", flow::prepare),
     ("image", image::prepare),
     ("svg", svg::prepare),
+    ("mermaid", mermaid::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
