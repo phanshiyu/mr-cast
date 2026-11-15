@@ -13,8 +13,8 @@
 #   diff-<still>.png      their difference, four times brighter, black where they agree
 #
 # and prints, per still, the mean absolute difference over the frame and the worst 64-pixel tile with its top left,
-# in levels of 255. Remotion's stills are cached by the hash of the run's files and of src/ and shared/, so a re-run
-# after `cargo build --release` only redraws the engine's side.
+# in levels of 255. Remotion's stills are cached, each by the hash of the run's files and of src/, shared/ and bin/,
+# so a re-run after `cargo build --release` only redraws the engine's side.
 #
 # Every mr-cast command runs with temporary XDG_CONFIG_HOME, XDG_STATE_HOME and CLAUDE_CONFIG_DIR. XDG_CACHE_HOME is
 # left alone on purpose: the Remotion bundle and Chrome live in ~/.cache/mr-cast, and a fresh cache would download
@@ -80,21 +80,35 @@ node --input-type=module -e "
   }
 " > "$work/scenes.txt"
 
-# Remotion's stills: one Chrome per step index, for every scene that has that step; cached.
-if [ ! -f "$cache/done" ]; then
-  mkdir -p "$cache"
-  all=$(cut -d' ' -f1 "$work/scenes.txt" | tr '\n' ' ')
-  # Validation output goes to the log; a storyboard that does not validate stops here with it.
-  mrcast still $all --no-voice --dir "$run" --out "$cache" > "$work/still.log" 2>&1 || { cat "$work/still.log" >&2; exit 1; }
-  most=$(awk '$3 > m { m = $3 } END { print m + 0 }' "$work/scenes.txt")
-  k=0
-  while [ "$k" -lt "$most" ]; do
-    has=$(awk -v k="$k" '$3 > k { printf "%s ", $1 }' "$work/scenes.txt")
-    mrcast still $has --no-voice --dir "$run" --out "$cache" --step "$k" > "$work/still.log" 2>&1 || { cat "$work/still.log" >&2; exit 1; }
-    k=$((k + 1))
-  done
-  : > "$cache/done"
-fi
+# Remotion's stills: one Chrome per step index, for the chosen scenes whose still is not cached yet.
+mkdir -p "$cache"
+name_of() { # scene index, type, step or -1
+  n=$(printf '%02d' $(($1 + 1)))
+  if [ "$3" -lt 0 ]; then echo "scene-$n-$2"; else echo "scene-$n-$2-step-$3"; fi
+}
+missing() { # step index or -1: the chosen scenes with that still missing
+  while read -r i type steps; do
+    if [ "$1" -lt "$steps" ] && [ ! -f "$cache/$(name_of "$i" "$type" "$1").png" ]; then printf '%s ' "$i"; fi
+  done < "$work/scenes.txt"
+}
+most=$(awk '$3 > m { m = $3 } END { print m + 0 }' "$work/scenes.txt")
+k=-1
+while [ "$k" -lt "$most" ]; do
+  if [ "$k" -lt 0 ]; then
+    # Every scene has an end; `missing -1` would ask for steps, so list the ends here.
+    want=$(while read -r i type steps; do [ -f "$cache/$(name_of "$i" "$type" -1).png" ] || printf '%s ' "$i"; done < "$work/scenes.txt")
+    step=""
+  else
+    want=$(missing "$k")
+    step="--step $k"
+  fi
+  if [ -n "$want" ]; then
+    # Validation output goes to the log; a storyboard that does not validate stops here with it.
+    # shellcheck disable=SC2086
+    mrcast still $want --no-voice --dir "$run" --out "$cache" $step > "$work/still.log" 2>&1 || { cat "$work/still.log" >&2; exit 1; }
+  fi
+  k=$((k + 1))
+done
 
 # The engine's side, every time.
 node "$repo/scripts/engine-dump.mjs" props "$run" "$work/props.json" > /dev/null
