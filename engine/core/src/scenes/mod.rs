@@ -22,7 +22,11 @@ pub mod state;
 pub mod table;
 pub mod terminal;
 pub mod tests;
+pub mod layers;
+pub mod placeholder;
+pub mod sequence;
 pub mod text;
+pub mod timeline;
 
 /// What a scene is prepared from, once per project.
 pub struct SceneInput<'a> {
@@ -72,6 +76,9 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("reading", reading::prepare),
     ("tests", tests::prepare),
     ("files", files::prepare),
+    ("sequence", sequence::prepare),
+    ("timeline", timeline::prepare),
+    ("layers", layers::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).

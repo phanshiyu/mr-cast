@@ -3,4 +3,6 @@
 pub mod backdrop;
 pub mod captions;
 pub mod fittext;
+pub mod marks;
+pub mod nodecard;
 pub mod shell;
