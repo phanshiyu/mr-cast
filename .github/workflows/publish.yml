@@ -87,11 +87,16 @@ jobs:
       - uses: ./.github/actions/rust
         with:
           targets: ${{ matrix.target }}
+      # The engine builds its H.264 and AAC encoders from C and C++ source with the runner's compiler
+      # (docs/adr/0044-encode-in-the-engine.md). OpenH264's x86 assembly would need nasm, which the runners lack, so
+      # it is left out on every runner rather than used wherever nasm happens to be installed; ARM builds keep their
+      # NEON code, which the compiler assembles.
       - name: Build
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
           PLATFORM: ${{ matrix.platform }}
+          OPENH264_NO_ASM: '1'
         run: |
           cargo build --release --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
           exe=mr-cast-engine
