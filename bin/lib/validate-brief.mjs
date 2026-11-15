@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { QUESTIONS, decisionsOf, missingQuestions } from '../../shared/brief.mjs';
 import { shownHunkIds } from '../../shared/shown-hunks.mjs';
+import { isGapRow } from '../../shared/tests.mjs';
 import { lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
 
@@ -336,6 +337,46 @@ function checkEvidence(brief, map, warnings) {
     );
 }
 
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Whether `text` names `file`: by its path, or by its file name when no other file the map lists has that name (so
+ * "ReviewPage.tsx restructure" names ui/src/ReviewPage.tsx, and "index.ts" names nothing when two files are called it).
+ */
+function namesFile(text, file, all) {
+  if (text.includes(file)) return true;
+  const base = path.basename(file);
+  if (all.filter((f) => path.basename(f) === base).length > 1) return false;
+  return new RegExp(`(^|[^\\w.-])${escapeRe(base)}($|[^\\w-])`).test(text);
+}
+
+/**
+ * The map lists a source file as covered when a changed test file names or imports it, and that is all it says: a
+ * test may reach a file without naming it. It also does not say a file is untested when it lists none, so the other
+ * way is a plain contradiction: `brief.proof.untested`, or a tests scene's gap, names a file a changed test covers.
+ */
+function checkCoveredClaims(sb, brief, map, warnings) {
+  const covers = new Map();
+  for (const t of Array.isArray(map?.tests) ? map.tests : [])
+    for (const f of Array.isArray(t?.covers) ? t.covers : []) covers.set(f, [...(covers.get(f) ?? []), t.path]);
+  if (!covers.size) return;
+  const files = [...covers.keys()];
+  const say = (where, text) => {
+    for (const file of files.filter((f) => namesFile(text, f, files)))
+      warnings.push(
+        `${where}: says "${text.length > 70 ? `${text.slice(0, 69)}…` : text}", but the map lists ${file} as covered by ${named(covers.get(file))}, which names or imports it; read ${covers.get(file).length === 1 ? 'that test' : 'those tests'} before saying nothing tests ${path.basename(file)}`,
+      );
+  };
+  if (isObj(brief.proof) && Array.isArray(brief.proof.untested))
+    brief.proof.untested.forEach((t, i) => isStr(t) && say(`brief.proof.untested[${i}]`, t));
+  sb.scenes.forEach((s, i) => {
+    if (s?.type !== 'tests' || !Array.isArray(s.situations)) return;
+    s.situations.forEach((sit, j) => {
+      if (isGapRow(sit)) say(`scenes[${i}].situations[${j}].gap`, `${sit.when ?? ''} ${sit.gap}`.trim());
+    });
+  });
+}
+
 /**
  * Checks the brief of a branch video. `map` is map.json as `extract` wrote it, or null; `root` is the repository, for
  * the files a `check` line names. A video of anything but a branch has no brief to check.
@@ -388,4 +429,5 @@ export function checkBrief(sb, hunks, { branch, map: written = null, root = null
   checkAlternatives(sb, sb.brief, warnings);
   checkParts(sb, sb.brief, map, warnings);
   checkEvidence(sb.brief, map, warnings);
+  checkCoveredClaims(sb, sb.brief, map, warnings);
 }

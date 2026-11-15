@@ -221,6 +221,7 @@ function testsAndCoverage(root, files, hunks, working) {
     for (const s of covers) named.add(s);
     tests.push({ file: f.file, covers, adds: testNames(f.hunkIds.flatMap((id) => hunks[id]?.lines ?? [])) });
   }
+  // `untested` keeps its name in map.json, but it only means no changed test file names or imports the file.
   return { tests, untested: sources.filter((s) => !named.has(s)) };
 }
 
@@ -297,6 +298,13 @@ function formatFiles(map) {
   return out;
 }
 
+/**
+ * The heading of `untested` in map.json. The list is a text match on file names and imports, so a source file on it is
+ * one no changed test file names, which is not the same as one no test reaches.
+ */
+const NOT_NAMED =
+  'no changed test file names these; a test may still reach them, so read the tests before saying a file is untested';
+
 function formatTests(map) {
   const out = [];
   if (map.tests.length) {
@@ -308,7 +316,7 @@ function formatTests(map) {
       if (shown.length) out.push(`    adds ${count(t.adds.length, 'test')}: ${shown.join(', ')}${more}`);
     }
   }
-  if (map.untested.length) out.push(`no changed test names these: ${map.untested.join(', ')}`);
+  if (map.untested.length) out.push(`${NOT_NAMED}: ${map.untested.join(', ')}`);
   return out;
 }
 

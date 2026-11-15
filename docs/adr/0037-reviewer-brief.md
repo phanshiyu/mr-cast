@@ -1,6 +1,6 @@
 # 37. A brief for the reviewer: six questions, facts from the tool, and answers that are checked
 
-- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2; how much of a core part is on screen, see section 3)
+- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2; how much of a core part is on screen, see section 3; "untested" is not a claim, see section 1)
 - Date: 2026-11-15
 - Amends: 0019 (tools, not opinions), 0008 (the reading scene outside a pre-read), 0013 (what the eval asks)
 
@@ -64,6 +64,12 @@ All of it is fact, read from git and the working tree. Nothing in it needs a net
   null), `files` grouped by kind, each file with `file`, `oldFile`, `kind`, `status`, `additions`, `deletions` and
   `hunkIds`, then `skipped`, `changedLines`, `tests` (each with `file`, `covers` and `adds`, the test names it adds),
   `untested` and `usedElsewhere`. `mr-cast map` prints it again.
+- **Amended 2026-11-15: "no changed test names these" is not "untested".** A video said "nothing tests this file",
+  taken from that list. The list is a text match on file names and imports, and a test can reach a file without naming
+  it. The heading now reads "no changed test file names these; a test may still reach them, so read the tests before
+  saying a file is untested", the same words are in `references/branch.md`, and `validate` warns the other way:
+  `brief.proof.untested` or a tests scene's gap that names a file the map lists as covered says which test file covers
+  it. The `untested` key of `map.json` keeps its name, and means only "no changed test file names it".
 - **The hunk index** as today, but source first, then tests, then docs, config and routine. Over 600 changed lines,
   the index prints each hunk's header and first two changed lines only, and `mr-cast hunk <id>...` prints hunks in full.
 

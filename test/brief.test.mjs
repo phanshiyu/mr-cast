@@ -618,3 +618,46 @@ test('a "does" or "after" of the wrong shape is an error', async () => {
     'brief.parts[0].after: must be an array of strings',
   ]);
 });
+
+const tests = (gap) => ({
+  type: 'tests',
+  answers: ['proof'],
+  narration: 'The limiter is tested.',
+  outcomes: ['Result'],
+  situations: [
+    { id: 'ok', when: 'under the limit', expect: { Result: 'accepted' } },
+    { id: 'gap', when: 'two servers', gap },
+  ],
+  tests: [{ name: 'limits', checks: ['ok.Result'] }],
+});
+const claims = async (sb) => (await check(sb)).warnings.filter((w) => /covered by/.test(w));
+
+test('a source file the map lists as covered by a changed test is not called untested, and the test is named', async () => {
+  const said = brief({
+    proof: { tested: ['x'], untested: ['src/limiter.js handles a burst', 'src/server.js is wired'] },
+  });
+  const w = await claims(board({ brief: said }));
+  assert.equal(w.length, 1);
+  assert.match(
+    w[0],
+    /^brief\.proof\.untested\[0\]: says "src\/limiter\.js handles a burst", but the map lists src\/limiter\.js as covered by test\/limiter\.test\.js, which names or imports it; read that test before saying nothing tests limiter\.js$/,
+  );
+  // A bare file name, as writers write it, and a tests scene's gap.
+  const bare = await claims(
+    board({
+      brief: brief({ proof: { tested: ['x'], untested: ['The limiter.js rewrite'] } }),
+      scenes: [text(ALL), code('h1'), code('h2'), tests('nothing tests limiter.js with two servers')],
+    }),
+  );
+  assert.equal(bare.length, 2);
+  assert.match(
+    bare[1],
+    /^scenes\[3\]\.situations\[1\]\.gap: says "two servers nothing tests limiter\.js with two servers"/,
+  );
+  assert.deepEqual(await claims(board({ brief: brief({ proof: { tested: ['x'], untested: ['Two servers'] } }) })), []);
+  // Not a branch run with a map, no claim is checked.
+  assert.deepEqual(
+    (await check(board({ brief: said }), { map: null })).warnings.filter((m) => /covered by/.test(m)),
+    [],
+  );
+});

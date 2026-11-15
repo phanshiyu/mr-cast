@@ -40,7 +40,7 @@ Run the commands from inside the repository the video is about. Output goes to `
 
 - **Said by the author:** each commit's short sha, subject and body, oldest first, and the `--description` text.
 - **Files by kind:** source, tests, docs, config and routine (lockfiles, generated files, snapshots, pure renames). Each file shows new or modified, `+` and `−`, and its hunk ids, largest first. Modified source files are listed apart from new ones.
-- **Tests and what they cover:** for each changed test file, the changed source files it imports or names (or is named after), and the test names it adds. Changed source files that no changed test names are listed.
+- **Tests and what they cover:** for each changed test file, the changed source files it imports or names (or is named after), and the test names it adds. Changed source files that no changed test file names or imports are listed under "no changed test file names these; a test may still reach them". That list is a text match on file names and imports, and it is the `untested` key of `map.json`: a file on it is one no test file names, not one nothing tests, since a test can reach a file without naming it. Read the tests before saying a file is untested. `validate` warns the other way: when `brief.proof.untested` or a tests scene's gap names a file the map lists as covered, it says which test file covers it.
 - **Used elsewhere:** for names declared on changed or removed lines of modified source files, the count of files outside the diff that use the name, and up to three paths. This is a text search (`git grep -w`), not a call graph, so it can list false matches. It searches at most 40 names, skips names under 4 characters, and gives each search 3 seconds.
 
 ## Checks on a branch video

@@ -111,7 +111,10 @@ test('a test file is tied to the source it imports, and untouched-by-tests sourc
     assert.deepEqual(map.tests[0].covers, ['src/price.js']);
     assert.deepEqual(map.tests[0].adds, ['adds the items up']);
     assert.deepEqual(map.untested.sort(), ['src/fresh.js', 'src/untested.js']);
-    assert.match(t.run('map').stdout, /no changed test names these: .*src\/untested\.js/);
+    assert.match(
+      t.run('map').stdout,
+      /no changed test file names these; a test may still reach them, so read the tests before saying a file is untested: .*src\/untested\.js/,
+    );
   } finally {
     t.done();
   }
