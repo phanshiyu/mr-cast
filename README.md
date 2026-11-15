@@ -69,6 +69,7 @@ After Claude explains something, ask it to "animate that" to get a video of the 
 - Videos of a branch's diff, or of an explanation with no diff behind it.
 - A quick diagram video, a full walkthrough, or an MP4 with chapter markers and subtitles.
 - A pre-read for a reviewer: diagrams only, with no code on screen, ending on the order in which to read the code.
+- A video of a branch that answers the six questions a reviewer has: why, one case before and after, the idea, the parts, the proof and what to check first. `mr-cast extract` prints what the author said and which tests cover which files, and a guide panel in the player jumps to each answer.
 - A review mode that flags bugs and risks on the lines that hold them and writes them to `review.md`.
 - 20 scene types, among them graphs, sequence diagrams, state machines, code with line-by-line steps, arrays, memory, timelines and terminals.
 - `mr-cast validate` checks that the storyboard renders, that every text fits, and that what lights up matches the words.
