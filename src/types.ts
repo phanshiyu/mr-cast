@@ -1448,6 +1448,12 @@ export type PartWeight = 'core' | 'support' | 'routine';
 export interface FilePart {
   name: string;
   weight: PartWeight;
+  /** What the part does, in one sentence; the card for the part shows it. `"parts": "brief"` reads it from the brief. */
+  does?: string;
+  /** The names of the parts this one builds on or is called by; the map places it after them and draws a link from each. */
+  after?: string[];
+  /** Marks the part's card "check": it holds a file the reviewer should open first. `"parts": "brief"` sets it from `brief.check`. */
+  check?: boolean;
 }
 
 export interface FilesScene extends SceneBase {
@@ -1459,14 +1465,16 @@ export interface FilesScene extends SceneBase {
    */
   files?: FileEntry[];
   /**
-   * The parts of the change, to group the files by importance and not by directory: each file names its `part`.
-   * Core parts come first and draw strongest, routine parts last and quietest, each with its file count and its
-   * + and − totals. `"brief"` takes the parts, and the files of their hunks, from the storyboard's `brief.parts`,
-   * so nothing is typed twice (the scene's own `files` is then ignored). A step's `focus` may name a part to light
-   * it and its files.
+   * The parts of the change, drawn as a map and not as a tree by directory: each file names its `part`. Each part
+   * is a card with its name, weight (core strongest, routine quietest), its `does` line, its file count and its
+   * + and − totals, and its largest files with "+ N more"; a part sits after the parts its `after` names, with a
+   * link drawn between them, and a part that holds a file of `brief.check` is marked "check". `"brief"` takes the
+   * parts, with `does`, `after` and the check marks, and the files of their hunks, from the storyboard's
+   * `brief.parts`, so nothing is typed twice (the scene's own `files` is then ignored). A step's `focus` may name
+   * a part to light its card. `notes` are not drawn on the map, since `does` says what each part is for.
    */
   parts?: FilePart[] | 'brief';
-  /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. */
+  /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. Not drawn when the scene has `parts`. */
   notes?: Record<string, string>;
   /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
   highlight?: string[];

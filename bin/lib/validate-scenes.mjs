@@ -228,8 +228,20 @@ function checkParts(s, p, errors, warnings, hunks) {
     if (!isStr(part?.name)) errors.push(`${q}.name: required string, e.g. "Finding and checking places"`);
     else if (named.indexOf(part.name) !== j) errors.push(`${q}.name: "${part.name}" is named twice`);
     if (!PART_WEIGHTS.includes(part?.weight)) errors.push(`${q}.weight: must be one of ${PART_WEIGHTS.join(', ')}`);
+    if (part?.does !== undefined && !isStr(part.does)) errors.push(`${q}.does: must be a non-empty string`);
+    if (part?.after !== undefined && !(Array.isArray(part.after) && part.after.every(isStr)))
+      errors.push(`${q}.after: must be an array of part names`);
+    if (part?.check !== undefined && typeof part.check !== 'boolean') errors.push(`${q}.check: must be true or false`);
   });
   if (errors.some((m) => m.startsWith(`${p}.parts[`))) return;
+  s.parts.forEach((part, j) =>
+    (Array.isArray(part.after) ? part.after : []).forEach((name, k) => {
+      if (isStr(name) && !named.includes(name))
+        warnings.push(
+          `${p}.parts[${j}].after[${k}]: "${name}" is not one of the scene's parts (${named.join(', ')}), so no link is drawn`,
+        );
+    }),
+  );
   const groups = sceneParts(s, sceneFiles(s, hunks));
   const empty = s.parts.filter((part) => !groups.some((g) => g.name === part.name));
   if (empty.length)
@@ -290,6 +302,8 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
         const q = `${p}.notes[${JSON.stringify(path)}]`;
         if (!paths.has(path)) errors.push(`${q}: not one of the files this scene lists`);
         if (!isStr(note)) errors.push(`${q}: must be a non-empty string`);
+        else if (Array.isArray(s.parts))
+          warnings.push(`${q}: a note is not drawn on the parts map; each part's "does" says what it is for`);
       }
   }
   const what = { plural: 'file paths', one: 'a path this scene lists' };

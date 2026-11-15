@@ -46,3 +46,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0036](0036-biome-and-fallow.md) | Biome lints and formats, and fallow finds unused code, both in `pnpm check` and CI | Accepted |
 | [0037](0037-reviewer-brief.md) | A brief for the reviewer: six questions, a change map from git, and answers in the storyboard that `validate` checks | Accepted; amended by 0038 |
 | [0038](0038-facts-about-the-mix.md) | Facts about the mix of scenes, and what the hook says on success | Proposed |
+| [0039](0039-parts-as-a-map.md) | The parts of a change drawn as a map: what each part does, how parts link, and which hold a place to check | Accepted |
