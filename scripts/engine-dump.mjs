@@ -7,9 +7,12 @@
 //   node scripts/engine-dump.mjs data                          engine/core/data: font metrics and text slots
 //   node scripts/engine-dump.mjs fixtures                      engine/core/tests/fixtures: timing and text
 //                                                              fitting as the JS computes them
+//   node scripts/engine-dump.mjs icons                         engine/core/data/lucide.json: every Lucide icon
+//                                                              as path data, by component name
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -241,12 +244,76 @@ function fixtures(m) {
   write(path.join(dir, 'anim.json'), { springs, easings });
 }
 
+/** An icon element as SVG path data, so the engine draws every Lucide icon with one primitive. */
+function elementPath(tag, a) {
+  const n = (k, d = 0) => Number(a[k] ?? d);
+  const pts = (s) =>
+    String(s)
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
+  const poly = (close) => {
+    const p = pts(a.points);
+    let d = '';
+    for (let i = 0; i + 1 < p.length; i += 2) d += `${i ? 'L' : 'M'}${p[i]} ${p[i + 1]}`;
+    return close ? `${d}Z` : d;
+  };
+  switch (tag) {
+    case 'path':
+      return a.d;
+    case 'line':
+      return `M${n('x1')} ${n('y1')}L${n('x2')} ${n('y2')}`;
+    case 'polyline':
+      return poly(false);
+    case 'polygon':
+      return poly(true);
+    case 'circle':
+    case 'ellipse': {
+      const [cx, cy] = [n('cx'), n('cy')];
+      const [rx, ry] = tag === 'circle' ? [n('r'), n('r')] : [n('rx'), n('ry')];
+      return `M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`;
+    }
+    case 'rect': {
+      const [x, y, w, h] = [n('x'), n('y'), n('width'), n('height')];
+      const rx = Math.min(n('rx', a.ry ?? 0), w / 2);
+      const ry = Math.min(n('ry', a.rx ?? 0), h / 2);
+      if (!rx && !ry) return `M${x} ${y}h${w}v${h}h${-w}Z`;
+      return `M${x + rx} ${y}h${w - 2 * rx}a${rx} ${ry} 0 0 1 ${rx} ${ry}v${h - 2 * ry}a${rx} ${ry} 0 0 1 ${-rx} ${ry}h${-(w - 2 * rx)}a${rx} ${ry} 0 0 1 ${-rx} ${-ry}v${-(h - 2 * ry)}a${rx} ${ry} 0 0 1 ${rx} ${-ry}Z`;
+    }
+    default:
+      throw new Error(`icon element <${tag}>`);
+  }
+}
+
+/** Every Lucide icon, by component name, as a list of path data; aliases share one entry. */
+function icons() {
+  const require = createRequire(path.join(REPO, 'package.json'));
+  const { icons: all } = require('lucide-react');
+  const React = require('react');
+  const { renderToStaticMarkup } = require('react-dom/server');
+  const shapes = [];
+  const seen = new Map();
+  const names = {};
+  for (const [name, Icon] of Object.entries(all).sort(([a], [b]) => a.localeCompare(b))) {
+    const html = renderToStaticMarkup(React.createElement(Icon));
+    const paths = [...html.matchAll(/<(path|line|polyline|polygon|circle|ellipse|rect)\b([^>]*)>/g)].map(
+      ([, tag, attrs]) =>
+        elementPath(tag, Object.fromEntries([...attrs.matchAll(/([\w-]+)="([^"]*)"/g)].map(([, k, v]) => [k, v]))),
+    );
+    const key = JSON.stringify(paths);
+    if (!seen.has(key)) seen.set(key, shapes.push(paths) - 1);
+    names[name] = seen.get(key);
+  }
+  write(path.join(REPO, 'engine/core/data/lucide.json'), { names, shapes });
+}
+
 const [cmd, ...args] = process.argv.slice(2);
 const m = await load();
 if (cmd === 'props' && args.length === 2) await props(m, path.resolve(args[0]), path.resolve(args[1]));
 else if (cmd === 'data') data(m);
 else if (cmd === 'fixtures') fixtures(m);
+else if (cmd === 'icons') icons();
 else {
-  console.error('usage: engine-dump.mjs props <run dir> <out.json> | data | fixtures');
+  console.error('usage: engine-dump.mjs props <run dir> <out.json> | data | fixtures | icons');
   process.exit(2);
 }

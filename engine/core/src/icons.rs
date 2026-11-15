@@ -65,3 +65,62 @@ pub fn draw(dl: &mut DisplayList, name: &str, x: f32, y: f32, size: f32, color: 
     }
     dl.restore();
 }
+
+/// Every Lucide icon, by component name (`scripts/engine-dump.mjs icons`).
+struct Lucide {
+    names: HashMap<String, usize>,
+    shapes: Vec<Vec<String>>,
+}
+
+fn lucide() -> &'static Lucide {
+    static DATA: OnceLock<Lucide> = OnceLock::new();
+    DATA.get_or_init(|| {
+        #[derive(serde::Deserialize)]
+        struct Raw {
+            names: HashMap<String, usize>,
+            shapes: Vec<Vec<String>>,
+        }
+        let raw: Raw = serde_json::from_str(include_str!("../data/lucide.json")).expect("lucide icons");
+        Lucide { names: raw.names, shapes: raw.shapes }
+    })
+}
+
+/// The component name of a kebab-case Lucide icon name: "building-2" is "Building2" (src/components/icons.ts).
+fn component_name(name: &str) -> String {
+    name.split('-')
+        .map(|part| {
+            let mut c = part.chars();
+            c.next().map(|f| f.to_uppercase().collect::<String>() + c.as_str()).unwrap_or_default()
+        })
+        .collect()
+}
+
+/// Draws the Lucide icon `name`, kebab-case as a storyboard writes it or its component name, as `draw` does;
+/// false when Lucide has no such icon.
+pub fn draw_lucide(
+    dl: &mut DisplayList,
+    name: &str,
+    x: f32,
+    y: f32,
+    size: f32,
+    color: Color,
+    stroke_width: f32,
+) -> bool {
+    let data = lucide();
+    let Some(&shape) = data.names.get(&component_name(name)) else { return false };
+    dl.save();
+    dl.translate(x, y);
+    dl.scale_about(size / 24.0, 0.0, 0.0);
+    for d in &data.shapes[shape] {
+        if let Some(p) = svg_path(d) {
+            dl.path(p, None, Some(Stroke::solid(color, stroke_width).rounded()));
+        }
+    }
+    dl.restore();
+    true
+}
+
+/// Whether Lucide has an icon of this name.
+pub fn has_lucide(name: &str) -> bool {
+    lucide().names.contains_key(&component_name(name))
+}

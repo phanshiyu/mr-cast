@@ -383,7 +383,7 @@ impl Renderer {
             st.line_cap = tiny_skia::LineCap::Round;
         }
         if let Some((d, g)) = s.dash {
-            st.dash = tiny_skia::StrokeDash::new(vec![d, g], 0.0);
+            st.dash = tiny_skia::StrokeDash::new(vec![d, g], s.dash_offset);
         }
         let paint = skia_paint(Shader::SolidColor(s.color.fade(op).to_skia()));
         let b = path.bounds();
