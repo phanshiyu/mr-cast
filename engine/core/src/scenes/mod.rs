@@ -11,6 +11,7 @@ pub mod callout;
 pub mod chart;
 pub mod code;
 pub mod compare;
+pub mod files;
 pub mod flow;
 pub mod memory;
 pub mod placeholder;
@@ -18,6 +19,9 @@ pub mod terminal;
 pub mod plot;
 pub mod state;
 pub mod table;
+pub mod reading;
+pub mod review;
+pub mod tests;
 pub mod text;
 
 /// What a scene is prepared from, once per project.
@@ -64,6 +68,10 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("plot", plot::prepare),
     ("chart", chart::prepare),
     ("table", table::prepare),
+    ("review", review::prepare),
+    ("reading", reading::prepare),
+    ("tests", tests::prepare),
+    ("files", files::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
