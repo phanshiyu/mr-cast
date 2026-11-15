@@ -1045,10 +1045,22 @@ impl Pen {
 
     /// Draws `content` (in content-box coordinates) through the camera, with the marks and ink over it.
     pub fn draw(&self, dl: &mut DisplayList, frame: f64, segments: &[Segment], content: impl FnOnce(&mut DisplayList)) {
+        self.draw_shifted(dl, frame, segments, &|_| None, content);
+    }
+
+    /// `draw` for a scene that scrolls: `shift(k)` is how far step k's boxes have yet to move to where they settle.
+    pub fn draw_shifted(
+        &self,
+        dl: &mut DisplayList,
+        frame: f64,
+        segments: &[Segment],
+        shift: &dyn Fn(usize) -> Option<Pt>,
+        content: impl FnOnce(&mut DisplayList),
+    ) {
         let view = self.camera.view(frame, segments, &|k| self.target(k));
         self.camera.draw(dl, view, |dl| {
             dl.group(content);
-            self.board.draw(dl, frame, segments, &|_| None);
+            self.board.draw(dl, frame, segments, shift);
         });
     }
 }
