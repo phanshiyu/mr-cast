@@ -322,7 +322,7 @@ test('a shell that runs play is not listed, and stopping the play by pid leaves 
   const { cwd } = runIn('wrapped');
   const shell = await startProcess(
     '/bin/sh',
-    ['-c', `${process.execPath} ${BIN} play --no-voice --no-open --port 5520; echo shell went on`],
+    ['-c', '"$0" "$1" play --no-voice --no-open --port 5520; echo shell went on', process.execPath, BIN],
     cwd,
     /mr-cast player:/,
   );
