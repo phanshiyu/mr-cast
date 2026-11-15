@@ -46,7 +46,16 @@ For the branch:
 {{MR_CAST}}/bin/mr-cast extract [base] [--working] <flags>
 ```
 
-It prints the run's directory, `.mr-cast/<branch-slug>/`, and a hunk index: each file, its hunk ids (`h1`, `h2`, ...) and the changed lines with their line numbers. Full hunks go to `hunks.json`. Pass a base when the user names one. Add `--working` for uncommitted changes. For a PR or MR that is not checked out, run `gh pr checkout <n>` or `glab mr checkout <n>` first. Running `extract` again refreshes the diff and keeps the storyboard and snippets.
+It prints the run's directory, `.mr-cast/<branch-slug>/`, then a change map, then a hunk index. Pass a base when the user names one. Add `--working` for uncommitted changes. For a PR or MR that is not checked out, run `gh pr checkout <n>` or `glab mr checkout <n>` first. When the branch has a PR or MR, save its title and description to a file (`gh pr view --json title,body`, `glab mr view`) and pass `--description <file>`. Running `extract` again refreshes the diff and keeps the storyboard and snippets.
+
+The change map is what the diff alone does not show:
+
+- what the author said: every commit message, and the description;
+- the files by kind, existing code that changed first, then new files, tests, docs and routine files;
+- which changed tests cover which changed files, the test names they add, and the files no changed test names;
+- where names from changed code are used outside the diff, by a text search.
+
+The hunk index lists each file's hunk ids (`h1`, `h2`, ...) and changed lines. A diff over 600 changed lines prints it short. `{{MR_CAST}}/bin/mr-cast hunk h12 h13` prints hunks in full, and `{{MR_CAST}}/bin/mr-cast map` prints the map again. Full hunks are in `hunks.json`, the map in `map.json`.
 
 For an explanation, or a quick video:
 
@@ -65,6 +74,33 @@ To show source code that is not in the diff, add it as a snippet, at most 80 lin
 Each snippet gets an id (`s1`, `s2`, ...) and keeps the file's line numbers. A `code` scene shows a snippet by its id, like a hunk.
 
 The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <engine:name>` or `--no-voice`. When the user names no pace, pass the last pace `status` printed: `--pace <it>`, or `--no-voice` for `silent`. When the user names no voice, pass the last voice `status` printed, `--voice <it>`, unless it says `none yet`. A flag applies to its own command only, so pass the same flags to every command.
+
+## A video of a branch
+
+Someone will review this change after watching. The video is done when they can answer six questions without opening the diff. Answer them first, in the storyboard's `brief`, from the map and the code. Then make the scenes.
+
+| | The viewer can answer | A good answer |
+| --- | --- | --- |
+| `why` | Why does this change exist? | The problem in the author's words, with its source: a commit or the description. When nothing says, the source is `"unknown"`. Do not make one up. |
+| `case` | On one real case, what happened before and what happens now? | One input with real values, taken from a test or the code, and both outcomes. |
+| `approach` | What is the idea, and what did the author decide? | The idea in a sentence or two. Each choice where another way was open, such as "one bad place refuses the whole answer". |
+| `parts` | Which parts are there, and which matter? | Every hunk of source and tests in a part named for what it does, each `core`, `support` or `routine`. Existing code whose behaviour changed is never routine. |
+| `proof` | How do we know it works? | What a named test shows, and what no test shows. |
+| `check` | What could break, and what do I open first? | Places by file and line, each with what to look at and why: changed behaviour of existing code, callers outside the diff, a case no test tries, anything you would question. |
+
+Put what only the author can answer in `ask`. `{{MR_CAST}}/bin/mr-cast schema` prints the `brief`'s fields.
+
+Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. The order, the scenes and the length are yours. What you found goes in the video: a problem you noticed belongs in `check`, whether or not the user asked for a review.
+
+What a scene can hold decides whether it suits an answer:
+
+- **compare** puts two states side by side. A cell can show real lines of a hunk, old or new: `{ "hunk": "h11", "side": "old", "lines": "4-6" }`, up to 8 lines. With `"mode": "options"` it is a decision beside the way not taken.
+- **tests** is a grid of situations against outcomes, with the named tests that check each and the gaps nothing checks.
+- **files** with `"parts": "brief"` draws the brief's parts, core first, each with its files and line counts.
+- **flow** is a rail of stops. A stop's `code` shows real lines of any hunk or snippet, up to 14, so one request can be followed through several files. A stop's `payload` is drawn as one line of code: a value, not a sentence.
+- **code** shows one hunk or snippet, about 28 lines at a time. Steps bring lines into view; lines no step reaches are never seen.
+- **reading** with no items draws the brief's `check` list.
+- **graph**, **sequence**, **state** and **table** carry change marks, so what is new or changed stands out from what was there.
 
 ## Write the storyboard
 
@@ -97,9 +133,11 @@ A hook runs `validate` after every write to `storyboard.json` and shows you the 
 {{MR_CAST}}/bin/mr-cast validate <flags>
 ```
 
-Fix every error until it prints `✓ storyboard ok`. Errors are what would not render or names that do not exist. Warnings report what you cannot see without rendering, such as text that does not fit or a step whose words name something it does not light.
+Fix every error until it prints `✓ storyboard ok`. Errors are what would not render or names that do not exist. Warnings report what you cannot see without rendering, such as text that does not fit, a step whose words name something it does not light, or lines of a code scene that never come into view.
 
-These show you what the viewer will see:
+For a branch it also prints two lines. `brief:` shows which of the six questions have an answer and a scene. `scenes:` shows how many scenes of each type there are and the longest run of one type. `validate` writes `guide.md` in the run's directory: the six answers, the parts with their files, what to open first, and the questions for the author.
+
+Look at the video before you show it. Render the stills and read every one: a still is what the viewer sees, and the storyboard is not.
 
 ```bash
 {{MR_CAST}}/bin/mr-cast still [sceneIndex...] <flags>   # PNG stills, into the run's stills/; read them; --step k shows each as step k ends
@@ -127,5 +165,6 @@ For an MP4, run `{{MR_CAST}}/bin/mr-cast render <flags>` instead, with a long ti
 
 - The player's URL, and that the page opens once the voice is ready. Add: "Say 'save it as an MP4' when you want a file to share."
 - For an MP4, its path.
+- For a branch, the path of `guide.md`, the open-first list as `path:line  what`, one per line, and the questions for the author. In the player, the guide under the video lists the six answers and jumps to each; `G` shows or hides it.
 - With review on, every finding as `severity file:line claim`, one per line, and the path of `review.md`, or that nothing looked wrong.
 - In a pre-read, the reading order as `outline` prints it, one `path:line  check` line per item, and the path of `reading.md`.
