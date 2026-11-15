@@ -8,18 +8,21 @@ pub mod names;
 
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::chrome::callout::{HeaderCallout, header_box};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, drawn_width, fit_height};
-use crate::chrome::shell::{Aside, Shell};
+use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Shadow};
-use crate::steps::{Emphasis, Spotlight, current_step, step_move};
+use crate::marks::geometry::Bx;
+use crate::marks::{LayoutBoxes, Pen, Refs, Stage};
+use crate::states::{SceneState, StateFrame};
+use crate::steps::{Emphasis, Spotlight};
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
-use crate::textfit::{Fit, Slot, fit_text};
+use crate::textfit::Fit;
 use crate::theme::{
-    ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, ADD_BG, BORDER, BORDER_STRONG, DEL, DEL_BG, FAINT, MUTED, RAISED, TEXT,
-    WARN, content_box,
+    ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, ADD_BG, BORDER, DEL, DEL_BG, FAINT, MUTED, TEXT, WARN, content_box,
 };
-use crate::timing::{FPS, STEP_SETTLE_FRAMES, build_frames, js_round};
+use crate::timing::{FPS, build_frames, js_round};
 use layout::{FOOT_H, HEAD_H, Inputs, Layout, PlacedCell, PlacedRow, Tag, layout_tests, tag_font};
 use matrix::{Situation, State, Test, resolve_ref};
 use serde::Deserialize;
@@ -27,9 +30,6 @@ use serde_json::Value;
 use std::collections::HashMap;
 
 const START: f64 = 8.0;
-const CALLOUT_PAD_X: f64 = 22.0;
-const CALLOUT_PAD_Y: f32 = 12.0;
-const CALLOUT_W: f64 = 560.0;
 
 #[derive(Deserialize)]
 struct TestsScene {
@@ -44,8 +44,6 @@ struct TestsScene {
     #[serde(default)]
     tests: Vec<Test>,
     #[serde(default)]
-    callout: Option<String>,
-    #[serde(default)]
     steps: Vec<Value>,
 }
 
@@ -55,32 +53,57 @@ struct TestsView {
     box_h: f64,
     /// The steps that light each item key.
     keys: HashMap<String, Vec<usize>>,
-    /// The callout of the narration, then of each step.
-    callouts: Vec<String>,
-    callout_fits: HashMap<String, Fit>,
-    callout_w: f32,
-    callout_h: f32,
+    /// The callout of the narration, then of each step: all a tests step changes.
+    states: Vec<SceneState>,
+    callout: Option<HeaderCallout>,
+    pen: Pen,
+}
+
+/// A step's refs, resolved over the matrix.
+struct TestsRefs<'a>(&'a TestsScene);
+
+impl Refs for TestsRefs<'_> {
+    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
+        resolve_ref(&self.0.situations, &self.0.outcomes, &self.0.tests, r)
+    }
+}
+
+/// The box of each item a step can focus, in layout units: a row, a cell, an outcome's column. A note keeps off the
+/// situations, the cells, the bars, the names, the column titles and the counts (`testsBoxes`).
+fn tests_boxes(layout: &Layout) -> LayoutBoxes {
+    let bx = |b: &layout::Bx| Bx::new(b.x, b.y, b.w, b.h);
+    let mut out = LayoutBoxes::default();
+    let mut obstacles = Vec::new();
+    for (i, row) in layout.rows.iter().enumerate() {
+        let keys = &layout.matrix.rows[i];
+        out.add(keys.key.clone(), bx(&row.b));
+        obstacles.push(Bx::new(0.0, row.b.y, layout.when_col.w, row.b.h));
+        for c in &row.cells {
+            out.add(layout.matrix.rows[c.row].cells[c.col].key.clone(), bx(&c.b));
+            obstacles.push(bx(&c.b));
+        }
+        if let Some((b, _)) = &row.bar {
+            obstacles.push(bx(b));
+        }
+        if let Some(nc) = layout.names_col.as_ref().filter(|_| !row.names.is_empty()) {
+            obstacles.push(Bx::new(nc.x, row.b.y, nc.w, row.b.h));
+        }
+    }
+    obstacles.push(Bx::new(0.0, 0.0, layout.width, HEAD_H));
+    obstacles.push(Bx::new(0.0, layout.foot_y, layout.width, FOOT_H));
+    let bottom = layout.rows.last().map_or(HEAD_H, |r| r.b.y + r.b.h);
+    for (col, c) in layout.cols.iter().enumerate() {
+        out.add(format!("o:{col}"), Bx::new(c.x, 0.0, c.w, bottom));
+    }
+    out.obstacles = Some(obstacles);
+    out
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let scene: TestsScene = super::parse(input)?;
     let shell = Shell::new(input.scene);
-    let step_callouts: Vec<String> =
-        scene.steps.iter().map(|s| s.get("callout").and_then(Value::as_str).unwrap_or("").to_string()).collect();
-    // Every callout the scene shows, fitted (src/fit/callout.ts).
-    let mut texts: Vec<String> = Vec::new();
-    for t in scene.callout.iter().chain(step_callouts.iter()) {
-        if !t.is_empty() && !texts.contains(t) {
-            texts.push(t.clone());
-        }
-    }
-    let callout_fits: HashMap<String, Fit> = texts
-        .iter()
-        .map(|t| (t.clone(), fit_text(t, &Slot::named("headerCallout", CALLOUT_W - 2.0 * CALLOUT_PAD_X))))
-        .collect();
-    let has_callout = !callout_fits.is_empty();
-    let callout_w = callout_fits.values().map(|f| f.width).fold(0.0, f64::max) + 2.0 * CALLOUT_PAD_X;
-    let callout_h = callout_fits.values().map(|f| f.height).fold(0.0, f64::max) as f32 + 2.0 * CALLOUT_PAD_Y;
+    let callout = HeaderCallout::new(input.scene);
+    let has_callout = callout.is_some();
 
     // headerBox: the content box, a wrapped title's extra lines taken off.
     let (bw, mut bh) = content_box(shell.title.is_some() || has_callout);
@@ -97,37 +120,18 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let added = names::added_test_count(input.props.hunks.values());
     let layout = layout_tests(&inputs, bw, bh, added);
 
-    let mut keys: HashMap<String, Vec<usize>> = HashMap::new();
-    for (k, step) in scene.steps.iter().enumerate() {
-        let refs: Vec<&Value> = match step.get("focus") {
-            Some(Value::Array(a)) => a.iter().collect(),
-            Some(v) => vec![v],
-            None => vec![&Value::Null],
-        };
-        let mut lit: Vec<String> = Vec::new();
-        for r in refs {
-            for key in resolve_ref(&scene.situations, &scene.outcomes, &scene.tests, r).unwrap_or_default() {
-                if !lit.contains(&key) {
-                    lit.push(key);
-                }
-            }
-        }
-        for key in lit {
-            keys.entry(key).or_default().push(k);
-        }
-    }
-    let mut callouts = vec![String::new()];
-    callouts.extend(step_callouts);
-    Ok(Box::new(TestsView {
-        shell,
-        layout,
-        box_h: bh,
-        keys,
-        callouts,
-        callout_fits: if has_callout { callout_fits } else { HashMap::new() },
-        callout_w: callout_w as f32,
-        callout_h,
-    }))
+    let keys = crate::targets::target_steps_with(input.scene, |r| {
+        resolve_ref(&scene.situations, &scene.outcomes, &scene.tests, r)
+    });
+    let mut states = vec![SceneState::default()];
+    states.extend(scene.steps.iter().map(|s| SceneState {
+        callout: s.get("callout").and_then(Value::as_str).unwrap_or("").to_string(),
+        ..SceneState::default()
+    }));
+    let top = (bh - layout.height * layout.scale).max(0.0) * 0.3;
+    let marks = Stage { left: 0.0, top, scale: layout.scale }.targets(&tests_boxes(&layout), (bw, bh));
+    let pen = Pen::new(input.scene, input.segments, &TestsRefs(&scene), vec![marks], true, header_box(input.scene));
+    Ok(Box::new(TestsView { states, callout, pen, shell, layout, box_h: bh, keys }))
 }
 
 /// How lit an item is at least as bright as its container (`asBrightAs`).
@@ -322,56 +326,6 @@ impl TestsView {
             });
         }
     }
-
-    fn draw_callout(&self, dl: &mut DisplayList, x: f32, y: f32, frame: f64, f: &Frame) {
-        let k = current_step(f.segments, frame);
-        let (was, now, t, lit) = match k {
-            Some(k) if self.callouts.get(k + 1).is_some() => {
-                let from = f.segments[k + 1].from;
-                let settled = from + STEP_SETTLE_FRAMES;
-                (
-                    self.callouts[k].as_str(),
-                    self.callouts[k + 1].as_str(),
-                    step_move(frame, from) as f32,
-                    interpolate(frame, &[from, settled, settled + 40.0], &[0.0, 1.0, 0.0], CLAMP) as f32,
-                )
-            }
-            _ => (self.callouts[0].as_str(), self.callouts[0].as_str(), 1.0, 0.0),
-        };
-        let (a, b) = (if was.is_empty() { 0.0 } else { 1.0 }, if now.is_empty() { 0.0 } else { 1.0 });
-        let changed = was != now;
-        let glow = if changed { lit } else { 0.0 };
-        let (w, h) = (self.callout_w, self.callout_h);
-        dl.group(|dl| {
-            dl.fade(a + (b - a) * t);
-            let mut style =
-                BoxStyle::fill(RAISED).radius(14.0).border(if glow > 0.0 { ACCENT } else { BORDER_STRONG }, 1.5);
-            style = if glow > 0.0 {
-                style
-                    .shadow(Shadow { spread: 3.0 * glow, ..Shadow::new(0.0, 0.0, 0.0, ACCENT_SOFT) })
-                    .shadow(Shadow::new(0.0, 0.0, 30.0 * glow, ACCENT_GLOW))
-            } else {
-                style.shadow(Shadow::new(0.0, 10.0, 26.0, Color::rgba8(0, 0, 0, 0.35)))
-            };
-            dl.rect(x, y, w, h, style);
-            let text = |dl: &mut DisplayList, value: &str, opacity: f32| {
-                let Some(fit) = self.callout_fits.get(value).filter(|_| !value.is_empty() && opacity > 0.0) else {
-                    return;
-                };
-                dl.group(|dl| {
-                    dl.fade(opacity);
-                    let fh = fit_height(fit, LineHeight::Fit);
-                    draw_fit(dl, fit, x + 1.5, y + 1.5 + (h - 3.0 - fh) / 2.0, TextOpts::new(TEXT).centered(w - 3.0));
-                });
-            };
-            if changed {
-                text(dl, was, 1.0 - t);
-                text(dl, now, t);
-            } else {
-                text(dl, now, 1.0);
-            }
-        });
-    }
 }
 
 impl SceneView for TestsView {
@@ -386,59 +340,62 @@ impl SceneView for TestsView {
         let header_in = interpolate(frame, &[START, START + 10.0], &[0.0, 1.0], CLAMP) as f32;
         let top = (self.box_h - l.height * l.scale).max(0.0) * 0.3;
 
+        let s = StateFrame::at(&self.states, f.segments, frame);
         let draw_callout = |dl: &mut DisplayList, right: f32, top: f32| {
-            self.draw_callout(dl, right - self.callout_w, top, frame, f);
+            if let Some(c) = &self.callout {
+                c.draw(dl, right, top, &s);
+            }
         };
-        let aside = (!self.callout_fits.is_empty()).then_some(Aside { height: self.callout_h, draw: &draw_callout });
-        // TODO(camera): the generic `camera` field frames the content box here.
+        let aside = self.callout.as_ref().map(|c| c.aside(&draw_callout));
         self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| {
-            dl.group(|dl| {
-                dl.translate(0.0, top as f32);
-                dl.scale_about(l.scale as f32, 0.0, 0.0);
-                let label = |dl: &mut DisplayList, x: f32, fit: &Fit, opacity: f32, color: Color| {
-                    dl.group(|dl| {
-                        dl.fade(opacity);
-                        let fh = fit_height(fit, LineHeight::Normal);
-                        draw_fit(dl, fit, x, (HEAD_H as f32 - fh) / 2.0, TextOpts::new(color).normal());
-                    });
-                };
-                label(dl, 0.0, &l.when_col.title, header_in, MUTED);
-                for (col, c) in l.cols.iter().enumerate() {
-                    let e = self.emphasis(&spot, &format!("o:{col}"));
-                    let color = if e.glow > 0.0 { TEXT } else { MUTED };
-                    label(dl, (c.x + l.pad_x) as f32, &c.title, header_in * e.opacity as f32, color);
-                }
-                if let Some(nc) = &l.names_col {
-                    label(dl, (nc.x + l.pad_x) as f32, &nc.title, header_in, MUTED);
-                }
-                for (i, row) in l.rows.iter().enumerate() {
-                    let land = spring(frame - at(i), FPS, Spring::damping(18.0).with_stiffness(140.0));
-                    self.draw_row(dl, row, i, land, &spot);
-                }
-                // The footer: the subject at the left, the counts at the right.
-                let foot = interpolate(frame, &[at(n), at(n) + 10.0], &[0.0, 1.0], CLAMP) as f32;
+            self.pen.draw(dl, frame, f.segments, |dl| {
                 dl.group(|dl| {
-                    dl.fade(foot);
-                    let fy = l.foot_y as f32;
-                    dl.fill_rect(0.0, fy, l.width as f32, 1.0, BORDER);
-                    let inner = fy + 1.0;
-                    if let Some(s) = &l.subject {
-                        let fh = fit_height(s, LineHeight::Normal);
-                        draw_fit(dl, s, 0.0, inner + (FOOT_H as f32 - fh) / 2.0, TextOpts::new(MUTED).normal());
+                    dl.translate(0.0, top as f32);
+                    dl.scale_about(l.scale as f32, 0.0, 0.0);
+                    let label = |dl: &mut DisplayList, x: f32, fit: &Fit, opacity: f32, color: Color| {
+                        dl.group(|dl| {
+                            dl.fade(opacity);
+                            let fh = fit_height(fit, LineHeight::Normal);
+                            draw_fit(dl, fit, x, (HEAD_H as f32 - fh) / 2.0, TextOpts::new(color).normal());
+                        });
+                    };
+                    label(dl, 0.0, &l.when_col.title, header_in, MUTED);
+                    for (col, c) in l.cols.iter().enumerate() {
+                        let e = self.emphasis(&spot, &format!("o:{col}"));
+                        let color = if e.glow > 0.0 { TEXT } else { MUTED };
+                        label(dl, (c.x + l.pad_x) as f32, &c.title, header_in * e.opacity as f32, color);
                     }
-                    let st = Style::sans(400.0, 18.0);
-                    let ln = line_metrics(Face::Sans, 18.0).normal;
-                    let tw = width(&l.counts, st);
-                    dl.text(
-                        &l.counts,
-                        st,
-                        l.width as f32 - tw,
-                        inner + (FOOT_H as f32 - ln) / 2.0 + baseline_in(Face::Sans, 18.0, ln),
-                        MUTED,
-                    );
+                    if let Some(nc) = &l.names_col {
+                        label(dl, (nc.x + l.pad_x) as f32, &nc.title, header_in, MUTED);
+                    }
+                    for (i, row) in l.rows.iter().enumerate() {
+                        let land = spring(frame - at(i), FPS, Spring::damping(18.0).with_stiffness(140.0));
+                        self.draw_row(dl, row, i, land, &spot);
+                    }
+                    // The footer: the subject at the left, the counts at the right.
+                    let foot = interpolate(frame, &[at(n), at(n) + 10.0], &[0.0, 1.0], CLAMP) as f32;
+                    dl.group(|dl| {
+                        dl.fade(foot);
+                        let fy = l.foot_y as f32;
+                        dl.fill_rect(0.0, fy, l.width as f32, 1.0, BORDER);
+                        let inner = fy + 1.0;
+                        if let Some(s) = &l.subject {
+                            let fh = fit_height(s, LineHeight::Normal);
+                            draw_fit(dl, s, 0.0, inner + (FOOT_H as f32 - fh) / 2.0, TextOpts::new(MUTED).normal());
+                        }
+                        let st = Style::sans(400.0, 18.0);
+                        let ln = line_metrics(Face::Sans, 18.0).normal;
+                        let tw = width(&l.counts, st);
+                        dl.text(
+                            &l.counts,
+                            st,
+                            l.width as f32 - tw,
+                            inner + (FOOT_H as f32 - ln) / 2.0 + baseline_in(Face::Sans, 18.0, ln),
+                            MUTED,
+                        );
+                    });
                 });
-            });
-            // TODO(marks): the pen marks of the steps' `mark`s and notes are drawn here.
+            })
         });
     }
 }

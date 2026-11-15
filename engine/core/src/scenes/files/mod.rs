@@ -6,13 +6,17 @@ mod parts;
 mod tree;
 
 use super::{Frame, SceneInput, SceneView};
+use crate::chrome::callout::header_box;
 use crate::chrome::shell::{Aside, Shell};
 use crate::display::DisplayList;
 use crate::icons;
+use crate::marks::geometry::Bx;
+use crate::marks::{LayoutBoxes, Pen, Refs, Stage};
 use crate::steps::{Emphasis, Spotlight, spotlight_starts};
 use crate::text::{Face, Style, line_metrics, width};
 use crate::theme::{ACCENT, ADD, DEL, MUTED, content_box};
 use crate::timing::build_frames;
+use crate::timing::js_round;
 use model::{Part, ShownFile, resolve_ref, scene_files, scene_parts};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -27,6 +31,7 @@ struct FilesView {
     keys: Option<HashMap<String, Vec<usize>>>,
     /// The paths the narration walks, without steps.
     walked: Vec<String>,
+    pen: Pen,
 }
 
 enum Body {
@@ -41,28 +46,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let files = scene_files(scene, &input.props.hunks);
     let parts: Option<Vec<Part>> = scene_parts(scene, &files);
     let steps = scene.get("steps").and_then(Value::as_array).filter(|s| !s.is_empty());
-    let keys = steps.map(|steps| {
-        let mut keys: HashMap<String, Vec<usize>> = HashMap::new();
-        for (k, step) in steps.iter().enumerate() {
-            let refs: Vec<&Value> = match step.get("focus") {
-                Some(Value::Array(a)) => a.iter().collect(),
-                Some(v) => vec![v],
-                None => vec![&Value::Null],
-            };
-            let mut lit: Vec<String> = Vec::new();
-            for r in refs {
-                for key in resolve_ref(&files, parts.as_deref(), r).unwrap_or_default() {
-                    if !lit.contains(&key) {
-                        lit.push(key);
-                    }
-                }
-            }
-            for key in lit {
-                keys.entry(key).or_default().push(k);
-            }
-        }
-        keys
-    });
+    let keys = steps.map(|_| crate::targets::target_steps_with(scene, |r| resolve_ref(&files, parts.as_deref(), r)));
     let strings = |v: Option<&Value>| -> Vec<String> {
         v.and_then(Value::as_array)
             .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
@@ -90,7 +74,76 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             (Body::Tree(tree::layout_files(&rows, bw, bh)), walked)
         }
     };
-    Ok(Box::new(FilesView { shell: Shell::new(scene), files, body, box_h: bh, box_w: bw, keys, walked }))
+    let marks = match &body {
+        Body::Parts(l) => {
+            Stage { left: (bw - l.width).max(0.0) / 2.0, top: (bh - l.height).max(0.0) * 0.3, scale: 1.0 }
+                .targets(&parts_boxes(l), (bw, bh))
+        }
+        Body::Tree(l) => Stage { left: 0.0, top: (bh - l.height * l.scale).max(0.0) * 0.3, scale: l.scale }
+            .targets(&files_boxes(l), (bw, bh)),
+    };
+    let refs = FilesRefs { files: &files, parts: parts.as_deref() };
+    let pen = Pen::new(scene, input.segments, &refs, vec![marks], true, header_box(scene));
+    Ok(Box::new(FilesView { shell: Shell::new(scene), files, body, box_h: bh, box_w: bw, keys, walked, pen }))
+}
+
+/// A step's refs, resolved over the scene's files and parts.
+struct FilesRefs<'a> {
+    files: &'a [ShownFile],
+    parts: Option<&'a [Part]>,
+}
+
+impl Refs for FilesRefs<'_> {
+    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
+        resolve_ref(self.files, self.parts, r)
+    }
+}
+
+/// The box of each file's name, in layout units; a note keeps off every name, count and note (`filesBoxes`).
+fn files_boxes(l: &tree::FilesLayout) -> LayoutBoxes {
+    let icon_w = js_round(l.font * 0.95) + js_round(l.font * 0.4);
+    let mut out = LayoutBoxes::default();
+    let mut obstacles = Vec::new();
+    for p in &l.rows {
+        let left = p.x + l.name_x + p.row.depth() as f64 * l.indent;
+        let name =
+            Bx::new(left, p.y + 4.0, (icon_w + p.name.width).min(l.name_x + l.name_w - (left - p.x)), l.row_h - 8.0);
+        obstacles.push(name);
+        let tree::TreeRow::File { file, .. } = &p.row else { continue };
+        out.add(format!("f:{}", file.path), name);
+        if let Some(cx) = l.counts_x {
+            obstacles.push(Bx::new(p.x + cx, p.y, l.note_x - cx - 12.0, l.row_h));
+        }
+        if let Some(note) = &p.note {
+            obstacles.push(Bx::new(p.x + l.note_x, p.y, l.note_w.min(note.width), l.row_h));
+        }
+    }
+    out.obstacles = Some(obstacles);
+    out
+}
+
+/// The box of each part's card and of each file listed on it; a file not listed is its card (`partsBoxes`).
+fn parts_boxes(l: &parts::PartsLayout) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    let mut obstacles = Vec::new();
+    for card in &l.cards {
+        let b = Bx::new(card.x, card.y, card.w, card.h);
+        out.add(format!("p:{}", card.part.name), b);
+        obstacles.push(b);
+        for f in &card.part.files {
+            out.add(format!("f:{}", f.path), b);
+        }
+        for f in &card.files {
+            let key = format!("f:{}", f.path);
+            let fb = Bx::new(card.x + parts::CARD_PAD, card.y + f.y, card.w - 2.0 * parts::CARD_PAD, parts::FILE_ROW_H);
+            match out.boxes.iter_mut().find(|(k, _)| *k == key) {
+                Some(slot) => slot.1 = fb,
+                None => out.add(key, fb),
+            }
+        }
+    }
+    out.obstacles = Some(obstacles);
+    out
 }
 
 fn brighter(a: Emphasis, b: Emphasis) -> Emphasis {
@@ -165,61 +218,62 @@ impl SceneView for FilesView {
         let walked_at = |path: &str| -> Vec<usize> { self.walked.iter().position(|p| p == path).into_iter().collect() };
         let (aside_h, aside_draw) = self.totals();
         let aside = Aside { height: aside_h, draw: &aside_draw };
-        // TODO(camera): the generic `camera` field frames the content box here.
-        // TODO(marks): the pen marks of the steps' `mark`s and notes are drawn after the content.
-        self.shell.draw(dl, frame, f.duration, Some(aside), |dl, _bx| match &self.body {
-            Body::Tree(l) => {
-                let top = (self.box_h - l.height * l.scale).max(0.0) * 0.3;
-                dl.translate(0.0, top as f32);
-                dl.scale_about(l.scale as f32, 0.0, 0.0);
-                let n = l.rows.len();
-                let stagger = 4f64.min((tree::ROWS_END - tree::START - 4.0) / (n as f64 - 1.0).max(1.0));
-                for (i, placed) in l.rows.iter().enumerate() {
-                    let path = match &placed.row {
-                        tree::TreeRow::File { file, .. } => Some(file.path.as_str()),
-                        tree::TreeRow::Dir { .. } => None,
-                    };
-                    let e = if self.keys.is_some() {
-                        by_key(&format!("f:{}", path.unwrap_or("null")))
-                    } else {
-                        walk.emphasis(&path.map(walked_at).unwrap_or_default())
-                    };
-                    // Directories stay readable while files are spotlit: they are the map, not the subject.
-                    let e = if path.is_none() { Emphasis { opacity: e.opacity.max(0.7), ..e } } else { e };
-                    let ctx =
-                        tree::RowCtx { layout: l, at: tree::START + 4.0 + i as f64 * stagger, emphasis: e, frame };
-                    tree::draw_row(dl, placed, &ctx);
-                }
-            }
-            Body::Parts(l) => {
-                let left = (self.box_w - l.width).max(0.0) / 2.0;
-                let top = (self.box_h - l.height).max(0.0) * 0.3;
-                dl.translate(left as f32, top as f32);
-                let emphases: Vec<Emphasis> = l
-                    .cards
-                    .iter()
-                    .map(|card| {
-                        if self.keys.is_some() {
-                            card.part.files.iter().fold(by_key(&format!("p:{}", card.part.name)), |e, f| {
-                                brighter(e, by_key(&format!("f:{}", f.path)))
-                            })
+        self.shell.draw(dl, frame, f.duration, Some(aside), |dl, _bx| {
+            self.pen.draw(dl, frame, f.segments, |dl| match &self.body {
+                Body::Tree(l) => {
+                    let top = (self.box_h - l.height * l.scale).max(0.0) * 0.3;
+                    dl.translate(0.0, top as f32);
+                    dl.scale_about(l.scale as f32, 0.0, 0.0);
+                    let n = l.rows.len();
+                    let stagger = 4f64.min((tree::ROWS_END - tree::START - 4.0) / (n as f64 - 1.0).max(1.0));
+                    for (i, placed) in l.rows.iter().enumerate() {
+                        let path = match &placed.row {
+                            tree::TreeRow::File { file, .. } => Some(file.path.as_str()),
+                            tree::TreeRow::Dir { .. } => None,
+                        };
+                        let e = if self.keys.is_some() {
+                            by_key(&format!("f:{}", path.unwrap_or("null")))
                         } else {
-                            let steps: Vec<usize> = card.part.files.iter().flat_map(|f| walked_at(&f.path)).collect();
-                            walk.emphasis(&steps)
-                        }
-                    })
-                    .collect();
-                let link_in = parts::link_in(frame);
-                for link in &l.links {
-                    let (a, b) = (emphases[link.from], emphases[link.to]);
-                    let dim = a.opacity.min(b.opacity) as f32;
-                    parts::draw_link(dl, link, link_in * dim * 0.85, a.glow.max(b.glow) > 0.5);
+                            walk.emphasis(&path.map(walked_at).unwrap_or_default())
+                        };
+                        // Directories stay readable while files are spotlit: they are the map, not the subject.
+                        let e = if path.is_none() { Emphasis { opacity: e.opacity.max(0.7), ..e } } else { e };
+                        let ctx =
+                            tree::RowCtx { layout: l, at: tree::START + 4.0 + i as f64 * stagger, emphasis: e, frame };
+                        tree::draw_row(dl, placed, &ctx);
+                    }
                 }
-                let stagger = 5f64.min(12.0 / (l.cards.len() as f64 - 1.0).max(1.0));
-                for (i, card) in l.cards.iter().enumerate() {
-                    parts::draw_card(dl, card, parts::land_of(frame, i, stagger), emphases[i]);
+                Body::Parts(l) => {
+                    let left = (self.box_w - l.width).max(0.0) / 2.0;
+                    let top = (self.box_h - l.height).max(0.0) * 0.3;
+                    dl.translate(left as f32, top as f32);
+                    let emphases: Vec<Emphasis> = l
+                        .cards
+                        .iter()
+                        .map(|card| {
+                            if self.keys.is_some() {
+                                card.part.files.iter().fold(by_key(&format!("p:{}", card.part.name)), |e, f| {
+                                    brighter(e, by_key(&format!("f:{}", f.path)))
+                                })
+                            } else {
+                                let steps: Vec<usize> =
+                                    card.part.files.iter().flat_map(|f| walked_at(&f.path)).collect();
+                                walk.emphasis(&steps)
+                            }
+                        })
+                        .collect();
+                    let link_in = parts::link_in(frame);
+                    for link in &l.links {
+                        let (a, b) = (emphases[link.from], emphases[link.to]);
+                        let dim = a.opacity.min(b.opacity) as f32;
+                        parts::draw_link(dl, link, link_in * dim * 0.85, a.glow.max(b.glow) > 0.5);
+                    }
+                    let stagger = 5f64.min(12.0 / (l.cards.len() as f64 - 1.0).max(1.0));
+                    for (i, card) in l.cards.iter().enumerate() {
+                        parts::draw_card(dl, card, parts::land_of(frame, i, stagger), emphases[i]);
+                    }
                 }
-            }
+            })
         });
     }
 }

@@ -49,6 +49,7 @@ pub fn card_opacity(weight: &str) -> f64 {
 }
 
 pub struct PlacedFile {
+    pub path: String,
     pub name: Fit,
     pub y: f64,
 }
@@ -236,6 +237,7 @@ fn build(part: &Part, w: f64, names: &[String]) -> Built {
             let base = file.path.rsplit('/').next().unwrap_or("");
             let shared = names.iter().filter(|n| *n == base).count() > 1;
             PlacedFile {
+                path: file.path.clone(),
                 y: k as f64,
                 name: fit_text(if shared { &file.path } else { base }, &Slot::named("partCardFile", inner - 26.0)),
             }
