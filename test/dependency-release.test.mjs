@@ -104,7 +104,7 @@ test('the lock file of this repository parses, and its shipped tree has the runt
 });
 
 test('a real update of a tool changes nothing that ships, and one of a runtime package does', () => {
-  const importer = /(\n {6}fallow:\n {8}specifier: [^\n]+\n {8}version: )3\.33\.1/;
+  const importer = /(\n {6}fallow:\n {8}specifier: [^\n]+\n {8}version: )3\.\d+\.\d+/;
   assert.match(realLock, importer);
   assert.deepEqual(
     shippedChanges(
@@ -114,11 +114,14 @@ test('a real update of a tool changes nothing that ships, and one of a runtime p
     ),
     [],
   );
-  // The importer's version, the snapshot key and every dependency line that names d3-geo move together.
+  // The importer's version, the snapshot key and every dependency line that names the package move together.
+  // phonemizer has one version in the lock; d3-geo can hold two, which would make the bump ambiguous.
   const bumped = realLock
-    .replace(/(\n {6}d3-geo:\n {8}specifier: [^\n]+\n {8}version: )3\.1\.1/, (_, head) => `${head}3.1.2`)
-    .replace(/\bd3-geo(@|: )3\.1\.1/g, (_, glue) => `d3-geo${glue}3.1.2`);
-  assert.deepEqual(shippedChanges(realLock, bumped, manifest), [{ name: 'd3-geo', from: ['3.1.1'], to: ['3.1.2'] }]);
+    .replace(/(\n {6}phonemizer:\n {8}specifier: [^\n]+\n {8}version: )1\.2\.1/, (_, head) => `${head}1.2.2`)
+    .replace(/\bphonemizer(@|: )1\.2\.1/g, (_, glue) => `phonemizer${glue}1.2.2`);
+  assert.deepEqual(shippedChanges(realLock, bumped, manifest), [
+    { name: 'phonemizer', from: ['1.2.1'], to: ['1.2.2'] },
+  ]);
 });
 
 test('every dev dependency that the player imports is listed as bundled', () => {

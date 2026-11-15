@@ -16,7 +16,7 @@ function splitKey(text) {
 }
 
 /** Turns the indented maps of a YAML document into nested objects; any other value stays a string. */
-export function parseYamlMaps(text) {
+function parseYamlMaps(text) {
   const root = {};
   const stack = [{ indent: -1, node: root }];
   for (const raw of text.split('\n')) {

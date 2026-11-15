@@ -33,19 +33,19 @@ It releases only when all of these hold:
   Vite writes into `dist/`; a test fails when shipped code imports another), and everything they depend on in the lock
   file. `@types/*` packages are skipped, since they never run. A change to lint, format, type or test tools never releases.
 
-The workflow `publish.yml` makes the release in one run, in three jobs, so that the job that runs the repository's code
-holds no write access. A compromised dependency, the very thing an update may bring, then cannot push to main.
+The workflow `publish.yml` makes the release in two jobs, so that the job that holds the push key runs none of the
+repository's code. A compromised dependency, the very thing an update may bring, then cannot push to main.
 
 1. `dependency-plan` (read-only) decides as above, raises the patch version (the `version` line of `package.json` only,
-   so no lock file changes; `npm version` would add its own), adds a changelog entry that lists the packages that
-   changed, installs, builds and packs. It hands the tarball, `package.json` and `CHANGELOG.md` on as an artifact.
-2. `dependency-push` (`contents: write`) checks nothing out and runs nothing from the repository. It fetches the
-   planned head of main, takes the two files, refuses anything but one changed version line and added changelog lines,
-   commits as `github-actions[bot]`, tags `vX.Y.Z`, and pushes both in one atomic push. It is refused if main moved.
-3. `dependency-release` (`id-token: write`, the `prod` environment) publishes the tarball with trusted publishing.
+   so no lock file changes; `npm version` would add its own) and adds a changelog entry that lists the packages that
+   changed. It hands `package.json` and `CHANGELOG.md` on as an artifact.
+2. `dependency-push` (no token permissions, the `prod` environment) checks nothing out and runs nothing from the
+   repository. It fetches the planned head of main, takes the two files, refuses anything but one changed version line
+   and added changelog lines, commits as `github-actions[bot]`, tags `vX.Y.Z`, and pushes both in one atomic push over
+   SSH with a deploy key. It is refused if main moved.
 
-It is one run because a commit or tag pushed with the workflow's token starts no other workflow, so nothing else would
-publish it. The release job, the six render shards and the upload job then run for the new version as for any release.
+The push starts CI on the release commit, and when CI passes the existing `publish` job finds a version npm lacks and
+publishes it; the release job, the six render shards and the upload job follow, as for any release.
 
 The `publish` job keeps `contents: read`. `dependency-plan` shares the `publish` concurrency group, queued and never
 cancelled. GitHub keeps only the newest queued run, which is enough, because each run decides from the head of main and
@@ -64,15 +64,15 @@ Good:
 - Tool updates stay quiet.
 
 Bad:
-- A release commit has not had a CI run of its own. It differs from the commit CI passed on only in the version line
-  and the changelog.
+- A release commit is on main before its own CI run. It differs from the commit CI passed on only in the version line
+  and the changelog, and CI runs on it right after the push.
 - The push comes before the publish, so that npm never holds a version that is missing from main. If the push succeeds
   and the publish fails, main holds a version npm lacks. The next CI success on main runs the
   existing publish job, which publishes it.
 - A security fix that merges while CI on a newer commit is still running waits for the next Monday, because a run
   releases only from a head commit that CI has passed.
-- The workflow's token bypasses a required check on main. It can only be used by a job that has `contents: write`, and
-  only `dependency-push` has it, a job that runs no code from the repository.
+- A deploy key bypasses a required check on main. Only `dependency-push` can read it, a job that runs no code from the
+  repository.
 
 ## Alternatives considered
 
@@ -95,3 +95,14 @@ put job outputs into scripts: they pass them through `env`. `test/publish-workfl
 
 The render job also no longer checks out a ref it was handed. It checks out the head of main as the event gives it, then
 moves to the commit to render only after confirming that commit is on main, and stops when it is not.
+
+## Amended: a deploy key pushes the release, and the publish job publishes it
+
+The first design pushed with the workflow's token and published in the same run, with the GitHub Actions app on the
+bypass list of the ruleset that requires `ci-ok` on main. GitHub does not allow that app as a bypass actor on a
+personal repository (only on an organisation's), so the push would be refused. A read-write deploy key, kept as the
+secret `RELEASE_PUSH_KEY` in the `prod` environment, is on the bypass list instead. A push with a deploy key, unlike
+one with the workflow token, starts workflows. So the release commit gets its own CI run, and the `publish` job
+publishes it after CI passes, like any version bump (ADR 12). The same-run `dependency-release` job is gone, so
+nothing publishes twice. No loop: the plan skips a head commit that is a release commit or is tagged, and a release
+commit does not hold `[SECURITY]`. The tag push starts nothing, since no workflow runs on tags.

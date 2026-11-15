@@ -22,7 +22,7 @@ test('no publish job that checks out the repository can write to it', () => {
   const checkouts = Object.entries(jobs)
     .filter(([, text]) => /actions\/checkout@/.test(text))
     .map(([name]) => name);
-  assert.deepEqual(writers, ['dependency-push', 'release', 'upload']);
+  assert.deepEqual(writers, ['release', 'upload']);
   assert.deepEqual(
     checkouts.filter((name) => writers.includes(name)),
     [],
@@ -34,8 +34,35 @@ test('the job that pushes a dependency release runs nothing from the repository'
   assert.doesNotMatch(push, /uses: \.\//);
   assert.doesNotMatch(push, /\bpnpm\b|\bnpm (install|ci|run)\b|\bnode\b/);
   assert.doesNotMatch(jobs['dependency-plan'], /contents: write|id-token: write/);
-  assert.doesNotMatch(jobs['dependency-release'], /contents: write/);
   assert.match(jobs['dependency-plan'], /persist-credentials: false/);
+});
+
+test('the push job holds no token permission, reads only the deploy key, checks nothing out, and ssh trusts only GitHub', () => {
+  const push = jobs['dependency-push'];
+  assert.match(push, /\n {4}permissions: \{\}\n/);
+  assert.doesNotMatch(push, /contents: write|id-token|GH_TOKEN|github\.token|actions\/checkout@/);
+  assert.deepEqual(
+    [...push.matchAll(/secrets\.(\w+)/g)].map((m) => m[1]),
+    ['RELEASE_PUSH_KEY'],
+  );
+  assert.match(push, /environment: prod/);
+  assert.match(push, /git@github\.com:\$\{GITHUB_REPOSITORY\}\.git/);
+  assert.match(push, /IdentitiesOnly=yes/);
+  assert.match(push, /StrictHostKeyChecking=yes/);
+  assert.doesNotMatch(push, /StrictHostKeyChecking=no|ssh-keyscan/);
+  assert.match(push, /chmod 600/);
+  assert.match(push, /if: always\(\)\n\s+run: rm -f .*release_key/);
+  assert.doesNotMatch(push, /echo "?\$RELEASE_PUSH_KEY|cat .*release_key/);
+});
+
+test('only the publish job publishes to npm, so a release pushed by the dependency jobs is published once', () => {
+  const publishers = Object.entries(jobs)
+    .filter(([, text]) => /npm publish/.test(text))
+    .map(([name]) => name);
+  assert.deepEqual(publishers, ['publish']);
+  assert.equal(jobs.publish.match(/id-token: write/g).length, 1);
+  assert.equal(workflow.match(/id-token: write/g).length, 1);
+  assert.doesNotMatch(workflow, /^\s+tags:/m);
 });
 
 test('the dependency jobs run only on main, and the publish job still runs on a bare manual start', () => {
@@ -56,7 +83,7 @@ test('no job that can write, publish or hold an id-token restores or saves a cac
   // here call a setup action that has none; ../setup (with the pnpm store cached) is for CI's unprivileged jobs.
   assert.equal(hasCache(uncachedSetup), false);
   assert.match(fs.readFileSync(new URL('../.github/actions/setup/action.yml', import.meta.url), 'utf8'), /cache: true/);
-  const privileged = Object.entries(jobs).filter(([, text]) => /(contents|id-token): write/.test(text));
+  const privileged = Object.entries(jobs).filter(([, text]) => /(contents|id-token): write|secrets\./.test(text));
   assert.ok(privileged.length >= 4);
   for (const [name, text] of privileged) {
     assert.equal(hasCache(text), false, `${name} restores or saves a cache`);
