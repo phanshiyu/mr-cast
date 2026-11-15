@@ -8,7 +8,6 @@ import {
   CODE_BAR_H,
   CODE_PAD,
   COLUMN_GAP,
-  LIST_W,
   STRIP_H,
   layoutFlow,
   type FlowLayout,
@@ -194,7 +193,7 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, hunks, durati
   const active = said ? reached : Math.max(0, reached);
   const local = active < 0 ? 0 : frame - starts[active]!;
   const rowStagger = Math.min(4, (ROWS_END - ROWS_START) / Math.max(1, steps.length - 1));
-  const { stepH, panelW, cardH } = layout;
+  const { stepH, panelW, cardH, listW } = layout;
   const stripH = STRIP_H;
 
   const enter = active <= 0 && !said ? 1 : interpolate(local, [0, TRANSITION], [0, 1], clamp);
@@ -206,7 +205,7 @@ export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, hunks, durati
   return (
     <SceneShell scene={scene} durationInFrames={durationInFrames}>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', gap: COLUMN_GAP }}>
-        <div style={{ width: LIST_W, position: 'relative', flexShrink: 0 }}>
+        <div style={{ width: listW, position: 'relative', flexShrink: 0 }}>
           <div
             style={{
               position: 'absolute',

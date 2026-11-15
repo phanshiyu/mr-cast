@@ -1,11 +1,13 @@
 import { codeHunkId, codeRows } from '../../shared/flow-code.mjs';
-import { fitBlock, fitLines, fitText, type Fit } from '../../shared/textfit.mjs';
+import { fitBlock, fitLines, fitText, measure, type Fit } from '../../shared/textfit.mjs';
 import { CODE_TAB_SIZE, contentBox } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
 import type { FlowScene, FlowStep, Hunk, HunkMap } from '../types';
 import { SPLIT_GUTTER_W } from './codeLayout';
 
-export const LIST_W = 600;
+/** The step rail's width; a flow with real code narrows it, so the code panel has room for long lines. */
+const LIST_W = 600;
+const CODE_LIST_W = 420;
 export const COLUMN_GAP = 56;
 export const STRIP_H = 76;
 const STRIP_GAP = 20;
@@ -48,6 +50,7 @@ export type StepCard =
 
 export interface FlowLayout {
   stepH: number;
+  listW: number;
   panelW: number;
   cardH: number;
   /** Each step's actor, and its action as drawn when it is the current step and when it is not; a code stage adds its `path:line`. */
@@ -69,6 +72,12 @@ function codeCard(step: FlowStep, hunks: HunkMap, width: number, height: number,
   const { problem, rows, first } = codeRows(hunk, step.code);
   if (problem || first === null) return null;
   const tabs = ' '.repeat(CODE_TAB_SIZE);
+  const columnW = width - 2 * CODE_PAD - SPLIT_GUTTER_W;
+  const slot = sized(SLOTS.flowCode, columnW);
+  const room = height - CODE_BAR_H - 2 * CODE_PAD;
+  const font = { family: 'mono' as const, weight: slot.weight, size: slot.min };
+  const chars = Math.floor(columnW / (measure('0'.repeat(100), font) / 100));
+  const fitLinesN = Math.floor(room / (slot.min * slot.lineHeight));
   return {
     kind: 'code',
     hunk,
@@ -77,8 +86,11 @@ function codeCard(step: FlowStep, hunks: HunkMap, width: number, height: number,
     where: `${hunk.file}:${first}`,
     lines: fitLines(
       rows.map((r) => hunk.lines[r.index]!.text.replaceAll('\t', tabs)),
-      sized(SLOTS.flowCode, width - 2 * CODE_PAD - SPLIT_GUTTER_W),
-      height - CODE_BAR_H - 2 * CODE_PAD,
+      {
+        ...slot,
+        fix: `at the smallest readable size, ${slot.min}px, a line can be ${chars} characters and ${fitLinesN} lines fit here; narrow \`lines\` to fewer or shorter lines, or split a longer stretch across stages`,
+      },
+      room,
       path.replace(/action$/, 'code'),
     ),
   };
@@ -123,10 +135,11 @@ function whereFit(card: StepCard, width: number, i: number): Fit | null {
 /** The list of steps on the left, the strip naming who acts, and the card with each step's payload. */
 export function layoutFlow(scene: FlowScene, hunks: HunkMap = {}): FlowLayout {
   const box = contentBox(Boolean(scene.title));
+  const listW = scene.steps.some((s) => s.code) ? CODE_LIST_W : LIST_W;
   const stepH = Math.min(170, box.height / scene.steps.length);
-  const panelW = box.width - LIST_W - COLUMN_GAP;
+  const panelW = box.width - listW - COLUMN_GAP;
   const cardH = box.height - STRIP_H - STRIP_GAP;
-  const textW = LIST_W - BADGE;
+  const textW = listW - BADGE;
   const cards = scene.steps.map((step, i) => card(step, hunks, panelW, cardH, `steps[${i}].action`));
   const rows = scene.steps.map((step, i) => ({
     where: whereFit(cards[i]!, textW, i),
@@ -160,6 +173,7 @@ export function layoutFlow(scene: FlowScene, hunks: HunkMap = {}): FlowLayout {
   );
   return {
     stepH,
+    listW,
     panelW,
     cardH,
     rows,
