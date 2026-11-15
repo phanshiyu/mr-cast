@@ -16,6 +16,9 @@ export const isGitClone = (root) => fs.existsSync(path.join(root, '.git'));
 
 const checksDisabled = (env) => Boolean(env.CI || env.NO_UPDATE_NOTIFIER || env.MR_CAST_NO_UPDATE_CHECK);
 
+/** Whether `v` is a version number as npm publishes one: 1.2.3, or 1.2.3-beta.1. */
+export const isVersion = (v) => typeof v === 'string' && v.length <= 64 && /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/.test(v);
+
 /** Negative, zero or positive as a is older than, the same as, or newer than b. Prereleases sort first. */
 export function compareVersions(a, b) {
   const parse = (v) => {
@@ -38,20 +41,21 @@ export async function fetchLatest(timeoutMs) {
   const res = await fetch(`${registry}/${PACKAGE}/latest`, { signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) throw new Error(`${registry} answered ${res.status}`);
   const { version } = await res.json();
-  if (typeof version !== 'string') throw new Error(`${registry} sent no version`);
+  if (!isVersion(version)) throw new Error(`${registry} sent no version`);
   return version;
 }
 
 function readCache() {
   try {
     const { checkedAt, latest } = JSON.parse(fs.readFileSync(cacheFile(), 'utf8'));
-    return { checkedAt: Number(checkedAt) || 0, latest: typeof latest === 'string' ? latest : null };
+    return { checkedAt: Number(checkedAt) || 0, latest: isVersion(latest) ? latest : null };
   } catch {
     return { checkedAt: 0, latest: null };
   }
 }
 
 export function writeCache(latest) {
+  if (latest !== null && !isVersion(latest)) throw new Error('the cache holds a version number or nothing');
   const file = cacheFile();
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
