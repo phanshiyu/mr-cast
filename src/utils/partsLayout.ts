@@ -43,9 +43,12 @@ export interface PlacedCard {
   tags: string[];
   name: Fit;
   does: Fit | null;
-  /** Tops of the name, the `does` line (just under the name) and the counts (level across cards), from the card's top. */
+  /** What the part's first check item says is at risk, with "+ N more", drawn quietly under `does`. */
+  risk: Fit | null;
+  /** Tops of the name, the `does` line (just under the name), the risk line and the counts (level across cards), from the card's top. */
   nameY: number;
   doesY: number;
+  riskY: number;
   statsY: number;
   /** The listed files, largest first, and how many more the part holds. */
   files: PlacedFile[];
@@ -137,7 +140,7 @@ function build(
   w: number,
   names: readonly string[],
   hasDoes: boolean,
-): Pick<PlacedCard, 'tags' | 'name' | 'does' | 'files' | 'more'> & { all: PlacedFile[] } {
+): Pick<PlacedCard, 'tags' | 'name' | 'does' | 'risk' | 'files' | 'more'> & { all: PlacedFile[] } {
   const inner = w - 2 * CARD_PAD;
   const ranked = [...part.files].sort((a, b) => size(b) - size(a));
   const all = ranked.map((file, k): PlacedFile => {
@@ -163,6 +166,13 @@ function build(
     does: hasDoes
       ? fitText(part.does!, sized(SLOTS.partCardDoes, inner), `parts[${JSON.stringify(part.name)}].does`)
       : null,
+    risk: part.risk
+      ? fitText(
+          `${part.risk}${part.riskMore ? ` + ${part.riskMore} more` : ''}`,
+          sized(SLOTS.partCardRisk, inner),
+          `parts[${JSON.stringify(part.name)}].risk`,
+        )
+      : null,
     files: [],
     more: 0,
     all,
@@ -170,7 +180,7 @@ function build(
 }
 
 /** The height a card needs to hold `listed` files under its text. */
-function need(card: { nameH: number; doesH: number }, listed: number, more: boolean): number {
+function need(card: { nameH: number; doesH: number; riskH: number }, listed: number, more: boolean): number {
   const files = listed + (more ? 1 : 0);
   return (
     2 * CARD_PAD +
@@ -178,6 +188,7 @@ function need(card: { nameH: number; doesH: number }, listed: number, more: bool
     BLOCK_GAP +
     card.nameH +
     (card.doesH ? BLOCK_GAP / 2 + card.doesH : 0) +
+    (card.riskH ? BLOCK_GAP / 2 + card.riskH : 0) +
     BLOCK_GAP +
     STATS_H +
     (files ? BLOCK_GAP + files * FILE_ROW_H : 0)
@@ -199,22 +210,27 @@ export function layoutParts(parts: readonly ScenePart[], width: number, height: 
   // Every card gives its name and `does` line the room the tallest needs, so the counts and files line up across cards.
   const nameH = Math.max(...built.map((b) => b.name.height));
   const doesH = Math.max(0, ...built.map((b) => b.does?.height ?? 0));
+  const riskH = Math.max(0, ...built.map((b) => b.risk?.height ?? 0));
   const cap = (i: number) => Math.min(LISTED[parts[i]!.weight], parts[i]!.files.length);
-  const wanted = Math.max(...parts.map((_, i) => need({ nameH, doesH }, cap(i), parts[i]!.files.length > cap(i))));
+  const wanted = Math.max(
+    ...parts.map((_, i) => need({ nameH, doesH, riskH }, cap(i), parts[i]!.files.length > cap(i))),
+  );
   const h = Math.floor(Math.min(wanted, (height - (rows - 1) * GAP_Y) / rows));
   const totalW = where.columns * w + (where.columns - 1) * gap;
   const totalH = rows * h + (rows - 1) * GAP_Y;
   const cards = parts.map((part, i): PlacedCard => {
     const b = built[i]!;
     let listed = cap(i);
-    while (listed > 0 && need({ nameH, doesH }, listed, part.files.length > listed) > h + 1) listed--;
+    while (listed > 0 && need({ nameH, doesH, riskH }, listed, part.files.length > listed) > h + 1) listed--;
     const more = part.files.length - listed;
     const nameY = CARD_PAD + TAGS_H + BLOCK_GAP;
     const doesY = nameY + b.name.height + BLOCK_GAP / 2;
-    const statsY = nameY + nameH + (doesH ? BLOCK_GAP / 2 + doesH : 0) + BLOCK_GAP;
+    const riskY = nameY + nameH + (doesH ? BLOCK_GAP / 2 + doesH : 0) + BLOCK_GAP / 2;
+    const statsY =
+      nameY + nameH + (doesH ? BLOCK_GAP / 2 + doesH : 0) + (riskH ? BLOCK_GAP / 2 + riskH : 0) + BLOCK_GAP;
     const filesY = statsY + STATS_H + BLOCK_GAP;
     const { col, row } = where.cell[i]!;
-    const fits = need({ nameH, doesH }, listed, more > 0) <= h + 1;
+    const fits = need({ nameH, doesH, riskH }, listed, more > 0) <= h + 1;
     return {
       part,
       x: col * (w + gap),
@@ -224,8 +240,10 @@ export function layoutParts(parts: readonly ScenePart[], width: number, height: 
       tags: b.tags,
       name: b.name,
       does: b.does,
+      risk: b.risk,
       nameY,
       doesY,
+      riskY,
       statsY,
       files: b.all.slice(0, listed).map((f, k) => ({ ...f, y: filesY + k * FILE_ROW_H })),
       more,

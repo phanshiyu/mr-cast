@@ -1454,6 +1454,10 @@ export interface FilePart {
   after?: string[];
   /** Marks the part's card "check": it holds a file the reviewer should open first. `"parts": "brief"` sets it from `brief.check`. */
   check?: boolean;
+  /** What the risk is, under the `does` line: the `what` of the first `brief.check` item in this part. `"parts": "brief"` sets it. */
+  risk?: string;
+  /** How many more `brief.check` items fall in this part; the card says "+ N more". */
+  riskMore?: number;
 }
 
 export interface FilesScene extends SceneBase {

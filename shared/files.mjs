@@ -1,5 +1,6 @@
 // The file list a files scene shows, shared by the validator (plain Node) and the player (TS).
 
+import { lineRange } from './compare.mjs';
 import { isTestFile } from './test-files.mjs';
 
 /** hunks.json status to the scene's change marking. */
@@ -62,6 +63,9 @@ export function sceneParts(scene, files) {
     ...(typeof p.does === 'string' && p.does.trim() ? { does: p.does.trim() } : {}),
     ...(Array.isArray(p.after) ? { after: p.after.filter((n) => typeof n === 'string') } : {}),
     ...(p.check === true ? { check: true } : {}),
+    ...(typeof p.risk === 'string' && p.risk.trim()
+      ? { risk: p.risk.trim(), riskMore: Number.isInteger(p.riskMore) && p.riskMore > 0 ? p.riskMore : 0 }
+      : {}),
     files: files.filter((f) => f.part === p.name),
   }));
   const rest = files.filter((f) => !known.has(f.part));
@@ -102,7 +106,8 @@ export function expandBriefParts(scene, storyboard, hunks) {
     for (const id of new Set(Array.isArray(part.hunks) ? part.hunks : [])) {
       const h = hunks?.[id];
       if (!h || h.status === 'source') continue;
-      const share = mine.get(h.file) ?? { additions: 0, deletions: 0 };
+      const share = mine.get(h.file) ?? { additions: 0, deletions: 0, ids: [] };
+      share.ids.push(id);
       share.additions += h.additions;
       share.deletions += h.deletions;
       mine.set(h.file, share);
@@ -113,13 +118,40 @@ export function expandBriefParts(scene, storyboard, hunks) {
   const order = [...new Set(shares.flatMap(([, mine]) => [...mine.keys()]))];
   const files = order.flatMap((path) =>
     shares.flatMap(([part, mine]) =>
-      mine.has(path) ? [{ path, part, change: diff.get(path).change, ...mine.get(path) }] : [],
+      mine.has(path)
+        ? [{ path, part, change: diff.get(path).change, ...pick(mine.get(path), ['additions', 'deletions']) }]
+        : [],
     ),
   );
   if (!files.length) return scene;
-  const risky = new Set((Array.isArray(storyboard.brief.check) ? storyboard.brief.check : []).map((c) => c?.file));
-  const marked = parts.map((p) =>
-    files.some((f) => f.part === p.name && risky.has(f.path)) ? { ...p, check: true } : p,
-  );
+  const asked = Array.isArray(storyboard.brief.check) ? storyboard.brief.check : [];
+  const marked = parts.map((p) => {
+    const held = asked.filter((c) => checkPart(c, shares, hunks) === p.name);
+    if (!held.length) return p;
+    const what = typeof held[0].what === 'string' ? held[0].what.trim() : '';
+    return { ...p, check: true, ...(what ? { risk: what, riskMore: held.length - 1 } : {}) };
+  });
   return { ...scene, parts: marked, files };
+}
+
+const pick = (o, keys) => Object.fromEntries(keys.map((k) => [k, o[k]]));
+
+/**
+ * The part a `brief.check` item falls in: the one holding its file, or when the file's hunks are split across parts,
+ * the one whose hunks cover its line (the first holding the file when none does). Null when no part holds the file.
+ */
+function checkPart(item, shares, hunks) {
+  const holders = shares.filter(([, mine]) => mine.has(item?.file));
+  if (holders.length < 2) return holders[0]?.[0] ?? null;
+  const range = lineRange(item.line);
+  const covers = ([, mine]) =>
+    range !== null &&
+    mine
+      .get(item.file)
+      .ids.some((id) =>
+        (hunks[id]?.lines ?? []).some(
+          (l) => typeof l.newLine === 'number' && l.newLine >= range[0] && l.newLine <= range[1],
+        ),
+      );
+  return (holders.find(covers) ?? holders[0])[0];
 }

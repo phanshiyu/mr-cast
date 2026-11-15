@@ -705,6 +705,18 @@ export const SLOTS = {
     width: 0,
     fix: 'shorten the `does` line to one sentence of about 90 characters or fewer',
   },
+  partCardRisk: {
+    ...SANS,
+    name: 'what to check in a part',
+    weight: 500,
+    size: 16,
+    min: 14,
+    lines: 2,
+    lineHeight: 1.22,
+    severity: 'warning',
+    width: 0,
+    fix: 'the line is drawn smaller; shorten the `what` of the check item to fit two lines',
+  },
   partCardFile: {
     ...MONO,
     name: 'file name',

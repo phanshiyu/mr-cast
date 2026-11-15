@@ -435,3 +435,40 @@ test('a card too short for its text is reported, naming the part', async () => {
   const { errors } = await check({}, crowd);
   has(errors, 'part card');
 });
+
+test('a part card says what its first check item risks, with "+ N more", and a split file goes by the line', () => {
+  const two = {
+    ...hunks,
+    h20: {
+      ...hunks.h8,
+      id: 'h20',
+      lines: [{ type: 'add', oldLine: null, newLine: 40, text: 'a' }],
+    },
+  };
+  const sb = {
+    brief: {
+      parts: [
+        { name: 'A', weight: 'core', does: 'Checks things', hunks: ['h8'] },
+        { name: 'B', weight: 'support', does: 'Hands them out', hunks: ['h20', 'h5'] },
+      ],
+      check: [
+        { file: 'src/db/pool.ts', line: '2', what: 'pool now closes early', why: 'y' },
+        { file: 'src/server.ts', line: '40', what: 'reply refuses a body', why: 'y' },
+        { file: 'src/server.ts', line: '41-42', what: 'second look', why: 'y' },
+        { file: 'src/server.ts', line: '4', what: 'start waits', why: 'y' },
+      ],
+    },
+  };
+  const read = expandBriefParts({ type: 'files', narration: 'x', parts: 'brief' }, sb, two);
+  // Line 40 is in B's hunk; 41-42 is in none, so it goes to the first part holding the file.
+  const risk = (n) => read.parts.find((p) => p.name === n);
+  assert.deepEqual([risk('A').risk, risk('A').riskMore], ['second look', 1]);
+  assert.deepEqual([risk('B').risk, risk('B').riskMore], ['pool now closes early', 1]);
+  const layout = mapOf(read);
+  assert.equal(card(layout, 'B').risk.text, 'pool now closes early + 1 more');
+  assert.equal(card(layout, 'A').risk.text, 'second look + 1 more');
+  assert.ok(card(layout, 'A').risk.fits && card(layout, 'B').risk.fits);
+  assert.ok(card(layout, 'A').statsY === card(layout, 'B').statsY, 'the counts still line up across cards');
+  const none = mapOf(scene());
+  assert.ok(none.cards.every((c) => c.risk === null));
+});

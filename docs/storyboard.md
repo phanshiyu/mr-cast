@@ -92,13 +92,13 @@ A `flow` step's `payload` is drawn as one line of code in large type, so it hold
 
 ## Files grouped by part
 
-A `files` scene with `parts` draws a map of the change: a card for each part instead of a tree by directory. A part is `{ name, weight, does?, after?, check? }`, and each file names its `part`. A card shows the part's name, its weight (core strongest, routine quietest), its `does` line, its file count and `+` and `−` totals, and its largest files with "+ N more" for the rest. A part sits after the parts its `after` names, with a thin connector from each; with no `after` the cards fill a grid, core first. A part with `"check": true` carries a "check" marker.
+A `files` scene with `parts` draws a map of the change: a card for each part instead of a tree by directory. A part is `{ name, weight, does?, after?, check? }`, and each file names its `part`. A card shows the part's name, its weight (core strongest, routine quietest), its `does` line, its file count and `+` and `−` totals, and its largest files with "+ N more" for the rest. A part sits after the parts its `after` names, with a thin connector from each; with no `after` the cards fill a grid, core first. A part with `"check": true` carries a "check" marker, and with a `risk` (and optionally `riskMore`) it draws that line quietly under `does`, followed by "+ N more".
 
 ```json
 { "type": "files", "parts": "brief", "narration": "..." }
 ```
 
-`"parts": "brief"` takes the parts, with their `does` and `after`, and the files of their hunks, from the brief's `parts`, so nothing is typed twice; a part that holds a file named in `brief.check` is marked "check". A step's `focus` can name a part to light its card. `notes` are not drawn on the map, and `validate` says so. `validate` warns on an `after` that names no part. A scene with no `parts` is still the tree by directory.
+`"parts": "brief"` takes the parts, with their `does` and `after`, and the files of their hunks, from the brief's `parts`, so nothing is typed twice; a part that holds a file named in `brief.check` is marked "check", with the `what` of the first such item under `does` and "+ N more" for the others (when a file's hunks are split across parts, an item goes to the part whose hunks cover its line). A step's `focus` can name a part to light its card. `notes` are not drawn on the map, and `validate` says so. `validate` warns on an `after` that names no part. A scene with no `parts` is still the tree by directory.
 
 ## Charts that move
 

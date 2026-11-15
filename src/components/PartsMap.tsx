@@ -84,6 +84,11 @@ const Card: React.FC<{ card: PlacedCard; land: number; emphasis: Emphasis }> = (
           <FitText fit={card.does} />
         </div>
       ) : null}
+      {card.risk ? (
+        <div style={{ position: 'absolute', left: CARD_PAD, top: card.riskY, color: riskColors.medium, opacity: 0.8 }}>
+          <FitText fit={card.risk} />
+        </div>
+      ) : null}
       <div
         style={{
           position: 'absolute',
