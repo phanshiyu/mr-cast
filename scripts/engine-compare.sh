@@ -14,7 +14,8 @@
 #
 # and prints, per still, the mean absolute difference over the frame and the worst 64-pixel tile with its top left,
 # in levels of 255. Remotion's stills are cached, each by the hash of the run's files and of src/, shared/ and bin/,
-# so a re-run after `cargo build --release` only redraws the engine's side.
+# so a re-run after `cargo build --release` only redraws the engine's side. ENGINE_BIN names another engine binary
+# (an older build, to compare before and after a change).
 #
 # Every mr-cast command runs with temporary XDG_CONFIG_HOME, XDG_STATE_HOME and CLAUDE_CONFIG_DIR. XDG_CACHE_HOME is
 # left alone on purpose: the Remotion bundle and Chrome live in ~/.cache/mr-cast, and a fresh cache would download
@@ -41,7 +42,7 @@ done
 [ -f "$src/storyboard.json" ] || { echo "engine-compare: no storyboard.json in $src" >&2; exit 2; }
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
-engine="$repo/engine/target/release/mr-cast-engine"
+engine="${ENGINE_BIN:-$repo/engine/target/release/mr-cast-engine}"
 [ -x "$engine" ] || { echo "engine-compare: build the engine first: cargo build --release --manifest-path engine/Cargo.toml" >&2; exit 2; }
 out=${out:-/tmp/engine-compare/$(basename "$src")}
 mkdir -p "$out"

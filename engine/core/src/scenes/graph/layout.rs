@@ -126,14 +126,21 @@ pub struct PositionedNode {
 
 pub struct EdgeLabelBox {
     pub text: Fit,
+    /// Centre in layout units.
     pub x: f64,
     pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 pub struct RoutedEdge {
     pub edge: usize,
     pub d: String,
     pub label: Option<EdgeLabelBox>,
+    /// Where a label would sit: the curve's middle.
+    pub mid: Pt,
+    /// Points along the curve.
+    pub points: Vec<Pt>,
 }
 
 pub struct PlacedGroup {
@@ -946,8 +953,10 @@ fn layout_pass(
             d: curves[i].d.clone(),
             label: labels.get(&i).map(|at| {
                 let s = sizes[i].take().expect("size");
-                EdgeLabelBox { text: s.text, x: at.x, y: at.y }
+                EdgeLabelBox { text: s.text, x: at.x, y: at.y, width: s.width, height: s.height }
             }),
+            mid: curves[i].at.at(curves[i].t0),
+            points: curves[i].points.clone(),
         })
         .collect();
 

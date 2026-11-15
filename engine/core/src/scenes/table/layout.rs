@@ -98,6 +98,50 @@ pub struct Layout {
     pub scale: f64,
 }
 
+impl Row {
+    /// A row from its JSON, with a cell for each of `columns`.
+    pub fn from_json(v: &Value, columns: usize) -> Row {
+        let cells = v.get("cells").and_then(Value::as_array);
+        let text = |k: &str| match v.get(k) {
+            Some(Value::String(s)) => Some(s.clone()),
+            Some(Value::Number(n)) => Some(n.to_string()),
+            _ => None,
+        };
+        Row {
+            cells: (0..columns).map(|c| Cell::from_json(cells.and_then(|cs| cs.get(c)))).collect(),
+            change: v.get("change").and_then(Value::as_str).and_then(Change::parse),
+            badge: text("badge"),
+            tone: v.get("tone").and_then(Value::as_str).map(str::to_string),
+        }
+    }
+}
+
+impl Change {
+    pub fn parse(s: &str) -> Option<Change> {
+        match s {
+            "added" => Some(Change::Added),
+            "removed" => Some(Change::Removed),
+            "modified" => Some(Change::Modified),
+            _ => None,
+        }
+    }
+}
+
+/// A table's columns and rows from its JSON (`{ columns, rows }`).
+pub fn table_of(v: &Value) -> (Vec<String>, Vec<Row>) {
+    let columns: Vec<String> = v
+        .get("columns")
+        .and_then(Value::as_array)
+        .map(|cs| cs.iter().map(|c| c.as_str().unwrap_or("").to_string()).collect())
+        .unwrap_or_default();
+    let rows = v
+        .get("rows")
+        .and_then(Value::as_array)
+        .map(|rs| rs.iter().map(|r| Row::from_json(r, columns.len())).collect())
+        .unwrap_or_default();
+    (columns, rows)
+}
+
 fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pattern).expect("table regex"))
 }

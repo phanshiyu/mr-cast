@@ -5,9 +5,10 @@
 mod layout;
 pub mod model;
 mod node;
-mod table;
 mod text;
 
+use super::table::layout::{Layout as TableLayout, layout_table_states, state_rows, table_of};
+use super::table::view::{TableDraw, draw_table};
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::callout::{HeaderCallout, aside_height, draw_aside, has_callout, header_box};
@@ -29,7 +30,6 @@ use layout::{GraphEdge, GraphLayout, GraphNode, Shape, fit_graph, graph_directio
 use node::NodeState;
 use serde::Deserialize;
 use std::collections::HashMap;
-use table::{Table, TableDraw, TableLayout, TableRow};
 
 const NODE_START: f64 = 8.0;
 const NODES_END: f64 = 20.0;
@@ -49,8 +49,6 @@ struct GraphScene {
     edges: Vec<GraphEdge>,
     #[serde(default)]
     layout: Option<String>,
-    #[serde(default)]
-    table: Option<Table>,
 }
 
 struct GraphView {
@@ -65,9 +63,8 @@ struct GraphView {
     graph_box: (f64, f64),
     full: (f64, f64),
     table_w: f64,
-    table: Option<Table>,
+    table_columns: usize,
     tables: Vec<TableLayout>,
-    table_rows: Vec<Vec<TableRow>>,
     callouts: Option<HeaderCallout>,
     legend: Vec<&'static str>,
     flowchart: bool,
@@ -103,17 +100,17 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let json = input.scene;
     let callouts = HeaderCallout::new(json);
     let (fw, fh) = if has_callout(json) { header_box(json) } else { content_box(false) };
-    let table_w = if scene.table.is_some() { crate::timing::js_round(fw * TABLE_SHARE) } else { 0.0 };
-    let graph_box = (fw - if scene.table.is_some() { table_w + TABLE_GAP } else { 0.0 }, fh);
+    let table = json.get("table").filter(|t| !t.is_null());
+    let table_w = if table.is_some() { crate::timing::js_round(fw * TABLE_SHARE) } else { 0.0 };
+    let graph_box = (fw - if table.is_some() { table_w + TABLE_GAP } else { 0.0 }, fh);
     let states = walk_states(&model::Model(json), json);
     let dir = graph_direction(scene.layout.as_deref(), &scene.nodes);
     let (layout, layout_scale) = fit_graph(&scene.nodes, &scene.edges, dir, graph_box);
-    let (tables, table_rows) = match &scene.table {
-        Some(t) if !t.rows.is_empty() && !t.columns.is_empty() => {
-            let rows = table::state_rows(t, &states);
-            (table::layout_states(&t.columns, &rows, table_w, fh), rows)
-        }
-        _ => (Vec::new(), Vec::new()),
+    let (table_columns, table_rows) = table.map(table_of).unwrap_or_default();
+    let tables = if table_rows.is_empty() || table_columns.is_empty() {
+        Vec::new()
+    } else {
+        layout_table_states(&table_columns, &state_rows(&table_columns, &table_rows, &states), table_w, fh)
     };
     let table_top = if tables.is_empty() {
         0.0
@@ -134,9 +131,8 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         graph_box,
         full: (fw, fh),
         table_w,
-        table: scene.table,
+        table_columns: table_columns.len(),
         tables,
-        table_rows,
         callouts,
         table_top,
     }))
@@ -482,18 +478,18 @@ impl SceneView for GraphView {
 
 impl GraphView {
     fn draw_table(&self, dl: &mut DisplayList, s: &StateFrame, focus: &Focus, frame: f64) {
-        let (Some(t), false) = (&self.table, self.tables.is_empty()) else { return };
+        if self.tables.is_empty() {
+            return;
+        }
         let cell = |row: usize, col: usize| {
             brighter(focus.emphasis(&format!("c:{col}")), focus.emphasis(&format!("x:{row}/{col}")))
         };
         let row_emphasis = |row: usize| {
             let own = focus.emphasis(&format!("r:{row}"));
-            let o = (0..t.columns.len()).map(|c| cell(row, c).opacity).fold(own.opacity, f64::max);
+            let o = (0..self.table_columns).map(|c| cell(row, c).opacity).fold(own.opacity, f64::max);
             Emphasis { opacity: o, ..own }
         };
-        let rows0 = &self.table_rows[s.now_index];
         let draw = TableDraw {
-            rows: rows0,
             layout: &self.tables[s.now_index],
             before: &self.tables[s.before_index],
             s,
@@ -506,6 +502,6 @@ impl GraphView {
             cell_emphasis: &cell,
             header_glow: &|i| focus.emphasis(&format!("c:{i}")).glow,
         };
-        table::draw_table(dl, &draw);
+        draw_table(dl, &draw);
     }
 }

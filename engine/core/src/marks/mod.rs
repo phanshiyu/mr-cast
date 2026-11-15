@@ -67,6 +67,68 @@ impl MarkTargets {
     fn obstacles(&self) -> Vec<Bx> {
         self.obstacles.clone().unwrap_or_else(|| self.boxes.iter().map(|(_, b)| *b).collect())
     }
+
+    /// These targets and another set's in one content box, such as a graph's and its table's (`merged` of
+    /// sceneTargets.ts).
+    pub fn merged(mut self, other: MarkTargets) -> MarkTargets {
+        let mut obstacles = self.obstacles();
+        obstacles.extend(other.obstacles());
+        self.boxes.extend(other.boxes);
+        self.lines.extend(other.lines);
+        self.obstacles = Some(obstacles);
+        self
+    }
+}
+
+/// A layout's item boxes in its own units, as its layout code knows them (`LayoutBoxes` of penGeometry.ts).
+#[derive(Clone, Default)]
+pub struct LayoutBoxes {
+    pub boxes: Vec<(String, Bx)>,
+    pub obstacles: Option<Vec<Bx>>,
+    pub lines: Vec<Pt>,
+}
+
+impl LayoutBoxes {
+    pub fn add(&mut self, key: impl Into<String>, b: Bx) {
+        self.boxes.push((key.into(), b));
+    }
+}
+
+/// Where a scene draws a laid-out picture in its content box: layout point (x, y) lands at
+/// (left + x * scale, top + y * scale).
+#[derive(Clone, Copy, Debug)]
+pub struct Stage {
+    pub left: f64,
+    pub top: f64,
+    pub scale: f64,
+}
+
+impl Stage {
+    /// A layout of `size` centred in `area` and scaled about its centre, as the diagram scenes draw theirs.
+    pub fn centred(area: (f64, f64), size: (f64, f64), scale: f64) -> Stage {
+        Stage { left: (area.0 - size.0 * scale) / 2.0, top: (area.1 - size.1 * scale) / 2.0, scale }
+    }
+    fn place(&self, b: &Bx) -> Bx {
+        Bx::new(self.left + b.x * self.scale, self.top + b.y * self.scale, b.width * self.scale, b.height * self.scale)
+    }
+    /// A layout's boxes as they land in a content box of `size` (`staged`).
+    pub fn targets(&self, l: &LayoutBoxes, size: (f64, f64)) -> MarkTargets {
+        MarkTargets {
+            boxes: l.boxes.iter().map(|(k, b)| (k.clone(), self.place(b))).collect(),
+            obstacles: l.obstacles.as_ref().map(|o| o.iter().map(|b| self.place(b)).collect()),
+            lines: l
+                .lines
+                .iter()
+                .map(|p| Pt { x: self.left + p.x * self.scale, y: self.top + p.y * self.scale })
+                .collect(),
+            ..MarkTargets::new(Vec::new(), Bx::new(0.0, 0.0, size.0, size.1))
+        }
+    }
+}
+
+/// A box of `width` and `height` centred on a point.
+pub fn around(p: Pt, width: f64, height: f64) -> Bx {
+    Bx::new(p.x - width / 2.0, p.y - height / 2.0, width, height)
 }
 
 /// The item keys a ref names on a step, as ink, marks and the camera resolve it (`stepRefKeys`): keys, or how many
