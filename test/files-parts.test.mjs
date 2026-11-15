@@ -103,15 +103,33 @@ test('parts "brief" reads the parts and the files of their hunks from the brief'
   assert.deepEqual([server.change, server.additions, server.deletions], ['modified', 3, 4]);
 });
 
-test('a file whose hunks sit in two parts goes to the part with most of its changed lines', () => {
+test("a file whose hunks sit in two parts is listed under each, with that part's share of its lines", () => {
+  const two = {
+    ...hunks,
+    h20: { ...hunks.h8, id: 'h20', additions: 5, deletions: 1 },
+    h21: { ...hunks.h8, id: 'h21', additions: 2, deletions: 0 },
+  };
   const split = {
     parts: [
-      { name: 'A', weight: 'core', hunks: ['h5'] },
-      { name: 'B', weight: 'core', hunks: ['h5', 'h5', 'h7'] },
+      { name: 'A', weight: 'core', hunks: ['h8', 'h20'] },
+      { name: 'B', weight: 'support', hunks: ['h21', 'h21', 'h5'] },
     ],
   };
-  const read = expandBriefParts({ type: 'files', narration: 'x', parts: 'brief' }, { brief: split }, hunks);
-  assert.equal(read.files.find((f) => f.path === 'src/db/pool.ts').part, 'B');
+  const read = expandBriefParts({ type: 'files', narration: 'x', parts: 'brief' }, { brief: split }, two);
+  const rows = read.files.map((f) => [f.path, f.part, f.additions, f.deletions]);
+  assert.deepEqual(rows, [
+    ['src/server.ts', 'A', 8, 5],
+    ['src/server.ts', 'B', 2, 0],
+    ['src/db/pool.ts', 'B', 2, 2],
+  ]);
+  const groups = sceneParts(read, sceneFiles(read, two));
+  assert.deepEqual(
+    groups.map((g) => [g.name, g.additions, g.deletions]),
+    [
+      ['A', 8, 5],
+      ['B', 4, 2],
+    ],
+  );
 });
 
 test('a scene that is not "brief", or a brief with nothing to read, comes back as it is', () => {

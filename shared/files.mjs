@@ -76,14 +76,15 @@ export function sceneParts(scene, files) {
 /**
  * A files scene with `"parts": "brief"` read into plain `parts` and `files`: the parts of `storyboard.brief.parts`
  * with their `does` and `after`, `check: true` on a part that holds a file named in `brief.check`, and the files
- * their hunks change, each under the part that holds most of its changed lines (the first, on a tie) with the
- * file's whole line counts. Any other scene, or one with no brief to read, comes back as it is.
+ * their hunks change. A file sits under each part that holds one of its hunks, with that part's share of its
+ * changed lines, so a file split across parts is listed more than once. Any other scene, or one with no brief to
+ * read, comes back as it is.
  */
 export function expandBriefParts(scene, storyboard, hunks) {
   const list = storyboard?.brief?.parts;
   if (scene?.type !== 'files' || scene.parts !== 'brief' || !Array.isArray(list)) return scene;
   const parts = [];
-  const lines = new Map();
+  const shares = [];
   for (const part of list) {
     if (
       typeof part?.name !== 'string' ||
@@ -97,20 +98,24 @@ export function expandBriefParts(scene, storyboard, hunks) {
       ...(typeof part.does === 'string' && part.does.trim() ? { does: part.does.trim() } : {}),
       ...(Array.isArray(part.after) ? { after: part.after.filter((n) => typeof n === 'string') } : {}),
     });
-    for (const id of Array.isArray(part.hunks) ? part.hunks : []) {
+    const mine = new Map();
+    for (const id of new Set(Array.isArray(part.hunks) ? part.hunks : [])) {
       const h = hunks?.[id];
       if (!h || h.status === 'source') continue;
-      const mine = lines.get(h.file) ?? new Map();
-      mine.set(part.name, (mine.get(part.name) ?? 0) + h.additions + h.deletions);
-      lines.set(h.file, mine);
+      const share = mine.get(h.file) ?? { additions: 0, deletions: 0 };
+      share.additions += h.additions;
+      share.deletions += h.deletions;
+      mine.set(h.file, share);
     }
+    shares.push([part.name, mine]);
   }
   const diff = new Map(diffFiles(hunks ?? {}).map((f) => [f.path, f]));
-  const files = [...lines].map(([path, byPart]) => {
-    const part = parts.find((p) => byPart.get(p.name) === Math.max(...byPart.values()));
-    const { change, additions, deletions } = diff.get(path);
-    return { path, part: part.name, change, additions, deletions };
-  });
+  const order = [...new Set(shares.flatMap(([, mine]) => [...mine.keys()]))];
+  const files = order.flatMap((path) =>
+    shares.flatMap(([part, mine]) =>
+      mine.has(path) ? [{ path, part, change: diff.get(path).change, ...mine.get(path) }] : [],
+    ),
+  );
   if (!files.length) return scene;
   const risky = new Set((Array.isArray(storyboard.brief.check) ? storyboard.brief.check : []).map((c) => c?.file));
   const marked = parts.map((p) =>

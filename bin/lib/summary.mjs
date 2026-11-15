@@ -302,9 +302,10 @@ function sceneGist(scene, hunks, storyboard) {
       );
     }
     case 'files': {
-      const files = sceneFiles(scene, hunks);
+      const listed = sceneFiles(scene, hunks);
+      const files = [...new Map(listed.map((f) => [f.path, f])).values()];
       const lines = files.some((f) => f.additions !== undefined)
-        ? `, +${files.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${files.reduce((n, f) => n + (f.deletions ?? 0), 0)}`
+        ? `, +${listed.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${listed.reduce((n, f) => n + (f.deletions ?? 0), 0)}`
         : '';
       const tests = files.filter((f) => f.test).length;
       const notes = Object.keys(scene.notes ?? {}).length;

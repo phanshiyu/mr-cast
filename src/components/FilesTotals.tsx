@@ -8,7 +8,9 @@ const MINUS = '−';
 export const FilesTotals: React.FC<{ files: ReturnType<typeof sceneFiles> }> = ({ files }) => {
   const add = files.reduce((n, f) => n + (f.additions ?? 0), 0);
   const del = files.reduce((n, f) => n + (f.deletions ?? 0), 0);
-  const tests = files.filter((f) => f.test).length;
+  // A file split across parts is listed once under each, and is still one file.
+  const unique = [...new Map(files.map((f) => [f.path, f])).values()];
+  const tests = unique.filter((f) => f.test).length;
   const counted = files.some((f) => f.additions !== undefined || f.deletions !== undefined);
   return (
     <div
@@ -23,7 +25,7 @@ export const FilesTotals: React.FC<{ files: ReturnType<typeof sceneFiles> }> = (
       }}
     >
       <span>
-        {files.length} {files.length === 1 ? 'file' : 'files'}
+        {unique.length} {unique.length === 1 ? 'file' : 'files'}
       </span>
       {counted ? (
         <span style={{ fontFamily: fonts.mono, fontWeight: 700 }}>
