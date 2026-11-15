@@ -13,6 +13,8 @@ import {
   type FilesLayout,
   type PlacedRow,
 } from '../utils/filesLayout';
+import { FilesTotals } from './FilesTotals';
+import { PartsMap } from './PartsMap';
 import { PenMarks } from './PenMarks';
 import { focusSpotlight, spotlight, spotlightStarts, type Emphasis } from '../utils/spotlight';
 import { Badge, badgesOf, changeTone } from './marks';
@@ -274,42 +276,10 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
   );
 };
 
-const Totals: React.FC<{ files: ReturnType<typeof sceneFiles> }> = ({ files }) => {
-  const add = files.reduce((n, f) => n + (f.additions ?? 0), 0);
-  const del = files.reduce((n, f) => n + (f.deletions ?? 0), 0);
-  const tests = files.filter((f) => f.test).length;
-  const counted = files.some((f) => f.additions !== undefined || f.deletions !== undefined);
-  return (
-    <div
-      style={{
-        display: 'flex',
-        gap: 22,
-        fontSize: 21,
-        color: colors.muted,
-        flexShrink: 0,
-        paddingBottom: 6,
-        alignItems: 'baseline',
-      }}
-    >
-      <span>
-        {files.length} {files.length === 1 ? 'file' : 'files'}
-      </span>
-      {counted ? (
-        <span style={{ fontFamily: fonts.mono, fontWeight: 700 }}>
-          <span style={{ color: colors.add }}>+{add}</span> <span style={{ color: colors.del }}>{MINUS + del}</span>
-        </span>
-      ) : null}
-      {tests ? (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: colors.accent }}>
-          <FlaskConical size={20} strokeWidth={2.2} />
-          {tests} {tests === 1 ? 'test' : 'tests'}
-        </span>
-      ) : null}
-    </div>
-  );
-};
+export const FileTree: React.FC<SceneProps<FilesScene>> = (props) =>
+  props.scene.parts ? <PartsMap {...props} /> : <Tree {...props} />;
 
-export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durationInFrames, segments }) => {
+const Tree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const box = contentBox(Boolean(scene.title));
   const files = useMemo(() => sceneFiles(scene, hunks), [scene, hunks]);
@@ -336,7 +306,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
       scene={scene}
       durationInFrames={durationInFrames}
       camera={{ hunks, segments, targets: () => marks }}
-      aside={<Totals files={files} />}
+      aside={<FilesTotals files={files} />}
     >
       <div
         style={{
@@ -352,7 +322,7 @@ export const FileTree: React.FC<SceneProps<FilesScene>> = ({ scene, hunks, durat
         {layout.rows.map((placed, i) => {
           const e = fileEmphasis(placed.row.kind === 'file' ? placed.row.file.path : null);
           // Directories stay readable while files are spotlit: they are the map, not the subject.
-          const shown = placed.row.kind === 'dir' ? { ...e, opacity: Math.max(e.opacity, 0.7) } : e;
+          const shown = placed.row.kind !== 'file' ? { ...e, opacity: Math.max(e.opacity, 0.7) } : e;
           return <Row key={i} placed={placed} layout={layout} at={rowAt(i)} emphasis={shown} frame={frame} />;
         })}
       </div>

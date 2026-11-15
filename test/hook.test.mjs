@@ -190,3 +190,54 @@ test('the hook shows what stopped validate when no line is an error, such as bro
     done();
   }
 });
+
+test('the hook also hands Claude how much of each core part is on screen, for a branch', () => {
+  const { start, hook, done } = setup();
+  try {
+    const dir = start(['--title', 'Quicksort'], 'quicksort');
+    const meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8'));
+    fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify({ ...meta, mode: 'diff', quick: false }));
+    const changed = (id, n) => ({
+      ...HUNKS.s1,
+      id,
+      status: 'modified',
+      additions: n,
+      lines: Array.from({ length: n }, (_, i) => ({ type: 'add', oldLine: null, newLine: i + 1, text: `x${i};` })),
+    });
+    fs.writeFileSync(path.join(dir, 'hunks.json'), JSON.stringify({ h1: changed('h1', 4), h2: changed('h2', 6) }));
+    const brief = { why: { source: 'unknown' }, parts: [{ name: 'Core bit', weight: 'core', hunks: ['h1', 'h2'] }] };
+    const scenes = [{ type: 'code', hunkId: 'h1', narration: 'The partition function walks the list once.' }];
+    fs.writeFileSync(path.join(dir, 'storyboard.json'), JSON.stringify({ title: 'Quicksort', brief, scenes }));
+    const out = hook(dir);
+    assert.equal(out.status, 0, out.stderr);
+    const lines = JSON.parse(out.stdout).hookSpecificOutput.additionalContext.split('\n');
+    assert.match(lines[0], /^brief: why unknown/);
+    assert.equal(lines[1], 'core on screen: Core bit 4 of 10 changed lines');
+    assert.match(lines[2], /^scenes: 1/);
+  } finally {
+    done();
+  }
+});
+
+test('on success the hook exits 0 and hands Claude the scene mix line as added context', () => {
+  const { start, hook, done } = setup();
+  try {
+    const dir = start(['--title', 'Quicksort'], 'quicksort');
+    const ok = hook(dir);
+    assert.deepEqual([ok.status, ok.stderr], [0, '']);
+    const { hookSpecificOutput } = JSON.parse(ok.stdout);
+    assert.deepEqual(hookSpecificOutput, {
+      hookEventName: 'PostToolUse',
+      additionalContext: 'scenes: 1 · code 1 · longest run: 1 code',
+    });
+    fs.writeFileSync(
+      path.join(dir, 'storyboard.json'),
+      JSON.stringify({ ...CODE_ONLY, brief: { why: { source: 'unknown' } } }),
+    );
+    const lines = JSON.parse(hook(dir).stdout).hookSpecificOutput.additionalContext.split('\n');
+    assert.match(lines[0], /^brief: why unknown · case ✗/);
+    assert.equal(lines[1], 'scenes: 1 · code 1 · longest run: 1 code');
+  } finally {
+    done();
+  }
+});

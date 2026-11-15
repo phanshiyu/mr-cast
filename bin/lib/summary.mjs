@@ -6,6 +6,8 @@ import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { pickOf } from '../../shared/plan.mjs';
+import { briefLine, coreOnScreenLine } from '../../shared/brief.mjs';
+import { mixLine } from './validate-mix.mjs';
 import { readingLines, readingOrder } from '../../shared/reading.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
 import { VIEWS } from '../../shared/views.mjs';
@@ -77,7 +79,17 @@ function formatFileLine(f) {
  * The compact hunk index printed by `extract`.
  * @param {{ branch, base, ahead, working, mergeBase, untracked: string[] }} ctx
  */
-export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, storyboardPath, runArgs = '' }) {
+export function formatIndex({
+  ctx,
+  files,
+  hunks,
+  skipped,
+  maxLines,
+  condensed = false,
+  hunksPath,
+  storyboardPath,
+  runArgs = '',
+}) {
   const all = Object.values(hunks);
   const adds = all.reduce((n, h) => n + h.additions, 0);
   const dels = all.reduce((n, h) => n + h.deletions, 0);
@@ -85,7 +97,7 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, s
     ? `${ctx.branch} + working tree vs ${ctx.base} (merge-base ${ctx.mergeBase.slice(0, 7)})`
     : `${ctx.branch} vs ${ctx.base} (${plural(ctx.ahead, 'commit')})`;
   const out = [
-    `mr-cast: ${what} · ${plural(files.length, 'file')} · ${plural(all.length, 'hunk')} · +${adds} ${MINUS}${dels}`,
+    `mr-cast: ${what} · ${plural(files.length, 'file')} · ${plural(all.length, 'hunk')} · +${adds} ${MINUS}${dels} · line numbers are the file's own, what \`lines\` takes`,
   ];
 
   for (const f of files) {
@@ -106,13 +118,35 @@ export function formatIndex({ ctx, files, hunks, skipped, maxLines, hunksPath, s
   if (ctx.untracked.length) {
     out.push(`not included: ${plural(ctx.untracked.length, 'untracked file')} (git add -N <file> to include)`);
   }
+  if (condensed)
+    out.push(
+      `large diff: each hunk shows its header and first ${plural(maxLines, 'changed line')} only; \`mr-cast hunk <id>...${runArgs}\` prints hunks in full`,
+    );
   out.push(
-    `line numbers: + is the new-file line (use in steps or focusLinesAfter), - is the old-file line (oldLines or focusLinesBefore)`,
+    `line numbers: + is the new-file line (lines in code, flow and compare, focusLinesAfter), - is the old-file line (oldLines, focusLinesBefore, compare side old)`,
   );
   out.push(
     `wrote ${hunksPath} · next: write ${storyboardPath}, then \`mr-cast validate${runArgs}\` and \`mr-cast play${runArgs}\``,
   );
   return out.join('\n');
+}
+
+/** The named hunks with every line, numbered; ids that are not in hunks.json come back in `missing`. */
+export function formatHunks(hunks, ids) {
+  const out = [];
+  const missing = ids.filter((id) => !Object.hasOwn(hunks, id));
+  for (const id of ids.filter((i) => !missing.includes(i))) {
+    const h = hunks[id];
+    const header = h.header ? ` · ${clip(h.header, HEADER_WIDTH)}` : '';
+    out.push(`${h.id} ${h.file} ${hunkRange(h)} +${h.additions} ${MINUS}${h.deletions}${header}`);
+    const width = Math.max(1, ...h.lines.map((l) => String(l.newLine ?? l.oldLine).length));
+    for (const l of h.lines) {
+      const sign = l.type === 'add' ? '+' : l.type === 'del' ? '-' : ' ';
+      const no = String(l.type === 'del' ? l.oldLine : l.newLine).padStart(width);
+      out.push(`  ${sign} ${no} ${l.text.replace(/\t/g, '  ').trimEnd()}`);
+    }
+  }
+  return { text: out.join('\n'), missing };
 }
 
 /** Ids whose content changed (or vanished) between two hunks.json maps. */
@@ -146,11 +180,15 @@ function formatCoverage(coverage) {
 }
 
 /** Lines for `validate`; the last line is the verdict. */
-export function formatValidation({ errors, warnings, coverage }, { storyboard, hunks, seconds }) {
+export function formatValidation({ errors, warnings, coverage, core }, { storyboard, hunks, seconds }) {
   const out = [...errors.map((e) => `error: ${e}`), ...warnings.map((w) => `warning: ${w}`)];
   if (errors.some((e) => e.includes('not found in hunks.json'))) {
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
+  if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
+  if (coreOnScreenLine(core)) out.push(coreOnScreenLine(core));
+  const mix = mixLine(storyboard.scenes);
+  if (mix) out.push(mix);
   if (errors.length)
     out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
   else
@@ -265,9 +303,10 @@ function sceneGist(scene, hunks, storyboard) {
       );
     }
     case 'files': {
-      const files = sceneFiles(scene, hunks);
+      const listed = sceneFiles(scene, hunks);
+      const files = [...new Map(listed.map((f) => [f.path, f])).values()];
       const lines = files.some((f) => f.additions !== undefined)
-        ? `, +${files.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${files.reduce((n, f) => n + (f.deletions ?? 0), 0)}`
+        ? `, +${listed.reduce((n, f) => n + (f.additions ?? 0), 0)} ${MINUS}${listed.reduce((n, f) => n + (f.deletions ?? 0), 0)}`
         : '';
       const tests = files.filter((f) => f.test).length;
       const notes = Object.keys(scene.notes ?? {}).length;
@@ -297,6 +336,11 @@ function sceneGist(scene, hunks, storyboard) {
     case 'review':
       return titled(formatFindings(storyboard.findings));
     case 'reading': {
+      // With no items the scene draws the brief's check list.
+      if (!Array.isArray(scene.items))
+        return titled(
+          `${plural(Array.isArray(storyboard.brief?.check) ? storyboard.brief.check.length : 0, 'place')} to open first, from the brief`,
+        );
       const routine = scene.items.filter((i) => i.routine).length;
       const flags = scene.items.filter((i) => i.flag).length;
       return titled(
@@ -384,7 +428,7 @@ function topicHeading(topic) {
  * `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. With the run's
  * valid `plan`, scenes are grouped under the topic they show, and topics the viewer skipped are listed.
  */
-export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pace = '', plan }) {
+export function formatOutline({ storyboard, hunks, coverage, core, seconds, voiced, pace = '', plan }) {
   const scenes = storyboard.scenes;
   const out = [storyboard.title, ...(storyboard.subtitle ? [storyboard.subtitle] : [])];
   const number = String(scenes.length).length;
@@ -408,6 +452,9 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pa
   const covered = formatCoverage(coverage);
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
   if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
+  if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
+  if (coreOnScreenLine(core)) out.push(coreOnScreenLine(core));
+  out.push(mixLine(scenes));
   const skipped = [...topics.values()].filter((t) => pickOf(t).depth === 'skip').map((t) => t.title);
   if (skipped.length) out.push(`skipped topics: ${skipped.join(', ')}`);
   const order = readingOrder(storyboard, hunks, plan);

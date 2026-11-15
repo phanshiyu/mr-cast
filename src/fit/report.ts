@@ -1,4 +1,4 @@
-import { sceneFiles } from '../../shared/files.mjs';
+import { sceneFiles, sceneParts } from '../../shared/files.mjs';
 // validate bundles this file with its own copy of shared/map.mjs, whose outline it loads through these.
 export { loadWorld, needsWorld } from '../../shared/map.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
@@ -13,9 +13,10 @@ import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutBarRows, layoutPie } from '../utils/chartShapes';
 import { layoutCompare } from '../utils/compareLayout';
-import { layoutCode } from '../utils/codeLayout';
+import { frameRows, layoutCode, shownLines, unseenLines } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
+import { layoutParts } from '../utils/partsLayout';
 import { layoutFlow } from '../utils/flowLayout';
 import { layoutText, textStates } from '../utils/textLayout';
 import { layersScale, layoutLayers } from '../utils/layersLayout';
@@ -92,7 +93,7 @@ const SCENE_FITS: SceneFits = {
     return [new Scaled('graph', scale, layout), scaledTables('table', tables)];
   },
   code: (scene, _storyboard, hunks) => (hunks[scene.hunkId] ? layoutCode(scene, hunks[scene.hunkId]!) : null),
-  flow: (scene) => layoutFlow(scene),
+  flow: (scene, _storyboard, hunks) => layoutFlow(scene, hunks),
   sequence: (scene) => {
     const box = contentBox(Boolean(scene.title));
     const layout = layoutSequence(scene.participants, scene.messages, box);
@@ -107,9 +108,9 @@ const SCENE_FITS: SceneFits = {
     return new Scaled('state diagram', stateScale(layout, contentBox(Boolean(scene.title))), layout);
   },
   mermaid: () => null,
-  tests: (scene) => {
+  tests: (scene, _storyboard, hunks) => {
     const box = headerBox(scene);
-    const layout = layoutTests(scene, box.width, box.height);
+    const layout = layoutTests(scene, box.width, box.height, hunks);
     return new Scaled('test matrix', layout.scale, layout);
   },
   table: (scene) => {
@@ -131,7 +132,10 @@ const SCENE_FITS: SceneFits = {
   },
   files: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
-    const layout = layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+    const files = sceneFiles(scene, hunks);
+    const parts = sceneParts(scene, files);
+    if (parts) return layoutParts(parts, box.width, box.height);
+    const layout = layoutFiles(treeRows(files, scene.notes ?? {}), box.width, box.height);
     return new Scaled('file tree', layout.scale, layout);
   },
   layers: (scene) => {
@@ -151,11 +155,11 @@ const SCENE_FITS: SceneFits = {
   reading: (scene, storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
     const order = readingOrder(storyboard, hunks);
-    return order ? layoutReading(order, scene.items, box.width, box.height) : null;
+    return order ? layoutReading(order, scene.items ?? order.items, box.width, box.height) : null;
   },
-  compare: (scene) => {
+  compare: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
-    const layout = layoutCompare(scene, box.width, box.height);
+    const layout = layoutCompare(scene, box.width, box.height, hunks);
     return new Scaled('comparison', layout.scale, layout);
   },
   // A drawing's text is checked against its viewBox in bin/lib/validate-svg.mjs; nothing here wraps it.
@@ -237,7 +241,7 @@ const STEP_TARGETS: Partial<{
   map: mapTargets,
   chart: chartStepTargets,
   state: (scene) => everyStep(scene.steps, () => stateTargets(scene)),
-  tests: testsTargets,
+  tests: (scene, hunks) => testsTargets(scene, hunks),
   er: (scene) => everyStep(scene.steps, () => erTargets(scene)),
   files: (scene, hunks) => everyStep(scene.steps, () => filesTargets(scene, hunks)),
   layers: (scene) => everyStep(scene.steps, () => layersTargets(scene)),
@@ -305,4 +309,41 @@ export function imageScales(
       },
     ];
   });
+}
+
+/** A code scene's changed lines no frame shows: new-file and old-file line numbers, ascending. */
+export interface UnseenCode {
+  scene: number;
+  file: string;
+  added: number[];
+  removed: number[];
+  /** How many rows of code the frame draws at once. */
+  rows: number;
+}
+
+/** The code scenes that leave changed lines of their hunk off every frame, and which lines. */
+export function unseenCode(storyboard: Storyboard, hunks: HunkMap): UnseenCode[] {
+  const out: UnseenCode[] = [];
+  storyboard.scenes.forEach((scene, i) => {
+    const hunk = scene.type === 'code' ? hunks[scene.hunkId] : undefined;
+    if (scene.type !== 'code' || !hunk) return;
+    const layout = layoutCode(scene, hunk);
+    const lines = unseenLines(scene, hunk, layout).map((n) => hunk.lines[n]!);
+    const number = (side: 'newLine' | 'oldLine') =>
+      lines.flatMap((l) => (l[side] === null || (side === 'oldLine') !== (l.type === 'del') ? [] : [l[side]]));
+    const [added, removed] = [number('newLine'), number('oldLine')];
+    if (added.length || removed.length)
+      out.push({ scene: i, file: hunk.file, added, removed, rows: frameRows(layout) });
+  });
+  return out;
+}
+
+/** The changed lines of each code scene's hunk that some frame draws: a scene's index to indexes into the hunk's lines. */
+export function shownCodeLines(storyboard: Storyboard, hunks: HunkMap): Map<number, number[]> {
+  const out = new Map<number, number[]>();
+  storyboard.scenes.forEach((scene, i) => {
+    const hunk = scene.type === 'code' ? hunks[scene.hunkId] : undefined;
+    if (scene.type === 'code' && hunk) out.set(i, shownLines(scene, hunk));
+  });
+  return out;
 }

@@ -47,7 +47,7 @@ function git(cwd, args) {
   }
 }
 
-function tryGit(cwd, args) {
+export function tryGit(cwd, args) {
   try {
     return git(cwd, args).trim();
   } catch {

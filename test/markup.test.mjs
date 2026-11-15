@@ -61,3 +61,14 @@ test('styledShare is the fraction of characters drawn styled', () => {
   assert.equal(styledShare('ab**cd**'), 0.5);
   assert.equal(styledShare(''), 0);
 });
+
+test('a literal === is an unclosed mark, and the message says how to write it', () => {
+  const { errors } = parseMarkup('the check is count === max');
+  assert.equal(errors.length, 1);
+  assert.match(errors[0].message, /\\=\\=\\= for ===/);
+  assert.match(errors[0].message, /`backticks`/);
+  // Both ways the message offers read back as the literal text.
+  assert.deepEqual(parseMarkup('count \\=\\=\\= max').errors, []);
+  assert.equal(parseMarkup('count \\=\\=\\= max').runs[0].text, 'count === max');
+  assert.deepEqual(parseMarkup('count `===` max').errors, []);
+});

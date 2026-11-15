@@ -1,5 +1,51 @@
 # Changelog
 
+## Unreleased
+
+A video of a branch now answers the six questions a reviewer has. mr-cast reads the facts a diff does not show, Claude writes the answers in the storyboard, and `validate` says which are missing. Nothing about the order, the scene types or the length of a video is set. Storyboards from 0.28 still validate and render: every new check is a warning (ADR 0037 and ADR 0038).
+
+**The six questions and the `brief`.** Why the change exists, one case before and after, the idea and the decisions, the parts, the proof and what to check first.
+
+- **`brief` and `answers`.** A branch storyboard holds a `brief` of short answers, each with where it comes from (the description, a commit, the code, a test, or "unknown" when nothing says). A scene's `answers` says which questions it tells.
+- **`validate` and `outline`** print `brief:` with the answers and `scenes:` with the count of each scene type, and warn about a missing answer, a place that does not exist, a hunk in no part, a core part no scene shows, changed tests with none named on screen, a before and after that is only spoken, a run of 4 or more scenes of one type, a flow `payload` that is a sentence, a diagram that repeats an earlier one, and lines of a code scene that never come into view. The hook prints the two lines when a write passes.
+- **`guide.md`** is written beside the storyboard: the six answers, the parts with their files, the places to open first and the questions for the author. `render --out` copies it beside the MP4.
+- **The player** has a guide panel that lists the questions with their answers, jumps to the scene that tells each, and lists the places to open first. The `G` key shows or hides it. The sidebar labels each chapter with the question it answers.
+
+**A change map.** `extract` prints, and writes to `map.json`, what the author said in each commit and in `--description <file>`, the files by kind with changed code apart from new files, which test covers which file and the test names it adds, and where changed names are used elsewhere. `mr-cast map` prints it again, and `mr-cast hunk <id>...` prints hunks in full when a large diff gets a short index.
+
+**Scenes that show the answers.**
+
+- **`compare`** cells can show real lines of a hunk, and `"mode": "options"` sets a decision against the way not taken.
+- **`flow`** steps can show real code in place of a `payload`.
+- **`files`** takes `parts`, grouping files by what they are for, and `"parts": "brief"` reads them from the brief.
+- **`reading`** works in any branch video: with no items it draws the brief's check list, and an item can say why it matters.
+
+**The demo** `examples/demo` is written the new way, with a `brief`, a `map.json` and each of these scenes.
+
+**Evidence.** Three baseline videos made with 0.28 were rated by blind viewers 4 of 5 for ease and 2 of 5 for readiness to approve or reject, and in all three "how do we know it works" was not shown. Before the fields were built, eight reviewer needs were tried on today's scenes. The six questions come from those findings (ADR 0037).
+
+**Measured after.** Six videos of the same three branches, two writers each, were made with this skill and graded the same way: a blind viewer answered eight understanding questions from the stills and narration, and a critic with the code graded the answers (`quality/understanding.md`, `quality/critic.md`).
+
+| | 0.28 (3 videos) | This version (6 videos) |
+| --- | --- | --- |
+| Viewer answers correct | 15 of 21 | 36 of 42 |
+| Reviewer questions answered well | 7 of 18 | 23 of 36 |
+| Reviewer questions not answered | 5 of 18 | 2 of 36 |
+| Claims the code contradicts, per video | 1.3 | 1.0 |
+
+- **The two questions still unanswered are both "why",** on branches whose commits give no reason. Pass `--description` with the merge request's text.
+- **Viewers' own readiness ratings barely moved** (2 of 5, then 2.3), so the critic's grades are the measure.
+- **Two of the six contradicted claims were mr-cast's own:** the tests footer counted `describe` groups as tests. That is fixed here, as is a case that showed a test's settings as the code's defaults.
+- **The samples are small and writers vary.** One of the six videos scored below its baseline.
+
+**Also in this version, from what the writers ran into.**
+
+- **`still --sheet`** writes one image of every scene, so a writer can check the whole video at a glance.
+- **`validate`** prints `core on screen:` with how many changed lines of each core part the video shows, and warns when a tests scene names none of the tests a branch adds, when a file is called untested that a changed test names, and when lines of a code scene never come into view.
+- **A decision carries its source,** so a way not taken that nobody names is labelled as the writer's own.
+- **The parts map** draws each part as a card with what it does, what it builds on and what to check in it.
+- **`schema <type>`** prints that scene's own fields and names the shared types, where it used to repeat them all.
+
 ## 0.28.0
 
 Motion, three new scenes and ten new worked examples. Any stepped scene can zoom and pan with a step's `camera`, svg shapes move, trace and morph, charts move and sort into races, and code types itself beside its output. A `plot` scene draws numeric axes whose curves reshape, a `map` scene draws countries, places and routes on a real world map, and an `image` scene shows a photo or screenshot. Most storyboards written for 0.27 validate and draw as before; **Upgrading from 0.27** below lists the three changes that can fail one or move its text, and the fixes list four small changes to how some scenes look.

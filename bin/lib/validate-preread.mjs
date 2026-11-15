@@ -23,9 +23,16 @@ function checkFrom(s, p, hunks, preread, errors, warnings) {
   });
 }
 
-function checkItems(s, p, hunks, findings, errors, warnings) {
+function checkItems(s, p, hunks, findings, errors, warnings, { preread, checks }) {
   if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
   if (s.steps !== undefined) errors.push(`${p}.steps: a reading scene takes no steps`);
+  if (s.items === undefined && !preread) {
+    if (!checks)
+      errors.push(
+        `${p}.items: left out, the scene draws brief.check, which is empty or missing; add the brief's check list, or items of { hunkId, check }`,
+      );
+    return;
+  }
   if (!Array.isArray(s.items) || s.items.length === 0)
     return errors.push(`${p}.items: required non-empty array of { hunkId, check }, in the order to read the code`);
   const seen = new Map();
@@ -44,6 +51,7 @@ function checkItems(s, p, hunks, findings, errors, warnings) {
     if (item.check !== undefined && typeof item.check !== 'string') errors.push(`${q}.check: must be a string`);
     else if (item.routine !== true && !isStr(item.check))
       errors.push(`${q}.check: required, what to verify there; set "routine": true for a change to skim`);
+    if (item.why !== undefined && !isStr(item.why)) errors.push(`${q}.why: must be a non-empty string`);
     if (item.flag !== undefined) checkFlag(item, q, hunks, findings, errors);
     if (isStr(item.hunkId) && Object.hasOwn(hunks, item.hunkId)) checkLines(item, q, hunks[item.hunkId], errors);
   });
@@ -144,7 +152,8 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
   const listed = new Set();
   const readings = [];
   const isScene = (s) => s && typeof s === 'object';
-  if (!preread && sb.scenes.some((s) => isScene(s) && (s.type === 'reading' || s.from !== undefined))) {
+  const checks = Array.isArray(sb.brief?.check) && sb.brief.check.length > 0;
+  if (!preread && sb.scenes.some((s) => isScene(s) && s.from !== undefined)) {
     warnings.push('this storyboard is a pre-read; pass --audience preread');
   }
   sb.scenes.forEach((s, i) => {
@@ -178,9 +187,8 @@ export function checkPreread(sb, hunks, { preread, mode }, errors, warnings) {
     }
     checkFrom(s, p, hunks, preread, errors, warnings);
     if (s.type !== 'reading') return;
-    if (!preread) warnings.push(`${p}: only a pre-read has a reading scene; pass --audience preread, or remove it`);
     readings.push(i);
-    checkItems(s, p, hunks, findings, errors, warnings);
+    checkItems(s, p, hunks, findings, errors, warnings, { preread, checks });
     if (Array.isArray(s.items))
       for (const item of s.items) if (isStr(item?.hunkId) && Object.hasOwn(hunks, item.hunkId)) listed.add(item.hunkId);
   });

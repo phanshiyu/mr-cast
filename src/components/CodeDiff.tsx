@@ -66,7 +66,7 @@ const statusColor: Record<Hunk['status'], string> = {
   source: colors.muted,
 };
 
-const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (
+export const Code: React.FC<{ tokens: Token[]; fontSize: number; dim?: boolean }> = ({ tokens, fontSize, dim }) => (
   <div
     style={{
       whiteSpace: 'pre',
@@ -109,7 +109,7 @@ const LineNumber: React.FC<{ value: number | null; fontSize: number; width: numb
 );
 
 /** Line number column(s) plus the +/− sign; morph shows both old and new numbers like a unified diff. */
-const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; fontSize: number }> = ({
+export const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; fontSize: number }> = ({
   line,
   numbers,
   fontSize,
@@ -135,7 +135,7 @@ const Gutter: React.FC<{ line: DiffLine | null; numbers: (number | null)[]; font
   );
 };
 
-const lineBg = (line: DiffLine | null) =>
+export const lineBg = (line: DiffLine | null) =>
   line?.type === 'add' ? colors.addBg : line?.type === 'del' ? colors.delBg : 'transparent';
 
 function splitModels(hunk: Hunk, tokens: Token[][], slots: Slot[], { fontSize, rowH }: CodeMetrics): RowModel[] {

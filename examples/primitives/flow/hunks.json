@@ -1,1 +1,138 @@
-{}
+{
+  "s1": {
+    "id": "s1",
+    "file": "src/api/uploads.ts",
+    "oldFile": null,
+    "status": "source",
+    "language": "typescript",
+    "header": "",
+    "startLine": 21,
+    "oldStartLine": 21,
+    "endLine": 30,
+    "additions": 0,
+    "deletions": 0,
+    "beforeCode": "app.post('/uploads', async (req, res) => {\n  const { name, size } = req.body;\n  if (size > MAX_BYTES) return res.status(413).end();\n\n  const key = `u/${nextId()}.jpg`;\n  const url = await signPut(key, { expires: 300 });\n  await db.insert('uploads', { key, name, state: 'waiting' });\n\n  res.json({ url, expires: 'in 5 min' });\n});",
+    "afterCode": "app.post('/uploads', async (req, res) => {\n  const { name, size } = req.body;\n  if (size > MAX_BYTES) return res.status(413).end();\n\n  const key = `u/${nextId()}.jpg`;\n  const url = await signPut(key, { expires: 300 });\n  await db.insert('uploads', { key, name, state: 'waiting' });\n\n  res.json({ url, expires: 'in 5 min' });\n});",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 21,
+        "newLine": 21,
+        "text": "app.post('/uploads', async (req, res) => {"
+      },
+      {
+        "type": "context",
+        "oldLine": 22,
+        "newLine": 22,
+        "text": "  const { name, size } = req.body;"
+      },
+      {
+        "type": "context",
+        "oldLine": 23,
+        "newLine": 23,
+        "text": "  if (size > MAX_BYTES) return res.status(413).end();"
+      },
+      {
+        "type": "context",
+        "oldLine": 24,
+        "newLine": 24,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 25,
+        "newLine": 25,
+        "text": "  const key = `u/${nextId()}.jpg`;"
+      },
+      {
+        "type": "context",
+        "oldLine": 26,
+        "newLine": 26,
+        "text": "  const url = await signPut(key, { expires: 300 });"
+      },
+      {
+        "type": "context",
+        "oldLine": 27,
+        "newLine": 27,
+        "text": "  await db.insert('uploads', { key, name, state: 'waiting' });"
+      },
+      {
+        "type": "context",
+        "oldLine": 28,
+        "newLine": 28,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 29,
+        "newLine": 29,
+        "text": "  res.json({ url, expires: 'in 5 min' });"
+      },
+      {
+        "type": "context",
+        "oldLine": 30,
+        "newLine": 30,
+        "text": "});"
+      }
+    ]
+  },
+  "s2": {
+    "id": "s2",
+    "file": "src/workers/thumbnail.ts",
+    "oldFile": null,
+    "status": "source",
+    "language": "typescript",
+    "header": "",
+    "startLine": 8,
+    "oldStartLine": 8,
+    "endLine": 14,
+    "additions": 0,
+    "deletions": 0,
+    "beforeCode": "export async function onCreated(event: StorageEvent) {\n  const photo = await storage.get(event.key);\n  const thumb = await resize(photo, { width: 400 });\n\n  await storage.put(thumbKey(event.key), thumb);\n  await db.update('uploads', event.key, { state: 'ready' });\n}",
+    "afterCode": "export async function onCreated(event: StorageEvent) {\n  const photo = await storage.get(event.key);\n  const thumb = await resize(photo, { width: 400 });\n\n  await storage.put(thumbKey(event.key), thumb);\n  await db.update('uploads', event.key, { state: 'ready' });\n}",
+    "lines": [
+      {
+        "type": "context",
+        "oldLine": 8,
+        "newLine": 8,
+        "text": "export async function onCreated(event: StorageEvent) {"
+      },
+      {
+        "type": "context",
+        "oldLine": 9,
+        "newLine": 9,
+        "text": "  const photo = await storage.get(event.key);"
+      },
+      {
+        "type": "context",
+        "oldLine": 10,
+        "newLine": 10,
+        "text": "  const thumb = await resize(photo, { width: 400 });"
+      },
+      {
+        "type": "context",
+        "oldLine": 11,
+        "newLine": 11,
+        "text": ""
+      },
+      {
+        "type": "context",
+        "oldLine": 12,
+        "newLine": 12,
+        "text": "  await storage.put(thumbKey(event.key), thumb);"
+      },
+      {
+        "type": "context",
+        "oldLine": 13,
+        "newLine": 13,
+        "text": "  await db.update('uploads', event.key, { state: 'ready' });"
+      },
+      {
+        "type": "context",
+        "oldLine": 14,
+        "newLine": 14,
+        "text": "}"
+      }
+    ]
+  }
+}

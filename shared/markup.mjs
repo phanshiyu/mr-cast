@@ -166,7 +166,8 @@ export function parseMarkup(src) {
   if (style.mark)
     errors.push({
       at: opened.mark + 1,
-      message: '== that never closes; end the mark with a second == right after a word, or write \\= for a literal one',
+      message:
+        '== that never closes; end the mark with a second == right after a word. To show == as text, put a backslash before each =, as in \\=\\=\\= for ===, or put it in `backticks`',
     });
   return { runs, errors };
 }

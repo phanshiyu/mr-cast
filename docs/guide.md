@@ -26,7 +26,7 @@ Type `/mr-cast`, or ask Claude in your own words. The skill picks what the video
 - "That", "what you said" or "this explanation" means the explanation Claude just gave.
 - A bare "make a video of this" uses whichever source exists. When both exist, Claude asks which one you mean.
 
-A branch video starts from `mr-cast extract`, which diffs the branch against its base. An explanation starts from `mr-cast init`, and its code scenes show snippets of real source files instead of diff hunks. Run Claude Code from the repository the video is about.
+A branch video starts from `mr-cast extract`, which diffs the branch against its base. An explanation starts from `mr-cast init`, and its code scenes show snippets of real source files instead of diff hunks. Run Claude Code from the repository the video is about. For a merge request, name its number or save its description to a file, and Claude passes it to `extract --description`.
 
 ## Make a quick diagram video
 
@@ -42,6 +42,29 @@ Ask for a video of the branch or of the explanation. Claude writes the storyboar
 
 The page opens once the voice is ready. Browsers block autoplay with sound, so press play to start.
 
+## Make a video a reviewer can act on
+
+A video of a branch answers six questions a reviewer has. Claude finds the answers before it writes any scene:
+
+| Question | The viewer can answer |
+| --- | --- |
+| Why | Why does this change exist, and who says so? |
+| One case | On one real case, what happened before, and what happens now? |
+| The idea | What is the idea, and what did the author decide on the way? |
+| The parts | Which parts are there, which matter most, and which are routine? |
+| Proof | How do we know it works: what is tested, and what is not? |
+| Check first | What could break, and where should I look first? |
+
+`mr-cast extract` helps Claude find them. It prints the **change map**: what the author said in each commit message, the files grouped as source, tests, docs, config and routine (with changed code listed apart from new files), which test covers which file, and where the changed names are used elsewhere. Save the merge request's title and text to a file and pass it with `--description file`, and the map holds that too. mr-cast never calls GitHub or GitLab itself, so when you name a PR or MR, Claude saves the text first. `mr-cast hunk h3 h7` prints named hunks in full, and `mr-cast map` prints the map again.
+
+Claude writes the answers in the storyboard's `brief`, with where each comes from, such as a commit or the description. Each decision says whether the author states it, the code shows it, or Claude noticed another way nobody names, and the guide and the player label them "The author says", "The code shows" and "Another way, not the author's". When nothing says, the answer is "unknown": the video says the reason is not stated, and the question goes to the author. The scenes it makes are Claude's choice. `mr-cast validate` prints one line, such as `brief: why ✓ (description) · case ✓ · approach ✓ 3 decisions (2 stated, 1 mine) · parts 4, core 2 · proof ✓ 0 tested, 4 untested · check 3 · ask 1`, a line saying how much of each main part is on screen, such as `core on screen: Finding and checking refs 14 of 386 changed lines · Chips and walkthrough 10 of 980`, and `scenes: 12 · code 3, text 1 · longest run: 3 code`. It warns when a question has no answer or no scene, when a place the brief names does not exist, or when part of the change is in no part.
+
+`validate` also writes `guide.md` beside the storyboard: the six answers, the parts with what each does, what it follows and its files, the places to open first as `path:line  what`, and the questions for the author. It is the brief in plain words, to paste into the merge request. `render --out` copies it beside the MP4.
+
+In the player, a **guide panel** lists the six questions with a short answer to each. Click a question to jump to the scene that answers it, and the ones you have reached are marked. Under them are **Open first**, which jumps to the scene that shows each place, and **Ask the author**. Press `G` to show or hide the panel. It is part of the page, so the MP4 never has it.
+
+A branch video can also end on a **Check first** scene: a `reading` scene with no items draws the brief's check list. See [the brief](storyboard.md#the-brief-of-a-branch-video) in the storyboard reference.
+
 ## Change the voice
 
 mr-cast voices with Kitten TTS (`kitten:luna`) by default, and Kokoro is the other engine. Each engine has its own voices. Ask Claude to change the voice, such as "use a male voice" or "use the Kokoro voice", or name one, such as `kitten:bruno` or `kokoro:af_heart`. Claude asks for the engine, then the voice, only when you ask to change it, and keeps your choice for later videos.
@@ -56,7 +79,7 @@ The MP4 is 1920x1080 at 30 fps, with the voice, burned-in subtitles and a chapte
 
 ## Make a pre-read for a reviewer
 
-A pre-read is for a reviewer who reads the code after the video. Say "pre-read", "before I review", "no code on screen" or "without code".
+A pre-read is for a reviewer who reads the code after the video. (Any branch video can end on a reading scene, as [above](#make-a-video-a-reviewer-can-act-on); a pre-read is the one that shows no code at all.) Say "pre-read", "before I review", "no code on screen" or "without code".
 
 The video shows no code. It explains the change with diagrams that use the real identifiers and file names, and lists in a `reading` scene the order in which to read the hunks, each with what to check there. `mr-cast validate` writes the same order to `reading.md` beside the storyboard, as a checklist you can paste into the merge request. The player shows it in a **Reading order** panel with **Copy as checklist**.
 

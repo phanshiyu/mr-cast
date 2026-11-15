@@ -9,7 +9,7 @@ import { stateMotion } from '../../shared/svg-motion.mjs';
 import { plotAxes, plotGeometry, plotLabels, stateParams } from '../../shared/plot.mjs';
 import { headerBox } from '../fit/shell';
 import { contentBox } from '../components/theme';
-import { sceneFiles } from '../../shared/files.mjs';
+import { sceneFiles, sceneParts } from '../../shared/files.mjs';
 import type {
   ArrayScene,
   ErScene,
@@ -32,6 +32,7 @@ import { cameraFor, layoutImage, regionOnScreen, viewAt } from './imageLayout';
 import { arrayBoxes, layoutArray } from './arrayLayout';
 import { erBoxes, erScale, layoutEr } from './erLayout';
 import { filesBoxes, layoutFiles, treeRows } from './filesLayout';
+import { layoutParts, partsBoxes } from './partsLayout';
 import { layersBoxes, layersScale, layoutLayers } from './layersLayout';
 import { layoutTimeline, timelineBoxes, timelineScale } from './timelineLayout';
 import { fitSceneGraph, graphAreas, graphBoxes } from './graphLayout';
@@ -193,9 +194,9 @@ export function stateTargets(scene: StateScene): MarkTargets {
 }
 
 /** A tests matrix does not move between steps: its rows, cells and outcome columns, the same for every step. */
-export function testsTargets(scene: TestsScene): MarkTargets[] {
+export function testsTargets(scene: TestsScene, hunks: HunkMap = {}): MarkTargets[] {
   const box = headerBox(scene);
-  const layout = layoutTests(scene, box.width, box.height);
+  const layout = layoutTests(scene, box.width, box.height, hunks);
   const targets = staged(
     testsBoxes(layout),
     { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale },
@@ -214,7 +215,17 @@ export function erTargets(scene: ErScene): MarkTargets {
 
 export function filesTargets(scene: FilesScene, hunks: HunkMap): MarkTargets {
   const box = contentBox(Boolean(scene.title));
-  const layout = layoutFiles(treeRows(sceneFiles(scene, hunks), scene.notes ?? {}), box.width, box.height);
+  const files = sceneFiles(scene, hunks);
+  const parts = sceneParts(scene, files);
+  if (parts) {
+    const layout = layoutParts(parts, box.width, box.height);
+    return staged(
+      partsBoxes(layout),
+      { left: Math.max(0, box.width - layout.width) / 2, top: Math.max(0, box.height - layout.height) * 0.3, scale: 1 },
+      box,
+    );
+  }
+  const layout = layoutFiles(treeRows(files, scene.notes ?? {}), box.width, box.height);
   return staged(
     filesBoxes(layout),
     { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale },

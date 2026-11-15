@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { buildHunkIndex, parseUnifiedDiff } from './lib/diff.mjs';
 import { UserError } from './lib/errors.mjs';
+import { buildChangeMap, formatChangeMap, orderByKind } from './lib/change-map.mjs';
 import { parseSnippetArgs, snippetId, sourceHunk } from './lib/explain.mjs';
 import { installSkill, refreshSkills, uninstallSkill } from './lib/install-skill.mjs';
 import { locateJsonError } from './lib/json.mjs';
@@ -57,6 +58,7 @@ import { upgrade } from './lib/upgrade.mjs';
 import {
   changedHunkIds,
   formatDuration,
+  formatHunks,
   formatIndex,
   formatOutline,
   formatSnippets,
@@ -67,6 +69,7 @@ import {
 import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { sceneSteps } from '../shared/steps.mjs';
+import { sceneChapter } from '../shared/chapters.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { IMAGES_FILE, resolveImages } from './lib/images.mjs';
 import { formatSteps } from './lib/highlight.mjs';
@@ -75,6 +78,7 @@ import { formatSchema } from './lib/schema.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
+import { GUIDE_HEADING, guideMarkdown } from '../shared/brief.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
 import { ensureVoiceover, readVoiceover, sampleVoice, voicedLines } from './lib/voice.mjs';
@@ -111,9 +115,15 @@ commands under "Used by the Claude Code skills" for you.
 
 Used by the Claude Code skills:
   status            the branch's changes against its base, uncommitted files, and the last pace and voice
-  extract [base] [--working]
-                    start a walkthrough of the branch's diff in .mr-cast/<branch> and print a hunk index;
-                    --working diffs the merge base against uncommitted changes
+  extract [base] [--working] [--description file]
+                    start a walkthrough of the branch's diff in .mr-cast/<branch>, print a change map (the
+                    commit messages, files by kind, tests and the files they name or import, where changed names are used
+                    elsewhere) and a hunk index, and write map.json; --working diffs the merge base
+                    against uncommitted changes; --description reads the merge request's title and text
+                    from a file you saved
+  hunk <id>...      print the named hunks in full, with line numbers (a diff over 600 changed lines shows
+                    the index short)
+  map               print the run's change map again
   init --title text [--reset] [--quick]
                     start a walkthrough of an explanation in .mr-cast/<title-slug>; the same title reopens
                     it and keeps its storyboard unless --reset; --quick starts a quick video in
@@ -125,8 +135,9 @@ Used by the Claude Code skills:
   plan [--port N] [--no-open] [--idle-exit minutes]
                     check the run's plan.json and open the page where the user picks each topic's depth
                     and view; the picks are written back into plan.json; replaces and exits like play
-  schema [type|all] print the storyboard's TypeScript schema: with a scene type, such as array, that scene's
-                    fields and every type they use; with none, the storyboard and what every scene shares
+  schema [type...|all] print the storyboard's TypeScript schema: with a scene type, such as array, that scene's
+                    fields and the types only it uses (several types print each once); with none, the
+                    storyboard and the types scenes share
   validate          check the run's storyboard.json (and its topics against plan.json)
   outline           print a short plan of the storyboard to show before rendering
   play [--port N] [--no-open] [--idle-exit minutes]
@@ -151,9 +162,11 @@ const USAGE_ALL = `${USAGE}
 
 More commands and options:
   voice             voice the narration into the run's audio/ without playing it
-  still [sceneIndex...] [--out dir] [--step k]
+  still [sceneIndex...] [--out dir] [--step k] [--sheet]
                     render PNG stills of scenes (0-based; default all, into the run's stills/); with
-                    --step, each scene as step k ends instead of the scene's end
+                    --step, each scene as step k ends instead of the scene's end; with --sheet, one
+                    contact sheet, stills/sheet.png (sheet-1.png, sheet-2.png past 12 scenes), with every
+                    scene's still in a grid labelled with its scene number, type and chapter
   steps [sceneIndex...]
                     print each step's words beside what it lights and what it changes, with the
                     highlight warnings, for checking that the lit part matches the words; code scenes are left out
@@ -164,7 +177,7 @@ More commands and options:
   extract --context N     context lines per hunk (default 4)
   extract --max-lines N   changed lines shown per hunk in the index (default 14)
   extract --all-files     include lockfiles, minified and build output
-  validate --read-only    check only: write no review.md, reading.md or plan picks, and remember no choice
+  validate --read-only    check only: write no review.md, reading.md, guide.md or plan picks, and remember no choice
   validate and outline estimate the length at the --pace given until the narration is voiced at it.`;
 
 /** A path for messages: relative to the current directory when inside it, else absolute. */
@@ -177,6 +190,15 @@ function intOption(value, name, min) {
   const n = Number(value);
   if (!Number.isInteger(n) || n < min) throw new UserError(`--${name} must be an integer >= ${min} (got "${value}")`);
   return n;
+}
+
+/** A JSON file's contents, or null when it is absent or unreadable: a file that only adds checks, such as map.json. */
+function readOptionalJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function readJson(file, missingHint, parse = JSON.parse) {
@@ -200,6 +222,8 @@ function readJson(file, missingHint, parse = JSON.parse) {
 }
 
 const DIR_OPTION = { dir: { type: 'string' }, name: { type: 'string' } };
+/** The run options plus the settings flags, which a command that has no voice or pace takes and ignores, so one set of flags fits every command. */
+const DIR_AND_SETTINGS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
@@ -229,7 +253,18 @@ async function loadProject(dir, settings, { write = true } = {}) {
   const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
   // Pictures are made local before the check, which reports any that cannot be shown; the hook's check writes nothing.
   const images = await resolveImages(dir, raw, { write });
-  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, plan, images });
+  // The change map is optional: `extract` writes it beside hunks.json, and the brief's map checks wait for it.
+  const map = readOptionalJson(path.join(dir, 'map.json'));
+  const root = path.basename(path.dirname(dir)) === '.mr-cast' ? path.dirname(path.dirname(dir)) : null;
+  const result = await validateStoryboard(raw, hunks, {
+    mode,
+    audience: settings.audience,
+    plan,
+    images,
+    quick: meta?.quick === true,
+    map,
+    root,
+  });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
@@ -238,6 +273,7 @@ async function loadProject(dir, settings, { write = true } = {}) {
     result.errors.length || !write
       ? null
       : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
+  const guide = result.errors.length || !write ? null : writeGuide(path.join(dir, 'guide.md'), storyboard, hunks, meta);
   return {
     dir,
     hunks,
@@ -247,6 +283,7 @@ async function loadProject(dir, settings, { write = true } = {}) {
     result,
     review,
     reading,
+    guide,
     images: images.manifest,
     lines: formatValidation(result, { storyboard, hunks, seconds }),
   };
@@ -301,6 +338,29 @@ function writeReading(file, storyboard, hunks, plan, meta, settings) {
   return file;
 }
 
+/**
+ * guide.md, a branch video's brief as plain headings: the six answers, the parts with their files, what to open first
+ * and the questions for the author. Like review.md: removed when the storyboard has no brief, and never written over
+ * a file mr-cast did not write. Returns the file written, or null.
+ */
+function writeGuide(file, storyboard, hunks, meta) {
+  const brief = isBranchRun(meta) && storyboard.brief;
+  if (!ownFile(file, GUIDE_HEADING)) {
+    if (brief)
+      console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the guide is not saved`);
+    return null;
+  }
+  if (!brief) {
+    fs.rmSync(file, { force: true });
+    return null;
+  }
+  fs.writeFileSync(file, guideMarkdown(storyboard, hunks, { branch: meta?.branch, base: meta?.base }));
+  return file;
+}
+
+/** Whether the run's meta.json is a diff, and not an explanation or a quick video. */
+const isBranchRun = (meta) => meta?.mode !== 'explain' && meta?.quick !== true;
+
 /** Validate, print problems to stderr, and stop on errors. */
 async function loadValidProject(dir, settings) {
   const project = await loadProject(dir, settings);
@@ -311,6 +371,8 @@ async function loadValidProject(dir, settings) {
   return project;
 }
 
+const LARGE_DIFF_LINES = 600;
+
 function extract(argv) {
   const { values, positionals } = parseArgs({
     args: argv,
@@ -318,7 +380,8 @@ function extract(argv) {
     options: {
       working: { type: 'boolean', default: false },
       context: { type: 'string', default: '4' },
-      'max-lines': { type: 'string', default: '14' },
+      'max-lines': { type: 'string' },
+      description: { type: 'string' },
       'all-files': { type: 'boolean', default: false },
       ...SETTINGS_OPTIONS,
       name: DIR_OPTION.name,
@@ -326,7 +389,8 @@ function extract(argv) {
   });
   if (positionals.length > 1) throw new UserError(`extract takes at most one base, got: ${positionals.join(' ')}`);
   const context = intOption(values.context, 'context', 0);
-  const maxLines = intOption(values['max-lines'], 'max-lines', 1);
+  const explicitMax = values['max-lines'] !== undefined;
+  const maxLines = intOption(values['max-lines'] ?? '14', 'max-lines', 1);
   settingsFrom(values); // rejects a bad flag before anything is written
 
   const root = repoRoot();
@@ -358,6 +422,16 @@ function extract(argv) {
   const runArgs = nameArg + settingsArgs(values);
   const hunks = buildHunkIndex(parsed);
   const files = summarizeFiles(parsed, hunks);
+  const map = buildChangeMap({
+    root,
+    mergeBase: diff.mergeBase,
+    working: values.working,
+    files,
+    hunks,
+    skipped: diff.skipped,
+    descriptionFile: values.description,
+  });
+  const condensed = map.changedLines > LARGE_DIFF_LINES && !explicitMax;
   const hunksPath = path.join(dir, 'hunks.json');
   const storyboardPath = path.join(dir, 'storyboard.json');
 
@@ -375,6 +449,7 @@ function extract(argv) {
   // The audience of the run's latest start, for the hook; a plain video when no flag names one.
   const { audience } = settingsFrom(values);
   writeJson(hunksPath, written);
+  writeJson(path.join(dir, 'map.json'), map);
   writeJson(path.join(dir, 'meta.json'), {
     mode: 'diff',
     base,
@@ -409,6 +484,7 @@ function extract(argv) {
       );
   }
 
+  console.log(`${formatChangeMap(map)}\n`);
   console.log(
     formatIndex({
       ctx: {
@@ -419,10 +495,11 @@ function extract(argv) {
         mergeBase: diff.mergeBase,
         untracked: diff.untracked,
       },
-      files,
+      files: orderByKind(files),
       hunks,
       skipped: diff.skipped,
-      maxLines,
+      maxLines: condensed ? 2 : maxLines,
+      condensed,
       hunksPath: rel(hunksPath),
       storyboardPath: rel(storyboardPath),
       runArgs,
@@ -452,13 +529,14 @@ async function validate(argv) {
   // --read-only, for the hook: check the run and write nothing, not even the remembered choices.
   const write = !values['read-only'];
   const { dir, settings } = write ? runFor(values) : { ...currentRun(values), settings: settingsFrom(values) };
-  const { result, lines, review, reading, plan, storyboard } = await loadProject(dir, settings, { write });
+  const { result, lines, review, reading, guide, plan, storyboard } = await loadProject(dir, settings, { write });
   // The plan page marks each topic whose pick differs from the one the storyboard says it was written from.
   if (write && !result.errors.length && plan) recordBuilt(dir, plan.plan, storyboard.plan);
   // The verdict stays the last line.
   for (const line of lines.slice(0, -1)) console.log(line);
   if (review) console.log(`wrote ${rel(review)}`);
   if (reading) console.log(`wrote ${rel(reading)}`);
+  if (guide) console.log(`wrote ${rel(guide)}`);
   console.log(lines.at(-1));
   if (result.errors.length) process.exit(1);
 }
@@ -936,6 +1014,9 @@ async function render(argv) {
   // review.md and reading.md are in the run's directory; a video saved elsewhere gets its own copies beside it.
   const elsewhere = path.dirname(path.resolve(video)) !== path.resolve(dir);
   const review = elsewhere ? writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir)) : null;
+  const guide = elsewhere
+    ? writeGuide(video.replace(/\.[^./]+$/, '.guide.md'), storyboard, hunks, readRunMeta(dir))
+    : null;
   const reading = elsewhere
     ? writeReading(
         video.replace(/\.[^./]+$/, '.reading.md'),
@@ -949,13 +1030,14 @@ async function render(argv) {
   console.log(video);
   if (review) console.log(review);
   if (reading) console.log(reading);
+  if (guide) console.log(guide);
 }
 
 async function still(argv) {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
-    options: { out: { type: 'string' }, step: { type: 'string' }, ...RUN_OPTIONS },
+    options: { out: { type: 'string' }, step: { type: 'string' }, sheet: { type: 'boolean' }, ...RUN_OPTIONS },
   });
   const run = runFor(values);
   const { dir, hunks, storyboard, images } = await loadValidProject(run.dir, run.settings);
@@ -967,6 +1049,8 @@ async function still(argv) {
     return n;
   });
   const step = values.step === undefined ? undefined : Number(values.step);
+  if (values.sheet && (step !== undefined || scenes.length))
+    throw new UserError('--sheet shows every scene as it ends; leave out the scene indexes and --step');
   if (step !== undefined) {
     if (!Number.isInteger(step) || step < 0)
       throw new UserError(`--step "${values.step}" is not a step index; steps start at 0`);
@@ -978,7 +1062,7 @@ async function still(argv) {
         );
     }
   }
-  const { renderStills } = await importRender();
+  const { renderStills, renderSheets } = await importRender();
   const outDir = path.resolve(values.out ?? path.join(dir, 'stills'));
   fs.mkdirSync(outDir, { recursive: true });
   const voiceover = timingVoiceover(dir, run.settings);
@@ -992,7 +1076,15 @@ async function still(argv) {
     scenes: scenes.length ? scenes : undefined,
     step,
   });
-  for (const f of files) console.log(path.resolve(f));
+  if (!values.sheet) {
+    for (const f of files) console.log(path.resolve(f));
+    return;
+  }
+  const tiles = files.map((f, i) => ({
+    still: path.basename(f),
+    label: `${i} ${storyboard.scenes[i].type} · ${sceneChapter(storyboard.scenes[i])}`,
+  }));
+  for (const f of await renderSheets({ outDir, tiles })) console.log(path.resolve(f));
 }
 
 async function steps(argv) {
@@ -1027,6 +1119,7 @@ async function outline(argv) {
       storyboard,
       hunks,
       coverage: result.coverage,
+      core: result.core,
       seconds,
       voiced,
       pace: formatPace(voiceover),
@@ -1037,7 +1130,7 @@ async function outline(argv) {
 
 /**
  * A Claude Code PostToolUse hook (the mr-cast skill's frontmatter): after a write to a run's storyboard.json, it
- * checks the file and exits 2 with the errors, which Claude sees. Other files pass at once. It
+ * checks the file and exits 2 with the errors, which Claude sees; on success it exits 0 and hands Claude the brief line, the core-on-screen line and the scene mix line as added context. Other files pass at once. It
  * validates with the audience the run's commands were last given (meta.json), and writes nothing.
  */
 function hook() {
@@ -1056,8 +1149,19 @@ function hook() {
     encoding: 'utf8',
     env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' },
   });
-  if (run.status === 0) return;
-  const lines = `${run.stdout}\n${run.stderr}`.split('\n').filter((l) => /^(error|✗|mr-cast:|hint:)/.test(l.trim()));
+  const lines = `${run.stdout}\n${run.stderr}`
+    .split('\n')
+    .filter((l) => /^(error|✗|brief:|core on screen:|scenes:|mr-cast:|hint:)/.test(l.trim()));
+  if (run.status === 0) {
+    // Exit 0 with plain stdout shows nothing to Claude, and exit 2 would call the write a failure; a JSON reply on
+    // exit 0 hands the lines to Claude as added context and leaves the write as it was.
+    const facts = lines.filter((l) => /^(brief|core on screen|scenes):/.test(l));
+    if (facts.length)
+      console.log(
+        JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: facts.join('\n') } }),
+      );
+    return;
+  }
   console.error(
     `mr-cast validate ${flags.join(' ')} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`,
   );
@@ -1065,9 +1169,8 @@ function hook() {
 }
 
 function schema(argv) {
-  const { positionals } = parseArgs({ args: argv, allowPositionals: true, options: {} });
-  if (positionals.length > 1) throw new UserError(`schema takes at most one type, got: ${positionals.join(' ')}`);
-  console.log(formatSchema(ROOT, positionals[0]));
+  const { positionals } = parseArgs({ args: argv, allowPositionals: true, options: SETTINGS_OPTIONS });
+  console.log(formatSchema(ROOT, positionals.length > 1 ? positionals : positionals[0]));
 }
 
 function installSkillCommand(argv) {
@@ -1187,7 +1290,7 @@ function init(argv) {
 
 /** Adds snippets of unchanged source to a run's hunks.json: the code of an explanation, or context beside a diff. */
 function snippet(argv) {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_AND_SETTINGS });
   const { dir } = currentRun(values);
   const runArg = values.name ? ` --name ${values.name}` : values.dir ? ` --dir ${values.dir}` : '';
   const hunksPath = path.join(dir, 'hunks.json');
@@ -1245,7 +1348,7 @@ const fileLines = (files) => [
 
 /** What the skill decides the video's source from: the branch's changes, and the user's last choices. */
 function status(argv) {
-  parseArgs({ args: argv, options: {} });
+  parseArgs({ args: argv, options: SETTINGS_OPTIONS });
   const root = findRepoRoot();
   const out = [];
   if (!root) out.push('branch: none (not in a git repository), so only an explanation can be animated');
@@ -1366,7 +1469,10 @@ async function prune(argv) {
 }
 
 function psCommand(argv) {
-  const { values } = parseArgs({ args: argv, options: { json: { type: 'boolean', default: false } } });
+  const { values } = parseArgs({
+    args: argv,
+    options: { json: { type: 'boolean', default: false }, ...SETTINGS_OPTIONS },
+  });
   const list = listProcesses();
   if (values.json) console.log(JSON.stringify({ stateDir: procsDir(), processes: list.map(procJson) }, null, 2));
   else for (const line of formatPs(list)) console.log(line);
@@ -1390,6 +1496,7 @@ async function stop(argv) {
       choices: { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       'any-repo': { type: 'boolean', default: false },
+      ...SETTINGS_OPTIONS,
     },
   });
   const print = (json, lines) =>
@@ -1467,11 +1574,29 @@ async function voices(argv) {
   console.log(`✓ ${voice} · ${seconds.toFixed(1)}s · ${out}`);
 }
 
+function hunk(argv) {
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_AND_SETTINGS });
+  if (!positionals.length) throw new UserError('hunk needs at least one id, such as `mr-cast hunk h3 h4`');
+  const { dir } = currentRun(values);
+  const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
+  const { text, missing } = formatHunks(hunks, positionals);
+  if (missing.length) throw new UserError(`no hunk ${missing.join(', ')} in ${rel(path.join(dir, 'hunks.json'))}`);
+  console.log(text);
+}
+
+function mapCommand(argv) {
+  const { values } = parseArgs({ args: argv, options: DIR_AND_SETTINGS });
+  const { dir } = currentRun(values);
+  console.log(formatChangeMap(readJson(path.join(dir, 'map.json'), 'run `mr-cast extract` first')));
+}
+
 const COMMANDS = {
   hook,
   schema,
   status,
   extract,
+  hunk,
+  map: mapCommand,
   init,
   snippet,
   plan,

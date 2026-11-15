@@ -40,6 +40,7 @@ const SCENES = [
 ];
 const EXPECTED = [
   'skills/mr-cast/SKILL.md',
+  'skills/mr-cast/references/branch.md',
   'skills/mr-cast/references/camera.md',
   'skills/mr-cast/references/examples.md',
   'skills/mr-cast/references/ink.md',
@@ -99,15 +100,16 @@ test('installed skills point at this package, with the plan views filled in', ()
 });
 
 // Claude Code keeps the first 5,000 tokens of a skill after compaction. The skill holds only the tools (ADR 0019),
-// so it stays well under that: at about 4 characters a token, under 3,000 tokens and 200 lines.
-test('the installed mr-cast SKILL.md stays under 200 lines and about 3,000 tokens', () => {
+// so it stays well under that: at about 4 characters a token, under 3,600 tokens and 200 lines. The limit rose
+// from 3,000 with the six questions a video of a branch answers (docs/adr/0037-reviewer-brief.md).
+test('the installed mr-cast SKILL.md stays under 200 lines and about 3,600 tokens', () => {
   const dir = freshDir();
   installSkill(root, dir);
   const skill = fs.readFileSync(path.join(dir, 'skills/mr-cast/SKILL.md'), 'utf8');
   const lines = skill.split('\n').length;
   const tokens = Math.round(skill.replaceAll(root, '').length / 4);
   assert.ok(lines < 200, `${lines} lines`);
-  assert.ok(tokens <= 3000, `about ${tokens} tokens; move detail into a reference`);
+  assert.ok(tokens <= 3600, `about ${tokens} tokens; move detail into a reference`);
 });
 
 test('SKILL.md links every reference and every link resolves', () => {

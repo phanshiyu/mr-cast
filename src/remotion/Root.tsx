@@ -1,4 +1,5 @@
 import { Composition } from 'remotion';
+import { ContactSheet, sheetSize, type ContactSheetProps } from '../components/ContactSheet';
 import type { WalkthroughProps } from '../types';
 import { FPS, HEIGHT, WIDTH, totalDurationInFrames } from '../utils/timing';
 import { Walkthrough } from '../Walkthrough';
@@ -20,14 +21,28 @@ const defaultProps: WalkthroughProps = {
 };
 
 export const RemotionRoot: React.FC = () => (
-  <Composition
-    id="Walkthrough"
-    component={Walkthrough}
-    fps={FPS}
-    width={WIDTH}
-    height={HEIGHT}
-    durationInFrames={totalDurationInFrames(defaultProps.storyboard)}
-    defaultProps={defaultProps}
-    calculateMetadata={({ props }) => ({ durationInFrames: totalDurationInFrames(props.storyboard, props.voiceover) })}
-  />
+  <>
+    <Composition
+      id="Walkthrough"
+      component={Walkthrough}
+      fps={FPS}
+      width={WIDTH}
+      height={HEIGHT}
+      durationInFrames={totalDurationInFrames(defaultProps.storyboard)}
+      defaultProps={defaultProps}
+      calculateMetadata={({ props }) => ({
+        durationInFrames: totalDurationInFrames(props.storyboard, props.voiceover),
+      })}
+    />
+    <Composition
+      id="ContactSheet"
+      component={ContactSheet}
+      fps={FPS}
+      width={sheetSize(1).width}
+      height={sheetSize(1).height}
+      durationInFrames={1}
+      defaultProps={{ tiles: [] } satisfies ContactSheetProps}
+      calculateMetadata={({ props }) => sheetSize(props.tiles.length)}
+    />
+  </>
 );

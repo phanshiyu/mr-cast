@@ -1,0 +1,42 @@
+{
+  "title": "Read the settings from one object",
+  "subtitle": "Old lines against new lines, read from the diff itself",
+  "skipped": [
+    { "hunkId": "h1", "reason": "readme points at the moved example file" },
+    { "hunkId": "h2", "reason": "example file gains the pool size" },
+    { "hunkId": "h3", "reason": "two lines that parse the environment with the schema" },
+    { "hunkId": "h4", "reason": "the schema, shown in the files primitive" },
+    { "hunkId": "h5", "reason": "same swap from env() to config as server.ts" },
+    { "hunkId": "h6", "reason": "the old env() helper, deleted" },
+    { "hunkId": "h7", "reason": "same swap from env() to config as server.ts" },
+    { "hunkId": "h9", "reason": "tests for the schema" }
+  ],
+  "scenes": [
+    {
+      "type": "compare",
+      "chapter": "What the server does now",
+      "title": "How the server gets its settings",
+      "narration": "The server used to ask the environment for each setting. Now it reads them from one checked object.",
+      "rows": [
+        {
+          "label": "The import",
+          "cells": [
+            { "hunk": "h8", "side": "old", "lines": 1 },
+            { "hunk": "h8", "side": "new", "lines": 1 }
+          ]
+        },
+        {
+          "label": "Starting up",
+          "cells": [
+            { "hunk": "h8", "side": "old", "lines": "4-6" },
+            { "hunk": "h8", "side": "new", "lines": "4-5" }
+          ]
+        }
+      ],
+      "steps": [
+        { "focus": 0, "say": "The server imports the config object in place of the old helper." },
+        { "focus": 1, "say": "The port and the database address come from that object, already checked and already numbers." }
+      ]
+    }
+  ]
+}

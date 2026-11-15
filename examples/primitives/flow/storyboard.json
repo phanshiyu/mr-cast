@@ -47,6 +47,37 @@
       ]
     },
     {
+      "type": "flow",
+      "chapter": "One upload, in the code",
+      "title": "The same trip, in the code",
+      "narration": "Here are the same two steps again, with the lines that do the work.",
+      "steps": [
+        {
+          "actor": "API",
+          "action": "signs a link to storage",
+          "icon": "server",
+          "code": {
+            "snippet": "s1",
+            "lines": "22-29",
+            "light": "26"
+          },
+          "say": "The route makes a key for the photo and signs a link that lasts five minutes."
+        },
+        {
+          "actor": "Resizer",
+          "action": "makes a thumbnail",
+          "icon": "image",
+          "tone": "good",
+          "code": {
+            "snippet": "s2",
+            "lines": "9-13",
+            "light": "10"
+          },
+          "say": "When storage announces the photo, the worker fetches it, shrinks it to four hundred wide and saves the thumbnail."
+        }
+      ]
+    },
+    {
       "type": "timeline",
       "chapter": "How long it takes",
       "title": "One upload on a home connection",

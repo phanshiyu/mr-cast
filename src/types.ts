@@ -93,6 +93,11 @@ interface SceneBase {
    */
   from?: string[];
   /**
+   * A video of a branch: which of the `brief`'s six questions this scene answers, such as ["why", "case"]. `validate`
+   * warns about a question no scene answers.
+   */
+  answers?: ('why' | 'case' | 'approach' | 'parts' | 'proof' | 'check')[];
+  /**
    * Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice.
    * The voice starts once the scene has drawn in. A scene with `steps` says it before the first step.
    */
@@ -414,16 +419,38 @@ export interface CodeScene extends SceneBase {
   outputTitle?: string;
 }
 
+/**
+ * Real lines a flow stage shows in place of its `payload`: a hunk of the diff or a snippet (`mr-cast snippet`), the
+ * way the code scene draws them, with the file name, line numbers, syntax colour and change marks. About 14 lines
+ * stay readable; `validate` reports a stage whose lines do not fit.
+ */
+export interface FlowCode {
+  /** A diff hunk's id, such as "h56". Give this or `snippet`. */
+  hunk?: string;
+  /** A snippet's id, such as "s2". Give this or `hunk`. */
+  snippet?: string;
+  /** The lines to draw, "a-b" or one number, numbered as in the file (the new file for a changed hunk), inside the hunk. */
+  lines: string | number;
+  /** The lines this stage is about, "a-b" or one number, inside `lines`; the others are drawn dimmer. */
+  light?: string | number;
+}
+
 export interface FlowStep {
   /** Who is acting: a service, function, or component name. */
   actor: string;
   /** What happens at this step. */
   action: string;
   /**
-   * The data as it looks after this step (JSON, a struct, a short code snippet...). In a pre-read, words with
-   * the real names and values ("status pending, next try in 10 s"), since no code goes on screen.
+   * The data as it looks after this step, drawn as one monospace line in large type: a short value such as
+   * `status pending, attempts 1` or `429 Retry-After: 60`. JSON is pretty-printed. Sentences do not belong
+   * here; say them in `action` or `say`. For real code, use `code` instead.
    */
   payload?: string;
+  /**
+   * Real lines of the code, in place of `payload`. The right panel draws them at normal code size, and the step
+   * list shows their `path:line`, so none is typed.
+   */
+  code?: FlowCode;
   /** A Lucide icon name for the actor, as on a diagram node, e.g. "user" or "server". */
   icon?: string;
   /** Colour of the actor's chip and icon. */
@@ -572,8 +599,14 @@ export interface TestSituation {
 
 /** A test, by what it checks. */
 export interface TestEntry {
-  /** The test's name as written in code. A step that focuses it shows it in the callout. */
+  /**
+   * The test's name as written in code: its real title. The names column draws it whole, wrapping onto a second line
+   * and shrinking to the smallest readable size, and a step that focuses it shows it in the callout. In a video of a
+   * branch `validate` checks it against the test names the change map says the branch adds.
+   */
   name: string;
+  /** A short name to draw in place of `name` when even that cannot fit, e.g. "bad refs refused". `name` stays the title. */
+  label?: string;
   /** What the diff does to the test. A cell a test checks shows NEW or CHANGED; "existing" adds no word, "removed" checks nothing. Defaults to "added". */
   status?: TestStatus;
   /** The cells it asserts, each "situation.Outcome", e.g. ["retry.Result", "retry.Calls"]. They draw green with a tick. */
@@ -661,6 +694,11 @@ export interface ReadingItem {
    * new minute; check the off-by-one". Required unless `routine`.
    */
   check?: DisplayText;
+  /**
+   * Why it matters, in one short line, e.g. "every agent that writes path:line is affected". Drawn quietly under the
+   * check, and written to reading.md. When the scene draws `brief.check`, each item's `why` is the brief's.
+   */
+  why?: DisplayText;
   /** A routine change (wiring, a rename, config): reading.md lists it on its group's one "skim" line, never on screen. */
   routine?: boolean;
   /** Review mode: the id of the finding whose line is in this hunk, drawn on the item in its severity's colour. */
@@ -668,15 +706,17 @@ export interface ReadingItem {
 }
 
 /**
- * Pre-read only: the order in which to read the code after the video. The scene shows the first 6 non-routine
- * items under "Read first" with their file:line and check, and counts the rest; reading.md, `mr-cast outline`
- * and the player's Reading order panel list them all. In review mode it also carries the findings, so a
- * pre-read has no review scene.
+ * What to read or check after the video. A pre-read (`--audience preread`) lists the order in which to read the code
+ * in `items`. Any other video of a branch may use it too: without `items` it draws the brief's `check` list. The
+ * scene shows the first 6 non-routine items under "Read first" with their file:line and check, and counts the rest;
+ * reading.md, `mr-cast outline` and the player's Reading order panel list them all. In review mode a pre-read also
+ * carries the findings, so it has no review scene.
  */
 export interface ReadingScene extends SceneBase {
   type: 'reading';
   title?: string;
-  items: ReadingItem[];
+  /** Required in a pre-read. Left out in any other video, the scene draws `brief.check`, which then must not be empty. */
+  items?: ReadingItem[];
 }
 
 /** A cell's text, or `{ before, after }` for a value this change replaced: the old value is struck through beside the new one. */
@@ -1404,6 +1444,26 @@ export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Lines added and removed. In a diff walkthrough default to the counts in hunks.json. */
   additions?: number;
   deletions?: number;
+  /** The name of the part this file belongs to, one of the scene's `parts`, e.g. "Finding and checking places". */
+  part?: string;
+}
+
+/** How much a part of the change matters to a reviewer: "core" is the change itself, "support" what it needs, "routine" what may be skimmed. */
+export type PartWeight = 'core' | 'support' | 'routine';
+
+export interface FilePart {
+  name: string;
+  weight: PartWeight;
+  /** What the part does, in one sentence; the card for the part shows it. `"parts": "brief"` reads it from the brief. */
+  does?: string;
+  /** The names of the parts this one builds on or is called by; the map places it after them and draws a link from each. */
+  after?: string[];
+  /** Marks the part's card "check": it holds a file the reviewer should open first. `"parts": "brief"` sets it from `brief.check`. */
+  check?: boolean;
+  /** What the risk is, under the `does` line: the `what` of the first `brief.check` item in this part. `"parts": "brief"` sets it. */
+  risk?: string;
+  /** How many more `brief.check` items fall in this part; the card says "+ N more". */
+  riskMore?: number;
 }
 
 export interface FilesScene extends SceneBase {
@@ -1414,14 +1474,24 @@ export interface FilesScene extends SceneBase {
    * with its line counts, tests marked. Required in an explanation.
    */
   files?: FileEntry[];
-  /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. */
+  /**
+   * The parts of the change, drawn as a map and not as a tree by directory: each file names its `part`. Each part
+   * is a card with its name, weight (core strongest, routine quietest), its `does` line, its file count and its
+   * + and − totals, and its largest files with "+ N more"; a part sits after the parts its `after` names, with a
+   * link drawn between them, and a part that holds a file of `brief.check` is marked "check". `"brief"` takes the
+   * parts, with `does`, `after` and the check marks, and the files of their hunks, from the storyboard's
+   * `brief.parts`, so nothing is typed twice (the scene's own `files` is then ignored). A step's `focus` may name
+   * a part to light its card. `notes` are not drawn on the map, since `does` says what each part is for.
+   */
+  parts?: FilePart[] | 'brief';
+  /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. Not drawn when the scene has `parts`. */
   notes?: Record<string, string>;
   /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
   highlight?: string[];
   /**
    * Move the viewer's attention as the voice explains: each step lights the files it focuses just before
    * its `say` is spoken while the rest dims. `narration` is then the intro. Replaces `highlight`.
-   * A ref is a path in the tree.
+   * A ref is a path in the tree, or the name of a part.
    */
   steps?: FocusStep[];
 }
@@ -1430,7 +1500,20 @@ export interface FilesScene extends SceneBase {
  * One side's cell in a compare row: display text, a short code snippet of a few lines drawn with syntax colours, or a
  * picture, such as a screenshot of each side, in a 16:9 box (see ImageScene for what `image` may be).
  */
-export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit };
+export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit } | HunkCell;
+
+/**
+ * A cell whose code is read from hunks.json, so it cannot drift from the real diff. `side: "old"` shows the removed
+ * and context lines in `lines` by old-file line numbers, `"new"` the added and context lines by new-file numbers.
+ * The cell names its file and line numbers quietly above the code. Up to 8 lines read well.
+ */
+export interface HunkCell {
+  /** A hunk id from `mr-cast extract`, or a snippet id from `explain snippet` (for "new"). */
+  hunk: string;
+  side: 'old' | 'new';
+  /** A line number or "a-b" range in that side's file, e.g. "4-6". */
+  lines: string | number;
+}
 
 /** Which side of a compare row is better: a green check, a red cross, or an amber warning on that side's cell. */
 export type Verdict = 'good' | 'bad' | 'warn';
@@ -1440,6 +1523,8 @@ export interface CompareSide {
   title: string;
   /** Colour of the side's title and frame. Defaults to neutral for the first side and accent for the second. */
   tone?: Tone;
+  /** In `mode: "options"`, true for the side that was taken: drawn as the one chosen, the other quieter and labelled "Not taken". */
+  chosen?: boolean;
 }
 
 export interface CompareRow {
@@ -1454,6 +1539,8 @@ export interface CompareRow {
   same?: boolean;
   /** Which side is better on this row, one entry per side, null for no verdict, e.g. ["bad", "good"]. */
   verdict?: (Verdict | null)[];
+  /** In `mode: "options"`, which side this row took, 0 or 1: that cell is drawn as the one chosen, the other quieter and labelled "Not taken". */
+  chosen?: 0 | 1;
 }
 
 /**
@@ -1466,6 +1553,17 @@ export interface CompareScene extends SceneBase {
   title?: string;
   /** The two sides, left then right. Defaults to "Before" and "After". */
   sides?: CompareSide[];
+  /**
+   * "changes" (the default) is old against new: a row that differs gets an arrow between the sides, a row that
+   * matches dims. "options" is a decision against the alternative not taken: no arrows between the sides, and
+   * `chosen` on a side or a row marks the one taken.
+   */
+  mode?: 'changes' | 'options';
+  /**
+   * In "options" mode: "mine" says the way not taken is your own idea and no commit or description names it. The
+   * label then reads "Another way" where it would read "Not taken".
+   */
+  alternative?: 'mine';
   /** Up to 6. */
   rows: CompareRow[];
   /**
@@ -1563,10 +1661,126 @@ export interface ImageScene extends SceneBase {
 
 export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene | MapScene | ImageScene;
 
+/**
+ * Where an answer comes from: "description" (the merge request's text), "commit 7376000", "code", "test",
+ * "inferred" (you worked it out, and nothing the author wrote says it) or "unknown" (nothing says it, and the video
+ * says so).
+ */
+export type BriefSource = string;
+
+/** Why this change exists and who says so: one or two sentences. Use source "unknown" when nothing says. */
+export interface BriefWhy {
+  text?: string;
+  source: BriefSource;
+}
+
+/** One concrete case, before and after: what happened to an input, and what happens now. */
+export interface BriefCase {
+  /** What happened before the change, in one or two sentences, with a real input. */
+  before: string;
+  /** What happens now, for the same input. */
+  after: string;
+  /** Where to see it: hunk ids, `path:line` or `path:a-b`, or a short commit sha. */
+  cite: string[];
+}
+
+/** The idea of the change and what the author decided on the way. */
+export interface BriefApproach {
+  /** The idea, in one or two sentences. */
+  text: string;
+  /**
+   * Choices where another way was open, one short sentence each, with where it comes from. A plain string is read
+   * as `{ text, source: "mine" }`.
+   */
+  decisions: (BriefDecision | string)[];
+}
+
+/**
+ * One choice and who says it was one. `source` is "description" or "commit 7376000" when the author wrote it, "code"
+ * when the choice is visible in the code (give a `cite`), and "mine" for your own observation: a way not taken that
+ * nobody names. The player and guide.md label a "mine" decision as not the author's, so do not make one up to fill
+ * the list; leave the list short.
+ */
+export interface BriefDecision {
+  text: string;
+  source: string;
+  /** Where to see it: hunk ids, `path:line` or `path:a-b`. Expected when `source` is "code". */
+  cite?: string[];
+}
+
+/** One part of the change: the hunks that belong together. */
+export interface BriefPart {
+  name: string;
+  /** "core" is the change itself, "support" what it needs, "routine" what a reviewer may skim. */
+  weight: 'core' | 'support' | 'routine';
+  /** Hunk ids (from `mr-cast extract`), which give the part's files. */
+  hunks: string[];
+  /**
+   * What the part does, in one sentence of under about 90 characters, with the real names:
+   * "Finds each place in an answer and checks it against the branch". The parts map, guide.md and the guide
+   * panel show it; `validate` warns when a core or support part has none.
+   */
+  does?: string;
+  /**
+   * The names of the parts this one builds on or is called by, so the map can order the parts and draw the
+   * links between them: a part sits after the parts it names. `validate` warns on a name that is no part.
+   */
+  after?: string[];
+}
+
+/** How we know it works. */
+export interface BriefProof {
+  /** What a test shows, each with the test's name or file. Empty when no test does. */
+  tested: string[];
+  /** What nothing shows. */
+  untested: string[];
+  /** Where to see it: hunk ids, `path:line` or `path:a-b`. */
+  cite?: string[];
+}
+
+/** One place a reviewer should open first. */
+export interface BriefCheck {
+  /** The file's path. */
+  file: string;
+  /** A line number or "a-b" range in that file. */
+  line: LineRef;
+  /** What to look at, in under 80 characters, with the real names. */
+  what: string;
+  /** Why it could break or matter. */
+  why: string;
+}
+
+/**
+ * What a reviewer of a branch needs answered. Each answer is short and says where it comes from. "unknown" in place
+ * of an answer is an answer: the video says it is not stated, and `ask` holds the question for the author.
+ * `validate` warns about a missing or unsupported answer, writes guide.md from this, and prints one line of it.
+ */
+export interface Brief {
+  /** Why does this change exist? */
+  why?: BriefWhy;
+  /** On one concrete case, what happened before and what happens now? */
+  case?: BriefCase | 'unknown';
+  /** What is the idea, and what did the author decide on the way? */
+  approach?: BriefApproach | 'unknown';
+  /** Which parts are there, which matter most, and which are routine? */
+  parts?: BriefPart[] | 'unknown';
+  /** How do we know it works: what is tested, and what is not? */
+  proof?: BriefProof | 'unknown';
+  /** What could break, and what should a reviewer open first? */
+  check?: BriefCheck[];
+  /** Questions for the author that the commits, description and code do not answer. */
+  ask?: string[];
+}
+
 export interface Storyboard {
   title: string;
   subtitle?: string;
   scenes: Scene[];
+  /**
+   * A video of a branch: the six questions a reviewer has, answered before the scenes are written. Not for an
+   * explanation or a quick video.
+   */
+  brief?: Brief;
   /**
    * Review mode only, when the user asked for your review: what looks wrong in the diff. `[]` says you looked and
    * found nothing. Left out, the video only explains. `validate` writes them to review.md beside the video.

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { inkBoard } from '../../shared/ink.mjs';
 import { hasMarkup } from '../../shared/markup.mjs';
+import { focusRanges } from '../../shared/focus.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { refNames, resolveRef } from '../../shared/targets.mjs';
 import { READABLE_PX } from '../../shared/textfit.mjs';
@@ -187,4 +188,47 @@ export function checkSpokenMarkup(scene, p, warnings) {
           );
     });
   });
+}
+
+const rangeText = (numbers) =>
+  focusRanges(numbers)
+    .map(([a, b]) => (a === b ? `${a}` : `${a}-${b}`))
+    .join(', ');
+
+/**
+ * Changed lines of a code scene's hunk that no frame draws: the player crops the hunk to its focus and centres
+ * each step in turn, so a long hunk with too few steps leaves lines off screen. `storyboard` is normalized and valid.
+ */
+export async function checkUnseenCode(storyboard, hunks, warnings) {
+  if (!fs.existsSync(ENTRY)) return;
+  let found;
+  try {
+    found = (await reportModule()).unseenCode(storyboard, hunks);
+  } catch {
+    return;
+  }
+  for (const { scene: i, file, added, removed, rows } of found) {
+    const parts = [
+      added.length ? `${file} line${added.length === 1 ? '' : 's'} ${rangeText(added)}` : '',
+      removed.length
+        ? `removed line${removed.length === 1 ? '' : 's'} ${rangeText(removed)} of ${file} (old file numbers)`
+        : '',
+    ].filter(Boolean);
+    warnings.push(
+      `${where(storyboard.scenes[i], i, '')}: the frame draws ${rows} lines at once, and no step's lines bring ${parts.join(' and ')} into view, so the video never shows them; a step's lines must fit in ${rows} to be seen whole, so split a longer step, add a step for these lines, or split the hunk`,
+    );
+  }
+}
+
+/**
+ * The changed lines of each code scene's hunk that some frame draws, by scene index, from the player's own layout;
+ * an empty map when the layout cannot be loaded, so every line of a code scene's hunk then counts as drawn.
+ */
+export async function codeLinesOnScreen(storyboard, hunks) {
+  if (!fs.existsSync(ENTRY)) return new Map();
+  try {
+    return (await reportModule()).shownCodeLines(storyboard, hunks);
+  } catch {
+    return new Map();
+  }
 }

@@ -1,6 +1,6 @@
 # Storyboard reference
 
-A storyboard is the `storyboard.json` file in a run's directory. Claude writes it, and mr-cast plays or renders it. `src/types.ts` defines the schema, and `mr-cast schema` prints it: `mr-cast schema graph` for one scene type, `mr-cast schema all` for everything. This page describes what the fields do on screen.
+A storyboard is the `storyboard.json` file in a run's directory. Claude writes it, and mr-cast plays or renders it. `src/types.ts` defines the schema, and `mr-cast schema` prints it: `mr-cast schema graph` for one scene type (its own fields, then the shared types it names, which bare `mr-cast schema` prints), `mr-cast schema all` for everything. This page describes what the fields do on screen.
 
 A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and a `narration`, the words the voice speaks over it.
 
@@ -11,17 +11,17 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `text` | Words as the picture: one lead, which is a `headline`, a `question` beside a large question mark, a `number` whose figure counts up, a `term` over a rule and its meaning, or a `quote` after a large quote mark; a `kicker` above it and a `note` under it; then up to 6 `items`, or two `sides` each with its own lead, note and items. `risk` adds a badge and `diffstat` the diff's size. Steps `set` new text for the lead, note or kicker, and `show` or `hide` parts. An `intent` scene from an older storyboard draws as a text scene. |
 | `graph` | Nodes and edges laid out left to right or top to bottom, with groups drawn as labelled boxes. Nodes can be services, people, teams or anything with a [Lucide icon](https://lucide.dev/icons), or flowchart shapes. With `steps`, the voice walks the graph node by node and edge by edge, and steps can show nodes and edges that start `hidden`, `set` a node's badge, and `tint` nodes, edges and groups. A `table` beside the graph changes in the same steps. An edge that skips over nodes in a line takes a lane of its own beside them. |
 | `code` | One hunk or snippet, in split or morph view. Focused lines stay bright, and a callout explains them. With `steps`, each highlight has its own spoken words. With `typing`, each step types its lines in behind a cursor, and a step's `output` prints into a pane beside the code. |
-| `flow` | A step-by-step trace with the payload at each step. With a `say` on each step, the current step follows the voice. |
+| `flow` | A step-by-step trace with the data at each step: a `payload`, drawn as one large line of code, or `code`, real lines of a hunk or snippet. With a `say` on each step, the current step follows the voice. See [Real code in a flow](#real-code-in-a-flow). |
 | `sequence` | Participants with lifelines, and call, return and async messages in order. With `steps`, messages draw in as the voice reaches them. A sequence taller than the frame scrolls under its pinned participants, and each step moves the camera to its messages. |
 | `er` | Tables and crow's-foot relations. With `steps`, each table, field or relation lights as the voice names it. |
 | `state` | A state machine with an entry dot, final states and labelled transitions. |
 | `mermaid` | Any Mermaid diagram (class, gantt, git graph or pie, among others) as a static themed SVG, for diagrams the other scenes don't cover. |
-| `tests` | A matrix: rows are situations the code meets, columns the outcomes it promises, and each cell the promised value. A cell a test checks is green with a tick and NEW or CHANGED; a promise no test checks is amber, "unchecked"; a situation no test tries is a red dashed bar with what goes wrong. A removed test's old value shows struck through. A step that focuses a test shows its name in the callout, and the tests that check each row are listed beside it when there is room. |
+| `tests` | A matrix: rows are situations the code meets, columns the outcomes it promises, and each cell the promised value. A cell a test checks is green with a tick and NEW or CHANGED; a promise no test checks is amber, "unchecked"; a situation no test tries is a red dashed bar with what goes wrong. A removed test's old value shows struck through. A step that focuses a test shows its name in the callout, and the tests that check each row are listed beside it when there is room, each name whole (wrapped to a second line and shrunk to the readable minimum; a test may carry a short `label` to draw when it still cannot fit, and `name` stays its title). When the branch adds named tests, the counts under the matrix read "5 of 23 tests this branch adds". |
 | `table` | Rows and columns of text, such as settings, API parameters or error codes. A changed cell shows its old value struck through beside the new one. Steps can show rows that start `hidden`, `set` cells and `tint` rows and cells. |
 | `chart` | A bar, line, pie or donut chart of one or more series, bars side by side or `stacked`, upright or `horizontal`. Steps `set` new values, which the bars, points and slices move to, and `sort` orders bars and slices by value, so bars overtake each other as a race. With two series, such as before and after, each label gets a change badge like −42%, coloured by `better`, unless `badges` is `false`. A value under 10,000 prints with up to four significant digits, as written when it has four or fewer, with its `unit` after it and its `prefix` (such as `$`) before it. `annotation` calls out one point. |
 | `timeline` | Events on a time axis, and `spans` under it for waits and windows. A playhead reveals them left to right, or moves to each step's events. Cards of events close in time move apart, and a bent leader joins each card to its dot, so no card covers another. |
-| `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. |
-| `compare` | Two sides, such as before and after or two designs, row by row at the same height. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text, a short code snippet or a picture. With `steps`, rows show as the voice reaches them. |
+| `files` | The changed files as a tree with line counts and a diffstat bar, tests marked, and a note beside each file the narration names. With `parts`, a map of cards, one for each part, with what it does, its largest files and the links between parts, and not a tree by directory. |
+| `compare` | Two sides, such as before and after or two designs, row by row at the same height. A row that differs gets an arrow between the sides, a row that is the same dims behind an `=`, and a `verdict` marks the better side green and the worse red. A cell is text, a short code snippet, a picture, or real lines of a hunk. `mode: "options"` sets a decision against the way not taken. With `steps`, rows show as the voice reaches them. See [Compare with real code](#compare-with-real-code). |
 | `terminal` | A shell session in a window. Each command types out, then its output prints, and a failed exit tints the entry red. Long lines wrap and a long session scrolls. With `steps`, each step types its entries and the camera follows. |
 | `layers` | Stacked bands in their real order, each with a label, a caption and the components inside it. A `path` sends a request token down through its stops and, with `return`, back up with a reply. `skip` answers early at one stop, turns the token back there, and fades the stops it never reached. |
 | `array` | A row of cells with their indexes, named `pointers` above them and shaded `ranges` under them; with `arrays`, several rows that share one cell size, each with its label at its left; with `cells: "hex"`, a hex grid. Each step can `set` cell values, `move` a pointer or range, `show` or `hide` one, and `tint` cells. A changed value slides out and the new one slides in, briefly lit. |
@@ -31,7 +31,7 @@ A storyboard has a `title` and a list of `scenes`. Every scene has a `type` and 
 | `map` | A real world map from Natural Earth's public-domain outline: countries by ISO 3166-1 alpha-3 code or name, `places` at `[lat, lng]` with labels, `routes` that follow the great circle between their stops, `lines` along a parallel or meridian, and shaded `regions`. A step's `view` eases the camera to a box or round some refs, `trace` draws a route or line on from its first stop, and `show`, `hide`, `tint`, `set` and `callout` work as on the other stepped scenes. Projections: `equal-earth` (the default), `natural-earth` and `mercator`. |
 | `image` | A picture from a file or a URL, which `validate` copies into the run, fitted `contain` or `cover`, with a caption and credit, a slow pan and zoom, and regions that steps light and ink draws on. |
 | `review` | In [review mode](#review-findings), every finding, worst first, with its severity, file, line and claim, under "Claude's review". |
-| `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. |
+| `reading` | In a [pre-read](#pre-read), the order in which to read the code after the video. In any other branch video, with no `items`, the brief's list of places to check first. |
 
 The stepped scenes (`array`, `memory`, `graph`, `table`, `svg`, `plot`, `map` and `chart`) also take a `callout`: a boxed line at the right of the header, such as a formula with real numbers. A step's `callout` replaces it from that step on, and `""` removes it. A `tint` maps refs to a colour that stays from its step on: a tone (`good`, `bad`, `warn`, `accent`, `neutral`), `"dim"` for ruled out, or `"clear"`. A scene-level `tint` is the first state. The callout box is as wide as its text, and a title too long beside it wraps onto a second line. `validate` warns on a part that starts `hidden` and no step shows.
 
@@ -41,7 +41,7 @@ A `tests` scene written before 0.27, with `cases` and `gaps`, still validates an
 
 Each storyboard under `examples/` passes `mr-cast validate`, and CI checks it.
 
-- `examples/demo/` is a rate limit change. `scripts/demo.sh <dir>` creates the git repository it describes.
+- `examples/demo/` is a rate limit change, written as a branch video should be: a `brief`, scenes that say which questions they `answers`, a compare with real lines, a flow stop with real code, files by parts and a reading scene of the check list. `scripts/demo.sh <dir>` creates the git repository it describes. Its `map.json` is what `mr-cast extract main --description description.md` wrote there, with the description's path made relative and the commit's short sha as that run made it, so the sha differs in a repository you create yourself.
 - `examples/demo-simple/` tells the same change line by line.
 - `examples/primitives/<type>/` holds a short demo of each scene type.
 - `examples/algorithms/`, `examples/architecture/` and `examples/explain/` hold eleven worked explanations with real numbers: quicksort, binary search, merge sort, Dijkstra, hash tables, YouTube, React, OAuth, H3, Bitcoin and GPT. Each has a `generate.mjs` that computes its numbers and writes its storyboard; run it with `node`.
@@ -50,6 +50,55 @@ Each storyboard under `examples/` passes `mr-cast validate`, and CI checks it.
 - `examples/people/` explains how a support ticket gets resolved, with no code at all.
 - `examples/preread/` is a pre-read of a rate limit change, with a `plan.json`.
 - `examples/review/` is a password reset change with review findings. `scripts/review-demo.sh <dir>` creates its git repository.
+
+## The brief of a branch video
+
+A video of a branch answers six questions, and the storyboard's `brief` holds the answers. `mr-cast schema` prints the fields. Each answer is short and says where it comes from. [Make a video a reviewer can act on](guide.md#make-a-video-a-reviewer-can-act-on) describes the questions.
+
+| Field | Holds |
+| --- | --- |
+| `why` | `{ text, source }`: why the change exists. `source` is `"description"`, `"commit <sha>"`, `"code"`, `"test"`, `"inferred"` or `"unknown"`. With `"unknown"`, `text` can be left out. |
+| `case` | `{ before, after, cite }`: one real input, what happened to it and what happens now. `cite` is hunk ids, `path:line` or `path:a-b`, or a short sha. |
+| `approach` | `{ text, decisions }`: the idea, and the choices where another way was open. A decision is `{ text, source, cite? }`. `source` is `"description"` or `"commit <sha>"` when the author wrote it, `"code"` when the choice shows in the code (give a `cite`), or `"mine"` for your own observation: a way not taken that nobody names. A plain string is read as `"mine"`. |
+| `parts` | A list of `{ name, weight, does, after, hunks }`. `weight` is `core` (the change itself), `support` or `routine` (may be skimmed). `does` is one sentence, under about 90 characters, on what the part does; `after` optionally names the parts it builds on or is called by. The files come from the hunks: a file whose hunks sit in two parts is listed under each, with that part's share of its lines. |
+| `proof` | `{ tested, untested, cite }`: what a test shows, with the test's name, and what nothing shows. `tested` is empty when no test does. |
+| `check` | A list of `{ file, line, what, why }`: the places to open first, `what` in under 80 characters. |
+| `ask` | Questions for the author that the commits, description and code do not answer. |
+
+`case`, `approach`, `parts` and `proof` can be the string `"unknown"` when nothing says: the video states that the answer is not given. A missing answer is reported, and `"unknown"` is not.
+
+A scene says which questions it answers with `"answers": ["why", "case"]`, and the player's sidebar labels it. `validate` reports a question no scene answers. `brief` and `answers` belong to a branch video; an explanation or a quick video has no reviewer to answer to, so they are not read there. [Checks on a branch video](cli.md#checks-on-a-branch-video) lists the warnings, and `validate` writes the brief to `guide.md`.
+
+The `reading` scene is not only for a pre-read. In a branch video it draws `brief.check` when it has no `items`, and a reading item takes a `why`, a line under its `check` on why it matters.
+
+`extract` writes `map.json`, which the checks read: it lists the files by kind with their hunk ids, so `validate` can tell that a modified source file is in no part. A storyboard checked without a `map.json` skips those checks.
+
+## Compare with real code
+
+A compare cell can be `{ "hunk": "h11", "side": "old", "lines": "4-6" }`: lines read from `hunks.json`, so the cell cannot drift from the diff. `side: "old"` shows the removed and context lines by old-file line numbers, and `"new"` the added and context lines by new-file numbers. A snippet id works for `"new"`. The cell names its file and lines quietly above the code. Up to 8 lines read well. The code takes the side's whole width and steps down to 15px, the smallest size the project reads code at: a line can be about 86 characters when no row has a label or a verdict, about 73 with a short label, and fewer with a long label (up to 360px of every row) or with verdict marks (44px); and the frame holds about 26 to 30 lines of code in all, shared by the rows. `validate` fails a line that does not fit and states the number that cell holds and what narrowed it, so choose shorter lines, a shorter row label, no verdict, or show the code in a code scene.
+
+With `"mode": "options"`, a compare sets a decision beside the alternative not taken. There are no arrows between the sides. Mark the side that was taken with `"chosen": true` on it, or mark each row with `"chosen": 0` or `1`, the side that row took (0 is the left). The side taken is drawn as chosen, and the other quieter and labelled "Not taken". When the way not taken is the writer's own idea and no commit or description names it, set `"alternative": "mine"` on the scene, and the label reads "Another way". `validate` warns when a scene in this mode answers `approach`, every decision in the brief is `"mine"`, and the scene is not marked. Marking both sides, or marking sides and rows, fails `validate`, and so does `chosen` without `"mode": "options"`.
+
+## Real code in a flow
+
+A `flow` step's `payload` is drawn as one line of code in large type, so it holds a value such as `status pending, attempts 1` or `429 Retry-After: 60`, and not a sentence. `validate` warns about a payload that reads as a sentence. For real code, a step takes `code` in place of `payload`:
+
+```json
+{ "actor": "rateLimit", "action": "Counts the request in Redis",
+  "code": { "hunk": "h2", "lines": "12-14", "light": "12" } }
+```
+
+`hunk` or `snippet` names the source, `lines` the lines to draw (numbered as in the new file for a changed hunk) and `light` the lines the stage is about, which stay bright while the rest dim. The panel draws them as the code scene does, with syntax colour and change marks, and the step list shows their `path:line`. About 14 lines stay readable, and `validate` fails a stage whose lines do not fit.
+
+## Files grouped by part
+
+A `files` scene with `parts` draws a map of the change: a card for each part instead of a tree by directory. A part is `{ name, weight, does?, after?, check? }`, and each file names its `part`. A card shows the part's name, its weight (core strongest, routine quietest), its `does` line, its file count and `+` and `−` totals, and its largest files with "+ N more" for the rest. A part sits after the parts its `after` names, with a thin connector from each; with no `after` the cards fill a grid, core first. A part with `"check": true` carries a "check" marker, and with a `risk` (and optionally `riskMore`) it draws that line quietly under `does`, followed by "+ N more".
+
+```json
+{ "type": "files", "parts": "brief", "narration": "..." }
+```
+
+`"parts": "brief"` takes the parts, with their `does` and `after`, and the files of their hunks, from the brief's `parts`, so nothing is typed twice; a part that holds a file named in `brief.check` is marked "check", with the `what` of the first such item under `does` and "+ N more" for the others (when a file's hunks are split across parts, an item goes to the part whose hunks cover its line). A step's `focus` can name a part to light its card. `notes` are not drawn on the map, and `validate` says so. `validate` warns on an `after` that names no part. A scene with no `parts` is still the tree by directory.
 
 ## Charts that move
 

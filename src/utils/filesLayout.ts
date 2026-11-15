@@ -91,6 +91,7 @@ function flatten(dir: Dir, depth: number, notes: Record<string, string>, out: Tr
   return out;
 }
 
+/** The files as a tree by directory. */
 export function treeRows(files: readonly ShownFile[], notes: Record<string, string>): TreeRow[] {
   return flatten(buildTree(files), 0, notes, []);
 }
@@ -165,10 +166,18 @@ function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number
     );
   const note = (r: TreeRow) =>
     r.kind === 'file' && r.note ? noteFit(r.note, noteW, font, rowH, `notes[${JSON.stringify(r.file.path)}]`) : null;
-  const rows = columns.flatMap((column, c) =>
-    column.map((row, i) => ({ row, x: c * (width + COLUMN_GUTTER), y: i * rowH, name: name(row), note: note(row) })),
-  );
-  const height = Math.max(...columns.map((column) => column.length)) * rowH;
+  const heights: number[] = [];
+  const rows = columns.flatMap((column, c) => {
+    let y = 0;
+    const placed = column.map((row) => {
+      const at = { row, x: c * (width + COLUMN_GUTTER), y, name: name(row), note: note(row) };
+      y += rowH;
+      return at;
+    });
+    heights.push(y);
+    return placed;
+  });
+  const height = Math.max(...heights);
   return { font, rowH, indent, rows, width, nameX, nameW, countsX, noteX, noteW, totalWidth, height };
 }
 

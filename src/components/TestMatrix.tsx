@@ -134,6 +134,7 @@ const Row: React.FC<{
   const { padX, lineHeight } = layout;
   const gapColor = colors.del;
   const nameH = names.length ? Math.round(names[0]!.fit.size * 1.25) : 0;
+  const nameRows = names.reduce((n, x) => n + x.fit.lines.length, 0);
   return (
     <>
       <div
@@ -224,7 +225,7 @@ const Row: React.FC<{
           style={{
             position: 'absolute',
             left: layout.namesCol.x + padX,
-            top: placed.y + (placed.h - names.length * nameH) / 2,
+            top: placed.y + (placed.h - nameRows * nameH) / 2,
             opacity: land * head.opacity,
           }}
         >
@@ -250,7 +251,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const { fps } = useVideoConfig();
   const emphasisOf = focusSpotlight(scene, hunks, segments, frame);
   const box = headerBox(scene);
-  const layout = useMemo(() => layoutTests(scene, box.width, box.height), [scene, box.width, box.height]);
+  const layout = useMemo(() => layoutTests(scene, box.width, box.height, hunks), [scene, box.width, box.height, hunks]);
   const at = useMemo(() => rowAt(layout), [layout]);
   // The callout is the only thing a tests step changes: the names of the tests it focuses, or its own words.
   const states = useMemo<SceneState[]>(
@@ -271,7 +272,7 @@ export const TestMatrix: React.FC<SceneProps<TestsScene>> = ({ scene, hunks, dur
   const s = stateFrame(states, segments, frame);
   const headerIn = interpolate(frame, [START, START + 10], [0, 1], clamp);
   const top = Math.max(0, box.height - layout.height * layout.scale) * 0.3;
-  const marks = useMemo(() => testsTargets(scene), [scene]);
+  const marks = useMemo(() => testsTargets(scene, hunks), [scene, hunks]);
   const label: React.CSSProperties = {
     position: 'absolute',
     top: 0,

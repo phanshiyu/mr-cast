@@ -25,7 +25,10 @@ function readCheck(ref, situations, outcomes) {
   return { situation: situations.find((s) => s?.id === id), outcome };
 }
 
-export function checkTests(s, p, hunks, errors, warnings) {
+/** A name written for a test, set against the names the branch adds: lower case, one space between words. */
+const flat = (name) => String(name).toLowerCase().replace(/\s+/g, ' ').trim();
+
+export function checkTests(s, p, hunks, errors, warnings, added = null) {
   for (const k of ['title', 'subject', 'when'])
     if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
 
@@ -75,10 +78,31 @@ export function checkTests(s, p, hunks, errors, warnings) {
 
   if (!Array.isArray(s.tests))
     return errors.push(`${p}.tests: required array of { name, checks } (use [] when nothing tests it)`);
+  const onlyExisting = s.tests.length > 0 && s.tests.every((t) => t?.status === 'existing');
+  if (
+    added?.length &&
+    !onlyExisting &&
+    !s.tests.some((t) => isObject(t) && isStr(t.name) && added.some((n) => flat(n) === flat(t.name)))
+  )
+    warnings.push(
+      `${p}.tests: the branch adds ${added.length === 1 ? '1 test' : `${added.length} tests`} and this tests scene names none of them, so its footer reads "0 of ${added.length} tests this branch adds"; list tests from "adds" in map.json, each with its \`name\`, \`checks\` and \`hunkId\` (fields: \`mr-cast schema tests\`, references/scenes/tests.md)`,
+    );
   s.tests.forEach((t, j) => {
     const q = `${p}.tests[${j}]`;
     if (!isObject(t)) return errors.push(`${q}: must be an object`);
     if (!isStr(t.name)) errors.push(`${q}.name: required string, the test's name as written in code`);
+    if (t.label !== undefined && !isStr(t.label))
+      errors.push(`${q}.label: must be a non-empty string, a short name to draw; \`name\` stays the test's title`);
+    // A test the branch adds has a name in the map; a shortened or invented one matches none of them.
+    if (
+      added?.length &&
+      isStr(t.name) &&
+      (t.status ?? 'added') === 'added' &&
+      !added.some((n) => flat(n) === flat(t.name))
+    )
+      warnings.push(
+        `${q}.name: "${t.name}"; no test this branch adds has this name${didYouMean(t.name, added)}; \`name\` is the test's title as written in code (see "adds" in map.json), and a short \`label\` is what the scene draws`,
+      );
     if (t.status !== undefined && !TEST_STATUSES.includes(t.status))
       errors.push(`${q}.status: must be one of ${TEST_STATUSES.join(', ')}`);
     if (t.hunkId !== undefined && !(isStr(t.hunkId) && hunks && Object.hasOwn(hunks, t.hunkId)))

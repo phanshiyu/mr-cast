@@ -24,6 +24,10 @@ function cellOf(scene, ref) {
 /** A situation drawn as a gap: one no test tries, with no promises, so its row is one bar holding `gap`. */
 export const isGapRow = (situation) => typeof situation?.gap === 'string' && !isObject(situation?.expect);
 
+/** What a test is called where the scene draws it: its short `label` when it has one, else its `name`. */
+export const testLabel = (test) =>
+  typeof test?.label === 'string' && test.label.trim() ? test.label.trim() : String(test?.name ?? '');
+
 /** What a test does to its cells: removed tests no longer check anything. */
 export const isLive = (test) => (test?.status ?? 'added') !== 'removed';
 
@@ -122,7 +126,7 @@ export function resolveTestsRef(scene, ref) {
   if (cell) return [cellKey(cell.row, cell.col)];
   const col = outcomes.indexOf(ref);
   if (col >= 0) return [outcomeKey(col), ...situations.flatMap((s, r) => (isGapRow(s) ? [] : [cellKey(r, col)]))];
-  const named = list(scene?.tests).flatMap((t, n) => (t?.name === ref ? testKeys(scene, n) : []));
+  const named = list(scene?.tests).flatMap((t, n) => (t?.name === ref || t?.label === ref ? testKeys(scene, n) : []));
   return named.length ? named : null;
 }
 
@@ -130,11 +134,11 @@ export function resolveTestsRef(scene, ref) {
 export const testsRefNames = (scene) => [
   ...list(scene?.situations).map((s) => s?.id),
   ...list(scene?.outcomes),
-  ...list(scene?.tests).map((t) => t?.name),
+  ...list(scene?.tests).flatMap((t) => [t?.name, ...(typeof t?.label === 'string' ? [t.label] : [])]),
 ];
 
 const STATUS_WORD = { added: '[NEW]{good}', modified: '[CHANGED]{accent}', removed: '[REMOVED]{bad}' };
-/** A test's name as display text, shown as written: every markup character escaped. */
+/** A test's name or label as display text, shown as written: every markup character escaped. */
 const literal = (name) => String(name).replace(/[\\*`=[\]{}]/g, (c) => `\\${c}`);
 
 /** The callout of each step: its own, or the names of the tests it focuses with their status; "" for none. */
@@ -143,8 +147,10 @@ export function testsCallouts(scene) {
   return list(scene?.steps).map((step) => {
     if (typeof step?.callout === 'string') return step.callout;
     const refs = Array.isArray(step?.focus) ? step.focus : [step?.focus];
-    const named = tests.filter((t) => refs.includes(t?.name));
-    return named.map((t) => [STATUS_WORD[t.status ?? 'added'], literal(t.name)].filter(Boolean).join(' ')).join(' · ');
+    const named = tests.filter((t) => refs.includes(t?.name) || (t?.label !== undefined && refs.includes(t.label)));
+    return named
+      .map((t) => [STATUS_WORD[t.status ?? 'added'], literal(testLabel(t))].filter(Boolean).join(' '))
+      .join(' · ');
   });
 }
 

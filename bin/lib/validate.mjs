@@ -1,6 +1,7 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
 import { expandLineRefs, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
+import { shownHunkIds, shownHunkLines, snippetHunkIds } from '../../shared/shown-hunks.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { cueWord, FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
@@ -12,7 +13,8 @@ import { checkInk, checkPenMarks } from './validate-pen-marks.mjs';
 import { checkCamera } from './validate-camera.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
-import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
+import { checkFit, checkSpokenMarkup, checkUnseenCode, codeLinesOnScreen } from './validate-fit.mjs';
+import { expandBriefParts } from '../../shared/files.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
@@ -22,13 +24,17 @@ import { checkPlot } from './validate-plot.mjs';
 import { checkMap } from './validate-map.mjs';
 import { loadWorld, needsWorld } from '../../shared/map.mjs';
 import { checkImage } from './validate-image.mjs';
-import { checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
+import { checkChart, checkFiles, checkFlowCode, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { TONES } from './tones.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 import { checkTests } from './validate-tests.mjs';
 import { checkPreread } from './validate-preread.mjs';
+import { mapTestNames } from '../../shared/test-names.mjs';
+import { coreOnScreen } from '../../shared/brief.mjs';
+import { checkBrief } from './validate-brief.mjs';
+import { checkMix } from './validate-mix.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
@@ -270,12 +276,13 @@ function checkCodeSteps(scene, hunk, p, errors, warnings) {
  */
 function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
   const preread = audience === 'preread';
-  const shownIds = sb.scenes.flatMap((s) => {
-    if (s?.type === 'code') return [s.hunkId];
-    if (s?.type === 'reading' && preread) return [...listed];
-    if (s?.type === 'tests' && Array.isArray(s.tests)) return s.tests.map((t) => t?.hunkId);
-    return [];
-  });
+  const shownIds = [
+    ...sb.scenes.flatMap((s) => {
+      if (s?.type === 'reading' && preread) return [...listed];
+      return shownHunkIds(s);
+    }),
+    ...snippetHunkIds(sb.scenes, hunks),
+  ];
   const shown = new Set(shownIds.filter((id) => typeof id === 'string' && Object.hasOwn(hunks, id)));
   const skipped = new Set();
   if (sb.skipped !== undefined && !Array.isArray(sb.skipped))
@@ -382,13 +389,15 @@ async function checkMermaid(diagrams, errors, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null, images?: object | null }} meta  The mode from meta.json:
+ * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null, images?: object | null, quick?: boolean, map?: object | null, root?: string | null }} meta  The mode from meta.json:
  *   "explain" (`mr-cast init`) narrates source snippets instead of a diff, so it has no coverage, risk or `skipped`.
  *   A pre-read (`audience` "preread") shows no code and lists the diff in its reading order; any other audience
  *   is a plain video. The run's plan.json as `readPlan` read it, when it has one: each scene's topic must name one
  *   of its topics. `images` is what bin/lib/images.mjs found making the pictures local: `manifest`, their copies and
- *   sizes, and `problems`, one for each picture that cannot be shown. Errors are what would not render or name something that does not exist; warnings report what
- *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
+ *   sizes, and `problems`, one for each picture that cannot be shown. A video of a branch (a diff that is not `quick`)
+ *   has a brief, checked against `map`, the run's map.json, and `root`, the repository, when they are given. Errors are
+ *   what would not render or name something that does not exist; warnings report what only rendering shows, such as
+ *   text that does not fit, or two parts of the storyboard that disagree.
  */
 export async function validateStoryboard(raw, hunks, meta = {}) {
   if (needsWorld(raw)) await loadWorld();
@@ -409,7 +418,13 @@ export async function validateStoryboard(raw, hunks, meta = {}) {
   const sb = intents.size
     ? { ...upgraded, scenes: scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) }
     : upgraded;
-  const result = await validateScenes(sb, hunks, meta);
+  // A files scene whose parts come from the brief is checked as the plain parts and files it reads into.
+  const read = Array.isArray(sb?.scenes) ? sb.scenes.map((s) => expandBriefParts(s, sb, hunks ?? {})) : null;
+  const result = await validateScenes(
+    read?.some((s, i) => s !== sb.scenes[i]) ? { ...sb, scenes: read } : sb,
+    hunks,
+    meta,
+  );
   if (!intents.size && !olderTests.size) return result;
   const said = (messages) => [
     ...new Set(messages.flatMap((m) => intentMessage(m, intents)).flatMap((m) => olderTestsMessage(m, olderTests))),
@@ -506,10 +521,16 @@ function intentMessage(message, intents) {
   return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
 }
 
-async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null, images = null } = {}) {
+async function validateScenes(
+  sb,
+  hunks,
+  { mode = 'diff', audience, plan = null, images = null, quick = false, map = null, root = null } = {},
+) {
   const errors = [];
   const warnings = [];
   const diagrams = [];
+  // The tests a branch adds, as the change map lists them: what a tests scene's names and counts are checked against.
+  const branchTests = mode === 'diff' && !quick && map ? mapTestNames(map) : null;
   if (!sb || typeof sb !== 'object') return { errors: ['storyboard must be a JSON object'], warnings };
   if (!isStr(sb.title)) errors.push('title: required string');
   if (!Array.isArray(sb.scenes) || sb.scenes.length === 0) {
@@ -574,6 +595,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
           if (!isStr(st?.action)) errors.push(`${p}.steps[${j}].action: required string`);
           if (st?.payload !== undefined && typeof st.payload !== 'string')
             errors.push(`${p}.steps[${j}].payload: must be a string (stringify JSON yourself)`);
+          checkFlowCode(st, `${p}.steps[${j}]`, hunks, audience === 'preread', errors);
           checkIcon(st?.icon, `${p}.steps[${j}].icon`, errors);
           if (st?.tone !== undefined && !TONES.includes(st.tone))
             errors.push(`${p}.steps[${j}].tone: must be one of ${TONES.join(', ')}`);
@@ -651,7 +673,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
       }
 
       case 'tests':
-        checkTests(s, p, hunks, errors, warnings);
+        checkTests(s, p, hunks, errors, warnings, branchTests);
         break;
 
       case 'table':
@@ -675,7 +697,7 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
         break;
 
       case 'compare':
-        checkCompare(s, p, errors, warnings);
+        checkCompare(s, p, errors, warnings, hunks ?? {});
         break;
 
       case 'terminal':
@@ -739,18 +761,31 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   checkTopics(sb, plan, errors, warnings, { preread });
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
+  const branch = mode === 'diff' && !quick;
+  checkBrief(sb, hunks ?? {}, { branch, map, root }, errors, warnings);
+  checkMix(sb, hunks ?? {}, { branch, map }, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
-  if (!errors.length)
-    await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings, images?.manifest ?? {});
-  checkSpokenCounts(sb.scenes, warnings);
+  let core = [];
+  if (!errors.length) {
+    const normalized = normalizeStoryboard(sb, hunks ?? {});
+    await checkFit(normalized, hunks ?? {}, errors, warnings, images?.manifest ?? {});
+    if (branch) await checkUnseenCode(normalized, hunks ?? {}, warnings);
+    if (branch && Array.isArray(sb.brief?.parts))
+      core = coreOnScreen(
+        sb.brief,
+        hunks ?? {},
+        shownHunkLines(normalized.scenes, hunks ?? {}, await codeLinesOnScreen(normalized, hunks ?? {})),
+      );
+  }
+  checkSpokenCounts(sb.scenes, warnings, { added: branchTests?.length ?? 0 });
   if (mode === 'explain') {
     if (sb.skipped !== undefined)
       warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
-    return { errors, warnings, coverage: null };
+    return { errors, warnings, coverage: null, ...(core.length ? { core } : {}) };
   }
   const coverage = checkCoverage(sb, hunks ?? {}, audience, listed, errors, warnings);
-  return { errors, warnings, coverage };
+  return { errors, warnings, coverage, ...(core.length ? { core } : {}) };
 }
 
 export function storyboardSeconds(sb, voiceover) {

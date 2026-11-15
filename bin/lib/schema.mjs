@@ -75,15 +75,31 @@ function closure(decls, names) {
 }
 
 /**
- * What `mr-cast schema [what]` prints. No argument: the storyboard and what every scene shares, with the scene
- * types to ask for. A scene type (`array`) or a declaration name (`FocusStep`): it and every type it uses.
- * `all`: the whole storyboard section.
+ * The declarations every scene shares, in source order: the storyboard, SceneBase and what they use, and any type that
+ * two or more scene types use. `mr-cast schema` prints these, so a scene type prints only what is its own.
+ */
+function shared(decls, scenes) {
+  const base = closure(decls, ['Storyboard', 'SceneBase']);
+  const uses = new Map();
+  for (const name of scenes.values())
+    for (const n of closure(decls, [name])) if (!base.includes(n)) uses.set(n, (uses.get(n) ?? 0) + 1);
+  const several = new Set([...uses].filter(([, count]) => count > 1).map(([n]) => n));
+  return new Set([...decls.keys()].filter((n) => n !== 'Scene' && (base.includes(n) || several.has(n))));
+}
+
+/**
+ * What `mr-cast schema [what...]` prints. No argument: the storyboard and what every scene shares, with the scene
+ * types to ask for. A scene type (`array`) or a declaration name (`FocusStep`): its own declaration and the types only
+ * it uses, then one line naming the shared types it refers to. Several at once print each once and the shared part
+ * never. `all`: the whole storyboard section.
  */
 export function formatSchema(root, what) {
   const decls = readSchema(root);
   const scenes = sceneTypes(decls);
+  const common = shared(decls, scenes);
   const show = (names) => names.map((n) => decls.get(n).text).join('\n\n');
-  if (what === 'all')
+  const asked = [what].flat();
+  if (asked.includes('all'))
     return show(
       closure(
         decls,
@@ -91,13 +107,23 @@ export function formatSchema(root, what) {
       ),
     );
   if (what === undefined) {
-    const root = closure(decls, ['Storyboard', 'SceneBase']).filter((n) => n !== 'Scene');
-    return `${show(root)}\n\n// Scene is one of these. \`mr-cast schema <type>\` prints a scene's fields: ${[...scenes.keys()].join(', ')}.`;
+    return `${show([...decls.keys()].filter((n) => common.has(n)))}\n\n// Scene is one of these. \`mr-cast schema <type>\` prints a scene's fields: ${[...scenes.keys()].join(', ')}.`;
   }
-  const name = scenes.get(what) ?? (decls.has(what) ? what : null);
-  if (!name)
-    throw new UserError(
-      `no scene type or schema type "${what}"; scene types: ${[...scenes.keys()].join(', ')}; or "all"`,
-    );
-  return show(closure(decls, [name]));
+  const names = asked.map((w) => {
+    const name = scenes.get(w) ?? (decls.has(w) ? w : null);
+    if (!name)
+      throw new UserError(
+        `no scene type or schema type "${w}"; scene types: ${[...scenes.keys()].join(', ')}; or "all"`,
+      );
+    return name;
+  });
+  const own = new Set(names.flatMap((n) => closure(decls, [n]).filter((x) => x === n || !common.has(x))));
+  const printed = [...decls.keys()].filter((n) => own.has(n));
+  const refers = [...decls.keys()].filter(
+    (n) => common.has(n) && !own.has(n) && printed.some((p) => decls.get(p).uses.includes(n)),
+  );
+  const note = refers.length
+    ? `\n\n// Shared types used above: ${refers.join(', ')}. \`mr-cast schema\` prints them.`
+    : '';
+  return `${show(printed)}${note}`;
 }

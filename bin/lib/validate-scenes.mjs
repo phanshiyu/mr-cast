@@ -1,7 +1,8 @@
 // Checks for the table, chart, timeline and files scenes and a flow's spoken steps, mirroring
 // src/types.ts. Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
-import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+import { PART_WEIGHTS, diffFiles, sceneFiles, sceneParts } from '../../shared/files.mjs';
+import { codeHunkId, codeRows, parseSpan } from '../../shared/flow-code.mjs';
 import { walkStates } from '../../shared/state-steps.mjs';
 import { checkStateSteps } from './validate-state.mjs';
 import { TONES } from './tones.mjs';
@@ -201,6 +202,62 @@ export function checkTimeline(s, p, errors, warnings) {
 
 const isCount = (v) => Number.isInteger(v) && v >= 0;
 
+/** `parts` groups the files by importance, and each file's `part` names one of them. */
+function checkParts(s, p, errors, warnings, hunks) {
+  const named = Array.isArray(s.parts) ? s.parts.map((x) => x?.name) : [];
+  if (Array.isArray(s.files))
+    s.files.forEach((f, j) => {
+      if (f?.part === undefined) return;
+      const q = `${p}.files[${j}].part`;
+      if (!isStr(f.part)) errors.push(`${q}: must be a string, the name of one of the scene's parts`);
+      else if (s.parts === undefined) errors.push(`${q}: the scene has no "parts"; list them as [{ name, weight }]`);
+      else if (Array.isArray(s.parts) && !named.includes(f.part))
+        errors.push(`${q}: "${f.part}" is not one of the scene's parts (${named.join(', ')})`);
+    });
+  if (s.parts === undefined) return;
+  if (s.parts === 'brief')
+    return errors.push(
+      `${p}.parts: "brief" reads brief.parts and the files of their hunks; add a "brief" with a part whose hunks change a file, or list the parts here as [{ name, weight }]`,
+    );
+  if (!Array.isArray(s.parts) || s.parts.length === 0)
+    return errors.push(
+      `${p}.parts: must be "brief" or a non-empty array of { name, weight: ${PART_WEIGHTS.join(' | ')} }`,
+    );
+  s.parts.forEach((part, j) => {
+    const q = `${p}.parts[${j}]`;
+    if (!isStr(part?.name)) errors.push(`${q}.name: required string, e.g. "Finding and checking places"`);
+    else if (named.indexOf(part.name) !== j) errors.push(`${q}.name: "${part.name}" is named twice`);
+    if (!PART_WEIGHTS.includes(part?.weight)) errors.push(`${q}.weight: must be one of ${PART_WEIGHTS.join(', ')}`);
+    if (part?.does !== undefined && !isStr(part.does)) errors.push(`${q}.does: must be a non-empty string`);
+    if (part?.after !== undefined && !(Array.isArray(part.after) && part.after.every(isStr)))
+      errors.push(`${q}.after: must be an array of part names`);
+    if (part?.check !== undefined && typeof part.check !== 'boolean') errors.push(`${q}.check: must be true or false`);
+  });
+  if (errors.some((m) => m.startsWith(`${p}.parts[`))) return;
+  s.parts.forEach((part, j) =>
+    (Array.isArray(part.after) ? part.after : []).forEach((name, k) => {
+      if (isStr(name) && !named.includes(name))
+        warnings.push(
+          `${p}.parts[${j}].after[${k}]: "${name}" is not one of the scene's parts (${named.join(', ')}), so no link is drawn`,
+        );
+    }),
+  );
+  const groups = sceneParts(s, sceneFiles(s, hunks));
+  const empty = s.parts.filter((part) => !groups.some((g) => g.name === part.name));
+  if (empty.length)
+    warnings.push(
+      `${p}.parts: ${empty.map((x) => `"${x.name}"`).join(', ')} hold no file, so ${empty.length === 1 ? 'it is' : 'they are'} not drawn`,
+    );
+  const loose = groups.find((g) => !named.includes(g.name));
+  if (loose)
+    warnings.push(
+      `${p}: ${loose.files.length} ${loose.files.length === 1 ? 'file names' : 'files name'} no part and sit under "${loose.name}", drawn last and quietest (${loose.files
+        .map((f) => f.path)
+        .slice(0, 3)
+        .join(', ')}${loose.files.length > 3 ? ', ...' : ''}); give each a "part"`,
+    );
+}
+
 export function checkFiles(s, p, errors, warnings, hunks, mode) {
   if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
   if (s.files === undefined) {
@@ -219,8 +276,11 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
     s.files.forEach((f, j) => {
       const q = `${p}.files[${j}]`;
       if (!isStr(f?.path)) return errors.push(`${q}.path: required string`);
-      if (seen.has(f.path)) errors.push(`${q}.path: "${f.path}" is listed twice`);
-      seen.add(f.path);
+      // With parts, a file whose hunks sit in two parts is listed once under each (`"parts": "brief"` does this).
+      const key = Array.isArray(s.parts) ? `${f.path}\0${f.part ?? ''}` : f.path;
+      if (seen.has(key))
+        errors.push(`${q}.path: "${f.path}" is listed twice${Array.isArray(s.parts) ? ' under the same part' : ''}`);
+      seen.add(key);
       for (const k of ['additions', 'deletions'])
         if (f[k] !== undefined && !isCount(f[k])) errors.push(`${q}.${k}: must be a whole number of lines, 0 or more`);
       if (mode !== 'explain' && !known.has(f.path)) unknown.push(f.path);
@@ -232,8 +292,11 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
       );
     }
   }
+  checkParts(s, p, errors, warnings, hunks);
   const paths = new Set(sceneFiles(s, hunks).map((f) => f.path));
-  if (paths.size > FILES_MAX) warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped`);
+  // With parts the scene lists each part's largest files and counts the rest, so the number of files does not crowd it.
+  if (!s.parts && paths.size > FILES_MAX)
+    warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped`);
   if (s.notes !== undefined) {
     if (!s.notes || typeof s.notes !== 'object' || Array.isArray(s.notes))
       errors.push(`${p}.notes: must be an object of { "path": "note" }`);
@@ -242,6 +305,8 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
         const q = `${p}.notes[${JSON.stringify(path)}]`;
         if (!paths.has(path)) errors.push(`${q}: not one of the files this scene lists`);
         if (!isStr(note)) errors.push(`${q}: must be a non-empty string`);
+        else if (Array.isArray(s.parts))
+          warnings.push(`${q}: a note is not drawn on the parts map; each part's "does" says what it is for`);
       }
   }
   const what = { plural: 'file paths', one: 'a path this scene lists' };
@@ -259,4 +324,38 @@ export function checkFlowSays(s, p, errors) {
   s.steps.forEach((step, j) => {
     if (!isStr(step.say)) errors.push(`${p}.steps[${j}].say: must be a non-empty string`);
   });
+}
+
+/**
+ * A flow stage's `code`: a hunk or snippet that exists, and lines (and a `light`) inside it. A stage has `code` or
+ * `payload`, and a pre-read, which puts no code on screen, has none.
+ */
+export function checkFlowCode(st, q, hunks, preread, errors) {
+  if (st?.code === undefined) return;
+  const code = st.code;
+  if (!code || typeof code !== 'object' || Array.isArray(code))
+    return errors.push(`${q}.code: must be { "hunk": "h56" or "snippet": "s2", "lines": "47-60", "light"?: "50" }`);
+  if (preread)
+    errors.push(
+      `${q}.code: a pre-read puts no code on screen; use a payload value, or list the hunk in the reading order`,
+    );
+  if (st.payload !== undefined) errors.push(`${q}: give code or payload, not both; code replaces the payload`);
+  const named = ['hunk', 'snippet'].filter((k) => code[k] !== undefined);
+  if (named.length !== 1)
+    return errors.push(
+      `${q}.code: name one of "hunk" (a diff hunk id) or "snippet" (a snippet id), not ${named.length ? 'both' : 'neither'}`,
+    );
+  const id = codeHunkId(code);
+  if (typeof id !== 'string' || !id)
+    return errors.push(`${q}.code.${named[0]}: must be an id such as "${named[0] === 'hunk' ? 'h56' : 's2'}"`);
+  const hunk = hunks && Object.hasOwn(hunks, id) ? hunks[id] : undefined;
+  if (!hunk) return errors.push(`${q}.code.${named[0]}: "${id}" not found in hunks.json`);
+  if (named[0] === 'hunk' && hunk.status === 'source')
+    return errors.push(`${q}.code.hunk: ${id} is a snippet; use "snippet": "${id}"`);
+  if (named[0] === 'snippet' && hunk.status !== 'source')
+    return errors.push(`${q}.code.snippet: ${id} is a diff hunk; use "hunk": "${id}"`);
+  if (parseSpan(code.lines) === null && code.lines === undefined)
+    return errors.push(`${q}.code.lines: required, a line number or "a-b" range`);
+  const { problem } = codeRows(hunk, code);
+  if (problem) errors.push(`${q}.code.${problem}`);
 }
