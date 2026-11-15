@@ -1,7 +1,7 @@
 // Checks for the table, chart, timeline and files scenes and a flow's spoken steps, mirroring
 // src/types.ts. Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
-import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+import { PART_WEIGHTS, diffFiles, sceneFiles, sceneParts } from '../../shared/files.mjs';
 import { walkStates } from '../../shared/state-steps.mjs';
 import { checkStateSteps } from './validate-state.mjs';
 import { TONES } from './tones.mjs';
@@ -201,6 +201,50 @@ export function checkTimeline(s, p, errors, warnings) {
 
 const isCount = (v) => Number.isInteger(v) && v >= 0;
 
+/** `parts` groups the files by importance, and each file's `part` names one of them. */
+function checkParts(s, p, errors, warnings, hunks) {
+  const named = Array.isArray(s.parts) ? s.parts.map((x) => x?.name) : [];
+  if (Array.isArray(s.files))
+    s.files.forEach((f, j) => {
+      if (f?.part === undefined) return;
+      const q = `${p}.files[${j}].part`;
+      if (!isStr(f.part)) errors.push(`${q}: must be a string, the name of one of the scene's parts`);
+      else if (s.parts === undefined) errors.push(`${q}: the scene has no "parts"; list them as [{ name, weight }]`);
+      else if (Array.isArray(s.parts) && !named.includes(f.part))
+        errors.push(`${q}: "${f.part}" is not one of the scene's parts (${named.join(', ')})`);
+    });
+  if (s.parts === undefined) return;
+  if (s.parts === 'brief')
+    return errors.push(
+      `${p}.parts: "brief" reads brief.parts and the files of their hunks; add a "brief" with a part whose hunks change a file, or list the parts here as [{ name, weight }]`,
+    );
+  if (!Array.isArray(s.parts) || s.parts.length === 0)
+    return errors.push(
+      `${p}.parts: must be "brief" or a non-empty array of { name, weight: ${PART_WEIGHTS.join(' | ')} }`,
+    );
+  s.parts.forEach((part, j) => {
+    const q = `${p}.parts[${j}]`;
+    if (!isStr(part?.name)) errors.push(`${q}.name: required string, e.g. "Finding and checking places"`);
+    else if (named.indexOf(part.name) !== j) errors.push(`${q}.name: "${part.name}" is named twice`);
+    if (!PART_WEIGHTS.includes(part?.weight)) errors.push(`${q}.weight: must be one of ${PART_WEIGHTS.join(', ')}`);
+  });
+  if (errors.some((m) => m.startsWith(`${p}.parts[`))) return;
+  const groups = sceneParts(s, sceneFiles(s, hunks));
+  const empty = s.parts.filter((part) => !groups.some((g) => g.name === part.name));
+  if (empty.length)
+    warnings.push(
+      `${p}.parts: ${empty.map((x) => `"${x.name}"`).join(', ')} hold no file, so ${empty.length === 1 ? 'it is' : 'they are'} not drawn`,
+    );
+  const loose = groups.find((g) => !named.includes(g.name));
+  if (loose)
+    warnings.push(
+      `${p}: ${loose.files.length} ${loose.files.length === 1 ? 'file names' : 'files name'} no part and sit under "${loose.name}", drawn last and quietest (${loose.files
+        .map((f) => f.path)
+        .slice(0, 3)
+        .join(', ')}${loose.files.length > 3 ? ', ...' : ''}); give each a "part"`,
+    );
+}
+
 export function checkFiles(s, p, errors, warnings, hunks, mode) {
   if (s.title !== undefined && typeof s.title !== 'string') errors.push(`${p}.title: must be a string`);
   if (s.files === undefined) {
@@ -232,6 +276,7 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
       );
     }
   }
+  checkParts(s, p, errors, warnings, hunks);
   const paths = new Set(sceneFiles(s, hunks).map((f) => f.path));
   if (paths.size > FILES_MAX) warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped`);
   if (s.notes !== undefined) {

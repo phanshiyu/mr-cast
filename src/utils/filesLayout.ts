@@ -2,7 +2,8 @@ import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import { badgesWidth } from './marks';
 import type { Box, LayoutBoxes } from './penGeometry';
-import type { ShownFile } from '../../shared/files.mjs';
+import type { ScenePart, ShownFile } from '../../shared/files.mjs';
+import type { PartWeight } from '../types';
 
 const MONO_ADVANCE = 0.61;
 const MAX_FONT = 26;
@@ -19,7 +20,27 @@ const COUNT_CHARS = 11;
 
 export type TreeRow =
   | { kind: 'dir'; name: string; depth: number }
-  | { kind: 'file'; name: string; depth: number; file: ShownFile; note: string | undefined };
+  | {
+      kind: 'part';
+      name: string;
+      depth: number;
+      weight: PartWeight;
+      count: number;
+      additions: number;
+      deletions: number;
+      /** Whether the files carry line counts, so the heading shows the totals. */
+      counted: boolean;
+    }
+  | { kind: 'file'; name: string; depth: number; file: ShownFile; note: string | undefined; weight?: PartWeight };
+
+/** How large a part's heading is drawn, against the tree's font: the core parts carry the eye. */
+const PART_SCALE: Record<PartWeight, number> = { core: 1.12, support: 1, routine: 0.88 };
+/** How strong a part's rows draw: routine parts are quiet, so the parts that matter stand out. */
+export const PART_OPACITY: Record<PartWeight, number> = { core: 1, support: 0.88, routine: 0.58 };
+/** Room, in rows, above each part's heading but the first. */
+const PART_GAP = 0.55;
+/** Widest "12 files  +1234 −1234" a part's heading holds at its right, in characters. */
+const PART_COUNT_CHARS = 22;
 
 export interface PlacedRow {
   row: TreeRow;
@@ -91,8 +112,43 @@ function flatten(dir: Dir, depth: number, notes: Record<string, string>, out: Tr
   return out;
 }
 
-export function treeRows(files: readonly ShownFile[], notes: Record<string, string>): TreeRow[] {
-  return flatten(buildTree(files), 0, notes, []);
+/** The rows of a part-grouped list: each part's heading, then its files by their file names (the whole path where two share one). */
+function partRows(parts: readonly ScenePart[], notes: Record<string, string>): TreeRow[] {
+  const counted = parts.some((g) => g.files.some((f) => f.additions !== undefined || f.deletions !== undefined));
+  const names = parts.flatMap((g) => g.files.map((f) => f.path.split('/').pop()!));
+  return parts.flatMap((g): TreeRow[] => [
+    {
+      kind: 'part',
+      name: g.name,
+      depth: 0,
+      weight: g.weight,
+      count: g.files.length,
+      additions: g.additions,
+      deletions: g.deletions,
+      counted,
+    },
+    ...g.files.map((file): TreeRow => {
+      const base = file.path.split('/').pop()!;
+      const shared = names.filter((n) => n === base).length > 1;
+      return {
+        kind: 'file',
+        name: shared ? file.path : base,
+        depth: 1,
+        file,
+        note: notes[file.path],
+        weight: g.weight,
+      };
+    }),
+  ]);
+}
+
+/** The files as a tree by directory, or, with `parts`, grouped under their parts. */
+export function treeRows(
+  files: readonly ShownFile[],
+  notes: Record<string, string>,
+  parts: readonly ScenePart[] | null = null,
+): TreeRow[] {
+  return parts ? partRows(parts, notes) : flatten(buildTree(files), 0, notes, []);
 }
 
 /**
@@ -103,7 +159,7 @@ function splitColumns(rows: readonly TreeRow[]): TreeRow[][] {
   const middle = rows.length / 2;
   let at = -1;
   rows.forEach((r, i) => {
-    if (r.kind === 'dir' && i > 0 && (at < 0 || Math.abs(i - middle) < Math.abs(at - middle))) at = i;
+    if (r.kind !== 'file' && i > 0 && (at < 0 || Math.abs(i - middle) < Math.abs(at - middle))) at = i;
   });
   if (at < 0) at = Math.ceil(middle);
   const ancestors: TreeRow[] = [];
@@ -137,16 +193,18 @@ function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number
   const iconW = Math.round(font * 1.35);
   const nameX = PAD_X + MARKER_W;
   const nameNeed = Math.max(
-    ...all.map(
-      (r) =>
-        r.depth * indent +
-        iconW +
-        r.name.length * font * MONO_ADVANCE +
-        (r.kind === 'file'
-          ? (r.file.test ? font * 3.4 : 0) +
-            (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0)
-          : 0),
-    ),
+    ...all
+      .filter((r) => r.kind !== 'part')
+      .map(
+        (r) =>
+          r.depth * indent +
+          iconW +
+          r.name.length * font * MONO_ADVANCE +
+          (r.kind === 'file'
+            ? (r.file.test ? font * 3.4 : 0) +
+              (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0)
+            : 0),
+      ),
   );
   const hasNotes = all.some((r) => r.kind === 'file' && r.note);
   const nameW = Math.min(nameNeed + 8, width * (hasNotes ? 0.46 : 0.7));
@@ -158,17 +216,42 @@ function attempt(columns: readonly TreeRow[][], totalWidth: number, font: number
       ? (r.file.test ? font * 3.4 : 0) + (r.file.badge ? badgesWidth([r.file.badge], Math.round(font * 0.58)) + 8 : 0)
       : 0;
   const name = (r: TreeRow) =>
+    r.kind === 'part'
+      ? partName(r)
+      : fitText(
+          r.name,
+          { ...sized(SLOTS.fileName, nameW - r.depth * indent - iconW - extras(r)), size: font },
+          r.kind === 'file' ? `files[${JSON.stringify(r.file.path)}]` : '',
+        );
+  const partH = (r: Extract<TreeRow, { kind: 'part' }>) => Math.round(font * PART_SCALE[r.weight]);
+  const partCountsW = (r: Extract<TreeRow, { kind: 'part' }>) =>
+    Math.round((r.counted ? PART_COUNT_CHARS : 9) * Math.round(font * 0.88) * 0.62);
+  const partTagW = (r: Extract<TreeRow, { kind: 'part' }>) => Math.round(r.weight.length * partH(r) * 0.42 + 36);
+  const partName = (r: Extract<TreeRow, { kind: 'part' }>) =>
     fitText(
       r.name,
-      { ...sized(SLOTS.fileName, nameW - r.depth * indent - iconW - extras(r)), size: font },
-      r.kind === 'file' ? `files[${JSON.stringify(r.file.path)}]` : '',
+      {
+        ...sized(SLOTS.partName, width - 2 * PAD_X - partCountsW(r) - partTagW(r) - 12),
+        size: partH(r),
+      },
+      `parts[${JSON.stringify(r.name)}]`,
     );
   const note = (r: TreeRow) =>
     r.kind === 'file' && r.note ? noteFit(r.note, noteW, font, rowH, `notes[${JSON.stringify(r.file.path)}]`) : null;
-  const rows = columns.flatMap((column, c) =>
-    column.map((row, i) => ({ row, x: c * (width + COLUMN_GUTTER), y: i * rowH, name: name(row), note: note(row) })),
-  );
-  const height = Math.max(...columns.map((column) => column.length)) * rowH;
+  const gap = Math.round(rowH * PART_GAP);
+  const heights: number[] = [];
+  const rows = columns.flatMap((column, c) => {
+    let y = 0;
+    const placed = column.map((row, i) => {
+      if (row.kind === 'part' && i > 0) y += gap;
+      const at = { row, x: c * (width + COLUMN_GUTTER), y, name: name(row), note: note(row) };
+      y += rowH;
+      return at;
+    });
+    heights.push(y);
+    return placed;
+  });
+  const height = Math.max(...heights);
   return { font, rowH, indent, rows, width, nameX, nameW, countsX, noteX, noteW, totalWidth, height };
 }
 
@@ -212,6 +295,7 @@ export function filesBoxes(layout: FilesLayout): LayoutBoxes {
       height: layout.rowH - 8,
     };
     obstacles.push(name);
+    if (row.kind === 'part') boxes.set(`p:${row.name}`, name);
     if (row.kind !== 'file') continue;
     boxes.set(`f:${row.file.path}`, name);
     if (layout.countsX !== null)

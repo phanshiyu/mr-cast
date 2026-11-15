@@ -646,6 +646,18 @@ export const SLOTS = {
     width: 0,
     fix: 'the name is drawn smaller; nothing to change',
   },
+  partName: {
+    ...SANS,
+    name: 'part name',
+    weight: 700,
+    size: 26,
+    min: 16,
+    lines: 1,
+    lineHeight: 1.2,
+    markup: false,
+    width: 0,
+    fix: 'shorten the part name',
+  },
   fileNote: {
     ...SANS,
     name: 'file note',

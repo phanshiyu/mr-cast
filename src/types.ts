@@ -1411,6 +1411,16 @@ export interface FileEntry extends Pick<Marks, 'change' | 'badge' | 'tone'> {
   /** Lines added and removed. In a diff walkthrough default to the counts in hunks.json. */
   additions?: number;
   deletions?: number;
+  /** The name of the part this file belongs to, one of the scene's `parts`, e.g. "Finding and checking places". */
+  part?: string;
+}
+
+/** How much a part of the change matters to a reviewer: "core" is the change itself, "support" what it needs, "routine" what may be skimmed. */
+export type PartWeight = 'core' | 'support' | 'routine';
+
+export interface FilePart {
+  name: string;
+  weight: PartWeight;
 }
 
 export interface FilesScene extends SceneBase {
@@ -1421,6 +1431,14 @@ export interface FilesScene extends SceneBase {
    * with its line counts, tests marked. Required in an explanation.
    */
   files?: FileEntry[];
+  /**
+   * The parts of the change, to group the files by importance and not by directory: each file names its `part`.
+   * Core parts come first and draw strongest, routine parts last and quietest, each with its file count and its
+   * + and − totals. `"brief"` takes the parts, and the files of their hunks, from the storyboard's `brief.parts`,
+   * so nothing is typed twice (the scene's own `files` is then ignored). A step's `focus` may name a part to light
+   * it and its files.
+   */
+  parts?: FilePart[] | 'brief';
   /** A short note beside a file, keyed by its path, e.g. { "src/limiter.ts": "new token bucket" }. */
   notes?: Record<string, string>;
   /** Paths to spotlight one at a time, in the order the narration names them. Defaults to the files with notes, top to bottom. */
@@ -1428,7 +1446,7 @@ export interface FilesScene extends SceneBase {
   /**
    * Move the viewer's attention as the voice explains: each step lights the files it focuses just before
    * its `say` is spoken while the rest dims. `narration` is then the intro. Replaces `highlight`.
-   * A ref is a path in the tree.
+   * A ref is a path in the tree, or the name of a part.
    */
   steps?: FocusStep[];
 }

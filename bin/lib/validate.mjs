@@ -13,6 +13,7 @@ import { checkCamera } from './validate-camera.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup, checkUnseenCode } from './validate-fit.mjs';
+import { expandBriefParts } from '../../shared/files.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
@@ -412,7 +413,13 @@ export async function validateStoryboard(raw, hunks, meta = {}) {
   const sb = intents.size
     ? { ...upgraded, scenes: scenes.map((s, i) => (intents.has(i) ? intentAsText(s, upgraded) : s)) }
     : upgraded;
-  const result = await validateScenes(sb, hunks, meta);
+  // A files scene whose parts come from the brief is checked as the plain parts and files it reads into.
+  const read = Array.isArray(sb?.scenes) ? sb.scenes.map((s) => expandBriefParts(s, sb, hunks ?? {})) : null;
+  const result = await validateScenes(
+    read?.some((s, i) => s !== sb.scenes[i]) ? { ...sb, scenes: read } : sb,
+    hunks,
+    meta,
+  );
   if (!intents.size && !olderTests.size) return result;
   const said = (messages) => [
     ...new Set(messages.flatMap((m) => intentMessage(m, intents)).flatMap((m) => olderTestsMessage(m, olderTests))),

@@ -1,6 +1,7 @@
 // Turns a storyboard as written, older field names included, into the shape the scenes draw. It runs once
 // where a storyboard enters: after `validate` in the CLI and after the player fetches storyboard.json.
 
+import { expandBriefParts } from './files.mjs';
 import { plainText } from './markup.mjs';
 import { FLAG_MARK, flaggedFinding } from './review.mjs';
 import { STATE_TYPES, changedRefs } from './state-steps.mjs';
@@ -139,5 +140,8 @@ function normalizeScene(raw, explain, storyboard) {
 export function normalizeStoryboard(storyboard, hunks) {
   const explain = isExplanation(hunks);
   const current = upgradeScenes(storyboard);
-  return { ...current, scenes: current.scenes.map((scene) => normalizeScene(scene, explain, current)) };
+  return {
+    ...current,
+    scenes: current.scenes.map((scene) => normalizeScene(expandBriefParts(scene, current, hunks), explain, current)),
+  };
 }
