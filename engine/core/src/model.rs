@@ -18,6 +18,10 @@ pub struct Props {
     pub voiceover: Option<Voiceover>,
     #[serde(default)]
     pub highlight: Highlight,
+    /// Every Lucide icon the storyboard names (an `icon` field anywhere), as SVG path data on its 24 by 24 grid, from
+    /// lucide-react by Node (see engine/README.md). Draw one with `icons::draw_named`.
+    #[serde(default)]
+    pub icons: HashMap<String, Vec<String>>,
 }
 
 fn yes() -> bool {

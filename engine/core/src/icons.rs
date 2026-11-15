@@ -65,3 +65,28 @@ pub fn draw(dl: &mut DisplayList, name: &str, x: f32, y: f32, size: f32, color: 
     }
     dl.restore();
 }
+
+/// Draws a storyboard's icon by its kebab-case Lucide name, from `props.icons`; false when the props lack it.
+#[allow(clippy::too_many_arguments)]
+pub fn draw_named(
+    dl: &mut DisplayList,
+    icons: &HashMap<String, Vec<String>>,
+    name: &str,
+    x: f32,
+    y: f32,
+    size: f32,
+    color: Color,
+    stroke_width: f32,
+) -> bool {
+    let Some(ds) = icons.get(name) else { return false };
+    dl.save();
+    dl.translate(x, y);
+    dl.scale_about(size / 24.0, 0.0, 0.0);
+    for d in ds {
+        if let Some(p) = svg_path(d) {
+            dl.path(p, None, Some(Stroke::solid(color, stroke_width).rounded()));
+        }
+    }
+    dl.restore();
+    true
+}

@@ -24,6 +24,9 @@ async function load() {
     export * as metrics from './shared/font-metrics.mjs';
     export { speechText } from './shared/speech.mjs';
     export * as pen from './src/utils/penGeometry';
+    export { renderToStaticMarkup } from 'react-dom/server';
+    export { createElement } from 'react';
+    export { lucideIcon } from './src/components/icons';
     export * as inkg from './src/utils/inkGeometry';
     export { interpolate, spring, Easing } from 'remotion';
     export { normalizeStoryboard } from './shared/normalize.mjs';
@@ -34,6 +37,8 @@ async function load() {
     bundle: true,
     format: 'esm',
     platform: 'node',
+    // Packages load from node_modules as they are; bundled, their CommonJS cannot require Node's built-ins or React.
+    packages: 'external',
     write: false,
     logLevel: 'error',
   });
@@ -65,6 +70,55 @@ function formatPayload(payload) {
   }
 }
 
+/** A Lucide icon's elements as SVG path data on its 24 by 24 grid, one string per element. */
+function iconPaths(m, name) {
+  const Icon = m.lucideIcon(name);
+  if (!Icon) return null;
+  const svg = m.renderToStaticMarkup(m.createElement(Icon));
+  const attr = (s, k) => {
+    const v = new RegExp(`\\b${k}="([^"]*)"`).exec(s)?.[1];
+    return v === undefined ? undefined : Number.isNaN(Number(v)) ? v : Number(v);
+  };
+  const out = [];
+  for (const [, tag, rest] of svg.matchAll(/<(path|circle|line|rect|polyline|polygon|ellipse)([^>]*)\/?>/g)) {
+    if (tag === 'path') out.push(attr(rest, 'd'));
+    else if (tag === 'line')
+      out.push(`M${attr(rest, 'x1')} ${attr(rest, 'y1')}L${attr(rest, 'x2')} ${attr(rest, 'y2')}`);
+    else if (tag === 'circle' || tag === 'ellipse') {
+      const [cx, cy] = [attr(rest, 'cx'), attr(rest, 'cy')];
+      const [rx, ry] = tag === 'circle' ? [attr(rest, 'r'), attr(rest, 'r')] : [attr(rest, 'rx'), attr(rest, 'ry')];
+      out.push(`M${cx - rx} ${cy}a${rx} ${ry} 0 1 0 ${2 * rx} 0a${rx} ${ry} 0 1 0 ${-2 * rx} 0Z`);
+    } else if (tag === 'polyline' || tag === 'polygon') {
+      const p = String(attr(rest, 'points'))
+        .trim()
+        .split(/[\s,]+/);
+      let d = `M${p[0]} ${p[1]}`;
+      for (let i = 2; i < p.length; i += 2) d += `L${p[i]} ${p[i + 1]}`;
+      out.push(tag === 'polygon' ? `${d}Z` : d);
+    } else if (tag === 'rect') {
+      const [x, y, w, h] = ['x', 'y', 'width', 'height'].map((k) => attr(rest, k) ?? 0);
+      const r = attr(rest, 'rx') ?? 0;
+      out.push(
+        r
+          ? `M${x + r} ${y}H${x + w - r}A${r} ${r} 0 0 1 ${x + w} ${y + r}V${y + h - r}A${r} ${r} 0 0 1 ${x + w - r} ${y + h}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + h - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`
+          : `M${x} ${y}h${w}v${h}h${-w}Z`,
+      );
+    }
+  }
+  return out;
+}
+
+/** Every `icon` a storyboard names, anywhere in it. */
+function iconNames(value, out = new Set()) {
+  if (Array.isArray(value)) for (const v of value) iconNames(v, out);
+  else if (value && typeof value === 'object')
+    for (const [k, v] of Object.entries(value)) {
+      if (k === 'icon' && typeof v === 'string') out.add(v);
+      else iconNames(v, out);
+    }
+  return out;
+}
+
 async function props(m, dir, out) {
   // An explanation run may have no hunks.json; it then shows no code.
   const hunksFile = path.join(dir, 'hunks.json');
@@ -80,7 +134,12 @@ async function props(m, dir, out) {
         const { text, language } = formatPayload(step.payload);
         highlight.snippets[`${language}\n${text}`] = colored(m, m.tokenizeLines(text, language));
       }
-  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight });
+  const icons = {};
+  for (const name of iconNames(storyboard)) {
+    const paths = iconPaths(m, name);
+    if (paths) icons[name] = paths;
+  }
+  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight, icons });
 }
 
 function data(m) {
