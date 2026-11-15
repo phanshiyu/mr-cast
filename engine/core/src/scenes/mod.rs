@@ -13,6 +13,7 @@ pub mod flow;
 pub mod placeholder;
 pub mod plot;
 pub mod state;
+pub mod table;
 pub mod text;
 
 /// What a scene is prepared from, once per project.
@@ -48,7 +49,14 @@ pub trait SceneView: Send + Sync {
 pub type Prepare = fn(&SceneInput) -> Result<Box<dyn SceneView>, String>;
 
 /// Scene types the engine draws; any other type draws a placeholder card.
-pub const REGISTRY: &[(&str, Prepare)] = &[("text", text::prepare), ("code", code::prepare), ("flow", flow::prepare), ("plot", plot::prepare), ("chart", chart::prepare)];
+pub const REGISTRY: &[(&str, Prepare)] = &[
+    ("text", text::prepare),
+    ("code", code::prepare),
+    ("flow", flow::prepare),
+    ("plot", plot::prepare),
+    ("chart", chart::prepare),
+    ("table", table::prepare),
+];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
 pub fn prepare(input: &SceneInput) -> Box<dyn SceneView> {
