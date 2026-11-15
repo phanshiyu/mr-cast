@@ -51,7 +51,8 @@ const board = (over = {}) => ({
   ...over,
 });
 const errorsOf = async (sb) => (await validateStoryboard(sb, hunks)).errors;
-const warningsOf = async (sb) => (await validateStoryboard(sb, hunks)).warnings;
+// A branch video also owes a brief, which these tests are not about.
+const warningsOf = async (sb) => (await validateStoryboard(sb, hunks)).warnings.filter((w) => !w.startsWith('brief:'));
 
 test('a flagged finding on a line of the diff, recapped at the end, is valid', async () => {
   assert.deepEqual(await errorsOf(board()), []);

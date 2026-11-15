@@ -18,7 +18,7 @@ Run the commands from inside the repository the video is about. Output goes to `
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Each snippet holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. A later `extract` keeps the snippets. |
 | `mr-cast plan [--port N] [--no-open] [--idle-exit minutes]` | Checks the run's `plan.json`, serves the plan page at `http://127.0.0.1:4747/plan`, and opens the browser. The page writes each pick into `plan.json`, and reloads when `plan.json` changes. It replaces a plan server already running for the run, and exits like `play` when no page is open. See [The plan](#the-plan). |
 | `mr-cast schema [type\|all]` | Prints the storyboard's TypeScript schema from `src/types.ts`. With a scene type such as `array`, it prints that scene and every type it uses. Alone, it prints the storyboard and what every scene shares. `all` prints everything. |
-| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against `plan.json` when the run has one. Prints the length. Exits 1 on errors. `--read-only` writes nothing: no `review.md`, `reading.md` or plan picks, and no remembered choice. |
+| `mr-cast validate` | Checks `storyboard.json` against the schema and `hunks.json`, and against `plan.json` when the run has one. Prints the length. Exits 1 on errors. `--read-only` writes nothing: no `review.md`, `reading.md`, `guide.md` or plan picks, and no remembered choice. For a branch video with a `brief`, it also prints one line on the six answers and writes `guide.md`, the brief in plain words. |
 | `mr-cast outline` | Prints a short plan of a valid storyboard to show before rendering: the title, one line per scene with its type, chapter and contents, and the length. |
 | `mr-cast steps [sceneIndex...]` | Prints each step's words beside what it lights and what it changes on screen, with the highlight warnings. Code scenes are left out. |
 | `mr-cast still [sceneIndex...] [--out dir] [--step k]` | Renders a PNG of each scene's end state, just before it fades out, into the run's `stills/`. Scene indexes start at 0. With `--step k`, it renders each scene as its step k ends, just before the next step starts, into `scene-NN-type-step-k.png`; every scene it renders must have that step. |
@@ -104,7 +104,7 @@ When `storyboard.json` changes, the page keeps playing its version and shows "Up
 
 ## Render
 
-`mr-cast render` writes the MP4 in the run's directory. It names the file after the storyboard title, or else the run's name, or else `walkthrough.mp4`. `--out file.mp4` writes it somewhere else. When the run has a `review.md` or a `reading.md`, `render --out` also writes a copy of each beside the MP4, named after it, such as `demo.review.md` and `demo.reading.md`.
+`mr-cast render` writes the MP4 in the run's directory. It names the file after the storyboard title, or else the run's name, or else `walkthrough.mp4`. `--out file.mp4` writes it somewhere else. When the run has a `review.md`, a `reading.md` or a `guide.md`, `render --out` also writes a copy of each beside the MP4, named after it, such as `demo.review.md`, `demo.reading.md` and `demo.guide.md`.
 
 The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`.
 

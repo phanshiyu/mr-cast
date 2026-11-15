@@ -82,7 +82,7 @@ export const ReadingList: React.FC<SceneProps<ReadingScene>> = ({ scene, storybo
   const box = contentBox(Boolean(scene.title));
   const order = useMemo(() => readingOrder(storyboard, hunks), [storyboard, hunks]);
   const layout = useMemo(
-    () => (order ? layoutReading(order, scene.items, box.width, box.height) : null),
+    () => (order ? layoutReading(order, scene.items ?? order.items, box.width, box.height) : null),
     [order, scene.items, box.width, box.height],
   );
   const frame = useCurrentFrame();

@@ -13,7 +13,7 @@ import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutBarRows, layoutPie } from '../utils/chartShapes';
 import { layoutCompare } from '../utils/compareLayout';
-import { layoutCode } from '../utils/codeLayout';
+import { layoutCode, unseenLines } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
@@ -151,7 +151,7 @@ const SCENE_FITS: SceneFits = {
   reading: (scene, storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
     const order = readingOrder(storyboard, hunks);
-    return order ? layoutReading(order, scene.items, box.width, box.height) : null;
+    return order ? layoutReading(order, scene.items ?? order.items, box.width, box.height) : null;
   },
   compare: (scene) => {
     const box = contentBox(Boolean(scene.title));
@@ -305,4 +305,27 @@ export function imageScales(
       },
     ];
   });
+}
+
+/** A code scene's changed lines no frame shows: new-file and old-file line numbers, ascending. */
+export interface UnseenCode {
+  scene: number;
+  file: string;
+  added: number[];
+  removed: number[];
+}
+
+/** The code scenes that leave changed lines of their hunk off every frame, and which lines. */
+export function unseenCode(storyboard: Storyboard, hunks: HunkMap): UnseenCode[] {
+  const out: UnseenCode[] = [];
+  storyboard.scenes.forEach((scene, i) => {
+    const hunk = scene.type === 'code' ? hunks[scene.hunkId] : undefined;
+    if (scene.type !== 'code' || !hunk) return;
+    const lines = unseenLines(scene, hunk).map((n) => hunk.lines[n]!);
+    const number = (side: 'newLine' | 'oldLine') =>
+      lines.flatMap((l) => (l[side] === null || (side === 'oldLine') !== (l.type === 'del') ? [] : [l[side]]));
+    const [added, removed] = [number('newLine'), number('oldLine')];
+    if (added.length || removed.length) out.push({ scene: i, file: hunk.file, added, removed });
+  });
+  return out;
 }

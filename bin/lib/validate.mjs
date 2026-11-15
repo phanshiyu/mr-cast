@@ -12,7 +12,7 @@ import { checkInk, checkPenMarks } from './validate-pen-marks.mjs';
 import { checkCamera } from './validate-camera.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
-import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
+import { checkFit, checkSpokenMarkup, checkUnseenCode } from './validate-fit.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
@@ -29,6 +29,7 @@ import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 import { checkTests } from './validate-tests.mjs';
 import { checkPreread } from './validate-preread.mjs';
+import { checkBrief } from './validate-brief.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
@@ -382,13 +383,15 @@ async function checkMermaid(diagrams, errors, warnings) {
 }
 
 /**
- * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null, images?: object | null }} meta  The mode from meta.json:
+ * @param {{ mode?: 'diff' | 'explain', audience?: string, plan?: object | null, images?: object | null, quick?: boolean, map?: object | null, root?: string | null }} meta  The mode from meta.json:
  *   "explain" (`mr-cast init`) narrates source snippets instead of a diff, so it has no coverage, risk or `skipped`.
  *   A pre-read (`audience` "preread") shows no code and lists the diff in its reading order; any other audience
  *   is a plain video. The run's plan.json as `readPlan` read it, when it has one: each scene's topic must name one
  *   of its topics. `images` is what bin/lib/images.mjs found making the pictures local: `manifest`, their copies and
- *   sizes, and `problems`, one for each picture that cannot be shown. Errors are what would not render or name something that does not exist; warnings report what
- *   only rendering shows, such as text that does not fit, or two parts of the storyboard that disagree.
+ *   sizes, and `problems`, one for each picture that cannot be shown. A video of a branch (a diff that is not `quick`)
+ *   has a brief, checked against `map`, the run's map.json, and `root`, the repository, when they are given. Errors are
+ *   what would not render or name something that does not exist; warnings report what only rendering shows, such as
+ *   text that does not fit, or two parts of the storyboard that disagree.
  */
 export async function validateStoryboard(raw, hunks, meta = {}) {
   if (needsWorld(raw)) await loadWorld();
@@ -506,7 +509,11 @@ function intentMessage(message, intents) {
   return [`scenes[${m[1]}]${m[2]}${words(m[3])}${words(m[4])}`];
 }
 
-async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null, images = null } = {}) {
+async function validateScenes(
+  sb,
+  hunks,
+  { mode = 'diff', audience, plan = null, images = null, quick = false, map = null, root = null } = {},
+) {
   const errors = [];
   const warnings = [];
   const diagrams = [];
@@ -739,10 +746,15 @@ async function validateScenes(sb, hunks, { mode = 'diff', audience, plan = null,
   checkMarks(sb, hunks ?? {}, mode, errors, warnings);
   checkTopics(sb, plan, errors, warnings, { preread });
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
+  const branch = mode === 'diff' && !quick;
+  checkBrief(sb, hunks ?? {}, { branch, map, root }, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
-  if (!errors.length)
-    await checkFit(normalizeStoryboard(sb, hunks ?? {}), hunks ?? {}, errors, warnings, images?.manifest ?? {});
+  if (!errors.length) {
+    const normalized = normalizeStoryboard(sb, hunks ?? {});
+    await checkFit(normalized, hunks ?? {}, errors, warnings, images?.manifest ?? {});
+    if (branch) await checkUnseenCode(normalized, hunks ?? {}, warnings);
+  }
   checkSpokenCounts(sb.scenes, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined)

@@ -296,3 +296,48 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
     diagramTop: stepLayout ? Math.max(0, (panelH - stepLayout.height - flowCalloutBlock) / 2) : 0,
   };
 }
+
+/**
+ * The indexes into `hunk.lines` of the changed lines the scene draws but never brings into view, ascending. The scene
+ * crops the hunk to its focus and a few rows around it, and its camera then centres each step in turn, planned on
+ * the settled layout (src/components/CodeDiff.tsx), so rows that are cropped in but taller than the frame, or between
+ * two steps far apart, stay out of every frame. Lines the scene's own focus crops away are left out on purpose, and
+ * not counted. A removed line of a morph is on screen while its step plays, so it counts as seen once cropped in.
+ */
+export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = layoutCode(scene, hunk)): number[] {
+  const { slots, stepCount, metrics, viewportH, view } = layout;
+  const rowOf = new Map<number, number>();
+  slots.forEach((slot, r) => {
+    for (const i of [slot.left, slot.right]) if (i !== null) rowOf.set(i, r);
+  });
+  const heights = slots.map((slot) => (view === 'morph' && hunk.lines[slot.left!]!.type === 'del' ? 0 : metrics.rowH));
+  const tops: number[] = [];
+  let y = 0;
+  for (const h of heights) {
+    tops.push(y);
+    y += h;
+  }
+  const maxScroll = Math.max(0, y - viewportH);
+  const stops: number[] = [];
+  for (let k = 0; k < stepCount; k++) {
+    const rows = slots.flatMap((slot, r) => (slot.step === k ? [r] : []));
+    const previous = stops[k - 1] ?? 0;
+    if (!rows.length) {
+      stops.push(previous);
+      continue;
+    }
+    const top = tops[rows[0]!]!;
+    const bottom = tops[rows.at(-1)!]! + heights[rows.at(-1)!]!;
+    stops.push(Math.max(previous, Math.min(maxScroll, Math.max(0, (top + bottom) / 2 - viewportH / 2))));
+  }
+  if (!stops.length) stops.push(0);
+  const seenRow = (r: number) =>
+    heights[r] === 0 ||
+    stops.some((s) => Math.min(tops[r]! + heights[r]!, s + viewportH) - Math.max(tops[r]!, s) > heights[r]! / 2);
+  return hunk.lines.flatMap((line, i) => {
+    if (line.type === 'context') return [];
+    const r = rowOf.get(i);
+    // A line cropped away by a focus the scene chose is left out on purpose; only a line cropped in can be missed.
+    return r !== undefined && !seenRow(r) ? [i] : [];
+  });
+}
