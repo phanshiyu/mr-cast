@@ -15,12 +15,12 @@ pub mod files;
 pub mod flow;
 pub mod memory;
 pub mod placeholder;
-pub mod terminal;
 pub mod plot;
-pub mod state;
-pub mod table;
 pub mod reading;
 pub mod review;
+pub mod state;
+pub mod table;
+pub mod terminal;
 pub mod tests;
 pub mod text;
 
