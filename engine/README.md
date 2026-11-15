@@ -186,5 +186,5 @@ on every sampled frame of the demo.
 - 21 scene types draw a placeholder. Of the three ported: text steps that `set` new text, number and question
   gradient fills (solid colour instead), flow steps with real `code` and step icons, code `typing` and output panes,
   and every scene's pen marks, ink and camera.
-- The source line of pre-read diagrams (`SourceLine` in src/Walkthrough.tsx) and images.
+- The source line of pre-read diagrams (`SourceLine` in src/Walkthrough.tsx).
 - Audio: the engine writes silent video; the Node CLI would mux the voice as it does today.

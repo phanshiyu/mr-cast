@@ -90,7 +90,7 @@ async function props(m, dir, out) {
   write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: readImages(dir), highlight });
 }
 
-function data(m) {
+async function data(m) {
   const dir = path.join(REPO, 'engine/core/data');
   const { MEASURED_CHARS, MEASURED_SIZES, MEASURED_WEIGHTS, ADVANCES, KERNING } = m.metrics;
   write(path.join(dir, 'font-metrics.json'), {
@@ -101,6 +101,9 @@ function data(m) {
     kerning: KERNING,
   });
   write(path.join(dir, 'slots.json'), m.SLOTS);
+  // The map scene's country outlines, as shared/world keeps them.
+  for (const scale of ['110m', '50m'])
+    write(path.join(dir, `world-${scale}.json`), (await import(`../shared/world/ne-${scale}.mjs`)).default);
 }
 
 /** Every storyboard in examples/, for timing fixtures. */
@@ -253,7 +256,7 @@ function fixtures(m) {
 const [cmd, ...args] = process.argv.slice(2);
 const m = await load();
 if (cmd === 'props' && args.length === 2) await props(m, path.resolve(args[0]), path.resolve(args[1]));
-else if (cmd === 'data') data(m);
+else if (cmd === 'data') await data(m);
 else if (cmd === 'fixtures') fixtures(m);
 else {
   console.error('usage: engine-dump.mjs props <run dir> <out.json> | data | fixtures');

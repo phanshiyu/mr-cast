@@ -9,6 +9,7 @@ use serde_json::Value;
 pub mod code;
 pub mod flow;
 pub mod image;
+pub mod map;
 pub mod media;
 pub mod mermaid;
 pub mod placeholder;
@@ -55,6 +56,7 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("image", image::prepare),
     ("svg", svg::prepare),
     ("mermaid", mermaid::prepare),
+    ("map", map::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).

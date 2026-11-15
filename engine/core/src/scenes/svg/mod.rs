@@ -42,7 +42,7 @@ fn is_leaf(tag: &str) -> bool {
     AREAS.contains(&tag) || LINES.contains(&tag) || tag == "text" || tag == "use"
 }
 
-fn tone_color(tone: &str) -> &'static str {
+pub(crate) fn tone_color(tone: &str) -> &'static str {
     match tone {
         "accent" => "#7c8cff",
         "good" => "#3ddc97",
