@@ -10,8 +10,10 @@ name = "mr-cast-engine"
 path = "src/main.rs"
 
 [dependencies]
+fdk-aac-sys = "0.5.0"
 hound = "3"
 mrc_core = { path = "../core" }
+openh264-sys2 = "0.9.10"
 rayon = "1"
 serde_json = "1"
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd", "png-format"] }

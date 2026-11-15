@@ -1,29 +1,30 @@
 //! mr-cast-engine: renders the props the Node CLI writes to a video or a still.
 //!
-//!   mr-cast-engine render --props props.json --out file.mp4 [--frames a..b] [--encoder x264|videotoolbox|none]
+//!   mr-cast-engine render --props props.json --out file.mp4 [--frames a..b] [--encoder h264|none] [--qp n]
 //!   mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out file.png [--scale s]
 //!   mr-cast-engine still --props props.json --scenes 1,3..5 [--step k] --out-dir dir
 //!   mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
 //!
-//! Frames render in parallel, in order-preserving chunks, and stream to ffmpeg as yuv420p.
+//! Frames render and encode in parallel, one run of frames per core, into an MP4 written here (encode.rs).
 
+mod aac;
 mod audio;
 mod encode;
-mod mkv;
+mod h264;
+mod mp4;
 mod sheet;
 
 use mrc_core::{Project, render_frame, timing};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::process::ExitCode;
-use std::sync::Arc;
 use std::time::Instant;
 
 fn usage() -> ExitCode {
     eprintln!(
         "usage:
   mr-cast-engine render --props props.json --out file.mp4 [--media-dir run] [--frames a..b] [--scenes a..b]
-                        [--encoder x264|videotoolbox|none] [--cfr yes] [--skip-repeats no] [--scale s] [--progress yes]
+                        [--encoder h264|none] [--qp n] [--cfr yes] [--skip-repeats no] [--scale s] [--progress yes]
   mr-cast-engine still --props props.json (--frame N | --scene N) [--step k] --out file.png [--scale s]
   mr-cast-engine still --props props.json --scenes 1,2,5..7 [--step k] --out-dir dir
   mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png"
@@ -122,27 +123,10 @@ fn still(f: &HashMap<String, String>) -> Result<(), String> {
     pix.save_png(out).map_err(|e| format!("{out}: {e}"))
 }
 
-/// The chapters as an FFMETADATA file, in milliseconds as the MP4 stores them.
-fn chapter_metadata(p: &Project) -> String {
-    let escape = |s: &str| {
-        s.chars()
-            .flat_map(|c| match c {
-                '=' | ';' | '#' | '\\' | '\n' => vec!['\\', c],
-                c => vec![c],
-            })
-            .collect::<String>()
-    };
+/// The chapters, in milliseconds as the MP4 stores them.
+fn chapters(p: &Project) -> Vec<mp4::Chapter> {
     let ms = |frames: f64| (frames / timing::FPS * 1000.0).round() as u64;
-    let mut out = String::from(";FFMETADATA1\n");
-    for c in p.chapters() {
-        out += &format!(
-            "[CHAPTER]\nTIMEBASE=1/1000\nSTART={}\nEND={}\ntitle={}\n",
-            ms(c.from),
-            ms(c.to),
-            escape(&c.title)
-        );
-    }
-    out
+    p.chapters().into_iter().map(|c| mp4::Chapter { start_ms: ms(c.from), end_ms: ms(c.to), title: c.title }).collect()
 }
 
 fn render(f: &HashMap<String, String>) -> Result<(), String> {
@@ -168,125 +152,70 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
         return Err("no frames to render".into());
     }
     let scale: f32 = f.get("scale").map_or(Ok(1.0), |s| s.parse()).map_err(|_| "bad --scale")?;
-    let encoder = f.get("encoder").map_or("x264", String::as_str);
+    let encode = match f.get("encoder").map_or("h264", String::as_str) {
+        "h264" => true,
+        "none" => false,
+        other => return Err(format!("unknown encoder {other}; use h264 or none")),
+    };
     let out = f.get("out").map_or("out.mp4", String::as_str);
     let cfr = f.get("cfr").is_some_and(|v| v == "yes");
     let progress = f.get("progress").is_some_and(|v| v == "yes");
-    // The voice-over and the chapters go into the same encode, through files beside the video.
+    // The voice-over mixes and the chapters are named before the frames render; a part of the video has none.
     let mut extras = encode::Extras::default();
-    let mut temp = Vec::new();
     if let Some(dir) = f.get("media-dir")
-        && encoder != "none"
+        && encode
     {
         extras.voice = audio::track(&p, &frames, std::path::Path::new(dir))?;
     }
-    if frames.len() == total as usize && encoder != "none" {
-        let meta = std::path::PathBuf::from(format!("{out}.chapters.txt"));
-        std::fs::write(&meta, chapter_metadata(&p)).map_err(|e| format!("{}: {e}", meta.display()))?;
-        extras.chapters = Some(meta.clone());
-        temp.push(meta);
+    if frames.len() == total as usize {
+        extras.chapters = chapters(&p);
     }
-    let result = render_frames(&p, &frames, scale, encoder, out, cfr, progress, f, extras, start);
-    remove(&temp);
-    result
-}
-
-fn remove(files: &[std::path::PathBuf]) {
-    for f in files {
-        let _ = std::fs::remove_file(f);
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn render_frames(
-    p: &Project,
-    frames: &[u32],
-    scale: f32,
-    encoder: &str,
-    out: &str,
-    cfr: bool,
-    progress: bool,
-    f: &HashMap<String, String>,
-    extras: encode::Extras,
-    start: Instant,
-) -> Result<(), String> {
     let (w_px, h_px) = mrc_core::frame_size(scale);
-    let mut sink = encode::Sink::open(encoder, out, w_px, h_px, !cfr, extras)?;
+    let mut settings = encode.then(|| h264::Settings::new(w_px, h_px));
+    if let (Some(s), Some(qp)) = (settings.as_mut(), f.get("qp")) {
+        s.qp = qp.parse().ok().filter(|q| (10..=51).contains(q)).ok_or("--qp is a number from 10 to 51")?;
+    }
+    // A frame whose display list matches the frame before draws the same pixels, so it is neither drawn nor
+    // encoded again: most frames of a scene that has settled, between caption words, are such repeats.
+    let skip = f.get("skip-repeats").is_none_or(|v| v != "no");
+    let prints: Vec<u64> = if skip {
+        frames.par_iter().map(|&n| mrc_core::build_frame(&p, n).fingerprint()).collect()
+    } else {
+        (0..frames.len() as u64).collect()
+    };
+    let keys = encode::keys(&frames, &prints, cfr);
     let prepared = start.elapsed();
-    let chunk = rayon::current_num_threads() * 8;
     thread_local! {
         static WORK: std::cell::RefCell<Option<(mrc_core::FrameRenderer, mrc_core::Pixmap)>> = const { std::cell::RefCell::new(None) };
     }
-    // A frame whose display list matches the frame before draws the same pixels, so it reuses them: most frames
-    // of a scene that has settled, between caption words, are such repeats.
-    let skip = f.get("skip-repeats").is_none_or(|v| v != "no");
-    let mut last: Option<(u64, Arc<Vec<u8>>)> = None;
-    let mut repeats = 0usize;
-    let mut done = 0usize;
-    for part in frames.chunks(chunk) {
-        let lists: Vec<(mrc_core::display::DisplayList, u64)> = part
-            .par_iter()
-            .map(|&n| {
-                let dl = mrc_core::build_frame(p, n);
-                let h = dl.fingerprint();
-                (dl, h)
-            })
-            .collect();
-        let fresh: Vec<bool> = (0..lists.len())
-            .map(|i| {
-                let prev = if i == 0 { last.as_ref().map(|l| l.0) } else { Some(lists[i - 1].1) };
-                !skip || prev != Some(lists[i].1)
-            })
-            .collect();
-        let rendered: Vec<Option<Arc<Vec<u8>>>> = lists
-            .par_iter()
-            .zip(&fresh)
-            .map(|((dl, _), &fresh)| {
-                if !fresh {
-                    return None;
-                }
-                let mut buf = sink.pool.lock().unwrap().pop().unwrap_or_default();
-                WORK.with(|w| {
-                    let mut w = w.borrow_mut();
-                    let (r, pix) = w.get_or_insert_with(|| {
-                        (mrc_core::FrameRenderer::default(), mrc_core::Pixmap::new(w_px, h_px).unwrap())
-                    });
-                    mrc_core::render_list_into(dl, scale, r, pix);
-                    encode::yuv420(pix, &mut buf);
-                });
-                Some(Arc::new(buf))
-            })
-            .collect();
-        for ((frame, (_, h)), &n) in rendered.into_iter().zip(&lists).zip(part) {
-            let fresh = frame.is_some();
-            let frame = match frame {
-                Some(f) => f,
-                None => {
-                    repeats += 1;
-                    last.as_ref().expect("a repeat follows a frame").1.clone()
-                }
-            };
-            last = Some((*h, frame.clone()));
-            // With timestamps a repeat is left out, but the last frame is always sent so the video ends on time.
-            if fresh || !sink.vfr || Some(&n) == frames.last() {
-                sink.write((n - frames[0]) as u64, frame)?;
-            }
-        }
-        done += part.len();
+    let draw = |n: u32, buf: &mut Vec<u8>| {
+        let dl = mrc_core::build_frame(&p, n);
+        WORK.with(|w| {
+            let mut w = w.borrow_mut();
+            let (r, pix) = w.get_or_insert_with(|| {
+                (mrc_core::FrameRenderer::default(), mrc_core::Pixmap::new(w_px, h_px).unwrap())
+            });
+            mrc_core::render_list_into(&dl, scale, r, pix);
+            encode::yuv420(pix, buf);
+        });
+    };
+    let count = frames.len() as u64;
+    let report = |done: u64| {
         if progress {
             // The Node CLI reads these lines for its progress bar.
-            eprintln!("progress {done}/{}", frames.len());
+            eprintln!("progress {}/{count}", done.min(count));
         }
-    }
-    drop(last);
-    sink.finish()?;
-    eprintln!("{repeats} frames repeat the one before and were not drawn again");
+    };
+    encode::encode(&keys, settings, &draw, extras, out, &report)?;
+    let fresh = keys.iter().filter(|k| k.fresh).count();
+    eprintln!("{} frames repeat the one before and were not drawn again", frames.len() - fresh);
     let wall = start.elapsed().as_secs_f64();
     eprintln!(
-        "{} frames in {:.2} s ({:.1} frames/s), prepared in {:.0} ms, encoder {encoder}",
+        "{} frames in {:.2} s ({:.1} frames/s), {} samples, prepared in {:.0} ms",
         frames.len(),
         wall,
         frames.len() as f64 / wall,
+        keys.len(),
         prepared.as_secs_f64() * 1000.0
     );
     Ok(())
@@ -327,6 +256,38 @@ fn bench(f: &HashMap<String, String>) -> Result<(), String> {
         raster * k,
         yuv * k
     );
+    Ok(())
+}
+
+/// Times one encoder on the frames of --frames that change, after rendering them all.
+fn bench_encode(f: &HashMap<String, String>) -> Result<(), String> {
+    let p = load(f)?;
+    let frames: Vec<u32> = range(f.get("frames").map_or("0..300", String::as_str), p.frame_count())?.collect();
+    let prints: Vec<u64> = frames.par_iter().map(|&n| mrc_core::build_frame(&p, n).fingerprint()).collect();
+    let keys = encode::keys(&frames, &prints, false);
+    let yuv: Vec<Vec<u8>> = keys
+        .par_iter()
+        .map(|k| {
+            let mut buf = Vec::new();
+            encode::yuv420(&render_frame(&p, k.frame, 1.0), &mut buf);
+            buf
+        })
+        .collect();
+    let s = h264::Settings::new(1920, 1080);
+    for _ in 0..f.get("repeat").map_or(1, |r| r.parse().unwrap()) {
+        let t = Instant::now();
+        let mut enc = h264::Encoder::new(s)?;
+        let mut bytes = 0;
+        for (k, y) in keys.iter().zip(&yuv) {
+            bytes += enc.encode(y, (k.time * 1000 / 30) as i64)?.data.len();
+        }
+        let secs = t.elapsed().as_secs_f64();
+        eprintln!(
+            "{s:?}: {} frames in {secs:.2} s, {:.1} frames/s, {bytes} bytes",
+            keys.len(),
+            keys.len() as f64 / secs
+        );
+    }
     Ok(())
 }
 
@@ -394,6 +355,50 @@ fn compare(f: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
+/// Describes an MP4 as JSON (its tracks, their samples and edits, and both kinds of chapters), and with --pcm
+/// writes its voice-over, as it plays, as 16-bit little-endian samples: for the tests and the smoke check.
+fn probe(f: &HashMap<String, String>) -> Result<(), String> {
+    let path = f.get("in").ok_or("--in is required")?;
+    let file = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
+    let r = mp4::read(&file)?;
+    let chapters = |c: &[(u64, String)]| {
+        c.iter().map(|(start, title)| serde_json::json!({ "start": start, "title": title })).collect::<Vec<_>>()
+    };
+    let mut tracks = Vec::new();
+    for t in &r.tracks {
+        let mut j = serde_json::json!({
+            "handler": t.handler,
+            "codec": t.codec,
+            "timescale": t.timescale,
+            "samples": t.samples.len(),
+            "duration": t.durations.iter().map(|&d| d as u64).sum::<u64>(),
+            "sync": t.sync.as_ref().map_or(t.samples.len(), Vec::len),
+            "edit": t.edit,
+            "enabled": t.enabled,
+        });
+        if t.handler == "text" {
+            j["chapters"] = chapters(&mp4::text_chapters(&file, t)).into();
+        }
+        tracks.push(j);
+    }
+    println!(
+        "{}",
+        serde_json::json!({ "boxes": r.top, "duration": r.duration_ms, "tracks": tracks, "chapters": chapters(&r.chpl) })
+    );
+    if let Some(out) = f.get("pcm") {
+        let t = r.tracks.iter().find(|t| t.handler == "soun").ok_or("the file has no audio")?;
+        let frames: Vec<&[u8]> = t.samples.iter().map(|&(o, n)| &file[o as usize..o as usize + n as usize]).collect();
+        let (rate, channels, pcm) = aac::decode(&t.config, &frames)?;
+        let (skip, ms) = t.edit.unwrap_or((0, u64::MAX / rate as u64));
+        let from = (skip as usize + aac::DECODER_DELAY) * channels as usize;
+        let len = (ms * rate as u64 / 1000) as usize * channels as usize;
+        let pcm = &pcm[from.min(pcm.len())..(from + len).min(pcm.len())];
+        let bytes: Vec<u8> = pcm.iter().flat_map(|s| s.to_le_bytes()).collect();
+        std::fs::write(out, bytes).map_err(|e| format!("{out}: {e}"))?;
+    }
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else { return usage() };
@@ -401,9 +406,11 @@ fn main() -> ExitCode {
         "render" => render(&f),
         "still" => still(&f),
         "bench" => bench(&f),
+        "bench-encode" => bench_encode(&f),
         "check-repeats" => check_repeats(&f),
         "sheet" => sheet::sheet(&f, &load(&f)?),
         "compare" => compare(&f),
+        "probe" => probe(&f),
         _ => Err(format!("unknown command {cmd}")),
     });
     match result {

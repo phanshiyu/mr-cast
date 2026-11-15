@@ -1,10 +1,13 @@
 //! The voice-over as one PCM track. Walkthrough.tsx plays each segment's clip from the segment's `voiceFrom` until
-//! the segment ends; here every clip is mixed into one buffer at that frame, so ffmpeg can encode it with the video.
+//! the segment ends; here every clip is mixed into one buffer at that frame, at 48 kHz, for the AAC encoder.
 
 use mrc_core::Project;
 use std::path::{Component, Path, PathBuf};
 
 const FPS: f64 = 30.0;
+
+/// The voice-over's sample rate.
+pub const RATE: u32 = 48_000;
 
 /// A clip on the video's timeline, in frames from the video's first frame.
 #[derive(Clone, Debug, PartialEq)]
@@ -112,24 +115,6 @@ pub struct Voice {
     pub samples: Vec<i16>,
 }
 
-impl Voice {
-    /// Writes the track as a WAV file.
-    pub fn write_wav(&self, out: &Path) -> Result<(), String> {
-        let spec = hound::WavSpec {
-            channels: 1,
-            sample_rate: self.rate,
-            bits_per_sample: 16,
-            sample_format: hound::SampleFormat::Int,
-        };
-        let err = |e: hound::Error| format!("{}: {e}", out.display());
-        let mut w = hound::WavWriter::create(out, spec).map_err(err)?;
-        for &s in &self.samples {
-            w.write_sample(s).map_err(err)?;
-        }
-        w.finalize().map_err(err)
-    }
-}
-
 /// The voice-over of the frames in `frames`, read from the clips in the run's directory `dir`, or None when nothing
 /// in them speaks.
 pub fn track(p: &Project, frames: &[u32], dir: &Path) -> Result<Option<Voice>, String> {
@@ -141,7 +126,7 @@ pub fn track(p: &Project, frames: &[u32], dir: &Path) -> Result<Option<Voice>, S
     for pl in &placed {
         read.push((pl, read_wav(&clip_path(dir, &pl.src)?)?));
     }
-    let rate = read[0].1.rate;
+    let rate = RATE;
     let clips: Vec<_> = read.into_iter().map(|(pl, s)| (pl, resample(s, rate))).collect();
     let length = (frames.last().unwrap() - frames[0] + 1) as f64;
     Ok(Some(Voice { rate, samples: mix(length, rate, &clips) }))
