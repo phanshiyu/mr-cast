@@ -63,6 +63,22 @@
       "description": "@types/node follows the oldest Node in engines (22.12), not the newest",
       "matchPackageNames": ["@types/node"],
       "allowedVersions": "<23"
+    },
+    {
+      "description": "A new Rust release can bring new lints, so it waits for a review",
+      "matchDepNames": ["rust"],
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The Rust release in rust-toolchain.toml",
+      "managerFilePatterns": ["/(^|/)rust-toolchain\\.toml$/"],
+      "matchStrings": ["channel = \"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""],
+      "depNameTemplate": "rust",
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "rust-lang/rust"
     }
   ]
 }

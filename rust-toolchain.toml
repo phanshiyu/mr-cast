@@ -1,0 +1,6 @@
+# The Rust release every build uses, locally and in CI, so a new release's lints never fail a pull request that did
+# not change. Renovate proposes newer releases.
+[toolchain]
+channel = "1.99.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

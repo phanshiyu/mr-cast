@@ -1,5 +1,5 @@
 name: Set up Rust
-description: Install the stable Rust toolchain with rustfmt and clippy, the given targets, and with wasm-bindgen true, wasm-bindgen-cli at the version engine/wasm/Cargo.toml pins. Restores or saves no cache, so jobs that publish can use it.
+description: Install the Rust release rust-toolchain.toml names, with rustfmt and clippy, the given targets, and with wasm-bindgen true, wasm-bindgen-cli at the version engine/wasm/Cargo.toml pins. Restores or saves no cache, so jobs that publish can use it.
 inputs:
   targets:
     description: Extra compilation targets, comma separated, such as wasm32-unknown-unknown
@@ -22,8 +22,9 @@ runs:
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           export PATH="$HOME/.cargo/bin:$PATH"
         fi
-        rustup toolchain install stable --profile minimal --component rustfmt,clippy ${TARGETS:+--target "$TARGETS"}
-        rustup default stable
+        # Installs the release rust-toolchain.toml names, with its components.
+        rustup toolchain install
+        [ -z "$TARGETS" ] || rustup target add ${TARGETS//,/ }
         rustc --version
     - name: Install wasm-bindgen-cli
       if: inputs.wasm-bindgen == 'true'
