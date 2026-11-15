@@ -208,3 +208,13 @@ test('validate accepts options with chosen on a side or on rows, and rejects the
   has(bad.errors, 'scenes[3].rows[0].chosen: the sides are already marked chosen');
   has(bad.errors, 'scenes[4].sides[0].chosen: only means something with "mode": "options"');
 });
+
+test('a side written as a plain string is an error that says to write an object with a title', async () => {
+  const bad = await check({ ...options(), mode: undefined, sides: ['Before', 'After'] });
+  has(bad.errors, 'scenes[0].sides[0]: is the string "Before"; a side is an object, write { "title": "Before" }');
+  has(bad.errors, 'scenes[0].sides[1]: is the string "After"');
+  assert.deepEqual(
+    (await check({ ...options(), mode: undefined, sides: [{ title: 'Old' }, { title: 'New' }] })).errors,
+    [],
+  );
+});
