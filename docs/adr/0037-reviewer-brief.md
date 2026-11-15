@@ -1,6 +1,6 @@
 # 37. A brief for the reviewer: six questions, facts from the tool, and answers that are checked
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-11-15
 - Amends: 0019 (tools, not opinions), 0008 (the reading scene outside a pre-read), 0013 (what the eval asks)
 
@@ -51,14 +51,19 @@ All of it is fact, read from git and the working tree. Nothing in it needs a net
   (a file holding the merge request's title and description), that text too. mr-cast does not call `gh` or `glab`; the
   skill tells the writer to save the description to a file when a PR or MR number is known.
 - **Files by kind:** `source`, `tests`, `docs`, `config`, `routine` (lockfiles, generated, snapshots, pure renames), each
-  file with `new` or `modified`, its `+` and `−`, and its hunk ids. Within a kind, largest first. Modified source files
-  are listed apart from new ones, since changed behaviour of existing code is what a reviewer misses.
+  file with `new`, `modified`, `removed` or `renamed`, its `+` and `−`, and its hunk ids. Within a kind, largest first.
+  Modified source files are listed apart from new ones, since changed behaviour of existing code is what a reviewer
+  misses.
 - **Tests and what they cover:** for each changed test file, the changed source files it imports or names, and the test
   names it adds (the `test(`/`it(`/`def test_`/`func Test` lines among its added lines). Changed source files that no
   changed test names are listed as "no changed test names these".
 - **Used elsewhere:** for each name declared on a changed or removed line of a modified source file (function, class,
   method, exported constant; by a per-language pattern, as `detectLanguage` knows the language), the files outside the
   diff that use it, by `git grep -w`, with a count and up to three paths. Marked as a text search, not a call graph.
+- **`map.json`** holds the same facts as data: `commits` (`sha`, `subject`, `body`), `description` (`file`, `text`, or
+  null), `files` grouped by kind, each file with `file`, `oldFile`, `kind`, `status`, `additions`, `deletions` and
+  `hunkIds`, then `skipped`, `changedLines`, `tests` (each with `file`, `covers` and `adds`, the test names it adds),
+  `untested` and `usedElsewhere`. `mr-cast map` prints it again.
 - **The hunk index** as today, but source first, then tests, then docs, config and routine. Over 600 changed lines,
   the index prints each hunk's header and first two changed lines only, and `mr-cast hunk <id>...` prints hunks in full.
 
@@ -85,10 +90,14 @@ A branch storyboard has a `brief`. Each answer is short, one or two sentences, a
 ```
 
 - `source` is `"description"`, `"commit <sha>"`, `"code"`, `"test"`, `"inferred"` or `"unknown"`. `"unknown"` is an
-  answer: the video then says the reason is not stated, and `ask` carries the question for the author.
+  answer: the video then says the reason is not stated, and `ask` carries the question for the author. For `case`,
+  `approach`, `parts` and `proof` the whole answer can be the string `"unknown"`, and `why` takes `source: "unknown"`
+  with no `text`. `check` has no `"unknown"`: an empty list is a missing answer.
 - `weight` is `core`, `support` or `routine`.
 - `cite` entries are hunk ids, snippet ids, `path:line` or `path:a-b`, or a short sha.
 - A scene says which questions it answers: `"answers": ["why", "case"]`.
+- `parts` names the hunks, and the files come from them. A `files` scene with `"parts": "brief"` groups its files by
+  these parts, core first.
 - `check` items are what the old review mode kept behind a flag: the writer always lists what a reviewer should look
   at first. `findings` stays for a review the user asked for, with its severities.
 - The `reading` scene is no longer for a pre-read only. In any branch video it draws `brief.check`, or its own items.
@@ -96,7 +105,9 @@ A branch storyboard has a `brief`. Each answer is short, one or two sentences, a
 ### 3. `validate` reports facts about the brief
 
 Warnings, not errors, so every storyboard written before this still passes. `validate`, `outline` and the hook print one
-line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions · parts 3, core 2 · proof ✗ · check 2 · ask 1`.
+line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions · parts 3, core 2 · proof ✓ 1 tested, 1 untested · check 2 · ask 1`.
+An answer that is `"unknown"` reads `proof unknown`, and a missing one `proof ✗`. The hook prints the brief line and the
+scene mix line (ADR 0038) on success, as added context for Claude.
 
 - A branch storyboard with no `brief`, or a question with no answer and no `"unknown"`.
 - A question no scene `answers`.
@@ -112,16 +123,29 @@ line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions �
 `validate` writes `guide.md` beside the video: the six answers, the parts with their files, the check-first list as
 `path:line  what`, and the questions for the author. `render --out` copies it beside the MP4, as it does `review.md`.
 
-### 4. The skill
+### 4. What a scene can hold
+
+Four scenes gained the means to show the answers. They are fields of the scenes, and `references/branch.md` tells the
+writer what each is for.
+
+- **compare** takes a cell `{ "hunk": "h11", "side": "old", "lines": "4-6" }`, real lines read from `hunks.json`. With
+  `"mode": "options"` it shows a decision beside the way not taken: a side `chosen`, or a row `chosen` of 0 or 1.
+- **flow** takes `code` on a step, `{ hunk or snippet, lines, light }`, in place of `payload`, so a request is followed
+  through real code.
+- **files** takes `parts`, a list of `{ name, weight }` with each file naming its `part`, or `"brief"` to read them
+  from the brief.
+- **reading** items take a `why`, and a `reading` scene with no items draws the brief's `check` list.
+
+### 5. The skill
 
 For a branch the skill says: read the map, answer the six questions in the `brief` before writing scenes, say
 "unknown" where the map and the code do not say, make scenes that answer them in whatever order and form fit, then
 look at the stills before showing the video. It gives one line per question on what a good answer holds. It dictates
 no order, scene type, count or length. Explanations and quick videos are unchanged. What each scene that suits an answer
-can hold is in `references/branch.md`. The installed SKILL.md may be 3,600 tokens, up from 3,000, to hold the six
+can hold is in `references/branch.md`. The installed SKILL.md may be 3,600 tokens (about 4 characters each), up from 3,000, to hold the six
 questions; Claude Code keeps a skill's first 5,000 tokens after compaction.
 
-### 5. The player
+### 6. The player
 
 A scene's chapter in the sidebar carries the question it answers as a small label (Why, One case, The idea, The parts,
 Proof, Check first), and the reading panel shows the check-first list in any branch video.
@@ -134,7 +158,7 @@ answer that is "unknown" reads "Not stated". The `G` key shows or hides it. It i
 composition, so the rendered MP4 never has it; it stacks under the video on a small screen, as the reading panel
 does, and never narrows the video. `shared/guide.mjs` shapes its data.
 
-### 6. The eval
+### 7. The eval
 
 `quality/` gains the understanding questions used for the baseline (`quality/understanding.md`), a critic prompt that
 grades the answers against the code and lists what the video led the viewer to believe that the code contradicts, and
