@@ -613,13 +613,33 @@
       "title": "Test coverage",
       "subject": "rateLimit, createOrder and the orders route",
       "narration": "This change adds no tests. Nothing checks that a visitor's requests after the first twenty in a minute are refused. Nothing checks what happens when Redis or the queue is down. And nothing checks that an empty order is refused.",
-      "cases": [],
-      "gaps": [
-        "The twenty first request in a minute from one IP gets 429 with a Retry-After header",
-        "When Redis is down the limiter throws, so every order request [fails]{bad}",
-        "When the queue is down after the insert, the client gets an error for an order that was saved",
-        "Empty orders are rejected and totals use prices from the pricing service"
+      "when": "When this happens…",
+      "outcomes": [
+        "Result"
       ],
+      "situations": [
+        {
+          "id": "burst",
+          "when": "a 21st request in a minute from one IP",
+          "gap": "nothing checks it gets 429 with a Retry-After header"
+        },
+        {
+          "id": "redis",
+          "when": "Redis is down",
+          "gap": "the limiter throws, so every order request [fails]{bad}"
+        },
+        {
+          "id": "queue",
+          "when": "the queue is down after the insert",
+          "gap": "the client gets an error for an order that was saved"
+        },
+        {
+          "id": "empty",
+          "when": "an empty order",
+          "gap": "nothing checks it is refused, or that totals use prices from the pricing service"
+        }
+      ],
+      "tests": [],
       "answers": [
         "proof"
       ]
