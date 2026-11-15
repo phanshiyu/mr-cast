@@ -11,6 +11,7 @@ pub mod icons;
 pub mod markup;
 pub mod model;
 pub mod raster;
+pub mod review;
 pub mod scenes;
 pub mod speech;
 pub mod steps;

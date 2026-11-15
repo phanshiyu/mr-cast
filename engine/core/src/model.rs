@@ -32,6 +32,12 @@ pub struct Storyboard {
     pub subtitle: Option<String>,
     /// Scenes stay JSON: each scene module reads its own fields with serde (see `scenes`).
     pub scenes: Vec<Value>,
+    /// Review mode's findings (shared/review.mjs); an array when the storyboard is a reviewed one.
+    #[serde(default)]
+    pub findings: Option<Value>,
+    /// The brief (what the change is for, what to check first, its parts), kept as JSON.
+    #[serde(default)]
+    pub brief: Option<Value>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
