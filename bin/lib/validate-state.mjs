@@ -90,7 +90,8 @@ export function checkArray(s, p, errors, warnings) {
   /** The length of the array a marker sits on, or null with an error when it names none. */
   const onArray = (item, q) => {
     if (item.array === undefined) return lengths.get(multi ? s.arrays[0].name : '');
-    if (!multi) return errors.push(`${q}.array: names an array, but the scene has one array in values; drop it`), null;
+    if (!multi)
+      return (errors.push(`${q}.array: names an array, but the scene has one array in values; drop it`), null);
     if (lengths.has(item.array)) return lengths.get(item.array);
     errors.push(
       `${q}.array: "${item.array}" is no array; arrays are ${quoted([...lengths.keys()])}${didYouMean(String(item.array), [...lengths.keys()])}`,
