@@ -74,18 +74,47 @@ function litTests(scene, step) {
   return scene.tests.filter((_, n) => testKeys(scene, n).some((key) => keys.has(key)));
 }
 
-function checkTests(scene, p, warnings) {
+/**
+ * Whether a count the scene states is about the tests the branch adds ("23 tests", "five new tests"), which the map
+ * lists, so it is checked against that number and not against the tests this scene happens to draw.
+ */
+const aboutBranch = (qualifier, added) => added > 0 && (qualifier === undefined || QUALIFIED[qualifier] === 'added');
+
+/** The texts of a tests scene that state a total of its tests, with where each is written (a step's `say` speaks of the tests it lights). */
+function statedTexts(scene) {
+  const stated = [
+    ['narration', scene.narration],
+    ['title', scene.title],
+    ['subject', scene.subject],
+    ...sceneSteps(scene).map((step, j) => [`steps[${j}].callout`, isStep(step) ? step.callout : undefined]),
+  ];
+  return stated.filter(([, text]) => typeof text === 'string' && text.trim());
+}
+
+function checkTests(scene, p, warnings, added) {
   const tests = scene.tests;
-  for (const { phrase, said, qualifier } of counts(scene.narration ?? '', TESTS_COUNT)) {
-    const { counts: ok, shown } = allowed(tests, qualifier);
-    if (!ok.includes(said))
-      warnings.push(`${p}.narration: says "${phrase}", but the scene lists ${shown}; say the number on screen`);
+  const drawn = tests.filter((c) => (c?.status ?? 'added') === 'added').length;
+  for (const [where, text] of statedTexts(scene)) {
+    for (const { phrase, said, qualifier } of counts(text, TESTS_COUNT)) {
+      if (aboutBranch(qualifier, added)) {
+        if (said !== added)
+          warnings.push(
+            `${p}.${where}: says "${phrase}", but the map lists ${added} tests this branch adds and the scene draws ${drawn} of them; say "${drawn} of the ${added}", or the number the map has`,
+          );
+        continue;
+      }
+      if (where !== 'narration') continue;
+      const { counts: ok, shown } = allowed(tests, qualifier);
+      if (!ok.includes(said))
+        warnings.push(`${p}.${where}: says "${phrase}", but the scene lists ${shown}; say the number on screen`);
+    }
   }
   sceneSteps(scene).forEach((step, j) => {
     if (!isStep(step)) return;
     const lit = litTests(scene, step);
     if (!lit.length) return;
     for (const { phrase, said, qualifier } of counts(step.say ?? '', TESTS_COUNT)) {
+      if (aboutBranch(qualifier, added) && said === added) continue;
       const { counts: ok, shown } = allowed(lit, qualifier);
       if (!ok.includes(said))
         warnings.push(`${p}.steps[${j}].say: says "${phrase}", but the step lights ${shown}; say the number it lights`);
@@ -109,11 +138,11 @@ function checkItems(scene, p, warnings) {
 }
 
 /** Warns when the narration states a count of tests or of a text scene's items that differs from what the scene shows. */
-export function checkSpokenCounts(scenes, warnings) {
+export function checkSpokenCounts(scenes, warnings, { added = 0 } = {}) {
   scenes.forEach((scene, i) => {
     const p = `scenes[${i}]`;
     if (scene?.type === 'tests' && Array.isArray(scene.tests) && Array.isArray(scene.situations))
-      checkTests(scene, p, warnings);
+      checkTests(scene, p, warnings, added);
     if (scene?.type === 'text' && Array.isArray(scene.items) && scene.items.length) checkItems(scene, p, warnings);
   });
 }

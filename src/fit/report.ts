@@ -108,9 +108,9 @@ const SCENE_FITS: SceneFits = {
     return new Scaled('state diagram', stateScale(layout, contentBox(Boolean(scene.title))), layout);
   },
   mermaid: () => null,
-  tests: (scene) => {
+  tests: (scene, _storyboard, hunks) => {
     const box = headerBox(scene);
-    const layout = layoutTests(scene, box.width, box.height);
+    const layout = layoutTests(scene, box.width, box.height, hunks);
     return new Scaled('test matrix', layout.scale, layout);
   },
   table: (scene) => {
@@ -241,7 +241,7 @@ const STEP_TARGETS: Partial<{
   map: mapTargets,
   chart: chartStepTargets,
   state: (scene) => everyStep(scene.steps, () => stateTargets(scene)),
-  tests: testsTargets,
+  tests: (scene, hunks) => testsTargets(scene, hunks),
   er: (scene) => everyStep(scene.steps, () => erTargets(scene)),
   files: (scene, hunks) => everyStep(scene.steps, () => filesTargets(scene, hunks)),
   layers: (scene) => everyStep(scene.steps, () => layersTargets(scene)),

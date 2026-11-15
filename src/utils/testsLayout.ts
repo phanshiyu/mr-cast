@@ -1,8 +1,16 @@
 import { plainText } from '../../shared/markup.mjs';
 import { fitBlock, fitText, fitTextAt, measure, type Fit, type Font, type Slot } from '../../shared/textfit.mjs';
-import { isLive, testsMatrix, type MatrixCell, type MatrixRow, type TestsMatrix } from '../../shared/tests.mjs';
+import {
+  isLive,
+  testLabel,
+  testsMatrix,
+  type MatrixCell,
+  type MatrixRow,
+  type TestsMatrix,
+} from '../../shared/tests.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { TestsScene } from '../types';
+import { addedTestNames } from '../../shared/test-names.mjs';
+import type { HunkMap, TestsScene } from '../types';
 import type { Box as PenBox, LayoutBoxes } from './penGeometry';
 
 const MAX_FONT = 25;
@@ -15,6 +23,8 @@ const TAG_GAP = 10;
 export const HEAD_H = 40;
 export const FOOT_H = 44;
 const FOOT_GAP = 14;
+/** A test's name may take this many lines in the names column. */
+const NAME_LINES = 2;
 const HEAD_SLOT = { ...SLOTS.tableHeader, size: 17 };
 
 export interface Box {
@@ -85,13 +95,26 @@ const tagWidth = (tag: CellTag, size: number) => (tag ? measure(tag, tagFont(tag
 const cellText = (cell: MatrixCell) =>
   cell.state === 'checked' ? `✓ ${cell.value ?? ''}`.trimEnd() : (cell.value ?? '');
 
-/** "7 tests · 4 new · 2 changed · 1 removed · 2 unchecked · 2 gaps": the counts under the matrix. */
-function countsLine({ counts }: TestsMatrix): string {
+/**
+ * "7 tests · 4 new · 2 changed · 1 removed · 2 unchecked · 2 gaps": the counts under the matrix. When the branch adds
+ * named tests (`added` is how many, from the diff), the scene says how many of them it draws: "5 of 23 tests this
+ * branch adds · 2 changed · 1 gap", so the number on screen is the branch's, not the scene's.
+ */
+function countsLine({ counts }: TestsMatrix, added = 0): string {
   const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
-  const parts = [counts.tests ? n(counts.tests, 'test') : 'no tests'];
-  if (counts.added && counts.added < counts.tests) parts.push(`${counts.added} new`);
+  // More new tests drawn than the branch adds means some are not in the diff; the plain count then says what is drawn.
+  const ofBranch = added > 0 && counts.added <= added;
+  const parts = [
+    ofBranch
+      ? `${counts.added} of ${added} ${added === 1 ? 'test' : 'tests'} this branch adds`
+      : counts.tests
+        ? n(counts.tests, 'test')
+        : 'no tests',
+  ];
+  if (!ofBranch && counts.added && counts.added < counts.tests) parts.push(`${counts.added} new`);
   if (counts.modified) parts.push(`${counts.modified} changed`);
   if (counts.removed) parts.push(`${counts.removed} removed`);
+  if (ofBranch && counts.existing) parts.push(`${counts.existing} existing`);
   if (counts.unchecked) parts.push(`${counts.unchecked} unchecked`);
   if (counts.gaps) parts.push(n(counts.gaps, 'gap'));
   return parts.join(' · ');
@@ -133,6 +156,7 @@ function attempt(
   matrix: TestsMatrix,
   width: number,
   font: number,
+  added: number,
   maxLines = 2,
 ): Omit<TestsLayout, 'scale' | 'room'> & { fits: boolean } {
   const lineHeight = Math.round(font * 1.25);
@@ -169,7 +193,7 @@ function attempt(
 
   const nameFont: Font = { family: 'mono', weight: 500, size: Math.max(MIN_FONT, Math.round(font * 0.76)) };
   const namesNat = scene.tests.length
-    ? Math.max(measure('Tests', headFont), ...scene.tests.map((t) => measure(t.name, nameFont))) + 2 * padX
+    ? Math.max(measure('Tests', headFont), ...scene.tests.map((t) => measure(testLabel(t), nameFont))) + 2 * padX
     : 0;
   const outcomeRoom = (namesW: number) => width - whenW - namesW - COL_GAP * (outcomes.length + (namesW ? 1 : 0));
   const natSum = colNat.reduce((a, b) => a + b, 0);
@@ -248,18 +272,20 @@ function attempt(
     const names =
       namesCol && !row.gap
         ? row.tests.map((n) => ({
+            // A long name wraps onto a second line, and the font steps down, before it is reported; then a `label` is the way out.
             fit: fitAt(
-              scene.tests[n]!.name,
+              testLabel(scene.tests[n]!),
               SLOTS.testNames,
               namesCol.w - 2 * padX,
-              `tests[${n}].name`,
+              `tests[${n}].${scene.tests[n]!.label ? 'label' : 'name'}`,
               nameFont.size,
-              1,
+              NAME_LINES,
             ),
             removed: !isLive(scene.tests[n]),
           }))
         : [];
-    if (names.length) h = Math.max(h, names.length * Math.round(nameFont.size * 1.25));
+    if (names.length)
+      h = Math.max(h, names.reduce((lines, x) => lines + x.fit.lines.length, 0) * Math.round(nameFont.size * 1.25));
     h += 2 * padY;
     for (const c of cells) c.h = h;
     if (bar) bar.h = h;
@@ -281,7 +307,7 @@ function attempt(
     rows: placedRows,
     footY,
     subject,
-    counts: countsLine(matrix),
+    counts: countsLine(matrix, added),
     width: right,
     height: footY + FOOT_H,
     fits,
@@ -293,18 +319,19 @@ function attempt(
  * matrix fits the height; failing that, the smallest font with three lines a text; failing that, the smallest
  * font laid out wider and scaled down, which `validate` reports.
  */
-export function layoutTests(scene: TestsScene, width: number, height: number): TestsLayout {
+export function layoutTests(scene: TestsScene, width: number, height: number, hunks: HunkMap = {}): TestsLayout {
   const matrix = testsMatrix(scene);
+  const added = addedTestNames(hunks).length;
   const ok = fitBlock('situations', 'tests scene', true, '');
   for (let font = MAX_FONT; font >= MIN_FONT; font--) {
-    const { fits, ...result } = attempt(scene, matrix, width, font);
+    const { fits, ...result } = attempt(scene, matrix, width, font, added);
     if (fits && result.height <= height) return { ...result, scale: 1, room: ok };
   }
-  const { fits: _, ...last } = attempt(scene, matrix, width, MIN_FONT, 3);
+  const { fits: _, ...last } = attempt(scene, matrix, width, MIN_FONT, added, 3);
   if (last.height <= height) return { ...last, scale: 1, room: ok };
   // A wider layout wraps less, so it is never taller: scaling by the first estimate always fits.
   const scale = height / last.height;
-  const { fits: __, ...wide } = attempt(scene, matrix, width / scale, MIN_FONT, 3);
+  const { fits: __, ...wide } = attempt(scene, matrix, width / scale, MIN_FONT, added, 3);
   return {
     ...wide,
     scale,

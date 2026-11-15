@@ -31,6 +31,7 @@ import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 import { checkTests } from './validate-tests.mjs';
 import { checkPreread } from './validate-preread.mjs';
+import { mapTestNames } from '../../shared/test-names.mjs';
 import { coreOnScreen } from '../../shared/brief.mjs';
 import { checkBrief } from './validate-brief.mjs';
 import { checkMix } from './validate-mix.mjs';
@@ -525,6 +526,8 @@ async function validateScenes(
   const errors = [];
   const warnings = [];
   const diagrams = [];
+  // The tests a branch adds, as the change map lists them: what a tests scene's names and counts are checked against.
+  const branchTests = mode === 'diff' && !quick && map ? mapTestNames(map) : null;
   if (!sb || typeof sb !== 'object') return { errors: ['storyboard must be a JSON object'], warnings };
   if (!isStr(sb.title)) errors.push('title: required string');
   if (!Array.isArray(sb.scenes) || sb.scenes.length === 0) {
@@ -667,7 +670,7 @@ async function validateScenes(
       }
 
       case 'tests':
-        checkTests(s, p, hunks, errors, warnings);
+        checkTests(s, p, hunks, errors, warnings, branchTests);
         break;
 
       case 'table':
@@ -772,7 +775,7 @@ async function validateScenes(
         shownHunkLines(normalized.scenes, hunks ?? {}, await codeLinesOnScreen(normalized, hunks ?? {})),
       );
   }
-  checkSpokenCounts(sb.scenes, warnings);
+  checkSpokenCounts(sb.scenes, warnings, { added: branchTests?.length ?? 0 });
   if (mode === 'explain') {
     if (sb.skipped !== undefined)
       warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');

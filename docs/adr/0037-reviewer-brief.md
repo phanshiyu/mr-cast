@@ -1,6 +1,6 @@
 # 37. A brief for the reviewer: six questions, facts from the tool, and answers that are checked
 
-- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2; how much of a core part is on screen, see section 3; "untested" is not a claim, see section 1)
+- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2; how much of a core part is on screen, see section 3; "untested" is not a claim, and tests are named in full and counted from the map, see section 1)
 - Date: 2026-11-15
 - Amends: 0019 (tools, not opinions), 0008 (the reading scene outside a pre-read), 0013 (what the eval asks)
 
@@ -70,6 +70,14 @@ All of it is fact, read from git and the working tree. Nothing in it needs a net
   saying a file is untested", the same words are in `references/branch.md`, and `validate` warns the other way:
   `brief.proof.untested` or a tests scene's gap that names a file the map lists as covered says which test file covers
   it. The `untested` key of `map.json` keeps its name, and means only "no changed test file names it".
+- **Amended 2026-11-15: tests are named in full and counted from the map.** A video said "5 tests · 1 gap" of a branch
+  that adds about 23 named tests: the tests scene rejected long test names ("shorten the test names"), so the writer
+  shortened and dropped them, and nothing on screen said how many tests there are. A test's `name` is now drawn as
+  written, wrapped onto a second line and shrunk to the readable minimum before any warning; when it still cannot fit
+  the writer gives a short `label`, and `name` stays the title. `validate` checks `name` against the test names the map
+  lists as added and warns "no test this branch adds has this name". When the diff adds named tests, the scene's footer
+  reads "5 of 23 tests this branch adds" without the writer typing it (the number is counted from the same added lines
+  as `tests[].adds` in `map.json`), and `validate` warns when a count of tests the scene states disagrees with the map.
 - **The hunk index** as today, but source first, then tests, then docs, config and routine. Over 600 changed lines,
   the index prints each hunk's header and first two changed lines only, and `mr-cast hunk <id>...` prints hunks in full.
 

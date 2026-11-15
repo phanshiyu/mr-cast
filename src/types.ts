@@ -599,8 +599,14 @@ export interface TestSituation {
 
 /** A test, by what it checks. */
 export interface TestEntry {
-  /** The test's name as written in code. A step that focuses it shows it in the callout. */
+  /**
+   * The test's name as written in code: its real title. The names column draws it whole, wrapping onto a second line
+   * and shrinking to the smallest readable size, and a step that focuses it shows it in the callout. In a video of a
+   * branch `validate` checks it against the test names the change map says the branch adds.
+   */
   name: string;
+  /** A short name to draw in place of `name` when even that cannot fit, e.g. "bad refs refused". `name` stays the title. */
+  label?: string;
   /** What the diff does to the test. A cell a test checks shows NEW or CHANGED; "existing" adds no word, "removed" checks nothing. Defaults to "added". */
   status?: TestStatus;
   /** The cells it asserts, each "situation.Outcome", e.g. ["retry.Result", "retry.Calls"]. They draw green with a tick. */

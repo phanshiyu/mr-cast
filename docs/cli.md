@@ -60,6 +60,7 @@ An answer that is `"unknown"` reads `proof unknown`, and a missing one `proof âœ
 - **Parts:** a hunk of a source or test file that is in no part and not in `skipped`; a modified source file no part holds; a `core` part none of whose hunks a scene shows or cites; a core or support part with no `does`; a `does` past 100 characters; an `after` that names no part.
 - **Proof:** `proof.tested` empty (or `"unknown"`) while the map lists changed tests; `why.source` of `inferred` or `unknown` while the map has a commit body or a description.
 - **The mix of scenes:** 4 or more scenes of one type in a row; a flow `payload` that reads as a sentence (6 or more words and no digit, quote, bracket, equals sign or colon); a diagram that repeats an earlier one (at least 3 labels, 70% of them in the earlier diagram); a `case` with a before and an after that no scene puts on screen; changed tests whose names no scene draws and no scene shows as a hunk.
+- **Tests scene:** a test whose `name` is none of the test names the map says the branch adds ("no test this branch adds has this name"); a count of tests stated in the scene's narration, title, subject or a callout that is not the map's number. The scene's own footer reads "5 of 23 tests this branch adds" when the diff adds named tests, so nobody types it.
 - **Code never seen:** a code scene whose hunk is longer than the frame draws and no step brings the rest into view. The lines never seen are named.
 
 ## Runs

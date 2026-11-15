@@ -49,6 +49,7 @@ export declare const outcomeKey: (col: number) => string;
 export declare const testKey: (n: number) => string;
 export declare function isGapRow(situation: TestSituation | undefined): boolean;
 export declare function isLive(test: TestEntry | undefined): boolean;
+export declare function testLabel(test: TestEntry | undefined): string;
 export declare function testsMatrix(scene: TestsScene): TestsMatrix;
 export declare function testKeys(scene: TestsScene, n: number): string[];
 export declare function resolveTestsRef(scene: TestsScene, ref: unknown): string[] | null;

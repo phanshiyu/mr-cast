@@ -477,11 +477,11 @@ export const SLOTS = {
     weight: 500,
     size: 19,
     min: 15,
-    lines: 4,
+    lines: 2,
     lineHeight: 1.25,
     markup: false,
     width: 0,
-    fix: 'shorten the test names',
+    fix: 'give the test a short `label` for the scene to draw, and keep `name` as its real title',
   },
   testSubject: {
     ...MONO,

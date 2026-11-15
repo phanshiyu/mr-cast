@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isTestFile } from '../../shared/test-files.mjs';
+import { testNames } from '../../shared/test-names.mjs';
 import { detectLanguage } from './diff.mjs';
 import { UserError } from './errors.mjs';
 import { tryGit } from './git.mjs';
@@ -101,29 +102,6 @@ function declaredNames(language, hunk) {
     reported = enclosing;
   }
   return names.filter((n) => n.length >= MIN_NAME && !SKIP_NAMES.has(n) && !KEYWORDS.has(n));
-}
-
-const TEST_NAME_PATTERNS = [
-  /\b(?:test|it|describe)(?:\.\w+)*\s*\(\s*(['"`])(.+?)\1/,
-  /\bit\s+(['"])(.+?)\1/,
-  /\bdef\s+(test_\w+)/,
-  /\bfunc\s+(Test\w+)/,
-  /\bvoid\s+(test\w+)\s*\(/,
-];
-
-function testNames(lines) {
-  const names = [];
-  for (const l of lines) {
-    if (l.type !== 'add') continue;
-    for (const re of TEST_NAME_PATTERNS) {
-      const m = re.exec(l.text);
-      if (m) {
-        names.push(m[m.length - 1]);
-        break;
-      }
-    }
-  }
-  return names;
 }
 
 const IMPORT_LINE = /\b(import|require|from|use|include|using|load|source)\b|^\s*#include/;

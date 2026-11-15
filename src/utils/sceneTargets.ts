@@ -194,9 +194,9 @@ export function stateTargets(scene: StateScene): MarkTargets {
 }
 
 /** A tests matrix does not move between steps: its rows, cells and outcome columns, the same for every step. */
-export function testsTargets(scene: TestsScene): MarkTargets[] {
+export function testsTargets(scene: TestsScene, hunks: HunkMap = {}): MarkTargets[] {
   const box = headerBox(scene);
-  const layout = layoutTests(scene, box.width, box.height);
+  const layout = layoutTests(scene, box.width, box.height, hunks);
   const targets = staged(
     testsBoxes(layout),
     { left: 0, top: Math.max(0, box.height - layout.height * layout.scale) * 0.3, scale: layout.scale },

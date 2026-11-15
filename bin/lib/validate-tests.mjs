@@ -25,7 +25,10 @@ function readCheck(ref, situations, outcomes) {
   return { situation: situations.find((s) => s?.id === id), outcome };
 }
 
-export function checkTests(s, p, hunks, errors, warnings) {
+/** A name written for a test, set against the names the branch adds: lower case, one space between words. */
+const flat = (name) => String(name).toLowerCase().replace(/\s+/g, ' ').trim();
+
+export function checkTests(s, p, hunks, errors, warnings, added = null) {
   for (const k of ['title', 'subject', 'when'])
     if (s[k] !== undefined && typeof s[k] !== 'string') errors.push(`${p}.${k}: must be a string`);
 
@@ -79,6 +82,18 @@ export function checkTests(s, p, hunks, errors, warnings) {
     const q = `${p}.tests[${j}]`;
     if (!isObject(t)) return errors.push(`${q}: must be an object`);
     if (!isStr(t.name)) errors.push(`${q}.name: required string, the test's name as written in code`);
+    if (t.label !== undefined && !isStr(t.label))
+      errors.push(`${q}.label: must be a non-empty string, a short name to draw; \`name\` stays the test's title`);
+    // A test the branch adds has a name in the map; a shortened or invented one matches none of them.
+    if (
+      added?.length &&
+      isStr(t.name) &&
+      (t.status ?? 'added') === 'added' &&
+      !added.some((n) => flat(n) === flat(t.name))
+    )
+      warnings.push(
+        `${q}.name: "${t.name}"; no test this branch adds has this name${didYouMean(t.name, added)}; \`name\` is the test's title as written in code (see "adds" in map.json), and a short \`label\` is what the scene draws`,
+      );
     if (t.status !== undefined && !TEST_STATUSES.includes(t.status))
       errors.push(`${q}.status: must be one of ${TEST_STATUSES.join(', ')}`);
     if (t.hunkId !== undefined && !(isStr(t.hunkId) && hunks && Object.hasOwn(hunks, t.hunkId)))

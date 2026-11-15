@@ -344,3 +344,135 @@ test('an older scene is reported in its own fields: cases, gaps and titles, not 
     ],
   );
 });
+
+// Long names, as a real branch writes them: the names column wraps them and shrinks them before it reports one.
+const LONG = 'returns the stored refs with their quoted lines when the reply names a tip, a commit and a base line';
+const SHORT_VALUES = {
+  outcomes: ['Result'],
+  situations: [
+    { id: 'a', when: 'names a tip', expect: { Result: 'stored' } },
+    { id: 'b', when: 'names a bad place', expect: { Result: 'refused' } },
+  ],
+};
+const named = (...names) =>
+  matrix({
+    ...SHORT_VALUES,
+    tests: names.map((name, i) => ({ name, checks: [`${'ab'[i % 2]}.Result`] })),
+  });
+
+test('a long test name wraps onto a second line and shrinks before it is reported', async () => {
+  const scene = named(LONG, 'is refused when a ref does not resolve');
+  const layout = layoutTests(scene, 1712, 700);
+  const first = layout.rows[0].names[0].fit;
+  assert.equal(first.text, LONG, 'the name is drawn as written');
+  assert.equal(first.fits, true);
+  assert.ok(first.lines.length <= 2 && first.size >= 15);
+  assert.deepEqual((await run(scene)).errors, []);
+  assert.deepEqual(at((await run(scene)).warnings, 'scenes[0].tests'), []);
+  const tooLong = named(`${LONG}, and then it keeps going ${LONG} ${LONG}`);
+  const report = await run(tooLong);
+  assert.ok(
+    report.errors.some((m) => m.startsWith('scenes[0].tests[0].name') && m.includes('short `label`')),
+    report.errors.join('\n'),
+  );
+});
+
+test('a label is drawn in place of a name that cannot fit, and the name stays the title a step can focus', async () => {
+  const huge = `${LONG}, and then it keeps going ${LONG} ${LONG}`;
+  const scene = {
+    ...named(huge),
+    tests: [{ name: huge, label: 'stored refs keep their quote', checks: ['a.Result'] }],
+    steps: [{ focus: huge, say: 'The stored refs keep their quote.' }],
+  };
+  assert.deepEqual((await run(scene)).errors, []);
+  const layout = layoutTests(scene, 1712, 700);
+  assert.equal(layout.rows[0].names[0].fit.text, 'stored refs keep their quote');
+  assert.deepEqual(resolveRef(scene, huge, hunks), ['t:0', 'x:0/0']);
+  assert.deepEqual(resolveRef(scene, 'stored refs keep their quote', hunks), ['t:0', 'x:0/0']);
+  assert.match(
+    normalizeStoryboard({ title: 'T', scenes: [scene] }, hunks).scenes[0].steps[0].callout,
+    /stored refs keep their quote/,
+  );
+  const bad = await run({ ...scene, tests: [{ ...scene.tests[0], label: 3 }] });
+  assert.ok(bad.errors.some((m) => m.startsWith('scenes[0].tests[0].label: must be a non-empty string')));
+});
+
+// A branch that adds 23 named tests in a test file, as `extract` reads them.
+const addedNames = Array.from({ length: 23 }, (_, i) => `adds behaviour number ${i + 1}`);
+const testHunks = {
+  ...hunks,
+  h2: {
+    ...hunks.h2,
+    lines: addedNames.map((name, i) => ({
+      type: 'add',
+      oldLine: null,
+      newLine: i + 1,
+      text: `  it('${name}', () => {});`,
+    })),
+  },
+};
+const branchMap = { tests: [{ file: 'test/deliver.test.ts', covers: [], adds: addedNames }] };
+
+test('the footer says how many of the tests the branch adds the scene draws, from the diff', () => {
+  const five = named('adds behaviour number 1', 'adds behaviour number 2');
+  assert.equal(layoutTests(five, 1712, 700, testHunks).counts, '2 of 23 tests this branch adds');
+  assert.equal(
+    layoutTests(five, 1712, 700).counts,
+    '2 tests',
+    "with no added tests in the diff, the count is the scene's",
+  );
+  const mixed = matrix({ tests: [...matrix().tests, { name: 'adds behaviour number 3', checks: ['ok.Result'] }] });
+  assert.equal(
+    layoutTests(mixed, 1712, 700, testHunks).counts,
+    '2 of 23 tests this branch adds · 1 changed · 1 removed · 1 unchecked · 1 gap',
+  );
+  const more = named(...addedNames.slice(0, 3));
+  assert.equal(
+    layoutTests(more, 1712, 700, { ...hunks, h2: { ...testHunks.h2, lines: testHunks.h2.lines.slice(0, 2) } }).counts,
+    '3 tests',
+    'never more drawn than the branch adds',
+  );
+});
+
+test('validate warns when a test name is none the branch adds, and checks no name without a map', async () => {
+  const scene = named('adds behaviour number 1', 'shortened name');
+  const meta = { mode: 'diff', map: branchMap };
+  const warned = (await validateStoryboard({ title: 'T', scenes: [scene] }, testHunks, meta)).warnings;
+  assert.deepEqual(at(warned, 'scenes[0].tests'), [
+    'scenes[0].tests[1].name: "shortened name"; no test this branch adds has this name; `name` is the test\'s title as written in code (see "adds" in map.json), and a short `label` is what the scene draws',
+  ]);
+  const quick = await validateStoryboard({ title: 'T', scenes: [scene] }, testHunks, { ...meta, quick: true });
+  assert.deepEqual(at(quick.warnings, 'scenes[0].tests'), []);
+  const none = await validateStoryboard({ title: 'T', scenes: [scene] }, testHunks, { mode: 'diff' });
+  assert.deepEqual(at(none.warnings, 'scenes[0].tests'), []);
+  const existing = { ...scene, tests: scene.tests.map((t) => ({ ...t, status: 'existing' })) };
+  assert.deepEqual(
+    at((await validateStoryboard({ title: 'T', scenes: [existing] }, testHunks, meta)).warnings, 'scenes[0].tests'),
+    [],
+  );
+});
+
+test('validate warns when a count of tests the scene states disagrees with the map', async () => {
+  const meta = { mode: 'diff', map: branchMap };
+  const say = async (over) =>
+    at(
+      (
+        await validateStoryboard(
+          { title: 'T', scenes: [{ ...named('adds behaviour number 1', 'adds behaviour number 2'), ...over }] },
+          testHunks,
+          meta,
+        )
+      ).warnings,
+      'scenes[0].',
+    ).filter((m) => m.includes('says'));
+  assert.deepEqual(await say({ narration: 'Two new tests check delivery.' }), [
+    'scenes[0].narration: says "Two new tests", but the map lists 23 tests this branch adds and the scene draws 2 of them; say "2 of the 23", or the number the map has',
+  ]);
+  assert.deepEqual(await say({ narration: 'Two of the 23 new tests check delivery.' }), []);
+  assert.deepEqual(await say({ narration: 'The branch adds 23 tests.' }), []);
+  assert.equal((await say({ narration: 'Fine.', title: '2 tests · 1 gap' })).length, 1);
+  assert.equal(
+    (await say({ narration: 'Fine.', steps: [{ focus: 'a', callout: '5 new tests', say: 'x' }] })).length,
+    1,
+  );
+});
