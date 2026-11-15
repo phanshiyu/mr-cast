@@ -80,3 +80,65 @@ pub fn step_move(frame: f64, from: f64) -> f64 {
 pub fn step_spring(frame: f64, fps: f64, at: f64, step_from: f64, config: Spring) -> f64 {
     spring_full(frame - at, fps, config, Some((step_from + STEP_SETTLE_FRAMES - at).max(1.0)))
 }
+
+/// The stronger of two emphases, part by part (`brighter`).
+pub fn brighter(a: Emphasis, b: Emphasis) -> Emphasis {
+    Emphasis { opacity: a.opacity.max(b.opacity), bar: a.bar.max(b.bar), glow: a.glow.max(b.glow) }
+}
+
+/// An item at least as bright as the brightest of `others` (`asBrightAs`).
+pub fn as_bright_as(own: Emphasis, others: &[Emphasis]) -> Emphasis {
+    Emphasis { opacity: others.iter().fold(own.opacity, |m, e| m.max(e.opacity)), ..own }
+}
+
+/// Emphasis by item key for a scene whose steps take `focus` (`focusSpotlight`); `steps` is `targets::target_steps`.
+pub struct FocusSpotlight {
+    spot: Spotlight,
+    steps: std::collections::HashMap<String, Vec<usize>>,
+}
+
+impl FocusSpotlight {
+    pub fn new(
+        steps: std::collections::HashMap<String, Vec<usize>>,
+        segments: &[Segment],
+        frame: f64,
+    ) -> FocusSpotlight {
+        let starts: Vec<f64> = segments.iter().skip(1).map(|s| s.from).collect();
+        FocusSpotlight { spot: Spotlight::new(frame, &starts), steps }
+    }
+    pub fn emphasis(&self, key: &str) -> Emphasis {
+        self.spot.emphasis(self.steps.get(key).map_or(&[], Vec::as_slice))
+    }
+}
+
+/// When each of `count` ordered items starts to appear (`revealStarts`): with steps, step k reveals every item up
+/// to index `lasts[k]` from its segment's start, at most `stagger` frames apart and all drawn `item_frames` after
+/// their start by the time the step settles; the last step also brings any items after it. Without steps the items
+/// arrive one after another from `from` to `to`.
+pub fn reveal_starts(
+    segments: &[Segment],
+    count: usize,
+    lasts: &[i64],
+    from: f64,
+    to: f64,
+    stagger: f64,
+    item_frames: f64,
+) -> Vec<f64> {
+    if segments.len() > 1 && !lasts.is_empty() {
+        let mut starts: Vec<f64> = Vec::new();
+        for (k, &last) in lasts.iter().enumerate() {
+            let at = segments.get(k + 1).map_or(0.0, |s| s.from);
+            let end = if k == lasts.len() - 1 { count as i64 - 1 } else { last };
+            let shown = end + 1 - starts.len() as i64;
+            let gap = stagger.min((STEP_SETTLE_FRAMES - item_frames).max(0.0) / ((shown - 1).max(1) as f64));
+            let mut j = 0.0;
+            while (starts.len() as i64) <= end {
+                starts.push(at + j * gap);
+                j += 1.0;
+            }
+        }
+        return starts;
+    }
+    let gap = if count > 1 { (to - from) / (count as f64 - 1.0) } else { 0.0 };
+    (0..count).map(|i| from + i as f64 * gap).collect()
+}

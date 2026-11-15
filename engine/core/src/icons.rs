@@ -45,12 +45,37 @@ fn source(name: &str) -> &'static [&'static str] {
     }
 }
 
+/// Icons without hand-copied paths: those in data/lucide.json (scripts/engine-icons.mjs), by component name.
+fn extra(name: &str) -> &'static [String] {
+    static ICONS: OnceLock<HashMap<String, Vec<String>>> = OnceLock::new();
+    ICONS
+        .get_or_init(|| serde_json::from_str(include_str!("../data/lucide.json")).expect("lucide.json"))
+        .get(name)
+        .map_or(&[], Vec::as_slice)
+}
+
+/// The component name of a kebab-case icon name: "building-2" is "Building2".
+pub fn component_name(kebab: &str) -> String {
+    kebab
+        .split('-')
+        .map(|p| {
+            let mut c = p.chars();
+            c.next().map_or(String::new(), |f| f.to_uppercase().chain(c).collect())
+        })
+        .collect()
+}
+
 fn paths(name: &str) -> Arc<Vec<Path>> {
     static CACHE: OnceLock<std::sync::Mutex<HashMap<String, Arc<Vec<Path>>>>> = OnceLock::new();
     let cache = CACHE.get_or_init(Default::default);
     let mut c = cache.lock().unwrap();
     c.entry(name.to_string())
-        .or_insert_with(|| Arc::new(source(name).iter().filter_map(|d| svg_path(d)).collect()))
+        .or_insert_with(|| {
+            let own = source(name);
+            let d: Vec<&str> =
+                if own.is_empty() { extra(name).iter().map(String::as_str).collect() } else { own.to_vec() };
+            Arc::new(d.iter().filter_map(|d| svg_path(d)).collect())
+        })
         .clone()
 }
 
@@ -64,4 +89,9 @@ pub fn draw(dl: &mut DisplayList, name: &str, x: f32, y: f32, size: f32, color: 
         dl.path(p.clone(), None, Some(Stroke::solid(color, stroke_width).rounded()));
     }
     dl.restore();
+}
+
+/// Draws the icon a storyboard names in kebab case ("server", "key-round"); nothing for a name the engine lacks.
+pub fn draw_named(dl: &mut DisplayList, kebab: &str, x: f32, y: f32, size: f32, color: Color, stroke_width: f32) {
+    draw(dl, &component_name(kebab), x, y, size, color, stroke_width);
 }
