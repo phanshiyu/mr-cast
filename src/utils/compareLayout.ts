@@ -1,5 +1,6 @@
 import { compareRowSame, compareTitles, isHunkCell, resolveHunkCell } from '../../shared/compare.mjs';
-import { fitBlock, fitLines, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
+import { fitBlock, fitLines, fitText, fitTextAt, measure, type Fit } from '../../shared/textfit.mjs';
+import { CODE_READABLE_MIN } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
 import type { CompareCell, CompareRow, CompareScene, HunkMap, ImageFit, Tone, Verdict } from '../types';
 import type { Box, LayoutBoxes } from './penGeometry';
@@ -10,6 +11,8 @@ export const HEADER_H = 66;
 const PANEL_PAD = 26;
 /** Room between the two sides, where each row's "=" or arrow sits. */
 const GUTTER = 88;
+/** A comparison that reads lines from a hunk needs every pixel for code, so its arrows are shorter. */
+const HUNK_GUTTER = 64;
 /** In `mode: "options"` nothing sits between the sides, so they sit closer. */
 const OPTIONS_GUTTER = 40;
 /** Room for the "Chosen" or "Not taken" label in a side's title band, and over a row's cell. */
@@ -22,6 +25,8 @@ const LABEL_MAX = 360;
 export const VERDICT_W = 44;
 /** Padding around a snippet inside its code block. */
 export const CODE_PAD = 12;
+/** Room kept between a hunk's code block and the edge of its side, which is all the code gives up to the side's padding. */
+export const HUNK_EDGE = 10;
 const BOTTOM_PAD = 14;
 const MAX_FONT = 30;
 const MIN_FONT = 18;
@@ -30,7 +35,18 @@ export type Taken = 'chosen' | 'notTaken';
 
 export type PlacedCompareCell = (
   | { kind: 'text'; text: Fit }
-  | { kind: 'code'; code: string; lang: string; lines: Fit; caption: Fit | null; capH: number }
+  | {
+      kind: 'code';
+      code: string;
+      lang: string;
+      lines: Fit;
+      caption: Fit | null;
+      capH: number;
+      /** Lines read from a hunk: the block takes the side's whole width, so `bleed` px of it sit left of the cell column. */
+      bleed: number;
+      /** The width its lines may take, in px, for fitting them again. */
+      codeW: number;
+    }
   | { kind: 'image'; src: string; fit: ImageFit }
 ) & {
   verdict: Verdict | null;
@@ -80,11 +96,21 @@ export interface CompareLayout {
 }
 
 const codeLines = (code: string) => code.replace(/\s+$/, '').split('\n');
-function fitCell(cell: CompareCell, width: number, font: number, path: string, hunks: HunkMap): PlacedCompareCell {
+/** What a cell is fitted into: the width of the cell column, how much wider a hunk's code may be, and the frame's height. */
+interface Room {
+  width: number;
+  /** How far a hunk's code block reaches left of the cell column, and how much wider than the column it is in all. */
+  bleed: number;
+  extra: number;
+  frameH: number;
+}
+
+function fitCell(cell: CompareCell, room: Room, font: number, path: string, hunks: HunkMap): PlacedCompareCell {
+  const { width } = room;
   if (isHunkCell(cell)) {
     const read = resolveHunkCell(cell, hunks);
-    if ('error' in read) return fitCell(`Not shown: ${read.error}`, width, font, path, hunks);
-    return fitCode(read.code, read.lang, read.caption, width, font, path);
+    if ('error' in read) return fitCell(`Not shown: ${read.error}`, room, font, path, hunks);
+    return fitCode(read.code, read.lang, read.caption, width + room.extra, font, path, room);
   }
   if (typeof cell === 'string') {
     const text = fitTextAt(cell.trim(), sized(SLOTS.compareCell, width), path, font);
@@ -101,7 +127,26 @@ function fitCell(cell: CompareCell, width: number, font: number, path: string, h
       tagged: false,
       h: Math.round((width * 9) / 16),
     };
-  return fitCode(cell.code, cell.lang ?? 'plain', null, width, font, path);
+  return fitCode(cell.code, cell.lang ?? 'plain', null, width, font, path, null);
+}
+
+/**
+ * The slot for a snippet. Lines read from a hunk step down to the smallest size the project reads code at, and a line
+ * too long for that says how many characters fit and how many lines the frame holds.
+ */
+function codeSlot(width: number, size: number, hunk: Room | null, widest: number, captioned: boolean) {
+  const slot = { ...sized(SLOTS.compareCode, width - 2 * CODE_PAD), size };
+  if (!hunk) return slot;
+  const font = { family: 'mono' as const, weight: slot.weight, size: CODE_READABLE_MIN };
+  const chars = Math.floor((slot.width as number) / (measure('0'.repeat(100), font) / 100));
+  const lineH = CODE_READABLE_MIN * slot.lineHeight;
+  const room =
+    hunk.frameH - HEADER_H - BOTTOM_PAD - 2 * Math.round(MIN_FONT * 0.62) - 2 * CODE_PAD - (captioned ? 24 : 0);
+  return {
+    ...slot,
+    min: CODE_READABLE_MIN,
+    fix: `this cell holds lines of up to ${chars} characters at ${CODE_READABLE_MIN}px, the smallest readable size (its longest is ${widest}), and the frame holds ${Math.floor(room / lineH)} lines of code in all, shared by the rows; narrow \`lines\` to fewer or shorter lines, or show the code in a code scene`,
+  };
 }
 
 function fitCode(
@@ -111,12 +156,18 @@ function fitCode(
   width: number,
   font: number,
   path: string,
+  hunk: Room | null,
 ): PlacedCompareCell {
-  const slot = {
-    ...sized(SLOTS.compareCode, width - 2 * CODE_PAD),
-    size: Math.min(SLOTS.compareCode.size, Math.round(font * 0.8)),
-  };
-  const lines = fitLines(codeLines(code), slot, Infinity, `${path}.code`);
+  const text = codeLines(code);
+  const widest = Math.max(0, ...text.map((l) => l.length));
+  const slot = codeSlot(
+    width,
+    Math.max(hunk ? CODE_READABLE_MIN : 0, Math.min(SLOTS.compareCode.size, Math.round(font * 0.8))),
+    hunk,
+    widest,
+    caption !== null,
+  );
+  const lines = fitLines(text, slot, Infinity, `${path}.code`);
   const cap = caption
     ? fitText(
         caption,
@@ -127,11 +178,13 @@ function fitCode(
   const capH = cap ? cap.height + 6 : 0;
   return {
     kind: 'code',
-    code: codeLines(code).join('\n'),
+    code: text.join('\n'),
     lang,
     lines,
     caption: cap,
     capH,
+    bleed: hunk ? hunk.bleed : 0,
+    codeW: width,
     verdict: null,
     taken: null,
     tagged: false,
@@ -140,7 +193,7 @@ function fitCode(
 }
 
 /** A row's two snippets drawn at the smaller of their sizes, so the eye compares like with like. */
-function shareCodeSize(cells: PlacedCompareCell[], width: number, path: string): PlacedCompareCell[] {
+function shareCodeSize(cells: PlacedCompareCell[], path: string): PlacedCompareCell[] {
   const code = cells.flatMap((c) => (c.kind === 'code' ? [c] : []));
   if (code.length < 2) return cells;
   const size = Math.min(...code.map((c) => c.lines.size));
@@ -148,7 +201,7 @@ function shareCodeSize(cells: PlacedCompareCell[], width: number, path: string):
     if (c.kind !== 'code') return c;
     const lines = fitLines(
       c.code.split('\n'),
-      { ...sized(SLOTS.compareCode, width - 2 * CODE_PAD), size, min: size },
+      { ...sized(SLOTS.compareCode, c.codeW - 2 * CODE_PAD), size, min: size, fix: c.lines.fix },
       Infinity,
       `${path}.cells[${k}].code`,
     );
@@ -165,10 +218,10 @@ function labelWidth(rows: readonly CompareRow[], width: number): number {
   return Math.round(Math.min(LABEL_MAX, width * 0.22, Math.max(LABEL_MIN, widest + 8)));
 }
 
-function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMap) {
+function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMap, frameH: number) {
   const labelW = labelWidth(scene.rows, width);
   const options = scene.mode === 'options';
-  const gutter = options ? OPTIONS_GUTTER : GUTTER;
+  const gutter = options ? OPTIONS_GUTTER : scene.rows.some((r) => r.cells.some(isHunkCell)) ? HUNK_GUTTER : GUTTER;
   const sideW = (width - labelW - (labelW ? LABEL_GAP : 0) - gutter) / 2;
   const x0 = labelW ? labelW + LABEL_GAP : 0;
   const titles = compareTitles(scene);
@@ -188,6 +241,9 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
   ) as [CompareSidePlaced, CompareSidePlaced];
   const verdicts = scene.rows.some((r) => r.verdict?.some(Boolean));
   const cellW = sideW - 2 * PANEL_PAD - (verdicts ? VERDICT_W : 0);
+  // A hunk's code gives up less of the side to padding; with a verdict mark at the right it keeps that room.
+  const bleed = PANEL_PAD - HUNK_EDGE;
+  const room: Room = { width: cellW, bleed, extra: bleed + (verdicts ? 0 : bleed), frameH };
   const labelFont = Math.max(SLOTS.compareLabel.min, Math.min(SLOTS.compareLabel.size, Math.round(font * 0.87)));
   const pad = Math.round(font * 0.62);
   let y = HEADER_H;
@@ -195,8 +251,7 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
   const rows = scene.rows.map((row, i): PlacedCompareRow => {
     const path = `rows[${i}]`;
     const fitted = shareCodeSize(
-      row.cells.slice(0, 2).map((cell, k) => fitCell(cell, cellW, font, `${path}.cells[${k}]`, hunks)),
-      cellW,
+      row.cells.slice(0, 2).map((cell, k) => fitCell(cell, room, font, `${path}.cells[${k}]`, hunks)),
       path,
     ).map((c, k): PlacedCompareCell => {
       const tagged = options && (row.chosen === 0 || row.chosen === 1);
@@ -245,13 +300,13 @@ function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMa
  */
 export function layoutCompare(scene: CompareScene, width: number, height: number, hunks: HunkMap = {}): CompareLayout {
   for (let font = MAX_FONT; font >= MIN_FONT; font -= 2) {
-    const { fits, ...result } = attempt(scene, width, font, hunks);
+    const { fits, ...result } = attempt(scene, width, font, hunks, height);
     if (fits && result.height <= height) return result;
   }
-  const { fits: _, ...last } = attempt(scene, width, MIN_FONT, hunks);
+  const { fits: _, ...last } = attempt(scene, width, MIN_FONT, hunks, height);
   if (last.height <= height) return last;
   const scale = height / last.height;
-  const { fits: __, ...wide } = attempt(scene, width / scale, MIN_FONT, hunks);
+  const { fits: __, ...wide } = attempt(scene, width / scale, MIN_FONT, hunks, height);
   return {
     ...wide,
     scale,
@@ -265,9 +320,9 @@ function cellBox(layout: CompareLayout, row: PlacedCompareRow, side: 0 | 1): Box
   const width =
     cell.kind === 'text' ? cell.text.width : cell.kind === 'code' ? cell.lines.width + 2 * CODE_PAD : layout.cellW;
   return {
-    x: layout.sides[side].x + layout.cellX,
+    x: layout.sides[side].x + layout.cellX - (cell.kind === 'code' ? cell.bleed : 0),
     y: row.y + (row.h - cell.h) / 2,
-    width: Math.max(24, Math.min(layout.cellW, width)),
+    width: Math.max(24, Math.min(layout.cellW + (cell.kind === 'code' ? 2 * cell.bleed : 0), width)),
     height: cell.h,
   };
 }

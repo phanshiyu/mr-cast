@@ -184,8 +184,8 @@ const Cell: React.FC<{
       <div
         style={{
           position: 'absolute',
-          left: layout.cellX,
-          width: layout.cellW,
+          left: layout.cellX - (cell.kind === 'code' ? cell.bleed : 0),
+          width: layout.cellW + (cell.kind === 'code' ? 2 * cell.bleed : 0),
           top: 0,
           bottom: 0,
           display: 'flex',

@@ -13,7 +13,7 @@ The six questions and the `brief` are in SKILL.md. This file says what the chang
 
 ## What a scene can hold
 
-- **compare** puts two states side by side. A cell can show real lines of a hunk, old or new: `{ "hunk": "h11", "side": "old", "lines": "4-6" }`, up to 8 lines. With `"mode": "options"` it is a decision beside the way not taken.
+- **compare** puts two states side by side. A cell can show real lines of a hunk, old or new: `{ "hunk": "h11", "side": "old", "lines": "4-6" }`, up to 8 lines, each up to about 86 characters (73 in a row with a label). With `"mode": "options"` it is a decision beside the way not taken.
 - **tests** is a grid of situations against outcomes, with the named tests that check each and the gaps nothing checks.
 - **files** with `"parts": "brief"` draws the brief's parts as a map of cards: each part's name and weight, its `does` line, its file and line counts and its largest files, with "+ N more"; parts follow the parts their `after` names, with a link between them, and a part holding a `check` file is marked.
 - **flow** is a rail of stops. A stop's `code` shows real lines of any hunk or snippet, lines up to about 120 characters and 20 or more of them, so one request can be followed through several files. A stop's `payload` is drawn as one line of code: a value, not a sentence.
