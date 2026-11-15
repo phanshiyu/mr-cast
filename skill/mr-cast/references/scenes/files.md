@@ -1,6 +1,6 @@
 # files
 
-The files as a tree with their line counts, and a short note beside the ones that matter; or grouped into parts by importance, core first and routine last.
+The files as a tree with their line counts, and a short note beside the ones that matter; or, with parts, a map of cards, one for each part, with what it does and the links between parts.
 
 ## Example
 
@@ -23,7 +23,7 @@ A `focus` is a path in the tree, or a part's name. `notes` maps a path to a shor
 
 ### Parts and weight
 
-A tree by directory says where files live, not which matter. Give the scene `parts` and each file a `part`, and the files group under their part instead of by directory: core parts first and strongest, support next, routine last and quietest, each heading with its weight, file count and + and − totals. A part lists its largest files, core parts more of them, and counts the rest in a quiet "+ N more" line, so a branch of 25 or 30 files fits.
+A tree by directory says where files live, not which matter or how they connect. Give the scene `parts` and each file a `part`, and the scene draws a map instead: a card for each part, with its name, its weight (core strongest and first, routine quietest and last), a `does` line, its file count and + and − totals, and its largest files, core parts more of them, with a quiet "+ N more" line, so a branch of 25 or 30 files fits.
 
 ```json
 {
@@ -31,18 +31,20 @@ A tree by directory says where files live, not which matter. Give the scene `par
   "chapter": "By importance",
   "narration": "The same files, grouped by what matters.",
   "parts": [
-    { "name": "Finding and checking places", "weight": "core" },
+    { "name": "Finding and checking places", "weight": "core", "does": "Finds each place in an answer and checks it against the branch" },
+    { "name": "The command line", "weight": "support", "does": "Adds the reply and explain commands", "after": ["Finding and checking places"] },
     { "name": "Docs and the key sheet", "weight": "routine" }
   ],
   "files": [
-    { "path": "src/cli.ts", "part": "Finding and checking places" },
+    { "path": "src/check.ts", "part": "Finding and checking places" },
+    { "path": "src/cli.ts", "part": "The command line" },
     { "path": "README.md", "part": "Docs and the key sheet" }
   ],
   "steps": [{ "focus": "Finding and checking places", "say": "The core is how a place is found and checked." }]
 }
 ```
 
-`weight` is `core`, `support` or `routine`. A file that names no part sits under "Other files", last and quietest. A step's `focus` may name a part (or `"part:Name"`) to light its heading and every file in it. In a branch video with a `brief`, write `"parts": "brief"` and leave `files` out: the groups, weights and files come from `brief.parts` and their hunks (a file in two parts goes to the one holding most of its changed lines), so nothing is typed twice. `notes` still go beside single files. `validate` fails on a `part` that no entry of `parts` names, a repeated part name, an unknown weight, and `"brief"` with no brief to read; it warns on files in no part and on a part with no file. A demo: scene 2 of `{{MR_CAST}}/examples/primitives/files/storyboard.json`.
+`weight` is `core`, `support` or `routine`. `does` is one sentence under about 90 characters. `after` names the parts this one builds on or is called by: the card sits after them, with a thin link from each; with no `after` the cards fill a grid, core first. `"check": true` marks a card "check". A file that names no part sits under "Other files", last and quietest. A step's `focus` may name a part (or `"part:Name"`) to light its card. In a branch video with a `brief`, write `"parts": "brief"` and leave `files` out: the parts, their `does` and `after`, and the files come from `brief.parts` and their hunks (a file in two parts goes to the one holding most of its changed lines), and a part holding a file named in `brief.check` is marked "check", so nothing is typed twice. `notes` are not drawn on a map, and `validate` says so; the `does` line carries the meaning. `validate` fails on a `part` that no entry of `parts` names, a repeated part name, an unknown weight, and `"brief"` with no brief to read; it warns on files in no part, on a part with no file, and on an `after` that names no part. A demo: scene 2 of `{{MR_CAST}}/examples/primitives/files/storyboard.json`.
 
 `{{MR_CAST}}/bin/mr-cast schema files` prints its fields.
 

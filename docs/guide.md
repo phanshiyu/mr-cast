@@ -59,7 +59,7 @@ A video of a branch answers six questions a reviewer has. Claude finds the answe
 
 Claude writes the answers in the storyboard's `brief`, with where each comes from, such as a commit or the description. When nothing says, the answer is "unknown": the video says the reason is not stated, and the question goes to the author. The scenes it makes are Claude's choice. `mr-cast validate` prints one line, such as `brief: why ✓ (description) · case ✓ · approach ✓ 3 decisions · parts 4, core 2 · proof ✓ 0 tested, 4 untested · check 3 · ask 1`, and a second, `scenes: 12 · code 3, text 1 · longest run: 3 code`. It warns when a question has no answer or no scene, when a place the brief names does not exist, or when part of the change is in no part.
 
-`validate` also writes `guide.md` beside the storyboard: the six answers, the parts with their files, the places to open first as `path:line  what`, and the questions for the author. It is the brief in plain words, to paste into the merge request. `render --out` copies it beside the MP4.
+`validate` also writes `guide.md` beside the storyboard: the six answers, the parts with what each does, what it follows and its files, the places to open first as `path:line  what`, and the questions for the author. It is the brief in plain words, to paste into the merge request. `render --out` copies it beside the MP4.
 
 In the player, a **guide panel** lists the six questions with a short answer to each. Click a question to jump to the scene that answers it, and the ones you have reached are marked. Under them are **Open first**, which jumps to the scene that shows each place, and **Ask the author**. Press `G` to show or hide the panel. It is part of the page, so the MP4 never has it.
 
