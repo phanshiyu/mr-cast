@@ -36,12 +36,34 @@ jobs:
   build:
     name: Build the player
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
+      - uses: ./.github/actions/rust
+        with:
+          targets: wasm32-unknown-unknown
+          wasm-bindgen: 'true'
       - run: pnpm build
-      - run: test -f dist/index.html
+      - run: test -f dist/index.html && ls dist/assets/*.wasm
+
+  rust:
+    name: Engine (fmt, clippy, tests, wasm)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/rust
+        with:
+          targets: wasm32-unknown-unknown
+          wasm-bindgen: 'true'
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - run: cargo test --locked
+      - run: node ../scripts/build-wasm.mjs
 
   test:
     name: Unit tests (Node ${{ matrix.node }})
@@ -94,7 +116,7 @@ jobs:
   render:
     name: Render, voice and player smoke (Node ${{ matrix.node }})
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -106,6 +128,12 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           node-version: ${{ matrix.node }}
+      - uses: ./.github/actions/rust
+        with:
+          targets: wasm32-unknown-unknown
+          wasm-bindgen: 'true'
+      - run: cargo build --release --locked --manifest-path engine/Cargo.toml
+      # The smoke's text scan drives the Chrome that Remotion downloads (scripts/smoke.sh).
       - id: versions
         run: echo "remotion=$(node -p "require('./node_modules/@remotion/renderer/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Cache Chrome Headless Shell
@@ -142,20 +170,29 @@ jobs:
   package:
     name: Pack and install with npm
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
-      - id: versions
-        run: echo "remotion=$(node -p "require('./node_modules/@remotion/renderer/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Cache Chrome Headless Shell
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - uses: ./.github/actions/rust
         with:
-          path: .cache/mr-cast/remotion
-          key: chrome-${{ runner.os }}-remotion-${{ steps.versions.outputs.remotion }}
+          targets: wasm32-unknown-unknown
+          wasm-bindgen: 'true'
+      # As publish.yml does for every platform: the engine goes into the package under engine/bin/<platform>-<arch>.
+      - name: Build the engine into engine/bin
+        run: |
+          cargo build --release --locked -p mr-cast-engine --manifest-path engine/Cargo.toml
+          mkdir -p engine/bin/linux-x64
+          cp engine/target/release/mr-cast-engine engine/bin/linux-x64/
       - run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
+      - name: The package holds the engine and the player's wasm, and no Rust sources or build output
+        run: |
+          tar -tzf "$RUNNER_TEMP"/pack/*.tgz > "$RUNNER_TEMP/files.txt"
+          grep -qx 'package/engine/bin/linux-x64/mr-cast-engine' "$RUNNER_TEMP/files.txt"
+          grep -q '^package/dist/assets/.*\.wasm$' "$RUNNER_TEMP/files.txt"
+          ! grep -E '^package/engine/(target|core|cli|wasm)/' "$RUNNER_TEMP/files.txt"
       - name: Install the tarball with npm
         run: npm install -g --prefix "$RUNNER_TEMP/prefix" "$RUNNER_TEMP"/pack/*.tgz
       - name: Run the installed CLI
@@ -169,6 +206,8 @@ jobs:
           "$MRC" validate --dir "$RUNNER_TEMP/gallery"
           "$MRC" still 0 7 --dir "$RUNNER_TEMP/gallery" --out "$RUNNER_TEMP/stills"
           test "$(find "$RUNNER_TEMP/stills" -name '*.png' -size +10k | wc -l)" -eq 2
+          "$MRC" render --no-voice --dir "$RUNNER_TEMP/gallery" --out "$RUNNER_TEMP/gallery.mp4"
+          test -s "$RUNNER_TEMP/gallery.mp4"
       # The installed tree is what npm resolves from the dependencies in package.json, so the base's tree is the same
       # install made from the base's package.json. Only advisories the base does not have fail (ADR 40).
       - name: Audit the installed dependency tree against the base
@@ -183,7 +222,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [typecheck, build, test, validate, audit, render, package]
+    needs: [typecheck, build, rust, test, validate, audit, render, package]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:

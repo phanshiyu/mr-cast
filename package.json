@@ -27,6 +27,7 @@
     "src/",
     "shared/",
     "dist/",
+    "engine/bin/",
     "skill/",
     "examples/demo/*.json",
     "examples/demo-simple/*.json",

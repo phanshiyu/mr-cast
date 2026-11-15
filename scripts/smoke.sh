@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end smoke test of a built checkout, as CI runs it: stills of the gallery and demo examples, one
-# voiced clip, and a scan of the live player for clipped text. Needs `pnpm install` and `pnpm build`.
+# voiced clip rendered to an MP4 with its voice and chapters, and a scan of the live player for clipped text.
+# Needs `pnpm install`, `pnpm build` and the render engine (a checkout builds it with cargo).
 # usage: scripts/smoke.sh <out dir> [--no-voice]
 # Downloads Chrome Headless Shell (and the voice model unless --no-voice) into $XDG_CACHE_HOME/mr-cast on
 # first use. Writes nothing outside <out dir> and that cache.
@@ -36,11 +37,22 @@ if [ "$VOICE" = 1 ]; then
   seconds="$(node -p "Object.values(require('$OUT/work/voice/voiceover.json').clips).reduce((n, c) => n + c.seconds, 0)")"
   node -e "process.exit($seconds > 5 ? 0 : 1)" || { cat "$OUT/voice.txt"; fail "voice clip is ${seconds}s"; }
   echo "smoke: ok voice (${seconds}s)"
+  "${MRC[@]}" render --dir "$OUT/work/voice" --out "$OUT/voice.mp4" > "$OUT/render.txt" 2>&1 || { cat "$OUT/render.txt"; fail "render exited non-zero"; }
+  FFMPEG="$(node -p "require('$ROOT/node_modules/ffmpeg-static')")"
+  "$FFMPEG" -hide_banner -i "$OUT/voice.mp4" > "$OUT/probe.txt" 2>&1 || true
+  grep -q 'Video: h264' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 has no h264 video"; }
+  grep -q 'Audio: aac' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 has no voice"; }
+  grep -q 'Chapter #0:0' "$OUT/probe.txt" || { cat "$OUT/probe.txt"; fail "the MP4 has no chapters"; }
+  echo "smoke: ok render"
 fi
 
 mkdir -p "$OUT/work/fits"
 cp "$ROOT/examples/demo/hunks.json" "$OUT/work/fits/"
 cp "$ROOT/.claude/skills/verify/fixtures/stress/fits.json" "$OUT/work/fits/storyboard.json"
+# The text scan reads the scenes' text from the page, which only Remotion's player draws as HTML; it runs there until
+# the React scenes go. A Remotion still downloads the Chrome the scan drives.
+export MR_CAST_RENDERER=remotion
+"${MRC[@]}" still 0 --no-voice --dir "$OUT/work/fits" --out "$OUT/work/fits-still" > "$OUT/chrome.txt" 2>&1 || { cat "$OUT/chrome.txt"; fail "Remotion still exited non-zero"; }
 "${MRC[@]}" play --no-open --no-voice --dir "$OUT/work/fits" > "$OUT/play.txt" 2>&1 &
 PLAY=$!
 trap 'kill $PLAY 2>/dev/null || true' EXIT

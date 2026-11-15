@@ -32,11 +32,86 @@ env:
   MR_CAST_NO_UPDATE_CHECK: '1'
 
 jobs:
-  publish:
-    name: Publish to npm
+  # Whether package.json holds a version npm does not have yet, so the engine is built for every platform only then.
+  version:
+    name: Check the version
     if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.dependencies) || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-26.04
-    timeout-minutes: 15
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - name: Check the version
+        id: check
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # The render engine for each platform the package supports; the publish job puts them in engine/bin/<platform>-<arch>
+  # inside the one package (docs/adr/0042-rust-engine.md). It builds the repository's code, so it holds no write access.
+  engine:
+    name: Build the engine for ${{ matrix.platform }}
+    needs: version
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { platform: darwin-arm64, os: macos-14, target: aarch64-apple-darwin }
+          # Built on Apple silicon for Intel: Apple's toolchain links both.
+          - { platform: darwin-x64, os: macos-14, target: x86_64-apple-darwin }
+          # The oldest Ubuntu runner, so the binary needs no newer glibc than 2.35.
+          - { platform: linux-x64, os: ubuntu-22.04, target: x86_64-unknown-linux-gnu }
+          - { platform: linux-arm64, os: ubuntu-24.04-arm, target: aarch64-unknown-linux-gnu }
+          - { platform: win32-x64, os: windows-2025, target: x86_64-pc-windows-msvc }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/rust
+        with:
+          targets: ${{ matrix.target }}
+      - name: Build
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          cargo build --release --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
+          exe=mr-cast-engine
+          [ "${PLATFORM%%-*}" = win32 ] && exe=mr-cast-engine.exe
+          mkdir -p "$RUNNER_TEMP/engine/$PLATFORM"
+          cp "engine/target/$TARGET/release/$exe" "$RUNNER_TEMP/engine/$PLATFORM/"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: engine-${{ matrix.platform }}
+          path: ${{ runner.temp }}/engine
+          if-no-files-found: error
+          retention-days: 3
+
+  publish:
+    name: Publish to npm
+    needs: [version, engine]
+    # Also when the version is on npm already and no engine was built: the release jobs read this job's outputs.
+    if: always() && needs.version.result == 'success' && (needs.engine.result == 'success' || needs.engine.result == 'skipped') && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.dependencies) || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
     # Only the npm publish is serialized, so a version bump never waits behind an earlier version's renders.
     concurrency:
       group: publish
@@ -68,6 +143,28 @@ jobs:
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+      # pnpm pack runs prepack, whose build compiles the player's renderer to WebAssembly.
+      - uses: ./.github/actions/rust
+        if: steps.check.outputs.publish == 'true'
+        with:
+          targets: wasm32-unknown-unknown
+          wasm-bindgen: 'true'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: steps.check.outputs.publish == 'true'
+        with:
+          pattern: engine-*
+          merge-multiple: true
+          path: engine/bin
+      # Artifacts lose the executable bit; npm keeps the one the files have when packed.
+      - name: Check every platform's engine is there
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          for p in darwin-arm64 darwin-x64 linux-x64 linux-arm64; do
+            test -s "engine/bin/$p/mr-cast-engine" || { echo "::error::No engine for $p"; exit 1; }
+            chmod 755 "engine/bin/$p/mr-cast-engine"
+          done
+          test -s engine/bin/win32-x64/mr-cast-engine.exe || { echo "::error::No engine for win32-x64"; exit 1; }
+          engine/bin/linux-x64/mr-cast-engine 2>&1 | grep -q usage
       - name: Pack
         if: steps.check.outputs.publish == 'true'
         run: pnpm pack --out mr-cast.tgz
@@ -281,7 +378,12 @@ jobs:
           git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main, so it is not rendered."; exit 1; }
           git checkout --detach "$SHA"
       - uses: ./.github/actions/setup-uncached
+      - uses: ./.github/actions/rust
+        with:
+          targets: wasm32-unknown-unknown
+          wasm-bindgen: 'true'
       - run: pnpm build
+      - run: cargo build --release --locked --manifest-path engine/Cargo.toml
       - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "$SHARD/6"
         env:
           SHARD: ${{ matrix.shard }}
