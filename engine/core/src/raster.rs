@@ -353,8 +353,9 @@ impl Renderer {
         match &cmd.item {
             Item::Box { rect, style } => self.boxed(*rect, style, op, t, target, clip),
             Item::Path { path, fill, stroke } => {
+                // fill_path applies `t` to the shader too, so the gradient is built untransformed.
                 if let Some(fill) = fill
-                    && let Some(sh) = shader(fill, op, t)
+                    && let Some(sh) = shader(fill, op, Transform::identity())
                 {
                     let mask = self.skia_mask(clip, path.bounds().transform(t), target.width(), target.height());
                     target.fill_path(path, &skia_paint(sh), FillRule::Winding, t, mask.as_deref());
@@ -383,7 +384,7 @@ impl Renderer {
             st.line_cap = tiny_skia::LineCap::Round;
         }
         if let Some((d, g)) = s.dash {
-            st.dash = tiny_skia::StrokeDash::new(vec![d, g], 0.0);
+            st.dash = tiny_skia::StrokeDash::new(vec![d, g], s.dash_offset);
         }
         let paint = skia_paint(Shader::SolidColor(s.color.fade(op).to_skia()));
         let b = path.bounds();

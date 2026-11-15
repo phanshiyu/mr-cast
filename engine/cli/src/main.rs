@@ -348,6 +348,52 @@ fn check_repeats(f: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
+/// Compares a Remotion still with the engine's: writes the two stacked (Remotion on top) and their difference
+/// (amplified four times, black where equal), and prints the mean absolute difference over the frame and the
+/// worst 64-pixel tile with its position, in levels of 255 averaged over red, green and blue.
+fn compare(f: &HashMap<String, String>) -> Result<(), String> {
+    let load = |key: &str| {
+        let path = f.get(key).ok_or(format!("--{key} is required"))?;
+        mrc_core::Pixmap::load_png(path).map_err(|e| format!("{path}: {e}"))
+    };
+    let (a, b) = (load("remotion")?, load("engine")?);
+    if (a.width(), a.height()) != (b.width(), b.height()) {
+        return Err(format!("sizes differ: {}x{} and {}x{}", a.width(), a.height(), b.width(), b.height()));
+    }
+    let (w, h) = (a.width() as usize, a.height() as usize);
+    let (pa, pb) = (a.data(), b.data());
+    let mut diff = mrc_core::Pixmap::new(w as u32, h as u32).unwrap();
+    const TILE: usize = 64;
+    let (tw, th) = (w.div_ceil(TILE), h.div_ceil(TILE));
+    let mut tiles = vec![0u64; tw * th];
+    let mut total = 0u64;
+    for (i, (x, y)) in pa.as_chunks::<4>().0.iter().zip(pb.as_chunks::<4>().0).enumerate() {
+        let d: u32 = (0..3).map(|c| (x[c] as i32 - y[c] as i32).unsigned_abs()).sum();
+        total += d as u64;
+        tiles[(i / w / TILE) * tw + (i % w) / TILE] += d as u64;
+        let o = &mut diff.data_mut()[i * 4..i * 4 + 4];
+        for c in 0..3 {
+            o[c] = ((x[c] as i32 - y[c] as i32).unsigned_abs() * 4).min(255) as u8;
+        }
+        o[3] = 255;
+    }
+    let mean = total as f64 / (w * h * 3) as f64;
+    let (worst, value) = tiles.iter().enumerate().max_by_key(|t| *t.1).map(|(i, &v)| (i, v)).unwrap_or((0, 0));
+    let (tx, ty) = (worst % tw * TILE, worst / tw * TILE);
+    let tile_px = (TILE.min(w - tx) * TILE.min(h - ty) * 3) as f64;
+    if let Some(out) = f.get("out-diff") {
+        diff.save_png(out).map_err(|e| format!("{out}: {e}"))?;
+    }
+    if let Some(out) = f.get("out-compare") {
+        let mut both = mrc_core::Pixmap::new(w as u32, 2 * h as u32).unwrap();
+        both.data_mut()[..pa.len()].copy_from_slice(pa);
+        both.data_mut()[pa.len()..].copy_from_slice(pb);
+        both.save_png(out).map_err(|e| format!("{out}: {e}"))?;
+    }
+    println!("{mean:.2} {:.1} {tx},{ty}", value as f64 / tile_px);
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else { return usage() };
@@ -357,6 +403,7 @@ fn main() -> ExitCode {
         "bench" => bench(&f),
         "check-repeats" => check_repeats(&f),
         "sheet" => sheet::sheet(&f, &load(&f)?),
+        "compare" => compare(&f),
         _ => Err(format!("unknown command {cmd}")),
     });
     match result {
