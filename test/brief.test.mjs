@@ -233,6 +233,31 @@ test('a malformed brief is an error, since nothing can read it', async () => {
   ]);
 });
 
+const long = hunk(
+  'm1',
+  'src/big.js',
+  Array.from({ length: 120 }, (_, i) => `const row${i} = ${i};`),
+);
+const seen = (sb) =>
+  validateStoryboard(sb, { ...hunks, m1: long }, {}).then((r) => r.warnings.filter((w) => /never shows/.test(w)));
+
+test('a code scene whose hunk outgrows the frame names the lines never seen', async () => {
+  const sb = { title: 'Big', scenes: [code('m1', { answers: undefined })] };
+  const [warning] = await seen(sb);
+  assert.match(
+    warning,
+    /^scenes\[0\]: the hunk is longer than the frame draws and no step's lines bring src\/big\.js lines 1-\d+, \d+-120 into view, so the video never shows them; add a step for them, or split the hunk$/,
+  );
+  const steps = Array.from({ length: 10 }, (_, k) => ({ lines: `${k * 12 + 1}-${k * 12 + 12}`, say: 'A part.' }));
+  assert.deepEqual(await seen({ title: 'Big', scenes: [code('m1', { steps })] }), []);
+  // A small hunk is wholly in view, and a focus the writer chose crops the rest on purpose.
+  assert.deepEqual(await seen({ title: 'Big', scenes: [code('h1')] }), []);
+  assert.deepEqual(
+    await seen({ title: 'Big', scenes: [code('m1', { steps: [{ lines: '50-52', say: 'Here.' }] })] }),
+    [],
+  );
+});
+
 test('the brief line of a full brief matches the ADR', () => {
   assert.equal(
     briefLine(brief({ proof: undefined, why: { text: 'x', source: 'commit 7376000' }, parts: brief().parts })),

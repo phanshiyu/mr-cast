@@ -12,7 +12,7 @@ import { checkInk, checkPenMarks } from './validate-pen-marks.mjs';
 import { checkCamera } from './validate-camera.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
-import { checkFit, checkSpokenMarkup } from './validate-fit.mjs';
+import { checkFit, checkSpokenMarkup, checkUnseenCode } from './validate-fit.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
@@ -753,6 +753,7 @@ async function validateScenes(
   if (!errors.length) {
     const normalized = normalizeStoryboard(sb, hunks ?? {});
     await checkFit(normalized, hunks ?? {}, errors, warnings, images?.manifest ?? {});
+    if (branch) await checkUnseenCode(normalized, hunks ?? {}, warnings);
   }
   checkSpokenCounts(sb.scenes, warnings);
   if (mode === 'explain') {
