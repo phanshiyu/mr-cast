@@ -133,7 +133,8 @@ test('every dev dependency that the player imports is listed as bundled', () => 
   for (const dir of ['src', 'shared', 'bin']) walk(dir);
   const text = sources.join('\n');
   for (const name of Object.keys(manifest.devDependencies)) {
-    const escaped = name.replace(/[/@.-]/g, '\\$&');
+    // Escape every character a regular expression reads specially, the backslash among them, so a name is matched as written.
+    const escaped = name.replace(/[\\^$.*+?()[\]{}|/@-]/g, '\\$&');
     const imported = new RegExp(`(from|import|require\\()\\s*['"]${escaped}(/[^'"]*)?['"]`).test(text);
     assert.ok(!imported || BUNDLED_DEV_DEPENDENCIES.includes(name), `${name} is imported by shipped code`);
   }
