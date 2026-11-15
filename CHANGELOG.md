@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.29.0
 
 A video of a branch now answers the six questions a reviewer has. mr-cast reads the facts a diff does not show, Claude writes the answers in the storyboard, and `validate` says which are missing. Nothing about the order, the scene types or the length of a video is set. Storyboards from 0.28 still validate and render: every new check is a warning (ADR 0037 and ADR 0038).
 
@@ -45,6 +45,15 @@ A video of a branch now answers the six questions a reviewer has. mr-cast reads 
 - **A decision carries its source,** so a way not taken that nobody names is labelled as the writer's own.
 - **The parts map** draws each part as a card with what it does, what it builds on and what to check in it.
 - **`schema <type>`** prints that scene's own fields and names the shared types, where it used to repeat them all.
+
+**Upgrading from 0.28.** A storyboard written for 0.28 validates and draws as before. A branch storyboard with no `brief` gets one new warning that names the six questions, and nothing fails for lacking it. `mr-cast voices --sample` without `--out` now writes into a new temporary folder and prints the path, where it wrote `/tmp/mr-cast-sample-<voice>.wav`. Run `mr-cast install-skill` after upgrading, so Claude Code gets the new skill.
+
+**Security and dependencies.**
+
+- **Downloads are checked before they are kept.** The update check keeps only a version number, a voice file must be the size and the kind of numbers a voice file holds, and a picture URL is sent without any credentials written in it.
+- **Files are opened once.** Reading a picture, `images.json` and git's exclude file no longer checks a path and then opens it, so the file cannot change in between.
+- **Dependencies are current,** which clears the advisories in `zod` (through Remotion) and `fast-uri`: Remotion 4.0.543, `@huggingface/transformers` 4.3.2, `onnxruntime-node` 1.31.1 and the rest. Node 26 is the version mr-cast is developed and tested on; it still runs on Node 22.12 and newer.
+- **Later dependency updates release by themselves** as patch versions when a package that ships with mr-cast changes (ADR 0041).
 
 ## 0.28.0
 
