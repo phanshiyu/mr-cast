@@ -101,7 +101,8 @@
         {
           "hunkId": "h5",
           "lines": "8-16",
-          "check": "`save` resets `createdAt`, so a busy session may outlive the 30-day cap"
+          "check": "`save` resets `createdAt`, so a busy session may outlive the 30-day cap",
+          "why": "every caller of `save` restarts the 30 days, not only the login"
         },
         {
           "hunkId": "h2",
@@ -119,7 +120,8 @@
         },
         {
           "hunkId": "h3",
-          "check": "`SESSION_IDLE_MINUTES` is 30 and is not read from the environment"
+          "check": "`SESSION_IDLE_MINUTES` is 30 and is not read from the environment",
+          "why": "a deploy cannot change the limit without a code change"
         },
         {
           "hunkId": "h1",

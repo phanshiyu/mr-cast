@@ -10,6 +10,8 @@ export interface ReadingEntry {
   /** The lines of routine hunks of the same file that ride on this item, such as "1-6", so the file is never also on a skim line. */
   also: string[];
   check: string;
+  /** Why it matters, or an empty string; a brief's check item brings its own. */
+  why: string;
   routine: boolean;
   /** 1-based in `readFirst`, the items to read grouped by topic; null for a routine one. */
   number: number | null;

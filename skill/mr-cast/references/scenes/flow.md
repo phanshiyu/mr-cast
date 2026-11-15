@@ -1,6 +1,6 @@
 # flow
 
-A row of stages, each an actor and what it does, with the data as it looks after that stage.
+A row of stages, each an actor and what it does, with the data as it looks after that stage, or the real lines of code that do it.
 
 ## Example
 
@@ -20,7 +20,9 @@ A row of stages, each an actor and what it does, with the data as it looks after
 
 ## Schema and validate notes
 
-A flow takes no `focus`. Each stage is `{ actor, action, payload?, icon?, say? }`, and either every stage has a `say` or none does. `payload` is a string, so stringify JSON yourself. `{{MR_CAST}}/bin/mr-cast validate` fails on a `say` on only some stages, a payload that is not a string, and stages too many for their rows to hold each actor and action without overlapping.
+A flow takes no `focus`. Each stage is `{ actor, action, payload?, code?, icon?, say? }`, and either every stage has a `say` or none does. `payload` is a string, so stringify JSON yourself. It is drawn as monospace code in large type, meant for a short value such as `status pending, attempts 1` or `429 Retry-After: 60`; say sentences in `action` or `say`, not there.
+
+A stage may carry `code` instead of `payload`: `{ "hunk": "h56", "lines": "47-60", "light": "52-54" }` for a diff hunk, or `{ "snippet": "s2", "lines": "127-135" }` for a snippet. The panel then draws those real lines at normal code size, with the file name, line numbers, syntax colour and the diff's change marks, and the step list shows the `path:line` itself, so do not type it. `light` marks the lines the stage is about and dims the rest. `lines` are numbered as in the file, inside the hunk. About 14 lines stay readable; `validate` reports a stage whose lines do not fit. A pre-read puts no code on screen, so its stages keep a `payload`. It is the way to show one request's path through several files: one stage per file, each with its own lines. `{{MR_CAST}}/bin/mr-cast validate` fails on a `say` on only some stages, a payload that is not a string, a `code` with both or neither of `hunk` and `snippet`, with a hunk, snippet or lines that do not exist, or beside a `payload`, and stages too many for their rows to hold each actor and action without overlapping.
 
 `{{MR_CAST}}/bin/mr-cast schema flow` prints its fields.
 

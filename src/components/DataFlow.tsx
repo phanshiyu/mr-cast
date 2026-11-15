@@ -4,9 +4,19 @@ import { useMemo } from 'react';
 import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 import { buildFrames } from '../../shared/timing.mjs';
 import type { FlowScene, FlowStep } from '../types';
-import { COLUMN_GAP, LIST_W, STRIP_H, layoutFlow, type FlowLayout, type StepCard } from '../utils/flowLayout';
-import { plainCodeColor, tokenColor, tokenizeLines } from '../utils/highlight';
+import {
+  CODE_BAR_H,
+  CODE_PAD,
+  COLUMN_GAP,
+  LIST_W,
+  STRIP_H,
+  layoutFlow,
+  type FlowLayout,
+  type StepCard,
+} from '../utils/flowLayout';
+import { plainCodeColor, tokenColor, tokenizeHunkLines, tokenizeLines } from '../utils/highlight';
 import { spotlightStarts } from '../utils/spotlight';
+import { Code, Gutter, lineBg } from './CodeDiff';
 import { lucideIcon } from './icons';
 import { SceneShell } from './SceneShell';
 import type { SceneProps } from './sceneProps';
@@ -79,6 +89,7 @@ const StepRow: React.FC<{
           <FitText fit={text.actor} inline />
         </div>
         <FitText fit={active ? text.action : text.idle} style={{ marginTop: 6 }} />
+        {text.where ? <FitText fit={text.where} style={{ marginTop: 4, color: colors.muted }} /> : null}
       </div>
     </div>
   );
@@ -99,7 +110,55 @@ const CodeLines: React.FC<{ lines: Token[][]; fontSize: number }> = ({ lines, fo
   </div>
 );
 
+/** Real lines in the code scene's own rows: file bar, then each line with its number, change sign and colours. */
+const CodeCard: React.FC<{ card: Extract<StepCard, { kind: 'code' }>; height: number }> = ({ card, height }) => {
+  const tokens = useMemo(() => tokenizeHunkLines(card.hunk.lines, card.hunk.language), [card.hunk]);
+  const size = card.lines.size;
+  const rowH = size * card.lines.lineHeight;
+  return (
+    <div style={{ height, boxSizing: 'border-box', padding: `0 ${CODE_PAD}px` }}>
+      <div
+        style={{
+          height: CODE_BAR_H,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          padding: '0 6px',
+          fontFamily: fonts.mono,
+          fontSize: 22,
+          color: colors.muted,
+          borderBottom: `1px solid ${colors.border}`,
+        }}
+      >
+        <span style={{ color: colors.text, fontWeight: 600 }}>{card.hunk.file}</span>
+      </div>
+      <div style={{ paddingTop: CODE_PAD }}>
+        {card.rows.map((row) => {
+          const line = card.hunk.lines[row.index]!;
+          return (
+            <div
+              key={row.index}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                height: rowH,
+                background: lineBg(line),
+                opacity: card.light && !row.lit ? 0.45 : 1,
+                boxShadow: row.lit ? `inset 4px 0 0 ${colors.accent}` : undefined,
+              }}
+            >
+              <Gutter line={line} numbers={[line.newLine ?? line.oldLine]} fontSize={size} />
+              <Code tokens={tokens[row.index]!} fontSize={size} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const PayloadCard: React.FC<{ card: StepCard; height: number }> = ({ card, height }) => {
+  if (card.kind === 'code') return <CodeCard card={card} height={height} />;
   if (card.kind === 'headline') {
     return (
       <div
@@ -123,10 +182,10 @@ const PayloadCard: React.FC<{ card: StepCard; height: number }> = ({ card, heigh
   );
 };
 
-export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, durationInFrames, segments }) => {
+export const DataFlow: React.FC<SceneProps<FlowScene>> = ({ scene, hunks, durationInFrames, segments }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const layout = useMemo(() => layoutFlow(scene), [scene]);
+  const layout = useMemo(() => layoutFlow(scene, hunks), [scene, hunks]);
   const steps = scene.steps;
   // With a `say` per step, step k is current from its segment; without, the steps share the narration.
   const said = segments.length > 1;

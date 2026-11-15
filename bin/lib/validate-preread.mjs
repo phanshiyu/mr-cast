@@ -51,6 +51,7 @@ function checkItems(s, p, hunks, findings, errors, warnings, { preread, checks }
     if (item.check !== undefined && typeof item.check !== 'string') errors.push(`${q}.check: must be a string`);
     else if (item.routine !== true && !isStr(item.check))
       errors.push(`${q}.check: required, what to verify there; set "routine": true for a change to skim`);
+    if (item.why !== undefined && !isStr(item.why)) errors.push(`${q}.why: must be a non-empty string`);
     if (item.flag !== undefined) checkFlag(item, q, hunks, findings, errors);
     if (isStr(item.hunkId) && Object.hasOwn(hunks, item.hunkId)) checkLines(item, q, hunks[item.hunkId], errors);
   });

@@ -100,6 +100,7 @@ export function readingOrder(storyboard, hunks, plan = null) {
   const titles = new Map((plan?.topics ?? []).map((t) => [t.id, t.title]));
   const base = () => ({
     also: [],
+    why: '',
     routine: false,
     number: null,
     finding: null,
@@ -119,6 +120,7 @@ export function readingOrder(storyboard, hunks, plan = null) {
             hunkId: item.hunkId,
             where: hunkLocation(hunks[item.hunkId], item.lines),
             check: typeof item.check === 'string' ? item.check : '',
+            why: typeof item.why === 'string' ? item.why : '',
             routine: item.routine === true,
             finding: typeof item.flag === 'string' ? (findings.get(item.flag) ?? null) : null,
             explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
@@ -134,6 +136,7 @@ export function readingOrder(storyboard, hunks, plan = null) {
           hunkId: `check:${i}`,
           where: `${c.file.replace(C0, '')}:${c.line}`,
           check: c.what,
+          why: typeof c.why === 'string' ? c.why : '',
         }));
   const groups = byTopic(items.filter((i) => !i.routine));
   const readFirst = groups.flatMap((g) => g.items);
@@ -170,7 +173,8 @@ const mdWhere = (where) => where.replace(/^(.*?)( \(removed\))?$/, '`$1`$2');
 /** One item as a Markdown checklist entry. */
 function itemMarkdown(item) {
   const flag = item.finding ? ` (${flagText(item.finding, mdLine)})` : '';
-  return `- [ ] ${item.number}. ${mdWhere(item.where)}${alsoText(item)}: ${mdLine(item.check)}${flag}`;
+  const why = item.why ? `\n  ${mdLine(item.why)}` : '';
+  return `- [ ] ${item.number}. ${mdWhere(item.where)}${alsoText(item)}: ${mdLine(item.check)}${flag}${why}`;
 }
 
 /** The reading order as a Markdown checklist: the items to read by topic, then one "skim" line per topic. */

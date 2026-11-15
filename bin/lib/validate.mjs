@@ -22,7 +22,7 @@ import { checkPlot } from './validate-plot.mjs';
 import { checkMap } from './validate-map.mjs';
 import { loadWorld, needsWorld } from '../../shared/map.mjs';
 import { checkImage } from './validate-image.mjs';
-import { checkChart, checkFiles, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
+import { checkChart, checkFiles, checkFlowCode, checkFlowSays, checkTable, checkTimeline } from './validate-scenes.mjs';
 import { TONES } from './tones.mjs';
 import { checkCompare } from './validate-compare.mjs';
 import { checkTopics } from './validate-plan.mjs';
@@ -274,6 +274,7 @@ function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
   const preread = audience === 'preread';
   const shownIds = sb.scenes.flatMap((s) => {
     if (s?.type === 'code') return [s.hunkId];
+    if (s?.type === 'flow' && Array.isArray(s.steps)) return s.steps.map((st) => st?.code?.hunk);
     if (s?.type === 'reading' && preread) return [...listed];
     if (s?.type === 'tests' && Array.isArray(s.tests)) return s.tests.map((t) => t?.hunkId);
     return [];
@@ -582,6 +583,7 @@ async function validateScenes(
           if (!isStr(st?.action)) errors.push(`${p}.steps[${j}].action: required string`);
           if (st?.payload !== undefined && typeof st.payload !== 'string')
             errors.push(`${p}.steps[${j}].payload: must be a string (stringify JSON yourself)`);
+          checkFlowCode(st, `${p}.steps[${j}]`, hunks, audience === 'preread', errors);
           checkIcon(st?.icon, `${p}.steps[${j}].icon`, errors);
           if (st?.tone !== undefined && !TONES.includes(st.tone))
             errors.push(`${p}.steps[${j}].tone: must be one of ${TONES.join(', ')}`);

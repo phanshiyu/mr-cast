@@ -419,16 +419,38 @@ export interface CodeScene extends SceneBase {
   outputTitle?: string;
 }
 
+/**
+ * Real lines a flow stage shows in place of its `payload`: a hunk of the diff or a snippet (`mr-cast snippet`), the
+ * way the code scene draws them, with the file name, line numbers, syntax colour and change marks. About 14 lines
+ * stay readable; `validate` reports a stage whose lines do not fit.
+ */
+export interface FlowCode {
+  /** A diff hunk's id, such as "h56". Give this or `snippet`. */
+  hunk?: string;
+  /** A snippet's id, such as "s2". Give this or `hunk`. */
+  snippet?: string;
+  /** The lines to draw, "a-b" or one number, numbered as in the file (the new file for a changed hunk), inside the hunk. */
+  lines: string | number;
+  /** The lines this stage is about, "a-b" or one number, inside `lines`; the others are drawn dimmer. */
+  light?: string | number;
+}
+
 export interface FlowStep {
   /** Who is acting: a service, function, or component name. */
   actor: string;
   /** What happens at this step. */
   action: string;
   /**
-   * The data as it looks after this step (JSON, a struct, a short code snippet...). In a pre-read, words with
-   * the real names and values ("status pending, next try in 10 s"), since no code goes on screen.
+   * The data as it looks after this step, drawn as one monospace line in large type: a short value such as
+   * `status pending, attempts 1` or `429 Retry-After: 60`. JSON is pretty-printed. Sentences do not belong
+   * here; say them in `action` or `say`. For real code, use `code` instead.
    */
   payload?: string;
+  /**
+   * Real lines of the code, in place of `payload`. The right panel draws them at normal code size, and the step
+   * list shows their `path:line`, so none is typed.
+   */
+  code?: FlowCode;
   /** A Lucide icon name for the actor, as on a diagram node, e.g. "user" or "server". */
   icon?: string;
   /** Colour of the actor's chip and icon. */
@@ -666,6 +688,11 @@ export interface ReadingItem {
    * new minute; check the off-by-one". Required unless `routine`.
    */
   check?: DisplayText;
+  /**
+   * Why it matters, in one short line, e.g. "every agent that writes path:line is affected". Drawn quietly under the
+   * check, and written to reading.md. When the scene draws `brief.check`, each item's `why` is the brief's.
+   */
+  why?: DisplayText;
   /** A routine change (wiring, a rename, config): reading.md lists it on its group's one "skim" line, never on screen. */
   routine?: boolean;
   /** Review mode: the id of the finding whose line is in this hunk, drawn on the item in its severity's colour. */

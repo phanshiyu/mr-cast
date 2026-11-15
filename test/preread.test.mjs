@@ -653,3 +653,71 @@ test('"check this at item N" may name any item of the reading order', async () =
   ]);
   assert.deepEqual(matching(warnings, /says "item/), []);
 });
+
+test('an item\'s "why" is drawn under its check, written to reading.md, and checked as a string', async () => {
+  const items = [
+    { hunkId: 'h1', check: 'the key resets on a new minute', why: 'every request on the route goes through it' },
+    { hunkId: 'h2', check: 'the limiter runs before the order is saved' },
+  ];
+  const sb = { title: 'Rate limit', scenes: [intent, reading(items)] };
+  const order = readingOrder(sb, hunks);
+  assert.deepEqual(
+    order.readFirst.map((i) => i.why),
+    ['every request on the route goes through it', ''],
+  );
+  assert.ok(
+    readingMarkdown(sb, order).includes(
+      '- [ ] 1. `src/limiter.ts:12-31`: the key resets on a new minute\n  every request on the route goes through it\n- [ ] 2.',
+    ),
+  );
+  const layout = layoutReading(order, items, 1712, 760);
+  assert.ok(layout.rows[0].why.fits);
+  assert.equal(layout.rows[1].why, null);
+  assert.ok(layout.rows[0].h > layout.rows[1].h);
+  const bad = await validate([intent, reading([{ ...items[0], why: 7 }, items[1]])]);
+  assert.deepEqual(matching(bad.errors, /why/), ['scenes[1].items[0].why: must be a non-empty string']);
+});
+
+test('six items with a why each still fit the reading scene, and the seventh is counted', () => {
+  const many = Object.fromEntries(
+    Array.from({ length: 7 }, (_, i) => [`r${i}`, hunk(`r${i}`, `src/part${i}.ts`, ['export const a = 1;'], 1)]),
+  );
+  const items = Array.from({ length: 7 }, (_, i) => ({
+    hunkId: `r${i}`,
+    check: `check part ${i}, where the count is kept per minute`,
+    why: 'every agent that writes path:line is affected',
+  }));
+  const layout = layoutReading(
+    readingOrder({ title: 'Parts', scenes: [intent, reading(items)] }, many),
+    items,
+    1712,
+    760,
+  );
+  assert.equal(layout.rows.length, 6);
+  assert.equal(layout.room.fits, true);
+  assert.ok(layout.rows.every((r) => r.why.fits && r.check.fits));
+  assert.equal(moreText(layout), '+1 more to read');
+});
+
+test('the scene draws each brief.check item with the why the brief gives it', () => {
+  const sb = {
+    title: 'Brief',
+    scenes: [{ type: 'reading', narration: 'Open these first.' }],
+    brief: {
+      check: [
+        { file: 'src/limiter.ts', line: 12, what: 'the window edge', why: 'a miss lets a burst through' },
+        { file: 'src/server.ts', line: 40, what: 'the mount order' },
+      ],
+    },
+  };
+  const order = readingOrder(sb, hunks);
+  assert.deepEqual(
+    order.readFirst.map((i) => [i.where, i.why]),
+    [
+      ['src/limiter.ts:12', 'a miss lets a burst through'],
+      ['src/server.ts:40', ''],
+    ],
+  );
+  const layout = layoutReading(order, order.items, 1712, 760);
+  assert.ok(layout.rows[0].why.fits);
+});
