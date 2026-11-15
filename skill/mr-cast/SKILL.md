@@ -46,7 +46,7 @@ For the branch:
 {{MR_CAST}}/bin/mr-cast extract [base] [--working] <flags>
 ```
 
-It prints the run's directory, `.mr-cast/<branch-slug>/`, then a change map, then a hunk index. Pass a base when the user names one. Add `--working` for uncommitted changes. For a PR or MR that is not checked out, run `gh pr checkout <n>` or `glab mr checkout <n>` first. When the branch has a PR or MR, save its title and description to a file (`gh pr view --json title,body`, `glab mr view`) and pass `--description <file>`. Running `extract` again refreshes the diff and keeps the storyboard and snippets.
+It prints the run's directory, `.mr-cast/<branch-slug>/`, then a change map, then a hunk index. Pass a base when the user names one. Add `--working` for uncommitted changes. For a PR or MR that is not checked out, run `gh pr checkout <n>` or `glab mr checkout <n>` first. When `gh` or `glab` can read the branch's PR or MR, save its title and description to a file (`gh pr view --json title,body`, `glab mr view`) and pass `--description <file>`. When they cannot (not logged in, no network), carry on without it: the commit messages are in the map. Running `extract` again refreshes the diff and keeps the storyboard and snippets.
 
 The change map is what the diff alone does not show: what the author said in the commits and the description, the files by kind with existing code that changed first, which tests cover which files, and where changed names are used outside the diff.
 
@@ -109,6 +109,8 @@ The voice reads the narration and each step's `say` aloud, and each scene lasts 
 **Review.** List what looks wrong in the storyboard's `findings`, and set `"flag": "<id>"` on the code step that shows a finding's line to circle it there. A `review` scene lists every finding. `validate` writes `review.md` in the run's directory.
 
 **Pre-read.** With `--audience preread`, no code goes on screen: `validate` rejects a `code` scene and a code cell. A diagram can cite the hunks it explains in `"from": ["h1"]`. A `reading` scene lists the order in which to read the code, and `validate` writes it to `reading.md`.
+
+**Reading scene.** Any video of a branch can use a `reading` scene, not only a pre-read. With no `items` it draws the brief's `check` list, which must then have entries.
 
 **Plan page.** When the user wants to pick the topics first, see [references/plan.md](references/plan.md).
 
