@@ -63,6 +63,15 @@ function formatPayload(payload) {
   }
 }
 
+/** The run's images.json, each copy's file made absolute so the engine finds it from any directory. */
+function readImages(dir) {
+  const file = path.join(dir, 'images.json');
+  if (!fs.existsSync(file)) return {};
+  const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+  for (const entry of Object.values(manifest)) entry.file = path.resolve(dir, entry.file);
+  return manifest;
+}
+
 async function props(m, dir, out) {
   // An explanation run may have no hunks.json; it then shows no code.
   const hunksFile = path.join(dir, 'hunks.json');
@@ -78,7 +87,7 @@ async function props(m, dir, out) {
         const { text, language } = formatPayload(step.payload);
         highlight.snippets[`${language}\n${text}`] = colored(m, m.tokenizeLines(text, language));
       }
-  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight });
+  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: readImages(dir), highlight });
 }
 
 function data(m) {

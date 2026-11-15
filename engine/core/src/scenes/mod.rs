@@ -8,6 +8,8 @@ use serde_json::Value;
 
 pub mod code;
 pub mod flow;
+pub mod image;
+pub mod media;
 pub mod placeholder;
 pub mod text;
 
@@ -44,7 +46,8 @@ pub trait SceneView: Send + Sync {
 pub type Prepare = fn(&SceneInput) -> Result<Box<dyn SceneView>, String>;
 
 /// Scene types the engine draws; any other type draws a placeholder card.
-pub const REGISTRY: &[(&str, Prepare)] = &[("text", text::prepare), ("code", code::prepare), ("flow", flow::prepare)];
+pub const REGISTRY: &[(&str, Prepare)] =
+    &[("text", text::prepare), ("code", code::prepare), ("flow", flow::prepare), ("image", image::prepare)];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
 pub fn prepare(input: &SceneInput) -> Box<dyn SceneView> {

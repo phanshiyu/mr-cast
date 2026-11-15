@@ -18,6 +18,42 @@ pub struct Props {
     pub voiceover: Option<Voiceover>,
     #[serde(default)]
     pub highlight: Highlight,
+    /// The run's images.json: each image source as written, with its copy's file (resolved by the host) and size.
+    #[serde(default)]
+    pub images: HashMap<String, ImageEntry>,
+    /// The decoded copies, by the same sources. The core reads no files: the host decodes each `images` file
+    /// (see [`Picture::from_rgba8`]) and fills this in before building a `Project`.
+    #[serde(skip)]
+    pub pictures: HashMap<String, Picture>,
+}
+
+/// One image of the run's images.json.
+#[derive(Clone, Debug, Deserialize)]
+pub struct ImageEntry {
+    pub file: String,
+    pub width: u32,
+    pub height: u32,
+}
+
+/// A decoded image: premultiplied RGBA, shared by every frame that draws it.
+#[derive(Clone, Debug)]
+pub struct Picture {
+    pub pixmap: std::sync::Arc<tiny_skia::Pixmap>,
+}
+
+impl Picture {
+    /// From straight (non-premultiplied) RGBA8 pixels, row by row; None when the size and data disagree.
+    pub fn from_rgba8(width: u32, height: u32, rgba: &[u8]) -> Option<Picture> {
+        let mut pixmap = tiny_skia::Pixmap::new(width, height)?;
+        if rgba.len() != pixmap.data().len() {
+            return None;
+        }
+        for (dst, src) in pixmap.pixels_mut().iter_mut().zip(rgba.as_chunks::<4>().0) {
+            let c = tiny_skia::ColorU8::from_rgba(src[0], src[1], src[2], src[3]).premultiply();
+            *dst = c;
+        }
+        Some(Picture { pixmap: std::sync::Arc::new(pixmap) })
+    }
 }
 
 fn yes() -> bool {
