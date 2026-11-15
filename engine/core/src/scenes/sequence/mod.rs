@@ -230,7 +230,7 @@ fn draw_label(dl: &mut DisplayList, m: &PlacedMessage, appear: f64, current: boo
     let removed = m.message.marks.change.as_deref() == Some("removed");
     let fit = &label.text;
     let w = (fit.width + 24.0).min(label.max_width) as f32;
-    let h = (fit.lines.len() as f64 * fit.size * 1.35 + 6.0 + 2.0) as f32;
+    let h = (fit.lines.len() as f64 * fit.size * 1.35 + 2.0 * 2.0 + 2.0) as f32;
     let (ox, oy) = match label.align {
         Align::Center => (-w / 2.0, -h),
         Align::Right => (-w, -h / 2.0),
