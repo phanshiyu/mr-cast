@@ -70,6 +70,12 @@ test('no job in the publish workflow restores or saves a cache, because jobs run
   assert.match(workflow, /uses: \.\/\.github\/actions\/setup-uncached\n/);
 });
 
+test('the render job checks out the head of main as the event gives it, then moves only to a commit on main', () => {
+  assert.doesNotMatch(jobs.render, /^\s+ref:/m);
+  assert.match(jobs.render, /git merge-base --is-ancestor "\$SHA" origin\/main/);
+  assert.ok(jobs.render.indexOf('merge-base') < jobs.render.indexOf('setup-uncached'));
+});
+
 test('a manual start publishes only from main, and no run step interpolates an expression', () => {
   assert.match(
     jobs.publish,

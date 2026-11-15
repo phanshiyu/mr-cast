@@ -319,8 +319,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.SHA }}
+          fetch-depth: 0
           persist-credentials: false
+      # The checkout above is the head of main as the event gives it, never a ref this run was handed. The commit to
+      # render is moved to only when it is on main, so a manual start cannot build code that never went through main.
+      - name: Check out the commit to render, if it is on main
+        run: |
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main, so it is not rendered."; exit 1; }
+          git checkout --detach "$SHA"
       - uses: ./.github/actions/setup-uncached
       - run: pnpm build
       - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "$SHARD/6"

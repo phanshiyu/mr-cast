@@ -92,3 +92,6 @@ cache option in a composite action as poisonable even when an input turns it off
 job no longer caches the Chrome download or the voice model, so each shard downloads them. A manual start of the
 publish job now runs only from main, so a dispatch cannot publish a branch. The jobs that publish or push also no longer
 put job outputs into scripts: they pass them through `env`. `test/publish-workflow.test.mjs` holds these rules.
+
+The render job also no longer checks out a ref it was handed. It checks out the head of main as the event gives it, then
+moves to the commit to render only after confirming that commit is on main, and stops when it is not.
