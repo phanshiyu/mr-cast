@@ -18,6 +18,8 @@
     "quality/*.mjs",
     "quality/effort/*.mjs"
   ],
+  // Rust's tools, which scripts/build-wasm.mjs and bin/lib/engine.mjs run; rustup and cargo install provide them.
+  "ignoreBinaries": ["cargo", "wasm-bindgen"],
   "ignorePatterns": ["bin/lib/kokoro/**", "shared/world/**", "dist/**"],
   "ignoreExports": [
     // bin/mr-cast.mjs imports render.mjs on demand and destructures the result, which fallow cannot follow.
