@@ -26,6 +26,7 @@ async function load() {
     export { interpolate, spring, Easing } from 'remotion';
     export { normalizeStoryboard } from './shared/normalize.mjs';
     export { parseStoryboard } from './shared/storyboard-json.mjs';
+    export { isHunkCell, resolveHunkCell } from './shared/compare.mjs';
   `;
   const out = await build({
     stdin: { contents: entry, resolveDir: REPO, loader: 'ts' },
@@ -77,6 +78,19 @@ async function props(m, dir, out) {
       if (typeof step.payload === 'string') {
         const { text, language } = formatPayload(step.payload);
         highlight.snippets[`${language}\n${text}`] = colored(m, m.tokenizeLines(text, language));
+      }
+  // A compare scene's code cells: inline snippets, and the lines its hunk cells read from hunks.json.
+  for (const scene of storyboard.scenes)
+    for (const row of scene.type === 'compare' ? (scene.rows ?? []) : [])
+      for (const cell of (row.cells ?? []).slice(0, 2)) {
+        const read = m.isHunkCell(cell)
+          ? m.resolveHunkCell(cell, hunks)
+          : cell && typeof cell === 'object' && !('image' in cell)
+            ? { code: cell.code, lang: cell.lang ?? 'plain' }
+            : null;
+        if (!read || 'error' in read || typeof read.code !== 'string') continue;
+        const code = read.code.replace(/\s+$/, '');
+        highlight.snippets[`${read.lang}\n${code}`] = colored(m, m.tokenizeLines(code, read.lang));
       }
   write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight });
 }
