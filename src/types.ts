@@ -1455,11 +1455,7 @@ export interface FilesScene extends SceneBase {
  * One side's cell in a compare row: display text, a short code snippet of a few lines drawn with syntax colours, or a
  * picture, such as a screenshot of each side, in a 16:9 box (see ImageScene for what `image` may be).
  */
-export type CompareCell =
-  | DisplayText
-  | { code: string; lang?: string }
-  | { image: string; fit?: ImageFit }
-  | HunkCell;
+export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit } | HunkCell;
 
 /**
  * A cell whose code is read from hunks.json, so it cannot drift from the real diff. `side: "old"` shows the removed
