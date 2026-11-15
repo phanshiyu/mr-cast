@@ -22,7 +22,7 @@ jobs:
   publish:
     name: Publish to npm
     if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     # Only the npm publish is serialized, so a version bump never waits behind an earlier version's renders.
     concurrency:
@@ -74,7 +74,7 @@ jobs:
   release:
     name: Open the release as a draft
     needs: publish
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     concurrency:
       group: release-v${{ needs.publish.outputs.version }}
@@ -112,7 +112,7 @@ jobs:
     name: Render examples, shard ${{ matrix.shard }} of 6
     needs: [publish, release]
     if: needs.release.outputs.render == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     # Installs, builds and renders the repository's code, so it holds no write access; the upload job attaches its videos.
     permissions:
@@ -155,7 +155,7 @@ jobs:
   upload:
     name: Attach the videos and publish the release
     needs: [publish, render]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     concurrency:
       group: release-v${{ needs.publish.outputs.version }}
