@@ -27,6 +27,11 @@ const ENTRY = path.join(ROOT, 'src/remotion/index.ts');
 const BUNDLE_CACHE = cacheDir('bundle');
 const BROWSER_CACHE = cacheDir('remotion');
 const COMPOSITION_ID = 'Walkthrough';
+const SHEET_ID = 'ContactSheet';
+/** A still's file name, as `renderStills` writes it. */
+const STILL_NAME = /^scene-\d+-[a-z]+(?:-step-\d+)?\.png$/;
+/** Scenes to a contact sheet; more go on further sheets. */
+const SHEET_SCENES = 12;
 /** Bundles of other source hashes (another install, an older version) unused this long are deleted. */
 const BUNDLE_MAX_IDLE_MS = 60 * 60 * 1000;
 const TMP_PREFIX = '.tmp-';
@@ -121,15 +126,16 @@ async function withRetry(label, fn) {
  * Serves the run's voice clips (audio/*.wav) and its pictures' copies (images/) on a random local port for the length
  * of a render. The bundle is cached by source hash, so they cannot go into its public dir.
  */
-async function serveRunFiles(dataDir) {
+async function serveRunFiles(dataDir, stillsDir = null) {
   const server = http.createServer((req, res) => {
-    const [, dir, name] = new URL(req.url, 'http://127.0.0.1').pathname.match(/^\/(audio|images)\/([^/]+)$/) ?? [];
-    const allowed = dir === 'audio' ? AUDIO_NAME : IMAGE_NAME;
-    if (req.method !== 'GET' || !name || !allowed.test(name)) {
+    const [, dir, name] =
+      new URL(req.url, 'http://127.0.0.1').pathname.match(/^\/(audio|images|stills)\/([^/]+)$/) ?? [];
+    const allowed = { audio: AUDIO_NAME, images: IMAGE_NAME, stills: STILL_NAME }[dir];
+    if (req.method !== 'GET' || !name || !allowed?.test(name) || (dir === 'stills' && !stillsDir)) {
       res.writeHead(404);
       return res.end();
     }
-    sendFile(req, res, path.join(dataDir, dir, name));
+    sendFile(req, res, path.join(dir === 'stills' ? stillsDir : path.join(dataDir ?? '', dir), name));
   });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
@@ -184,16 +190,25 @@ async function closeBrowser(browser) {
 /** Closes every browser a render or still opened, as `mr-cast render` does when it is stopped. */
 export const closeBrowsers = () => Promise.all([...browsers].map((b) => closeBrowser(b).catch(() => {})));
 
-async function prepare({ hunks, storyboard, voiceover = null, audioBaseUrl, images = {}, imageBaseUrl }) {
+async function prepare({
+  hunks,
+  storyboard,
+  voiceover = null,
+  audioBaseUrl,
+  images = {},
+  imageBaseUrl,
+  id = COMPOSITION_ID,
+  props = null,
+}) {
   const browserExecutable = await ensureChrome();
   const serveUrl = await getServeUrl();
-  const inputProps = { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl, images, imageBaseUrl };
+  const inputProps = props ?? { storyboard, hunks, showCaptions: true, voiceover, audioBaseUrl, images, imageBaseUrl };
   const browser = await withRetry('launching the browser', () => openBrowser('chrome', { browserExecutable }));
   browsers.add(browser);
   try {
     const composition = await selectComposition({
       serveUrl,
-      id: COMPOSITION_ID,
+      id,
       inputProps,
       puppeteerInstance: browser,
     });
@@ -369,6 +384,46 @@ async function renderStillsUsingCaches({ hunks, storyboard, voiceover, images, d
   } finally {
     await closeBrowser(browser);
     await files?.close();
+  }
+  return written;
+}
+
+/** The sheets' file names for `count` scenes: `sheet.png`, or `sheet-1.png`, `sheet-2.png` and on past SHEET_SCENES. */
+export function sheetNames(count) {
+  const n = Math.max(1, Math.ceil(count / SHEET_SCENES));
+  return n === 1 ? ['sheet.png'] : Array.from({ length: n }, (_, i) => `sheet-${i + 1}.png`);
+}
+
+/**
+ * Lays the stills `scenes` (each a { still: file name in outDir, label }) out in contact sheets in `outDir`, in the
+ * browser Remotion renders with, so nothing beyond the project's own dependencies is needed. Returns the sheets' paths.
+ */
+export const renderSheets = (options) => usingCaches(() => renderSheetsUsingCaches(options));
+
+async function renderSheetsUsingCaches({ outDir, tiles }) {
+  const dir = path.resolve(outDir);
+  const files = await serveRunFiles(null, dir);
+  const names = sheetNames(tiles.length);
+  // A sheet left by an earlier run, with more or fewer scenes, would be mistaken for this one.
+  for (const old of (await readdir(dir)).filter((f) => /^sheet(?:-\d+)?\.png$/.test(f))) await rm(path.join(dir, old));
+  const written = [];
+  try {
+    for (const [i, name] of names.entries()) {
+      const chunk = tiles.slice(i * SHEET_SCENES, (i + 1) * SHEET_SCENES).map((t) => ({
+        src: `${files.url}stills/${t.still}`,
+        label: t.label,
+      }));
+      const { serveUrl, inputProps, browser, composition } = await prepare({ id: SHEET_ID, props: { tiles: chunk } });
+      try {
+        const output = path.join(dir, name);
+        await renderStill({ composition, serveUrl, inputProps, output, frame: 0, puppeteerInstance: browser });
+        written.push(output);
+      } finally {
+        await closeBrowser(browser);
+      }
+    }
+  } finally {
+    await files.close();
   }
   return written;
 }

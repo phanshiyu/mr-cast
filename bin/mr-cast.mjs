@@ -69,6 +69,7 @@ import {
 import { PACES, clipFor, paceOf } from '../shared/voice.mjs';
 import { spokenTexts } from '../shared/timing.mjs';
 import { sceneSteps } from '../shared/steps.mjs';
+import { sceneChapter } from '../shared/chapters.mjs';
 import { storyboardSeconds, validateStoryboard } from './lib/validate.mjs';
 import { IMAGES_FILE, resolveImages } from './lib/images.mjs';
 import { formatSteps } from './lib/highlight.mjs';
@@ -160,9 +161,11 @@ const USAGE_ALL = `${USAGE}
 
 More commands and options:
   voice             voice the narration into the run's audio/ without playing it
-  still [sceneIndex...] [--out dir] [--step k]
+  still [sceneIndex...] [--out dir] [--step k] [--sheet]
                     render PNG stills of scenes (0-based; default all, into the run's stills/); with
-                    --step, each scene as step k ends instead of the scene's end
+                    --step, each scene as step k ends instead of the scene's end; with --sheet, one
+                    contact sheet, stills/sheet.png (sheet-1.png, sheet-2.png past 12 scenes), with every
+                    scene's still in a grid labelled with its scene number, type and chapter
   steps [sceneIndex...]
                     print each step's words beside what it lights and what it changes, with the
                     highlight warnings, for checking that the lit part matches the words; code scenes are left out
@@ -1031,7 +1034,7 @@ async function still(argv) {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
-    options: { out: { type: 'string' }, step: { type: 'string' }, ...RUN_OPTIONS },
+    options: { out: { type: 'string' }, step: { type: 'string' }, sheet: { type: 'boolean' }, ...RUN_OPTIONS },
   });
   const run = runFor(values);
   const { dir, hunks, storyboard, images } = await loadValidProject(run.dir, run.settings);
@@ -1043,6 +1046,8 @@ async function still(argv) {
     return n;
   });
   const step = values.step === undefined ? undefined : Number(values.step);
+  if (values.sheet && (step !== undefined || scenes.length))
+    throw new UserError('--sheet shows every scene as it ends; leave out the scene indexes and --step');
   if (step !== undefined) {
     if (!Number.isInteger(step) || step < 0)
       throw new UserError(`--step "${values.step}" is not a step index; steps start at 0`);
@@ -1054,7 +1059,7 @@ async function still(argv) {
         );
     }
   }
-  const { renderStills } = await importRender();
+  const { renderStills, renderSheets } = await importRender();
   const outDir = path.resolve(values.out ?? path.join(dir, 'stills'));
   fs.mkdirSync(outDir, { recursive: true });
   const voiceover = timingVoiceover(dir, run.settings);
@@ -1068,7 +1073,15 @@ async function still(argv) {
     scenes: scenes.length ? scenes : undefined,
     step,
   });
-  for (const f of files) console.log(path.resolve(f));
+  if (!values.sheet) {
+    for (const f of files) console.log(path.resolve(f));
+    return;
+  }
+  const tiles = files.map((f, i) => ({
+    still: path.basename(f),
+    label: `${i} ${storyboard.scenes[i].type} · ${sceneChapter(storyboard.scenes[i])}`,
+  }));
+  for (const f of await renderSheets({ outDir, tiles })) console.log(path.resolve(f));
 }
 
 async function steps(argv) {
