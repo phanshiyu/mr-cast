@@ -23,6 +23,8 @@ async function load() {
     export * as timing from './shared/timing.mjs';
     export * as metrics from './shared/font-metrics.mjs';
     export { speechText } from './shared/speech.mjs';
+    export * as pen from './src/utils/penGeometry';
+    export * as inkg from './src/utils/inkGeometry';
     export { interpolate, spring, Easing } from 'remotion';
     export { normalizeStoryboard } from './shared/normalize.mjs';
     export { parseStoryboard } from './shared/storyboard-json.mjs';
@@ -239,6 +241,71 @@ function fixtures(m) {
     easings.push({ t, bezier: m.Easing.bezier(0.25, 0.1, 0.25, 1)(t), outCubic: m.Easing.out(m.Easing.cubic)(t) });
   }
   write(path.join(dir, 'anim.json'), { springs, easings });
+
+  // Pen and ink geometry on a few targets among obstacles.
+  const area = { x: 0, y: 0, width: 1712, height: 760 };
+  const targets = [
+    { x: 300, y: 200, width: 240, height: 60 },
+    { x: 40, y: 20, width: 600, height: 40 },
+    { x: 1500, y: 680, width: 180, height: 70 },
+  ];
+  const obstacles = [
+    { x: 560, y: 205, width: 200, height: 50 },
+    { x: 100, y: 205, width: 180, height: 50 },
+    { x: 300, y: 300, width: 400, height: 80 },
+  ];
+  const pts = [
+    { x: 400, y: 330 },
+    { x: 900, y: 100 },
+  ];
+  const geometry = [];
+  targets.forEach((target, i) => {
+    const seed = m.pen.seedOf(`${i}:circle:note`);
+    const clutter = { target, obstacles, lines: pts };
+    for (const mark of ['circle', 'box', 'underline', 'strike', 'cross']) {
+      const sketch = m.pen.sketchMark(mark, target, area, obstacles, seed, 4.5);
+      geometry.push({
+        kind: 'mark',
+        mark,
+        target,
+        seed,
+        sketch,
+        note: m.pen.placeNote(mark, { width: 220, height: 43 }, sketch, clutter, area),
+      });
+    }
+    const arrow = m.pen.placeArrow({ width: 220, height: 43 }, clutter, area);
+    geometry.push({ kind: 'arrow', target, seed, arrow, sketch: m.pen.arrowSketch(arrow.tail, target, seed, 4.5) });
+    geometry.push({ kind: 'tick', target, seed, sketch: m.inkg.tickSketch(target, seed, 4.5) });
+    for (const side of ['above', 'below', 'left', 'right'])
+      geometry.push({
+        kind: 'brace',
+        side,
+        target,
+        seed,
+        sketch: m.inkg.braceSketch(target, side, seed, 4.5),
+        clear: m.inkg.clearOf(target, side, obstacles),
+        beside: m.inkg.besideClear(target, side, { width: 200, height: 50 }, 16, obstacles, area),
+      });
+    const other = targets[(i + 1) % targets.length];
+    geometry.push({
+      kind: 'link',
+      target,
+      seed,
+      source: other,
+      sketch: m.inkg.linkSketch(
+        other,
+        m.pen.edgeToward(other, { x: target.x, y: target.y }),
+        target,
+        obstacles,
+        seed,
+        4.5,
+      ),
+      text: m.inkg.placeText(target, target, { width: 200, height: 50 }, obstacles, area),
+      leader: m.inkg.leader(target, { width: 200, height: 50 }, obstacles, area, seed, 4.5),
+      rowEnd: m.inkg.rowEnd(target, { width: 200, height: 50 }, obstacles, area),
+    });
+  });
+  write(path.join(dir, 'marks.json'), geometry);
 }
 
 const [cmd, ...args] = process.argv.slice(2);

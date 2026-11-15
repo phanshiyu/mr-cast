@@ -149,6 +149,12 @@ pub enum Item {
         opacity: f32,
     },
     PopLayer,
+    /// Draws what follows into a layer shown only inside `rect`, fading out over `fade` px at its edges: a CSS mask of
+    /// two edge gradients, as the camera's view uses. Ends at the matching `PopLayer`.
+    PushFadeLayer {
+        rect: Rect,
+        fade: f32,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -269,6 +275,12 @@ impl DisplayList {
     }
     pub fn push_layer(&mut self, opacity: f32) {
         self.push(Item::PushLayer { opacity });
+    }
+    /// A layer that shows only inside the rect, fading out over `fade` px at its edges.
+    pub fn push_fade_layer(&mut self, x: f32, y: f32, w: f32, h: f32, fade: f32) {
+        if let Some(rect) = Rect::from_xywh(x, y, w.max(0.001), h.max(0.001)) {
+            self.push(Item::PushFadeLayer { rect, fade });
+        }
     }
     pub fn pop_layer(&mut self) {
         self.push(Item::PopLayer);
@@ -415,6 +427,12 @@ impl DisplayList {
                     h.f(*opacity);
                 }
                 Item::PopLayer => h.u(16),
+                Item::PushFadeLayer { rect, fade } => {
+                    h.u(17);
+                    for v in [rect.left(), rect.top(), rect.width(), rect.height(), *fade] {
+                        h.f(v);
+                    }
+                }
             }
         }
         std::hash::Hasher::finish(&h.0)

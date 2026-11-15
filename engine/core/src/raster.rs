@@ -100,6 +100,9 @@ impl Default for Renderer {
 
 const SUBPIXEL: f32 = 4.0;
 
+/// A layer being drawn: its pixels, its opacity, and for a fade layer its device rect and fade width.
+type Layer = (Pixmap, f32, Option<(Rect, f32)>);
+
 /// Chrome on macOS draws glyphs heavier than their plain outlines: CoreText dilates the strokes and Skia lifts the
 /// coverage. A slight embolden and a coverage gamma, fitted to Remotion's stills, give the same weight of ink.
 const TEXT_EMBOLDEN: f32 = 0.2;
@@ -231,7 +234,8 @@ impl Renderer {
         }
         let full = (0, 0, pixmap.width() as i32, pixmap.height() as i32);
         let mut clips = vec![Clip { scissor: full, mask: None, bands: [(0.0, 0.0, 0.0, 0.0); 2] }];
-        let mut layers: Vec<(Pixmap, f32)> = Vec::new();
+        // Each layer: its pixels, its opacity, and for a fade layer its device rect and fade width.
+        let mut layers: Vec<Layer> = Vec::new();
         for cmd in &list.cmds {
             let t = cmd.transform.post_concat(base);
             match &cmd.item {
@@ -246,10 +250,18 @@ impl Renderer {
                 }
                 Item::PushLayer { opacity } => {
                     let layer = Pixmap::new(pixmap.width(), pixmap.height()).unwrap();
-                    layers.push((layer, opacity * cmd.opacity));
+                    layers.push((layer, opacity * cmd.opacity, None));
+                }
+                Item::PushFadeLayer { rect, fade } => {
+                    let layer = Pixmap::new(pixmap.width(), pixmap.height()).unwrap();
+                    let device = rect.transform(t).unwrap_or(*rect);
+                    layers.push((layer, cmd.opacity, Some((device, fade * t.sy.abs()))));
                 }
                 Item::PopLayer => {
-                    if let Some((layer, opacity)) = layers.pop() {
+                    if let Some((mut layer, opacity, fade)) = layers.pop() {
+                        if let Some((r, f)) = fade {
+                            fade_edges(&mut layer, r, f);
+                        }
                         let target = layers.last_mut().map_or(&mut *pixmap, |l| &mut l.0);
                         let paint = PixmapPaint { opacity, ..Default::default() };
                         target.draw_pixmap(0, 0, layer.as_ref(), &paint, Transform::identity(), None);
@@ -639,6 +651,40 @@ impl Renderer {
             let (dx, dy) = t.map_xy(x + g.x, y + g.y);
             if let Some((m, ix, iy)) = self.glyph(run, g.id, size, dx, dy) {
                 blit(target, &m, ix, iy, color, clip);
+            }
+        }
+    }
+}
+
+/// Multiplies a layer by a mask that is opaque inside `r` shrunk by `f`, fades to clear at `r`'s edges, and is clear
+/// outside: CSS `mask-image` of two edge gradients composited with `intersect`.
+fn fade_edges(layer: &mut Pixmap, r: Rect, f: f32) {
+    let (w, h) = (layer.width() as usize, layer.height() as usize);
+    let ramp = |v: f32, lo: f32, hi: f32| -> f32 {
+        if f <= 0.0 {
+            return if v >= lo && v <= hi { 1.0 } else { 0.0 };
+        }
+        ((v - lo) / f).min((hi - v) / f).clamp(0.0, 1.0)
+    };
+    let cols: Vec<f32> = (0..w).map(|x| ramp(x as f32 + 0.5, r.left(), r.right())).collect();
+    let data = layer.data_mut();
+    for y in 0..h {
+        let ky = ramp(y as f32 + 0.5, r.top(), r.bottom());
+        let row = &mut data[y * w * 4..(y + 1) * w * 4];
+        if ky >= 1.0 {
+            for (p, &kx) in row.as_chunks_mut::<4>().0.iter_mut().zip(&cols) {
+                if kx < 1.0 {
+                    for c in p.iter_mut() {
+                        *c = (*c as f32 * kx + 0.5) as u8;
+                    }
+                }
+            }
+        } else {
+            for (p, &kx) in row.as_chunks_mut::<4>().0.iter_mut().zip(&cols) {
+                let k = kx * ky;
+                for c in p.iter_mut() {
+                    *c = (*c as f32 * k + 0.5) as u8;
+                }
             }
         }
     }

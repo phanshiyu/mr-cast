@@ -23,6 +23,10 @@ pub enum Easing {
     InOutCubic,
     /// `Easing.bezier(x1, y1, x2, y2)`.
     Bezier(f64, f64, f64, f64),
+    /// `(t) => 1 - (1 - t) ** 2`.
+    OutQuad,
+    /// `(t) => 1 - (1 - t) ** p`.
+    OutPow(f64),
 }
 
 impl Easing {
@@ -39,6 +43,8 @@ impl Easing {
                 }
             }
             Easing::Bezier(x1, y1, x2, y2) => bezier(x1, y1, x2, y2, t),
+            Easing::OutQuad => 1.0 - (1.0 - t).powi(2),
+            Easing::OutPow(p) => 1.0 - (1.0 - t).powf(p),
         }
     }
 }

@@ -3,16 +3,19 @@
 //! Nothing here touches threads, files or processes, so the crate builds for wasm32-unknown-unknown.
 
 pub mod anim;
+pub mod camera;
 pub mod chrome;
 pub mod color;
 pub mod display;
 pub mod focus;
 pub mod icons;
+pub mod marks;
 pub mod markup;
 pub mod model;
 pub mod raster;
 pub mod scenes;
 pub mod speech;
+pub mod states;
 pub mod steps;
 pub mod text;
 pub mod textfit;
@@ -32,6 +35,8 @@ pub struct Project {
     pub props: Props,
     pub timeline: Vec<TimedScene>,
     scenes: Vec<Box<dyn SceneView>>,
+    /// Each scene's "In the code:" line, for a pre-read diagram that cites hunks in `from`.
+    sources: Vec<Option<textfit::Fit>>,
 }
 
 impl Project {
@@ -49,7 +54,8 @@ impl Project {
                 })
             })
             .collect();
-        Project { props, timeline, scenes }
+        let sources = props.storyboard.scenes.iter().map(|s| chrome::shell::source_line(s, &props.hunks)).collect();
+        Project { props, timeline, scenes, sources }
     }
 
     pub fn from_json(json: &str) -> Result<Project, String> {
@@ -76,6 +82,9 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         let t = &project.timeline[i];
         let f = Frame { frame: local, duration: t.duration, segments: &t.segments };
         project.scenes[i].draw(&f, &mut dl);
+        if let Some(fit) = &project.sources[i] {
+            chrome::shell::draw_source_line(&mut dl, fit);
+        }
         if project.props.show_captions {
             chrome::captions::draw(&mut dl, &t.segments, local, t.duration);
         }
