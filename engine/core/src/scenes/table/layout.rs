@@ -1,5 +1,7 @@
 //! Where a table's columns, headers and rows go: a port of src/utils/tableLayout.ts.
 
+use crate::marks::LayoutBoxes;
+use crate::marks::geometry::Bx;
 use crate::markup::{parse_markup, plain_text};
 use crate::textfit::{Fit, Slot, fit_text, fit_text_at};
 use crate::timing::js_round;
@@ -369,4 +371,45 @@ pub fn state_rows(columns: &[String], rows: &[Row], states: &[crate::states::Sce
                 .collect()
         })
         .collect()
+}
+
+/// How wide a placed cell's text runs and how many lines it takes (`cellExtent`).
+fn cell_extent(cell: &Placed, font: i32) -> (f64, usize) {
+    match cell {
+        Placed::Text { text } => (text.width, text.lines.len()),
+        Placed::Change { mono, inline: true, before, after } => {
+            (before.width + after.width + inline_arrow(cell_font(font, *mono)), 1)
+        }
+        Placed::Change { before, after, .. } => (before.width.max(after.width), before.lines.len() + after.lines.len()),
+    }
+}
+
+/// The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a row, a column from its
+/// header down, and the text of one cell. A note keeps off the headers and the text of every cell (`tableBoxes`).
+pub fn table_boxes(layout: &Layout) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    let bottom = layout.rows.last().map_or(HEADER_H, |r| r.y + r.h);
+    for (c, &(x, w)) in layout.cols.iter().enumerate() {
+        out.add(format!("c:{c}"), Bx::new(x - 10.0, 4.0, w + 20.0, bottom - 4.0));
+    }
+    let mut cells = Vec::new();
+    for (r, row) in layout.rows.iter().enumerate() {
+        out.add(format!("r:{r}"), Bx::new(0.0, row.y, layout.width, row.h));
+        for (c, cell) in row.cells.iter().enumerate() {
+            let (width, lines) = cell_extent(cell, layout.font);
+            let height = lines as f64 * layout.line_height;
+            let b = Bx::new(
+                layout.cols[c].0,
+                row.y + (row.h - height) / 2.0,
+                width.min(layout.cols[c].1).max(24.0),
+                height,
+            );
+            out.add(format!("x:{r}/{c}"), b);
+            cells.push(b);
+        }
+    }
+    let mut obstacles = vec![Bx::new(0.0, 0.0, layout.width, HEADER_H)];
+    obstacles.extend(cells);
+    out.obstacles = Some(obstacles);
+    out
 }

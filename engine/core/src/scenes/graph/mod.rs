@@ -7,17 +7,21 @@ pub mod model;
 mod node;
 mod text;
 
-use super::table::layout::{Layout as TableLayout, layout_table_states, state_rows, table_of};
+use super::table::layout::{Layout as TableLayout, layout_table_states, state_rows, table_boxes, table_of};
 use super::table::view::{TableDraw, draw_table};
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::camera::Camera;
 use crate::chrome::callout::{HeaderCallout, aside_height, draw_aside, has_callout, header_box};
 use crate::chrome::fittext::{Align, TextOpts, draw_fit, drawn_width};
+use crate::chrome::marks::badge_words;
 use crate::chrome::marks::{BadgeSpec, EMPHASIS, EMPHASIS_GLOW, badges_of, change_tone};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, end_dir, marker, skia, start_dir, strike, trim};
 use crate::display::{BoxStyle, DisplayList, Shadow, Stroke};
+use crate::marks::geometry::{Bx, Pt};
+use crate::marks::{Board, LayoutBoxes, MarkTargets, Stage, StepRefs, around};
 use crate::states::{SceneState, StateFrame, walk_states};
 use crate::steps::Emphasis;
 use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
@@ -37,6 +41,7 @@ const EDGE_DRAW: f64 = 12.0;
 const EDGE_LABEL_END: f64 = 16.0;
 const TABLE_SHARE: f64 = 0.4;
 const TABLE_GAP: f64 = 48.0;
+const BADGE_LIFT: f64 = 16.0;
 
 fn muted_edge() -> Color {
     Color::rgba8(170, 178, 200, 0.55)
@@ -69,6 +74,9 @@ struct GraphView {
     legend: Vec<&'static str>,
     flowchart: bool,
     table_top: f64,
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
 }
 
 /// Nodes carry badges; the legend decodes the colours of changed edges, so it shows only when an edge changes.
@@ -117,7 +125,24 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     } else {
         ((fh - tables.iter().map(|t| t.height * t.scale).fold(0.0, f64::max)) / 2.0).max(0.0)
     };
+    let graph = Stage::centred(graph_box, (layout.width, layout.height), layout_scale)
+        .targets(&graph_boxes(&layout, &scene.nodes), (fw, fh));
+    let marks: Vec<MarkTargets> = (1..states.len())
+        .map(|k| match tables.get(k) {
+            Some(t) => graph.clone().merged(
+                Stage { left: fw - table_w, top: table_top, scale: t.scale }.targets(&table_boxes(t), (fw, fh)),
+            ),
+            None => graph.clone(),
+        })
+        .collect();
+    let refs = crate::targets::SceneRefs(json);
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(json, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(json, &step_refs, header_box(json));
     Ok(Box::new(GraphView {
+        marks,
+        board,
+        camera,
         shell: Shell::new(json),
         scene: json.clone(),
         flowchart: scene.nodes.iter().any(|n| n.shape() == Shape::Decision),
@@ -391,86 +416,88 @@ impl SceneView for GraphView {
             draw_aside(dl, &used, self.callouts.as_ref(), Some(&s), right, top);
         };
         let aside = Aside { height: aside_h, draw: &draw_aside_fn };
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
         self.shell.draw(dl, frame, f.duration, Some(aside), |dl, _bx| {
-            let (gw, gh) = self.graph_box;
-            let (lw, lh) = (self.layout.width, self.layout.height);
-            dl.group(|dl| {
-                dl.translate(((gw - lw) / 2.0) as f32, ((gh - lh) / 2.0) as f32);
-                dl.scale_about(self.scale as f32, (lw / 2.0) as f32, (lh / 2.0) as f32);
-                for g in &self.layout.groups {
-                    let appear = interpolate(
-                        frame,
-                        &[
-                            NODE_START - 4.0 + g.layer as f64 * layer_stagger,
-                            NODE_START + 6.0 + g.layer as f64 * layer_stagger,
-                        ],
-                        &[0.0, 1.0],
-                        CLAMP,
-                    );
-                    self.draw_group(dl, g, appear, focus.emphasis(&format!("g:{}", g.name)));
-                }
-                for (i, routed) in self.layout.edges.iter().enumerate() {
-                    let key = format!("e:{}", routed.edge);
-                    let shown = edge_shown(&self.edges[routed.edge], routed.edge);
-                    let built = interpolate(frame, &[edge_at(i), edge_at(i) + EDGE_DRAW], &[0.0, 1.0], CLAMP);
-                    let tone = self.tinted_tone(self.edge_tone(&self.edges[routed.edge]), &s, &key);
-                    let fade = s.tint(&key).dim_opacity();
-                    self.draw_edge(dl, i, built.min(shown), frame, tone, focus.emphasis(&key), fade);
-                }
-                for placed in &self.layout.nodes {
-                    let base = &self.nodes[placed.node];
-                    let shown_state = if s.t < 0.5 { s.before } else { s.now };
-                    let mut node = base.clone();
-                    if let Some(model::Val::Text(b)) = model::val(shown_state, &format!("b:{}", base.id))
-                        && Some(b.as_str()) != Some(base.marks.badge.as_deref().unwrap_or(""))
-                    {
-                        node.marks.badge = if b.is_empty() { None } else { Some(b.clone()) };
+            self.camera.draw(dl, view, |dl| {
+                let (gw, gh) = self.graph_box;
+                let (lw, lh) = (self.layout.width, self.layout.height);
+                dl.group(|dl| {
+                    dl.translate(((gw - lw) / 2.0) as f32, ((gh - lh) / 2.0) as f32);
+                    dl.scale_about(self.scale as f32, (lw / 2.0) as f32, (lh / 2.0) as f32);
+                    for g in &self.layout.groups {
+                        let appear = interpolate(
+                            frame,
+                            &[
+                                NODE_START - 4.0 + g.layer as f64 * layer_stagger,
+                                NODE_START + 6.0 + g.layer as f64 * layer_stagger,
+                            ],
+                            &[0.0, 1.0],
+                            CLAMP,
+                        );
+                        self.draw_group(dl, g, appear, focus.emphasis(&format!("g:{}", g.name)));
                     }
-                    let key = format!("n:{}", node.id);
-                    let appear = spring(
-                        frame - NODE_START - placed.layer as f64 * layer_stagger,
-                        FPS,
-                        Spring::damping(16.0).with_stiffness(110.0),
-                    ) * s.shown(&key);
-                    let Some(text) = self.layout.texts.get(&node.id) else { continue };
-                    let badges: Vec<BadgeSpec> = badges_of(&node.marks, true);
-                    let st = NodeState {
-                        node: &node,
-                        badges,
-                        x: placed.x as f32,
-                        y: placed.y as f32,
-                        w: placed.w as f32,
-                        h: placed.h as f32,
-                        text,
-                        emphasis: node_emphasis(&node),
-                        appear,
-                        tint: s.tint(&key),
-                    };
-                    match node.shape() {
-                        Shape::Card => node::draw_card(dl, &st),
-                        shape => node::draw_shape(dl, &st, shape),
+                    for (i, routed) in self.layout.edges.iter().enumerate() {
+                        let key = format!("e:{}", routed.edge);
+                        let shown = edge_shown(&self.edges[routed.edge], routed.edge);
+                        let built = interpolate(frame, &[edge_at(i), edge_at(i) + EDGE_DRAW], &[0.0, 1.0], CLAMP);
+                        let tone = self.tinted_tone(self.edge_tone(&self.edges[routed.edge]), &s, &key);
+                        let fade = s.tint(&key).dim_opacity();
+                        self.draw_edge(dl, i, built.min(shown), frame, tone, focus.emphasis(&key), fade);
                     }
-                }
-                for (i, routed) in self.layout.edges.iter().enumerate() {
-                    if routed.label.is_none() {
-                        continue;
+                    for placed in &self.layout.nodes {
+                        let base = &self.nodes[placed.node];
+                        let shown_state = if s.t < 0.5 { s.before } else { s.now };
+                        let mut node = base.clone();
+                        if let Some(model::Val::Text(b)) = model::val(shown_state, &format!("b:{}", base.id))
+                            && Some(b.as_str()) != Some(base.marks.badge.as_deref().unwrap_or(""))
+                        {
+                            node.marks.badge = if b.is_empty() { None } else { Some(b.clone()) };
+                        }
+                        let key = format!("n:{}", node.id);
+                        let appear = spring(
+                            frame - NODE_START - placed.layer as f64 * layer_stagger,
+                            FPS,
+                            Spring::damping(16.0).with_stiffness(110.0),
+                        ) * s.shown(&key);
+                        let Some(text) = self.layout.texts.get(&node.id) else { continue };
+                        let badges: Vec<BadgeSpec> = badges_of(&node.marks, true);
+                        let st = NodeState {
+                            node: &node,
+                            badges,
+                            x: placed.x as f32,
+                            y: placed.y as f32,
+                            w: placed.w as f32,
+                            h: placed.h as f32,
+                            text,
+                            emphasis: node_emphasis(&node),
+                            appear,
+                            tint: s.tint(&key),
+                        };
+                        match node.shape() {
+                            Shape::Card => node::draw_card(dl, &st),
+                            shape => node::draw_shape(dl, &st, shape),
+                        }
                     }
-                    let key = format!("e:{}", routed.edge);
-                    let mix = s.tint(&key);
-                    let tinted = mix.main_tone().map(|t| tone(t).0);
-                    let appear = interpolate(
-                        frame,
-                        &[edge_at(i) + EDGE_DRAW - 4.0, edge_at(i) + EDGE_LABEL_END],
-                        &[0.0, 1.0],
-                        CLAMP,
-                    ) * edge_shown(&self.edges[routed.edge], routed.edge)
-                        * mix.dim_opacity();
-                    self.draw_edge_label(dl, i, appear, focus.emphasis(&key), tinted);
-                }
-            });
-            // TODO(marks): PenMarks over the graph and its table.
-            // TODO(camera): the scene's generic `camera` field.
-            self.draw_table(dl, &s, &focus, frame);
+                    for (i, routed) in self.layout.edges.iter().enumerate() {
+                        if routed.label.is_none() {
+                            continue;
+                        }
+                        let key = format!("e:{}", routed.edge);
+                        let mix = s.tint(&key);
+                        let tinted = mix.main_tone().map(|t| tone(t).0);
+                        let appear = interpolate(
+                            frame,
+                            &[edge_at(i) + EDGE_DRAW - 4.0, edge_at(i) + EDGE_LABEL_END],
+                            &[0.0, 1.0],
+                            CLAMP,
+                        ) * edge_shown(&self.edges[routed.edge], routed.edge)
+                            * mix.dim_opacity();
+                        self.draw_edge_label(dl, i, appear, focus.emphasis(&key), tinted);
+                    }
+                });
+                self.draw_table(dl, &s, &focus, frame);
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            })
         });
         let _ = (&self.scene, RAISED);
     }
@@ -504,4 +531,35 @@ impl GraphView {
         };
         draw_table(dl, &draw);
     }
+}
+
+/// The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a node's card, an edge's
+/// label (or its middle, when it has none), a group's box. A note keeps off the cards, the labels and the group names
+/// (`graphBoxes`).
+fn graph_boxes(layout: &GraphLayout, nodes: &[GraphNode]) -> LayoutBoxes {
+    // Badges sit on a card's top edge, so a mark around the card takes them in.
+    let card = |p: &layout::PositionedNode| {
+        let lift = if badge_words(&nodes[p.node].marks).is_empty() { 0.0 } else { BADGE_LIFT };
+        Bx::new(p.x, p.y - lift, p.w, p.h + lift)
+    };
+    let edge = |r: &layout::RoutedEdge| match &r.label {
+        Some(l) => around(Pt { x: l.x, y: l.y }, l.width, l.height),
+        None => around(Pt { x: r.mid.x, y: r.mid.y }, 40.0, 40.0),
+    };
+    let mut out = LayoutBoxes::default();
+    for p in &layout.nodes {
+        out.add(format!("n:{}", nodes[p.node].id), card(p));
+    }
+    for r in &layout.edges {
+        out.add(format!("e:{}", r.edge), edge(r));
+    }
+    for g in &layout.groups {
+        out.add(format!("g:{}", g.name), Bx::new(g.x, g.y, g.width, g.height));
+    }
+    let mut obstacles: Vec<Bx> = layout.nodes.iter().map(card).collect();
+    obstacles.extend(layout.edges.iter().filter(|r| r.label.is_some()).map(edge));
+    obstacles.extend(layout.groups.iter().map(|g| Bx::new(g.x, g.y, g.width, layout::GROUP_HEAD)));
+    out.obstacles = Some(obstacles);
+    out.lines = layout.edges.iter().flat_map(|r| r.points.iter().map(|p| Pt { x: p.x, y: p.y })).collect();
+    out
 }
