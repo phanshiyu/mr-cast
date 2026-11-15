@@ -13,6 +13,7 @@ pub mod model;
 pub mod raster;
 pub mod scenes;
 pub mod speech;
+pub mod state_steps;
 pub mod steps;
 pub mod text;
 pub mod textfit;

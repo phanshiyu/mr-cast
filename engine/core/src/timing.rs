@@ -242,3 +242,52 @@ pub fn timeline(scenes: &[Value], voiceover: Option<&Voiceover>) -> Vec<TimedSce
         })
         .collect()
 }
+
+/// A spoken text's words, lower case without punctuation, each with its index among the text's words.
+fn cue_tokens(text: &str) -> Vec<(String, usize)> {
+    text.split_whitespace()
+        .enumerate()
+        .map(|(i, w)| (w.to_lowercase().chars().filter(|c| c.is_alphanumeric()).collect::<String>(), i))
+        .filter(|(w, _)| !w.is_empty())
+        .collect()
+}
+
+/// Where `cue` starts among the words of a spoken `text`, as the index of its first word, or None (`cueWord`).
+pub fn cue_word(text: &str, cue: &str) -> Option<usize> {
+    let said = cue_tokens(text);
+    let want: Vec<String> =
+        cue_tokens(&speech_text(&crate::markup::plain_text(cue))).into_iter().map(|t| t.0).collect();
+    if want.is_empty() {
+        return None;
+    }
+    (0..=said.len().checked_sub(want.len())?)
+        .find(|&i| want.iter().enumerate().all(|(j, w)| said[i + j].0 == *w))
+        .map(|i| said[i].1)
+}
+
+/// Seconds after a segment's voice starts at which it reaches word `index`.
+fn word_start(seg: &Segment, index: usize) -> f64 {
+    let words = word_count(&seg.text);
+    if let Some(sentences) = seg.clip.as_ref().and_then(|c| c.sentences.as_ref())
+        && !sentences.is_empty()
+        && sentences.iter().map(|s| s.words).sum::<usize>() == words
+    {
+        let mut before = 0;
+        for s in sentences {
+            if index < before + s.words {
+                return s.start + ((index - before) as f64 / s.words as f64) * (s.end - s.start);
+            }
+            before += s.words;
+        }
+    }
+    if words > 0 { (index as f64 / words as f64) * (seg.speaking_frames / FPS) } else { 0.0 }
+}
+
+/// Frames before its word a cued pen stroke starts.
+const CUE_LEAD: f64 = 3.0;
+
+/// Frame, from the scene's start, at which a segment's voice says `cue`, less a short lead; None when it never does.
+pub fn cue_frame(seg: &Segment, cue: &str) -> Option<f64> {
+    let index = cue_word(&seg.text, cue)?;
+    Some(seg.mark_from.max(seg.voice_from + js_round(word_start(seg, index) * FPS) - CUE_LEAD))
+}
