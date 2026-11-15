@@ -6,6 +6,7 @@ import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { pickOf } from '../../shared/plan.mjs';
+import { briefLine } from '../../shared/brief.mjs';
 import { readingLines, readingOrder } from '../../shared/reading.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
 import { VIEWS } from '../../shared/views.mjs';
@@ -151,6 +152,7 @@ export function formatValidation({ errors, warnings, coverage }, { storyboard, h
   if (errors.some((e) => e.includes('not found in hunks.json'))) {
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
+  if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
   if (errors.length)
     out.push(`✗ storyboard invalid · ${plural(errors.length, 'error')}, ${plural(warnings.length, 'warning')}`);
   else
@@ -408,6 +410,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pa
   const covered = formatCoverage(coverage);
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
   if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
+  if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
   const skipped = [...topics.values()].filter((t) => pickOf(t).depth === 'skip').map((t) => t.title);
   if (skipped.length) out.push(`skipped topics: ${skipped.join(', ')}`);
   const order = readingOrder(storyboard, hunks, plan);

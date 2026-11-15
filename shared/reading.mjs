@@ -1,6 +1,7 @@
-// The reading order of a pre-read (`--audience preread`): the hunks a reviewer reads after the video, in order,
-// each with what to check there. The storyboard's `reading` scene holds it; the scene, the player's Reading
-// order panel, reading.md and `mr-cast outline` all draw it from here, so they never disagree.
+// The reading order of a pre-read (`--audience preread`), or the check-first list of any branch video: the places a
+// reviewer reads after the video, in order, each with what to check there. The storyboard's `reading` scene holds
+// it; the scene, the player's Reading order panel, reading.md and `mr-cast outline` all draw it from here, so they
+// never disagree.
 
 import { parseMarkup, plainText } from './markup.mjs';
 import { sceneChapter } from './chapters.mjs';
@@ -92,27 +93,48 @@ function byTopic(items) {
  */
 export function readingOrder(storyboard, hunks, plan = null) {
   const scene = readingScene(storyboard);
-  if (!scene || !Array.isArray(scene.items)) return null;
+  if (!scene) return null;
+  const own = Array.isArray(scene.items) && scene.items.length ? scene.items : null;
+  if (!own && Array.isArray(scene.items)) return null;
   const findings = new Map((Array.isArray(storyboard.findings) ? storyboard.findings : []).map((f) => [f?.id, f]));
   const titles = new Map((plan?.topics ?? []).map((t) => [t.id, t.title]));
-  const items = scene.items
-    .filter((item) => item && Object.hasOwn(hunks, item.hunkId))
-    .map((item) => {
-      const by = explainer(storyboard, item.hunkId);
-      const topicId = typeof by?.scene.topic === 'string' ? by.scene.topic : null;
-      return {
-        hunkId: item.hunkId,
-        where: hunkLocation(hunks[item.hunkId], item.lines),
-        also: [],
-        check: typeof item.check === 'string' ? item.check : '',
-        routine: item.routine === true,
-        number: null,
-        finding: typeof item.flag === 'string' ? (findings.get(item.flag) ?? null) : null,
-        explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
-        topicId,
-        topic: titles.get(topicId) ?? null,
-      };
-    });
+  const base = () => ({
+    also: [],
+    routine: false,
+    number: null,
+    finding: null,
+    explainedIn: null,
+    topicId: null,
+    topic: null,
+  });
+  const checks = Array.isArray(storyboard.brief?.check) ? storyboard.brief.check : [];
+  const items = own
+    ? own
+        .filter((item) => item && Object.hasOwn(hunks, item.hunkId))
+        .map((item) => {
+          const by = explainer(storyboard, item.hunkId);
+          const topicId = typeof by?.scene.topic === 'string' ? by.scene.topic : null;
+          return {
+            ...base(),
+            hunkId: item.hunkId,
+            where: hunkLocation(hunks[item.hunkId], item.lines),
+            check: typeof item.check === 'string' ? item.check : '',
+            routine: item.routine === true,
+            finding: typeof item.flag === 'string' ? (findings.get(item.flag) ?? null) : null,
+            explainedIn: by ? { chapter: sceneChapter(by.scene), scene: by.index } : null,
+            topicId,
+            topic: titles.get(topicId) ?? null,
+          };
+        })
+    : // No items of its own: the brief's check-first list, each entry keyed "check:0" in place of a hunk id.
+      checks
+        .filter((c) => c && typeof c.file === 'string' && typeof c.what === 'string')
+        .map((c, i) => ({
+          ...base(),
+          hunkId: `check:${i}`,
+          where: `${c.file.replace(C0, '')}:${c.line}`,
+          check: c.what,
+        }));
   const groups = byTopic(items.filter((i) => !i.routine));
   const readFirst = groups.flatMap((g) => g.items);
   readFirst.forEach((item, i) => {
@@ -122,7 +144,7 @@ export function readingOrder(storyboard, hunks, plan = null) {
   const skimmed = [];
   for (const item of items.filter((i) => i.routine)) {
     const file = hunkSpan(hunks[item.hunkId]).file;
-    const host = readFirst.find((r) => hunkSpan(hunks[r.hunkId]).file === file);
+    const host = readFirst.find((r) => Object.hasOwn(hunks, r.hunkId) && hunkSpan(hunks[r.hunkId]).file === file);
     if (host) host.also.push(...[item.where.slice(file.length + 1)].filter(Boolean));
     else skimmed.push(item);
   }

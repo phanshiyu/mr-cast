@@ -80,8 +80,11 @@ const both = [
   { hunkId: 'h1', check: 'the key resets on a new minute; check the off-by-one' },
   { hunkId: 'h2', check: 'the limiter runs before the order is saved' },
 ];
-const validate = (scenes, extra = {}, audience = 'preread') =>
-  validateStoryboard({ title: 'Rate limit', scenes, ...extra }, hunks, { audience });
+// These tests are about the pre-read, so the brief a branch video also owes is left out of their warnings.
+const validate = async (scenes, extra = {}, audience = 'preread') => {
+  const result = await validateStoryboard({ title: 'Rate limit', scenes, ...extra }, hunks, { audience });
+  return { ...result, warnings: result.warnings.filter((w) => !w.startsWith('brief:')) };
+};
 const matching = (list, re) => list.filter((m) => re.test(m));
 
 test('a pre-read refuses a code scene, a code cell in a compare, and a review scene', async () => {
@@ -499,12 +502,11 @@ test('reading.md keeps paths and inline code as code, and file names lose contro
   ]);
 });
 
-test('a reading scene or from outside a pre-read asks for --audience preread', async () => {
+test('from outside a pre-read asks for --audience preread, and a reading scene does not', async () => {
   const { warnings } = await validate([intent, graph(['h1', 'h2']), tests, reading(both)], {}, 'familiar');
   assert.deepEqual(matching(warnings, /pre-read/), [
     'this storyboard is a pre-read; pass --audience preread',
     'scenes[1].from: only a pre-read (--audience preread) reads "from", so it does nothing here',
-    'scenes[3]: only a pre-read has a reading scene; pass --audience preread, or remove it',
   ]);
   const plain = await validate(
     [intent, graph(), tests],
@@ -547,8 +549,12 @@ test('a reading item points at the lines that matter with "lines", inside its hu
     tests,
     reading(items),
   ];
-  const check = (items) =>
-    validateStoryboard({ title: 'Rate limit', scenes: scenes(items) }, big, { audience: 'preread' });
+  const check = async (items) => {
+    const result = await validateStoryboard({ title: 'Rate limit', scenes: scenes(items) }, big, {
+      audience: 'preread',
+    });
+    return { ...result, warnings: result.warnings.filter((w) => !w.startsWith('brief:')) };
+  };
   const whole = await check([...both, { hunkId: 'h4', check: 'a claimed row is never reclaimed' }]);
   assert.deepEqual(whole.warnings, []);
   const bad = await check([

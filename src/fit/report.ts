@@ -151,7 +151,7 @@ const SCENE_FITS: SceneFits = {
   reading: (scene, storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
     const order = readingOrder(storyboard, hunks);
-    return order ? layoutReading(order, scene.items, box.width, box.height) : null;
+    return order ? layoutReading(order, scene.items ?? order.items, box.width, box.height) : null;
   },
   compare: (scene) => {
     const box = contentBox(Boolean(scene.title));

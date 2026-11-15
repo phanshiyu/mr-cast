@@ -75,6 +75,7 @@ import { formatSchema } from './lib/schema.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { REVIEW_HEADING, isReviewed, reviewMarkdown } from '../shared/review.mjs';
+import { GUIDE_HEADING, guideMarkdown } from '../shared/brief.mjs';
 import { READING_HEADING, readingMarkdown, readingOrder } from '../shared/reading.mjs';
 import { formatLength, planSeconds } from '../shared/plan.mjs';
 import { ensureVoiceover, readVoiceover, sampleVoice, voicedLines } from './lib/voice.mjs';
@@ -164,7 +165,7 @@ More commands and options:
   extract --context N     context lines per hunk (default 4)
   extract --max-lines N   changed lines shown per hunk in the index (default 14)
   extract --all-files     include lockfiles, minified and build output
-  validate --read-only    check only: write no review.md, reading.md or plan picks, and remember no choice
+  validate --read-only    check only: write no review.md, reading.md, guide.md or plan picks, and remember no choice
   validate and outline estimate the length at the --pace given until the narration is voiced at it.`;
 
 /** A path for messages: relative to the current directory when inside it, else absolute. */
@@ -177,6 +178,15 @@ function intOption(value, name, min) {
   const n = Number(value);
   if (!Number.isInteger(n) || n < min) throw new UserError(`--${name} must be an integer >= ${min} (got "${value}")`);
   return n;
+}
+
+/** A JSON file's contents, or null when it is absent or unreadable: a file that only adds checks, such as map.json. */
+function readOptionalJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function readJson(file, missingHint, parse = JSON.parse) {
@@ -229,7 +239,18 @@ async function loadProject(dir, settings, { write = true } = {}) {
   const mode = meta?.mode === 'explain' ? 'explain' : 'diff';
   // Pictures are made local before the check, which reports any that cannot be shown; the hook's check writes nothing.
   const images = await resolveImages(dir, raw, { write });
-  const result = await validateStoryboard(raw, hunks, { mode, audience: settings.audience, plan, images });
+  // The change map is optional: `extract` writes it beside hunks.json, and the brief's map checks wait for it.
+  const map = readOptionalJson(path.join(dir, 'map.json'));
+  const root = path.basename(path.dirname(dir)) === '.mr-cast' ? path.dirname(path.dirname(dir)) : null;
+  const result = await validateStoryboard(raw, hunks, {
+    mode,
+    audience: settings.audience,
+    plan,
+    images,
+    quick: meta?.quick === true,
+    map,
+    root,
+  });
   // Past validation, older field names are rewritten once, so everything downstream sees one shape.
   const storyboard = result.errors.length ? raw : normalizeStoryboard(raw, hunks);
   const seconds = result.errors.length ? 0 : storyboardSeconds(storyboard, timingVoiceover(dir, settings));
@@ -238,6 +259,7 @@ async function loadProject(dir, settings, { write = true } = {}) {
     result.errors.length || !write
       ? null
       : writeReading(path.join(dir, 'reading.md'), storyboard, hunks, plan?.plan, meta, settings);
+  const guide = result.errors.length || !write ? null : writeGuide(path.join(dir, 'guide.md'), storyboard, hunks, meta);
   return {
     dir,
     hunks,
@@ -247,6 +269,7 @@ async function loadProject(dir, settings, { write = true } = {}) {
     result,
     review,
     reading,
+    guide,
     images: images.manifest,
     lines: formatValidation(result, { storyboard, hunks, seconds }),
   };
@@ -300,6 +323,29 @@ function writeReading(file, storyboard, hunks, plan, meta, settings) {
   fs.writeFileSync(file, readingMarkdown(storyboard, order, { branch: meta?.branch, base: meta?.base }));
   return file;
 }
+
+/**
+ * guide.md, a branch video's brief as plain headings: the six answers, the parts with their files, what to open first
+ * and the questions for the author. Like review.md: removed when the storyboard has no brief, and never written over
+ * a file mr-cast did not write. Returns the file written, or null.
+ */
+function writeGuide(file, storyboard, hunks, meta) {
+  const brief = isBranchRun(meta) && storyboard.brief;
+  if (!ownFile(file, GUIDE_HEADING)) {
+    if (brief)
+      console.error(`mr-cast: warning: kept ${rel(file)}, which mr-cast did not write; the guide is not saved`);
+    return null;
+  }
+  if (!brief) {
+    fs.rmSync(file, { force: true });
+    return null;
+  }
+  fs.writeFileSync(file, guideMarkdown(storyboard, hunks, { branch: meta?.branch, base: meta?.base }));
+  return file;
+}
+
+/** Whether the run's meta.json is a diff, and not an explanation or a quick video. */
+const isBranchRun = (meta) => meta?.mode !== 'explain' && meta?.quick !== true;
 
 /** Validate, print problems to stderr, and stop on errors. */
 async function loadValidProject(dir, settings) {
@@ -452,13 +498,14 @@ async function validate(argv) {
   // --read-only, for the hook: check the run and write nothing, not even the remembered choices.
   const write = !values['read-only'];
   const { dir, settings } = write ? runFor(values) : { ...currentRun(values), settings: settingsFrom(values) };
-  const { result, lines, review, reading, plan, storyboard } = await loadProject(dir, settings, { write });
+  const { result, lines, review, reading, guide, plan, storyboard } = await loadProject(dir, settings, { write });
   // The plan page marks each topic whose pick differs from the one the storyboard says it was written from.
   if (write && !result.errors.length && plan) recordBuilt(dir, plan.plan, storyboard.plan);
   // The verdict stays the last line.
   for (const line of lines.slice(0, -1)) console.log(line);
   if (review) console.log(`wrote ${rel(review)}`);
   if (reading) console.log(`wrote ${rel(reading)}`);
+  if (guide) console.log(`wrote ${rel(guide)}`);
   console.log(lines.at(-1));
   if (result.errors.length) process.exit(1);
 }
@@ -936,6 +983,9 @@ async function render(argv) {
   // review.md and reading.md are in the run's directory; a video saved elsewhere gets its own copies beside it.
   const elsewhere = path.dirname(path.resolve(video)) !== path.resolve(dir);
   const review = elsewhere ? writeReview(video.replace(/\.[^./]+$/, '.review.md'), storyboard, readRunMeta(dir)) : null;
+  const guide = elsewhere
+    ? writeGuide(video.replace(/\.[^./]+$/, '.guide.md'), storyboard, hunks, readRunMeta(dir))
+    : null;
   const reading = elsewhere
     ? writeReading(
         video.replace(/\.[^./]+$/, '.reading.md'),
@@ -949,6 +999,7 @@ async function render(argv) {
   console.log(video);
   if (review) console.log(review);
   if (reading) console.log(reading);
+  if (guide) console.log(guide);
 }
 
 async function still(argv) {
@@ -1057,7 +1108,9 @@ function hook() {
     env: { ...process.env, MR_CAST_NO_UPDATE_CHECK: '1' },
   });
   if (run.status === 0) return;
-  const lines = `${run.stdout}\n${run.stderr}`.split('\n').filter((l) => /^(error|✗|mr-cast:|hint:)/.test(l.trim()));
+  const lines = `${run.stdout}\n${run.stderr}`
+    .split('\n')
+    .filter((l) => /^(error|✗|brief:|mr-cast:|hint:)/.test(l.trim()));
   console.error(
     `mr-cast validate ${flags.join(' ')} on ${rel(file)}:\n${lines.length ? lines.join('\n') : run.stderr.trim()}`,
   );

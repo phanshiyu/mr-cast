@@ -93,6 +93,11 @@ interface SceneBase {
    */
   from?: string[];
   /**
+   * A video of a branch: which of the `brief`'s six questions this scene answers, such as ["why", "case"]. `validate`
+   * warns about a question no scene answers.
+   */
+  answers?: ('why' | 'case' | 'approach' | 'parts' | 'proof' | 'check')[];
+  /**
    * Spoken voice-over and subtitle text. Scene length follows the spoken audio, or the word count without voice.
    * The voice starts once the scene has drawn in. A scene with `steps` says it before the first step.
    */
@@ -668,15 +673,17 @@ export interface ReadingItem {
 }
 
 /**
- * Pre-read only: the order in which to read the code after the video. The scene shows the first 6 non-routine
- * items under "Read first" with their file:line and check, and counts the rest; reading.md, `mr-cast outline`
- * and the player's Reading order panel list them all. In review mode it also carries the findings, so a
- * pre-read has no review scene.
+ * What to read or check after the video. A pre-read (`--audience preread`) lists the order in which to read the code
+ * in `items`. Any other video of a branch may use it too: without `items` it draws the brief's `check` list. The
+ * scene shows the first 6 non-routine items under "Read first" with their file:line and check, and counts the rest;
+ * reading.md, `mr-cast outline` and the player's Reading order panel list them all. In review mode a pre-read also
+ * carries the findings, so it has no review scene.
  */
 export interface ReadingScene extends SceneBase {
   type: 'reading';
   title?: string;
-  items: ReadingItem[];
+  /** Required in a pre-read. Left out in any other video, the scene draws `brief.check`, which then must not be empty. */
+  items?: ReadingItem[];
 }
 
 /** A cell's text, or `{ before, after }` for a value this change replaced: the old value is struck through beside the new one. */
@@ -1563,10 +1570,99 @@ export interface ImageScene extends SceneBase {
 
 export type Scene = TextScene | GraphScene | CodeScene | FlowScene | SequenceScene | ErScene | StateScene | MermaidScene | TestsScene | TableScene | ChartScene | TimelineScene | FilesScene | ReviewScene | ReadingScene | CompareScene | TerminalScene | LayersScene | ArrayScene | MemoryScene | SvgScene | PlotScene | MapScene | ImageScene;
 
+/**
+ * Where an answer comes from: "description" (the merge request's text), "commit 7376000", "code", "test",
+ * "inferred" (you worked it out, and nothing the author wrote says it) or "unknown" (nothing says it, and the video
+ * says so).
+ */
+export type BriefSource = string;
+
+/** Why this change exists and who says so: one or two sentences. Use source "unknown" when nothing says. */
+export interface BriefWhy {
+  text?: string;
+  source: BriefSource;
+}
+
+/** One concrete case, before and after: what happened to an input, and what happens now. */
+export interface BriefCase {
+  /** What happened before the change, in one or two sentences, with a real input. */
+  before: string;
+  /** What happens now, for the same input. */
+  after: string;
+  /** Where to see it: hunk ids, `path:line` or `path:a-b`, or a short commit sha. */
+  cite: string[];
+}
+
+/** The idea of the change and what the author decided on the way. */
+export interface BriefApproach {
+  /** The idea, in one or two sentences. */
+  text: string;
+  /** Choices the author made where another way was open, one short sentence each. */
+  decisions: string[];
+}
+
+/** One part of the change: the hunks that belong together. */
+export interface BriefPart {
+  name: string;
+  /** "core" is the change itself, "support" what it needs, "routine" what a reviewer may skim. */
+  weight: 'core' | 'support' | 'routine';
+  /** Hunk ids (from `mr-cast extract`), which give the part's files. */
+  hunks: string[];
+}
+
+/** How we know it works. */
+export interface BriefProof {
+  /** What a test shows, each with the test's name or file. Empty when no test does. */
+  tested: string[];
+  /** What nothing shows. */
+  untested: string[];
+  /** Where to see it: hunk ids, `path:line` or `path:a-b`. */
+  cite?: string[];
+}
+
+/** One place a reviewer should open first. */
+export interface BriefCheck {
+  /** The file's path. */
+  file: string;
+  /** A line number or "a-b" range in that file. */
+  line: LineRef;
+  /** What to look at, in under 80 characters, with the real names. */
+  what: string;
+  /** Why it could break or matter. */
+  why: string;
+}
+
+/**
+ * What a reviewer of a branch needs answered. Each answer is short and says where it comes from. "unknown" in place
+ * of an answer is an answer: the video says it is not stated, and `ask` holds the question for the author.
+ * `validate` warns about a missing or unsupported answer, writes guide.md from this, and prints one line of it.
+ */
+export interface Brief {
+  /** Why does this change exist? */
+  why?: BriefWhy;
+  /** On one concrete case, what happened before and what happens now? */
+  case?: BriefCase | 'unknown';
+  /** What is the idea, and what did the author decide on the way? */
+  approach?: BriefApproach | 'unknown';
+  /** Which parts are there, which matter most, and which are routine? */
+  parts?: BriefPart[] | 'unknown';
+  /** How do we know it works: what is tested, and what is not? */
+  proof?: BriefProof | 'unknown';
+  /** What could break, and what should a reviewer open first? */
+  check?: BriefCheck[];
+  /** Questions for the author that the commits, description and code do not answer. */
+  ask?: string[];
+}
+
 export interface Storyboard {
   title: string;
   subtitle?: string;
   scenes: Scene[];
+  /**
+   * A video of a branch: the six questions a reviewer has, answered before the scenes are written. Not for an
+   * explanation or a quick video.
+   */
+  brief?: Brief;
   /**
    * Review mode only, when the user asked for your review: what looks wrong in the diff. `[]` says you looked and
    * found nothing. Left out, the video only explains. `validate` writes them to review.md beside the video.
