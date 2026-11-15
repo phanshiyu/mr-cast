@@ -3,6 +3,7 @@
 //! Nothing here touches threads, files or processes, so the crate builds for wasm32-unknown-unknown.
 
 pub mod anim;
+pub mod chapters;
 pub mod chrome;
 pub mod color;
 pub mod display;
@@ -60,6 +61,11 @@ impl Project {
     /// The video's length in frames (at least 1).
     pub fn frame_count(&self) -> u32 {
         (self.timeline.iter().map(|t| t.duration).sum::<f64>() as u32).max(1)
+    }
+
+    /// The video's chapters (see [`chapters::chapters`]).
+    pub fn chapters(&self) -> Vec<chapters::Chapter> {
+        chapters::chapters(&self.props.storyboard.scenes, &self.timeline)
     }
 
     /// The scene shown at `frame`, and the frame within it.

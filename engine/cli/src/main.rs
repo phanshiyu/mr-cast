@@ -2,11 +2,15 @@
 //!
 //!   mr-cast-engine render --props props.json --out file.mp4 [--frames a..b] [--encoder x264|videotoolbox|none]
 //!   mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out file.png [--scale s]
+//!   mr-cast-engine still --props props.json --scenes 1,3..5 [--step k] --out-dir dir
+//!   mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
 //!
 //! Frames render in parallel, in order-preserving chunks, and stream to ffmpeg as yuv420p.
 
+mod audio;
 mod encode;
 mod mkv;
+mod sheet;
 
 use mrc_core::{Project, render_frame, timing};
 use rayon::prelude::*;
@@ -17,7 +21,12 @@ use std::time::Instant;
 
 fn usage() -> ExitCode {
     eprintln!(
-        "usage:\n  mr-cast-engine render --props props.json --out file.mp4 [--frames a..b] [--scenes a..b] [--encoder x264|videotoolbox|none] [--cfr yes] [--skip-repeats no] [--scale s]\n  mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out file.png [--scale s]"
+        "usage:
+  mr-cast-engine render --props props.json --out file.mp4 [--media-dir run] [--frames a..b] [--scenes a..b]
+                        [--encoder x264|videotoolbox|none] [--cfr yes] [--skip-repeats no] [--scale s] [--progress yes]
+  mr-cast-engine still --props props.json (--frame N | --scene N) [--step k] --out file.png [--scale s]
+  mr-cast-engine still --props props.json --scenes 1,2,5..7 [--step k] --out-dir dir
+  mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png"
     );
     ExitCode::from(2)
 }
@@ -60,23 +69,80 @@ fn still_frame(p: &Project, n: usize, step: Option<usize>) -> Result<u32, String
     Ok((t.from + local) as u32)
 }
 
+/// A still's file name, as `mr-cast still` has always written it: scene-03-code.png, scene-03-code-step-1.png.
+fn still_name(p: &Project, n: usize, step: Option<usize>) -> String {
+    let ty = p.props.storyboard.scenes[n - 1].get("type").and_then(|t| t.as_str()).unwrap_or("scene");
+    let step = step.map_or(String::new(), |k| format!("-step-{k}"));
+    format!("scene-{n:02}-{ty}{step}.png")
+}
+
+/// Scene numbers (1-based), comma separated, each a number or a range a..b (end excluded).
+fn scene_list(list: &str, count: usize) -> Result<Vec<usize>, String> {
+    let mut out = Vec::new();
+    for part in list.split(',') {
+        if part.contains("..") {
+            out.extend(range(part, count as u32 + 1)?.map(|n| n as usize));
+        } else {
+            out.push(part.parse().map_err(|_| format!("bad scene {part}"))?);
+        }
+    }
+    Ok(out)
+}
+
 fn still(f: &HashMap<String, String>) -> Result<(), String> {
     let p = load(f)?;
+    let step: Option<usize> = f.get("step").map(|s| s.parse()).transpose().map_err(|_| "bad --step")?;
+    let scale: f32 = f.get("scale").map_or(Ok(1.0), |s| s.parse()).map_err(|_| "bad --scale")?;
+    if let Some(list) = f.get("scenes") {
+        // Many stills at once, in parallel, each printed as it is written.
+        let dir = std::path::Path::new(f.get("out-dir").ok_or("--out-dir is required with --scenes")?);
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        let scenes = scene_list(list, p.timeline.len())?;
+        let jobs: Vec<(u32, std::path::PathBuf)> = scenes
+            .iter()
+            .map(|&n| Ok((still_frame(&p, n, step)?, dir.join(still_name(&p, n, step)))))
+            .collect::<Result<_, String>>()?;
+        jobs.par_iter().try_for_each(|(frame, out)| {
+            render_frame(&p, *frame, scale).save_png(out).map_err(|e| format!("{}: {e}", out.display()))
+        })?;
+        for (_, out) in &jobs {
+            println!("{}", out.display());
+        }
+        return Ok(());
+    }
     let frame = match (f.get("frame"), f.get("scene")) {
         (Some(n), _) => n.parse().map_err(|_| "bad --frame")?,
-        (None, Some(n)) => still_frame(
-            &p,
-            n.parse().map_err(|_| "bad --scene")?,
-            f.get("step").map(|s| s.parse()).transpose().map_err(|_| "bad --step")?,
-        )?,
-        _ => return Err("--frame or --scene is required".into()),
+        (None, Some(n)) => still_frame(&p, n.parse().map_err(|_| "bad --scene")?, step)?,
+        _ => return Err("--frame, --scene or --scenes is required".into()),
     };
-    let scale: f32 = f.get("scale").map_or(Ok(1.0), |s| s.parse()).map_err(|_| "bad --scale")?;
     let out = f.get("out").ok_or("--out is required")?;
     let t = Instant::now();
     let pix = render_frame(&p, frame, scale);
     eprintln!("frame {frame} in {:.1} ms", t.elapsed().as_secs_f64() * 1000.0);
     pix.save_png(out).map_err(|e| format!("{out}: {e}"))
+}
+
+/// The chapters as an FFMETADATA file, in milliseconds as the MP4 stores them.
+fn chapter_metadata(p: &Project) -> String {
+    let escape = |s: &str| {
+        s.chars()
+            .flat_map(|c| match c {
+                '=' | ';' | '#' | '\\' | '\n' => vec!['\\', c],
+                c => vec![c],
+            })
+            .collect::<String>()
+    };
+    let ms = |frames: f64| (frames / timing::FPS * 1000.0).round() as u64;
+    let mut out = String::from(";FFMETADATA1\n");
+    for c in p.chapters() {
+        out += &format!(
+            "[CHAPTER]\nTIMEBASE=1/1000\nSTART={}\nEND={}\ntitle={}\n",
+            ms(c.from),
+            ms(c.to),
+            escape(&c.title)
+        );
+    }
+    out
 }
 
 fn render(f: &HashMap<String, String>) -> Result<(), String> {
@@ -86,32 +152,66 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
     let mut frames: Vec<u32> = match (f.get("frames"), f.get("scenes")) {
         (Some(r), _) => range(r, total)?.collect(),
         (None, Some(list)) => {
-            // Scenes by 1-based index, comma separated, each a number or a range a..b.
             let mut out = Vec::new();
-            for part in list.split(',') {
-                let r = if part.contains("..") {
-                    range(part, p.timeline.len() as u32 + 1)?
-                } else {
-                    let n: u32 = part.parse().map_err(|_| "bad --scenes")?;
-                    n..n + 1
-                };
-                for n in r {
-                    if let Some(t) = p.timeline.get((n as usize).wrapping_sub(1)) {
-                        out.extend(t.from as u32..(t.from + t.duration) as u32);
-                    }
+            for n in scene_list(list, p.timeline.len())? {
+                if let Some(t) = p.timeline.get(n.wrapping_sub(1)) {
+                    out.extend(t.from as u32..(t.from + t.duration) as u32);
                 }
             }
             out
         }
         _ => (0..total).collect(),
     };
+    frames.sort_unstable();
     frames.dedup();
+    if frames.is_empty() {
+        return Err("no frames to render".into());
+    }
     let scale: f32 = f.get("scale").map_or(Ok(1.0), |s| s.parse()).map_err(|_| "bad --scale")?;
-    let (w_px, h_px) = mrc_core::frame_size(scale);
     let encoder = f.get("encoder").map_or("x264", String::as_str);
     let out = f.get("out").map_or("out.mp4", String::as_str);
     let cfr = f.get("cfr").is_some_and(|v| v == "yes");
-    let mut sink = encode::Sink::open(encoder, out, w_px, h_px, !cfr)?;
+    let progress = f.get("progress").is_some_and(|v| v == "yes");
+    // The voice-over and the chapters go into the same encode, through files beside the video.
+    let mut extras = encode::Extras::default();
+    let mut temp = Vec::new();
+    if let Some(dir) = f.get("media-dir")
+        && encoder != "none"
+    {
+        extras.voice = audio::track(&p, &frames, std::path::Path::new(dir))?;
+    }
+    if frames.len() == total as usize && encoder != "none" {
+        let meta = std::path::PathBuf::from(format!("{out}.chapters.txt"));
+        std::fs::write(&meta, chapter_metadata(&p)).map_err(|e| format!("{}: {e}", meta.display()))?;
+        extras.chapters = Some(meta.clone());
+        temp.push(meta);
+    }
+    let result = render_frames(&p, &frames, scale, encoder, out, cfr, progress, f, extras, start);
+    remove(&temp);
+    result
+}
+
+fn remove(files: &[std::path::PathBuf]) {
+    for f in files {
+        let _ = std::fs::remove_file(f);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_frames(
+    p: &Project,
+    frames: &[u32],
+    scale: f32,
+    encoder: &str,
+    out: &str,
+    cfr: bool,
+    progress: bool,
+    f: &HashMap<String, String>,
+    extras: encode::Extras,
+    start: Instant,
+) -> Result<(), String> {
+    let (w_px, h_px) = mrc_core::frame_size(scale);
+    let mut sink = encode::Sink::open(encoder, out, w_px, h_px, !cfr, extras)?;
     let prepared = start.elapsed();
     let chunk = rayon::current_num_threads() * 8;
     thread_local! {
@@ -122,11 +222,12 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
     let skip = f.get("skip-repeats").is_none_or(|v| v != "no");
     let mut last: Option<(u64, Arc<Vec<u8>>)> = None;
     let mut repeats = 0usize;
+    let mut done = 0usize;
     for part in frames.chunks(chunk) {
         let lists: Vec<(mrc_core::display::DisplayList, u64)> = part
             .par_iter()
             .map(|&n| {
-                let dl = mrc_core::build_frame(&p, n);
+                let dl = mrc_core::build_frame(p, n);
                 let h = dl.fingerprint();
                 (dl, h)
             })
@@ -170,6 +271,11 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
             if fresh || !sink.vfr || Some(&n) == frames.last() {
                 sink.write((n - frames[0]) as u64, frame)?;
             }
+        }
+        done += part.len();
+        if progress {
+            // The Node CLI reads these lines for its progress bar.
+            eprintln!("progress {done}/{}", frames.len());
         }
     }
     drop(last);
@@ -250,6 +356,7 @@ fn main() -> ExitCode {
         "still" => still(&f),
         "bench" => bench(&f),
         "check-repeats" => check_repeats(&f),
+        "sheet" => sheet::sheet(&f, &load(&f)?),
         _ => Err(format!("unknown command {cmd}")),
     });
     match result {

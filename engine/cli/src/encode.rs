@@ -2,12 +2,13 @@
 
 use mrc_core::Pixmap;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::Arc;
 use std::sync::mpsc::{SyncSender, sync_channel};
 use std::thread::JoinHandle;
 
-/// ffmpeg, from MR_CAST_FFMPEG or the PATH.
+/// ffmpeg, from MR_CAST_FFMPEG (the Node CLI sets it) or the PATH.
 fn ffmpeg() -> String {
     std::env::var("MR_CAST_FFMPEG").unwrap_or_else(|_| "ffmpeg".into())
 }
@@ -96,12 +97,71 @@ pub struct Sink {
     tx: Option<SyncSender<(u64, Arc<Vec<u8>>)>>,
     writer: Option<JoinHandle<Result<(), String>>>,
     child: Option<Child>,
+    /// The voice-over's AAC, encoded on its own thread while the frames render, and where the video goes until the
+    /// two are put together.
+    voice: Option<VoiceJob>,
+    out: String,
+}
+
+/// The thread encoding the voice-over, its M4A and the video-only file.
+type VoiceJob = (JoinHandle<Result<(), String>>, PathBuf, PathBuf);
+
+/// What goes into the MP4 besides the frames.
+#[derive(Default)]
+pub struct Extras {
+    /// The voice-over, encoded as AAC.
+    pub voice: Option<crate::audio::Voice>,
+    /// Chapter markers, an FFMETADATA file.
+    pub chapters: Option<PathBuf>,
+}
+
+/// Runs ffmpeg to the end with `args`, its errors in the result.
+fn run_ffmpeg(args: &[&std::ffi::OsStr], what: &str) -> Result<(), String> {
+    let out = Command::new(ffmpeg())
+        .args(["-hide_banner", "-loglevel", "error", "-y"])
+        .args(args)
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|e| format!("starting {}: {e}", ffmpeg()))?;
+    if !out.status.success() {
+        return Err(format!("{what}: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+    Ok(())
+}
+
+/// Writes the voice-over as a WAV beside `out` and encodes it as AAC into `m4a`.
+fn encode_voice(voice: crate::audio::Voice, out: &str, m4a: &Path) -> Result<(), String> {
+    let wav = PathBuf::from(format!("{out}.voice.wav"));
+    let result = voice.write_wav(&wav).and_then(|()| {
+        run_ffmpeg(
+            &[
+                "-i".as_ref(),
+                wav.as_os_str(),
+                "-c:a".as_ref(),
+                "aac".as_ref(),
+                "-b:a".as_ref(),
+                "160k".as_ref(),
+                "-ar".as_ref(),
+                "48000".as_ref(),
+                m4a.as_os_str(),
+            ],
+            "encoding the voice-over",
+        )
+    });
+    let _ = std::fs::remove_file(&wav);
+    result
 }
 
 impl Sink {
-    pub fn open(encoder: &str, out: &str, w: u32, h: u32, vfr: bool) -> Result<Sink, String> {
+    /// Starts ffmpeg writing `out`. With a voice-over, the frames go to a video-only file first and the voice is
+    /// encoded meanwhile; [`Sink::finish`] then copies both into `out`. ffmpeg 6, the ffmpeg-static package's,
+    /// reads audio beside a pipe of sparse timestamped frames so badly that a render in one pass takes twice as long.
+    pub fn open(encoder: &str, out: &str, w: u32, h: u32, vfr: bool, extras: Extras) -> Result<Sink, String> {
         let codec: &[&str] = match encoder {
-            "none" => return Ok(Sink { vfr: true, pool: Default::default(), tx: None, writer: None, child: None }),
+            "none" => {
+                let pool = Default::default();
+                return Ok(Sink { vfr: true, pool, tx: None, writer: None, child: None, voice: None, out: out.into() });
+            }
             "x264" => &["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"],
             "x264-ultrafast" => &["-c:v", "libx264", "-preset", "ultrafast", "-crf", "18"],
             "x264-superfast" => &["-c:v", "libx264", "-preset", "superfast", "-crf", "18"],
@@ -110,13 +170,31 @@ impl Sink {
             other => return Err(format!("unknown encoder {other}; use x264, videotoolbox or none")),
         };
         let size = format!("{w}x{h}");
+        let voice = extras.voice.map(|v| {
+            let m4a = PathBuf::from(format!("{out}.voice.m4a"));
+            let video = PathBuf::from(format!("{out}.video.mp4"));
+            let (target, owned) = (m4a.clone(), out.to_string());
+            (std::thread::spawn(move || encode_voice(v, &owned, &target)), m4a, video)
+        });
+        let target = voice.as_ref().map_or(out.to_string(), |(_, _, video)| video.display().to_string());
+        // The frames are input 0 (stdin); the chapters, when there are any, input 1.
+        let mut more: Vec<String> = Vec::new();
+        if let Some(c) = &extras.chapters {
+            more.extend(
+                ["-f", "ffmetadata", "-i", &c.display().to_string(), "-map", "0", "-map_metadata", "1"]
+                    .map(String::from),
+            );
+            more.extend(["-map_chapters", "1"].map(String::from));
+        }
         let mut child = Command::new(ffmpeg())
             .args(["-hide_banner", "-loglevel", "error", "-y"])
             .args(if vfr {
-                vec!["-f", "matroska", "-i", "-", "-fps_mode", "passthrough", "-video_track_timescale", "30"]
+                vec!["-f", "matroska", "-i", "-"]
             } else {
                 vec!["-f", "rawvideo", "-pix_fmt", "yuv420p", "-s", &size, "-r", "30", "-i", "-"]
             })
+            .args(&more)
+            .args(if vfr { &["-fps_mode", "passthrough", "-video_track_timescale", "30"][..] } else { &[][..] })
             .args(codec)
             // B-frames reorder packets, and the mp4 muxer then gets a timestamped stream's durations wrong.
             .args(if vfr && encoder != "copy" { &["-bf", "0"][..] } else { &[][..] })
@@ -131,7 +209,7 @@ impl Sink {
                 "iec61966-2-1",
                 "-movflags",
                 "+faststart",
-                out,
+                &target,
             ])
             .stdin(Stdio::piped())
             .spawn()
@@ -157,7 +235,7 @@ impl Sink {
             }
             Ok(())
         });
-        Ok(Sink { vfr, pool, tx: Some(tx), writer: Some(writer), child: Some(child) })
+        Ok(Sink { vfr, pool, tx: Some(tx), writer: Some(writer), child: Some(child), voice, out: out.into() })
     }
 
     /// Sends frame number `n` (from the video's first frame).
@@ -175,15 +253,51 @@ impl Sink {
 
     pub fn finish(mut self) -> Result<(), String> {
         drop(self.tx.take());
-        if let Some(w) = self.writer.take() {
-            w.join().map_err(|_| "writer thread panicked")??;
-        }
-        if let Some(mut c) = self.child.take() {
-            let status = c.wait().map_err(|e| e.to_string())?;
-            if !status.success() {
-                return Err(format!("ffmpeg exited with {status}"));
+        let mut result = (|| {
+            if let Some(w) = self.writer.take() {
+                w.join().map_err(|_| "writer thread panicked")??;
             }
+            if let Some(mut c) = self.child.take() {
+                let status = c.wait().map_err(|e| e.to_string())?;
+                if !status.success() {
+                    return Err(format!("ffmpeg exited with {status}"));
+                }
+            }
+            Ok(())
+        })();
+        if let Some((encoding, m4a, video)) = self.voice.take() {
+            let voiced = encoding.join().map_err(|_| "the voice-over thread panicked".to_string()).and_then(|r| r);
+            if result.is_ok() {
+                // Both streams copied as they are, the video's chapters with them: this takes a moment.
+                result = voiced.and_then(|()| {
+                    let out: &Path = self.out.as_ref();
+                    run_ffmpeg(
+                        &[
+                            "-i".as_ref(),
+                            video.as_os_str(),
+                            "-i".as_ref(),
+                            m4a.as_os_str(),
+                            "-map".as_ref(),
+                            "0:v".as_ref(),
+                            "-map".as_ref(),
+                            "1:a".as_ref(),
+                            "-map_metadata".as_ref(),
+                            "0".as_ref(),
+                            "-map_chapters".as_ref(),
+                            "0".as_ref(),
+                            "-c".as_ref(),
+                            "copy".as_ref(),
+                            "-movflags".as_ref(),
+                            "+faststart".as_ref(),
+                            out.as_os_str(),
+                        ],
+                        "adding the voice-over",
+                    )
+                });
+            }
+            let _ = std::fs::remove_file(m4a);
+            let _ = std::fs::remove_file(video);
         }
-        Ok(())
+        result
     }
 }
