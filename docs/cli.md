@@ -11,7 +11,9 @@ Run the commands from inside the repository the video is about. Output goes to `
 | `mr-cast install-skill` | Installs the `mr-cast`, `mr-cast-prune` and `mr-cast-upgrade` skills into `~/.claude`, or `$CLAUDE_CONFIG_DIR`, and removes what earlier versions installed there. |
 | `mr-cast uninstall-skill` | Removes every skill mr-cast installed. |
 | `mr-cast status` | Prints the branch, the commits and files it has ahead of its base, the uncommitted files, and the pace and voice you chose last time. The skill picks the video's source from it. |
-| `mr-cast extract [base] [--working]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json` and `meta.json`, and prints a compact hunk index with line numbers. `--working` diffs the merge base against uncommitted changes. Running it again on the same branch keeps the storyboard and the snippets. |
+| `mr-cast extract [base] [--working] [--description file]` | Starts a walkthrough of the branch's diff in `.mr-cast/<branch-slug>/`. It diffs `base...HEAD`, writes `hunks.json`, `meta.json` and `map.json`, and prints the change map and then a compact hunk index with line numbers, source files first, then tests, docs, config and routine. `--working` diffs the merge base against uncommitted changes. `--description` reads the merge request's title and text from a file you saved; mr-cast never calls `gh` or `glab`. Running it again on the same branch keeps the storyboard and the snippets. The change map is described under [The change map](#the-change-map). |
+| `mr-cast hunk <id>...` | Prints the named hunks of the current run in full, with line numbers. When a diff has more than 600 changed lines, `extract` prints each hunk's header and first two changed lines only (unless you pass `--max-lines`), and this prints the rest. |
+| `mr-cast map` | Prints the current run's change map again, from `map.json`. |
 | `mr-cast init --title text [--reset] [--quick]` | Starts a walkthrough of an explanation in `.mr-cast/<title-slug>/`, in the git repository or in the current directory outside one, and prints its path. A slug already in use gets a numbered suffix such as `-2`. The same title reopens the walkthrough and keeps its storyboard and snippets. `--reset` deletes them. `--quick` starts a quick video in `.mr-cast/quick-<title-slug>/`, and needs `--title`. The player ends a quick video on three phrases to say to Claude next: "go deeper", "the whole branch" and "save it". A later `init` of the same title without `--quick` starts the full video from the quick one's storyboard, snippets and voice, unless the full video already has a storyboard or snippets, or `--reset` is given. |
 | `mr-cast snippet <file>:<start>-<end> ...` | Adds those lines of unchanged source to `hunks.json` as snippets `s1`, `s2` and so on, and prints each with the file's own line numbers. Each snippet holds at most 80 lines. `<file> <start>-<end>` also works, and adding the same range again keeps its id. A later `extract` keeps the snippets. |
 | `mr-cast plan [--port N] [--no-open] [--idle-exit minutes]` | Checks the run's `plan.json`, serves the plan page at `http://127.0.0.1:4747/plan`, and opens the browser. The page writes each pick into `plan.json`, and reloads when `plan.json` changes. It replaces a plan server already running for the run, and exits like `play` when no page is open. See [The plan](#the-plan). |
@@ -31,6 +33,15 @@ Run the commands from inside the repository the video is about. Output goes to `
 | `mr-cast version` | Prints `mr-cast <version> (node <version>)`. Also `--version` and `-v`. |
 
 `extract` also takes `--context N` (context lines per hunk, default 4), `--max-lines N` (changed lines shown per hunk in the index, default 14) and `--all-files`. Without `--all-files`, `extract` skips lockfiles, minified files and build output.
+
+## The change map
+
+`extract` prints the map before the hunk index and writes all of it to `map.json` in the run. It is read from git and the working tree; nothing needs a network.
+
+- **Said by the author:** each commit's short sha, subject and body, oldest first, and the `--description` text.
+- **Files by kind:** source, tests, docs, config and routine (lockfiles, generated files, snapshots, pure renames). Each file shows new or modified, `+` and `−`, and its hunk ids, largest first. Modified source files are listed apart from new ones.
+- **Tests and what they cover:** for each changed test file, the changed source files it imports or names (or is named after), and the test names it adds. Changed source files that no changed test names are listed.
+- **Used elsewhere:** for names declared on changed or removed lines of modified source files, the count of files outside the diff that use the name, and up to three paths. This is a text search (`git grep -w`), not a call graph, so it can list false matches. It searches at most 40 names, skips names under 4 characters, and gives each search 3 seconds.
 
 ## Runs
 
