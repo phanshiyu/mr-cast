@@ -145,11 +145,11 @@ const brief = (over = {}) => ({
 const caseWarnings = async (scene, over = {}) =>
   matching(
     await warningsOf([{ ...scene, answers: ['case'] }], { mode: 'diff' }, { brief: brief(over) }),
-    /^brief\.case: has a before/,
+    /^case: a before and an after/,
   );
 
 test('a case with a before and an after must be on screen in both states in a scene that answers it', async () => {
-  const bad = /no scene that answers "case" puts both on screen \(1 scene answers it: text\)/;
+  const bad = /none of the 1 scene marked for "case" \(text\) puts both on screen/;
   assert.match((await caseWarnings(text()))[0], bad);
   assert.deepEqual(await caseWarnings(code('h1')), []);
   assert.match((await caseWarnings(code('h2')))[0], /code\)/, 'only added lines');
@@ -189,11 +189,11 @@ test('a case with a before and an after must be on screen in both states in a sc
 test('the case is not checked when it is unknown, when nothing answers it, or outside a branch', async () => {
   assert.deepEqual(await caseWarnings(text(), { case: 'unknown' }), []);
   const unanswered = await warningsOf([text()], { mode: 'diff' }, { brief: brief() });
-  assert.deepEqual(matching(unanswered, /^brief\.case: has a before/), []);
+  assert.deepEqual(matching(unanswered, /^case: a before and an after/), []);
   assert.deepEqual(
     matching(
       await warningsOf([{ ...text(), answers: ['case'] }], { mode: 'explain' }, { brief: brief() }),
-      /has a before/,
+      /a before and an after are written/,
     ),
     [],
   );

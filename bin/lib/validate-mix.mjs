@@ -189,7 +189,7 @@ function checkCase(scenes, hunks, brief, warnings) {
   const cited = list(c.cite).filter(isStr);
   if (!telling.some((s) => showsBoth(s, hunks, cited)))
     warnings.push(
-      `brief.case: has a before and an after, but no scene that answers "case" puts both on screen (${plural(telling.length, 'scene')} answer${telling.length === 1 ? 's' : ''} it: ${telling.map((s) => s.type).join(', ')}); the viewer hears the before and does not see it. A compare scene, a code scene on a cited hunk with removed and added lines, a table with before and after cells, a tests scene with "was" or a terminal with two runs puts both on screen`,
+      `case: a before and an after are written, but none of the ${plural(telling.length, 'scene')} marked for "case" (${telling.map((s) => s.type).join(', ')}) puts both on screen; the viewer hears the before and does not see it. A compare scene, a code scene on a cited hunk with removed and added lines, a table with before and after cells, a tests scene with "was" or a terminal with two runs puts both on screen`,
     );
 }
 
