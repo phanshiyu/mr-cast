@@ -78,6 +78,15 @@ export function checkTests(s, p, hunks, errors, warnings, added = null) {
 
   if (!Array.isArray(s.tests))
     return errors.push(`${p}.tests: required array of { name, checks } (use [] when nothing tests it)`);
+  const onlyExisting = s.tests.length > 0 && s.tests.every((t) => t?.status === 'existing');
+  if (
+    added?.length &&
+    !onlyExisting &&
+    !s.tests.some((t) => isObject(t) && isStr(t.name) && added.some((n) => flat(n) === flat(t.name)))
+  )
+    warnings.push(
+      `${p}.tests: the branch adds ${added.length === 1 ? '1 test' : `${added.length} tests`} and this tests scene names none of them, so its footer reads "0 of ${added.length} tests this branch adds"; list tests from "adds" in map.json, each with its \`name\`, \`checks\` and \`hunkId\` (fields: \`mr-cast schema tests\`, references/scenes/tests.md)`,
+    );
   s.tests.forEach((t, j) => {
     const q = `${p}.tests[${j}]`;
     if (!isObject(t)) return errors.push(`${q}: must be an object`);

@@ -452,6 +452,18 @@ test('validate warns when a test name is none the branch adds, and checks no nam
   );
 });
 
+test('validate warns when a tests scene names none of the tests the branch adds', async () => {
+  const meta = { mode: 'diff', map: branchMap };
+  const warned = (await validateStoryboard({ title: 'T', scenes: [{ ...named(), tests: [] }] }, testHunks, meta))
+    .warnings;
+  assert.deepEqual(at(warned, 'scenes[0].tests'), [
+    'scenes[0].tests: the branch adds 23 tests and this tests scene names none of them, so its footer reads "0 of 23 tests this branch adds"; list tests from "adds" in map.json, each with its `name`, `checks` and `hunkId` (fields: `mr-cast schema tests`, references/scenes/tests.md)',
+  ]);
+  const some = (await validateStoryboard({ title: 'T', scenes: [named('adds behaviour number 1')] }, testHunks, meta))
+    .warnings;
+  assert.deepEqual(at(some, 'scenes[0].tests'), []);
+});
+
 test('validate warns when a count of tests the scene states disagrees with the map', async () => {
   const meta = { mode: 'diff', map: branchMap };
   const say = async (over) =>
