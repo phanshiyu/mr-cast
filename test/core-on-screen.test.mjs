@@ -127,6 +127,6 @@ test('validate counts the lines a code scene frames, and validate and outline pr
   }).split('\n');
   assert.equal(outline[outline.findIndex((l) => l.startsWith('brief:')) + 1], lines[at + 1]);
   const none = await validateStoryboard({ ...sb, brief: undefined }, hunks, { mode: 'diff' });
-  assert.deepEqual(none.core, []);
-  assert.deepEqual((await validateStoryboard(sb, hunks, { mode: 'explain' })).core, []);
+  assert.equal(none.core, undefined);
+  assert.equal((await validateStoryboard(sb, hunks, { mode: 'explain' })).core, undefined);
 });

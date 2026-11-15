@@ -779,10 +779,10 @@ async function validateScenes(
   if (mode === 'explain') {
     if (sb.skipped !== undefined)
       warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
-    return { errors, warnings, coverage: null, core };
+    return { errors, warnings, coverage: null, ...(core.length ? { core } : {}) };
   }
   const coverage = checkCoverage(sb, hunks ?? {}, audience, listed, errors, warnings);
-  return { errors, warnings, coverage, core };
+  return { errors, warnings, coverage, ...(core.length ? { core } : {}) };
 }
 
 export function storyboardSeconds(sb, voiceover) {
