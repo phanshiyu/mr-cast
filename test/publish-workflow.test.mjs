@@ -44,7 +44,53 @@ test('the dependency jobs run only on main, and the publish job still runs on a 
     jobs['dependency-plan'],
     /contains\(github\.event\.workflow_run\.head_commit\.message, '\[SECURITY\]'\)/,
   );
-  assert.match(jobs.publish, /github\.event_name == 'workflow_dispatch' && !inputs\.dependencies/);
+  assert.match(jobs.publish, /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
+});
+
+const setupAction = fs.readFileSync(new URL('../.github/actions/setup/action.yml', import.meta.url), 'utf8');
+
+test('no job that can write, publish or hold an id-token restores or saves a cache, through the setup action too', () => {
+  // The setup action caches the pnpm store unless told not to, so a job that calls it must pass cache: 'false'.
+  assert.match(setupAction, /cache: \$\{\{ inputs\.cache == 'true' \}\}/);
+  assert.match(setupAction, /inputs:[\s\S]*\n {2}cache:\n[\s\S]*default: 'true'/);
+  assert.doesNotMatch(setupAction, /actions\/cache/);
+  const privileged = Object.entries(jobs).filter(([, text]) => /(contents|id-token): write/.test(text));
+  assert.ok(privileged.length >= 4);
+  for (const [name, text] of privileged) {
+    assert.doesNotMatch(text, /actions\/cache(\/\w+)?@/, `${name} uses actions/cache`);
+    assert.doesNotMatch(text, /^\s+cache:\s*(?!'false')\S/m, `${name} turns on a cache option`);
+    assert.doesNotMatch(text, /cache-dependency-path|package-manager-cache/, `${name} configures a cache`);
+    for (const use of text.split(/\n(?=\s+- )/).filter((step) => /uses: \.\/\.github\/actions\/setup/.test(step))) {
+      assert.match(use, /cache: 'false'/, `${name} calls the setup action with its cache on`);
+    }
+  }
+});
+
+test('no job in the publish workflow, checked out from a ref it was handed, restores or saves a cache', () => {
+  // Jobs run code from a ref that a manual start names, so a poisoned cache entry would reach the next run on main.
+  assert.doesNotMatch(workflow, /actions\/cache(\/\w+)?@/);
+  for (const use of workflow.split(/\n(?=\s+- )/).filter((step) => /uses: \.\/\.github\/actions\/setup/.test(step))) {
+    assert.match(use, /cache: 'false'/);
+  }
+});
+
+test('a manual start publishes only from main, and no run step interpolates an expression', () => {
+  assert.match(
+    jobs.publish,
+    /github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main' && !inputs\.dependencies/,
+  );
+  for (const file of ['publish.yml', 'ci.yml', 'audit.yml']) {
+    const text = fs.readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8');
+    const runs = text.match(/^ +(?:- )?run: (?:\|\n(?: {8,}.*\n?|\n)+|.*)/gm) ?? [];
+    assert.ok(runs.length > 0);
+    for (const run of runs) {
+      // The few expressions allowed in a script are the build's own matrix and runner paths, never event data.
+      const bad = (run.match(/\$\{\{[^}]*\}\}/g) ?? []).filter(
+        (e) => !/^\$\{\{ *(matrix\.node|runner\.temp) *\}\}$/.test(e),
+      );
+      assert.deepEqual(bad, [], `${file}: ${run.slice(0, 60)}`);
+    }
+  }
 });
 
 const lockFile = (foo, eslint) => `lockfileVersion: '9.0'

@@ -74,6 +74,8 @@ jobs:
           fi
       - name: Fail when main has advisories
         if: steps.audit.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.audit.outputs.status }}
         run: |
-          echo "::error title=The audit of main failed::Status ${{ steps.audit.outputs.status }} (1: advisories, listed in the job summary and the open issue titled $ISSUE_TITLE; 2: an audit did not run)."
+          echo "::error title=The audit of main failed::Status $STATUS (1: advisories, listed in the job summary and the open issue titled $ISSUE_TITLE; 2: an audit did not run)."
           exit 1

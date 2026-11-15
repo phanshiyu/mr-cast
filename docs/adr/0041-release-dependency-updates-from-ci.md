@@ -82,3 +82,12 @@ Bad:
   `ci-ok` would never pass, and a token that does start CI is a stored secret.
 - Tag only, and publish from the tag in a second workflow: a tag pushed with the workflow's token starts no workflow,
   and trusted publishing is bound to `publish.yml`.
+
+## Amended: no cache in the publish workflow, and a manual start only from main
+
+CodeQL reported cache poisoning in `publish.yml`: a job that checks out a ref and then restores or saves a cache can
+leave a poisoned entry that a later run on main restores. The publish workflow now restores and saves no cache at all.
+The setup action has a `cache` input (default `'true'`, which CI keeps), every job here passes `'false'`, and the render
+job no longer caches the Chrome download or the voice model, so each shard downloads them. A manual start of the
+publish job now runs only from main, so a dispatch cannot publish a branch. The jobs that publish or push also no longer
+put job outputs into scripts: they pass them through `env`. `test/publish-workflow.test.mjs` holds these rules.
