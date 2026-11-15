@@ -74,12 +74,32 @@ test('code and payload together, and code in a pre-read, are errors', async () =
   assert.ok(pre.errors.some((e) => /pre-read puts no code on screen/.test(e)));
 });
 
-test('about 14 lines fit, and a stretch that is too long is reported by the fit check', async () => {
+test('a stretch that is too long is reported by the fit check, with what fits', async () => {
   assert.deepEqual((await check([stage({ code: { hunk: 'h5', lines: '12-25' } })])).errors, []);
   const long = await check([stage({ code: { hunk: 'h5', lines: '10-49' } })]);
   assert.equal(long.errors.length, 1);
   assert.match(long.errors[0], /steps\[0\]\.code/);
   assert.match(long.errors[0], /flow code/);
+  assert.match(
+    long.errors[0],
+    /at the smallest readable size, 15px, a line can be 121 characters and 27 lines fit here/,
+  );
+});
+
+test('lines of 100 and 120 characters fit, and 130 do not', async () => {
+  const wide = (n) => ({ ...hunks.h5, lines: lines(10, ['x'.repeat(n), 'y'.repeat(n)]) });
+  const run = async (n) =>
+    validateStoryboard(
+      {
+        title: 'Flows',
+        scenes: [{ type: 'flow', narration: 'One request.', steps: [stage({ code: { hunk: 'h5', lines: '10-11' } })] }],
+      },
+      { h5: wide(n) },
+      { mode: 'diff' },
+    );
+  assert.deepEqual((await run(100)).errors, []);
+  assert.deepEqual((await run(120)).errors, []);
+  assert.equal((await run(130)).errors.length, 1);
 });
 
 test('removed lines between shown lines are kept, and light marks the lines', () => {

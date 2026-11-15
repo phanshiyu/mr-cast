@@ -2,6 +2,7 @@
 // weight is the heaviest it is drawn at, such as when a step lights it, so it fits then too.
 
 import type { Slot } from '../../shared/textfit.mjs';
+import { CODE_READABLE_MIN } from '../components/theme';
 
 const SANS = { family: 'sans', balanced: false } as const;
 const LABEL = { family: 'sans', balanced: true } as const;
@@ -336,12 +337,12 @@ export const SLOTS = {
     name: 'flow code',
     weight: 400,
     size: 28,
-    min: 22,
+    min: CODE_READABLE_MIN,
     lines: 1,
     lineHeight: 1.45,
     markup: false,
     width: 0,
-    fix: 'show about 14 lines or fewer, or shorter ones, by narrowing `lines`; split a longer stretch across stages',
+    fix: 'show fewer or shorter lines by narrowing `lines`; split a longer stretch across stages',
   },
   flowWhere: {
     ...MONO,

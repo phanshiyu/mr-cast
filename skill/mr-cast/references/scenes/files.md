@@ -19,11 +19,11 @@ The files as a tree with their line counts, and a short note beside the ones tha
 
 ## Schema and validate notes
 
-A `focus` is a path in the tree, or a part's name. `notes` maps a path to a short note. Leave `files` out in a diff walkthrough and the tree is every changed file. `{{MR_CAST}}/bin/mr-cast validate` fails on a note or focus for a path not in the tree, and warns past 18 files and on a path the diff does not change.
+A `focus` is a path in the tree, or a part's name. `notes` maps a path to a short note. Leave `files` out in a diff walkthrough and the tree is every changed file. `{{MR_CAST}}/bin/mr-cast validate` fails on a note or focus for a path not in the tree, and warns on a path the diff does not change, and without parts past 18 files.
 
 ### Parts and weight
 
-A tree by directory says where files live, not which matter. Give the scene `parts` and each file a `part`, and the files group under their part instead of by directory: core parts first and strongest, support next, routine last and quietest, each heading with its weight, file count and + and − totals.
+A tree by directory says where files live, not which matter. Give the scene `parts` and each file a `part`, and the files group under their part instead of by directory: core parts first and strongest, support next, routine last and quietest, each heading with its weight, file count and + and − totals. A part lists its largest files, core parts more of them, and counts the rest in a quiet "+ N more" line, so a branch of 25 or 30 files fits.
 
 ```json
 {

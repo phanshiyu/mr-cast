@@ -1,6 +1,6 @@
 import { lineFocusRanges } from '../../shared/focus.mjs';
 import { fitLines, fitText, measure, type Fit } from '../../shared/textfit.mjs';
-import { CODE_TAB_SIZE, contentBox } from '../components/theme';
+import { CODE_READABLE_MIN, CODE_TAB_SIZE, contentBox } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
 import type { CodeScene, Hunk } from '../types';
 import { splitRows, type SplitRow } from './diffRows';
@@ -17,7 +17,7 @@ export const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
 /** Code sizes: the readable range, largest first. Past the smallest, code still shrinks to HARD_MIN rather than lose a character. */
 const FONT_RANGE: Record<View, { min: number; max: number }> = {
   split: { min: 14, max: 20 },
-  morph: { min: 15, max: 23 },
+  morph: { min: CODE_READABLE_MIN, max: 23 },
 };
 const HARD_MIN = 10;
 /** Room kept between the end of the longest line and the edge of its panel. */

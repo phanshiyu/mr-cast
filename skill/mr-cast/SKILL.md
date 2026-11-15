@@ -126,10 +126,11 @@ Fix every error until it prints `✓ storyboard ok`. Errors are what would not r
 
 For a branch it also prints `brief:`, the questions that have an answer and a scene, and `scenes:`, the count of each scene type and the longest run of one. It writes `guide.md` in the run's directory: the six answers, the parts, what to open first, and the questions for the author.
 
-Look at the video before you show it. Render the stills and read every one: a still is what the viewer sees, and the storyboard is not.
+Look at the video before you show it. Render the contact sheet and read it, then render and read single stills, with `--step k` where a scene builds up, of any scene that looks cramped, cut off or empty. A still is what the viewer sees, and the storyboard is not.
 
 ```bash
-{{MR_CAST}}/bin/mr-cast still [sceneIndex...] <flags>   # PNG stills, into the run's stills/; read them; --step k shows each as step k ends
+{{MR_CAST}}/bin/mr-cast still --sheet <flags>           # one image, stills/sheet.png: every scene's still, labelled; read it
+{{MR_CAST}}/bin/mr-cast still [sceneIndex...] <flags>   # PNG stills, into the run's stills/; --step k shows each as step k ends
 {{MR_CAST}}/bin/mr-cast steps [sceneIndex...] <flags>   # each step's words beside what it lights
 {{MR_CAST}}/bin/mr-cast outline <flags>                 # the scenes and the length
 ```

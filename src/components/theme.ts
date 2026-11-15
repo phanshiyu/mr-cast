@@ -44,6 +44,8 @@ export const severityInk: Record<Severity, string> = {
 /** The label a scene's header and the player's chapter list show: its own chapter, or one for its type. A graph that branches at a decision is a flowchart. */
 
 export const CODE_TAB_SIZE = 2;
+/** The smallest size, in px, the project treats as readable for code in one column. */
+export const CODE_READABLE_MIN = 15;
 /** Display width of a code line in character cells, with tabs expanded to CODE_TAB_SIZE stops. */
 export function codeColumns(text: string): number {
   let col = 0;
