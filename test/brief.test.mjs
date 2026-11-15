@@ -280,7 +280,7 @@ test('a code scene whose hunk outgrows the frame names the lines never seen', as
   const [warning] = await seen(sb);
   assert.match(
     warning,
-    /^scenes\[0\]: the hunk is longer than the frame draws and no step's lines bring src\/big\.js lines 1-\d+, \d+-120 into view, so the video never shows them; add a step for them, or split the hunk$/,
+    /^scenes\[0\]: the frame draws \d+ lines at once, and no step's lines bring src\/big\.js lines 1-\d+, \d+-120 into view, so the video never shows them; a step's lines must fit in \d+ to be seen whole, so split a longer step, add a step for these lines, or split the hunk$/,
   );
   const steps = Array.from({ length: 10 }, (_, k) => ({ lines: `${k * 12 + 1}-${k * 12 + 12}`, say: 'A part.' }));
   assert.deepEqual(await seen({ title: 'Big', scenes: [code('m1', { steps })] }), []);
@@ -290,6 +290,17 @@ test('a code scene whose hunk outgrows the frame names the lines never seen', as
     await seen({ title: 'Big', scenes: [code('m1', { steps: [{ lines: '50-52', say: 'Here.' }] })] }),
     [],
   );
+});
+
+test('lines within the frame of a step are not warned, nor the context rows kept around it', async () => {
+  const frame = Number(/draws (\d+) lines/.exec((await seen({ title: 'Big', scenes: [code('m1')] }))[0])[1]);
+  const step = (from, count) => ({ lines: `${from}-${from + count - 1}`, say: 'A part.' });
+  // A step that fills the frame is seen whole, and the rows the crop keeps around it are not the writer's to show.
+  assert.deepEqual(await seen({ title: 'Big', scenes: [code('m1', { steps: [step(50, frame - 2)] })] }), []);
+  // One longer than the frame loses its edges, and the warning says so, with the frame's size.
+  const [over] = await seen({ title: 'Big', scenes: [code('m1', { steps: [step(50, frame + 6)] })] });
+  assert.match(over, new RegExp(`the frame draws ${frame} lines at once`));
+  assert.match(over, /src\/big\.js lines? 50/);
 });
 
 test('the brief line of a full brief matches the ADR', () => {
