@@ -79,7 +79,7 @@ function sceneShowing(scenes, hunks, file, line) {
 
 /**
  * The guide of a storyboard with a `brief`, or null without one:
- * `{ questions: [{ id, label, answer, scene }], check: [{ where, what, why, scene }], ask }`. `answer` is null where the
+ * `{ questions: [{ id, label, answer, scene }], parts: [{ name, weight, does }], check: [{ where, what, why, scene }], ask }`. `answer` is null where the
  * brief does not state it (the page says "Not stated"); `scene` is the index to seek to, or null.
  */
 export function guidePanel(storyboard, hunks) {
@@ -94,6 +94,11 @@ export function guidePanel(storyboard, hunks) {
       answer: answerText(brief, id),
       scene: firstAnswering(scenes, id),
     })),
+    parts: (Array.isArray(brief.parts) ? brief.parts : []).flatMap((p) =>
+      object(p) && typeof p.name === 'string' && typeof p.does === 'string' && p.does.trim()
+        ? [{ name: oneLine(p.name), weight: String(p.weight), does: oneLine(p.does) }]
+        : [],
+    ),
     check: checks.map((c) => ({
       where: `${c.file}:${c.line}`,
       what: oneLine(c.what ?? ''),

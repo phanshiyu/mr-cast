@@ -1676,6 +1676,17 @@ export interface BriefPart {
   weight: 'core' | 'support' | 'routine';
   /** Hunk ids (from `mr-cast extract`), which give the part's files. */
   hunks: string[];
+  /**
+   * What the part does, in one sentence of under about 90 characters, with the real names:
+   * "Finds each place in an answer and checks it against the branch". The parts map, guide.md and the guide
+   * panel show it; `validate` warns when a core or support part has none.
+   */
+  does?: string;
+  /**
+   * The names of the parts this one builds on or is called by, so the map can order the parts and draw the
+   * links between them: a part sits after the parts it names. `validate` warns on a name that is no part.
+   */
+  after?: string[];
 }
 
 /** How we know it works. */

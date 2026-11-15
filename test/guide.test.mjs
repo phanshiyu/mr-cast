@@ -14,7 +14,7 @@ const brief = {
   case: { before: 'The twenty-first order was accepted', after: 'It is refused with a 429.', cite: [] },
   approach: { text: 'Count orders per address.', decisions: [] },
   parts: [
-    { name: 'The limiter', weight: 'core', hunks: ['h1'] },
+    { name: 'The limiter', weight: 'core', does: 'Counts orders per address.', hunks: ['h1'] },
     { name: 'Wiring', weight: 'support', hunks: ['h2'] },
   ],
   proof: { tested: ['A twenty-first order is refused'], untested: ['Two servers'] },
@@ -81,4 +81,10 @@ test('an answer of "unknown", or none, has no text, and a question no scene tell
     guide.questions.map((q) => q.scene),
     [null, null, null, null, null, null],
   );
+});
+
+test("the guide lists each part that says what it does, in the brief's order", () => {
+  const guide = guidePanel({ title: 'T', scenes, brief }, hunks);
+  assert.deepEqual(guide.parts, [{ name: 'The limiter', weight: 'core', does: 'Counts orders per address.' }]);
+  assert.deepEqual(guidePanel({ title: 'T', scenes: [], brief: { parts: 'unknown' } }, hunks).parts, []);
 });

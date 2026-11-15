@@ -58,8 +58,14 @@ const brief = (over = {}) => ({
   },
   approach: { text: 'Count orders per address in a minute.', decisions: ['The count is per server'] },
   parts: [
-    { name: 'The limiter', weight: 'core', hunks: ['h1'] },
-    { name: 'Wiring', weight: 'support', hunks: ['h2'] },
+    { name: 'The limiter', weight: 'core', does: 'Counts orders per address', hunks: ['h1'] },
+    {
+      name: 'Wiring',
+      weight: 'support',
+      does: 'Runs the limiter before an order is saved',
+      after: ['The limiter'],
+      hunks: ['h2'],
+    },
     { name: 'Tests and docs', weight: 'routine', hunks: ['h3', 'h4'] },
   ],
   proof: {
@@ -147,8 +153,8 @@ test('a cite, a source sha, a part hunk and a check line that point at nothing a
       why: { text: 'Bots.', source: 'commit abc1234' },
       case: { before: 'a', after: 'b', cite: ['h99', 'src/nowhere.js:3', '9999999', 'src/limiter.js:2-3', 'nonsense'] },
       parts: [
-        { name: 'The limiter', weight: 'core', hunks: ['h1', 'h77'] },
-        { name: 'Wiring', weight: 'support', hunks: ['h2'] },
+        { name: 'The limiter', weight: 'core', does: 'Counts orders per address', hunks: ['h1', 'h77'] },
+        { name: 'Wiring', weight: 'support', does: 'Runs the limiter before an order is saved', hunks: ['h2'] },
         { name: 'Tests and docs', weight: 'routine', hunks: ['h3', 'h4'] },
       ],
       check: [{ file: 'src/ghost.js', line: 3, what: 'x', why: 'y' }],
@@ -189,7 +195,9 @@ test('a check line past the end of a file on disk is named', async () => {
 
 test('hunks of source or test files in no part, and not skipped, are named; so are modified source files no part holds', async () => {
   const sb = board({
-    brief: brief({ parts: [{ name: 'The limiter', weight: 'core', hunks: ['h1'] }] }),
+    brief: brief({
+      parts: [{ name: 'The limiter', weight: 'core', does: 'Counts orders per address', hunks: ['h1'] }],
+    }),
     skipped: [{ hunkId: 'h3', reason: 'only a smoke test' }],
   });
   assert.deepEqual(await warningsOf(sb), [
@@ -222,7 +230,7 @@ test('the map as extract writes it, files by kind with file, hunkIds and adds, g
   };
   const sb = board({
     brief: brief({
-      parts: [{ name: 'The limiter', weight: 'core', hunks: ['h1'] }],
+      parts: [{ name: 'The limiter', weight: 'core', does: 'Counts orders per address', hunks: ['h1'] }],
       proof: { tested: [], untested: [] },
     }),
     skipped: [{ hunkId: 'h3', reason: 'only a smoke test' }],
@@ -360,8 +368,11 @@ test('guide.md names the six answers, the parts with their files and what to ope
       '',
       '## What are the parts?',
       '',
-      '- **The limiter** (main part): `src/limiter.js`',
-      '- **Wiring** (supporting part): `src/server.js`',
+      '- **The limiter** (main part): Counts orders per address',
+      '  Files: `src/limiter.js`',
+      '- **Wiring** (supporting part): Runs the limiter before an order is saved',
+      '  After: The limiter',
+      '  Files: `src/server.js`',
       '- **Tests and docs** (routine, skim it): `test/limiter.test.js`, `README.md`',
       '',
       '## How do we know it works?',
@@ -480,4 +491,27 @@ test('outline reads a reading scene with no items, which draws the brief check l
   const storyboard = board({ scenes: [text(ALL), code('h1'), code('h2'), reading] });
   const out = formatOutline({ storyboard, hunks, coverage: null, seconds: 30, voiced: false });
   assert.match(out, /1 place to open first, from the brief/);
+});
+
+test('a core or support part with no "does", a long one, and an "after" naming no part are warned about', async () => {
+  const parts = [
+    { name: 'The limiter', weight: 'core', hunks: ['h1'] },
+    { name: 'Wiring', weight: 'support', does: 'x'.repeat(120), after: ['The limiter', 'The limtier'], hunks: ['h2'] },
+    { name: 'Tests and docs', weight: 'routine', hunks: ['h3', 'h4'] },
+  ];
+  const warnings = await warningsOf(board({ brief: brief({ parts }) }));
+  assert.equal(warnings.length, 3, warnings.join('\n'));
+  assert.match(warnings[0], /^brief\.parts\[0\] \("The limiter"\): a core part with no "does"/);
+  assert.match(warnings[1], /^brief\.parts\[1\]\.does: 120 characters; keep it to one sentence/);
+  assert.match(warnings[2], /^brief\.parts\[1\]\.after\[1\]: "The limtier" is not a part's name.*"The limiter"/);
+});
+
+test('a "does" or "after" of the wrong shape is an error', async () => {
+  const { errors } = await check(
+    board({ brief: brief({ parts: [{ name: 'x', weight: 'core', hunks: [], does: 3, after: 'y' }] }) }),
+  );
+  assert.deepEqual(errors, [
+    'brief.parts[0].does: must be a non-empty string',
+    'brief.parts[0].after: must be an array of strings',
+  ]);
 });

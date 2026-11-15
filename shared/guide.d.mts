@@ -22,8 +22,17 @@ export interface GuideCheck {
   scene: number | null;
 }
 
+export interface GuidePart {
+  name: string;
+  weight: string;
+  /** What the part does, in one sentence. Parts with none are left out. */
+  does: string;
+}
+
 export interface GuidePanel {
   questions: GuideQuestion[];
+  /** The parts that say what they do, in the brief's order. */
+  parts: GuidePart[];
   check: GuideCheck[];
   ask: string[];
 }

@@ -104,7 +104,15 @@ function sections(brief, hunks) {
       'What are the parts?',
       brief.parts.map((p) => {
         const files = partFiles(p, hunks);
-        return `- **${md(p?.name ?? '')}** (${WEIGHT_WORDS[p?.weight] ?? p?.weight}): ${files.length ? files.map((f) => `\`${f}\``).join(', ') : 'no files named'}`;
+        const named = files.length ? files.map((f) => `\`${f}\``).join(', ') : 'no files named';
+        const after = list(p?.after);
+        const head = `- **${md(p?.name ?? '')}** (${WEIGHT_WORDS[p?.weight] ?? p?.weight}):`;
+        if (!list([p?.does]).length && !after.length) return `${head} ${named}`;
+        return [
+          `${head} ${md(p?.does ?? '')}`.trimEnd(),
+          ...(after.length ? [`  After: ${after.map(md).join(', ')}`] : []),
+          `  Files: ${named}`,
+        ].join('\n');
       }),
     );
 

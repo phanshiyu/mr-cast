@@ -65,6 +65,8 @@ function checkShape(brief, errors) {
         if (!isStr(p.name)) errors.push(`${q}.name: required string`);
         if (!WEIGHTS.includes(p.weight)) errors.push(`${q}.weight: must be one of ${WEIGHTS.join(', ')}`);
         stringList(p.hunks, `${q}.hunks`, errors);
+        if (p.does !== undefined && !isStr(p.does)) errors.push(`${q}.does: must be a non-empty string`);
+        if (p.after !== undefined) stringList(p.after, `${q}.after`, errors);
       });
   }
   if (proof !== undefined && proof !== 'unknown') {
@@ -202,8 +204,32 @@ function checkAnswers(sb, brief, warnings) {
       );
 }
 
+/** A part's `does` is one short sentence, so the parts map can draw it; the core and support parts have one. */
+const DOES_MAX = 100;
+
+function checkDoes(brief, warnings) {
+  const names = brief.parts.map((p) => p?.name);
+  brief.parts.forEach((p, i) => {
+    if (['core', 'support'].includes(p?.weight) && p.does === undefined)
+      warnings.push(
+        `brief.parts[${i}] ("${p.name}"): a ${p.weight} part with no "does"; say in one sentence what it does, such as "Finds each place in an answer and checks it against the branch"`,
+      );
+    if (isStr(p?.does) && p.does.trim().length > DOES_MAX)
+      warnings.push(
+        `brief.parts[${i}].does: ${p.does.trim().length} characters; keep it to one sentence of under about 90, so the card for the part holds it`,
+      );
+    (Array.isArray(p?.after) ? p.after : []).forEach((name, j) => {
+      if (!names.includes(name))
+        warnings.push(
+          `brief.parts[${i}].after[${j}]: ${JSON.stringify(name)} is not a part's name${didYouMean(name, names)}; "after" names the parts this one builds on or is called by (${named(names.map((n) => `"${n}"`))})`,
+        );
+    });
+  });
+}
+
 function checkParts(sb, brief, map, warnings) {
   if (!Array.isArray(brief.parts)) return;
+  checkDoes(brief, warnings);
   const shown = shownHunks(sb);
   brief.parts.forEach((p, i) => {
     if (p?.weight !== 'core') return;
