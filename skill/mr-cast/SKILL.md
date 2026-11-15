@@ -79,11 +79,11 @@ Someone will review this change after watching. The video is done when they can 
 | `why` | Why does this change exist? | The problem in the author's words, with its source: a commit or the description. When nothing says, the source is `"unknown"`; do not make one up. |
 | `case` | On one real case, what happened before and what happens now? | One input with real values, taken from a test or the code, and both outcomes. |
 | `approach` | What is the idea, and what did the author decide? | The idea in a sentence or two, and each choice the author states or the code shows. A way not taken that nobody names is your own idea: say so, never "the author considered". |
-| `parts` | Which parts are there, and which matter? | Every hunk of source and tests in a part named for what it does, each `core`, `support` or `routine`. Existing code whose behaviour changed is never routine. |
+| `parts` | Which parts are there, and which matter? | Every hunk of source and tests in a part, each `core`, `support` or `routine`, with one sentence on what it `does` and the parts it comes `after`. Existing code whose behaviour changed is never routine. |
 | `proof` | How do we know it works? | What a named test shows, and what no test shows. |
 | `check` | What could break, and what do I open first? | Places by file and line, each with what to look at and why: changed behaviour of existing code, callers outside the diff, a case no test tries, anything you would question. |
 
-Put what only the author can answer in `ask`. `{{MR_CAST}}/bin/mr-cast schema` prints the `brief`'s fields.
+Put what only the author can answer in `ask`. `mr-cast schema` prints the fields.
 
 Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. The order, the scenes and the length are yours. What you found goes in the video: a problem you noticed belongs in `check`, review or not.
 
