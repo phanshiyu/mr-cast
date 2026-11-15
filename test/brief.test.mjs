@@ -199,6 +199,37 @@ test('hunks of source or test files in no part, and not skipped, are named; so a
   assert.deepEqual(await warningsOf(sb, {}), []);
 });
 
+test('the map as extract writes it, files by kind with file, hunkIds and adds, gives the same warnings', async () => {
+  const written = {
+    commits: map.commits,
+    description: null,
+    files: {
+      source: [
+        { file: 'src/server.js', kind: 'source', status: 'modified', additions: 6, deletions: 0, hunkIds: ['h2'] },
+        { file: 'src/limiter.js', kind: 'source', status: 'new', additions: 10, deletions: 0, hunkIds: ['h1'] },
+      ],
+      tests: [
+        { file: 'test/limiter.test.js', kind: 'tests', status: 'new', additions: 5, deletions: 0, hunkIds: ['h3'] },
+      ],
+      docs: [{ file: 'README.md', kind: 'docs', status: 'modified', additions: 1, deletions: 0, hunkIds: ['h4'] }],
+      config: [],
+      routine: [],
+    },
+    tests: [{ file: 'test/limiter.test.js', covers: ['src/limiter.js'], adds: ['limits'] }],
+    untested: ['src/server.js'],
+    usedElsewhere: { method: 'git grep -w', names: [], omitted: 0, stopped: false },
+  };
+  const sb = board({
+    brief: brief({
+      parts: [{ name: 'The limiter', weight: 'core', hunks: ['h1'] }],
+      proof: { tested: [], untested: [] },
+    }),
+    skipped: [{ hunkId: 'h3', reason: 'only a smoke test' }],
+  });
+  assert.deepEqual(await warningsOf(sb, { map: written }), await warningsOf(sb, { map }));
+  assert.equal((await warningsOf(sb, { map: written })).length > 2, true);
+});
+
 test('a core part that no scene shows or cites is named', async () => {
   const sb = board({ scenes: [text(ALL), code('h2')] });
   assert.deepEqual(await warningsOf(sb, {}), [

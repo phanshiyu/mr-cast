@@ -261,7 +261,31 @@ function checkEvidence(brief, map, warnings) {
  * Checks the brief of a branch video. `map` is map.json as `extract` wrote it, or null; `root` is the repository, for
  * the files a `check` line names. A video of anything but a branch has no brief to check.
  */
-export function checkBrief(sb, hunks, { branch, map = null, root = null }, errors, warnings) {
+/**
+ * map.json as the brief's checks read it: one list of files, each with `path`, `kind`, `status` and `hunks`, and the
+ * tests with `path` and `names`. `extract` writes the files by kind, with `file`, `hunkIds` and `adds`.
+ */
+function flatMap(map) {
+  if (!isObj(map) || Array.isArray(map.files)) return map;
+  const kinds = isObj(map.files) ? map.files : {};
+  const files = Object.entries(kinds).flatMap(([kind, list]) =>
+    (Array.isArray(list) ? list : []).map((f) => ({
+      path: f?.file,
+      kind: f?.kind ?? kind,
+      status: f?.status,
+      hunks: Array.isArray(f?.hunkIds) ? f.hunkIds : [],
+    })),
+  );
+  const tests = (Array.isArray(map.tests) ? map.tests : []).map((t) => ({
+    path: t?.file ?? t?.path,
+    covers: t?.covers,
+    names: t?.adds ?? t?.names,
+  }));
+  return { ...map, files, tests };
+}
+
+export function checkBrief(sb, hunks, { branch, map: written = null, root = null }, errors, warnings) {
+  const map = flatMap(written);
   // An explanation or a quick video has no reviewer to answer to, so a brief or an `answers` in one is not read.
   if (!branch) return;
   if (sb.brief === undefined)
