@@ -1,0 +1,150 @@
+# 37. A brief for the reviewer: six questions, facts from the tool, and answers that are checked
+
+- Status: Proposed
+- Date: 2026-11-15
+- Amends: 0019 (tools, not opinions), 0008 (the reading scene outside a pre-read), 0013 (what the eval asks)
+
+## Context
+
+Since 0.25 (ADR 0019) the skill gives the model tools and no advice. The owner then found that the videos do not guide
+a viewer to understand a merge request. Three baseline videos were made with the 0.28 skill by Sonnet writers: two
+fixtures (`webhook-retries`, `invoice-status`) and one real branch of 27 files and 2,152 added lines. A blind viewer of
+each answered eight understanding questions from the stills and the narration alone.
+
+- All three viewers rated ease 4 of 5 and readiness to approve or reject 2 of 5.
+- In all three, "how do we know it works" was "not shown", the reason for the change was inferred, the "before" was a
+  guess, and no alternative or decision was named.
+- On the real branch a critic with the code found the video showed 4 of 64 hunks, called the rest "mostly tests and
+  docs" when eight existing files changed behaviour, and never said that `reply` and `explain` now refuse a body. The
+  commit messages, a decision log and named tests held the why, the decisions and the proof; the video used none.
+- One writer saw two real problems and left them out, because findings are for review mode only. The riskiest scene of
+  another video, a migration, was cut off mid-SQL in its still.
+- `extract` hands the writer a flat list of hunks in path order, docs first. It prints no commit message.
+
+Two things failed before. Up to 0.24 the skill dictated the shape of every video (order, scene types, lengths) and
+`validate` enforced it; the owner judged the results poor. From 0.25 it said nothing, and the videos became tours of
+the diff. Neither asked the writer to find out what a reviewer of this change needs, and no eval measured it.
+
+## Decision
+
+A video of a branch answers six questions a reviewer has. mr-cast supplies the facts a diff does not show, the
+storyboard carries the answers in a `brief`, and `validate` reports which answers are missing or point at nothing.
+The order, the scene types and the length stay the writer's. This is the line between a fact and an opinion that ADR
+0019 drew, moved by one step: what a reviewer needs answered is part of what mr-cast makes, how to show it is not.
+
+### The six questions
+
+| id | The viewer can answer |
+| --- | --- |
+| `why` | Why does this change exist, and who says so? |
+| `case` | On one concrete case, what happened before and what happens now? |
+| `approach` | What is the idea, and what did the author decide on the way? |
+| `parts` | Which parts are there, which matter most, and which are routine? |
+| `proof` | How do we know it works: what is tested, and what is not? |
+| `check` | What could break, and what should I open first? |
+
+### 1. `extract` prints a change map and writes it to `map.json`
+
+All of it is fact, read from git and the working tree. Nothing in it needs a network.
+
+- **Said by the author:** each commit's subject and body, oldest first, with its short sha. With `--description <file>`
+  (a file holding the merge request's title and description), that text too. mr-cast does not call `gh` or `glab`; the
+  skill tells the writer to save the description to a file when a PR or MR number is known.
+- **Files by kind:** `source`, `tests`, `docs`, `config`, `routine` (lockfiles, generated, snapshots, pure renames), each
+  file with `new` or `modified`, its `+` and `−`, and its hunk ids. Within a kind, largest first. Modified source files
+  are listed apart from new ones, since changed behaviour of existing code is what a reviewer misses.
+- **Tests and what they cover:** for each changed test file, the changed source files it imports or names, and the test
+  names it adds (the `test(`/`it(`/`def test_`/`func Test` lines among its added lines). Changed source files that no
+  changed test names are listed as "no changed test names these".
+- **Used elsewhere:** for each name declared on a changed or removed line of a modified source file (function, class,
+  method, exported constant; by a per-language pattern, as `detectLanguage` knows the language), the files outside the
+  diff that use it, by `git grep -w`, with a count and up to three paths. Marked as a text search, not a call graph.
+- **The hunk index** as today, but source first, then tests, then docs, config and routine. Over 600 changed lines,
+  the index prints each hunk's header and first two changed lines only, and `mr-cast hunk <id>...` prints hunks in full.
+
+### 2. The storyboard's `brief`
+
+A branch storyboard has a `brief`. Each answer is short, one or two sentences, and says where it comes from.
+
+```jsonc
+"brief": {
+  "why":      { "text": "Reviewers had to hunt for the lines an answer leaned on.", "source": "commit 7376000" },
+  "case":     { "before": "`src/lib.js:4-5` in an answer was plain text.",
+                "after": "It is a numbered chip; hovering the answer tints lines 4-5.", "cite": ["h24", "test/refs.test.ts:10"] },
+  "approach": { "text": "The CLI resolves each place when the answer is posted and stores it with a quote.",
+                "decisions": ["One bad place refuses the whole answer, like --map"] },
+  "parts":    [ { "name": "Finding and checking places", "weight": "core", "hunks": ["h24", "h12"] },
+                { "name": "Chips on the page", "weight": "core", "hunks": ["h56", "h40"] },
+                { "name": "Docs and the key sheet", "weight": "routine", "hunks": ["h1", "h2", "h3"] } ],
+  "proof":    { "tested": ["Bad places are refused, all listed at once (test/cli.test.ts)"],
+                "untested": ["A ref into a renamed file"], "cite": ["h31"] },
+  "check":    [ { "file": "src/cli.ts", "line": "1845-1856", "what": "reply now refuses a body it used to accept",
+                  "why": "every agent that writes path:line in backticks is affected" } ],
+  "ask":      ["Why is an extensionless file such as Makefile:3 not a place?"]
+}
+```
+
+- `source` is `"description"`, `"commit <sha>"`, `"code"`, `"test"`, `"inferred"` or `"unknown"`. `"unknown"` is an
+  answer: the video then says the reason is not stated, and `ask` carries the question for the author.
+- `weight` is `core`, `support` or `routine`.
+- `cite` entries are hunk ids, snippet ids, `path:line` or `path:a-b`, or a short sha.
+- A scene says which questions it answers: `"answers": ["why", "case"]`.
+- `check` items are what the old review mode kept behind a flag: the writer always lists what a reviewer should look
+  at first. `findings` stays for a review the user asked for, with its severities.
+- The `reading` scene is no longer for a pre-read only. In any branch video it draws `brief.check`, or its own items.
+
+### 3. `validate` reports facts about the brief
+
+Warnings, not errors, so every storyboard written before this still passes. `validate`, `outline` and the hook print one
+line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions · parts 3, core 2 · proof ✗ · check 2 · ask 1`.
+
+- A branch storyboard with no `brief`, or a question with no answer and no `"unknown"`.
+- A question no scene `answers`.
+- A `cite`, a `source` sha, a part's hunk or a `check` line that does not exist.
+- A hunk of a source or test file that is in no part and not in `skipped`.
+- A `core` part none of whose hunks any scene shows or cites.
+- A modified source file from the map that no part holds.
+- `proof.tested` empty while the map lists changed tests.
+- `why.source` of `"inferred"` or `"unknown"` while the map has a commit body or a description.
+- A `code` scene whose hunk has more lines than the frame draws and no step brings the rest into view: the lines
+  never seen are named.
+
+`validate` writes `guide.md` beside the video: the six answers, the parts with their files, the check-first list as
+`path:line  what`, and the questions for the author. `render --out` copies it beside the MP4, as it does `review.md`.
+
+### 4. The skill
+
+For a branch the skill says: read the map, answer the six questions in the `brief` before writing scenes, say
+"unknown" where the map and the code do not say, make scenes that answer them in whatever order and form fit, then
+look at the stills before showing the video. It gives one line per question on what a good answer holds. It dictates
+no order, scene type, count or length. Explanations and quick videos are unchanged.
+
+### 5. The player
+
+A scene's chapter in the sidebar carries the question it answers as a small label, and the reading panel shows the
+check-first list in any branch video.
+
+### 6. The eval
+
+`quality/` gains the understanding questions used for the baseline (`quality/understanding.md`), a critic prompt that
+grades the answers against the code and lists what the video led the viewer to believe that the code contradicts, and
+`quality/prepare-repo.sh` to run a writer on any repository and branch. The numbers are the viewer's readiness, the
+count of questions answered "not shown", and the critic's count of contradicted claims.
+
+## Consequences
+
+- A weak writer is pushed toward the reviewer's questions by a missing-answer line, not by a rule about scenes.
+- The brief costs the writer one more thing to write. It is short, and it replaces the guesswork the baseline
+  writers reported: audience, what to cover, whether to mention problems.
+- A writer can fill the brief and still make a poor video. The eval, not `validate`, catches that.
+- "Used elsewhere" is a text search and will list false matches. It is labelled as such.
+
+## Alternatives considered
+
+- **Put the six questions in the skill only.** The baseline writers had the commit messages one command away and did
+  not read them. Without the map and the brief line, nothing shows a writer what it left out.
+- **Bring back the 0.24 order and scene rules.** They dictated form, cost fix rounds, and the owner judged the results
+  poor.
+- **Call `gh` or `glab` from `extract` for the description.** It needs a network and credentials, and fails in ways
+  the tool cannot explain. The writer already has those tools and can save the text to a file.
+- **Errors, not warnings.** Every storyboard and example from before would stop rendering.
