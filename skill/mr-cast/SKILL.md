@@ -81,7 +81,7 @@ Someone will review this change after watching. The video is done when they can 
 | `approach` | What is the idea, and what did the author decide? | The idea in a sentence or two, and each choice the author states or the code shows. A way not taken that nobody names is your own idea: say so, never "the author considered". |
 | `parts` | Which parts are there, and which matter? | Every hunk of source and tests in a part, each `core`, `support` or `routine`, with one sentence on what it `does` and the parts it comes `after`. Existing code whose behaviour changed is never routine. |
 | `proof` | How do we know it works? | What a named test shows, and what no test shows. |
-| `check` | What could break, and what do I open first? | Places by file and line, each with what to look at and why: changed behaviour of existing code, callers outside the diff, a case no test tries, anything you would question. |
+| `check` | What could break, and what do I open first? | Places by file and line, each with what to look at and why: changed behaviour of existing code, callers outside the diff, a case no test tries. |
 
 Put what only the author can answer in `ask`. `mr-cast schema` prints the fields.
 
