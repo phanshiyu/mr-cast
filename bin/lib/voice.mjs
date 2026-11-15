@@ -249,7 +249,8 @@ function encodeWav(samples, sampleRate) {
 
 function writeAtomic(file, data) {
   const tmp = `${file}.tmp-${process.pid}`;
-  fs.writeFileSync(tmp, data);
+  fs.rmSync(tmp, { force: true });
+  fs.writeFileSync(tmp, data, { flag: 'wx' });
   fs.renameSync(tmp, file);
 }
 

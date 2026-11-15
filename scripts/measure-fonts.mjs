@@ -3,7 +3,7 @@
 // Shell, the one `still` and `render` use), in the font files the player bundles (src/fonts.ts), and writes
 // shared/font-metrics.mjs. Rerun it when those files or the font stacks in src/components/theme.ts change:
 // node scripts/measure-fonts.mjs
-import { execSync, spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import os from 'node:os';
@@ -48,10 +48,16 @@ function chromePath() {
     process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
     'mr-cast/remotion/node_modules/.remotion/chrome-headless-shell',
   );
-  const found = execSync(
-    `find ${JSON.stringify(root)} -name chrome-headless-shell -type f -perm -u+x 2>/dev/null | head -1`,
-    { encoding: 'utf8' },
-  ).trim();
+  // No shell: the cache path comes from the environment and goes in as one argument.
+  let found = '';
+  try {
+    found = execFileSync('find', [root, '-name', 'chrome-headless-shell', '-type', 'f', '-perm', '-u+x'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).split('\n')[0];
+  } catch {
+    // find exits non-zero when the folder is missing, which the error below reports.
+  }
   if (!found) throw new Error(`no Chrome Headless Shell under ${root}; run any mr-cast still once to download it`);
   return found;
 }
@@ -75,6 +81,8 @@ try {
   const portFile = path.join(profile, 'DevToolsActivePort');
   for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
   const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
+  if (!/^\d{1,5}$/.test(port) || Number(port) < 1 || Number(port) > 65535)
+    throw new Error(`Chrome wrote ${JSON.stringify(port)} as its debugging port`);
   const page = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find((t) => t.type === 'page');
   const ws = new WebSocket(page.webSocketDebuggerUrl, { perMessageDeflate: false });
   await new Promise((resolve, reject) => {

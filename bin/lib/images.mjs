@@ -213,6 +213,19 @@ function localFile(dir, repo, src) {
   return { tried: roots, leadsOut };
 }
 
+/** A local image's bytes, read through one open handle so the size checked is the size read. */
+function readImageFile(file) {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) return { error: `is a directory, not an image file` };
+    if (stat.size > MAX_IMAGE_BYTES) return { error: `is ${mb(stat.size)}; an image may be up to ${LIMIT}` };
+    return { buf: fs.readFileSync(fd) };
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 /**
  * One source made local: its copy, type and size, or the reason it cannot be shown. With `fetch` false nothing is
  * downloaded or copied: a local file is only checked, and a URL not downloaded yet is reported as such.
@@ -241,10 +254,9 @@ async function resolveOne(dir, repo, src, { fetch: allowed }) {
   if (found.leadsOut)
     return { error: `is a link to a file outside the run directory and the repository, which mr-cast does not read` };
   if (!found.file) return { error: `is not a file in ${found.tried.join(' or in ')}` };
-  const stat = fs.statSync(found.file);
-  if (!stat.isFile()) return { error: `is a directory, not an image file` };
-  if (stat.size > MAX_IMAGE_BYTES) return { error: `is ${mb(stat.size)}; an image may be up to ${LIMIT}` };
-  const buf = fs.readFileSync(found.file);
+  const read = readImageFile(found.file);
+  if (read.error) return read;
+  const { buf } = read;
   const checked = checkBytes(buf);
   if (checked.error) return checked;
   return { file: store(dir, keyOf(buf), checked.type, buf, allowed), ...checked };
@@ -278,9 +290,18 @@ export async function resolveImages(dir, storyboard, { write = true, repo = find
     const text = `${JSON.stringify(manifest, null, 2)}\n`;
     // Rewritten only when it changes, since `play` watches the run's files.
     if (!Object.keys(manifest).length) fs.rmSync(file, { force: true });
-    else if (!fs.existsSync(file) || fs.readFileSync(file, 'utf8') !== text) fs.writeFileSync(file, text);
+    else if (readText(file) !== text) fs.writeFileSync(file, text);
   }
   return { manifest, problems };
+}
+
+/** A file's text, or null when it cannot be read. */
+function readText(file) {
+  try {
+    return fs.readFileSync(file, 'utf8');
+  } catch {
+    return null;
+  }
 }
 
 /** images.json as `validate` last wrote it, or an empty manifest. */

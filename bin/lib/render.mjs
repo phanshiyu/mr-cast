@@ -162,7 +162,10 @@ async function ensureChrome() {
     cacheLock('remotion'),
     async () => {
       const pkg = path.join(BROWSER_CACHE, 'package.json');
-      if (!existsSync(pkg)) await writeFile(pkg, '{ "private": true }\n');
+      // Created only when absent, in one step: `wx` fails when the file is there.
+      await writeFile(pkg, '{ "private": true }\n', { flag: 'wx' }).catch((err) => {
+        if (err.code !== 'EEXIST') throw err;
+      });
       const cwd = process.cwd();
       process.chdir(BROWSER_CACHE);
       try {

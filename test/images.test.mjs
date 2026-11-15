@@ -83,12 +83,14 @@ test('a source that cannot be shown is an error at its field that says why', asy
   const big = Buffer.alloc(11 * 1024 * 1024);
   (await png(4, 4)).copy(big);
   fs.writeFileSync(path.join(dir, 'huge.png'), big);
+  fs.mkdirSync(path.join(dir, 'folder.png'));
   fs.writeFileSync(path.join(path.dirname(dir), 'outside.png'), await png(4, 4));
   const sb = board(
     'missing.png',
     'notes.png',
     'logo.svg',
     'huge.png',
+    'folder.png',
     `../${'outside.png'}`,
     '/etc/hosts',
     'ftp://x/y.png',
@@ -102,9 +104,10 @@ test('a source that cannot be shown is an error at its field that says why', asy
       'scenes[1].src: "notes.png" is not a PNG, JPEG, WebP or GIF image; its first bytes are of no image type mr-cast shows',
       'scenes[2].src: "logo.svg" is an SVG image, which mr-cast does not show as a picture since it can carry scripts; draw it in an svg scene, or convert it to PNG',
       'scenes[3].src: "huge.png" is 11.0 MB; an image may be up to 10 MB',
-      `scenes[4].src: "../outside.png" is not a file in ${dir} or in ${repo}`,
-      'scenes[5].src: "/etc/hosts" is an absolute path; write it relative to the run directory or the repository, or give an http(s) URL',
-      'scenes[6].src: "ftp://x/y.png" is neither a relative path nor an http(s) URL',
+      'scenes[4].src: "folder.png" is a directory, not an image file',
+      `scenes[5].src: "../outside.png" is not a file in ${dir} or in ${repo}`,
+      'scenes[6].src: "/etc/hosts" is an absolute path; write it relative to the run directory or the repository, or give an http(s) URL',
+      'scenes[7].src: "ftp://x/y.png" is neither a relative path nor an http(s) URL',
     ],
   );
   assert.ok(problems.every((p) => p.level === 'error'));

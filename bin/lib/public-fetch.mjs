@@ -82,12 +82,27 @@ async function checkedAddress(host) {
   return found[0];
 }
 
+/**
+ * What to request for `url`, rebuilt from the characters a host name and a request path can hold. The URL parser has
+ * already encoded the rest, so a refusal here means a URL it let through that no server could be asked for.
+ */
+function requestTarget(url) {
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  const target = `${url.pathname}${url.search}`;
+  if (!/^[a-z0-9.:-]+$/i.test(hostname) || !/^[\x21-\x7e]+$/.test(target))
+    throw new Refused('its address has characters a request cannot carry');
+  return { hostname, port: url.port || undefined, path: target };
+}
+
 function get(url, { address, family }, { headers, signal }) {
   const lib = url.protocol === 'https:' ? https : http;
+  const { hostname, port, path } = requestTarget(url);
   const lookup = (_host, options, done) =>
     options?.all ? done(null, [{ address, family }]) : done(null, address, family);
   return new Promise((resolve, reject) => {
-    lib.get(url, { headers, signal, agent: false, lookup }, resolve).on('error', reject);
+    lib
+      .get({ protocol: url.protocol, hostname, port, path, headers, signal, agent: false, lookup }, resolve)
+      .on('error', reject);
   });
 }
 

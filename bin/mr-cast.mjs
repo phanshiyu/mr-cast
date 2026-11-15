@@ -1564,7 +1564,11 @@ async function voices(argv) {
     return;
   }
   const voice = resolveVoice({ voice: values.sample, engine: values.engine });
-  const out = path.resolve(values.out ?? path.join(os.tmpdir(), `mr-cast-sample-${voice.replace(':', '-')}.wav`));
+  // Without --out the sample goes in a new directory of its own, not under a name another user could predict.
+  const out = path.resolve(
+    values.out ??
+      path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mr-cast-sample-')), `${voice.replace(':', '-')}.wav`),
+  );
   const seconds = await sampleVoice({
     voice,
     speed: settingsFrom({ ...values, voice: undefined, engine: undefined }).pace.speed,
