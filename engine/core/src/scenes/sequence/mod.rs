@@ -10,7 +10,9 @@ mod layout;
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::backdrop;
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{Align as TextAlign, TextOpts, draw_fit};
+use crate::chrome::marks::badge_words;
 use crate::chrome::marks::{EMPHASIS, EMPHASIS_GLOW, badges_of, draw_corner_badges};
 use crate::chrome::nodecard::{self, CardSize, Node, node_mark, strike_with};
 use crate::chrome::shell::Shell;
@@ -18,12 +20,15 @@ use crate::color::Color;
 use crate::diagram::{partial_polyline, polyline, rounded_rect};
 use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
 use crate::icons;
+use crate::marks::geometry::{Bx, Pt as MPt};
+use crate::marks::{LayoutBoxes, MarkTargets, Pen, Stage};
 use crate::steps::{FocusSpotlight, current_step, reveal_starts};
+use crate::targets::SceneRefs;
 use crate::targets::{step_targets, target_steps};
 use crate::theme::{ACCENT, ACCENT_GLOW, ADD, BORDER, DEL, MUTED, TEXT, content_box};
 use crate::timing::{FPS, build_frames};
 use camera::{Camera, sequence_camera};
-use layout::{Align, BAR_W, CARD_H, Kind, Layout, Message, PlacedMessage, layout_sequence, sequence_scale};
+use layout::{Align, BAR_W, CARD_H, Kind, LOOP_W, Layout, Message, PlacedMessage, layout_sequence, sequence_scale};
 use serde::Deserialize;
 use std::collections::BTreeSet;
 
@@ -61,6 +66,32 @@ struct View {
     /// Per step, the last message drawn by its end, and the messages it lights.
     lasts: Vec<i64>,
     lit: Vec<BTreeSet<usize>>,
+    pen: Pen,
+    /// Whether step k marks a message, so its marks scroll with the messages.
+    on_messages: Vec<bool>,
+}
+
+/// The box of each item a step can focus, in layout units: a participant's card (with its badges), a message's row
+/// from end to end. A note keeps off all of them (`sequenceBoxes`).
+fn sequence_boxes(layout: &Layout, participants: &[Node]) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    for (i, p) in participants.iter().enumerate() {
+        let Some(&x) = layout.xs.get(i) else { continue };
+        let lift = if badge_words(&p.marks).is_empty() { 0.0 } else { 14.0 };
+        out.add(
+            format!("p:{}", p.id),
+            Bx::new(x - layout.card_w / 2.0, layout.card_top - lift, layout.card_w, CARD_H + lift),
+        );
+    }
+    for (i, m) in layout.messages.iter().enumerate() {
+        let own = m.message.from == m.message.to;
+        let xs = m.points.iter().map(|p| p.0);
+        let x0 = xs.clone().fold(f64::INFINITY, f64::min) - if own { 10.0 } else { 0.0 };
+        let x1 = xs.fold(f64::NEG_INFINITY, f64::max) + if own { LOOP_W } else { 0.0 };
+        out.add(format!("m:{i}"), Bx::new(x0, m.top, (x1 - x0).max(40.0), m.bottom - m.top));
+    }
+    out.obstacles = Some(out.boxes.iter().map(|(_, b)| *b).collect());
+    out
 }
 
 /// The messages each step lights, and the last message drawn by the end of each step: a step draws every message
@@ -101,7 +132,46 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let box_size = content_box(scene.title.is_some());
     let layout = layout_sequence(&scene.participants, &scene.messages, box_size);
     let (lasts, lit) = message_steps(input.scene, layout.messages.len());
+    // Marks on messages scroll with them: placed where step k's camera settles, then carried along while it moves.
+    let scale = sequence_scale(&layout, box_size);
+    let camera = sequence_camera(&layout, &lit, input.segments, box_size.1 / scale);
+    let stage = if camera.scrolls {
+        Stage { left: (box_size.0 - layout.width * scale) / 2.0, top: 0.0, scale }
+    } else {
+        Stage::centred(box_size, (layout.width, layout.height), scale)
+    };
+    let boxes = sequence_boxes(&layout, &scene.participants);
+    let refs = SceneRefs(input.scene);
+    let steps = crate::timing::scene_steps(input.scene);
+    let on_messages: Vec<bool> = steps
+        .iter()
+        .map(|step| {
+            crate::targets::focus_refs(step).first().is_some_and(|r| {
+                crate::marks::resolve_ref(&refs, r).is_some_and(|keys| keys.iter().any(|k| k.starts_with("m:")))
+            })
+        })
+        .collect();
+    let marks: Vec<MarkTargets> = (0..steps.len())
+        .map(|k| {
+            let stop = camera.stop(k);
+            let moved = LayoutBoxes {
+                boxes: boxes
+                    .boxes
+                    .iter()
+                    .map(|(key, b)| (key.clone(), if key.starts_with("m:") { b.translate(0.0, -stop) } else { *b }))
+                    .collect(),
+                obstacles: boxes.obstacles.as_ref().map(|o| {
+                    o.iter().map(|b| if b.y >= layout.lifeline_top { b.translate(0.0, -stop) } else { *b }).collect()
+                }),
+                lines: Vec::new(),
+            };
+            MarkTargets { shifts: on_messages[k], ..stage.targets(&moved, box_size) }
+        })
+        .collect();
+    let pen = Pen::new(input.scene, input.segments, &refs, marks, false, header_box(input.scene));
     Ok(Box::new(View {
+        pen,
+        on_messages,
         shell: Shell::new(input.scene),
         scene: input.scene.clone(),
         participants: scene.participants,
@@ -473,12 +543,19 @@ impl SceneView for View {
         let scroll = camera.scroll_at(f.frame, f.segments);
         let left = (bw - self.layout.width * scale) / 2.0;
         let top = if camera.scrolls { 0.0 } else { (bh - self.layout.height * scale) / 2.0 };
+        let shift = |k: usize| {
+            self.on_messages
+                .get(k)
+                .copied()
+                .unwrap_or(false)
+                .then(|| MPt { x: 0.0, y: (camera.stop(k) - scroll) * scale })
+        };
         self.shell.draw(dl, f.frame, f.duration, None, |dl, _| {
-            dl.translate(left as f32, top as f32);
-            dl.scale_about(scale as f32, 0.0, 0.0);
-            self.content(dl, f, &camera, scroll);
-            // TODO(marks): pen marks over the diagram.
-            // TODO(camera): the generic `camera` field.
+            self.pen.draw_shifted(dl, f.frame, f.segments, &shift, |dl| {
+                dl.translate(left as f32, top as f32);
+                dl.scale_about(scale as f32, 0.0, 0.0);
+                self.content(dl, f, &camera, scroll);
+            })
         });
     }
 }
