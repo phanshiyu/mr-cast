@@ -719,13 +719,7 @@ type Pieces<'a> = dyn Fn(&Sample, &Sample) -> usize + 'a;
 type Run = Vec<Px>;
 
 /// A function's or curve's samples in data space, as runs between the places it has no value (`sampleFunction`).
-fn sample_function(
-    part: &Part,
-    m: &Model,
-    scope: &Scope,
-    progress: f64,
-    pieces: Option<&Pieces<'_>>,
-) -> Vec<Run> {
+fn sample_function(part: &Part, m: &Model, scope: &Scope, progress: f64, pieces: Option<&Pieces<'_>>) -> Vec<Run> {
     let Item::Function { x: fx, y: fy, t, from, to, .. } = &part.item else { return Vec::new() };
     let mut runs: Vec<Run> = Vec::new();
     let mut run: Run = Vec::new();
