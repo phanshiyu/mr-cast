@@ -1,6 +1,6 @@
 # 37. A brief for the reviewer: six questions, facts from the tool, and answers that are checked
 
-- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2)
+- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2; how much of a core part is on screen, see section 3)
 - Date: 2026-11-15
 - Amends: 0019 (tools, not opinions), 0008 (the reading scene outside a pre-read), 0013 (what the eval asks)
 
@@ -130,6 +130,14 @@ scene mix line (ADR 0038) on success, as added context for Claude.
 - `why.source` of `"inferred"` or `"unknown"` while the map has a commit body or a description.
 - A `code` scene whose hunk has more lines than the frame draws and no step brings the rest into view: the lines
   never seen are named.
+
+- **Amended 2026-11-15: how much of a core part is on screen.** A second measurement found a video that called the
+  core part "shown" because one flow stop touched it, while most of its 386 changed lines never appeared. After the
+  brief line, `validate` and `outline` (and the hook's success output) print one line, `core on screen: Finding and
+  checking refs 14 of 386 changed lines · Chips and walkthrough 10 of 980`: for each `core` part, the changed lines
+  (added plus removed) of its hunks that some scene draws. A code scene counts the lines its frames put on screen, a
+  flow step's `code` its range, and a compare hunk cell the lines it reads; a tests scene names a hunk and draws none
+  of its lines. It is a fact with no threshold and no warning, since a writer may choose to show little of a core part.
 
 `validate` writes `guide.md` beside the video: the six answers, the parts with their files, the check-first list as
 `path:line  what`, and the questions for the author. `render --out` copies it beside the MP4, as it does `review.md`.

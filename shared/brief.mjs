@@ -90,6 +90,36 @@ export function briefLine(brief) {
   ].join(' · ')}`;
 }
 
+/**
+ * For each core part of the brief, how many of its changed lines some scene draws: `{ name, shown, total }`. `lines`
+ * is what `shownHunkLines` gives; a part's lines are those of its hunks, each counted once. Empty when the brief has
+ * no parts. A fact for the writer, with no threshold.
+ */
+export function coreOnScreen(brief, hunks, lines) {
+  const parts = Array.isArray(brief?.parts) ? brief.parts : [];
+  return parts.flatMap((p) => {
+    if (p?.weight !== 'core' || typeof p.name !== 'string') return [];
+    const ids = [...new Set(list(p.hunks))].filter(
+      (id) => Object.hasOwn(hunks ?? {}, id) && hunks[id].status !== 'source',
+    );
+    const changed = (id) => hunks[id].additions + hunks[id].deletions;
+    return [
+      {
+        name: p.name,
+        shown: ids.reduce((n, id) => n + (lines.get(id)?.size ?? 0), 0),
+        total: ids.reduce((n, id) => n + changed(id), 0),
+      },
+    ];
+  });
+}
+
+/** `core on screen: Finding and checking refs 14 of 386 changed lines · Chips and walkthrough 10 of 980`, saying "changed lines" once; "" for no core part. */
+export function coreOnScreenLine(core) {
+  if (!core?.length) return '';
+  const each = core.map((c, i) => `${c.name} ${c.shown} of ${c.total}${i === 0 ? ' changed lines' : ''}`);
+  return `core on screen: ${each.join(' · ')}`;
+}
+
 const md = (text) =>
   parseMarkup(String(text))
     .runs.map((r) => (r.code ? `\`${r.text}\`` : r.text))

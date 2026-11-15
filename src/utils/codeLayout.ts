@@ -298,13 +298,15 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
 }
 
 /**
- * The indexes into `hunk.lines` of the changed lines the scene draws but never brings into view, ascending. The scene
- * crops the hunk to its focus and a few rows around it, and its camera then centres each step in turn, planned on
- * the settled layout (src/components/CodeDiff.tsx), so rows that are cropped in but taller than the frame, or between
- * two steps far apart, stay out of every frame. Lines the scene's own focus crops away are left out on purpose, and
- * not counted, and neither are the context rows the crop keeps around the focus. A removed line of a morph is on screen while its step plays, so it counts as seen once cropped in.
+ * Each changed line of the scene's hunk as the player draws it: "seen" when some frame has it on screen, "unseen"
+ * when it is cropped in but no frame brings it into view, and absent when the scene's own focus crops it away. The
+ * scene crops the hunk to its focus and a few rows around it, and its camera then centres each step in turn, planned
+ * on the settled layout (src/components/CodeDiff.tsx), so rows that are cropped in but taller than the frame, or
+ * between two steps far apart, stay out of every frame. Lines the focus crops away are left out on purpose, and
+ * neither are the context rows the crop keeps around the focus. A removed line of a morph is on screen while its step
+ * plays, so it counts as seen once cropped in.
  */
-export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = layoutCode(scene, hunk)): number[] {
+function changedLineViews(hunk: Hunk, layout: CodeLayout): { index: number; seen: boolean }[] {
   const { slots, stepCount, metrics, viewportH, view } = layout;
   const rowOf = new Map<number, number>();
   slots.forEach((slot, r) => {
@@ -337,13 +339,23 @@ export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = l
   // With a focus, the few rows the crop keeps around it belong to no step; the camera does not aim at them, so
   // they are context, not lines the writer asked to show. Without a focus every row is drawn and counts.
   const focused = slots.some((slot) => slot.step !== null);
-  return hunk.lines.flatMap((line, i) => {
+  return hunk.lines.flatMap((line, index) => {
     if (line.type === 'context') return [];
-    const r = rowOf.get(i);
+    const r = rowOf.get(index);
     // A line cropped away by a focus the scene chose is left out on purpose; only a line cropped in can be missed.
     if (r === undefined || (focused && slots[r]!.step === null)) return [];
-    return seenRow(r) ? [] : [i];
+    return [{ index, seen: seenRow(r) }];
   });
+}
+
+/** The indexes into `hunk.lines` of the changed lines the scene draws but never brings into view, ascending. */
+export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = layoutCode(scene, hunk)): number[] {
+  return changedLineViews(hunk, layout).flatMap((l) => (l.seen ? [] : [l.index]));
+}
+
+/** The indexes into `hunk.lines` of the changed lines some frame of the scene has on screen, ascending. */
+export function shownLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = layoutCode(scene, hunk)): number[] {
+  return changedLineViews(hunk, layout).flatMap((l) => (l.seen ? [l.index] : []));
 }
 
 /** How many rows of code the frame draws at once for this scene, so a step's lines can be sized to fit. */

@@ -1118,6 +1118,7 @@ async function outline(argv) {
       storyboard,
       hunks,
       coverage: result.coverage,
+      core: result.core,
       seconds,
       voiced,
       pace: formatPace(voiceover),
@@ -1128,7 +1129,7 @@ async function outline(argv) {
 
 /**
  * A Claude Code PostToolUse hook (the mr-cast skill's frontmatter): after a write to a run's storyboard.json, it
- * checks the file and exits 2 with the errors, which Claude sees; on success it exits 0 and hands Claude the brief line and the scene mix line as added context. Other files pass at once. It
+ * checks the file and exits 2 with the errors, which Claude sees; on success it exits 0 and hands Claude the brief line, the core-on-screen line and the scene mix line as added context. Other files pass at once. It
  * validates with the audience the run's commands were last given (meta.json), and writes nothing.
  */
 function hook() {
@@ -1149,11 +1150,11 @@ function hook() {
   });
   const lines = `${run.stdout}\n${run.stderr}`
     .split('\n')
-    .filter((l) => /^(error|✗|brief:|scenes:|mr-cast:|hint:)/.test(l.trim()));
+    .filter((l) => /^(error|✗|brief:|core on screen:|scenes:|mr-cast:|hint:)/.test(l.trim()));
   if (run.status === 0) {
     // Exit 0 with plain stdout shows nothing to Claude, and exit 2 would call the write a failure; a JSON reply on
     // exit 0 hands the lines to Claude as added context and leaves the write as it was.
-    const facts = lines.filter((l) => /^(brief|scenes):/.test(l));
+    const facts = lines.filter((l) => /^(brief|core on screen|scenes):/.test(l));
     if (facts.length)
       console.log(
         JSON.stringify({ hookSpecificOutput: { hookEventName: 'PostToolUse', additionalContext: facts.join('\n') } }),

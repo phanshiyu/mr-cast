@@ -45,14 +45,15 @@ Run the commands from inside the repository the video is about. Output goes to `
 
 ## Checks on a branch video
 
-`validate` warns about these, and none stops a render, so a storyboard written before the brief still passes. Each warning states a fact and what to look at; none says which scene to use. `validate`, `outline` and the skill's hook print two lines:
+`validate` warns about these, and none stops a render, so a storyboard written before the brief still passes. Each warning states a fact and what to look at; none says which scene to use. `validate`, `outline` and the skill's hook print three lines:
 
 ```
 brief: why ✓ (description) · case ✓ · approach ✓ 3 decisions (2 stated, 1 mine) · parts 4, core 2 · proof ✓ 0 tested, 4 untested · check 3 · ask 1
+core on screen: Finding and checking refs 14 of 386 changed lines · Chips and walkthrough 10 of 980
 scenes: 12 · code 3, text 1, graph 1 · longest run: 3 code
 ```
 
-An answer that is `"unknown"` reads `proof unknown`, and a missing one `proof ✗`. The hook prints both lines after a write that passes, as context for Claude. When the write fails, it prints the errors instead.
+An answer that is `"unknown"` reads `proof unknown`, and a missing one `proof ✗`. The second line is a fact, with no warning or threshold: for each `core` part, how many of the changed lines (added plus removed) of its hunks some scene draws. A code scene counts the lines its frames put on screen (lines its own steps crop away, or no frame reaches, do not count), a `flow` step's `code` the lines of its range, and a compare hunk cell the lines it reads; a tests scene or a reading item names a hunk but draws none of its lines. The hook prints all three lines after a write that passes, as context for Claude. When the write fails, it prints the errors instead.
 
 - **The brief:** a branch video with no `brief`; a question with no answer and no `"unknown"`; a question no scene `answers`.
 - **Places that do not exist:** a `cite`, a commit in `why.source`, a part's hunk, or a `check` line that is not in the diff or the repository.

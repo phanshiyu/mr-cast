@@ -34,6 +34,25 @@ export function lineRange(value) {
 }
 
 /**
+ * The indexes into `hunk.lines` of the lines a hunk cell reads: the removed and context lines of the range by old-file
+ * numbers for side "old", the added and context lines by new-file numbers for "new". Empty for a bad side or range.
+ */
+export function hunkCellRows(cell, hunk) {
+  const range = lineRange(cell?.lines);
+  if (!range || (cell?.side !== 'old' && cell?.side !== 'new')) return [];
+  const old = cell.side === 'old';
+  return (Array.isArray(hunk?.lines) ? hunk.lines : []).flatMap((l, i) => {
+    const n = old ? l.oldLine : l.newLine;
+    const ok =
+      (l.type === 'context' || l.type === (old ? 'del' : 'add')) &&
+      typeof n === 'number' &&
+      n >= range[0] &&
+      n <= range[1];
+    return ok ? [i] : [];
+  });
+}
+
+/**
  * The code a `{ hunk, side, lines }` cell shows, read from hunks.json: the old side is the removed and context
  * lines by old-file numbers, the new side the added and context lines by new-file numbers. Gives
  * `{ code, lang, caption, count }`, or `{ error }` for a hunk, side or range that does not exist.
@@ -44,12 +63,8 @@ export function resolveHunkCell(cell, hunks) {
   if (cell.side !== 'old' && cell.side !== 'new') return { error: 'side must be "old" or "new"' };
   const range = lineRange(cell.lines);
   if (!range) return { error: `lines "${cell.lines}" must be a line number or a range like "4-6"` };
-  const [from, to] = range;
   const old = cell.side === 'old';
-  const kept = (Array.isArray(hunk.lines) ? hunk.lines : []).filter((l) => {
-    const n = old ? l.oldLine : l.newLine;
-    return (l.type === 'context' || l.type === (old ? 'del' : 'add')) && typeof n === 'number' && n >= from && n <= to;
-  });
+  const kept = hunkCellRows(cell, hunk).map((i) => hunk.lines[i]);
   if (!kept.length) {
     const own = (Array.isArray(hunk.lines) ? hunk.lines : []).map((l) => (old ? l.oldLine : l.newLine));
     const known = own.filter((n) => typeof n === 'number');

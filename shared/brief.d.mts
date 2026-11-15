@@ -17,3 +17,14 @@ export declare function guideMarkdown(
   hunks: HunkMap,
   meta?: { branch?: string; base?: string },
 ): string;
+export interface CoreOnScreen {
+  name: string;
+  shown: number;
+  total: number;
+}
+export declare function coreOnScreen(
+  brief: Brief | undefined,
+  hunks: HunkMap,
+  lines: ReadonlyMap<string, ReadonlySet<number>>,
+): CoreOnScreen[];
+export declare function coreOnScreenLine(core: readonly CoreOnScreen[] | undefined): string;

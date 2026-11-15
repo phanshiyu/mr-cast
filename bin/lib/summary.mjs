@@ -6,7 +6,7 @@ import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
 import { sceneFiles } from '../../shared/files.mjs';
 import { SEVERITIES, isReviewed } from '../../shared/review.mjs';
 import { pickOf } from '../../shared/plan.mjs';
-import { briefLine } from '../../shared/brief.mjs';
+import { briefLine, coreOnScreenLine } from '../../shared/brief.mjs';
 import { mixLine } from './validate-mix.mjs';
 import { readingLines, readingOrder } from '../../shared/reading.mjs';
 import { changesState } from '../../shared/state-steps.mjs';
@@ -180,12 +180,13 @@ function formatCoverage(coverage) {
 }
 
 /** Lines for `validate`; the last line is the verdict. */
-export function formatValidation({ errors, warnings, coverage }, { storyboard, hunks, seconds }) {
+export function formatValidation({ errors, warnings, coverage, core }, { storyboard, hunks, seconds }) {
   const out = [...errors.map((e) => `error: ${e}`), ...warnings.map((w) => `warning: ${w}`)];
   if (errors.some((e) => e.includes('not found in hunks.json'))) {
     out.push(`hint: hunk ids in hunks.json are ${Object.keys(hunks).join(', ') || '(none)'}`);
   }
   if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
+  if (coreOnScreenLine(core)) out.push(coreOnScreenLine(core));
   const mix = mixLine(storyboard.scenes);
   if (mix) out.push(mix);
   if (errors.length)
@@ -427,7 +428,7 @@ function topicHeading(topic) {
  * `outline`: the plan of a valid storyboard, short enough to paste to a person for approval. With the run's
  * valid `plan`, scenes are grouped under the topic they show, and topics the viewer skipped are listed.
  */
-export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pace = '', plan }) {
+export function formatOutline({ storyboard, hunks, coverage, core, seconds, voiced, pace = '', plan }) {
   const scenes = storyboard.scenes;
   const out = [storyboard.title, ...(storyboard.subtitle ? [storyboard.subtitle] : [])];
   const number = String(scenes.length).length;
@@ -452,6 +453,7 @@ export function formatOutline({ storyboard, hunks, coverage, seconds, voiced, pa
   if (coverage && covered) out.push(`coverage:${covered.slice(2)}`);
   if (isReviewed(storyboard)) out.push(`review: ${formatFindings(storyboard.findings)}`);
   if (storyboard.brief && typeof storyboard.brief === 'object') out.push(briefLine(storyboard.brief));
+  if (coreOnScreenLine(core)) out.push(coreOnScreenLine(core));
   out.push(mixLine(scenes));
   const skipped = [...topics.values()].filter((t) => pickOf(t).depth === 'skip').map((t) => t.title);
   if (skipped.length) out.push(`skipped topics: ${skipped.join(', ')}`);

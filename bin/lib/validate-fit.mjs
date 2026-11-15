@@ -219,3 +219,16 @@ export async function checkUnseenCode(storyboard, hunks, warnings) {
     );
   }
 }
+
+/**
+ * The changed lines of each code scene's hunk that some frame draws, by scene index, from the player's own layout;
+ * an empty map when the layout cannot be loaded, so every line of a code scene's hunk then counts as drawn.
+ */
+export async function codeLinesOnScreen(storyboard, hunks) {
+  if (!fs.existsSync(ENTRY)) return new Map();
+  try {
+    return (await reportModule()).shownCodeLines(storyboard, hunks);
+  } catch {
+    return new Map();
+  }
+}

@@ -13,7 +13,7 @@ import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutBarRows, layoutPie } from '../utils/chartShapes';
 import { layoutCompare } from '../utils/compareLayout';
-import { frameRows, layoutCode, unseenLines } from '../utils/codeLayout';
+import { frameRows, layoutCode, shownLines, unseenLines } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutParts } from '../utils/partsLayout';
@@ -334,6 +334,16 @@ export function unseenCode(storyboard: Storyboard, hunks: HunkMap): UnseenCode[]
     const [added, removed] = [number('newLine'), number('oldLine')];
     if (added.length || removed.length)
       out.push({ scene: i, file: hunk.file, added, removed, rows: frameRows(layout) });
+  });
+  return out;
+}
+
+/** The changed lines of each code scene's hunk that some frame draws: a scene's index to indexes into the hunk's lines. */
+export function shownCodeLines(storyboard: Storyboard, hunks: HunkMap): Map<number, number[]> {
+  const out = new Map<number, number[]>();
+  storyboard.scenes.forEach((scene, i) => {
+    const hunk = scene.type === 'code' ? hunks[scene.hunkId] : undefined;
+    if (scene.type === 'code' && hunk) out.set(i, shownLines(scene, hunk));
   });
   return out;
 }

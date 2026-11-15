@@ -1,7 +1,7 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
 import { expandLineRefs, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
-import { shownHunkIds } from '../../shared/shown-hunks.mjs';
+import { shownHunkIds, shownHunkLines } from '../../shared/shown-hunks.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { cueWord, FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
@@ -13,7 +13,7 @@ import { checkInk, checkPenMarks } from './validate-pen-marks.mjs';
 import { checkCamera } from './validate-camera.mjs';
 import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
-import { checkFit, checkSpokenMarkup, checkUnseenCode } from './validate-fit.mjs';
+import { checkFit, checkSpokenMarkup, checkUnseenCode, codeLinesOnScreen } from './validate-fit.mjs';
 import { expandBriefParts } from '../../shared/files.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
@@ -31,6 +31,7 @@ import { checkTopics } from './validate-plan.mjs';
 import { checkTerminal } from './validate-terminal.mjs';
 import { checkTests } from './validate-tests.mjs';
 import { checkPreread } from './validate-preread.mjs';
+import { coreOnScreen } from '../../shared/brief.mjs';
 import { checkBrief } from './validate-brief.mjs';
 import { checkMix } from './validate-mix.mjs';
 
@@ -759,19 +760,26 @@ async function validateScenes(
   checkMix(sb, hunks ?? {}, { branch, map }, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
+  let core = [];
   if (!errors.length) {
     const normalized = normalizeStoryboard(sb, hunks ?? {});
     await checkFit(normalized, hunks ?? {}, errors, warnings, images?.manifest ?? {});
     if (branch) await checkUnseenCode(normalized, hunks ?? {}, warnings);
+    if (branch && Array.isArray(sb.brief?.parts))
+      core = coreOnScreen(
+        sb.brief,
+        hunks ?? {},
+        shownHunkLines(normalized.scenes, hunks ?? {}, await codeLinesOnScreen(normalized, hunks ?? {})),
+      );
   }
   checkSpokenCounts(sb.scenes, warnings);
   if (mode === 'explain') {
     if (sb.skipped !== undefined)
       warnings.push('skipped: lists diff hunks left out of a review; an explanation has none, so remove it');
-    return { errors, warnings, coverage: null };
+    return { errors, warnings, coverage: null, core };
   }
   const coverage = checkCoverage(sb, hunks ?? {}, audience, listed, errors, warnings);
-  return { errors, warnings, coverage };
+  return { errors, warnings, coverage, core };
 }
 
 export function storyboardSeconds(sb, voiceover) {

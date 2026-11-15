@@ -17,3 +17,5 @@ export declare function resolveHunkCell(
   cell: { hunk: string; side: unknown; lines: unknown },
   hunks: HunkMap,
 ): { code: string; lang: string; caption: string; count: number; error?: undefined } | { error: string };
+/** The indexes into `hunk.lines` of the lines a hunk cell reads; empty for a bad side or range. */
+export declare function hunkCellRows(cell: unknown, hunk: unknown): number[];
