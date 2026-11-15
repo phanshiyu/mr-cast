@@ -64,7 +64,9 @@ function formatPayload(payload) {
 }
 
 async function props(m, dir, out) {
-  const hunks = JSON.parse(fs.readFileSync(path.join(dir, 'hunks.json'), 'utf8'));
+  // An explanation run may have no hunks.json; it then shows no code.
+  const hunksFile = path.join(dir, 'hunks.json');
+  const hunks = fs.existsSync(hunksFile) ? JSON.parse(fs.readFileSync(hunksFile, 'utf8')) : {};
   const raw = m.parseStoryboard(fs.readFileSync(path.join(dir, 'storyboard.json'), 'utf8'));
   const storyboard = m.normalizeStoryboard(raw, hunks);
   const highlight = { plain: m.plainCodeColor, hunks: {}, snippets: {} };

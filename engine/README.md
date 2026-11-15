@@ -142,12 +142,44 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
 - An `inline-block` with `overflow: hidden` sits on the line with its bottom edge as its baseline.
 - `transform-origin` defaults to the centre; `scale_about` takes it explicitly.
 
-### Checking a port
+## Porting a scene
 
-Compare against Remotion: `mr-cast still <0-based index> --no-voice --out <dir> [--step k]` (with the temporary
-config directories CLAUDE.md asks for) against `mr-cast-engine still --scene <1-based> [--step k]`, and across the
-whole scene, frames of the Remotion MP4 against the engine's. Text, flow and code match Remotion to under 1.5 levels
-of mean grey difference on every sampled frame of the demo.
+1. Pick an example that uses the type, such as `examples/primitives/<type>` (any directory with a storyboard.json;
+   hunks.json and meta.json are optional, so explanation runs work too).
+2. Write `core/src/scenes/<type>.rs` from the TSX and register it (above).
+3. Build and compare, and repeat until the table is flat:
+
+```
+cargo build --release --manifest-path engine/Cargo.toml
+scripts/engine-compare.sh examples/primitives/<type> [--scenes 0,3,5] [--out dir]
+```
+
+For each chosen scene (0-based, as `mr-cast still` counts; all by default) it takes Remotion's still at the scene's
+end and at the end of every step, and the engine's matching still, and prints one line per still:
+
+```
+still                                  mean worst-tile  at
+scene-01-text                          1.31        7.1  896,704
+scene-04-flow-step-2                   0.90       12.3  960,576
+scene-07-code-step-2                   1.54       22.7  1344,576
+```
+
+`mean` is the mean absolute difference over the frame and `worst-tile` the worst 64-pixel tile, whose top left is
+`at`, both in levels of 255. A faithful port reads about 1 to 1.5 mean and under about 25 in the worst tile (text
+anti-aliasing never matches exactly); a misplaced or missing element shows as a worst tile of 50 or more. In `--out`
+(default `/tmp/engine-compare/<dir name>`) are `compare-<still>.png` (Remotion on top, engine below),
+`diff-<still>.png` (the difference four times brighter, black where they agree) and both originals; look at the
+compare image of every still whose numbers stand out.
+
+Remotion's stills are cached in `~/.cache/mr-cast-engine-compare/<hash>`, keyed by the run's files and by `src/`,
+`shared/` and `bin/`, so the first run takes Chrome a few seconds per step index and a re-run only redraws the
+engine's side (about 2 s for 14 stills). The mr-cast commands run with temporary config, state and Claude
+directories; the real `~/.cache/mr-cast` is kept so Chrome and the bundle are not fetched again.
+
+`mr-cast-engine compare --remotion a.png --engine b.png [--out-compare c.png] [--out-diff d.png]` is the
+comparison on its own. Stills show settled states; for motion, compare frames of a Remotion MP4 with the engine's
+(`mr-cast-engine still --frame N`). Text, flow and code match Remotion to under 1.5 levels of mean grey difference
+on every sampled frame of the demo.
 
 ## What is not ported yet
 
