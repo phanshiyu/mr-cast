@@ -2,6 +2,7 @@
 // src/types.ts. Each pushes human/LLM-readable strings onto `errors` and `warnings`, like the checks in validate.mjs.
 
 import { diffFiles, sceneFiles } from '../../shared/files.mjs';
+import { codeHunkId, codeRows, parseSpan } from '../../shared/flow-code.mjs';
 import { walkStates } from '../../shared/state-steps.mjs';
 import { checkStateSteps } from './validate-state.mjs';
 import { TONES } from './tones.mjs';
@@ -259,4 +260,38 @@ export function checkFlowSays(s, p, errors) {
   s.steps.forEach((step, j) => {
     if (!isStr(step.say)) errors.push(`${p}.steps[${j}].say: must be a non-empty string`);
   });
+}
+
+/**
+ * A flow stage's `code`: a hunk or snippet that exists, and lines (and a `light`) inside it. A stage has `code` or
+ * `payload`, and a pre-read, which puts no code on screen, has none.
+ */
+export function checkFlowCode(st, q, hunks, preread, errors) {
+  if (st?.code === undefined) return;
+  const code = st.code;
+  if (!code || typeof code !== 'object' || Array.isArray(code))
+    return errors.push(`${q}.code: must be { "hunk": "h56" or "snippet": "s2", "lines": "47-60", "light"?: "50" }`);
+  if (preread)
+    errors.push(
+      `${q}.code: a pre-read puts no code on screen; use a payload value, or list the hunk in the reading order`,
+    );
+  if (st.payload !== undefined) errors.push(`${q}: give code or payload, not both; code replaces the payload`);
+  const named = ['hunk', 'snippet'].filter((k) => code[k] !== undefined);
+  if (named.length !== 1)
+    return errors.push(
+      `${q}.code: name one of "hunk" (a diff hunk id) or "snippet" (a snippet id), not ${named.length ? 'both' : 'neither'}`,
+    );
+  const id = codeHunkId(code);
+  if (typeof id !== 'string' || !id)
+    return errors.push(`${q}.code.${named[0]}: must be an id such as "${named[0] === 'hunk' ? 'h56' : 's2'}"`);
+  const hunk = hunks && Object.hasOwn(hunks, id) ? hunks[id] : undefined;
+  if (!hunk) return errors.push(`${q}.code.${named[0]}: "${id}" not found in hunks.json`);
+  if (named[0] === 'hunk' && hunk.status === 'source')
+    return errors.push(`${q}.code.hunk: ${id} is a snippet; use "snippet": "${id}"`);
+  if (named[0] === 'snippet' && hunk.status !== 'source')
+    return errors.push(`${q}.code.snippet: ${id} is a diff hunk; use "hunk": "${id}"`);
+  if (parseSpan(code.lines) === null && code.lines === undefined)
+    return errors.push(`${q}.code.lines: required, a line number or "a-b" range`);
+  const { problem } = codeRows(hunk, code);
+  if (problem) errors.push(`${q}.code.${problem}`);
 }

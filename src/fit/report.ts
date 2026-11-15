@@ -92,7 +92,7 @@ const SCENE_FITS: SceneFits = {
     return [new Scaled('graph', scale, layout), scaledTables('table', tables)];
   },
   code: (scene, _storyboard, hunks) => (hunks[scene.hunkId] ? layoutCode(scene, hunks[scene.hunkId]!) : null),
-  flow: (scene) => layoutFlow(scene),
+  flow: (scene, _storyboard, hunks) => layoutFlow(scene, hunks),
   sequence: (scene) => {
     const box = contentBox(Boolean(scene.title));
     const layout = layoutSequence(scene.participants, scene.messages, box);

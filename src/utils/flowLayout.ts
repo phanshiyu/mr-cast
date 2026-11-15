@@ -1,7 +1,9 @@
+import { codeHunkId, codeRows } from '../../shared/flow-code.mjs';
 import { fitBlock, fitLines, fitText, type Fit } from '../../shared/textfit.mjs';
-import { contentBox } from '../components/theme';
+import { CODE_TAB_SIZE, contentBox } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
-import type { FlowScene, FlowStep } from '../types';
+import type { FlowScene, FlowStep, Hunk, HunkMap } from '../types';
+import { SPLIT_GUTTER_W } from './codeLayout';
 
 export const LIST_W = 600;
 export const COLUMN_GAP = 56;
@@ -29,17 +31,27 @@ function formatPayload(payload: string): { text: string; language: string } {
   }
 }
 
-/** What the step card shows: the payload as code, or else the action as a headline. */
+/** The file bar above real code, and the padding around it. */
+export const CODE_BAR_H = 64;
+export const CODE_PAD = 24;
+/** The rail's `path:line` under a code stage's action, and the gap above it. */
+const WHERE_GAP = 4;
+
+/**
+ * What the step card shows: the payload as one line of code, real lines of the diff, or else the action as a
+ * headline. `rows` of a code card are indexes into `hunk.lines`, each with whether the stage lights it.
+ */
 export type StepCard =
   | { kind: 'payload'; text: string; language: string; lines: Fit }
+  | { kind: 'code'; hunk: Hunk; rows: { index: number; lit: boolean }[]; light: boolean; where: string; lines: Fit }
   | { kind: 'headline'; text: Fit };
 
 export interface FlowLayout {
   stepH: number;
   panelW: number;
   cardH: number;
-  /** Each step's actor, and its action as drawn when it is the current step and when it is not. */
-  rows: { actor: Fit; action: Fit; idle: Fit }[];
+  /** Each step's actor, and its action as drawn when it is the current step and when it is not; a code stage adds its `path:line`. */
+  rows: { actor: Fit; action: Fit; idle: Fit; where: Fit | null }[];
   /** Whether every row is tall enough for its actor and action, so no row runs into the next. */
   room: Fit;
   /** Each step's actor in the strip above the card, current or next. */
@@ -49,7 +61,38 @@ export interface FlowLayout {
   intro: StepCard;
 }
 
-function card(step: Pick<FlowStep, 'action' | 'payload'>, width: number, height: number, path: string): StepCard {
+/** A code stage's card, or null when its hunk or lines do not exist (`validate` reports that). */
+function codeCard(step: FlowStep, hunks: HunkMap, width: number, height: number, path: string): StepCard | null {
+  const id = codeHunkId(step.code);
+  const hunk = id !== undefined && Object.hasOwn(hunks, id) ? hunks[id] : undefined;
+  if (!step.code || !hunk) return null;
+  const { problem, rows, first } = codeRows(hunk, step.code);
+  if (problem || first === null) return null;
+  const tabs = ' '.repeat(CODE_TAB_SIZE);
+  return {
+    kind: 'code',
+    hunk,
+    rows,
+    light: rows.some((r) => r.lit),
+    where: `${hunk.file}:${first}`,
+    lines: fitLines(
+      rows.map((r) => hunk.lines[r.index]!.text.replaceAll('\t', tabs)),
+      sized(SLOTS.flowCode, width - 2 * CODE_PAD - SPLIT_GUTTER_W),
+      height - CODE_BAR_H - 2 * CODE_PAD,
+      path.replace(/action$/, 'code'),
+    ),
+  };
+}
+
+function card(
+  step: Pick<FlowStep, 'action' | 'payload' | 'code'>,
+  hunks: HunkMap,
+  width: number,
+  height: number,
+  path: string,
+): StepCard {
+  const code = codeCard(step as FlowStep, hunks, width, height, path);
+  if (code) return code;
   if (!step.payload)
     return { kind: 'headline', text: fitText(step.action, sized(SLOTS.flowHeadline, width - 2 * HEADLINE_PAD), path) };
   const { text, language } = formatPayload(step.payload);
@@ -66,14 +109,27 @@ function card(step: Pick<FlowStep, 'action' | 'payload'>, width: number, height:
   };
 }
 
+/** The rail's `path:line` of a code stage, with the directories dropped from the front when the whole path is too wide. */
+function whereFit(card: StepCard, width: number, i: number): Fit | null {
+  if (card.kind !== 'code') return null;
+  const slot = sized(SLOTS.flowWhere, width);
+  const parts = card.where.split('/');
+  let fit = fitText(card.where, slot, `steps[${i}].code`);
+  for (let from = 1; !fit.fits && from < parts.length; from++)
+    fit = fitText(parts.slice(from).join('/'), slot, `steps[${i}].code`);
+  return fit;
+}
+
 /** The list of steps on the left, the strip naming who acts, and the card with each step's payload. */
-export function layoutFlow(scene: FlowScene): FlowLayout {
+export function layoutFlow(scene: FlowScene, hunks: HunkMap = {}): FlowLayout {
   const box = contentBox(Boolean(scene.title));
   const stepH = Math.min(170, box.height / scene.steps.length);
   const panelW = box.width - LIST_W - COLUMN_GAP;
   const cardH = box.height - STRIP_H - STRIP_GAP;
   const textW = LIST_W - BADGE;
+  const cards = scene.steps.map((step, i) => card(step, hunks, panelW, cardH, `steps[${i}].action`));
   const rows = scene.steps.map((step, i) => ({
+    where: whereFit(cards[i]!, textW, i),
     actor: fitText(
       step.actor,
       sized(SLOTS.flowActor, textW - CHIP_PAD - (step.icon ? CHIP_ICON : 0)),
@@ -92,7 +148,15 @@ export function layoutFlow(scene: FlowScene): FlowLayout {
   }));
   const rowH = Math.max(
     0,
-    ...rows.map((r) => Math.max(BADGE_H, ROW_PAD + r.actor.height + Math.max(r.action.height, r.idle.height))),
+    ...rows.map((r) =>
+      Math.max(
+        BADGE_H,
+        ROW_PAD +
+          r.actor.height +
+          Math.max(r.action.height, r.idle.height) +
+          (r.where ? WHERE_GAP + r.where.height : 0),
+      ),
+    ),
   );
   return {
     stepH,
@@ -108,7 +172,13 @@ export function layoutFlow(scene: FlowScene): FlowLayout {
     strip: scene.steps.map((step, i) =>
       fitText(step.actor, sized(SLOTS.flowStrip, panelW * STRIP_SHARE), `steps[${i}].actor`),
     ),
-    cards: scene.steps.map((step, i) => card(step, panelW, cardH, `steps[${i}].action`)),
-    intro: card({ action: scene.title ?? `${scene.steps.length} steps` }, panelW, cardH, scene.title ? 'title' : ''),
+    cards,
+    intro: card(
+      { action: scene.title ?? `${scene.steps.length} steps` },
+      hunks,
+      panelW,
+      cardH,
+      scene.title ? 'title' : '',
+    ),
   };
 }
