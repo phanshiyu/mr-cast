@@ -10,6 +10,7 @@ use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, interpolate};
 use crate::chrome::callout::HeaderCallout;
 use crate::chrome::shell::{Aside, Shell};
+use crate::color::hex_alpha;
 use crate::display::{BoxStyle, DisplayList};
 use crate::states::{
     self as state, BoundModel, FnModel as Model, SceneState, SetEntry, StateFrame, items as list, walk_states,
@@ -23,7 +24,7 @@ use layout::{Change, Layout};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use view::{TableDraw, change_tone, draw_table, hex_alpha};
+use view::{TableDraw, change_tone, draw_table};
 
 const START: f64 = 10.0;
 /// Every row has started landing by this frame, so all have landed by the end of the build.

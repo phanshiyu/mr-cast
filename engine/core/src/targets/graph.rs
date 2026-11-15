@@ -27,9 +27,7 @@ impl Ref {
     }
 }
 
-fn list<'a>(v: &'a Value, field: &str) -> &'a [Value] {
-    v.get(field).and_then(Value::as_array).map_or(&[], Vec::as_slice)
-}
+use crate::states::list;
 
 fn str_of<'a>(v: &'a Value, field: &str) -> Option<&'a str> {
     v.get(field).and_then(Value::as_str)

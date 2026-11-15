@@ -3,9 +3,7 @@
 use crate::targets::{resolve_ref, step_targets};
 use serde_json::Value;
 
-fn list<'a>(v: &'a Value, key: &str) -> &'a [Value] {
-    v.get(key).and_then(Value::as_array).map_or(&[], Vec::as_slice)
-}
+use crate::states::list;
 
 /// The item key ("l:id" or "i:id") a path stop names, or None.
 fn stop_key(scene: &Value, r: &Value) -> Option<String> {

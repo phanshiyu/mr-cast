@@ -5,7 +5,7 @@ use super::layout::{COL_GAP, Change, Layout, PAD_X, Placed, ROW_BADGE};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, drawn_width};
 use crate::chrome::marks::{Marks, badges_of, draw_pill, pills, row_width};
-use crate::color::Color;
+use crate::color::{Color, hex_alpha};
 use crate::display::{BoxStyle, DisplayList, Shadow};
 use crate::states::{self as state, StateFrame};
 use crate::steps::Emphasis;
@@ -38,10 +38,6 @@ pub fn change_tone(change: Change) -> (Color, Color, &'static str) {
         Change::Removed => (DEL, DEL_BG, "\u{2212}"),
         Change::Modified => (ACCENT, crate::theme::ACCENT_SOFT, "~"),
     }
-}
-
-pub fn hex_alpha(c: Color, a: u32) -> Color {
-    c.alpha(a.min(255) as f32 / 255.0)
 }
 
 fn tone_color(name: &str) -> Color {

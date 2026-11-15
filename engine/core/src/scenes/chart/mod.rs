@@ -172,10 +172,7 @@ pub fn slice_color(index: usize) -> Color {
     ][index % 8]
 }
 
-/// A colour with its alpha written as two hex digits, as `${color}aa`.
-pub fn hex_alpha(c: Color, a: u32) -> Color {
-    c.alpha(a.min(255) as f32 / 255.0)
-}
+pub use crate::color::hex_alpha;
 
 pub fn label_color() -> Color {
     Color::css("#c9cedb")
