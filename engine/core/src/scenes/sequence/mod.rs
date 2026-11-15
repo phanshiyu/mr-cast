@@ -2,6 +2,8 @@
 //! labels and notes, drawn in as the voice reaches them. A port of src/components/SequenceDiagram.tsx,
 //! src/utils/sequenceLayout.ts and src/utils/sequenceCamera.ts.
 
+#![allow(clippy::collapsible_if)]
+
 mod camera;
 mod layout;
 
@@ -344,7 +346,6 @@ impl View {
             }
             // The lit band.
             if let Some((a, b)) = lit_range {
-                #[allow(clippy::collapsible_if)]
                 if let (Some(first), Some(last)) = (layout.messages.get(a), layout.messages.get(b)) {
                     let modified = layout.messages[a..=b.min(layout.messages.len() - 1)]
                         .iter()

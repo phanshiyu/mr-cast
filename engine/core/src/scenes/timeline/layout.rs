@@ -1,5 +1,7 @@
 //! The timeline's layout: a port of src/utils/timelineLayout.ts.
 
+#![allow(clippy::collapsible_if, clippy::too_many_arguments, clippy::needless_range_loop)]
+
 use super::format::{format_value, nice_ticks};
 use crate::textfit::{Family, Fit, Font, Slot, fit_text, measure};
 

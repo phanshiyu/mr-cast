@@ -8,6 +8,7 @@ use serde_json::Value;
 
 pub mod code;
 pub mod flow;
+pub mod layers;
 pub mod placeholder;
 pub mod sequence;
 pub mod text;
@@ -52,6 +53,7 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("flow", flow::prepare),
     ("sequence", sequence::prepare),
     ("timeline", timeline::prepare),
+    ("layers", layers::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).

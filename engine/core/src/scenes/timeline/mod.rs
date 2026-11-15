@@ -1,6 +1,8 @@
 //! The timeline scene: an axis with its events as cards on leaders, spans as bands under it, and a playhead that
 //! sweeps along as the voice goes. A port of src/components/Timeline.tsx and src/utils/timelineLayout.ts.
 
+#![allow(clippy::collapsible_if, clippy::too_many_arguments, clippy::needless_range_loop)]
+
 mod format;
 mod layout;
 
