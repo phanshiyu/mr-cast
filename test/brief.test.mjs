@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { formatOutline } from '../bin/lib/summary.mjs';
 import { briefLine, guideMarkdown } from '../shared/brief.mjs';
 import { readingOrder } from '../shared/reading.mjs';
 
@@ -421,4 +422,11 @@ test('validate prints the brief line and writes guide.md, outline prints the lin
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('outline reads a reading scene with no items, which draws the brief check list', () => {
+  const reading = { type: 'reading', answers: ['check'], narration: 'Open these first.' };
+  const storyboard = board({ scenes: [text(ALL), code('h1'), code('h2'), reading] });
+  const out = formatOutline({ storyboard, hunks, coverage: null, seconds: 30, voiced: false });
+  assert.match(out, /1 place to open first, from the brief/);
 });

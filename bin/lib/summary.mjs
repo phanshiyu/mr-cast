@@ -334,6 +334,11 @@ function sceneGist(scene, hunks, storyboard) {
     case 'review':
       return titled(formatFindings(storyboard.findings));
     case 'reading': {
+      // With no items the scene draws the brief's check list.
+      if (!Array.isArray(scene.items))
+        return titled(
+          `${plural(Array.isArray(storyboard.brief?.check) ? storyboard.brief.check.length : 0, 'place')} to open first, from the brief`,
+        );
       const routine = scene.items.filter((i) => i.routine).length;
       const flags = scene.items.filter((i) => i.flag).length;
       return titled(
