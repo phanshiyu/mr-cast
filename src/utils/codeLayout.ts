@@ -302,7 +302,7 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
  * crops the hunk to its focus and a few rows around it, and its camera then centres each step in turn, planned on
  * the settled layout (src/components/CodeDiff.tsx), so rows that are cropped in but taller than the frame, or between
  * two steps far apart, stay out of every frame. Lines the scene's own focus crops away are left out on purpose, and
- * not counted. A removed line of a morph is on screen while its step plays, so it counts as seen once cropped in.
+ * not counted, and neither are the context rows the crop keeps around the focus. A removed line of a morph is on screen while its step plays, so it counts as seen once cropped in.
  */
 export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = layoutCode(scene, hunk)): number[] {
   const { slots, stepCount, metrics, viewportH, view } = layout;
@@ -334,10 +334,19 @@ export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = l
   const seenRow = (r: number) =>
     heights[r] === 0 ||
     stops.some((s) => Math.min(tops[r]! + heights[r]!, s + viewportH) - Math.max(tops[r]!, s) > heights[r]! / 2);
+  // With a focus, the few rows the crop keeps around it belong to no step; the camera does not aim at them, so
+  // they are context, not lines the writer asked to show. Without a focus every row is drawn and counts.
+  const focused = slots.some((slot) => slot.step !== null);
   return hunk.lines.flatMap((line, i) => {
     if (line.type === 'context') return [];
     const r = rowOf.get(i);
     // A line cropped away by a focus the scene chose is left out on purpose; only a line cropped in can be missed.
-    return r !== undefined && !seenRow(r) ? [i] : [];
+    if (r === undefined || (focused && slots[r]!.step === null)) return [];
+    return seenRow(r) ? [] : [i];
   });
+}
+
+/** How many rows of code the frame draws at once for this scene, so a step's lines can be sized to fit. */
+export function frameRows(layout: CodeLayout): number {
+  return Math.max(1, Math.floor(layout.viewportH / layout.metrics.rowH));
 }

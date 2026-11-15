@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { QUESTIONS, missingQuestions } from '../../shared/brief.mjs';
+import { shownHunkIds } from '../../shared/shown-hunks.mjs';
 import { lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
 
@@ -165,13 +166,12 @@ function checkRefs(brief, hunks, look, warnings) {
     });
 }
 
-/** The hunk ids a scene shows or cites: a code scene's, a tests scene's, a reading item's, and `from`. */
+/** The hunk ids a scene shows or cites: a code scene's, a flow stop's, a compare cell's, a tests scene's, a reading item's, and `from`. */
 function shownHunks(sb) {
   const ids = new Set();
   for (const s of sb.scenes) {
     if (!isObj(s)) continue;
-    if (s.type === 'code') ids.add(s.hunkId);
-    if (s.type === 'tests' && Array.isArray(s.tests)) for (const t of s.tests) ids.add(t?.hunkId);
+    for (const id of shownHunkIds(s)) ids.add(id);
     if (s.type === 'reading' && Array.isArray(s.items)) for (const it of s.items) ids.add(it?.hunkId);
     if (Array.isArray(s.from)) for (const id of s.from) ids.add(id);
   }

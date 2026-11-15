@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
+import { formatOutline } from '../bin/lib/summary.mjs';
 import { briefLine, guideMarkdown } from '../shared/brief.mjs';
 import { readingOrder } from '../shared/reading.mjs';
 
@@ -279,7 +280,7 @@ test('a code scene whose hunk outgrows the frame names the lines never seen', as
   const [warning] = await seen(sb);
   assert.match(
     warning,
-    /^scenes\[0\]: the hunk is longer than the frame draws and no step's lines bring src\/big\.js lines 1-\d+, \d+-120 into view, so the video never shows them; add a step for them, or split the hunk$/,
+    /^scenes\[0\]: the frame draws \d+ lines at once, and no step's lines bring src\/big\.js lines 1-\d+, \d+-120 into view, so the video never shows them; a step's lines must fit in \d+ to be seen whole, so split a longer step, add a step for these lines, or split the hunk$/,
   );
   const steps = Array.from({ length: 10 }, (_, k) => ({ lines: `${k * 12 + 1}-${k * 12 + 12}`, say: 'A part.' }));
   assert.deepEqual(await seen({ title: 'Big', scenes: [code('m1', { steps })] }), []);
@@ -289,6 +290,17 @@ test('a code scene whose hunk outgrows the frame names the lines never seen', as
     await seen({ title: 'Big', scenes: [code('m1', { steps: [{ lines: '50-52', say: 'Here.' }] })] }),
     [],
   );
+});
+
+test('lines within the frame of a step are not warned, nor the context rows kept around it', async () => {
+  const frame = Number(/draws (\d+) lines/.exec((await seen({ title: 'Big', scenes: [code('m1')] }))[0])[1]);
+  const step = (from, count) => ({ lines: `${from}-${from + count - 1}`, say: 'A part.' });
+  // A step that fills the frame is seen whole, and the rows the crop keeps around it are not the writer's to show.
+  assert.deepEqual(await seen({ title: 'Big', scenes: [code('m1', { steps: [step(50, frame - 2)] })] }), []);
+  // One longer than the frame loses its edges, and the warning says so, with the frame's size.
+  const [over] = await seen({ title: 'Big', scenes: [code('m1', { steps: [step(50, frame + 6)] })] });
+  assert.match(over, new RegExp(`the frame draws ${frame} lines at once`));
+  assert.match(over, /src\/big\.js lines? 50/);
 });
 
 test('the brief line of a full brief matches the ADR', () => {
@@ -421,4 +433,51 @@ test('validate prints the brief line and writes guide.md, outline prints the lin
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+const cell = (hunk, side, lines) => ({ hunk, side, lines });
+const compareOf = (...cells) => ({
+  type: 'compare',
+  answers: ['case'],
+  narration: 'Before and after.',
+  rows: cells.map(([a, b]) => ({ label: 'Row', cells: [a, b] })),
+});
+const flowOf = (hunk) => ({
+  type: 'flow',
+  answers: ['case'],
+  narration: 'One order.',
+  steps: [{ actor: 'limiter', action: 'counts', code: { hunk, lines: '11-12' } }],
+});
+
+test('lines of a hunk read in a compare cell or a flow stop count as showing the hunk', async () => {
+  const others = [text(ALL), code('h2')];
+  const inCompare = board({
+    scenes: [...others, compareOf([cell('h1', 'old', '10'), cell('h1', 'new', '11-12')])],
+  });
+  assert.deepEqual(await warningsOf(inCompare, {}), []);
+  const inFlow = board({ scenes: [...others, flowOf('h1')] });
+  assert.deepEqual(await warningsOf(inFlow, {}), []);
+  // The coverage line counts them too, tests included.
+  const result = await check(
+    board({ scenes: [...others, compareOf([cell('h1', 'old', '10'), cell('h3', 'new', '1-2')]), flowOf('h1')] }),
+  );
+  assert.deepEqual([result.errors, result.warnings], [[], []]);
+  assert.equal(result.coverage.shown, 3);
+  assert.deepEqual(result.coverage.tests, { shown: 1, total: 1 });
+});
+
+test('a test hunk in a compare cell or a flow stop is a test shown on screen', async () => {
+  const named = { ...map, tests: [{ path: 'test/limiter.test.js', covers: ['src/limiter.js'], adds: ['limits'] }] };
+  const sb = (extra) => board({ scenes: [text(ALL, { narration: 'No test is named here.' }), code('h1'), ...extra] });
+  const warns = async (extra) => (await check(sb(extra), { map: named })).warnings.filter((w) => /^tests:/.test(w));
+  assert.equal((await warns([code('h2')])).length, 1);
+  assert.deepEqual(await warns([compareOf([cell('h3', 'old', '1'), cell('h3', 'new', '1-2')])]), []);
+  assert.deepEqual(await warns([flowOf('h3')]), []);
+});
+
+test('outline reads a reading scene with no items, which draws the brief check list', () => {
+  const reading = { type: 'reading', answers: ['check'], narration: 'Open these first.' };
+  const storyboard = board({ scenes: [text(ALL), code('h1'), code('h2'), reading] });
+  const out = formatOutline({ storyboard, hunks, coverage: null, seconds: 30, voiced: false });
+  assert.match(out, /1 place to open first, from the brief/);
 });

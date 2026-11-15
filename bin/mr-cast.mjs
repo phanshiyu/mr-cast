@@ -218,6 +218,8 @@ function readJson(file, missingHint, parse = JSON.parse) {
 }
 
 const DIR_OPTION = { dir: { type: 'string' }, name: { type: 'string' } };
+/** The run options plus the settings flags, which a command that has no voice or pace takes and ignores, so one set of flags fits every command. */
+const DIR_AND_SETTINGS = { ...SETTINGS_OPTIONS, ...DIR_OPTION };
 
 const writeJson = (file, value) => fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 
@@ -1152,7 +1154,7 @@ function hook() {
 }
 
 function schema(argv) {
-  const { positionals } = parseArgs({ args: argv, allowPositionals: true, options: {} });
+  const { positionals } = parseArgs({ args: argv, allowPositionals: true, options: SETTINGS_OPTIONS });
   if (positionals.length > 1) throw new UserError(`schema takes at most one type, got: ${positionals.join(' ')}`);
   console.log(formatSchema(ROOT, positionals[0]));
 }
@@ -1274,7 +1276,7 @@ function init(argv) {
 
 /** Adds snippets of unchanged source to a run's hunks.json: the code of an explanation, or context beside a diff. */
 function snippet(argv) {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_AND_SETTINGS });
   const { dir } = currentRun(values);
   const runArg = values.name ? ` --name ${values.name}` : values.dir ? ` --dir ${values.dir}` : '';
   const hunksPath = path.join(dir, 'hunks.json');
@@ -1332,7 +1334,7 @@ const fileLines = (files) => [
 
 /** What the skill decides the video's source from: the branch's changes, and the user's last choices. */
 function status(argv) {
-  parseArgs({ args: argv, options: {} });
+  parseArgs({ args: argv, options: SETTINGS_OPTIONS });
   const root = findRepoRoot();
   const out = [];
   if (!root) out.push('branch: none (not in a git repository), so only an explanation can be animated');
@@ -1453,7 +1455,10 @@ async function prune(argv) {
 }
 
 function psCommand(argv) {
-  const { values } = parseArgs({ args: argv, options: { json: { type: 'boolean', default: false } } });
+  const { values } = parseArgs({
+    args: argv,
+    options: { json: { type: 'boolean', default: false }, ...SETTINGS_OPTIONS },
+  });
   const list = listProcesses();
   if (values.json) console.log(JSON.stringify({ stateDir: procsDir(), processes: list.map(procJson) }, null, 2));
   else for (const line of formatPs(list)) console.log(line);
@@ -1477,6 +1482,7 @@ async function stop(argv) {
       choices: { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       'any-repo': { type: 'boolean', default: false },
+      ...SETTINGS_OPTIONS,
     },
   });
   const print = (json, lines) =>
@@ -1555,7 +1561,7 @@ async function voices(argv) {
 }
 
 function hunk(argv) {
-  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_OPTION });
+  const { values, positionals } = parseArgs({ args: argv, allowPositionals: true, options: DIR_AND_SETTINGS });
   if (!positionals.length) throw new UserError('hunk needs at least one id, such as `mr-cast hunk h3 h4`');
   const { dir } = currentRun(values);
   const hunks = readJson(path.join(dir, 'hunks.json'), 'run `mr-cast extract` or `mr-cast init` first');
@@ -1565,7 +1571,7 @@ function hunk(argv) {
 }
 
 function mapCommand(argv) {
-  const { values } = parseArgs({ args: argv, options: DIR_OPTION });
+  const { values } = parseArgs({ args: argv, options: DIR_AND_SETTINGS });
   const { dir } = currentRun(values);
   console.log(formatChangeMap(readJson(path.join(dir, 'map.json'), 'run `mr-cast extract` first')));
 }

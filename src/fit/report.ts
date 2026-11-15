@@ -13,7 +13,7 @@ import { layoutArray } from '../utils/arrayLayout';
 import { layoutChart } from '../utils/chartLayout';
 import { layoutBarRows, layoutPie } from '../utils/chartShapes';
 import { layoutCompare } from '../utils/compareLayout';
-import { layoutCode, unseenLines } from '../utils/codeLayout';
+import { frameRows, layoutCode, unseenLines } from '../utils/codeLayout';
 import { erScale, layoutEr } from '../utils/erLayout';
 import { layoutFiles, treeRows } from '../utils/filesLayout';
 import { layoutFlow } from '../utils/flowLayout';
@@ -314,6 +314,8 @@ export interface UnseenCode {
   file: string;
   added: number[];
   removed: number[];
+  /** How many rows of code the frame draws at once. */
+  rows: number;
 }
 
 /** The code scenes that leave changed lines of their hunk off every frame, and which lines. */
@@ -322,11 +324,13 @@ export function unseenCode(storyboard: Storyboard, hunks: HunkMap): UnseenCode[]
   storyboard.scenes.forEach((scene, i) => {
     const hunk = scene.type === 'code' ? hunks[scene.hunkId] : undefined;
     if (scene.type !== 'code' || !hunk) return;
-    const lines = unseenLines(scene, hunk).map((n) => hunk.lines[n]!);
+    const layout = layoutCode(scene, hunk);
+    const lines = unseenLines(scene, hunk, layout).map((n) => hunk.lines[n]!);
     const number = (side: 'newLine' | 'oldLine') =>
       lines.flatMap((l) => (l[side] === null || (side === 'oldLine') !== (l.type === 'del') ? [] : [l[side]]));
     const [added, removed] = [number('newLine'), number('oldLine')];
-    if (added.length || removed.length) out.push({ scene: i, file: hunk.file, added, removed });
+    if (added.length || removed.length)
+      out.push({ scene: i, file: hunk.file, added, removed, rows: frameRows(layout) });
   });
   return out;
 }

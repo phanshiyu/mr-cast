@@ -207,13 +207,15 @@ export async function checkUnseenCode(storyboard, hunks, warnings) {
   } catch {
     return;
   }
-  for (const { scene: i, file, added, removed } of found) {
+  for (const { scene: i, file, added, removed, rows } of found) {
     const parts = [
-      added.length ? `${file} lines ${rangeText(added)}` : '',
-      removed.length ? `removed lines ${rangeText(removed)} of ${file} (old file numbers)` : '',
+      added.length ? `${file} line${added.length === 1 ? '' : 's'} ${rangeText(added)}` : '',
+      removed.length
+        ? `removed line${removed.length === 1 ? '' : 's'} ${rangeText(removed)} of ${file} (old file numbers)`
+        : '',
     ].filter(Boolean);
     warnings.push(
-      `${where(storyboard.scenes[i], i, '')}: the hunk is longer than the frame draws and no step's lines bring ${parts.join(' and ')} into view, so the video never shows them; add a step for them, or split the hunk`,
+      `${where(storyboard.scenes[i], i, '')}: the frame draws ${rows} lines at once, and no step's lines bring ${parts.join(' and ')} into view, so the video never shows them; a step's lines must fit in ${rows} to be seen whole, so split a longer step, add a step for these lines, or split the hunk`,
     );
   }
 }

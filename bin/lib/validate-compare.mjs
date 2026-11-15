@@ -58,7 +58,11 @@ export function checkCompare(s, p, errors, warnings, hunks = {}) {
     else {
       s.sides.forEach((side, j) => {
         const q = `${p}.sides[${j}]`;
-        if (!isStr(side?.title)) errors.push(`${q}.title: required string, e.g. "Before", "Redis" or "Option A"`);
+        if (typeof side === 'string')
+          errors.push(
+            `${q}: is the string "${side}"; a side is an object, write { "title": ${JSON.stringify(side)} } (optionally with "tone")`,
+          );
+        else if (!isStr(side?.title)) errors.push(`${q}.title: required string, e.g. "Before", "Redis" or "Option A"`);
         if (side?.tone !== undefined && !TONES.includes(side.tone))
           errors.push(`${q}.tone: must be one of ${TONES.join(', ')}`);
         if (side?.chosen !== undefined) {
