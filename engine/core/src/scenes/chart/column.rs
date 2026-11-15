@@ -253,9 +253,6 @@ impl Column {
             draw_note(dl, text, *left as f32, *top as f32, *w as f32, *h as f32, note_in);
         }
         let _ = k;
-        // TODO(marks): PenMarks
-        // TODO(ink): Ink
-        // TODO(camera): the scene's `camera` field
     }
 
     fn grid(&self, dl: &mut DisplayList, layout: &ChartLayout, scene: &ChartScene, appear: f64) {

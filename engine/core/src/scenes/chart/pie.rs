@@ -17,7 +17,7 @@ use crate::timing::{build_frames, js_round};
 const START: f64 = 20.0;
 
 pub struct Pie {
-    layout: PieLayout,
+    pub layout: PieLayout,
 }
 
 fn wedge(l: &PieLayout, from: f64, to: f64, out: f64) -> String {
@@ -152,8 +152,5 @@ impl Pie {
             });
         }
         let _ = Color::TRANSPARENT;
-        // TODO(marks): PenMarks
-        // TODO(ink): Ink
-        // TODO(camera): the scene's `camera` field
     }
 }

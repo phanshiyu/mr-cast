@@ -129,8 +129,5 @@ impl Rows {
             });
         }
         let _ = box_w;
-        // TODO(marks): PenMarks
-        // TODO(ink): Ink
-        // TODO(camera): the scene's `camera` field
     }
 }

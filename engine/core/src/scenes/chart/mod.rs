@@ -11,13 +11,16 @@ mod column;
 mod layout;
 mod pie;
 mod rows;
+mod targets;
 
 use super::{Frame, SceneInput, SceneView, parse};
+use crate::camera::Camera;
 use crate::chrome::callout::HeaderCallout;
 use crate::chrome::fittext::{TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList};
+use crate::marks::{Board, MarkTargets, StepRefs};
 use crate::states::{BoundModel, FnModel as Model, SceneState, SetEntry, StateFrame, items as list, walk_states};
 use crate::steps::Emphasis;
 use crate::steps::FocusSpotlight as Focus;
@@ -240,6 +243,9 @@ struct ChartView {
     box_w: f64,
     box_h: f64,
     body: Body,
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
 }
 
 /// What the body draws with at one frame.
@@ -273,7 +279,25 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     } else {
         Body::Column(column::Column::new(&scene, box_w, box_h, &cstates))
     };
-    Ok(Box::new(ChartView { shell, raw: input.scene.clone(), scene, states, cstates, callout, box_w, box_h, body }))
+    let marks = targets::step_targets(&scene, &body, &cstates[1..], (box_w, box_h));
+    let refs = crate::targets::SceneRefs(input.scene);
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(input.scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(input.scene, &step_refs, (box_w, box_h));
+    Ok(Box::new(ChartView {
+        shell,
+        raw: input.scene.clone(),
+        scene,
+        states,
+        cstates,
+        callout,
+        box_w,
+        box_h,
+        body,
+        marks,
+        board,
+        camera,
+    }))
 }
 
 /// A legend: the series names with their colours (`Legend` of ChartShapes.tsx).
@@ -366,10 +390,16 @@ impl SceneView for ChartView {
             }
         };
         let aside = has_aside.then_some(Aside { height, draw: &draw_aside });
-        self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| match &self.body {
-            Body::Column(c) => c.draw(dl, &self.scene, &ctx, self.box_w as f32, self.box_h as f32),
-            Body::Rows(r) => r.draw(dl, &self.scene, &ctx, self.box_w as f32),
-            Body::Pie(p) => p.draw(dl, &self.scene, &ctx, self.box_w as f32),
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
+        self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| {
+            self.camera.draw(dl, view, |dl| {
+                dl.group(|dl| match &self.body {
+                    Body::Column(c) => c.draw(dl, &self.scene, &ctx, self.box_w as f32, self.box_h as f32),
+                    Body::Rows(r) => r.draw(dl, &self.scene, &ctx, self.box_w as f32),
+                    Body::Pie(p) => p.draw(dl, &self.scene, &ctx, self.box_w as f32),
+                });
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            })
         });
     }
 }
