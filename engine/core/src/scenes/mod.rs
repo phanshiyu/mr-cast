@@ -6,6 +6,7 @@ use crate::model::Props;
 use crate::timing::Segment;
 use serde_json::Value;
 
+pub mod array;
 pub mod code;
 pub mod flow;
 pub mod placeholder;
@@ -44,7 +45,8 @@ pub trait SceneView: Send + Sync {
 pub type Prepare = fn(&SceneInput) -> Result<Box<dyn SceneView>, String>;
 
 /// Scene types the engine draws; any other type draws a placeholder card.
-pub const REGISTRY: &[(&str, Prepare)] = &[("text", text::prepare), ("code", code::prepare), ("flow", flow::prepare)];
+pub const REGISTRY: &[(&str, Prepare)] =
+    &[("text", text::prepare), ("code", code::prepare), ("flow", flow::prepare), ("array", array::prepare)];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
 pub fn prepare(input: &SceneInput) -> Box<dyn SceneView> {
