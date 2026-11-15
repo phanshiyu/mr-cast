@@ -59,7 +59,7 @@ A video of a branch answers six questions, and the storyboard's `brief` holds th
 | --- | --- |
 | `why` | `{ text, source }`: why the change exists. `source` is `"description"`, `"commit <sha>"`, `"code"`, `"test"`, `"inferred"` or `"unknown"`. With `"unknown"`, `text` can be left out. |
 | `case` | `{ before, after, cite }`: one real input, what happened to it and what happens now. `cite` is hunk ids, `path:line` or `path:a-b`, or a short sha. |
-| `approach` | `{ text, decisions }`: the idea, and the choices the author made where another way was open. |
+| `approach` | `{ text, decisions }`: the idea, and the choices where another way was open. A decision is `{ text, source, cite? }`. `source` is `"description"` or `"commit <sha>"` when the author wrote it, `"code"` when the choice shows in the code (give a `cite`), or `"mine"` for your own observation: a way not taken that nobody names. A plain string is read as `"mine"`. |
 | `parts` | A list of `{ name, weight, hunks }`. `weight` is `core` (the change itself), `support` or `routine` (may be skimmed). The files come from the hunks. |
 | `proof` | `{ tested, untested, cite }`: what a test shows, with the test's name, and what nothing shows. `tested` is empty when no test does. |
 | `check` | A list of `{ file, line, what, why }`: the places to open first, `what` in under 80 characters. |
@@ -77,7 +77,7 @@ The `reading` scene is not only for a pre-read. In a branch video it draws `brie
 
 A compare cell can be `{ "hunk": "h11", "side": "old", "lines": "4-6" }`: lines read from `hunks.json`, so the cell cannot drift from the diff. `side: "old"` shows the removed and context lines by old-file line numbers, and `"new"` the added and context lines by new-file numbers. A snippet id works for `"new"`. The cell names its file and lines quietly above the code. Up to 8 lines read well, and a line of more than about 60 characters fails `validate` as not fitting, so choose short lines or put a short text in the other cells.
 
-With `"mode": "options"`, a compare sets a decision beside the alternative not taken. There are no arrows between the sides. Mark the side that was taken with `"chosen": true` on it, or mark each row with `"chosen": 0` or `1`, the side that row took (0 is the left). The side taken is drawn as chosen, and the other quieter and labelled "Not taken". Marking both sides, or marking sides and rows, fails `validate`, and so does `chosen` without `"mode": "options"`.
+With `"mode": "options"`, a compare sets a decision beside the alternative not taken. There are no arrows between the sides. Mark the side that was taken with `"chosen": true` on it, or mark each row with `"chosen": 0` or `1`, the side that row took (0 is the left). The side taken is drawn as chosen, and the other quieter and labelled "Not taken". When the way not taken is the writer's own idea and no commit or description names it, set `"alternative": "mine"` on the scene, and the label reads "Another way". `validate` warns when a scene in this mode answers `approach`, every decision in the brief is `"mine"`, and the scene is not marked. Marking both sides, or marking sides and rows, fails `validate`, and so does `chosen` without `"mode": "options"`.
 
 ## Real code in a flow
 

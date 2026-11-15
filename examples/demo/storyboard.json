@@ -17,9 +17,24 @@
     "approach": {
       "text": "A Redis counter per IP and per one-minute window, checked in a middleware in front of the orders route.",
       "decisions": [
-        "The count lives in Redis, not in memory, so every server shares it",
-        "The key expires with its window, so nothing is cleaned up by hand",
-        "Past the limit the request is refused, never queued"
+        {
+          "text": "The count lives in Redis, not in memory, so every server shares it",
+          "source": "description"
+        },
+        {
+          "text": "The key expires with its window, so nothing is cleaned up by hand",
+          "source": "code",
+          "cite": [
+            "h2"
+          ]
+        },
+        {
+          "text": "Past the limit the request is refused, never queued",
+          "source": "code",
+          "cite": [
+            "h2"
+          ]
+        }
       ]
     },
     "parts": [

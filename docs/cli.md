@@ -48,7 +48,7 @@ Run the commands from inside the repository the video is about. Output goes to `
 `validate` warns about these, and none stops a render, so a storyboard written before the brief still passes. Each warning states a fact and what to look at; none says which scene to use. `validate`, `outline` and the skill's hook print two lines:
 
 ```
-brief: why ✓ (description) · case ✓ · approach ✓ 3 decisions · parts 4, core 2 · proof ✓ 0 tested, 4 untested · check 3 · ask 1
+brief: why ✓ (description) · case ✓ · approach ✓ 3 decisions (2 stated, 1 mine) · parts 4, core 2 · proof ✓ 0 tested, 4 untested · check 3 · ask 1
 scenes: 12 · code 3, text 1, graph 1 · longest run: 3 code
 ```
 

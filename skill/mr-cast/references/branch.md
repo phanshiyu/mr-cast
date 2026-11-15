@@ -7,6 +7,8 @@ The six questions and the `brief` are in SKILL.md. This file says what the chang
 `extract` prints it and writes `map.json`; `mr-cast map` prints it again.
 
 - **What the author said:** every commit message, oldest first, and the description passed with `--description`. This is where `why` and the decisions in `approach` come from.
+
+Give each decision its `source`: `"description"` or `"commit <sha>"` when the author wrote it, `"code"` with a `cite` when the choice shows in the code, and `"mine"` for a way not taken that nobody names. A `"mine"` decision is shown to the reviewer as not the author's, so do not invent one to fill the list; a short list is fine. Read every commit body before you settle on `"mine"`. A compare in `"mode": "options"` that draws such a way takes `"alternative": "mine"`, and its label then reads "Another way".
 - **The files by kind:** existing code that changed first, then new files, tests, docs, config and routine files such as lockfiles. Changed behaviour of existing code is what a reviewer misses most.
 - **Tests and what they cover:** for each changed test file, the changed source files it names and the test names it adds; and the changed source files no changed test names. This is where `proof` comes from.
 - **Used elsewhere:** names from changed code and the files outside the diff that use them. It is a text search, so check a match before you rely on it. This is where much of `check` comes from.

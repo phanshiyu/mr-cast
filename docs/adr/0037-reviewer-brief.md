@@ -1,6 +1,6 @@
 # 37. A brief for the reviewer: six questions, facts from the tool, and answers that are checked
 
-- Status: Accepted
+- Status: Accepted; amended 2026-11-15 (a decision carries its source, see section 2)
 - Date: 2026-11-15
 - Amends: 0019 (tools, not opinions), 0008 (the reading scene outside a pre-read), 0013 (what the eval asks)
 
@@ -77,7 +77,7 @@ A branch storyboard has a `brief`. Each answer is short, one or two sentences, a
   "case":     { "before": "`src/lib.js:4-5` in an answer was plain text.",
                 "after": "It is a numbered chip; hovering the answer tints lines 4-5.", "cite": ["h24", "test/refs.test.ts:10"] },
   "approach": { "text": "The CLI resolves each place when the answer is posted and stores it with a quote.",
-                "decisions": ["One bad place refuses the whole answer, like --map"] },
+                "decisions": [ { "text": "One bad place refuses the whole answer, like --map", "source": "commit 7376000" } ] },
   "parts":    [ { "name": "Finding and checking places", "weight": "core", "hunks": ["h24", "h12"] },
                 { "name": "Chips on the page", "weight": "core", "hunks": ["h56", "h40"] },
                 { "name": "Docs and the key sheet", "weight": "routine", "hunks": ["h1", "h2", "h3"] } ],
@@ -93,6 +93,17 @@ A branch storyboard has a `brief`. Each answer is short, one or two sentences, a
   answer: the video then says the reason is not stated, and `ask` carries the question for the author. For `case`,
   `approach`, `parts` and `proof` the whole answer can be the string `"unknown"`, and `why` takes `source: "unknown"`
   with no `text`. `check` has no `"unknown"`: an empty list is a missing answer.
+- **Amended 2026-11-15: a decision carries its source.** A measurement of videos made with the first skill found the
+  reviewer's questions answered far better, but the count of claims the code contradicts did not fall (4 before, 5
+  after). The new one: a video said the author "had two ways" and showed an alternative that appears in no diff or
+  commit; the writer had invented it to fill `approach.decisions`. So each decision is `{ text, source, cite? }`, with
+  `source` as `"description"`, `"commit <sha>"`, `"code"` (the choice shows in the code, so it has a `cite`) or
+  `"mine"` (the writer's own observation: a way not taken that nobody names). A plain string is still read, as
+  `"mine"`. `validate` warns about a `"code"` decision with no cite, a commit that is not the branch's, and a list
+  that is all `"mine"` while the commits or description exist. `guide.md` and the guide panel label each one "The
+  author says", "The code shows" or "Another way, not the author's", and a compare in `options` mode may say
+  `"alternative": "mine"` so that its label reads "Another way", not "Not taken". A scene that shows such a way as
+  the author's is warned about. The line gains the count by source: `approach ✓ 3 decisions (2 stated, 1 mine)`.
 - `weight` is `core`, `support` or `routine`.
 - `cite` entries are hunk ids, snippet ids, `path:line` or `path:a-b`, or a short sha.
 - A scene says which questions it answers: `"answers": ["why", "case"]`.
@@ -105,7 +116,7 @@ A branch storyboard has a `brief`. Each answer is short, one or two sentences, a
 ### 3. `validate` reports facts about the brief
 
 Warnings, not errors, so every storyboard written before this still passes. `validate`, `outline` and the hook print one
-line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions · parts 3, core 2 · proof ✓ 1 tested, 1 untested · check 2 · ask 1`.
+line: `brief: why ✓ (commit 7376000) · case ✓ · approach ✓ 2 decisions (2 stated) · parts 3, core 2 · proof ✓ 1 tested, 1 untested · check 2 · ask 1`.
 An answer that is `"unknown"` reads `proof unknown`, and a missing one `proof ✗`. The hook prints the brief line and the
 scene mix line (ADR 0038) on success, as added context for Claude.
 
