@@ -44,3 +44,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0034](0034-fixes-from-the-worked-examples.md) | What ten worked examples changed: traced plot parts start undrawn, moves span words, tspan boxes, chart prefix, and nine more fixes | Accepted |
 | [0035](0035-bounds-from-the-0.28-review.md) | Bounds from the 0.28 review: picture downloads from public hosts only, finite expressions, and a world outline loaded on demand | Accepted |
 | [0036](0036-biome-and-fallow.md) | Biome lints and formats, and fallow finds unused code, both in `pnpm check` and CI | Accepted |
+| [0037](0037-advisories-do-not-block-their-fix.md) | An advisory on main must not block the pull request that fixes it: audits compare with the base, and main is audited on a schedule | Accepted |

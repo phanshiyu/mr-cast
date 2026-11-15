@@ -1,13 +1,15 @@
 // Lists the advisories a dependency tree has that another does not, and exits 1 when there are any.
-//   node scripts/audit-new.mjs <head audit.json> [<base audit.json>]
+//   node scripts/audit-new.mjs <head audit.json> [<base audit.json>] [--plain]
+// --plain leaves out the GitHub annotations, for a report that goes into an issue.
 // The files are the output of `pnpm audit --json` or `npm audit --json`. Without a base, every advisory counts, which
 // is the check of main itself. Exits 2 when an audit did not run, so a registry error never reads as a clean tree.
 import { readFileSync } from 'node:fs';
 import { newAdvisories, readAudit } from './lib/audit.mjs';
 
-const [headFile, baseFile] = process.argv.slice(2);
+const plain = process.argv.includes('--plain');
+const [headFile, baseFile] = process.argv.slice(2).filter((arg) => arg !== '--plain');
 if (!headFile) {
-  console.error('usage: node scripts/audit-new.mjs <head audit.json> [<base audit.json>]');
+  console.error('usage: node scripts/audit-new.mjs <head audit.json> [<base audit.json>] [--plain]');
   process.exit(2);
 }
 
@@ -22,7 +24,7 @@ try {
     console.log(`${found.length} advisories ${scope}:`);
     for (const { id, name, severity, title } of found) console.log(`- ${severity}: ${name}, ${title} (${id})`);
     for (const { id, name, severity, title } of found) {
-      console.log(`::error title=${severity} advisory in ${name}::${title} (${id})`);
+      if (!plain) console.log(`::error title=${severity} advisory in ${name}::${title} (${id})`);
     }
     process.exitCode = 1;
   }
