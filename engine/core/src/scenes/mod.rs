@@ -7,7 +7,6 @@ use crate::timing::Segment;
 use serde_json::Value;
 
 pub mod array;
-pub mod callout;
 pub mod chart;
 pub mod code;
 pub mod compare;
@@ -23,7 +22,6 @@ pub mod reading;
 pub mod review;
 pub mod sequence;
 pub mod state;
-pub mod step_state;
 pub mod table;
 pub mod terminal;
 pub mod tests;

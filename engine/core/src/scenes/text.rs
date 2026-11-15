@@ -7,8 +7,9 @@
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Easing, Spring, clamped, interpolate, spring};
 use crate::camera::Camera;
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit};
-use crate::chrome::shell::{Aside, Shell, header_box};
+use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, Shadow};
 use crate::icons;
@@ -91,7 +92,7 @@ struct TextScene {
 }
 
 /// The text a state draws in place of the scene's own lead, note and kicker.
-fn with_values(o: &Fields, values: &HashMap<String, Value>) -> Fields {
+fn with_values(o: &Fields, values: &crate::states::Values) -> Fields {
     let mut f = o.clone();
     let text = |k: &str| values.get(k).and_then(Value::as_str).map(str::to_string);
     if let Some(t) = text("t:kicker") {
@@ -378,7 +379,7 @@ fn fit_items(items: &[String], width: f64, start: f64, min: f64, gap: f64, room:
     fits
 }
 
-fn layout_text(scene: &TextScene, values: &HashMap<String, Value>) -> TextLayout {
+fn layout_text(scene: &TextScene, values: &crate::states::Values) -> TextLayout {
     let own = with_values(&scene.own, values);
     let (width, box_h) = content_box(false);
     let room = box_h - Gap::BOTTOM;
@@ -496,6 +497,12 @@ fn resolve(scene: &TextScene, r: &Value) -> Option<Vec<String>> {
     })
 }
 
+/// The item keys a ref names in a text scene's JSON (`TARGETS.text`).
+pub fn resolve_value(scene: &Value, r: &Value) -> Option<Vec<String>> {
+    let parsed: TextScene = serde_json::from_value(scene.clone()).ok()?;
+    resolve(&parsed, r)
+}
+
 /// The text scene's refs and state model (the `text` entries of shared/targets.mjs and shared/state-steps.mjs).
 struct TextModel<'a>(&'a TextScene);
 
@@ -519,7 +526,7 @@ impl StateModel for TextModel<'_> {
         }
         for r in scene.get("hidden").and_then(Value::as_array).into_iter().flatten() {
             for key in resolve_ref(self, r).unwrap_or_default() {
-                st.hidden.insert(key, true);
+                st.hidden.insert(key);
             }
         }
         st

@@ -5,15 +5,18 @@
 
 mod layout;
 
-use super::callout::HeaderCallout;
-use super::step_state::{self as state, Focus, Model, SceneState, SetEntry, StateFrame, brighter, list, state_frame};
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::chrome::callout::HeaderCallout;
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Shadow};
+use crate::states::{
+    self as state, BoundModel, FnModel as Model, SceneState, SetEntry, StateFrame, items as list, walk_states,
+};
 use crate::steps::{Emphasis, Spotlight, spotlight_starts};
+use crate::steps::{FocusSpotlight as Focus, brighter};
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::Fit;
 use crate::theme::{ACCENT, ACCENT_GLOW, ADD, ADD_BG, BORDER, DEL, DEL_BG, FAINT, MUTED, TEXT};
@@ -64,10 +67,10 @@ fn initial(scene: &Value) -> SceneState {
     s
 }
 
-fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
+pub fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
     let columns = list(scene.get("columns"));
     let rows = list(scene.get("rows")).len();
-    if let Some(i) = state::index_ref(r, rows) {
+    if let Some(i) = crate::targets::index_ref(r, rows) {
         return Some(vec![format!("r:{i}")]);
     }
     let r = r.as_str()?;
@@ -83,7 +86,7 @@ fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
 }
 
 fn set(scene: &Value, r: &str, value: &Value) -> Option<Vec<SetEntry>> {
-    let key = state::one_key(&MODEL, scene, &Value::String(r.into()), &["x:"])?;
+    let key = state::one_key(&BoundModel { model: &MODEL, scene }, &Value::String(r.into()), &["x:"])?;
     (value.is_string() || state::is_change(value)).then(|| vec![(key, value.clone())])
 }
 
@@ -144,7 +147,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         Some(t) => bh - (t.lines.len() as f64 - 1.0) * crate::timing::js_round(t.size * t.line_height),
         None => bh,
     };
-    let states = state::scene_states(&MODEL, input.scene);
+    let states = walk_states(&BoundModel { model: &MODEL, scene: input.scene }, input.scene);
     let rows: Vec<Row> = scene
         .rows
         .iter()
@@ -168,7 +171,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         columns: scene.columns,
         highlight: scene.highlight,
         has_steps: !scene.steps.is_empty(),
-        targets: state::target_steps(&MODEL, input.scene),
+        targets: crate::targets::target_steps(input.scene),
         states,
         layouts,
         callout,
@@ -305,7 +308,7 @@ fn draw_badge(dl: &mut DisplayList, text: &str, color: Color, row_w: f32, row_h:
 struct Ctx<'a> {
     frame: f64,
     sf: StateFrame<'a>,
-    focus: Focus,
+    focus: Focus<'a>,
     walked: Vec<usize>,
     spot: Spotlight,
     has_steps: bool,
@@ -314,7 +317,7 @@ struct Ctx<'a> {
 
 impl Ctx<'_> {
     fn cell_emphasis(&self, row: usize, col: usize) -> Emphasis {
-        brighter(self.focus.at(&format!("c:{col}")), self.focus.at(&format!("x:{row}/{col}")))
+        brighter(self.focus.emphasis(&format!("c:{col}")), self.focus.emphasis(&format!("x:{row}/{col}")))
     }
 
     fn row_emphasis(&self, row: usize) -> Emphasis {
@@ -324,7 +327,7 @@ impl Ctx<'_> {
                 None => self.spot.emphasis(&[]),
             };
         }
-        let own = self.focus.at(&format!("r:{row}"));
+        let own = self.focus.emphasis(&format!("r:{row}"));
         let opacity = (0..self.columns).map(|c| self.cell_emphasis(row, c).opacity).fold(own.opacity, f64::max);
         Emphasis { opacity, ..own }
     }
@@ -485,7 +488,7 @@ impl TableView {
 impl SceneView for TableView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
-        let sf = state_frame(&self.states, f.segments, frame);
+        let sf = StateFrame::at(&self.states, f.segments, frame);
         let idx = |s: &SceneState| self.states.iter().position(|x| std::ptr::eq(x, s)).unwrap_or(0);
         let (layout, before) = (&self.layouts[idx(sf.now)], &self.layouts[idx(sf.before)]);
         let n = layout.rows.len();
@@ -499,7 +502,7 @@ impl SceneView for TableView {
         let starts = spotlight_starts(f.segments, walked.len(), build_frames("table"));
         let ctx = Ctx {
             frame,
-            focus: Focus::from_steps(self.targets.clone(), f.segments, frame),
+            focus: Focus::borrowed(&self.targets, f.segments, frame),
             spot: Spotlight::new(frame, &starts),
             walked,
             has_steps: self.has_steps,
@@ -516,7 +519,7 @@ impl SceneView for TableView {
         let draw_aside = |dl: &mut DisplayList, right: f32, top: f32| {
             let mut right = right;
             if let Some(c) = &self.callout {
-                c.draw(dl, right - c.width, top + height - c.height, &ctx.sf);
+                c.draw(dl, right, top + height - c.height, &ctx.sf);
                 right -= c.width + 32.0;
             }
             if has_legend {
@@ -532,7 +535,7 @@ impl SceneView for TableView {
             dl.group(|dl| {
                 dl.fade(header_in as f32);
                 for (i, header) in layout.headers.iter().enumerate() {
-                    let lit = ctx.focus.at(&format!("c:{i}")).glow > 0.0;
+                    let lit = ctx.focus.emphasis(&format!("c:{i}")).glow > 0.0;
                     draw_fit(
                         dl,
                         header,

@@ -6,11 +6,11 @@ use crate::chrome::fittext::{Align, LineHeight, TextOpts, draw_fit, drawn_width,
 use crate::color::Color;
 use crate::diagram::strike;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
-use crate::graph_states::{TintMix, tint_fill};
 use crate::icons;
 use crate::item_marks::{
     EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, emphasis_card, tone_color,
 };
+use crate::states::{TintMix, tint_fill};
 use crate::steps::Emphasis;
 use crate::text::{Face, Style, baseline_in};
 use crate::textfit::Fit;
@@ -80,7 +80,7 @@ pub fn draw_card(dl: &mut DisplayList, n: &NodeState) {
     let node = n.node;
     let removed = node.marks.change.as_deref() == Some("removed");
     let change = node.marks.change.as_deref().and_then(change_tone);
-    let tinted = n.tint.main();
+    let tinted = n.tint.main_tone();
     let tone_c = node.marks.tone.as_deref().map(tone);
     let (w, h) = (n.w, n.h);
     common(dl, n, |dl| {
@@ -138,7 +138,13 @@ pub fn draw_card(dl: &mut DisplayList, n: &NodeState) {
             if *amount > 0.0 {
                 dl.group(|dl| {
                     dl.fade(*amount as f32);
-                    dl.rect(2.0, 2.0, w - 4.0, h - 4.0, BoxStyle::fill(tint_fill(name)).radius(text::RADIUS - 2.0));
+                    dl.rect(
+                        2.0,
+                        2.0,
+                        w - 4.0,
+                        h - 4.0,
+                        BoxStyle::fill(tint_fill(crate::theme::tone(name).0)).radius(text::RADIUS - 2.0),
+                    );
                 });
             }
         }
@@ -229,7 +235,7 @@ pub fn draw_shape(dl: &mut DisplayList, n: &NodeState, shape: Shape) {
         alpha(DEL, 0xcc)
     } else if g > 0.0 {
         ACCENT
-    } else if let Some(t) = n.tint.main() {
+    } else if let Some(t) = n.tint.main_tone() {
         tone(t).0
     } else {
         mark_color(node).unwrap_or(BORDER_STRONG)
@@ -264,7 +270,7 @@ pub fn draw_shape(dl: &mut DisplayList, n: &NodeState, shape: Shape) {
                 if *amount > 0.0 {
                     dl.group(|dl| {
                         dl.fade(*amount as f32);
-                        dl.path(path.clone(), Some(tint_fill(name).into()), None);
+                        dl.path(path.clone(), Some(tint_fill(crate::theme::tone(name).0).into()), None);
                     });
                 }
             }
@@ -284,7 +290,7 @@ pub fn draw_shape(dl: &mut DisplayList, n: &NodeState, shape: Shape) {
                 if *amount > 0.0 {
                     dl.group(|dl| {
                         dl.fade(*amount as f32);
-                        dl.rect(0.0, 0.0, w, h, BoxStyle::fill(tint_fill(name)).radius(radius));
+                        dl.rect(0.0, 0.0, w, h, BoxStyle::fill(tint_fill(crate::theme::tone(name).0)).radius(radius));
                     });
                 }
             }

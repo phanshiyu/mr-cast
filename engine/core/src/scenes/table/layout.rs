@@ -307,7 +307,7 @@ pub fn layout_table_states(columns: &[String], states: &[Vec<Row>], width: f64, 
 }
 
 /// A table's rows as each state shows them (`stateRows`).
-pub fn state_rows(columns: &[String], rows: &[Row], states: &[super::super::step_state::SceneState]) -> Vec<Vec<Row>> {
+pub fn state_rows(columns: &[String], rows: &[Row], states: &[crate::states::SceneState]) -> Vec<Vec<Row>> {
     states
         .iter()
         .map(|state| {

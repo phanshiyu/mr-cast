@@ -2,7 +2,7 @@
 //! src/utils/chartTargets.ts the scene draws with.
 
 use super::{ChartScene, Vals};
-use crate::scenes::step_state::SceneState;
+use crate::states::SceneState;
 use crate::textfit::{Fit, Font, Slot, fit_text, fit_text_at, measure};
 use crate::timing::js_round;
 

@@ -1,16 +1,17 @@
 //! The table beside a graph: its layout in every state (src/utils/tableLayout.ts) and its drawing
 //! (`TableView` in src/components/DataTable.tsx).
 
+use super::model::{Val, cell_val, val};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, drawn_width};
 use crate::color::Color;
 use crate::diagram::strike;
 use crate::display::{BoxStyle, DisplayList, Shadow};
-use crate::graph_states::{SceneState, StateFrame, Val, tint_fill};
 use crate::item_marks::{
     Marks, badges_of, badges_width, change_tone, draw_pill, js_len, pills, row_width, text_or_number,
 };
 use crate::markup::{parse_markup, plain_text};
+use crate::states::{SceneState, StateFrame, tint_fill};
 use crate::steps::Emphasis;
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::{Fit, Slot, fit_text, fit_text_at};
@@ -51,7 +52,7 @@ fn cell_text(c: &Cell) -> String {
 impl<'de> Deserialize<'de> for Cell {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = serde_json::Value::deserialize(d)?;
-        Ok(match crate::graph_states::cell_val(&v) {
+        Ok(match cell_val(&v) {
             Some(Val::Change(a, b)) => Cell::Change(a, b),
             Some(Val::Text(t)) => Cell::Text(t),
             None => Cell::Text(match &v {
@@ -300,9 +301,9 @@ pub fn state_rows(table: &Table, states: &[SceneState]) -> Vec<Vec<TableRow>> {
                 .enumerate()
                 .map(|(r, row)| TableRow {
                     cells: (0..table.columns.len())
-                        .map(|c| match st.values.get(&format!("x:{r}/{c}")) {
-                            Some(Val::Text(t)) => Cell::Text(t.clone()),
-                            Some(Val::Change(a, b)) => Cell::Change(a.clone(), b.clone()),
+                        .map(|c| match val(st, &format!("x:{r}/{c}")) {
+                            Some(Val::Text(t)) => Cell::Text(t),
+                            Some(Val::Change(a, b)) => Cell::Change(a, b),
                             None => row.cells.get(c).cloned().unwrap_or(Cell::Text(String::new())),
                         })
                         .collect(),
@@ -461,7 +462,7 @@ fn draw_row(dl: &mut DisplayList, t: &TableDraw, index: usize, placed: &PlacedRo
     let removed = placed.change.as_deref() == Some("removed");
     let pad = js_round(layout.font * 0.5) as f32;
     let mix = s.tint(&format!("r:{index}"));
-    let tinted = mix.main().map(str::to_string);
+    let tinted = mix.main_tone().map(str::to_string);
     let bg = match (&tone_mark, placed.change.as_deref()) {
         (Some(tm), Some(c)) if c != "modified" => tm.bg,
         _ => Color::rgba8(255, 255, 255, (0.025 + 0.05 * flash) as f32),
@@ -496,7 +497,7 @@ fn draw_row(dl: &mut DisplayList, t: &TableDraw, index: usize, placed: &PlacedRo
             if *amount > 0.0 {
                 dl.group(|dl| {
                     dl.fade(*amount as f32);
-                    dl.rect(0.0, 0.0, w, h, BoxStyle::fill(tint_fill(name)).radius(14.0));
+                    dl.rect(0.0, 0.0, w, h, BoxStyle::fill(tint_fill(crate::theme::tone(name).0)).radius(14.0));
                 });
             }
         }
@@ -507,7 +508,13 @@ fn draw_row(dl: &mut DisplayList, t: &TableDraw, index: usize, placed: &PlacedRo
                     dl.group(|dl| {
                         dl.fade(*amount as f32);
                         let (cx, cw) = (layout.cols[i].0 - COL_GAP / 3.0, layout.cols[i].1 + 2.0 * COL_GAP / 3.0);
-                        dl.rect(cx as f32, 4.0, cw as f32, h - 8.0, BoxStyle::fill(tint_fill(name)).radius(10.0));
+                        dl.rect(
+                            cx as f32,
+                            4.0,
+                            cw as f32,
+                            h - 8.0,
+                            BoxStyle::fill(tint_fill(crate::theme::tone(name).0)).radius(10.0),
+                        );
                         dl.rect(
                             cx as f32,
                             4.0,
@@ -582,7 +589,7 @@ fn draw_row(dl: &mut DisplayList, t: &TableDraw, index: usize, placed: &PlacedRo
             let key = format!("x:{index}/{i}");
             let changed = s.value_changed(&key);
             let own = s.tint(&key);
-            let toned = own.main().map(str::to_string).or_else(|| tinted.clone());
+            let toned = own.main_tone().map(str::to_string).or_else(|| tinted.clone());
             let ink = toned.as_deref().map(|n| tone(n).0);
             let (cx, ch) = (layout.cols[i].0 as f32, h - 2.0 * pad);
             let at = |dl: &mut DisplayList, c: &PlacedCell, opacity: f64, shift: f32| {

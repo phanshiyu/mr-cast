@@ -1,10 +1,7 @@
-//! What a step's `focus` can point at: a port of shared/targets.mjs for the scene types the engine draws with
-//! item keys. A ref resolves to keys such as "m:2" or "l:edge"; a scene lights every item whose key a step's refs
-//! name.
+//! The `sequence`, `timeline` and `layers` entries of TARGETS in shared/targets.mjs.
 
 use crate::timing::index_range;
 use serde_json::Value;
-use std::collections::HashMap;
 
 fn list<'a>(v: &'a Value, key: &str) -> &'a [Value] {
     v.get(key).and_then(Value::as_array).map_or(&[], Vec::as_slice)
@@ -45,7 +42,8 @@ fn layer_part(scene: &Value, r: &str) -> Option<Vec<String>> {
     None
 }
 
-fn resolve_once(scene: &Value, r: &Value) -> Option<Vec<String>> {
+/// The item keys a ref names in a sequence, timeline or layers scene.
+pub fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
     match str_of(scene, "type")? {
         "sequence" => {
             if let Some(id) =
@@ -79,50 +77,4 @@ fn resolve_once(scene: &Value, r: &Value) -> Option<Vec<String>> {
         }
         _ => None,
     }
-}
-
-/// The item keys a ref lights in a scene, or None when the scene has nothing it names (`resolveRef`).
-pub fn resolve_ref(scene: &Value, r: &Value) -> Option<Vec<String>> {
-    resolve_once(scene, r).or_else(|| {
-        let s = r.as_str()?;
-        let t = s.trim();
-        if t.is_empty() || !t.bytes().all(|b| b.is_ascii_digit()) {
-            return None;
-        }
-        resolve_once(scene, &Value::from(t.parse::<u64>().ok()?))
-    })
-}
-
-/// Each step's focus as the item keys it lights; refs that name nothing light nothing (`stepTargets`).
-pub fn step_targets(scene: &Value) -> Vec<Vec<String>> {
-    list(scene, "steps")
-        .iter()
-        .map(|step| {
-            let refs: Vec<&Value> = match step.get("focus") {
-                Some(Value::Array(a)) => a.iter().collect(),
-                Some(v) => vec![v],
-                None => Vec::new(),
-            };
-            let mut keys: Vec<String> = Vec::new();
-            for r in refs {
-                for k in resolve_ref(scene, r).unwrap_or_default() {
-                    if !keys.contains(&k) {
-                        keys.push(k);
-                    }
-                }
-            }
-            keys
-        })
-        .collect()
-}
-
-/// For each item key, the steps that light it, in order (`targetSteps`).
-pub fn target_steps(scene: &Value) -> HashMap<String, Vec<usize>> {
-    let mut out: HashMap<String, Vec<usize>> = HashMap::new();
-    for (k, keys) in step_targets(scene).into_iter().enumerate() {
-        for key in keys {
-            out.entry(key).or_default().push(k);
-        }
-    }
-    out
 }

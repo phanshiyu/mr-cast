@@ -5,17 +5,15 @@
 mod expr;
 mod layout;
 
-use super::callout::HeaderCallout;
-use super::step_state::{
-    Focus, Model as StateModel, SceneState, SetEntry, StateFrame, TintMix, resolve_ref, scene_states, state_frame,
-    target_steps,
-};
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Easing, Spring, interpolate, spring};
+use crate::chrome::callout::HeaderCallout;
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::display::{DisplayList, Path, PathBuilder, Stroke};
 use crate::model::Voiceover;
+use crate::states::{BoundModel, FnModel as StateModel, SceneState, SetEntry, StateFrame, TintMix, walk_states};
+use crate::steps::FocusSpotlight as Focus;
 use crate::text::{Face, Style, line_metrics};
 use crate::theme::{ACCENT_GLOW, BG, BORDER_STRONG, MUTED, TEXT, content_box, tone};
 use crate::timing::{FPS, STEP_SETTLE_FRAMES, Segment};
@@ -144,8 +142,8 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let model = Arc::new(Model::new(input.scene)?);
     CURRENT.with(|c| *c.borrow_mut() = Some(model.clone()));
     let sm = state_model();
-    let states = scene_states(&sm, input.scene);
-    let steps = target_steps(&sm, input.scene);
+    let states = walk_states(&BoundModel { model: &sm, scene: input.scene }, input.scene);
+    let steps = crate::targets::target_steps_with(input.scene, |r| (sm.resolve)(input.scene, r));
     CURRENT.with(|c| *c.borrow_mut() = None);
     let shell = Shell::new(input.scene);
     let callout = HeaderCallout::new(input.scene);
@@ -288,7 +286,7 @@ impl SceneView for PlotView {
         let m = &self.model;
         let axes = &self.axes;
         let plot = &axes.plot;
-        let sf = state_frame(&self.states, f.segments, frame);
+        let sf = StateFrame::at(&self.states, f.segments, frame);
         // The step's own window: from its start (or its `when` words), or across its words when it traces.
         let (k, t) = match sf.step {
             None => (None, 1.0),
@@ -307,7 +305,7 @@ impl SceneView for PlotView {
             }
         };
         let s = StateFrame { t, ..sf };
-        let focus = Focus::from_steps(self.steps.clone(), f.segments, frame);
+        let focus = Focus::borrowed(&self.steps, f.segments, frame);
         let (was, now) = (m.state_params(s.before), m.state_params(s.now));
         let mut scope = expr::Scope::new();
         for (i, (name, v)) in now.iter().enumerate() {
@@ -330,7 +328,7 @@ impl SceneView for PlotView {
             let part = m.part(id).unwrap();
             let mix: TintMix = s.tint(&key);
             let tone_name = mix.main_tone().map(str::to_string).unwrap_or_else(|| m.part_tone(part));
-            let e = focus.at(&key);
+            let e = focus.emphasis(&key);
             Look {
                 color: tone(&tone_name).0,
                 opacity: appear(index as f64 + 1.0) * shown(id) * e.opacity * mix.dim_opacity(),
@@ -342,7 +340,7 @@ impl SceneView for PlotView {
         let callout = self.callout.as_ref();
         let aside_draw = |dl: &mut DisplayList, right: f32, top: f32| {
             if let Some(c) = callout {
-                c.draw(dl, right - c.width, top, &s);
+                c.draw(dl, right, top, &s);
             }
         };
         let aside = callout.map(|_| Aside { height: aside_h, draw: &aside_draw });
@@ -554,7 +552,6 @@ impl SceneView for PlotView {
             // TODO(marks): PenMarks of the scene's steps.
             // TODO(ink): the scene's ink.
         });
-        let _ = resolve_ref;
     }
 }
 

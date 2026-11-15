@@ -81,7 +81,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    /// The camera of `scene`, framing within `area`, the scene's `headerBox` (see `chrome::shell::header_box`).
+    /// The camera of `scene`, framing within `area`, the scene's `headerBox` (see `chrome::callout::header_box`).
     pub fn new(scene: &Value, refs: &StepRefs, area: (f64, f64)) -> Camera {
         let steps = scene_steps(scene);
         let mut shots = vec![None];

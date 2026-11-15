@@ -3,22 +3,24 @@
 //! ShapeNode.tsx, NodeCard.tsx, src/utils/graphLayout.ts and src/utils/tableLayout.ts.
 
 mod layout;
+pub mod model;
 mod node;
 mod table;
 mod text;
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
-use crate::chrome::callout::{Callouts, aside_height, draw_aside, has_callout, header_box};
+use crate::chrome::callout::{HeaderCallout, aside_height, draw_aside, has_callout, header_box};
 use crate::chrome::fittext::{Align, TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, end_dir, marker, skia, start_dir, strike, trim};
 use crate::display::{BoxStyle, DisplayList, Shadow, Stroke};
-use crate::graph_states::{SceneState, StateFrame, graph_states, state_frame};
-use crate::graph_targets::{Focus, as_bright_as, brighter, target_steps};
 use crate::item_marks::{BadgeSpec, EMPHASIS, EMPHASIS_GLOW, badges_of, change_tone};
+use crate::states::{SceneState, StateFrame, walk_states};
 use crate::steps::Emphasis;
+use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
+use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in};
 use crate::textfit::Fit;
 use crate::theme::{ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, BORDER_STRONG, DEL, MUTED, RAISED, TEXT, content_box, tone};
@@ -66,7 +68,7 @@ struct GraphView {
     table: Option<Table>,
     tables: Vec<TableLayout>,
     table_rows: Vec<Vec<TableRow>>,
-    callouts: Option<Callouts>,
+    callouts: Option<HeaderCallout>,
     legend: Vec<&'static str>,
     flowchart: bool,
     table_top: f64,
@@ -99,11 +101,11 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         return Err("a graph scene without nodes".into());
     }
     let json = input.scene;
-    let callouts = Callouts::new(json);
+    let callouts = HeaderCallout::new(json);
     let (fw, fh) = if has_callout(json) { header_box(json) } else { content_box(false) };
     let table_w = if scene.table.is_some() { crate::timing::js_round(fw * TABLE_SHARE) } else { 0.0 };
     let graph_box = (fw - if scene.table.is_some() { table_w + TABLE_GAP } else { 0.0 }, fh);
-    let states = graph_states(json);
+    let states = walk_states(&model::Model(json), json);
     let dir = graph_direction(scene.layout.as_deref(), &scene.nodes);
     let (layout, layout_scale) = fit_graph(&scene.nodes, &scene.edges, dir, graph_box);
     let (tables, table_rows) = match &scene.table {
@@ -175,7 +177,7 @@ impl GraphView {
 
     /// An edge's colour: a tone a step keeps on it, over its own change or highlight.
     fn tinted_tone(&self, base: EdgeTone, s: &StateFrame, key: &str) -> EdgeTone {
-        match s.tint(key).main() {
+        match s.tint(key).main_tone() {
             Some("accent") => EdgeTone { stroke: ACCENT, marker: marker_color("accent") },
             Some(t) => EdgeTone { stroke: tone(t).0, marker: marker_color(t) },
             None => base,
@@ -363,8 +365,8 @@ impl GraphView {
 impl SceneView for GraphView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
-        let s = state_frame(&self.states, f.segments, frame);
-        let focus = Focus::new(&self.targets, f.segments, frame);
+        let s = StateFrame::at(&self.states, f.segments, frame);
+        let focus = Focus::borrowed(&self.targets, f.segments, frame);
         let layer_stagger = 6f64.min((NODES_END - NODE_START) / ((self.layout.layer_count as f64) - 1.0).max(1.0));
         let edge_stagger = 4f64.min(
             (build_frames("graph") - NODES_END - EDGE_LABEL_END) / ((self.layout.edges.len() as f64) - 1.0).max(1.0),
@@ -375,15 +377,15 @@ impl SceneView for GraphView {
         };
         let node_emphasis = |n: &GraphNode| -> Emphasis {
             let own = match &n.group {
-                Some(g) => brighter(focus.of(&format!("n:{}", n.id)), focus.of(&format!("g:{g}"))),
-                None => focus.of(&format!("n:{}", n.id)),
+                Some(g) => brighter(focus.emphasis(&format!("n:{}", n.id)), focus.emphasis(&format!("g:{g}"))),
+                None => focus.emphasis(&format!("n:{}", n.id)),
             };
             let adjacent: Vec<Emphasis> = self
                 .edges
                 .iter()
                 .enumerate()
                 .filter(|(_, e)| e.from == n.id || e.to == n.id)
-                .map(|(i, _)| focus.of(&format!("e:{i}")))
+                .map(|(i, _)| focus.emphasis(&format!("e:{i}")))
                 .collect();
             as_bright_as(own, &adjacent)
         };
@@ -409,7 +411,7 @@ impl SceneView for GraphView {
                         &[0.0, 1.0],
                         CLAMP,
                     );
-                    self.draw_group(dl, g, appear, focus.of(&format!("g:{}", g.name)));
+                    self.draw_group(dl, g, appear, focus.emphasis(&format!("g:{}", g.name)));
                 }
                 for (i, routed) in self.layout.edges.iter().enumerate() {
                     let key = format!("e:{}", routed.edge);
@@ -417,13 +419,13 @@ impl SceneView for GraphView {
                     let built = interpolate(frame, &[edge_at(i), edge_at(i) + EDGE_DRAW], &[0.0, 1.0], CLAMP);
                     let tone = self.tinted_tone(self.edge_tone(&self.edges[routed.edge]), &s, &key);
                     let fade = s.tint(&key).dim_opacity();
-                    self.draw_edge(dl, i, built.min(shown), frame, tone, focus.of(&key), fade);
+                    self.draw_edge(dl, i, built.min(shown), frame, tone, focus.emphasis(&key), fade);
                 }
                 for placed in &self.layout.nodes {
                     let base = &self.nodes[placed.node];
                     let shown_state = if s.t < 0.5 { s.before } else { s.now };
                     let mut node = base.clone();
-                    if let Some(crate::graph_states::Val::Text(b)) = shown_state.values.get(&format!("b:{}", base.id))
+                    if let Some(model::Val::Text(b)) = model::val(shown_state, &format!("b:{}", base.id))
                         && Some(b.as_str()) != Some(base.marks.badge.as_deref().unwrap_or(""))
                     {
                         node.marks.badge = if b.is_empty() { None } else { Some(b.clone()) };
@@ -459,7 +461,7 @@ impl SceneView for GraphView {
                     }
                     let key = format!("e:{}", routed.edge);
                     let mix = s.tint(&key);
-                    let tinted = mix.main().map(|t| tone(t).0);
+                    let tinted = mix.main_tone().map(|t| tone(t).0);
                     let appear = interpolate(
                         frame,
                         &[edge_at(i) + EDGE_DRAW - 4.0, edge_at(i) + EDGE_LABEL_END],
@@ -467,7 +469,7 @@ impl SceneView for GraphView {
                         CLAMP,
                     ) * edge_shown(&self.edges[routed.edge], routed.edge)
                         * mix.dim_opacity();
-                    self.draw_edge_label(dl, i, appear, focus.of(&key), tinted);
+                    self.draw_edge_label(dl, i, appear, focus.emphasis(&key), tinted);
                 }
             });
             // TODO(marks): PenMarks over the graph and its table.
@@ -481,10 +483,11 @@ impl SceneView for GraphView {
 impl GraphView {
     fn draw_table(&self, dl: &mut DisplayList, s: &StateFrame, focus: &Focus, frame: f64) {
         let (Some(t), false) = (&self.table, self.tables.is_empty()) else { return };
-        let cell =
-            |row: usize, col: usize| brighter(focus.of(&format!("c:{col}")), focus.of(&format!("x:{row}/{col}")));
+        let cell = |row: usize, col: usize| {
+            brighter(focus.emphasis(&format!("c:{col}")), focus.emphasis(&format!("x:{row}/{col}")))
+        };
         let row_emphasis = |row: usize| {
-            let own = focus.of(&format!("r:{row}"));
+            let own = focus.emphasis(&format!("r:{row}"));
             let o = (0..t.columns.len()).map(|c| cell(row, c).opacity).fold(own.opacity, f64::max);
             Emphasis { opacity: o, ..own }
         };
@@ -501,7 +504,7 @@ impl GraphView {
             row_at: &|i| NODES_END + 4.0 + i as f64 * 3.0,
             row_emphasis: &row_emphasis,
             cell_emphasis: &cell,
-            header_glow: &|i| focus.of(&format!("c:{i}")).glow,
+            header_glow: &|i| focus.emphasis(&format!("c:{i}")).glow,
         };
         table::draw_table(dl, &draw);
     }

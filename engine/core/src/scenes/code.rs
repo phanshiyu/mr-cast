@@ -8,8 +8,9 @@
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, clamped, interpolate, spring};
 use crate::camera::Camera;
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, fit_height};
-use crate::chrome::shell::{Shell, header_box};
+use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
 use crate::focus::line_focus_ranges;

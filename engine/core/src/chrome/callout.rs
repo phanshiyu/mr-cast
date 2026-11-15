@@ -1,12 +1,12 @@
 //! The header's callout box and change legend, and the content box of a scene that may have a callout
-//! (src/components/HeaderCallout.tsx, ChangeLegend.tsx, src/fit/shell.ts `headerBox`).
+//! (src/components/HeaderCallout.tsx, ChangeLegend.tsx, src/fit/callout.ts, src/fit/shell.ts `headerBox`).
 
-use super::fittext::{Align, TextOpts, draw_fit};
+use super::fittext::{Align, LineHeight, TextOpts, draw_fit, fit_height};
 use super::shell::shell_fits;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Shadow};
-use crate::graph_states::StateFrame;
 use crate::item_marks::{change_tone, change_word};
+use crate::states::StateFrame;
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::{Fit, Slot, fit_text};
 use crate::theme::{ACCENT, ACCENT_GLOW, ACCENT_SOFT, BORDER_STRONG, MUTED, RAISED, TEXT, content_box};
@@ -50,15 +50,18 @@ pub fn header_box(scene: &Value) -> (f64, f64) {
     }
 }
 
-/// A scene's callouts, fitted.
-pub struct Callouts {
+/// The scene's callout in a box at the right end of the header (`HeaderCallout`): a formula or a comparison that steps
+/// replace. The old text fades out as the new one fades in, the box glows while a step's new text settles, and it
+/// keeps the width of the widest callout, so it never jumps.
+pub struct HeaderCallout {
     fits: Vec<(String, Fit)>,
     pub width: f32,
     pub height: f32,
 }
 
-impl Callouts {
-    pub fn new(scene: &Value) -> Option<Callouts> {
+impl HeaderCallout {
+    /// The scene's callouts, fitted; None when no state shows one.
+    pub fn new(scene: &Value) -> Option<HeaderCallout> {
         let fits: Vec<(String, Fit)> = texts(scene)
             .into_iter()
             .map(|t| {
@@ -71,9 +74,10 @@ impl Callouts {
         }
         let width = fits.iter().map(|f| f.1.width).fold(0.0, f64::max) + 2.0 * PAD_X;
         let height = fits.iter().map(|f| f.1.height).fold(0.0, f64::max) + 2.0 * PAD_Y;
-        Some(Callouts { fits, width: width as f32, height: height as f32 })
+        Some(HeaderCallout { fits, width: width as f32, height: height as f32 })
     }
 
+    /// Text centred in the box's padding box (inside its 1.5px border).
     fn text(&self, dl: &mut DisplayList, value: &str, opacity: f64, w: f32, h: f32) {
         let Some((_, fit)) = self.fits.iter().find(|f| f.0 == value) else { return };
         if value.is_empty() || opacity <= 0.0 {
@@ -81,7 +85,7 @@ impl Callouts {
         }
         dl.group(|dl| {
             dl.fade(opacity as f32);
-            let fh = fit.height as f32;
+            let fh = fit_height(fit, LineHeight::Fit);
             draw_fit(
                 dl,
                 fit,
@@ -92,35 +96,52 @@ impl Callouts {
         });
     }
 
-    /// Draws the box with its top right at (right, top).
+    /// The header's aside for the box: its height, and `draw` (which draws it with its top right at (right, top)).
+    pub fn aside<'a>(&'a self, draw: &'a dyn Fn(&mut DisplayList, f32, f32)) -> super::shell::Aside<'a> {
+        super::shell::Aside { height: self.height, draw }
+    }
+
+    /// Draws the box with its top right at (right, top), at the state frame `s`.
     pub fn draw(&self, dl: &mut DisplayList, right: f32, top: f32, s: &StateFrame) {
         let (w, h) = (self.width, self.height);
         let (was, now) = (s.before.callout.as_str(), s.now.callout.as_str());
         let on = |v: &str| if v.is_empty() { 0.0 } else { 1.0 };
-        let shown = on(was) + (on(now) - on(was)) * s.t;
+        let shown = (on(was) + (on(now) - on(was)) * s.t).clamp(0.0, 1.0) as f32;
+        if shown <= 0.0 {
+            return;
+        }
         let changed = was != now;
         let glow = if changed { s.lit as f32 } else { 0.0 };
-        dl.group(|dl| {
-            dl.translate(right - w, top);
-            dl.fade(shown as f32);
-            let mut b =
-                BoxStyle::fill(RAISED).radius(14.0).border(if glow > 0.0 { ACCENT } else { BORDER_STRONG }, 1.5);
-            if glow > 0.0 {
-                b = b.shadow(Shadow::new(0.0, 0.0, 30.0 * glow, ACCENT_GLOW));
-                let mut ring = Shadow::new(0.0, 0.0, 0.0, ACCENT_SOFT);
-                ring.spread = 3.0 * glow;
-                b = b.shadow(ring);
-            } else {
-                b = b.shadow(Shadow::new(0.0, 10.0, 26.0, Color::rgba8(0, 0, 0, 0.35)));
-            }
-            dl.rect(0.0, 0.0, w, h, b);
-            if changed {
-                self.text(dl, was, 1.0 - s.t, w, h);
-                self.text(dl, now, s.t, w, h);
-            } else {
-                self.text(dl, now, 1.0, w, h);
-            }
-        });
+        let mut b = BoxStyle::fill(RAISED).radius(14.0).border(if glow > 0.0 { ACCENT } else { BORDER_STRONG }, 1.5);
+        if glow > 0.0 {
+            // `0 0 0 3px soft, 0 0 30px glow`: the first shadow is on top, so it draws last.
+            b = b.shadow(Shadow::new(0.0, 0.0, 30.0 * glow, ACCENT_GLOW));
+            let mut ring = Shadow::new(0.0, 0.0, 0.0, ACCENT_SOFT);
+            ring.spread = 3.0 * glow;
+            b = b.shadow(ring);
+        } else {
+            b = b.shadow(Shadow::new(0.0, 10.0, 26.0, Color::rgba8(0, 0, 0, 0.35)));
+        }
+        let body = |dl: &mut DisplayList| {
+            dl.group(|dl| {
+                dl.translate(right - w, top);
+                dl.rect(0.0, 0.0, w, h, b.clone());
+                if changed {
+                    self.text(dl, was, 1.0 - s.t, w, h);
+                    self.text(dl, now, s.t, w, h);
+                } else {
+                    self.text(dl, now, 1.0, w, h);
+                }
+            });
+        };
+        // The box fades as one, its text and border together (CSS group opacity).
+        if shown < 0.999 {
+            dl.push_layer(shown);
+            body(dl);
+            dl.pop_layer();
+        } else {
+            body(dl);
+        }
     }
 }
 
@@ -172,14 +193,14 @@ pub fn draw_legend(dl: &mut DisplayList, used: &[&str], right: f32, top: f32) {
 
 /// A row of change legend and callout as the graph's header holds them, bottom-aligned: the aside's height, and how
 /// to draw it with its right edge at `right` and its top at `top`.
-pub fn aside_height(legend: &[&str], callouts: Option<&Callouts>) -> f32 {
+pub fn aside_height(legend: &[&str], callouts: Option<&HeaderCallout>) -> f32 {
     legend_size(legend).1.max(callouts.map_or(0.0, |c| c.height))
 }
 
 pub fn draw_aside(
     dl: &mut DisplayList,
     legend: &[&str],
-    callouts: Option<&Callouts>,
+    callouts: Option<&HeaderCallout>,
     s: Option<&StateFrame>,
     right: f32,
     top: f32,

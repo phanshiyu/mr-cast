@@ -2,17 +2,18 @@
 //! field that holds a reference to the object it points at. A port of src/components/MemoryDiagram.tsx and
 //! src/utils/memoryLayout.ts.
 
-use super::array::header_box;
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::arrays::{self, is_pointer, member_key, pointer_ref, split_member_key};
+use crate::chrome::callout::{HeaderCallout, header_box};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, fit_height};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
-use crate::state::{
-    Focus, HeaderCallout, SceneState, StateFrame, as_bright_as, brighter, hex_alpha, is_pointer, js_string, list,
-    member_key, ordered_entries, pointer_ref, scene_states, split_member_key, state_frame, target_steps,
-};
+use crate::states::{SceneState, StateFrame, hex_alpha, js_string, list, ordered_entries, walk_states};
+use crate::steps::{FocusSpotlight, as_bright_as, brighter};
+use crate::targets::target_steps;
+
 use crate::steps::Emphasis;
 use crate::textfit::{Fit, Slot, fit_text};
 use crate::theme::{ACCENT, ACCENT_GLOW, BG, BORDER, BORDER_STRONG, FAINT, MUTED, RAISED, TEXT};
@@ -192,14 +193,14 @@ fn layout_memory(scene: &Value, states: &[SceneState], (bw, bh): (f64, f64)) -> 
         }
     };
     for f in list(scene, "frames") {
-        ordered_entries(f.get("vars").unwrap_or(&Value::Null)).iter().for_each(|(_, v)| note(v));
+        ordered_entries(f.get("vars")).iter().for_each(|(_, v)| note(v));
     }
     for o in list(scene, "objects") {
-        ordered_entries(o.get("fields").unwrap_or(&Value::Null)).iter().for_each(|(_, v)| note(v));
+        ordered_entries(o.get("fields")).iter().for_each(|(_, v)| note(v));
     }
     for step in list(scene, "steps") {
         if let Some(set) = step.get("set") {
-            ordered_entries(set).iter().for_each(|(_, v)| note(v));
+            ordered_entries(Some(set)).iter().for_each(|(_, v)| note(v));
         }
     }
     let values: HashMap<String, Fit> = texts
@@ -220,7 +221,7 @@ fn layout_memory(scene: &Value, states: &[SceneState], (bw, bh): (f64, f64)) -> 
             .fold(REF_W, f64::max)
     };
     let card = |key: String, title: Fit, members: Option<&Value>, kind: &str, owner: &str| -> Card {
-        let rows: Vec<Row> = ordered_entries(members.unwrap_or(&Value::Null))
+        let rows: Vec<Row> = ordered_entries(members)
             .iter()
             .enumerate()
             .map(|(i, (name, _))| Row {
@@ -534,8 +535,8 @@ struct MemoryView {
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let scene = input.scene;
     let shell = Shell::new(scene);
-    let box_size = header_box(scene, &shell);
-    let states = scene_states(scene);
+    let box_size = header_box(scene);
+    let states = walk_states(&arrays::Model(scene), scene);
     let layout = layout_memory(scene, &states, box_size)?;
     Ok(Box::new(MemoryView {
         targets: target_steps(scene),
@@ -756,8 +757,8 @@ impl SceneView for MemoryView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
         let l = &self.layout;
-        let s = state_frame(&self.states, f.segments, frame);
-        let focus = Focus::new(&self.targets, f.segments, frame);
+        let s = StateFrame::at(&self.states, f.segments, frame);
+        let focus = FocusSpotlight::borrowed(&self.targets, f.segments, frame);
         let (bw, bh) = self.box_size;
         let stage = ((bw - l.width * l.scale) / 2.0, (bh - l.height * l.scale) / 2.0);
 
@@ -768,8 +769,8 @@ impl SceneView for MemoryView {
                 Spring::damping(17.0).with_stiffness(130.0),
             )
         };
-        let shown = |key: &str| s.shown_of(key) * landed(key);
-        let row_emphasis = |key: &str| brighter(focus.of(key), focus.of(&owner_of(key)));
+        let shown = |key: &str| s.shown(key) * landed(key);
+        let row_emphasis = |key: &str| brighter(focus.emphasis(key), focus.emphasis(&owner_of(key)));
 
         // Where each arrow is drawn: between its old and new object while the step re-routes it.
         let before = l.arrows_of(s.before);
@@ -827,14 +828,14 @@ impl SceneView for MemoryView {
         let draw_in = interpolate(frame, &[ARROWS_AT, ARROWS_AT + ARROW_FRAMES], &[0.0, 1.0], CLAMP);
         let card_emphasis = |ci: usize| -> Emphasis {
             let c = &l.cards[ci];
-            let mut others: Vec<Emphasis> = c.rows.iter().map(|r| focus.of(&r.key)).collect();
+            let mut others: Vec<Emphasis> = c.rows.iter().map(|r| focus.emphasis(&r.key)).collect();
             others.extend(raws.iter().filter(|a| a.target == c.key).map(|a| row_emphasis(&a.key)));
-            as_bright_as(focus.of(&c.key), &others)
+            as_bright_as(focus.emphasis(&c.key), &others)
         };
         let drawn: Vec<Drawn> = raws
             .iter()
             .filter_map(|d| {
-                let e = brighter(row_emphasis(&d.key), Emphasis { opacity: 0.0, ..focus.of(&d.target) });
+                let e = brighter(row_emphasis(&d.key), Emphasis { opacity: 0.0, ..focus.emphasis(&d.target) });
                 let changed = if s.value_changed(&d.key) { s.lit } else { 0.0 };
                 let out = Drawn {
                     progress: d.progress * draw_in,

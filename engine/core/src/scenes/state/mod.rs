@@ -11,11 +11,12 @@ use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, skia, strike, trim};
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
-use crate::graph_targets::{Focus, as_bright_as, target_steps};
 use crate::item_marks::{
     EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, draw_pill, emphasis_card, pill,
 };
 use crate::steps::Emphasis;
+use crate::steps::{FocusSpotlight as Focus, as_bright_as};
+use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in};
 use crate::theme::{ACCENT, ACCENT_GLOW, BORDER_STRONG, DEL, MUTED, RAISED, TEXT, content_box};
 use crate::timing::{FPS, build_frames};
@@ -358,7 +359,7 @@ impl StateView {
 impl SceneView for StateView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
-        let focus = Focus::new(&self.targets, f.segments, frame);
+        let focus = Focus::borrowed(&self.targets, f.segments, frame);
         let layout = &self.layout;
         let used: Vec<&str> = self.legend.to_vec();
         let aside_fn = |dl: &mut DisplayList, right: f32, top: f32| draw_aside(dl, &used, None, None, right, top);
@@ -392,7 +393,7 @@ impl SceneView for StateView {
                 }
                 for (i, &draw) in draws.iter().enumerate() {
                     let pulse = pulse_of(frame, &self.pulse_ats(&format!("t:{i}"), f.segments));
-                    self.draw_transition(dl, i, draw, pulse, focus.of(&format!("t:{i}")));
+                    self.draw_transition(dl, i, draw, pulse, focus.emphasis(&format!("t:{i}")));
                 }
                 for (i, placed) in layout.states.iter().enumerate() {
                     let id = &self.scene.states[placed.state].id;
@@ -402,15 +403,15 @@ impl SceneView for StateView {
                         .iter()
                         .enumerate()
                         .filter(|(_, t)| t.from == *id || t.to == *id)
-                        .map(|(k, _)| focus.of(&format!("t:{k}")))
+                        .map(|(k, _)| focus.emphasis(&format!("t:{k}")))
                         .collect();
-                    let em = as_bright_as(focus.of(&format!("s:{id}")), &adjacent);
+                    let em = as_bright_as(focus.emphasis(&format!("s:{id}")), &adjacent);
                     self.draw_card(dl, i, f, em);
                 }
                 for (i, &draw) in draws.iter().enumerate() {
                     let pulse = pulse_of(frame, &self.pulse_ats(&format!("t:{i}"), f.segments));
                     let appear = interpolate(draw, &[0.55, 1.0], &[0.0, 1.0], CLAMP);
-                    self.draw_label(dl, i, appear, pulse, focus.of(&format!("t:{i}")));
+                    self.draw_label(dl, i, appear, pulse, focus.emphasis(&format!("t:{i}")));
                 }
             });
             // TODO(marks): PenMarks.

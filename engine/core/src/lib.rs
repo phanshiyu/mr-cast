@@ -3,6 +3,7 @@
 //! Nothing here touches threads, files or processes, so the crate builds for wasm32-unknown-unknown.
 
 pub mod anim;
+pub mod arrays;
 pub mod camera;
 pub mod chrome;
 pub mod color;
@@ -10,8 +11,6 @@ pub mod diagram;
 pub mod display;
 pub mod focus;
 pub mod geom;
-pub mod graph_states;
-pub mod graph_targets;
 pub mod icons;
 pub mod item_marks;
 pub mod marks;
@@ -21,7 +20,6 @@ pub mod raster;
 pub mod review;
 pub mod scenes;
 pub mod speech;
-pub mod state;
 pub mod states;
 pub mod steps;
 pub mod targets;

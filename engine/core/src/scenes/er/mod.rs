@@ -11,12 +11,13 @@ use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, skia, strike, trim};
 use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
-use crate::graph_targets::{Focus, as_bright_as, brighter, target_steps};
 use crate::icons;
 use crate::item_marks::{
     EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, draw_pill, emphasis_card, pill,
 };
 use crate::steps::Emphasis;
+use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
+use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in, line_metrics};
 use crate::theme::{
     ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, ADD_BG, BORDER, BORDER_STRONG, DEL, FAINT, MUTED, RAISED, TEXT, content_box,
@@ -164,14 +165,14 @@ fn end_mark(dl: &mut DisplayList, end: &layout::RelationEnd, many: bool, color: 
 
 impl ErView {
     fn entity_emphasis(&self, focus: &Focus, id: &str) -> Emphasis {
-        let own = focus.of(&format!("e:{id}"));
+        let own = focus.emphasis(&format!("e:{id}"));
         let mut others: Vec<Emphasis> = Vec::new();
         if let Some(e) = self.scene.entities.iter().find(|e| e.id == id) {
-            others.extend((0..e.fields.len()).map(|k| focus.of(&format!("f:{id}/{k}"))));
+            others.extend((0..e.fields.len()).map(|k| focus.emphasis(&format!("f:{id}/{k}"))));
         }
         for (i, r) in self.scene.relations.iter().enumerate() {
             if r.from == id || r.to == id {
-                others.push(focus.of(&format!("r:{i}")));
+                others.push(focus.emphasis(&format!("r:{i}")));
             }
         }
         as_bright_as(own, &others)
@@ -180,7 +181,7 @@ impl ErView {
     fn relation_emphasis(&self, focus: &Focus, i: usize) -> Emphasis {
         let rel = &self.scene.relations[self.layout.relations[i].relation];
         let ends = brighter(self.entity_emphasis(focus, &rel.from), self.entity_emphasis(focus, &rel.to));
-        brighter(focus.of(&format!("r:{i}")), Emphasis { glow: 0.0, bar: 0.0, ..ends })
+        brighter(focus.emphasis(&format!("r:{i}")), Emphasis { glow: 0.0, bar: 0.0, ..ends })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -399,7 +400,7 @@ impl ErView {
                 );
             }
             for (k, field) in entity.fields.iter().enumerate() {
-                let lit = focus.of(&format!("f:{}/{k}", entity.id)).glow;
+                let lit = focus.emphasis(&format!("f:{}/{k}", entity.id)).glow;
                 self.draw_field(
                     dl,
                     field,
@@ -536,7 +537,7 @@ impl ErView {
 impl SceneView for ErView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
-        let focus = Focus::new(&self.targets, f.segments, frame);
+        let focus = Focus::borrowed(&self.targets, f.segments, frame);
         let layout = &self.layout;
         let used: Vec<&str> = self.legend.to_vec();
         let aside_fn = |dl: &mut DisplayList, right: f32, top: f32| draw_aside(dl, &used, None, None, right, top);

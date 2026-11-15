@@ -9,8 +9,8 @@ use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, Path, PathBuilder, Shadow, Stroke};
-use crate::scenes::step_state::brighter;
 use crate::steps::Emphasis;
+use crate::steps::brighter;
 use crate::steps::step_spring;
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::Fit;
@@ -129,13 +129,13 @@ fn value_label(dl: &mut DisplayList, v: &ValueLabel, color: Color, appear: f64) 
 
 /// `emphasisAt` of Chart.tsx: bright through its label, its series or itself, glowing through its series or itself.
 fn emphasis_at(ctx: &Ctx, s: usize, i: usize) -> Emphasis {
-    let own = brighter(ctx.focus.at(&format!("s:{s}")), ctx.focus.at(&format!("p:{s}/{i}")));
-    Emphasis { opacity: own.opacity.max(ctx.focus.at(&format!("l:{i}")).opacity), ..own }
+    let own = brighter(ctx.focus.emphasis(&format!("s:{s}")), ctx.focus.emphasis(&format!("p:{s}/{i}")));
+    Emphasis { opacity: own.opacity.max(ctx.focus.emphasis(&format!("l:{i}")).opacity), ..own }
 }
 
 fn emphasis_of(scene: &ChartScene, ctx: &Ctx, i: usize) -> Emphasis {
     let op = (0..scene.series.len()).map(|s| emphasis_at(ctx, s, i).opacity).fold(f64::NEG_INFINITY, f64::max);
-    Emphasis { opacity: op, ..ctx.focus.at(&format!("l:{i}")) }
+    Emphasis { opacity: op, ..ctx.focus.emphasis(&format!("l:{i}")) }
 }
 
 impl Column {
@@ -423,7 +423,7 @@ impl Column {
                 let at = (tl.draw_at)(s) + tl.draw_frames * ((layout.xs[i] - layout.xs[0]) / (x1 - x0).max(1.0));
                 let pop = interpolate(frame, &[at, at + 8.0], &[0.0, 1.0], CLAMP);
                 let lit = emphasis_at(ctx, s, i);
-                let glow = lit.glow.max(ctx.focus.at(&format!("l:{i}")).glow);
+                let glow = lit.glow.max(ctx.focus.emphasis(&format!("l:{i}")).glow);
                 let r = ((8.0 + 3.0 * glow) * pop) as f32;
                 if r > 0.0
                     && let Some(c) = PathBuilder::from_circle(layout.xs[i] as f32, layout.y(values[s][i]) as f32, r)
