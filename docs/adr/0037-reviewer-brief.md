@@ -158,6 +158,12 @@ scene mix line (ADR 0038) on success, as added context for Claude.
   (added plus removed) of its hunks that some scene draws. A code scene counts the lines its frames put on screen, a
   flow step's `code` its range, and a compare hunk cell the lines it reads; a tests scene names a hunk and draws none
   of its lines. It is a fact with no threshold and no warning, since a writer may choose to show little of a core part.
+- **Amended 2026-11-15: a snippet shows the hunk lines it sits on.** A video showed a core part's code in a snippet
+  and read "0 of 1,311" with the "no scene shows its hunks" warning still up, since a snippet is no hunk of the diff.
+  A code scene on a snippet now counts the added lines of a hunk of the same file whose new-file numbers are among the
+  snippet's (a snippet keeps the file's line numbers), for the coverage line, the core-part warning and "core on
+  screen". That warning no longer suggests `from`, which `validate` rejects on a code scene; it suggests a code scene,
+  a flow stop's `code`, a compare cell or a reading item.
 
 `validate` writes `guide.md` beside the video: the six answers, the parts with their files, the check-first list as
 `path:line  what`, and the questions for the author. `render --out` copies it beside the MP4, as it does `review.md`.

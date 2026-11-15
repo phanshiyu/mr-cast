@@ -28,6 +28,6 @@ Give each decision its `source`: `"description"` or `"commit <sha>"` when the au
 ## What validate reports
 
 - `brief:` shows which questions have an answer and a scene, and where `why` comes from.
-- `core on screen:` says, for each core part, how many of its changed lines some scene draws, such as `Finding and checking refs 14 of 386 changed lines`. It is a fact, not a warning: a core part that is the point of the change and shows 14 lines of 386 is a choice to make on purpose.
+- `core on screen:` says, for each core part, how many of its changed lines some scene draws, such as `Finding and checking refs 14 of 386 changed lines`. It is a fact, not a warning: a core part that is the point of the change and shows 14 lines of 386 is a choice to make on purpose. A code scene on a snippet counts the hunk's added lines that sit on its lines.
 - `scenes:` counts the scenes by type and names the longest run of one type.
 - A question with no answer or no scene; an `untested` item or a tests-scene gap that names a file a changed test names or imports, with that test file named; a core or support part with no `does`, or an `after` naming no part; a cite, a hunk or a line that does not exist; a hunk of source or tests in no part; a core part no scene shows; changed tests with no test named on screen; a before and after that is spoken and never drawn; a test name that is none the branch adds, or a count of tests that is not the map's; a diagram that repeats an earlier one; a flow `payload` that is a sentence; lines of a code scene that never come into view.

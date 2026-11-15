@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { QUESTIONS, decisionsOf, missingQuestions } from '../../shared/brief.mjs';
-import { shownHunkIds } from '../../shared/shown-hunks.mjs';
+import { shownHunkIds, snippetHunkIds } from '../../shared/shown-hunks.mjs';
 import { isGapRow } from '../../shared/tests.mjs';
 import { lineSpan } from '../../shared/review.mjs';
 import { didYouMean } from './suggest.mjs';
@@ -204,9 +204,9 @@ function checkRefs(brief, hunks, look, warnings) {
     });
 }
 
-/** The hunk ids a scene shows or cites: a code scene's, a flow stop's, a compare cell's, a tests scene's, a reading item's, and `from`. */
-function shownHunks(sb) {
-  const ids = new Set();
+/** The hunk ids a scene shows or cites: a code scene's (and the diff hunks a snippet it shows sits on), a flow stop's, a compare cell's, a tests scene's, a reading item's, and `from`. */
+function shownHunks(sb, hunks) {
+  const ids = new Set(snippetHunkIds(sb.scenes, hunks));
   for (const s of sb.scenes) {
     if (!isObj(s)) continue;
     for (const id of shownHunkIds(s)) ids.add(id);
@@ -276,15 +276,15 @@ function checkDoes(brief, warnings) {
   });
 }
 
-function checkParts(sb, brief, map, warnings) {
+function checkParts(sb, brief, map, hunks, warnings) {
   if (!Array.isArray(brief.parts)) return;
   checkDoes(brief, warnings);
-  const shown = shownHunks(sb);
+  const shown = shownHunks(sb, hunks);
   brief.parts.forEach((p, i) => {
     if (p?.weight !== 'core') return;
     if (!(Array.isArray(p.hunks) ? p.hunks : []).some((id) => shown.has(id)))
       warnings.push(
-        `brief.parts[${i}] ("${p.name}"): a core part, but no scene shows or cites any of its hunks; show one in a code scene, or cite them in a scene's "from"`,
+        `brief.parts[${i}] ("${p.name}"): a core part, but no scene shows or cites any of its hunks; show one in a code scene, a flow stop's "code" or a compare cell, or list one in a reading scene's items`,
       );
   });
   if (!Array.isArray(map?.files)) return;
@@ -427,7 +427,7 @@ export function checkBrief(sb, hunks, { branch, map: written = null, root = null
   checkRefs(sb.brief, hunks, look, warnings);
   checkAnswers(sb, sb.brief, warnings);
   checkAlternatives(sb, sb.brief, warnings);
-  checkParts(sb, sb.brief, map, warnings);
+  checkParts(sb, sb.brief, map, hunks, warnings);
   checkEvidence(sb.brief, map, warnings);
   checkCoveredClaims(sb, sb.brief, map, warnings);
 }

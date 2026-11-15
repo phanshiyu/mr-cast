@@ -28,6 +28,39 @@ export function shownHunkIds(scene) {
 const changedRows = (hunk) => list(hunk?.lines).flatMap((l, i) => (l?.type === 'context' ? [] : [i]));
 
 /**
+ * The changed lines of diff hunks that a snippet's lines sit on: a snippet keeps its file's own line numbers, so an
+ * added line of a hunk of the same file whose new-file number is among the snippet's `rows` (indexes into its lines)
+ * is on screen when the snippet is. Hunk id to a set of indexes into `hunk.lines`.
+ */
+function snippetOverlap(snippet, rows, hunks) {
+  const numbers = new Set(
+    rows.flatMap((i) => (typeof snippet.lines?.[i]?.newLine === 'number' ? [snippet.lines[i].newLine] : [])),
+  );
+  const out = new Map();
+  for (const [id, hunk] of Object.entries(hunks ?? {})) {
+    if (hunk?.status === 'source' || hunk?.file !== snippet.file) continue;
+    const hit = list(hunk.lines).flatMap((l, i) => (l?.type === 'add' && numbers.has(l.newLine) ? [i] : []));
+    if (hit.length) out.set(id, hit);
+  }
+  return out;
+}
+
+/** The ids of diff hunks whose added lines a code scene on a snippet puts on screen, whatever part of it a frame has. */
+export function snippetHunkIds(scenes, hunks) {
+  return list(scenes).flatMap((scene) => {
+    const snippet = scene?.type === 'code' ? hunks?.[scene.hunkId] : undefined;
+    if (snippet?.status !== 'source') return [];
+    return [
+      ...snippetOverlap(
+        snippet,
+        list(snippet.lines).map((_, i) => i),
+        hunks,
+      ).keys(),
+    ];
+  });
+}
+
+/**
  * The changed lines of each hunk that some scene draws, as hunk id to a set of indexes into `hunk.lines`: a code
  * scene's lines that a frame has on screen (`codeLines` gives them by scene index, from the player's own layout; a
  * scene it leaves out counts all of its hunk's changed lines), the lines a flow step's `code` shows, and the lines a
@@ -44,7 +77,16 @@ export function shownHunkLines(scenes, hunks, codeLines = new Map()) {
     if (set.size) out.set(id, set);
   };
   list(scenes).forEach((scene, i) => {
-    if (scene?.type === 'code') add(scene.hunkId, codeLines.get(i) ?? changedRows(hunks?.[scene.hunkId]));
+    if (scene?.type === 'code') {
+      const own = hunks?.[scene.hunkId];
+      const rows = codeLines.get(i) ?? changedRows(own);
+      add(scene.hunkId, rows);
+      // A snippet draws no changed line of its own, but it draws the hunks' added lines that sit on its file's lines.
+      if (own?.status === 'source') {
+        const on = codeLines.get(i) ?? list(own.lines).map((_, k) => k);
+        for (const [id, hit] of snippetOverlap(own, on, hunks)) add(id, hit);
+      }
+    }
     if (scene?.type === 'flow')
       for (const st of list(scene.steps)) {
         const id = codeHunkId(st?.code);

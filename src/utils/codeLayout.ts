@@ -306,7 +306,7 @@ export function layoutCode(scene: CodeScene, hunk: Hunk): CodeLayout {
  * neither are the context rows the crop keeps around the focus. A removed line of a morph is on screen while its step
  * plays, so it counts as seen once cropped in.
  */
-function changedLineViews(hunk: Hunk, layout: CodeLayout): { index: number; seen: boolean }[] {
+function changedLineViews(hunk: Hunk, layout: CodeLayout, every = false): { index: number; seen: boolean }[] {
   const { slots, stepCount, metrics, viewportH, view } = layout;
   const rowOf = new Map<number, number>();
   slots.forEach((slot, r) => {
@@ -340,7 +340,7 @@ function changedLineViews(hunk: Hunk, layout: CodeLayout): { index: number; seen
   // they are context, not lines the writer asked to show. Without a focus every row is drawn and counts.
   const focused = slots.some((slot) => slot.step !== null);
   return hunk.lines.flatMap((line, index) => {
-    if (line.type === 'context') return [];
+    if (line.type === 'context' && !every) return [];
     const r = rowOf.get(index);
     // A line cropped away by a focus the scene chose is left out on purpose; only a line cropped in can be missed.
     if (r === undefined || (focused && slots[r]!.step === null)) return [];
@@ -353,9 +353,12 @@ export function unseenLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = l
   return changedLineViews(hunk, layout).flatMap((l) => (l.seen ? [] : [l.index]));
 }
 
-/** The indexes into `hunk.lines` of the changed lines some frame of the scene has on screen, ascending. */
+/**
+ * The indexes into `hunk.lines` of the changed lines some frame of the scene has on screen, ascending. A snippet has
+ * no changed line of its own, so for one every line it draws counts: the lines of the diff that sit on them are shown.
+ */
 export function shownLines(scene: CodeScene, hunk: Hunk, layout: CodeLayout = layoutCode(scene, hunk)): number[] {
-  return changedLineViews(hunk, layout).flatMap((l) => (l.seen ? [l.index] : []));
+  return changedLineViews(hunk, layout, hunk.status === 'source').flatMap((l) => (l.seen ? [l.index] : []));
 }
 
 /** How many rows of code the frame draws at once for this scene, so a step's lines can be sized to fit. */

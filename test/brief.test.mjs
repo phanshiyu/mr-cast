@@ -245,7 +245,7 @@ test('the map as extract writes it, files by kind with file, hunkIds and adds, g
 test('a core part that no scene shows or cites is named', async () => {
   const sb = board({ scenes: [text(ALL), code('h2')] });
   assert.deepEqual(await warningsOf(sb, {}), [
-    'brief.parts[0] ("The limiter"): a core part, but no scene shows or cites any of its hunks; show one in a code scene, or cite them in a scene\'s "from"',
+    'brief.parts[0] ("The limiter"): a core part, but no scene shows or cites any of its hunks; show one in a code scene, a flow stop\'s "code" or a compare cell, or list one in a reading scene\'s items',
   ]);
   const cited = board({ scenes: [text(ALL, { from: ['h1'] })] });
   assert.deepEqual(await warningsOf(cited, {}), []);
