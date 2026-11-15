@@ -42,7 +42,11 @@ fn timing_matches_the_js() {
         assert_eq!(scene_duration(&segments), case["duration"].as_f64().unwrap(), "case {n}: duration");
         for (f, w) in [0.0, 7.0, 45.0, 90.0, 200.0].iter().zip(case["spoken"].as_array().unwrap()) {
             let (index, word) = spoken_at(&segments, *f);
-            assert_eq!((index as u64, word as u64), (w["index"].as_u64().unwrap(), w["word"].as_u64().unwrap()), "case {n}: spokenAt({f})");
+            assert_eq!(
+                (index as u64, word as u64),
+                (w["index"].as_u64().unwrap(), w["word"].as_u64().unwrap()),
+                "case {n}: spokenAt({f})"
+            );
         }
     }
 }
@@ -102,8 +106,8 @@ fn text_fitting_matches_the_js() {
     for (n, case) in f["measures"].as_array().unwrap().iter().enumerate() {
         let font = &case["font"];
         let family = if font["family"] == "mono" { Family::Mono } else { Family::Sans };
-        let mut fo =
-            Font::new(family, font["weight"].as_f64().unwrap(), font["size"].as_f64().unwrap()).spacing(font["letterSpacing"].as_f64().unwrap());
+        let mut fo = Font::new(family, font["weight"].as_f64().unwrap(), font["size"].as_f64().unwrap())
+            .spacing(font["letterSpacing"].as_f64().unwrap());
         if font["upper"].as_bool().unwrap() {
             fo = fo.upper();
         }
@@ -140,7 +144,10 @@ fn springs_and_easings_match_remotion() {
     }
     for case in f["easings"].as_array().unwrap() {
         let t = case["t"].as_f64().unwrap();
-        assert!((Easing::Bezier(0.25, 0.1, 0.25, 1.0).apply(t) - case["bezier"].as_f64().unwrap()).abs() < 1e-9, "{case}");
+        assert!(
+            (Easing::Bezier(0.25, 0.1, 0.25, 1.0).apply(t) - case["bezier"].as_f64().unwrap()).abs() < 1e-9,
+            "{case}"
+        );
         assert!((Easing::OutCubic.apply(t) - case["outCubic"].as_f64().unwrap()).abs() < 1e-12, "{case}");
     }
 }

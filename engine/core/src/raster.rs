@@ -56,6 +56,16 @@ impl Default for Renderer {
 
 const SUBPIXEL: f32 = 4.0;
 
+/// Chrome on macOS draws glyphs heavier than their plain outlines: CoreText dilates the strokes and Skia lifts the
+/// coverage. A slight embolden and a coverage gamma, fitted to Remotion's stills, give the same weight of ink.
+const TEXT_EMBOLDEN: f32 = 0.2;
+const TEXT_GAMMA: f32 = 1.4;
+
+thread_local! {
+    static GAMMA_LUT: [u8; 256] =
+        std::array::from_fn(|i| ((i as f32 / 255.0).powf(1.0 / TEXT_GAMMA) * 255.0).round() as u8);
+}
+
 fn rrect(r: Rect, radius: f32) -> Option<Path> {
     let radius = radius.min(r.width() / 2.0).min(r.height() / 2.0).max(0.0);
     if radius <= 0.0 {
@@ -426,6 +436,7 @@ impl Renderer {
                 let m = Render::new(&[Source::Outline])
                     .format(Format::Alpha)
                     .offset(offset)
+                    .embolden(TEXT_EMBOLDEN)
                     .render(&mut scaler, id)
                     .filter(|img| img.placement.width > 0 && img.placement.height > 0)
                     .map(|img| {
@@ -434,7 +445,7 @@ impl Renderer {
                             top: -img.placement.top,
                             w: img.placement.width as usize,
                             h: img.placement.height as usize,
-                            data: img.data,
+                            data: img.data.iter().map(|&c| GAMMA_LUT.with(|t| t[c as usize])).collect(),
                         })
                     });
                 self.glyphs.insert(key, m.clone());
