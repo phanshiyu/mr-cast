@@ -30,6 +30,7 @@ import { checkTerminal } from './validate-terminal.mjs';
 import { checkTests } from './validate-tests.mjs';
 import { checkPreread } from './validate-preread.mjs';
 import { checkBrief } from './validate-brief.mjs';
+import { checkMix } from './validate-mix.mjs';
 
 const RISKS = ['low', 'medium', 'high'];
 const VIEWS = ['split', 'morph'];
@@ -748,6 +749,7 @@ async function validateScenes(
   checkReview(sb, hunks ?? {}, mode, errors, warnings, { preread });
   const branch = mode === 'diff' && !quick;
   checkBrief(sb, hunks ?? {}, { branch, map, root }, errors, warnings);
+  checkMix(sb, hunks ?? {}, { branch, map }, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   if (!errors.length) {
