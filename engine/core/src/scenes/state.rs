@@ -347,6 +347,12 @@ impl Focus {
         Focus { steps: target_steps(model, scene), spotlight: Spotlight::new(frame, &starts) }
     }
 
+    /// Focus from step targets computed once (`target_steps`), for a scene that resolves refs only when prepared.
+    pub fn from_steps(steps: HashMap<String, Vec<usize>>, segments: &[Segment], frame: f64) -> Focus {
+        let starts: Vec<f64> = segments.iter().skip(1).map(|s| s.from).collect();
+        Focus { steps, spotlight: Spotlight::new(frame, &starts) }
+    }
+
     pub fn at(&self, key: &str) -> Emphasis {
         self.spotlight.emphasis(self.steps.get(key).map_or(&[], Vec::as_slice))
     }
