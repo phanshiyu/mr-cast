@@ -1,6 +1,7 @@
 // Storyboard validation, mirroring src/types.ts. Returns human/LLM-readable error strings.
 
 import { expandLineRefs, focusStepOrder, sceneFocusRanges } from '../../shared/focus.mjs';
+import { shownHunkIds } from '../../shared/shown-hunks.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { cueWord, FPS, sceneDurationInFrames } from '../../shared/timing.mjs';
 import { checkGraph, checkIcon, checkNodeFields } from './validate-diagram.mjs';
@@ -274,11 +275,8 @@ function checkCodeSteps(scene, hunk, p, errors, warnings) {
 function checkCoverage(sb, hunks, audience, listed, errors, warnings) {
   const preread = audience === 'preread';
   const shownIds = sb.scenes.flatMap((s) => {
-    if (s?.type === 'code') return [s.hunkId];
-    if (s?.type === 'flow' && Array.isArray(s.steps)) return s.steps.map((st) => st?.code?.hunk);
     if (s?.type === 'reading' && preread) return [...listed];
-    if (s?.type === 'tests' && Array.isArray(s.tests)) return s.tests.map((t) => t?.hunkId);
-    return [];
+    return shownHunkIds(s);
   });
   const shown = new Set(shownIds.filter((id) => typeof id === 'string' && Object.hasOwn(hunks, id)));
   const skipped = new Set();

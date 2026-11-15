@@ -4,6 +4,7 @@
 // spoken, and tests that no scene names. Each is a warning that states the fact and what to look at; none says
 // which scene to use.
 
+import { shownHunkIds } from '../../shared/shown-hunks.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { plainText } from '../../shared/markup.mjs';
 
@@ -218,11 +219,7 @@ function checkTestNames(scenes, hunks, map, warnings) {
   if (!names.length) return;
   const isTestHunk = (id) => typeof id === 'string' && (hunkIds.has(id) || isTestFile(hunks?.[id]?.file ?? ''));
   const shown = scenes.some(
-    (s) =>
-      isObj(s) &&
-      (isTestHunk(s.hunkId) ||
-        list(s.tests).some((t) => isTestHunk(t?.hunkId)) ||
-        list(s.items).some((it) => isTestHunk(it?.hunkId))),
+    (s) => isObj(s) && (shownHunkIds(s).some(isTestHunk) || list(s.items).some((it) => isTestHunk(it?.hunkId))),
   );
   if (shown) return;
   const text = scenes.filter(isObj).flatMap((s) => drawn(s));

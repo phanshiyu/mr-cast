@@ -424,6 +424,46 @@ test('validate prints the brief line and writes guide.md, outline prints the lin
   }
 });
 
+const cell = (hunk, side, lines) => ({ hunk, side, lines });
+const compareOf = (...cells) => ({
+  type: 'compare',
+  answers: ['case'],
+  narration: 'Before and after.',
+  rows: cells.map(([a, b]) => ({ label: 'Row', cells: [a, b] })),
+});
+const flowOf = (hunk) => ({
+  type: 'flow',
+  answers: ['case'],
+  narration: 'One order.',
+  steps: [{ actor: 'limiter', action: 'counts', code: { hunk, lines: '11-12' } }],
+});
+
+test('lines of a hunk read in a compare cell or a flow stop count as showing the hunk', async () => {
+  const others = [text(ALL), code('h2')];
+  const inCompare = board({
+    scenes: [...others, compareOf([cell('h1', 'old', '10'), cell('h1', 'new', '11-12')])],
+  });
+  assert.deepEqual(await warningsOf(inCompare, {}), []);
+  const inFlow = board({ scenes: [...others, flowOf('h1')] });
+  assert.deepEqual(await warningsOf(inFlow, {}), []);
+  // The coverage line counts them too, tests included.
+  const result = await check(
+    board({ scenes: [...others, compareOf([cell('h1', 'old', '10'), cell('h3', 'new', '1-2')]), flowOf('h1')] }),
+  );
+  assert.deepEqual([result.errors, result.warnings], [[], []]);
+  assert.equal(result.coverage.shown, 3);
+  assert.deepEqual(result.coverage.tests, { shown: 1, total: 1 });
+});
+
+test('a test hunk in a compare cell or a flow stop is a test shown on screen', async () => {
+  const named = { ...map, tests: [{ path: 'test/limiter.test.js', covers: ['src/limiter.js'], adds: ['limits'] }] };
+  const sb = (extra) => board({ scenes: [text(ALL, { narration: 'No test is named here.' }), code('h1'), ...extra] });
+  const warns = async (extra) => (await check(sb(extra), { map: named })).warnings.filter((w) => /^tests:/.test(w));
+  assert.equal((await warns([code('h2')])).length, 1);
+  assert.deepEqual(await warns([compareOf([cell('h3', 'old', '1'), cell('h3', 'new', '1-2')])]), []);
+  assert.deepEqual(await warns([flowOf('h3')]), []);
+});
+
 test('outline reads a reading scene with no items, which draws the brief check list', () => {
   const reading = { type: 'reading', answers: ['check'], narration: 'Open these first.' };
   const storyboard = board({ scenes: [text(ALL), code('h1'), code('h2'), reading] });
