@@ -6,6 +6,7 @@ pub mod anim;
 pub mod chrome;
 pub mod color;
 pub mod display;
+pub mod focus;
 pub mod icons;
 pub mod markup;
 pub mod model;
