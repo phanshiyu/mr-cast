@@ -1,7 +1,7 @@
 //! The header callout: a formula or a comparison that steps replace, in a box at the right end of the header
 //! (src/components/HeaderCallout.tsx and src/fit/callout.ts).
 
-use super::state::StateFrame;
+use super::step_state::StateFrame;
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, fit_height};
 use crate::display::{BoxStyle, DisplayList, Shadow};
 use crate::textfit::{Fit, Slot, fit_text};
@@ -31,7 +31,7 @@ impl HeaderCallout {
             }
         };
         add(scene.get("callout"));
-        for step in super::state::list(scene.get("steps")) {
+        for step in super::step_state::list(scene.get("steps")) {
             add(step.get("callout"));
         }
         if texts.is_empty() {

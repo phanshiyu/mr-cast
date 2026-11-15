@@ -11,8 +11,10 @@ pub mod callout;
 pub mod chart;
 pub mod code;
 pub mod compare;
+pub mod er;
 pub mod files;
 pub mod flow;
+pub mod graph;
 pub mod layers;
 pub mod memory;
 pub mod placeholder;
@@ -21,6 +23,7 @@ pub mod reading;
 pub mod review;
 pub mod sequence;
 pub mod state;
+pub mod step_state;
 pub mod table;
 pub mod terminal;
 pub mod tests;
@@ -78,6 +81,9 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("sequence", sequence::prepare),
     ("timeline", timeline::prepare),
     ("layers", layers::prepare),
+    ("graph", graph::prepare),
+    ("state", state::prepare),
+    ("er", er::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).

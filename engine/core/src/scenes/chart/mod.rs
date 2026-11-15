@@ -13,7 +13,7 @@ mod pie;
 mod rows;
 
 use super::callout::HeaderCallout;
-use super::state::{self, Focus, Model, SceneState, SetEntry, StateFrame, list, state_frame};
+use super::step_state::{self as state, Focus, Model, SceneState, SetEntry, StateFrame, list, state_frame};
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::chrome::fittext::{TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::{Aside, Shell};

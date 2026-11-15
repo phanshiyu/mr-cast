@@ -9,7 +9,7 @@ use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, Path, PathBuilder, Shadow, Stroke};
-use crate::scenes::state::brighter;
+use crate::scenes::step_state::brighter;
 use crate::steps::Emphasis;
 use crate::steps::step_spring;
 use crate::text::{Face, Style, baseline_in, line_metrics, width};

@@ -1,7 +1,7 @@
 //! The plot scene's model and layout: a port of shared/plot.mjs (parts, axes, geometry, labels).
 
 use super::expr::{Expr, Scope};
-use crate::scenes::state::{SceneState, list};
+use crate::scenes::step_state::{SceneState, list};
 pub use crate::textfit::{Family, Font, measure};
 use serde_json::Value;
 use std::collections::HashMap;

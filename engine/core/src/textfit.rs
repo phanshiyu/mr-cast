@@ -502,3 +502,33 @@ pub fn fit_lines(lines: &[String], slot: &Slot, height: f64) -> Fit {
         line_height: slot.line_height,
     }
 }
+
+/// `fitText` for a slot whose width depends on the line count and size, as the JS lets `slot.width` be a function
+/// `(lines, size) => width`: a decision's diamond is narrower the more lines its question takes.
+pub fn fit_text_fn(text: &str, slot: &Slot, width: &dyn Fn(usize, f64) -> f64) -> Fit {
+    let runs = if slot.markup == Some(false) { vec![Run::plain(text)] } else { parse_markup(text) };
+    let attempt = |size: f64, max_lines: usize| -> Option<Wrapped> {
+        (1..=max_lines).find_map(|n| {
+            let w = wrap_runs(&runs, &slot.font(size), width(n, size), slot.balanced.unwrap_or(false), false);
+            (w.ok && w.lines.len() <= n).then_some(w)
+        })
+    };
+    if let Some(one) = slot.one_line_min {
+        let mut size = slot.size;
+        while size >= one {
+            if let Some(w) = attempt(size, 1) {
+                return done(text, slot, w, size, true);
+            }
+            size -= 1.0;
+        }
+    }
+    let mut size = slot.size;
+    while size >= slot.min {
+        if let Some(w) = attempt(size, slot.lines) {
+            return done(text, slot, w, size, true);
+        }
+        size -= 1.0;
+    }
+    let w = wrap_runs(&runs, &slot.font(slot.min), width(slot.lines, slot.min), false, true);
+    done(text, slot, w, slot.min, false)
+}

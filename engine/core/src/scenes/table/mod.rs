@@ -6,7 +6,7 @@
 mod layout;
 
 use super::callout::HeaderCallout;
-use super::state::{self, Focus, Model, SceneState, SetEntry, StateFrame, brighter, list, state_frame};
+use super::step_state::{self as state, Focus, Model, SceneState, SetEntry, StateFrame, brighter, list, state_frame};
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, drawn_width};

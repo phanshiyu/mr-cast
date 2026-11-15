@@ -69,11 +69,14 @@ fn source(name: &str) -> &'static [&'static str] {
 
 /// Icons without hand-copied paths: those in data/lucide.json (scripts/engine-icons.mjs), by component name.
 fn extra(name: &str) -> &'static [String] {
-    static ICONS: OnceLock<HashMap<String, Vec<String>>> = OnceLock::new();
-    ICONS
-        .get_or_init(|| serde_json::from_str(include_str!("../data/lucide.json")).expect("lucide.json"))
-        .get(name)
-        .map_or(&[], Vec::as_slice)
+    #[derive(serde::Deserialize)]
+    struct Lucide {
+        names: HashMap<String, usize>,
+        shapes: Vec<Vec<String>>,
+    }
+    static ICONS: OnceLock<Lucide> = OnceLock::new();
+    let data = ICONS.get_or_init(|| serde_json::from_str(include_str!("../data/lucide.json")).expect("lucide.json"));
+    data.names.get(name).map_or(&[], |&i| data.shapes[i].as_slice())
 }
 
 /// The component name of a kebab-case icon name: "building-2" is "Building2".
@@ -116,4 +119,28 @@ pub fn draw(dl: &mut DisplayList, name: &str, x: f32, y: f32, size: f32, color: 
 /// Draws the icon a storyboard names in kebab case ("server", "key-round"); nothing for a name the engine lacks.
 pub fn draw_named(dl: &mut DisplayList, kebab: &str, x: f32, y: f32, size: f32, color: Color, stroke_width: f32) {
     draw(dl, &component_name(kebab), x, y, size, color, stroke_width);
+}
+
+/// Draws the Lucide icon `name`, kebab-case as a storyboard writes it or its component name, as `draw` does;
+/// false when Lucide has no such icon.
+pub fn draw_lucide(
+    dl: &mut DisplayList,
+    name: &str,
+    x: f32,
+    y: f32,
+    size: f32,
+    color: Color,
+    stroke_width: f32,
+) -> bool {
+    if !has_lucide(name) {
+        return false;
+    }
+    draw(dl, &component_name(name), x, y, size, color, stroke_width);
+    true
+}
+
+/// Whether Lucide has an icon of this name.
+pub fn has_lucide(name: &str) -> bool {
+    let c = component_name(name);
+    !source(&c).is_empty() || !extra(&c).is_empty()
 }
