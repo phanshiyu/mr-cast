@@ -45,7 +45,7 @@ in the job summary without failing. [ADR 36](docs/adr/0036-biome-and-fallow.md) 
 To run `pnpm check` before every commit, run `git config core.hooksPath scripts/git-hooks` once in your clone.
 To skip `git blame` past the formatting commit, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 
-CI runs all of them on every push and pull request, with the unit tests on Node 22, 24 and 26. It also runs `pnpm audit`, a render, voice and player smoke test on Linux (`scripts/smoke.sh`), and an npm install of the packed tarball. The `ci-ok` check passes only when every job passes.
+CI runs all of them on every push and pull request, with the unit tests on Node 22, 24 and 26. It also audits the dependencies, failing only on an advisory that the base branch does not have ([ADR 40](docs/adr/0040-advisories-do-not-block-their-fix.md)), a render, voice and player smoke test on Linux (`scripts/smoke.sh`), and an npm install of the packed tarball. The `ci-ok` check passes only when every job passes.
 
 Run every `mr-cast` command in tests and experiments with a temporary `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` and `CLAUDE_CONFIG_DIR`, so nothing touches your own `~/.config/mr-cast`, `~/.cache/mr-cast` or `~/.claude`. `quality/shim.sh` does this.
 
@@ -70,7 +70,21 @@ Keep commits small, with a plain-prose subject. Never commit an MP4. Stills and 
 
 ## Releases
 
-CI publishes to npm, from `.github/workflows/publish.yml`. When CI passes on `main` and `package.json` holds a version that npm does not have yet, the workflow publishes it. To release, bump `version` in `package.json` and add that version's section to [CHANGELOG.md](CHANGELOG.md), in one commit on `main`. Never run `npm publish` locally. [ADR 12](docs/adr/0012-publish-from-ci.md) says why.
+CI publishes to npm, from `.github/workflows/publish.yml`. Never run `npm publish` locally. [ADR 12](docs/adr/0012-publish-from-ci.md) says why. There are two ways a release starts.
+
+**A version you bump.** Bump `version` in `package.json` and add that version's section to [CHANGELOG.md](CHANGELOG.md), in one commit on `main`. When CI passes on `main` and npm does not have that version yet, the workflow publishes it.
+
+**A dependency update, with no one involved.** Renovate merges its minor and patch updates by itself once `ci-ok` passes. When a package that ships with mr-cast changed, CI releases the next patch version, and no one needs to bump anything. The packages that ship are the `dependencies` in `package.json`, `tailwindcss` (whose CSS goes into `dist/`), and everything they depend on in `pnpm-lock.yaml`. Updates to lint, format, type and test tools never release. [ADR 41](docs/adr/0041-release-dependency-updates-from-ci.md) says why. The `dependency-plan` job in `publish.yml` checks for a change to a shipped package:
+
+- after CI passes on a push to `main` whose head commit is a Renovate security update (its message has `[SECURITY]`);
+- every Monday at 03:17 UTC;
+- when you run the Publish workflow by hand with **dependencies** ticked. Without it, a hand-started run re-renders the videos for the current version, as before.
+
+It makes nothing when the head of `main` is a release commit or already tagged, when CI has not passed on the head commit, when `package.json` is ahead of the last tag, or when no shipped package changed since the last `v*` tag. Otherwise it raises the patch version, adds a "Dependency updates" entry to `CHANGELOG.md` that names the packages, commits and tags as `github-actions[bot]`, and pushes both in one push over SSH with a deploy key. The push starts CI on the release commit, and when CI passes the Publish workflow publishes the version like any other version bump.
+
+The ruleset on `main` requires the `ci-ok` check, and the release commit cannot have passed it before it exists. So the push uses a read-write deploy key ("Release push from publish.yml"), stored as the secret `RELEASE_PUSH_KEY` in the `prod` environment and on the ruleset's bypass list with the mode "Always allow". The GitHub Actions app cannot be a bypass actor on a personal repository. Everyone else still goes through `ci-ok`. Without the key, the job fails at the push and nothing is published.
+
+An advisory in a dependency never blocks a pull request, unless the pull request adds it. `.github/workflows/audit.yml` audits `main` every day, fails, and keeps one open issue that lists the advisories until the fix merges.
 
 ### Example videos and stills
 

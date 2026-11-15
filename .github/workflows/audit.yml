@@ -1,0 +1,81 @@
+name: Audit main
+
+# Checks main itself against the advisory database, every day and on every push to main. It is not part of ci-ok, so an
+# advisory on main never blocks the pull request that fixes it (docs/adr/0040-advisories-do-not-block-their-fix.md).
+# It fails loudly instead, and keeps one open issue that lists the advisories, which it closes once main is clean.
+# Renovate's vulnerability alerts open the fix.
+on:
+  schedule:
+    - cron: '23 1 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Audit the dependencies on main
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      ISSUE_TITLE: Dependencies on main have advisories
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Audit the lock file and the tree an npm user gets
+        id: audit
+        run: |
+          pnpm audit --json > "$RUNNER_TEMP/pnpm.json" || true
+          mkdir -p "$RUNNER_TEMP/consumer"
+          node -e 'const p = require("./package.json"); console.log(JSON.stringify({ name: "consumer", version: "1.0.0", private: true, dependencies: p.dependencies }))' > "$RUNNER_TEMP/consumer/package.json"
+          (cd "$RUNNER_TEMP/consumer" && npm install --package-lock-only --ignore-scripts && { npm audit --json > "$RUNNER_TEMP/npm.json" || true; })
+          # audit-new.mjs exits 1 for advisories and 2 when an audit did not run; the larger code wins.
+          pnpm_status=0; npm_status=0
+          node scripts/audit-new.mjs "$RUNNER_TEMP/pnpm.json" --plain > "$RUNNER_TEMP/pnpm.md" || pnpm_status=$?
+          node scripts/audit-new.mjs "$RUNNER_TEMP/npm.json" --plain > "$RUNNER_TEMP/npm.md" || npm_status=$?
+          {
+            echo "Found by the audit of main at ${GITHUB_SHA} ([run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}))."
+            printf '\npnpm audit, from pnpm-lock.yaml:\n\n'
+            cat "$RUNNER_TEMP/pnpm.md"
+            printf '\nnpm audit, from the dependencies an npm user installs:\n\n'
+            cat "$RUNNER_TEMP/npm.md"
+          } > "$RUNNER_TEMP/report.md"
+          cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+          echo "status=$((pnpm_status > npm_status ? pnpm_status : npm_status))" >> "$GITHUB_OUTPUT"
+      # A status of 2 means an audit did not run, which says nothing about main, so only the failure is reported.
+      - name: Open, update or close the issue
+        if: steps.audit.outputs.status != '2'
+        env:
+          STATUS: ${{ steps.audit.outputs.status }}
+        run: |
+          number=$(gh issue list --state open --search "\"$ISSUE_TITLE\" in:title" --json number,title --jq "map(select(.title == \"$ISSUE_TITLE\")) | .[0].number // empty")
+          if [ "$STATUS" = 0 ]; then
+            if [ -n "$number" ]; then gh issue close "$number" --comment "main has no advisories now (run $GITHUB_RUN_ID)."; fi
+          elif [ -n "$number" ]; then
+            gh issue edit "$number" --body-file "$RUNNER_TEMP/report.md"
+          else
+            gh issue create --title "$ISSUE_TITLE" --body-file "$RUNNER_TEMP/report.md"
+          fi
+      - name: Fail when main has advisories
+        if: steps.audit.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.audit.outputs.status }}
+        run: |
+          echo "::error title=The audit of main failed::Status $STATUS (1: advisories, listed in the job summary and the open issue titled $ISSUE_TITLE; 2: an audit did not run)."
+          exit 1

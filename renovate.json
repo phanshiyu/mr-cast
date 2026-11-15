@@ -5,6 +5,7 @@
   "labels": ["dependencies"],
   "platformAutomerge": true,
   "automergeType": "pr",
+  "rebaseWhen": "behind-base-branch",
   "minimumReleaseAge": "3 days",
   "internalChecksFilter": "strict",
   "platformCommit": "enabled",

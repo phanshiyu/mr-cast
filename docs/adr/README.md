@@ -19,7 +19,7 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0009](0009-highlight-check.md) | The lit part matches the words: a linter plus one fresh audit subagent | Accepted; audit superseded by 0019 |
 | [0010](0010-primitive-picker.md) | A primitive picker: one hidden skill, an index by kind of idea, one file per scene | Superseded by 0016, then 0019 |
 | [0011](0011-deterministic-prune.md) | Pruning is decided by the CLI; the agent never deletes by hand | Accepted |
-| [0012](0012-publish-from-ci.md) | Publish to npm only from CI, with trusted publishing | Accepted |
+| [0012](0012-publish-from-ci.md) | Publish to npm only from CI, with trusted publishing | Accepted; amended by 0041 |
 | [0013](0013-evaluation-harness.md) | Evaluate skill changes with blind graded reviewers, in isolated config | Accepted |
 | [0014](0014-article-first-pipeline.md) | Article first: write a teaching article, test it with a reader, then adapt it | Superseded by 0019 |
 | [0015](0015-skill-restructure.md) | Restructure the skill: schema out, branches into references, checks into the CLI | Accepted; references superseded by 0019 |
@@ -44,3 +44,5 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0034](0034-fixes-from-the-worked-examples.md) | What ten worked examples changed: traced plot parts start undrawn, moves span words, tspan boxes, chart prefix, and nine more fixes | Accepted |
 | [0035](0035-bounds-from-the-0.28-review.md) | Bounds from the 0.28 review: picture downloads from public hosts only, finite expressions, and a world outline loaded on demand | Accepted |
 | [0036](0036-biome-and-fallow.md) | Biome lints and formats, and fallow finds unused code, both in `pnpm check` and CI | Accepted |
+| [0040](0040-advisories-do-not-block-their-fix.md) | An advisory on main must not block the pull request that fixes it: audits compare with the base, and main is audited on a schedule | Accepted |
+| [0041](0041-release-dependency-updates-from-ci.md) | Release dependency updates from CI when a shipped package changed, without a manual step | Accepted |

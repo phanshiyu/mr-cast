@@ -5,12 +5,25 @@ name: Publish
 # (docs/adr/0021-example-videos-as-release-assets.md, docs/adr/0022-shard-the-example-renders.md).
 # Started by hand, it also re-renders the examples for the version in package.json. A run that finds the version's
 # release still a draft, such as "Re-run all jobs" after a shard failed, renders and attaches the videos again.
+#
+# A release is also made without a version bump by hand when a package that ships with mr-cast changed
+# (docs/adr/0041-release-dependency-updates-from-ci.md): after CI passes on a push to main whose head commit is a
+# Renovate security update, every Monday, and when started by hand with "dependencies" ticked. The dependency jobs only
+# bump the patch version, commit, tag and push it, over SSH with a deploy key. That push starts CI on the release
+# commit, and when CI passes the publish job below publishes the version, like any other version bump.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
   workflow_dispatch:
+    inputs:
+      dependencies:
+        description: Release the dependency updates since the last tag, if a shipped package changed, instead of re-rendering this version
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,7 +34,7 @@ env:
 jobs:
   publish:
     name: Publish to npm
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && !inputs.dependencies) || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
     runs-on: ubuntu-26.04
     timeout-minutes: 15
     # Only the npm publish is serialized, so a version bump never waits behind an earlier version's renders.
@@ -40,7 +53,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - uses: ./.github/actions/setup
+      - uses: ./.github/actions/setup-uncached
       # Trusted publishing: npm checks this run's GitHub OIDC identity against the package's trusted
       # publisher (phanshiyu/mr-cast, publish.yml), so no token is stored. Needs npm 11.5.1 or later.
       - name: Check the version
@@ -60,6 +73,8 @@ jobs:
         run: pnpm pack --out mr-cast.tgz
       - name: Publish
         if: steps.check.outputs.publish == 'true'
+        env:
+          VERSION: ${{ steps.check.outputs.version }}
         run: |
           npm --version
           if ! npm publish mr-cast.tgz --access public > "$RUNNER_TEMP/publish.log" 2>&1; then
@@ -69,7 +84,137 @@ jobs:
             exit 1
           fi
           cat "$RUNNER_TEMP/publish.log"
-          echo "::notice::Published ${{ steps.check.outputs.version }}"
+          echo "::notice::Published $VERSION"
+
+  # A release without a version bump by hand is two jobs: plan, then push. The plan reads the repository and holds no
+  # write access; the push holds the deploy key and runs none of the repository's code. Publishing is the publish job's,
+  # after CI passes on the release commit. docs/adr/0041-release-dependency-updates-from-ci.md says why.
+  dependency-plan:
+    name: Plan a dependency release
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        github.event_name == 'schedule' ||
+        (github.event_name == 'workflow_dispatch' && inputs.dependencies) ||
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && contains(github.event.workflow_run.head_commit.message, '[SECURITY]'))
+      )
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    # One release at a time, queued behind a running one. GitHub keeps only the newest queued run, which is enough:
+    # every run decides from the head of main, and the push below is refused if main moved.
+    concurrency:
+      group: publish
+      cancel-in-progress: false
+    # actions: read lets the gate see that CI passed on main's head.
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      release: ${{ steps.gate.outputs.release }}
+      version: ${{ steps.gate.outputs.version }}
+      base: ${{ steps.gate.outputs.base }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Decide whether a release is due
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          skip() { echo "::notice::$1"; echo "release=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          sha=$(git rev-parse HEAD)
+          if git log -1 --format=%s | grep -Eq '^Release [0-9]+\.[0-9]+\.[0-9]+'; then
+            skip "The head of main is a release commit."
+          fi
+          tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          [ -n "$tag" ] || skip "There is no v* tag to compare with."
+          [ "$(git rev-parse "$tag^{commit}")" != "$sha" ] || skip "The head of main is already tagged $tag."
+          git merge-base --is-ancestor "$tag" HEAD || skip "$tag is not behind the head of main."
+          version=$(node -p "require('./package.json').version")
+          [ "v$version" = "$tag" ] || skip "package.json says $version but the latest tag is $tag, so a version bump is waiting for the publish job."
+          green=$(gh run list --workflow ci.yml --commit "$sha" --event push --status success --json databaseId --jq length)
+          [ "$green" -gt 0 ] || skip "CI has not passed on $sha, so nothing is released from it."
+          git show "$tag:pnpm-lock.yaml" > "$RUNNER_TEMP/old-lock.yaml"
+          node scripts/dependency-release.mjs "$RUNNER_TEMP/old-lock.yaml" pnpm-lock.yaml > "$RUNNER_TEMP/plan.json"
+          cat "$RUNNER_TEMP/plan.json"
+          [ "$(node -p "require('$RUNNER_TEMP/plan.json').release")" = true ] || skip "No package that ships changed since $tag."
+          next=$(node -p "require('$RUNNER_TEMP/plan.json').version")
+          name=$(node -p "require('./package.json').name")
+          ! npm view "$name@$next" version > /dev/null 2>&1 || skip "$name@$next is already on npm."
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "base=$sha" >> "$GITHUB_OUTPUT"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Bump the patch version and note the packages in the changelog
+        if: steps.gate.outputs.release == 'true'
+        run: |
+          node scripts/dependency-release.mjs "$RUNNER_TEMP/old-lock.yaml" pnpm-lock.yaml --apply > /dev/null
+          git diff --stat
+      - name: Keep what the push job needs
+        if: steps.gate.outputs.release == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dependency-release
+          path: |
+            package.json
+            CHANGELOG.md
+          if-no-files-found: error
+          retention-days: 3
+
+  # Pushes the release commit and tag over SSH with the deploy key in the prod environment. It checks nothing out and runs
+  # nothing from the repository: it takes two files from the plan and refuses anything but a version line and new
+  # changelog lines. The deploy key is on the main ruleset's bypass list, because the release commit cannot have passed
+  # ci-ok before it exists; the GitHub Actions app cannot be on that list for a personal repository.
+  dependency-push:
+    name: Commit, tag and push the release
+    needs: dependency-plan
+    if: needs.dependency-plan.outputs.release == 'true'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    environment: prod
+    permissions: {}
+    env:
+      VERSION: ${{ needs.dependency-plan.outputs.version }}
+      BASE: ${{ needs.dependency-plan.outputs.base }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dependency-release
+          path: ${{ runner.temp }}/release
+      # One atomic push, so the commit and its tag land together or not at all. If main moved since the plan, the push
+      # is refused and the run fails; the next run starts from the new head.
+      - name: Commit, tag and push with the deploy key
+        env:
+          RELEASE_PUSH_KEY: ${{ secrets.RELEASE_PUSH_KEY }}
+        run: |
+          umask 077
+          printf '%s\n' "$RELEASE_PUSH_KEY" > "$RUNNER_TEMP/release_key"
+          chmod 600 "$RUNNER_TEMP/release_key"
+          # GitHub's published ed25519 host key, from https://api.github.com/meta.
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/release_key -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts -o StrictHostKeyChecking=yes"
+          git init -q repo && cd repo
+          git remote add origin "git@github.com:${GITHUB_REPOSITORY}.git"
+          git fetch -q --depth=1 origin "$BASE"
+          git checkout -q --detach FETCH_HEAD
+          cp "$RUNNER_TEMP/release/package.json" "$RUNNER_TEMP/release/CHANGELOG.md" .
+          [ "$(git diff --name-only | sort | tr '\n' ' ')" = 'CHANGELOG.md package.json ' ] || { echo "::error::The plan changed more than package.json and CHANGELOG.md"; exit 1; }
+          [ "$(git diff --numstat -- package.json | cut -f1,2)" = "$(printf '1\t1')" ] || { echo "::error::The plan changed more than one line of package.json"; exit 1; }
+          git diff -U0 -- package.json | grep -qx "+  \"version\": \"$VERSION\"," || { echo "::error::The line it changed is not the version $VERSION"; exit 1; }
+          [ "$(git diff --numstat -- CHANGELOG.md | cut -f2)" = 0 ] || { echo "::error::The plan removed lines from CHANGELOG.md"; exit 1; }
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package.json CHANGELOG.md
+          git commit -q -m "Release $VERSION" -m "Dependency updates since the last release changed a package that ships with mr-cast. Released by CI from publish.yml."
+          git tag "v$VERSION"
+          git push --atomic origin HEAD:refs/heads/main "refs/tags/v$VERSION"
+          echo "::notice::Pushed Release $VERSION. CI runs on it, and the publish job publishes it when CI passes."
+      - name: Delete the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release_key" "$RUNNER_TEMP/known_hosts"
 
   release:
     name: Open the release as a draft
@@ -127,23 +272,19 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ env.SHA }}
+          fetch-depth: 0
           persist-credentials: false
-      - uses: ./.github/actions/setup
-      - id: versions
-        run: echo "remotion=$(node -p "require('./node_modules/@remotion/renderer/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Cache Chrome Headless Shell
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .cache/mr-cast/remotion
-          key: chrome-${{ runner.os }}-remotion-${{ steps.versions.outputs.remotion }}
-      - name: Cache the Kitten voice model
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .cache/mr-cast/kitten
-          key: kitten-tts-mini-0.8-c0272566
+      # The checkout above is the head of main as the event gives it, never a ref this run was handed. The commit to
+      # render is moved to only when it is on main, so a manual start cannot build code that never went through main.
+      - name: Check out the commit to render, if it is on main
+        run: |
+          git merge-base --is-ancestor "$SHA" origin/main || { echo "::error::$SHA is not on main, so it is not rendered."; exit 1; }
+          git checkout --detach "$SHA"
+      - uses: ./.github/actions/setup-uncached
       - run: pnpm build
-      - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "${{ matrix.shard }}/6"
+      - run: node scripts/render-examples.mjs "$RUNNER_TEMP/media" --shard "$SHARD/6"
+        env:
+          SHARD: ${{ matrix.shard }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: media-${{ matrix.shard }}
