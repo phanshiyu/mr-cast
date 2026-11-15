@@ -4,7 +4,7 @@
 
 use crate::color::Color;
 use crate::display::{BoxStyle, Cmd, DisplayList, Item, Paint, Shadow, Stroke};
-use crate::text::{ShapedRun, font_ref};
+use crate::text::{Glyph, ShapedRun, font_at};
 use std::collections::HashMap;
 use std::sync::Arc;
 use swash::scale::{Render, ScaleContext, Source};
@@ -381,7 +381,7 @@ impl Renderer {
                 let inv = t.invert().unwrap_or_default();
                 for g in &run.glyphs {
                     let (dx, dy) = t.map_xy(x + g.x, y + g.y);
-                    if let Some((m, ix, iy)) = self.glyph(run, g.id, size, dx, dy) {
+                    if let Some((m, ix, iy)) = self.glyph(run, g, size, dx, dy) {
                         blit_with(target, &m, ix, iy, clip, &|px, py| {
                             let (ux, uy) = inv.map_xy(px + 0.5, py + 0.5);
                             paint_at(paint, ux, uy).fade(op)
@@ -575,7 +575,7 @@ impl Renderer {
         let mut buf = vec![0.0f32; (w * h) as usize];
         for g in &run.glyphs {
             if let Some((m, ix, iy)) =
-                self.glyph(run, g.id, size, g.x * s + margin as f32, g.y * s + (ascent + margin) as f32)
+                self.glyph(run, g, size, g.x * s + margin as f32, g.y * s + (ascent + margin) as f32)
             {
                 for row in 0..m.h {
                     for col in 0..m.w {
@@ -603,12 +603,13 @@ impl Renderer {
 
     /// A glyph's coverage for a pen at device (x, y): the cached mask, relative to the pen's whole pixel,
     /// and that pixel.
-    fn glyph(&mut self, run: &ShapedRun, id: u16, size: f32, x: f32, y: f32) -> Option<(Arc<AlphaMask>, i32, i32)> {
+    fn glyph(&mut self, run: &ShapedRun, g: &Glyph, size: f32, x: f32, y: f32) -> Option<(Arc<AlphaMask>, i32, i32)> {
+        let id = g.id;
         let (ix, iy) = (x.floor(), y.floor());
         let fx = ((x - ix) * SUBPIXEL).floor() as u8;
         let fy = ((y - iy) * SUBPIXEL).floor() as u8;
         let key = GlyphKey {
-            face: run.style.face as u8,
+            face: g.font,
             id,
             weight: run.style.weight.to_bits(),
             css_size: run.style.size.to_bits(),
@@ -619,9 +620,9 @@ impl Renderer {
         let mask = match self.glyphs.get(&key) {
             Some(m) => m.clone(),
             None => {
-                let font = font_ref(run.style.face);
-                let mut scaler =
-                    self.scaler.builder(font).size(size).hint(false).normalized_coords(run.coords.iter()).build();
+                let font = font_at(g.font);
+                let own = if g.font == run.style.face as u8 { run.coords.clone() } else { run.style.coords_in(g.font) };
+                let mut scaler = self.scaler.builder(font).size(size).hint(false).normalized_coords(own.iter()).build();
                 let offset = Vector::new(fx as f32 / SUBPIXEL, -(fy as f32) / SUBPIXEL);
                 let m = Render::new(&[Source::Outline])
                     .format(Format::Alpha)
@@ -663,7 +664,7 @@ impl Renderer {
         let size = run.style.size * t.sy.abs();
         for g in &run.glyphs {
             let (dx, dy) = t.map_xy(x + g.x, y + g.y);
-            if let Some((m, ix, iy)) = self.glyph(run, g.id, size, dx, dy) {
+            if let Some((m, ix, iy)) = self.glyph(run, g, size, dx, dy) {
                 blit(target, &m, ix, iy, color, clip);
             }
         }
