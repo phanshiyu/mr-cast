@@ -116,10 +116,27 @@ pub fn frame_size(scale: f32) -> (u32, u32) {
 
 /// Renders frame `frame` at `scale` with a caller-held renderer; the pixmap is premultiplied RGBA.
 pub fn render_frame_with(project: &Project, frame: u32, scale: f32, r: &mut FrameRenderer) -> Pixmap {
-    let mut p = r.backdrop(scale).clone();
-    let dl = build_frame(project, frame);
-    r.renderer.draw(&dl, &mut p, tiny_skia::Transform::from_scale(scale, scale));
+    render_list(&build_frame(project, frame), scale, r)
+}
+
+/// Rasterizes a frame's display list over the backdrop.
+pub fn render_list(dl: &DisplayList, scale: f32, r: &mut FrameRenderer) -> Pixmap {
+    let (w, h) = frame_size(scale);
+    let mut p = Pixmap::new(w, h).expect("frame size");
+    render_list_into(dl, scale, r, &mut p);
     p
+}
+
+/// Rasterizes a frame's display list over the backdrop into `out`, a pixmap of [`frame_size`]. Reusing one
+/// pixmap per thread saves the page faults of a fresh 8 MB frame each time, a large share of a frame's cost.
+pub fn render_list_into(dl: &DisplayList, scale: f32, r: &mut FrameRenderer, out: &mut Pixmap) {
+    out.data_mut().copy_from_slice(r.backdrop(scale).data());
+    r.renderer.draw(dl, out, tiny_skia::Transform::from_scale(scale, scale));
+}
+
+/// Renders frame `frame` into `out` with a caller-held renderer and pixmap.
+pub fn render_frame_into(project: &Project, frame: u32, scale: f32, r: &mut FrameRenderer, out: &mut Pixmap) {
+    render_list_into(&build_frame(project, frame), scale, r, out);
 }
 
 thread_local! {

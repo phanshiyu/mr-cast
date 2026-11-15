@@ -6,11 +6,13 @@
 //! Frames render in parallel, in order-preserving chunks, and stream to ffmpeg as yuv420p.
 
 mod encode;
+mod mkv;
 
 use mrc_core::{Project, render_frame, timing};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Instant;
 
 fn usage() -> ExitCode {
@@ -105,19 +107,73 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
     };
     frames.dedup();
     let scale: f32 = f.get("scale").map_or(Ok(1.0), |s| s.parse()).map_err(|_| "bad --scale")?;
-    let (w, h) = mrc_core::frame_size(scale);
+    let (w_px, h_px) = mrc_core::frame_size(scale);
     let encoder = f.get("encoder").map_or("x264", String::as_str);
     let out = f.get("out").map_or("out.mp4", String::as_str);
-    let mut sink = encode::Sink::open(encoder, out, w, h)?;
+    let cfr = f.get("cfr").is_some_and(|v| v == "yes");
+    let mut sink = encode::Sink::open(encoder, out, w_px, h_px, !cfr)?;
     let prepared = start.elapsed();
-    let chunk = rayon::current_num_threads() * 4;
+    let chunk = rayon::current_num_threads() * 8;
+    thread_local! {
+        static WORK: std::cell::RefCell<Option<(mrc_core::FrameRenderer, mrc_core::Pixmap)>> = const { std::cell::RefCell::new(None) };
+    }
+    // A frame whose display list matches the frame before draws the same pixels, so it reuses them: most frames
+    // of a scene that has settled, between caption words, are such repeats.
+    let mut last: Option<(u64, Arc<Vec<u8>>)> = None;
+    let mut repeats = 0usize;
     for part in frames.chunks(chunk) {
-        let rendered: Vec<Vec<u8>> = part.par_iter().map(|&n| encode::yuv420(&render_frame(&p, n, scale))).collect();
-        for frame in rendered {
-            sink.write(frame)?;
+        let lists: Vec<(mrc_core::display::DisplayList, u64)> = part
+            .par_iter()
+            .map(|&n| {
+                let dl = mrc_core::build_frame(&p, n);
+                let h = dl.fingerprint();
+                (dl, h)
+            })
+            .collect();
+        let fresh: Vec<bool> = (0..lists.len())
+            .map(|i| {
+                let prev = if i == 0 { last.as_ref().map(|l| l.0) } else { Some(lists[i - 1].1) };
+                prev != Some(lists[i].1)
+            })
+            .collect();
+        let rendered: Vec<Option<Arc<Vec<u8>>>> = lists
+            .par_iter()
+            .zip(&fresh)
+            .map(|((dl, _), &fresh)| {
+                if !fresh {
+                    return None;
+                }
+                let mut buf = sink.pool.lock().unwrap().pop().unwrap_or_default();
+                WORK.with(|w| {
+                    let mut w = w.borrow_mut();
+                    let (r, pix) = w.get_or_insert_with(|| {
+                        (mrc_core::FrameRenderer::default(), mrc_core::Pixmap::new(w_px, h_px).unwrap())
+                    });
+                    mrc_core::render_list_into(dl, scale, r, pix);
+                    encode::yuv420(pix, &mut buf);
+                });
+                Some(Arc::new(buf))
+            })
+            .collect();
+        for ((frame, (_, h)), &n) in rendered.into_iter().zip(&lists).zip(part) {
+            let fresh = frame.is_some();
+            let frame = match frame {
+                Some(f) => f,
+                None => {
+                    repeats += 1;
+                    last.as_ref().expect("a repeat follows a frame").1.clone()
+                }
+            };
+            last = Some((*h, frame.clone()));
+            // With timestamps a repeat is left out, but the last frame is always sent so the video ends on time.
+            if fresh || !sink.vfr || Some(&n) == frames.last() {
+                sink.write((n - frames[0]) as u64, frame)?;
+            }
         }
     }
+    drop(last);
     sink.finish()?;
+    eprintln!("{repeats} frames repeat the one before and were not drawn again");
     let wall = start.elapsed().as_secs_f64();
     eprintln!(
         "{} frames in {:.2} s ({:.1} frames/s), prepared in {:.0} ms, encoder {encoder}",
@@ -129,12 +185,70 @@ fn render(f: &HashMap<String, String>) -> Result<(), String> {
     Ok(())
 }
 
+/// Times one thread's work per frame, part by part: building the display list, rasterizing, converting to yuv.
+fn bench(f: &HashMap<String, String>) -> Result<(), String> {
+    let p = load(f)?;
+    let total = p.frame_count();
+    let frames: Vec<u32> = range(f.get("frames").map_or("..", String::as_str), total)?
+        .step_by(f.get("every").map_or(Ok(10), |s| s.parse()).map_err(|_| "bad --every")?)
+        .collect();
+    let mut r = mrc_core::FrameRenderer::default();
+    let (pw, ph) = mrc_core::frame_size(1.0);
+    let mut pix = mrc_core::Pixmap::new(pw, ph).unwrap();
+    let mut buf = Vec::new();
+    r.renderer.profile = Some(HashMap::new());
+    let (mut build, mut raster, mut yuv) = (0.0, 0.0, 0.0);
+    for &n in &frames {
+        let t = Instant::now();
+        let dl = mrc_core::build_frame(&p, n);
+        build += t.elapsed().as_secs_f64();
+        let t = Instant::now();
+        mrc_core::render_list_into(&dl, 1.0, &mut r, &mut pix);
+        raster += t.elapsed().as_secs_f64();
+        let t = Instant::now();
+        encode::yuv420(&pix, &mut buf);
+        yuv += t.elapsed().as_secs_f64();
+    }
+    let k = 1000.0 / frames.len() as f64;
+    let mut kinds: Vec<_> = r.renderer.profile.take().unwrap().into_iter().collect();
+    kinds.sort_by(|a, b| b.1.total_cmp(&a.1));
+    eprintln!("{}", kinds.iter().map(|(n, t)| format!("{n} {:.2} ms", t * k)).collect::<Vec<_>>().join(", "));
+    eprintln!(
+        "{} frames, per frame on one thread: build {:.2} ms, raster {:.2} ms, yuv {:.2} ms",
+        frames.len(),
+        build * k,
+        raster * k,
+        yuv * k
+    );
+    Ok(())
+}
+
+/// Checks that frames the renderer would skip as repeats do draw the same pixels as the frame before.
+fn check_repeats(f: &HashMap<String, String>) -> Result<(), String> {
+    let p = load(f)?;
+    let frames: Vec<u32> = range(f.get("frames").map_or("..", String::as_str), p.frame_count())?.collect();
+    let bad: Vec<u32> = frames
+        .par_windows(2)
+        .filter_map(|w| {
+            let (a, b) = (mrc_core::build_frame(&p, w[0]), mrc_core::build_frame(&p, w[1]));
+            if a.fingerprint() != b.fingerprint() {
+                return None;
+            }
+            (render_frame(&p, w[0], 1.0).data() != render_frame(&p, w[1], 1.0).data()).then_some(w[1])
+        })
+        .collect();
+    eprintln!("{} of {} repeats draw different pixels: {:?}", bad.len(), frames.len() - 1, &bad[..bad.len().min(20)]);
+    Ok(())
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let Some(cmd) = args.first() else { return usage() };
     let result = flags(&args[1..]).and_then(|f| match cmd.as_str() {
         "render" => render(&f),
         "still" => still(&f),
+        "bench" => bench(&f),
+        "check-repeats" => check_repeats(&f),
         _ => Err(format!("unknown command {cmd}")),
     });
     match result {

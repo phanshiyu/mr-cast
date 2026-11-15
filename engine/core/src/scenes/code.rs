@@ -616,6 +616,8 @@ fn center_base(face: Face, size: f32, h: f32) -> f32 {
 
 struct Row {
     slot: usize,
+    /// Added rows shown above this one.
+    add_index: usize,
     height: f32,
     final_height: f32,
 }
@@ -652,21 +654,21 @@ impl SceneView for CodeView {
             .enumerate()
             .map(|(r, s)| {
                 if self.view == View::Split {
-                    return Row { slot: r, height: row_h, final_height: row_h };
+                    return Row { slot: r, add_index: 0, height: row_h, final_height: row_h };
                 }
                 let line = &self.hunk.lines[s.left.unwrap()];
                 match line.kind {
                     LineType::Del => {
                         let c = clamped(frame, morph.collapse_start, morph.collapse_end, 0.0, 1.0) as f32;
-                        Row { slot: r, height: row_h * (1.0 - c), final_height: 0.0 }
+                        Row { slot: r, add_index, height: row_h * (1.0 - c), final_height: 0.0 }
                     }
                     LineType::Add => {
                         let start = morph.grow_start + add_index as f64 * morph.stagger;
                         add_index += 1;
                         let g = clamped(frame, start, start + 10.0, 0.0, 1.0) as f32;
-                        Row { slot: r, height: row_h * g, final_height: row_h }
+                        Row { slot: r, add_index: add_index - 1, height: row_h * g, final_height: row_h }
                     }
-                    LineType::Context => Row { slot: r, height: row_h, final_height: row_h },
+                    LineType::Context => Row { slot: r, add_index, height: row_h, final_height: row_h },
                 }
             })
             .collect();
@@ -770,7 +772,7 @@ impl SceneView for CodeView {
                         dl.fill_rect(0.0, 0.0, 5.0, row.height, ACCENT.fade(bar as f32));
                     }
                     match self.view {
-                        View::Morph => self.morph_row(dl, s.left.unwrap(), frame, &morph, inner),
+                        View::Morph => self.morph_row(dl, s.left.unwrap(), row.add_index, frame, &morph, inner),
                         View::Split => {
                             let half = (inner - 1.0) / 2.0;
                             for (side, i) in [(0, s.left), (1, s.right)] {
@@ -867,7 +869,8 @@ fn line_bg(kind: LineType) -> Color {
 }
 
 impl CodeView {
-    fn morph_row(&self, dl: &mut DisplayList, i: usize, frame: f64, t: &Morph, inner: f32) {
+    /// Draws hunk line `i` as a morph row; `add_index` counts the added rows shown above it, which stagger in.
+    fn morph_row(&self, dl: &mut DisplayList, i: usize, add_index: usize, frame: f64, t: &Morph, inner: f32) {
         let line = &self.hunk.lines[i];
         let row_h = self.row_h;
         let mut opacity = 1.0f32;
@@ -887,8 +890,7 @@ impl CodeView {
                 strike = clamped(frame, t.flash_start, t.collapse_start, 0.0, 1.0) as f32;
             }
             LineType::Add => {
-                let k = self.hunk.lines[..i].iter().filter(|l| l.kind == LineType::Add).count();
-                let start = t.grow_start + k as f64 * t.stagger;
+                let start = t.grow_start + add_index as f64 * t.stagger;
                 let grow = clamped(frame, start, start + 10.0, 0.0, 1.0) as f32;
                 let glow = interpolate(frame, &[start, start + 10.0, start + 30.0], &[0.35, 0.3, 0.12], CLAMP);
                 opacity = grow;

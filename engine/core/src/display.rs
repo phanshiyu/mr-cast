@@ -292,3 +292,131 @@ pub fn svg_path(d: &str) -> Option<Path> {
     }
     pb.finish()
 }
+
+/// Feeds what an item draws into a hasher, so equal frames hash equal.
+struct Fingerprint(std::collections::hash_map::DefaultHasher);
+
+impl Fingerprint {
+    fn f(&mut self, v: f32) {
+        std::hash::Hasher::write_u32(&mut self.0, v.to_bits());
+    }
+    fn u(&mut self, v: u64) {
+        std::hash::Hasher::write_u64(&mut self.0, v);
+    }
+    fn color(&mut self, c: Color) {
+        for v in [c.r, c.g, c.b, c.a] {
+            self.f(v);
+        }
+    }
+    fn stops(&mut self, stops: &[(f32, Color)]) {
+        for &(o, c) in stops {
+            self.f(o);
+            self.color(c);
+        }
+    }
+    fn paint(&mut self, p: &Paint) {
+        match p {
+            Paint::Solid(c) => {
+                self.u(1);
+                self.color(*c);
+            }
+            Paint::Linear { start, end, stops } => {
+                self.u(2);
+                for v in [start.0, start.1, end.0, end.1] {
+                    self.f(v);
+                }
+                self.stops(stops);
+            }
+            Paint::Radial { center, radius, stops } => {
+                self.u(3);
+                for v in [center.0, center.1, radius.0, radius.1] {
+                    self.f(v);
+                }
+                self.stops(stops);
+            }
+        }
+    }
+    fn stroke(&mut self, s: &Stroke) {
+        self.color(s.color);
+        self.f(s.width);
+        if let Some((d, g)) = s.dash {
+            self.f(d);
+            self.f(g);
+        }
+        self.u(s.round as u64);
+    }
+}
+
+impl DisplayList {
+    /// A hash of everything the list draws: two frames with equal fingerprints draw the same pixels, so a
+    /// renderer can reuse the first. Cheap next to rasterizing.
+    pub fn fingerprint(&self) -> u64 {
+        let mut h = Fingerprint(std::collections::hash_map::DefaultHasher::new());
+        for cmd in &self.cmds {
+            let t = cmd.transform;
+            for v in [t.sx, t.kx, t.ky, t.sy, t.tx, t.ty, cmd.opacity] {
+                h.f(v);
+            }
+            match &cmd.item {
+                Item::Box { rect, style } => {
+                    h.u(10);
+                    for v in [rect.left(), rect.top(), rect.width(), rect.height(), style.radius] {
+                        h.f(v);
+                    }
+                    if let Some(p) = &style.fill {
+                        h.paint(p);
+                    }
+                    if let Some(b) = &style.border {
+                        h.stroke(b);
+                    }
+                    for s in &style.shadows {
+                        for v in [s.dx, s.dy, s.blur, s.spread] {
+                            h.f(v);
+                        }
+                        h.color(s.color);
+                    }
+                }
+                Item::Path { path, fill, stroke } => {
+                    h.u(11);
+                    for p in path.points() {
+                        h.f(p.x);
+                        h.f(p.y);
+                    }
+                    for v in path.verbs() {
+                        h.u(*v as u64);
+                    }
+                    if let Some(p) = fill {
+                        h.paint(p);
+                    }
+                    if let Some(s) = stroke {
+                        h.stroke(s);
+                    }
+                }
+                Item::Text { run, x, y, color, glow } => {
+                    h.u(12);
+                    h.u(run.key);
+                    h.f(*x);
+                    h.f(*y);
+                    h.color(*color);
+                    if let Some((r, c)) = glow {
+                        h.f(*r);
+                        h.color(*c);
+                    }
+                }
+                Item::PushClip { rect, radius } => {
+                    h.u(13);
+                    for v in [rect.left(), rect.top(), rect.width(), rect.height(), *radius] {
+                        h.f(v);
+                    }
+                }
+                Item::PopClip => h.u(14),
+                Item::PushLayer { opacity } => {
+                    h.u(15);
+                    h.f(*opacity);
+                }
+                Item::PopLayer => h.u(16),
+            }
+        }
+        std::hash::Hasher::finish(&h.0)
+    }
+}
