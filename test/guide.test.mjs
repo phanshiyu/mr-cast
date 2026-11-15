@@ -112,3 +112,18 @@ test("the guide lists each part that says what it does, in the brief's order", (
   assert.deepEqual(guide.parts, [{ name: 'The limiter', weight: 'core', does: 'Counts orders per address.' }]);
   assert.deepEqual(guidePanel({ title: 'T', scenes: [], brief: { parts: 'unknown' } }, hunks).parts, []);
 });
+
+test('a question seeks to the scene that answers the fewest others, the first on a tie', () => {
+  const sb = {
+    title: 'T',
+    brief,
+    scenes: [
+      { type: 'text', narration: 'a', answers: ['why', 'case', 'proof'] },
+      { type: 'text', narration: 'b', answers: ['proof'] },
+      { type: 'text', narration: 'c', answers: ['proof'] },
+    ],
+  };
+  const at = Object.fromEntries(guidePanel(sb, hunks).questions.map((q) => [q.id, q.scene]));
+  assert.equal(at.proof, 1);
+  assert.equal(at.why, 0);
+});

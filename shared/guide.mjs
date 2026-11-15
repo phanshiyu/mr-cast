@@ -54,10 +54,18 @@ function answerText(brief, question) {
   return checks ? `${checks} place${checks === 1 ? '' : 's'} to open first, under Open first.` : null;
 }
 
-/** The index of the first scene that says it answers `question`, or null. */
+/**
+ * The index of the scene to seek to for `question`, or null: among the scenes that say they answer it, the one that
+ * answers the fewest others, so "Proof" lands on the tests scene and not on a scene that touches it in passing; the
+ * first of them on a tie.
+ */
 const firstAnswering = (scenes, question) => {
-  const i = scenes.findIndex((s) => Array.isArray(s?.answers) && s.answers.includes(question));
-  return i === -1 ? null : i;
+  let best = null;
+  scenes.forEach((s, i) => {
+    if (!Array.isArray(s?.answers) || !s.answers.includes(question)) return;
+    if (best === null || s.answers.length < scenes[best].answers.length) best = i;
+  });
+  return best;
 };
 
 /** The first scene that shows a hunk of `file` whose lines meet `line`, else the first that shows one of the file, else null. */

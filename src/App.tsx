@@ -277,6 +277,11 @@ export const App: React.FC = () => {
     [shown, planData],
   );
   // A branch video's brief; a pre-read keeps its reading panel as it is.
+  // A reading scene with no items of its own draws the brief's check list, which the guide already shows.
+  const readingFromBrief = useMemo(
+    () => Boolean(shown?.storyboard.scenes.some((s) => s.type === 'reading' && !s.items?.length)),
+    [shown],
+  );
   const guide = useMemo(
     () => (shown && ready?.settings?.audience !== 'preread' ? guidePanel(shown.storyboard, shown.hunks) : null),
     [shown, ready?.settings?.audience],
@@ -467,7 +472,9 @@ export const App: React.FC = () => {
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
             {guide && guideOpen ? <GuidePanel guide={guide} scene={current} onScene={seekChapter} /> : null}
-            {reading ? <ReadingPanel order={reading} onScene={seekChapter} /> : null}
+            {reading && !(guide && guideOpen && readingFromBrief) ? (
+              <ReadingPanel order={reading} onScene={seekChapter} />
+            ) : null}
             <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
               <span>
                 <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next
