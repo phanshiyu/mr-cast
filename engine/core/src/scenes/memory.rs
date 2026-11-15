@@ -5,11 +5,14 @@
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::arrays::{self, is_pointer, member_key, pointer_ref, split_member_key};
+use crate::camera::Camera;
 use crate::chrome::callout::{HeaderCallout, header_box};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, fit_height};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
+use crate::marks::geometry::{Bx, Pt as MPt};
+use crate::marks::{Board, LayoutBoxes, MarkTargets, Stage, StepRefs};
 use crate::states::{SceneState, StateFrame, hex_alpha, js_string, list, ordered_entries, walk_states};
 use crate::steps::{FocusSpotlight, as_bright_as, brighter};
 use crate::targets::target_steps;
@@ -523,6 +526,53 @@ fn padded(points: Vec<Pt>) -> Vec<Pt> {
     out
 }
 
+/// Points along an arrow's curves, which a note should rather not cross (`arrowSamples`).
+fn arrow_samples(a: &Arrow) -> Vec<MPt> {
+    let mut out = Vec::new();
+    let p = &a.points;
+    let mut i = 0;
+    while i + 3 < p.len() {
+        let (p0, c1, c2, p1) = (p[i], p[i + 1], p[i + 2], p[i + 3]);
+        i += 3;
+        let same = |a: Pt, b: Pt| a.x == b.x && a.y == b.y;
+        if same(p0, p1) && same(p0, c1) {
+            continue;
+        }
+        for t in [0.25, 0.5, 0.75, 1.0] {
+            let u = 1.0 - t;
+            let (a, b, c, d) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+            out.push(MPt {
+                x: a * p0.x + b * c1.x + c * c2.x + d * p1.x,
+                y: a * p0.y + b * c1.y + c * c2.y + d * p1.y,
+            });
+        }
+    }
+    out
+}
+
+impl Layout {
+    /// The box of each item a step can focus, as `state` shows it: a frame's or object's card and a variable's or
+    /// field's row. A note keeps off the cards and the arrows (`memoryBoxes`).
+    fn boxes(&self, state: &SceneState) -> LayoutBoxes {
+        let mut out = LayoutBoxes::default();
+        let shown: Vec<&Card> = self.cards.iter().filter(|c| !state.hidden.contains(&c.key)).collect();
+        for c in &shown {
+            out.add(c.key.clone(), Bx::new(c.x, c.y, c.w, c.h));
+            for r in &c.rows {
+                out.add(r.key.clone(), Bx::new(c.x + 6.0, c.y + r.y, c.w - 12.0, ROW_H));
+            }
+        }
+        out.lines = self
+            .arrows_of(state)
+            .iter()
+            .filter(|(k, _)| out.boxes.iter().any(|(b, _)| b == k))
+            .flat_map(|(_, a)| arrow_samples(a))
+            .collect();
+        out.obstacles = Some(shown.iter().map(|c| Bx::new(c.x, c.y, c.w, c.h)).collect());
+        out
+    }
+}
+
 struct MemoryView {
     shell: Shell,
     layout: Layout,
@@ -530,6 +580,9 @@ struct MemoryView {
     targets: HashMap<String, Vec<usize>>,
     callout: Option<HeaderCallout>,
     box_size: (f64, f64),
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -538,7 +591,16 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let box_size = header_box(scene);
     let states = walk_states(&arrays::Model(scene), scene);
     let layout = layout_memory(scene, &states, box_size)?;
+    let stage = Stage::centred(box_size, (layout.width, layout.height), layout.scale);
+    let marks: Vec<MarkTargets> = states[1..].iter().map(|st| stage.targets(&layout.boxes(st), box_size)).collect();
+    let refs = crate::targets::SceneRefs(scene);
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(scene, &step_refs, box_size);
     Ok(Box::new(MemoryView {
+        marks,
+        board,
+        camera,
         targets: target_steps(scene),
         callout: HeaderCallout::new(scene),
         shell,
@@ -863,77 +925,81 @@ impl SceneView for MemoryView {
             }
         };
         let aside = self.callout.as_ref().map(|c| c.aside(&aside_draw));
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
         self.shell.draw(dl, frame, f.duration, aside, |dl, _| {
-            dl.translate(stage.0 as f32, stage.1 as f32);
-            dl.scale_about(l.scale as f32, 0.0, 0.0);
-            if let Some(p) = &l.frames_panel {
-                dl.group(|dl| {
-                    dl.fade(panel_in as f32);
-                    draw_fit(dl, p, 4.0, 4.0, TextOpts::new(FAINT));
-                });
-            }
-            if let Some(p) = &l.objects_panel {
-                dl.group(|dl| {
-                    dl.fade(panel_in as f32);
-                    draw_fit(dl, p, (l.objects_x + 4.0) as f32, 4.0, TextOpts::new(FAINT));
-                });
-            }
-            // Arrows run under the cards, with a dark halo so they read against what they cross.
-            for d in &drawn {
-                dl.group(|dl| {
-                    dl.fade(d.opacity as f32);
-                    if let Some(p) = cut_path(&d.points, d.progress) {
-                        dl.path(p, None, Some(Stroke::solid(BG.fade(0.7), 7.0)));
-                    }
-                    self.line(dl, d);
-                });
-            }
-            for c in &l.cards {
-                let amount = shown(&c.key);
-                if amount > 0.0 {
+            self.camera.draw(dl, view, |dl| {
+                dl.save();
+                dl.translate(stage.0 as f32, stage.1 as f32);
+                dl.scale_about(l.scale as f32, 0.0, 0.0);
+                if let Some(p) = &l.frames_panel {
                     dl.group(|dl| {
-                        dl.fade(amount as f32);
-                        dl.translate(0.0, ((1.0 - amount) * 20.0) as f32);
-                        dl.rect(c.x as f32, c.y as f32, c.w as f32, c.h as f32, BoxStyle::fill(BG).radius(16.0));
+                        dl.fade(panel_in as f32);
+                        draw_fit(dl, p, 4.0, 4.0, TextOpts::new(FAINT));
                     });
                 }
-            }
-            for ci in 0..l.cards.len() {
-                self.card(dl, ci, &s, shown(&l.cards[ci].key), card_emphasis(ci), &row_emphasis);
-            }
-            // Over the cards again: the stub of each arrow inside the card it leaves, and its head.
-            for d in &drawn {
-                let (ci, _) = l.row_at[&d.key];
-                let src = &l.cards[ci];
-                dl.group(|dl| {
-                    dl.fade(d.opacity as f32);
-                    dl.push_clip(src.x as f32, src.y as f32, src.w as f32, src.h as f32, 0.0);
-                    self.line(dl, d);
-                    dl.pop_clip();
-                    if d.progress >= 0.98 {
-                        let n = d.points.len();
-                        let (c2, to) = (d.points[n - 2], d.points[n - 1]);
-                        let angle = (to.y - c2.y).atan2(to.x - c2.x);
-                        let head = |side: f64| {
-                            (
-                                (to.x - 14.0 * (angle + side * 0.45).cos()) as f32,
-                                (to.y - 14.0 * (angle + side * 0.45).sin()) as f32,
-                            )
-                        };
-                        let mut pb = PathBuilder::new();
-                        let (a, b) = (head(1.0), head(-1.0));
-                        pb.move_to(a.0, a.1);
-                        pb.line_to(to.x as f32, to.y as f32);
-                        pb.line_to(b.0, b.1);
-                        pb.close();
-                        if let Some(p) = pb.finish() {
-                            dl.path(p, Some(Paint::from(d.color)), Some(Stroke::solid(d.color, 1.5).rounded()));
+                if let Some(p) = &l.objects_panel {
+                    dl.group(|dl| {
+                        dl.fade(panel_in as f32);
+                        draw_fit(dl, p, (l.objects_x + 4.0) as f32, 4.0, TextOpts::new(FAINT));
+                    });
+                }
+                // Arrows run under the cards, with a dark halo so they read against what they cross.
+                for d in &drawn {
+                    dl.group(|dl| {
+                        dl.fade(d.opacity as f32);
+                        if let Some(p) = cut_path(&d.points, d.progress) {
+                            dl.path(p, None, Some(Stroke::solid(BG.fade(0.7), 7.0)));
                         }
+                        self.line(dl, d);
+                    });
+                }
+                for c in &l.cards {
+                    let amount = shown(&c.key);
+                    if amount > 0.0 {
+                        dl.group(|dl| {
+                            dl.fade(amount as f32);
+                            dl.translate(0.0, ((1.0 - amount) * 20.0) as f32);
+                            dl.rect(c.x as f32, c.y as f32, c.w as f32, c.h as f32, BoxStyle::fill(BG).radius(16.0));
+                        });
                     }
-                });
-            }
-            // TODO(marks): PenMarks over the stage.
-            // TODO(camera): the scene's camera targets (memoryTargets).
+                }
+                for ci in 0..l.cards.len() {
+                    self.card(dl, ci, &s, shown(&l.cards[ci].key), card_emphasis(ci), &row_emphasis);
+                }
+                // Over the cards again: the stub of each arrow inside the card it leaves, and its head.
+                for d in &drawn {
+                    let (ci, _) = l.row_at[&d.key];
+                    let src = &l.cards[ci];
+                    dl.group(|dl| {
+                        dl.fade(d.opacity as f32);
+                        dl.push_clip(src.x as f32, src.y as f32, src.w as f32, src.h as f32, 0.0);
+                        self.line(dl, d);
+                        dl.pop_clip();
+                        if d.progress >= 0.98 {
+                            let n = d.points.len();
+                            let (c2, to) = (d.points[n - 2], d.points[n - 1]);
+                            let angle = (to.y - c2.y).atan2(to.x - c2.x);
+                            let head = |side: f64| {
+                                (
+                                    (to.x - 14.0 * (angle + side * 0.45).cos()) as f32,
+                                    (to.y - 14.0 * (angle + side * 0.45).sin()) as f32,
+                                )
+                            };
+                            let mut pb = PathBuilder::new();
+                            let (a, b) = (head(1.0), head(-1.0));
+                            pb.move_to(a.0, a.1);
+                            pb.line_to(to.x as f32, to.y as f32);
+                            pb.line_to(b.0, b.1);
+                            pb.close();
+                            if let Some(p) = pb.finish() {
+                                dl.path(p, Some(Paint::from(d.color)), Some(Stroke::solid(d.color, 1.5).rounded()));
+                            }
+                        }
+                    });
+                }
+                dl.restore();
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            })
         });
     }
 }

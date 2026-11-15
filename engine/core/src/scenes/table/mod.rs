@@ -1,17 +1,17 @@
 //! The table scene: a port of src/components/DataTable.tsx and src/utils/tableLayout.ts. Rows land one after
 //! another, steps show, hide, set and tint cells, and focus lights rows, columns and cells.
-//!
-//! The scene's own pen marks, ink and camera are not drawn yet: see the TODOs.
 
 pub mod layout;
 pub mod view;
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, interpolate};
+use crate::camera::Camera;
 use crate::chrome::callout::HeaderCallout;
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::hex_alpha;
 use crate::display::{BoxStyle, DisplayList};
+use crate::marks::{Board, MarkTargets, Stage, StepRefs};
 use crate::states::{
     self as state, BoundModel, FnModel as Model, SceneState, SetEntry, StateFrame, items as list, walk_states,
 };
@@ -95,6 +95,9 @@ struct TableView {
     callout: Option<HeaderCallout>,
     legend: Vec<Change>,
     box_h: f64,
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -119,7 +122,21 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             legend.push(c);
         }
     }
+    let marks: Vec<MarkTargets> = layouts[1..]
+        .iter()
+        .map(|l| {
+            let top = (box_h - l.height * l.scale).max(0.0) * 0.3;
+            Stage { left: 0.0, top, scale: l.scale }.targets(&layout::table_boxes(l), (bw, box_h))
+        })
+        .collect();
+    let refs = crate::targets::SceneRefs(input.scene);
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(input.scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(input.scene, &step_refs, crate::chrome::callout::header_box(input.scene));
     Ok(Box::new(TableView {
+        marks,
+        board,
+        camera,
         shell,
         columns: scene.columns,
         highlight: scene.highlight,
@@ -245,24 +262,25 @@ impl SceneView for TableView {
             }
         };
         let aside = (has_legend || self.callout.is_some()).then_some(Aside { height, draw: &draw_aside });
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
         self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| {
-            let draw = TableDraw {
-                layout,
-                before,
-                s: &ctx.sf,
-                left: 0.0,
-                top: top as f32,
-                frame,
-                header_in,
-                row_at: &row_at,
-                row_emphasis: &|i| ctx.row_emphasis(i),
-                cell_emphasis: &|r, c| ctx.cell_emphasis(r, c),
-                header_glow: &|i| ctx.focus.emphasis(&format!("c:{i}")).glow,
-            };
-            draw_table(dl, &draw);
-            // TODO(marks): PenMarks over the table.
-            // TODO(ink): Ink over the table.
-            // TODO(camera): the scene's `camera` zoom around the content.
+            self.camera.draw(dl, view, |dl| {
+                let draw = TableDraw {
+                    layout,
+                    before,
+                    s: &ctx.sf,
+                    left: 0.0,
+                    top: top as f32,
+                    frame,
+                    header_in,
+                    row_at: &row_at,
+                    row_emphasis: &|i| ctx.row_emphasis(i),
+                    cell_emphasis: &|r, c| ctx.cell_emphasis(r, c),
+                    header_glow: &|i| ctx.focus.emphasis(&format!("c:{i}")).glow,
+                };
+                draw_table(dl, &draw);
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            });
         });
     }
 }
