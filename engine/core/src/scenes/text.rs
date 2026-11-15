@@ -562,7 +562,13 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let shell = Shell::new(input.scene);
     let bx = shell.content(if stats.is_some() { chip_height() } else { 0.0 });
     let area = Bx::new(0.0, 0.0, bx.w as f64, bx.h as f64);
+    // The card measures its parts for the pen only when some step marks or draws; the camera frames those boxes, so
+    // without them it shows the whole card (as TextCard.tsx does).
+    let marked = input.scene["steps"]
+        .as_array()
+        .is_some_and(|s| s.iter().any(|st| st.get("mark").is_some() || st.get("draw").is_some()));
     let marks: Vec<Option<MarkTargets>> = (0..scene.steps.len())
+        .filter(|_| marked)
         .map(|k| {
             let l = layouts.get(k + 1).unwrap_or(&layouts[0]);
             Some(MarkTargets::new(part_boxes(&scene, l, bx.w, bx.h), area))
