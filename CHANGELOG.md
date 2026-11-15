@@ -8,7 +8,7 @@
 
 **Not every scene type is drawn this way yet.** Text, code and flow scenes are; the others show a card with the scene's type until they are. To render and play with Remotion and Chrome as before, set `MR_CAST_RENDERER=remotion`. `mr-cast prune` still lists the Chrome and player bundle folders that older versions left, so you can delete them.
 
-**mr-cast writes the MP4 itself, with no ffmpeg.** Nothing else needs installing, and nothing is downloaded when mr-cast installs, so npm versions that block install scripts can render too. A video is about the same size as before and its text as sharp; the demo is 11.6 MB. `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
+**mr-cast writes the MP4 itself, with no ffmpeg.** Nothing else needs installing, and nothing is downloaded when mr-cast installs, so npm versions that block install scripts can render too. Text is as sharp as before and files are a little smaller: the silent 7.4-minute demo is 10.6 MB instead of 13.7 MB. `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
 
 ## 0.29.0
 

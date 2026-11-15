@@ -1,7 +1,8 @@
 # mr-cast engine
 
 A native renderer for mr-cast videos, meant to replace Remotion (React drawn by headless Chrome). It reads the same
-props the composition gets, draws every frame on the CPU and pipes them to ffmpeg.
+props the composition gets, draws every frame on the CPU, and encodes and writes the MP4 itself (no ffmpeg; see
+docs/adr/0044-encode-in-the-engine.md).
 
 ```
 engine/
@@ -27,7 +28,12 @@ engine/
       chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit), captions, fittext
       scenes/            mod.rs (registry and contract), one module per scene type, placeholder.rs
     tests/js_fixtures.rs timing, speech, text fitting, springs and easings against the JS's own outputs
-  cli/                   mr-cast-engine: render (parallel, repeats skipped, voice mix, chapters, ffmpeg), still, sheet
+  cli/                   mr-cast-engine: render, still, sheet, probe
+    src/encode.rs        repeats, runs of frames per core, rendering and encoding in rounds, yuv420p
+    src/h264.rs          OpenH264 (openh264-sys2, built from source): one encoder per run, samples as MP4 wants them
+    src/aac.rs           FDK AAC (fdk-aac-sys, built from source): the voice-over as AAC-LC, and back for checks
+    src/mp4.rs           the MP4 writer (faststart, VFR durations, edit lists, chapters both ways) and its reader
+    src/audio.rs         the voice clips mixed at their frames, at 48 kHz
   wasm/                  mrc_wasm: the core for the browser player (wasm-bindgen); scripts/build-wasm.mjs builds wasm/pkg
 ```
 
@@ -37,27 +43,38 @@ engine/
 node scripts/engine-dump.mjs props <run dir> props.json     # the props, as bin/lib/render.mjs builds them, plus syntax colours
 cargo build --release --manifest-path engine/Cargo.toml
 engine/target/release/mr-cast-engine render --props props.json --out video.mp4 [--frames a..b | --scenes 1,4..12]
-                                            [--media-dir <run dir>] [--encoder x264|videotoolbox|none] [--cfr yes]
+                                            [--media-dir <run dir>] [--encoder h264|none] [--qp 22] [--cfr yes]
                                             [--scale 0.5] [--progress yes]
 engine/target/release/mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out still.png
 engine/target/release/mr-cast-engine still --props props.json --scenes 1,3..6 [--step k] --out-dir stills/
 engine/target/release/mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
+engine/target/release/mr-cast-engine probe --in video.mp4 [--pcm voice.raw]
 ```
 
 The Node CLI runs these (bin/lib/engine.mjs and render.mjs): `mr-cast render`, `still` and `still --sheet` write the
 props into the run's directory, call the engine and remove them (`MR_CAST_DEBUG=1` keeps them and shows the engine's
 output). `--scene N` and `--step k` pick the frame `mr-cast still` shows (N is 1-based here); `--scenes` writes
 `scene-NN-<type>[-step-k].png` for each. `sheet` lays `[{ "scene": N, "label": "..." }]` out as contact sheets did.
-ffmpeg comes from `MR_CAST_FFMPEG` (the Node CLI sets it from the ffmpeg-static package) or the PATH.
+`probe` prints an MP4's tracks, sample counts, edits and chapters (the text track's and the `chpl` box's) as JSON, and
+with `--pcm` writes the voice-over as it plays, 16-bit mono at 48 kHz; the tests and `scripts/smoke.sh` use it.
 
 With `--media-dir`, `render` mixes each segment's voice clip (`clip.src` under that directory) into one track from the
-segment's voice frame to its end, as Walkthrough.tsx played them, encodes it as AAC while the frames render, and copies
-it into the MP4. A whole-video render also writes a chapter per run of scenes with one chapter title.
+segment's voice frame to its end, as Walkthrough.tsx played them, and encodes it as AAC-LC (mono, 48 kHz, 96 kbit/s)
+while the frames render. A whole-video render also writes a chapter per run of scenes with one chapter title.
 
 By default a frame that draws exactly what the frame before drew (equal display-list fingerprints) is neither drawn
-nor encoded again: frames go to ffmpeg as a Matroska stream with timestamps, and the MP4 is timestamped per frame
-(`-bf 0`, so the muxer keeps every frame's duration). 80% of the demo's frames repeat. `--cfr yes` sends every
-frame as raw video instead.
+nor encoded again: the sample before it lasts longer in the MP4 (a variable frame rate, in a 1/30 s timescale).
+77% of the demo-simple frames repeat. `--cfr yes` makes every frame a sample (a repeat is copied, not drawn).
+
+The frames that change are split into one run per core, each at least about 300 changing frames; each run has its own
+H.264 encoder and starts on an IDR frame. Rendering goes in rounds of a few frames of every run at once, so all runs
+advance together and the encoders, on their own threads, keep up. The encoders share their settings (High profile,
+CABAC, QP 22 with no rate control, no B-frames), so their SPS and PPS are the same and the runs join into one track.
+`--qp` trades size for sharpness (lower is sharper; 22 keeps text as sharp as x264 at CRF 18 did).
+
+The encoders are C and C++ built by cargo with the system compiler, so a clean build takes longer. OpenH264's x86
+assembly needs nasm; without it (and in published builds, `OPENH264_NO_ASM=1`) x86 builds use C. Their licences are
+in `THIRD-PARTY-NOTICES.md` at the repository's root, which ships in the package.
 
 After changing shared/textfit.mjs, shared/font-metrics.mjs, src/fit/slots.ts or shared/timing.mjs, run
 `node scripts/engine-dump.mjs data` and `node scripts/engine-dump.mjs fixtures`; `cargo test` then shows any drift.

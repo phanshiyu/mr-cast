@@ -1,6 +1,7 @@
 # 43. Ship the engine inside the one npm package, and switch to it before every scene is ported
 
-- Status: Accepted
+- Status: Accepted; the ffmpeg part superseded by [ADR 44](0044-encode-in-the-engine.md) (the engine encodes the MP4
+  itself)
 - Date: 2026-11-16
 - Amends: [ADR 42](0042-rust-engine.md)
 
