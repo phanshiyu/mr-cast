@@ -279,7 +279,9 @@ export function checkFiles(s, p, errors, warnings, hunks, mode) {
   }
   checkParts(s, p, errors, warnings, hunks);
   const paths = new Set(sceneFiles(s, hunks).map((f) => f.path));
-  if (paths.size > FILES_MAX) warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped`);
+  // With parts the scene lists each part's largest files and counts the rest, so the number of files does not crowd it.
+  if (!s.parts && paths.size > FILES_MAX)
+    warnings.push(`${p}: ${paths.size} files; more than ${FILES_MAX} get cramped`);
   if (s.notes !== undefined) {
     if (!s.notes || typeof s.notes !== 'object' || Array.isArray(s.notes))
       errors.push(`${p}.notes: must be an object of { "path": "note" }`);

@@ -239,3 +239,57 @@ test('without parts the scene is still a tree by directory', () => {
   const files = sceneFiles(plain, hunks);
   assert.ok(treeRows(files, {}, sceneParts(plain, files)).some((r) => r.kind === 'dir'));
 });
+
+// 30 files in 5 parts: a core part of 9, a support part of 8, another of 6, and routine parts of 4 and 3.
+const manyParts = () => {
+  const spec = [
+    ['Core', 'core', 9],
+    ['Callers', 'support', 8],
+    ['Tests', 'support', 6],
+    ['Docs', 'routine', 4],
+    ['Config', 'routine', 3],
+  ];
+  const files = spec.flatMap(([part, , n]) =>
+    Array.from({ length: n }, (_, i) => ({ path: `src/${part}/f${i}.ts`, part, additions: 100 - i, deletions: 0 })),
+  );
+  return { type: 'files', narration: 'x', parts: spec.map(([name, weight]) => ({ name, weight })), files };
+};
+
+test('a part lists its largest files, core parts more, and counts the rest in a "+ N more" line', () => {
+  const s = manyParts();
+  const files = sceneFiles(s, {});
+  const rows = treeRows(files, {}, sceneParts(s, files));
+  const listed = (part) => rows.filter((r) => r.kind === 'file' && r.file.part === part);
+  const more = (part) =>
+    rows.find((r) => r.kind === 'more' && r.weight === s.parts.find((p) => p.name === part).weight);
+  assert.ok(listed('Core').length > listed('Docs').length);
+  assert.ok(listed('Core').length >= listed('Config').length);
+  assert.equal(
+    rows.filter((r) => r.kind === 'file').length +
+      rows.filter((r) => r.kind === 'more').reduce((n, r) => n + Number(r.name.match(/\d+/)[0]), 0),
+    30,
+    'every file is listed or counted',
+  );
+  const docs = rows.filter((r) => r.kind === 'file' && r.file.part === 'Docs');
+  assert.deepEqual(
+    docs.map((r) => r.file.path),
+    ['src/Docs/f0.ts', 'src/Docs/f1.ts', 'src/Docs/f2.ts', 'src/Docs/f3.ts'].slice(0, docs.length),
+    'the largest come first',
+  );
+  assert.match(more('Docs')?.name ?? '', /^\+ \d+ more$/);
+  assert.ok(rows.filter((r) => r.kind === 'file').length <= 26);
+  const layout = layoutFiles(rows, 1712, 734);
+  assert.equal(layout.scale, 1, 'it fits without scaling');
+  assert.ok(layout.font >= 21, `at a readable size, not ${layout.font}`);
+});
+
+test('few enough files are all listed, and the 18-file warning does not apply with parts', async () => {
+  const s = manyParts();
+  const few = { ...s, files: s.files.filter((_f, i) => i % 2 === 0) };
+  const files = sceneFiles(few, {});
+  assert.ok(!treeRows(files, {}, sceneParts(few, files)).some((r) => r.kind === 'more'));
+  const { warnings } = await check({}, s);
+  assert.ok(!warnings.some((w) => w.includes('get cramped')), warnings.join('\n'));
+  const plain = await check({}, { ...s, parts: undefined, files: s.files.map(({ part, ...f }) => f) });
+  assert.ok(plain.warnings.some((w) => w.includes('30 files; more than 18 get cramped')));
+});

@@ -253,6 +253,37 @@ const Row: React.FC<{ placed: PlacedRow; layout: FilesLayout; at: number; emphas
     );
   }
 
+  if (row.kind === 'more')
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: placed.x,
+          top: placed.y,
+          width: layout.width,
+          height: layout.rowH,
+          opacity: land * emphasis.opacity * PART_OPACITY[row.weight] * 0.8,
+          transform: `translateX(${(1 - land) * -30}px)`,
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left,
+            top: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            fontFamily: fonts.mono,
+            fontSize: Math.round(layout.font * 0.88),
+            color: colors.faint,
+          }}
+        >
+          {row.name}
+        </div>
+      </div>
+    );
+
   const { file } = row;
   const { note } = placed;
   const tone = file.change ? changeTone[file.change] : null;
