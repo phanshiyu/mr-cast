@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Videos render about ten times faster, with no browser.** mr-cast now draws every frame itself instead of opening Chrome for each one. The 7.5-minute demo took 189 seconds to render before and takes about 20 now on the same laptop, with or without the voice. Nothing is downloaded on the first render any more: Chrome (about 580 MB) is gone, and so is the player bundle that each render built first. The MP4 holds the voice and the chapter markers as before. Frames that do not change are stored once, so files are smaller.
+
+**The player in the browser draws with the same renderer**, so what you watch is what the MP4 shows. It keeps its controls, speeds, chapters, keys and the voice-over in step with the picture, and draws sharp on any screen.
+
+**Not every scene type is drawn this way yet.** Text, code and flow scenes are; the others show a card with the scene's type until they are. To render and play with Remotion and Chrome as before, set `MR_CAST_RENDERER=remotion`. `mr-cast prune` still lists the Chrome and player bundle folders that older versions left, so you can delete them.
+
+**ffmpeg comes with mr-cast.** `MR_CAST_FFMPEG=<path>` uses another one, and `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
+
 ## 0.29.0
 
 A video of a branch now answers the six questions a reviewer has. mr-cast reads the facts a diff does not show, Claude writes the answers in the storyboard, and `validate` says which are missing. Nothing about the order, the scene types or the length of a video is set. Storyboards from 0.28 still validate and render: every new check is a warning (ADR 0037 and ADR 0038).

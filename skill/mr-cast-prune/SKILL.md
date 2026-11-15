@@ -1,6 +1,6 @@
 ---
 name: mr-cast-prune
-description: Free disk space used by mr-cast and stop mr-cast processes left running, letting the user pick what goes, such as old walkthroughs, rendered videos, stills, voice clips, the downloaded Chrome, voice model and player bundle, and players, plan pages or renders an agent started and forgot. Use when the user asks to prune, clean up, or delete mr-cast files, videos or caches, asks what mr-cast is using disk space on, or asks which mr-cast servers or processes are running or to stop them.
+description: Free disk space used by mr-cast and stop mr-cast processes left running, letting the user pick what goes, such as old walkthroughs, rendered videos, stills, voice clips, the downloaded voice models, the Chrome and player bundle older versions left, and players, plan pages or renders an agent started and forgot. Use when the user asks to prune, clean up, or delete mr-cast files, videos or caches, asks what mr-cast is using disk space on, or asks which mr-cast servers or processes are running or to stop them.
 ---
 
 # mr-cast prune
@@ -21,7 +21,7 @@ The CLI is `{{MR_CAST}}/bin/mr-cast`. Run it from the user's repository, because
 
 The output has `groups` and `inUse`. Each group has a `name` and up to 4 `options`. Each option has a `label`, a `description` (its size and what deleting it means), a `command` (the exact arguments to pass to the CLI), and the `ids` it deletes. When mr-cast processes are running, the last group is `Running processes`: each option's command is `stop` followed by the pids it stops, and its `ids` are those pids. A process's voice and download children are not in `ids`; `stop` takes them with it.
 
-If `groups` is empty, tell the user there is nothing to prune and nothing running, and stop. Each entry of `inUse` is busy, such as the Chrome cache while a render runs. Name it as in use and say it can be pruned once the render finishes.
+If `groups` is empty, tell the user there is nothing to prune and nothing running, and stop. Each entry of `inUse` is busy, such as a voice model while it downloads. Name it as in use and say it can be pruned once that finishes.
 
 ## 2. Ask what to delete
 

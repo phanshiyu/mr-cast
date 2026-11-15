@@ -75,7 +75,7 @@ To hear the voices yourself, run `mr-cast voices` to list them, and `mr-cast voi
 
 Say "mp4", "video file", "render", "save" or "share", or type `/mr-cast mp4`. To diff against another base, type `/mr-cast mp4 main`.
 
-The MP4 is 1920x1080 at 30 fps, with the voice, burned-in subtitles and a chapter marker for each chapter. mr-cast names it after the walkthrough's title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`. The first render downloads Chrome Headless Shell, about 580 MB, into `~/.cache/mr-cast/remotion`.
+The MP4 is 1920x1080 at 30 fps, with the voice, burned-in subtitles and a chapter marker for each chapter. mr-cast names it after the walkthrough's title, such as `.mr-cast/feature-rate-limit/rate-limiting-for-the-orders-api.mp4`. A seven-minute video renders in about 20 seconds on a laptop.
 
 ## Make a pre-read for a reviewer
 
