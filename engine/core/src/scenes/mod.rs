@@ -6,9 +6,11 @@ use crate::model::Props;
 use crate::timing::Segment;
 use serde_json::Value;
 
+pub mod array;
 pub mod code;
 pub mod compare;
 pub mod flow;
+pub mod memory;
 pub mod placeholder;
 pub mod terminal;
 pub mod text;
@@ -52,6 +54,8 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("flow", flow::prepare),
     ("compare", compare::prepare),
     ("terminal", terminal::prepare),
+    ("array", array::prepare),
+    ("memory", memory::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).
