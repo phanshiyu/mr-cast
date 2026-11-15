@@ -72,12 +72,12 @@ The run becomes the current one, which every later command works on; pass `--nam
 
 ## A video of a branch
 
-Someone will review this change after watching. The video is done when they can answer six questions without opening the diff. Answer them first, in the storyboard's `brief`, from the map and the code, then make the scenes. Say only what the code or the author says.
+A reviewer will watch this before the diff. The video is done when they can answer six questions without opening it. Answer them first, in the storyboard's `brief`, from the map and the code, then make the scenes. Say only what the code or the author says.
 
 | | The viewer can answer | A good answer |
 | --- | --- | --- |
 | `why` | Why does this change exist? | The problem in the author's words, with its source: a commit or the description. When nothing says, the source is `"unknown"`; do not make one up. |
-| `case` | On one real case, what happened before and what happens now? | One input with real values, taken from a test or the code, and both outcomes. |
+| `case` | On one real case, what happened before and what happens now? | One input with real values from a test or the code, and both outcomes. A test's values are its own settings; where they differ from the defaults, name which is which. |
 | `approach` | What is the idea, and what did the author decide? | The idea in a sentence or two, and each choice the author states or the code shows. A way not taken that nobody names is your own idea: say so, never "the author considered". |
 | `parts` | Which parts are there, and which matter? | Every hunk of source and tests in a part, each `core`, `support` or `routine`, with one sentence on what it `does` and the parts it comes `after`. Existing code whose behaviour changed is never routine. |
 | `proof` | How do we know it works? | What a named test shows, and what no test shows. |
@@ -85,9 +85,9 @@ Someone will review this change after watching. The video is done when they can 
 
 Put what only the author can answer in `ask`. `mr-cast schema` prints the fields.
 
-Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. The order, the scenes and the length are yours. What you found goes in the video: a problem you noticed belongs in `check`, review or not.
+Each scene lists the questions it answers in `"answers"`, such as `["why", "case"]`. Order, scenes and length are yours. A problem you noticed belongs in `check`, review or not.
 
-Read [references/branch.md](references/branch.md) before you write the scenes: it says what each scene that suits these answers can hold.
+Read [references/branch.md](references/branch.md) before you write the scenes: what each suitable scene can hold.
 
 ## Write the storyboard
 
