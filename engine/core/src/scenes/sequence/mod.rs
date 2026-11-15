@@ -11,12 +11,12 @@ use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::backdrop;
 use crate::chrome::fittext::{Align as TextAlign, TextOpts, draw_fit};
-use crate::chrome::marks::{EMPHASIS_COLOR, EMPHASIS_GLOW, badges_of, draw_corner_badges};
+use crate::chrome::marks::{EMPHASIS, EMPHASIS_GLOW, badges_of, draw_corner_badges};
 use crate::chrome::nodecard::{self, CardSize, Node, node_mark, strike_with};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
+use crate::diagram::{partial_polyline, polyline, rounded_rect};
 use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
-use crate::geom::{partial_polyline, polyline, rounded_rect};
 use crate::icons;
 use crate::steps::{FocusSpotlight, current_step, reveal_starts};
 use crate::targets::{step_targets, target_steps};
@@ -141,7 +141,7 @@ fn message_mark(m: &Message) -> Option<MessageMark> {
             label_text: MUTED,
         }),
         _ if m.marks.highlighted() => Some(MessageMark {
-            stroke: EMPHASIS_COLOR,
+            stroke: EMPHASIS,
             glow: EMPHASIS_GLOW,
             label_bg: Color::css("#1f2026"),
             label_text: TEXT,
@@ -268,7 +268,7 @@ fn draw_label(dl: &mut DisplayList, m: &PlacedMessage, appear: f64, current: boo
         if removed {
             strike_with(dl, fit, ox + 12.0, oy + 3.0, None, align, w - 24.0);
         }
-        draw_corner_badges(dl, &badges_of(&m.message.marks), 13.0, ox + w - 10.0, oy - 15.0);
+        draw_corner_badges(dl, &badges_of(&m.message.marks, true), 13.0, ox + w - 10.0, oy - 15.0);
     });
 }
 

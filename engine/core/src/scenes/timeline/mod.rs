@@ -10,13 +10,13 @@ use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{TextOpts, draw_fit};
 use crate::chrome::marks::{
-    BadgeSpec, EMPHASIS_COLOR, EMPHASIS_GLOW, Marks, badge_box, badges_of, draw_badge, draw_corner_badges,
-    emphasis_card, emphasis_ring, ring,
+    BadgeSpec, EMPHASIS, EMPHASIS_GLOW, Marks, badge_box, badges_of, draw_badge, draw_corner_badges, emphasis_card,
+    emphasis_ring, ring,
 };
 use crate::chrome::shell::Shell;
 use crate::color::Color;
+use crate::diagram::partial_polyline;
 use crate::display::{BoxStyle, DisplayList, Path, PathBuilder, Shadow, Stroke};
-use crate::geom::partial_polyline;
 use crate::steps::{Emphasis, FocusSpotlight, reveal_starts, step_spring};
 use crate::targets::{step_targets, target_steps};
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
@@ -232,7 +232,7 @@ fn event_motion(frame: f64, t: &EventTiming) -> Motion {
 }
 
 fn stroke_path(points: &[(f64, f64)]) -> Option<Path> {
-    crate::geom::polyline(points)
+    crate::diagram::polyline(points)
 }
 
 fn circle_path(cx: f32, cy: f32, r: f32) -> Option<Path> {
@@ -280,11 +280,8 @@ impl View {
         let hi = ev.marks.highlighted();
         let flash = m.flash as f32;
         let g = e.glow as f32;
-        let border = if hi {
-            EMPHASIS_COLOR
-        } else {
-            color.fade(if flash > 0.0 { 0xcc as f32 / 255.0 } else { 0x66 as f32 / 255.0 })
-        };
+        let border =
+            if hi { EMPHASIS } else { color.fade(if flash > 0.0 { 0xcc as f32 / 255.0 } else { 0x66 as f32 / 255.0 }) };
         let mut shadows: Vec<Shadow> = if hi {
             emphasis_ring(5.0, 40.0).to_vec()
         } else {
@@ -322,7 +319,7 @@ impl View {
             if let Some(d) = &p.detail {
                 draw_fit(dl, d, cx, top, TextOpts::new(MUTED));
             }
-            draw_corner_badges(dl, &badges_of(&ev.marks), 12.0, x + w - 1.0 - 12.0, y + 1.0 - 12.0);
+            draw_corner_badges(dl, &badges_of(&ev.marks, true), 12.0, x + w - 1.0 - 12.0, y + 1.0 - 12.0);
             if layered {
                 dl.pop_layer();
             }
@@ -375,7 +372,7 @@ impl View {
                 }
                 dl.pop_clip();
                 let edge = if hi {
-                    EMPHASIS_COLOR
+                    EMPHASIS
                 } else if g > 0.0 {
                     color
                 } else {
@@ -390,7 +387,7 @@ impl View {
                 let left = if p.inside { x + 12.0 } else { p.x1 as f32 + 12.0 };
                 let size = p.label.size as f32;
                 let lh = line_metrics(Face::Sans, size).normal;
-                let badges: Vec<BadgeSpec> = badges_of(&sp.marks);
+                let badges: Vec<BadgeSpec> = badges_of(&sp.marks, true);
                 draw_fit(dl, &p.label, left, cy - lh / 2.0, TextOpts::new(color).normal());
                 let mut bx = left + p.label.width as f32 + 10.0;
                 for b in &badges {

@@ -1,7 +1,7 @@
 //! The state diagram's layout: states in columns by distance from the start, transitions routed around them
 //! (src/utils/stateLayout.ts).
 
-use crate::item_marks::{Marks, badge_words, js_len};
+use crate::chrome::marks::{Marks, badge_words, js_len};
 use crate::textfit::{Fit, Slot, fit_text};
 use crate::timing::js_round;
 use serde::Deserialize;
@@ -34,7 +34,7 @@ const ENTRY_GAP: f64 = 74.0;
 #[derive(Clone, Debug, Deserialize)]
 pub struct StateNode {
     pub id: String,
-    #[serde(default, deserialize_with = "crate::item_marks::text_or_number")]
+    #[serde(default, deserialize_with = "crate::chrome::marks::text_or_number")]
     pub label: Option<String>,
     #[serde(default, rename = "final")]
     pub is_final: Option<bool>,
@@ -52,7 +52,7 @@ impl StateNode {
 pub struct StateTransition {
     pub from: String,
     pub to: String,
-    #[serde(default, deserialize_with = "crate::item_marks::text_or_number")]
+    #[serde(default, deserialize_with = "crate::chrome::marks::text_or_number")]
     pub label: Option<String>,
     #[serde(flatten)]
     pub marks: Marks,

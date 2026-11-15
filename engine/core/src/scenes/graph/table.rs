@@ -4,12 +4,12 @@
 use super::model::{Val, cell_val, val};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, drawn_width};
+use crate::chrome::marks::{
+    Marks, badges_of, badges_width, change_tone, draw_pill, js_len, pills, row_width, text_or_number,
+};
 use crate::color::Color;
 use crate::diagram::strike;
 use crate::display::{BoxStyle, DisplayList, Shadow};
-use crate::item_marks::{
-    Marks, badges_of, badges_width, change_tone, draw_pill, js_len, pills, row_width, text_or_number,
-};
 use crate::markup::{parse_markup, plain_text};
 use crate::states::{SceneState, StateFrame, tint_fill};
 use crate::steps::Emphasis;

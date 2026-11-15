@@ -3,13 +3,13 @@
 use super::layout::{GraphNode, Shape};
 use super::text::{self, CardText};
 use crate::chrome::fittext::{Align, LineHeight, TextOpts, draw_fit, drawn_width, fit_height};
+use crate::chrome::marks::{
+    EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, emphasis_card, tone_color,
+};
 use crate::color::Color;
 use crate::diagram::strike;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
 use crate::icons;
-use crate::item_marks::{
-    EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, emphasis_card, tone_color,
-};
 use crate::states::{TintMix, tint_fill};
 use crate::steps::Emphasis;
 use crate::text::{Face, Style, baseline_in};
@@ -33,7 +33,7 @@ fn mark_color(node: &GraphNode) -> Option<Color> {
 /// What a node draws with at one frame.
 pub struct NodeState<'a> {
     pub node: &'a GraphNode,
-    pub badges: Vec<crate::item_marks::BadgeSpec>,
+    pub badges: Vec<crate::chrome::marks::BadgeSpec>,
     pub x: f32,
     pub y: f32,
     pub w: f32,
@@ -88,7 +88,7 @@ pub fn draw_card(dl: &mut DisplayList, n: &NodeState) {
         let paint = match node.marks.change.as_deref() {
             Some("added") => Paint::vertical(0.0, h, Color::css("#14231f"), Color::css("#121a1a")),
             Some("modified") => Paint::vertical(0.0, h, Color::css("#1c2033"), Color::css("#151826")),
-            _ if highlight => emphasis_card(h),
+            _ if highlight => emphasis_card(0.0, h),
             _ => RAISED.into(),
         };
         let border = if removed {

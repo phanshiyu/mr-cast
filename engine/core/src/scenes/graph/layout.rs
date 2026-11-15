@@ -1,7 +1,7 @@
 //! The graph's layout: layers, groups, routed edges and their labels (src/utils/graphLayout.ts).
 
 use super::text::{CardIn, CardText, card_texts, shared_title_size};
-use crate::item_marks::{Marks, js_len};
+use crate::chrome::marks::{Marks, js_len};
 use crate::textfit::{Fit, Slot, fit_text, fit_text_fn};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -38,7 +38,7 @@ pub const GROUP_NAME: (f64, f64) = (22.0, 12.0);
 #[derive(Clone, Debug, Deserialize)]
 pub struct GraphNode {
     pub id: String,
-    #[serde(default, deserialize_with = "crate::item_marks::text_or_number")]
+    #[serde(default, deserialize_with = "crate::chrome::marks::text_or_number")]
     pub label: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
@@ -78,7 +78,7 @@ pub enum Shape {
 pub struct GraphEdge {
     pub from: String,
     pub to: String,
-    #[serde(default, deserialize_with = "crate::item_marks::text_or_number")]
+    #[serde(default, deserialize_with = "crate::chrome::marks::text_or_number")]
     pub label: Option<String>,
     #[serde(default)]
     pub direction: Option<String>,

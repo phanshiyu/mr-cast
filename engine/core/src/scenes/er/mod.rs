@@ -7,14 +7,14 @@ use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
 use crate::chrome::callout::{aside_height, draw_aside};
 use crate::chrome::fittext::{Align, LineHeight, TextOpts, draw_fit, drawn_width, fit_height};
+use crate::chrome::marks::{
+    EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, draw_pill, emphasis_card, pill,
+};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, skia, strike, trim};
 use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
 use crate::icons;
-use crate::item_marks::{
-    EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, draw_pill, emphasis_card, pill,
-};
 use crate::steps::Emphasis;
 use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
 use crate::targets::target_steps;
@@ -336,7 +336,7 @@ impl ErView {
         let g = emphasis.glow as f32;
         let mut style = BoxStyle::fill(match change {
             Some("modified") => crate::display::Paint::vertical(0.0, h, Color::css("#1c2033"), Color::css("#151826")),
-            _ if highlight => emphasis_card(h),
+            _ if highlight => emphasis_card(0.0, h),
             _ => RAISED.into(),
         })
         .radius(18.0);

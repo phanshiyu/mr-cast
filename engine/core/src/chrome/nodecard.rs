@@ -2,9 +2,7 @@
 //! (src/components/NodeCard.tsx and src/utils/nodeText.ts).
 
 use super::fittext::{Align, TextOpts, draw_fit};
-use super::marks::{
-    EMPHASIS_COLOR, Marks, badges_of, change_tone, draw_corner_badges, emphasis_card, emphasis_ring, ring,
-};
+use super::marks::{EMPHASIS, Marks, badges_of, change_colors, draw_corner_badges, emphasis_card, emphasis_ring, ring};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, Shadow, Stroke};
 use crate::icons;
@@ -162,9 +160,9 @@ pub fn card_texts(nodes: &[Node], width: f64, height: f64, size: CardSize, share
 /// A node's colour: by what the diff does to it, else as highlighted, else none (`nodeMark`): (colour, background).
 pub fn node_mark(n: &Marks) -> Option<(Color, Color)> {
     if let Some(c) = &n.change {
-        return Some(change_tone(c));
+        return Some(change_colors(c));
     }
-    n.highlighted().then_some((EMPHASIS_COLOR, super::marks::EMPHASIS_SOFT))
+    n.highlighted().then_some((EMPHASIS, super::marks::EMPHASIS_SOFT))
 }
 
 /// `colors.del` with `cc` alpha.
@@ -185,11 +183,11 @@ pub fn draw(
     let marks = &node.marks;
     let removed = marks.change.as_deref() == Some("removed");
     let t = marks.tone.as_deref().map(tone);
-    let changed = marks.change.as_deref().map(change_tone);
+    let changed = marks.change.as_deref().map(change_colors);
     let mark = node_mark(marks);
     let highlight = marks.change.is_none() && marks.highlighted();
     let icon_color =
-        changed.map(|c| c.0).or(t.map(|t| t.0)).unwrap_or(if marks.highlighted() { EMPHASIS_COLOR } else { MUTED });
+        changed.map(|c| c.0).or(t.map(|t| t.0)).unwrap_or(if marks.highlighted() { EMPHASIS } else { MUTED });
     let icon_bg = changed.map(|c| c.1).or(t.map(|t| t.1)).unwrap_or(if marks.highlighted() {
         super::marks::EMPHASIS_SOFT
     } else {
@@ -247,7 +245,7 @@ pub fn draw(
         if let Some(c) = &text.caption {
             draw_fit(dl, c, cx, top + text.title.height as f32 + gap, TextOpts::new(FAINT));
         }
-        let badges = badges_of(marks);
+        let badges = badges_of(marks, true);
         draw_corner_badges(dl, &badges, m.badge, x + w - 2.0 - m.badge_at.1, y + 2.0 + m.badge_at.0);
         if layered {
             dl.pop_layer();

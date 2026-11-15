@@ -1,6 +1,6 @@
 //! The er diagram's layout: a grid of table cards and orthogonal relation lines (src/utils/erLayout.ts).
 
-use crate::item_marks::{Marks, badges_width, js_len, text_or_number};
+use crate::chrome::marks::{Marks, badges_width, js_len, text_or_number};
 use crate::textfit::{Fit, Slot, fit_text};
 use crate::timing::js_round;
 use serde::Deserialize;

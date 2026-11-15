@@ -3,9 +3,9 @@
 
 use super::fittext::{Align, LineHeight, TextOpts, draw_fit, fit_height};
 use super::shell::shell_fits;
+use crate::chrome::marks::{change_tone, change_word};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Shadow};
-use crate::item_marks::{change_tone, change_word};
 use crate::states::StateFrame;
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::{Fit, Slot, fit_text};

@@ -11,13 +11,13 @@ use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Easing, Spring, interpolate, spring};
 use crate::chrome::fittext::{TextOpts, draw_fit};
 use crate::chrome::marks::{
-    EMPHASIS_COLOR, badges_of, change_tone, draw_corner_badges, emphasis_card, emphasis_ring, ring,
+    EMPHASIS, badges_of, change_colors, draw_corner_badges, emphasis_card, emphasis_ring, ring,
 };
 use crate::chrome::nodecard::{self, CardSize, strike};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
+use crate::diagram::polyline;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
-use crate::geom::polyline;
 use crate::steps::{Emphasis, FocusSpotlight, as_bright_as, brighter};
 use crate::targets::target_steps;
 use crate::text::{Face, line_metrics};
@@ -123,12 +123,11 @@ fn lit(e: Emphasis) -> Vec<Shadow> {
 fn draw_band(dl: &mut DisplayList, p: &PlacedLayer, layout: &Layout, appear: f64, e: Emphasis) {
     let layer = &p.layer;
     let marks = &layer.marks;
-    let change = marks.change.as_deref().map(change_tone);
+    let change = marks.change.as_deref().map(change_colors);
     let removed = marks.change.as_deref() == Some("removed");
     let tone_c = marks.tone.as_deref().map(tone);
     let highlight = marks.highlighted();
-    let edge =
-        change.map(|c| c.0).unwrap_or(if highlight { EMPHASIS_COLOR } else { tone_c.map_or(BORDER_STRONG, |t| t.0) });
+    let edge = change.map(|c| c.0).unwrap_or(if highlight { EMPHASIS } else { tone_c.map_or(BORDER_STRONG, |t| t.0) });
     let (y, h, w) = (p.y as f32, p.h as f32, layout.band_w as f32);
     let fill: Paint = match marks.change.as_deref() {
         Some("added") => Paint::vertical(y, y + h, Color::css("#13201d"), Color::css("#10171a")),
@@ -167,7 +166,7 @@ fn draw_band(dl: &mut DisplayList, p: &PlacedLayer, layout: &Layout, appear: f64
         if let Some(c) = &p.caption {
             draw_fit(dl, c, tx, ty + p.label.height as f32 + CAPTION_GAP as f32, TextOpts::new(MUTED));
         }
-        draw_corner_badges(dl, &badges_of(marks), 14.0, w - 1.0 - 22.0, y + 1.0 - 13.0);
+        draw_corner_badges(dl, &badges_of(marks, true), 14.0, w - 1.0 - 22.0, y + 1.0 - 13.0);
         if layered {
             dl.pop_layer();
         }
