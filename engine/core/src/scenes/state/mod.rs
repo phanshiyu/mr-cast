@@ -5,6 +5,7 @@ mod layout;
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::chrome::callout::header_box;
 use crate::chrome::callout::{aside_height, draw_aside};
 use crate::chrome::fittext::{Align, LineHeight, TextOpts, draw_fit, drawn_width, fit_height};
 use crate::chrome::marks::{
@@ -14,8 +15,11 @@ use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, skia, strike, trim};
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
+use crate::marks::geometry::{Bx, Pt as MPt};
+use crate::marks::{LayoutBoxes, Pen, Stage, around};
 use crate::steps::Emphasis;
 use crate::steps::{FocusSpotlight as Focus, as_bright_as};
+use crate::targets::SceneRefs;
 use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in};
 use crate::theme::{ACCENT, ACCENT_GLOW, BORDER_STRONG, DEL, MUTED, RAISED, TEXT, content_box};
@@ -58,6 +62,28 @@ struct StateView {
     scale: f64,
     box_: (f64, f64),
     legend: Vec<&'static str>,
+    pen: Pen,
+}
+
+/// The box of each item a step can focus, in layout units: a state's card, a transition's label (or a spot before its
+/// arrowhead). A note keeps off the cards and the labels (`stateBoxes`).
+fn state_boxes(layout: &StateLayout, scene: &StateScene) -> LayoutBoxes {
+    let card = |p: &layout::PlacedState| Bx::new(p.x, p.y, p.w, p.h);
+    let transition = |r: &layout::RoutedTransition| match &r.label {
+        Some(l) => around(MPt { x: l.x, y: l.y }, l.w, l.h),
+        None => around(MPt { x: r.tip.x - r.dir.x * 40.0, y: r.tip.y - r.dir.y * 40.0 }, 36.0, 36.0),
+    };
+    let mut out = LayoutBoxes::default();
+    for p in &layout.states {
+        out.add(format!("s:{}", scene.states[p.state].id), card(p));
+    }
+    for (i, r) in layout.transitions.iter().enumerate() {
+        out.add(format!("t:{i}"), transition(r));
+    }
+    let mut obstacles: Vec<Bx> = layout.states.iter().map(card).collect();
+    obstacles.extend(layout.transitions.iter().filter(|r| r.label.is_some()).map(transition));
+    out.obstacles = Some(obstacles);
+    out
 }
 
 fn build_timeline(scene: &StateScene, layout: &StateLayout) -> Timeline {
@@ -99,7 +125,11 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             legend.push(c);
         }
     }
+    let marks = Stage::centred(box_, (layout.width, layout.height), scale).targets(&state_boxes(&layout, &scene), box_);
+    let pen =
+        Pen::new(input.scene, input.segments, &SceneRefs(input.scene), vec![marks], true, header_box(input.scene));
     Ok(Box::new(StateView {
+        pen,
         shell: Shell::new(input.scene),
         targets: target_steps(input.scene),
         scene,
@@ -365,58 +395,58 @@ impl SceneView for StateView {
         let aside_fn = |dl: &mut DisplayList, right: f32, top: f32| draw_aside(dl, &used, None, None, right, top);
         let aside = Aside { height: aside_height(&used, None), draw: &aside_fn };
         self.shell.draw(dl, frame, f.duration, Some(aside), |dl, bx| {
-            let (lw, lh) = (layout.width, layout.height);
-            let draws: Vec<f64> = (0..layout.transitions.len())
-                .map(|i| {
-                    let at = self.timeline.transition_at[i];
-                    interpolate(frame, &[at, at + TRANSITION_FRAMES], &[0.0, 1.0], CLAMP)
-                })
-                .collect();
-            dl.group(|dl| {
-                dl.translate((bx.w - lw as f32) / 2.0, (bx.h - lh as f32) / 2.0);
-                dl.scale_about(self.scale as f32, (lw / 2.0) as f32, (lh / 2.0) as f32);
-                if let Some(entry) = &layout.entry {
-                    let at = self.timeline.entry_at;
-                    let appear = spring(frame - at, FPS, Spring::damping(14.0).with_stiffness(140.0));
-                    let draw = interpolate(frame, &[at + 4.0, at + 14.0], &[0.0, 1.0], CLAMP);
-                    dl.circle(entry.dot.x as f32, entry.dot.y as f32, (12.0 * appear) as f32, TEXT);
-                    if let Some(p) = skia(&trim(&bez(&entry.d), draw)) {
-                        dl.path(p, None, Some(Stroke::solid(TEXT, 3.0)));
+            self.pen.draw(dl, frame, f.segments, |dl| {
+                let (lw, lh) = (layout.width, layout.height);
+                let draws: Vec<f64> = (0..layout.transitions.len())
+                    .map(|i| {
+                        let at = self.timeline.transition_at[i];
+                        interpolate(frame, &[at, at + TRANSITION_FRAMES], &[0.0, 1.0], CLAMP)
+                    })
+                    .collect();
+                dl.group(|dl| {
+                    dl.translate((bx.w - lw as f32) / 2.0, (bx.h - lh as f32) / 2.0);
+                    dl.scale_about(self.scale as f32, (lw / 2.0) as f32, (lh / 2.0) as f32);
+                    if let Some(entry) = &layout.entry {
+                        let at = self.timeline.entry_at;
+                        let appear = spring(frame - at, FPS, Spring::damping(14.0).with_stiffness(140.0));
+                        let draw = interpolate(frame, &[at + 4.0, at + 14.0], &[0.0, 1.0], CLAMP);
+                        dl.circle(entry.dot.x as f32, entry.dot.y as f32, (12.0 * appear) as f32, TEXT);
+                        if let Some(p) = skia(&trim(&bez(&entry.d), draw)) {
+                            dl.path(p, None, Some(Stroke::solid(TEXT, 3.0)));
+                        }
+                        arrow_head(
+                            dl,
+                            (entry.tip.x, entry.tip.y),
+                            (entry.dir.x, entry.dir.y),
+                            TEXT,
+                            interpolate(draw, &[0.8, 1.0], &[0.0, 1.0], CLAMP),
+                        );
                     }
-                    arrow_head(
-                        dl,
-                        (entry.tip.x, entry.tip.y),
-                        (entry.dir.x, entry.dir.y),
-                        TEXT,
-                        interpolate(draw, &[0.8, 1.0], &[0.0, 1.0], CLAMP),
-                    );
-                }
-                for (i, &draw) in draws.iter().enumerate() {
-                    let pulse = pulse_of(frame, &self.pulse_ats(&format!("t:{i}"), f.segments));
-                    self.draw_transition(dl, i, draw, pulse, focus.emphasis(&format!("t:{i}")));
-                }
-                for (i, placed) in layout.states.iter().enumerate() {
-                    let id = &self.scene.states[placed.state].id;
-                    let adjacent: Vec<Emphasis> = self
-                        .scene
-                        .transitions
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, t)| t.from == *id || t.to == *id)
-                        .map(|(k, _)| focus.emphasis(&format!("t:{k}")))
-                        .collect();
-                    let em = as_bright_as(focus.emphasis(&format!("s:{id}")), &adjacent);
-                    self.draw_card(dl, i, f, em);
-                }
-                for (i, &draw) in draws.iter().enumerate() {
-                    let pulse = pulse_of(frame, &self.pulse_ats(&format!("t:{i}"), f.segments));
-                    let appear = interpolate(draw, &[0.55, 1.0], &[0.0, 1.0], CLAMP);
-                    self.draw_label(dl, i, appear, pulse, focus.emphasis(&format!("t:{i}")));
-                }
-            });
-            // TODO(marks): PenMarks.
-            // TODO(camera): the scene's generic `camera` field.
-            let _ = self.box_;
+                    for (i, &draw) in draws.iter().enumerate() {
+                        let pulse = pulse_of(frame, &self.pulse_ats(&format!("t:{i}"), f.segments));
+                        self.draw_transition(dl, i, draw, pulse, focus.emphasis(&format!("t:{i}")));
+                    }
+                    for (i, placed) in layout.states.iter().enumerate() {
+                        let id = &self.scene.states[placed.state].id;
+                        let adjacent: Vec<Emphasis> = self
+                            .scene
+                            .transitions
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, t)| t.from == *id || t.to == *id)
+                            .map(|(k, _)| focus.emphasis(&format!("t:{k}")))
+                            .collect();
+                        let em = as_bright_as(focus.emphasis(&format!("s:{id}")), &adjacent);
+                        self.draw_card(dl, i, f, em);
+                    }
+                    for (i, &draw) in draws.iter().enumerate() {
+                        let pulse = pulse_of(frame, &self.pulse_ats(&format!("t:{i}"), f.segments));
+                        let appear = interpolate(draw, &[0.55, 1.0], &[0.0, 1.0], CLAMP);
+                        self.draw_label(dl, i, appear, pulse, focus.emphasis(&format!("t:{i}")));
+                    }
+                });
+                let _ = self.box_;
+            })
         });
     }
 }

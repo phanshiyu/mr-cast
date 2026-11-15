@@ -155,6 +155,8 @@ pub struct RoutedRelation {
     pub to: RelationEnd,
     pub mid: Pt,
     pub label: Option<Fit>,
+    /// The corners of its route.
+    pub points: Vec<Pt>,
 }
 
 pub struct ErLayout {
@@ -434,11 +436,11 @@ fn entity_text(entity: &ErEntity, w: f64) -> (Fit, Vec<FieldText>) {
     (name, fields)
 }
 
-fn label_half_height(label: Option<&Fit>) -> f64 {
+pub fn label_half_height(label: Option<&Fit>) -> f64 {
     LABEL_HALF_H.max(label.map_or(0.0, |l| (l.height + 10.0) / 2.0))
 }
 
-fn label_half_width(text: &str) -> f64 {
+pub fn label_half_width(text: &str) -> f64 {
     RELATION_LABEL_MAX.min(26.0 + js_len(text) as f64 * 10.4) / 2.0
 }
 
@@ -797,6 +799,7 @@ pub fn layout_er(entities: &[ErEntity], relations: &[ErRelation]) -> ErLayout {
                 to: RelationEnd { point: shift(r.to.point), side: r.to.side },
                 mid: shift(r.mid),
                 label: r.label,
+                points,
             }
         })
         .collect();

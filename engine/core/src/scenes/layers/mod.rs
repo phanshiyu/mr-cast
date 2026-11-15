@@ -9,6 +9,7 @@ mod route;
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Easing, Spring, interpolate, spring};
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{TextOpts, draw_fit};
 use crate::chrome::marks::{
     EMPHASIS, badges_of, change_colors, draw_corner_badges, emphasis_card, emphasis_ring, ring,
@@ -18,7 +19,10 @@ use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::diagram::polyline;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
+use crate::marks::geometry::Bx;
+use crate::marks::{LayoutBoxes, Pen, Stage};
 use crate::steps::{Emphasis, FocusSpotlight, as_bright_as, brighter};
+use crate::targets::SceneRefs;
 use crate::targets::target_steps;
 use crate::text::{Face, line_metrics};
 use crate::textfit::Fit;
@@ -47,12 +51,38 @@ struct LayersScene {
 }
 
 struct View {
+    pen: Pen,
     shell: Shell,
     scene: Value,
     layout: Layout,
     route: Route,
     positions: Vec<i64>,
     box_size: (f64, f64),
+}
+
+/// The box of each item a step can focus, in layout units: a layer's band, an item's card. A note keeps off the
+/// labels, the cards and the rail (`layersBoxes`).
+fn layers_boxes(layout: &Layout) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    let mut obstacles = Vec::new();
+    for l in &layout.layers {
+        out.add(format!("l:{}", l.layer.id), Bx::new(0.0, l.y, layout.band_w, l.h));
+        for it in &l.items {
+            out.add(format!("i:{}", it.node.id), Bx::new(it.x, it.y, it.w, it.h));
+        }
+        obstacles.push(Bx::new(
+            PAD_X,
+            l.text_y,
+            l.label.width.max(l.caption.as_ref().map_or(0.0, |c| c.width)),
+            l.label.height + l.caption.as_ref().map_or(0.0, |c| CAPTION_GAP + c.height),
+        ));
+    }
+    obstacles.extend(layout.layers.iter().flat_map(|l| l.items.iter().map(|it| Bx::new(it.x, it.y, it.w, it.h))));
+    if layout.rail.is_some() {
+        obstacles.push(Bx::new(layout.band_w, 0.0, layout.width - layout.band_w, layout.height));
+    }
+    out.obstacles = Some(obstacles);
+    out
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -62,7 +92,12 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     }
     let box_size = content_box(scene.title.is_some());
     let layout = layout_layers(input.scene, &scene.layers, box_size);
+    let stage = Stage::centred(box_size, (layout.width, layout.height), layers_scale(&layout, box_size.1));
+    let marks = stage.targets(&layers_boxes(&layout), box_size);
+    let pen =
+        Pen::new(input.scene, input.segments, &SceneRefs(input.scene), vec![marks], true, header_box(input.scene));
     Ok(Box::new(View {
+        pen,
         shell: Shell::new(input.scene),
         scene: input.scene.clone(),
         layout,
@@ -357,56 +392,56 @@ impl SceneView for View {
         let guide_in = interpolate(frame, &[START + 30.0, START + 45.0], &[0.0, 1.0], CLAMP);
 
         self.shell.draw(dl, frame, f.duration, None, |dl, _| {
-            dl.translate(left as f32, top as f32);
-            dl.scale_about(scale as f32, 0.0, 0.0);
-            for placed in &layout.layers {
-                let items: Vec<Emphasis> =
-                    placed.items.iter().map(|it| item_emphasis(&it.node.id, &placed.layer.id)).collect();
-                let e = as_bright_as(emphasis(&format!("l:{}", placed.layer.id)), &items);
-                draw_band(dl, placed, layout, appear_at(placed.index, 0.0), e);
-            }
-            if let (Some(_), Some(token)) = (rail, token) {
-                self.draw_rail(dl, p, token, guide_in, back, skip_fade, reply_tone.0, token_in);
-            }
-            for placed in &layout.layers {
-                for (j, it) in placed.items.iter().enumerate() {
-                    nodecard::draw(
-                        dl,
-                        &it.node,
-                        (it.x as f32, it.y as f32, it.w as f32, it.h as f32),
-                        CardSize::Compact,
-                        appear_at(placed.index, 6.0 + 2.0 * j as f64),
-                        item_emphasis(&it.node.id, &placed.layer.id),
-                        &it.text,
-                    );
+            self.pen.draw(dl, frame, f.segments, |dl| {
+                dl.translate(left as f32, top as f32);
+                dl.scale_about(scale as f32, 0.0, 0.0);
+                for placed in &layout.layers {
+                    let items: Vec<Emphasis> =
+                        placed.items.iter().map(|it| item_emphasis(&it.node.id, &placed.layer.id)).collect();
+                    let e = as_bright_as(emphasis(&format!("l:{}", placed.layer.id)), &items);
+                    draw_band(dl, placed, layout, appear_at(placed.index, 0.0), e);
                 }
-            }
-            if let (Some(rail), Some(token)) = (rail, token) {
-                if let Some(label) = &rail.label {
-                    draw_pill(
-                        dl,
-                        label,
-                        token.0 + PILL_GAP,
-                        token.1,
-                        ACCENT,
-                        ACCENT_SOFT,
-                        token_in * (1.0 - 2.0 * back).max(0.0),
-                    );
+                if let (Some(_), Some(token)) = (rail, token) {
+                    self.draw_rail(dl, p, token, guide_in, back, skip_fade, reply_tone.0, token_in);
                 }
-                if let (Some(reply), true) = (&rail.reply, p > turn) {
-                    draw_pill(
-                        dl,
-                        reply,
-                        token.0 + PILL_GAP,
-                        token.1,
-                        reply_tone.0,
-                        reply_tone.1,
-                        (2.0 * back - 1.0).max(0.0),
-                    );
+                for placed in &layout.layers {
+                    for (j, it) in placed.items.iter().enumerate() {
+                        nodecard::draw(
+                            dl,
+                            &it.node,
+                            (it.x as f32, it.y as f32, it.w as f32, it.h as f32),
+                            CardSize::Compact,
+                            appear_at(placed.index, 6.0 + 2.0 * j as f64),
+                            item_emphasis(&it.node.id, &placed.layer.id),
+                            &it.text,
+                        );
+                    }
                 }
-            }
-            // TODO(marks): pen marks over the stack.
-            // TODO(camera): the generic `camera` field.
+                if let (Some(rail), Some(token)) = (rail, token) {
+                    if let Some(label) = &rail.label {
+                        draw_pill(
+                            dl,
+                            label,
+                            token.0 + PILL_GAP,
+                            token.1,
+                            ACCENT,
+                            ACCENT_SOFT,
+                            token_in * (1.0 - 2.0 * back).max(0.0),
+                        );
+                    }
+                    if let (Some(reply), true) = (&rail.reply, p > turn) {
+                        draw_pill(
+                            dl,
+                            reply,
+                            token.0 + PILL_GAP,
+                            token.1,
+                            reply_tone.0,
+                            reply_tone.1,
+                            (2.0 * back - 1.0).max(0.0),
+                        );
+                    }
+                }
+            })
         });
     }
 }

@@ -8,6 +8,7 @@ mod layout;
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{TextOpts, draw_fit};
 use crate::chrome::marks::{
     BadgeSpec, EMPHASIS, EMPHASIS_GLOW, Marks, badge_box, badges_of, draw_badge, draw_corner_badges, emphasis_card,
@@ -17,7 +18,10 @@ use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::diagram::partial_polyline;
 use crate::display::{BoxStyle, DisplayList, Path, PathBuilder, Shadow, Stroke};
+use crate::marks::geometry::Bx;
+use crate::marks::{LayoutBoxes, Pen, Stage};
 use crate::steps::{Emphasis, FocusSpotlight, reveal_starts, step_spring};
+use crate::targets::SceneRefs;
 use crate::targets::{step_targets, target_steps};
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::{Family, Font, measure};
@@ -61,6 +65,7 @@ struct TimelineScene {
 }
 
 struct View {
+    pen: Pen,
     shell: Shell,
     scene: serde_json::Value,
     events: Vec<EventIn>,
@@ -68,6 +73,25 @@ struct View {
     unit: Option<String>,
     layout: Layout,
     box_size: (f64, f64),
+}
+
+/// The box of each item a step can focus, in layout units: an event's card, a span's bar. A note keeps off them, the
+/// span labels beside their bars and the axis (`timelineBoxes`).
+fn timeline_boxes(layout: &Layout) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    for e in &layout.events {
+        let (x, y, w, h) = e.box_;
+        out.add(format!("ev:{}", e.index), Bx::new(x, y, w, h));
+    }
+    for (i, s) in layout.spans.iter().enumerate() {
+        out.add(format!("sp:{i}"), Bx::new(s.x0, s.y, (s.x1 - s.x0).max(8.0), SPAN_H));
+    }
+    let mut obstacles: Vec<Bx> = out.boxes.iter().map(|(_, b)| *b).collect();
+    obstacles
+        .extend(layout.spans.iter().filter(|s| !s.inside).map(|s| Bx::new(s.x1 + 12.0, s.y, s.label.width, SPAN_H)));
+    obstacles.push(Bx::new(0.0, layout.axis_y - 26.0, layout.width, 70.0));
+    out.obstacles = Some(obstacles);
+    out
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -88,7 +112,17 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         scene.prefix.as_deref(),
         box_size.0,
     );
+    let scale = timeline_scale(&layout, box_size.1);
+    let stage = Stage {
+        left: (box_size.0 - layout.width * scale) / 2.0,
+        top: (box_size.1 - layout.height * scale).max(0.0) * 0.4,
+        scale,
+    };
+    let marks = stage.targets(&timeline_boxes(&layout), box_size);
+    let pen =
+        Pen::new(input.scene, input.segments, &SceneRefs(input.scene), vec![marks], true, header_box(input.scene));
     Ok(Box::new(View {
+        pen,
         shell: Shell::new(input.scene),
         scene: input.scene.clone(),
         events: scene.events,
@@ -442,57 +476,63 @@ impl SceneView for View {
         let (lx, rx) = (layout.ticks[0].0 as f32, layout.ticks[layout.ticks.len() - 1].0 as f32);
 
         self.shell.draw(dl, frame, f.duration, None, |dl, _| {
-            dl.translate(left as f32, top as f32);
-            dl.scale_about(scale as f32, 0.0, 0.0);
-            // The axis, its played part and its ticks.
-            dl.group(|dl| {
-                dl.fade(axis_in);
-                if let Some(p) = stroke_path(&[(lx as f64, axis_y as f64), (rx as f64, axis_y as f64)]) {
-                    dl.path(p, None, Some(Stroke::dashed(BORDER_STRONG, 3.0, 2.0, 9.0).rounded()));
+            self.pen.draw(dl, frame, f.segments, |dl| {
+                dl.translate(left as f32, top as f32);
+                dl.scale_about(scale as f32, 0.0, 0.0);
+                // The axis, its played part and its ticks.
+                dl.group(|dl| {
+                    dl.fade(axis_in);
+                    if let Some(p) = stroke_path(&[(lx as f64, axis_y as f64), (rx as f64, axis_y as f64)]) {
+                        dl.path(p, None, Some(Stroke::dashed(BORDER_STRONG, 3.0, 2.0, 9.0).rounded()));
+                    }
+                });
+                let px = lx.max(play_x as f32);
+                if px > lx {
+                    if let Some(p) = stroke_path(&[(lx as f64, axis_y as f64), (px as f64, axis_y as f64)]) {
+                        dl.path(p, None, Some(Stroke::solid(TEXT.fade(0.75), 4.0).rounded()));
+                    }
                 }
-            });
-            let px = lx.max(play_x as f32);
-            if px > lx {
-                if let Some(p) = stroke_path(&[(lx as f64, axis_y as f64), (px as f64, axis_y as f64)]) {
-                    dl.path(p, None, Some(Stroke::solid(TEXT.fade(0.75), 4.0).rounded()));
+                dl.group(|dl| {
+                    dl.fade(axis_in);
+                    for (x, _) in &layout.ticks {
+                        dl.fill_rect(*x as f32 - 1.0, axis_y - 8.0, 2.0, 16.0, FAINT);
+                    }
+                    let st = Style::mono(400.0, 17.0);
+                    let lh = line_metrics(Face::Mono, 17.0).normal;
+                    for (x, text) in &layout.ticks {
+                        let w = width(text, st);
+                        dl.text(
+                            text,
+                            st,
+                            *x as f32 - w / 2.0,
+                            axis_y + 14.0 + baseline_in(Face::Mono, 17.0, lh),
+                            FAINT,
+                        );
+                    }
+                });
+                for (i, p) in layout.spans.iter().enumerate() {
+                    let sp = &self.spans[p.index];
+                    let done = playhead.reached_at(layout, sp.from.max(sp.to));
+                    self.span_bar(dl, p, play_x, done, frame, emphasis.emphasis(&format!("sp:{i}")));
                 }
-            }
-            dl.group(|dl| {
-                dl.fade(axis_in);
-                for (x, _) in &layout.ticks {
-                    dl.fill_rect(*x as f32 - 1.0, axis_y - 8.0, 2.0, 16.0, FAINT);
+                for p in &layout.events {
+                    self.event_mark(dl, p, &playhead.event_at(layout, &self.events, p.index), frame);
                 }
-                let st = Style::mono(400.0, 17.0);
-                let lh = line_metrics(Face::Mono, 17.0).normal;
-                for (x, text) in &layout.ticks {
-                    let w = width(text, st);
-                    dl.text(text, st, *x as f32 - w / 2.0, axis_y + 14.0 + baseline_in(Face::Mono, 17.0, lh), FAINT);
+                for p in &layout.events {
+                    let t = playhead.event_at(layout, &self.events, p.index);
+                    self.event_card(dl, p, &t, frame, emphasis.emphasis(&format!("ev:{}", p.index)));
                 }
-            });
-            for (i, p) in layout.spans.iter().enumerate() {
-                let sp = &self.spans[p.index];
-                let done = playhead.reached_at(layout, sp.from.max(sp.to));
-                self.span_bar(dl, p, play_x, done, frame, emphasis.emphasis(&format!("sp:{i}")));
-            }
-            for p in &layout.events {
-                self.event_mark(dl, p, &playhead.event_at(layout, &self.events, p.index), frame);
-            }
-            for p in &layout.events {
-                let t = playhead.event_at(layout, &self.events, p.index);
-                self.event_card(dl, p, &t, frame, emphasis.emphasis(&format!("ev:{}", p.index)));
-            }
-            dl.group(|dl| {
-                dl.fade(head_opacity as f32);
-                dl.rect(
-                    play_x as f32 - 1.5,
-                    axis_y - 26.0,
-                    3.0,
-                    52.0,
-                    BoxStyle::fill(ACCENT).radius(2.0).shadow(Shadow::new(0.0, 0.0, 18.0, ACCENT_GLOW)),
-                );
-            });
-            // TODO(marks): pen marks over the timeline.
-            // TODO(camera): the generic `camera` field.
+                dl.group(|dl| {
+                    dl.fade(head_opacity as f32);
+                    dl.rect(
+                        play_x as f32 - 1.5,
+                        axis_y - 26.0,
+                        3.0,
+                        52.0,
+                        BoxStyle::fill(ACCENT).radius(2.0).shadow(Shadow::new(0.0, 0.0, 18.0, ACCENT_GLOW)),
+                    );
+                });
+            })
         });
     }
 }

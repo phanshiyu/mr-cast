@@ -1010,3 +1010,45 @@ fn strokes_bounds(strokes: &[Stroke]) -> Bx {
     let pts: Vec<Bx> = strokes.iter().flat_map(|s| s.points.iter().map(|p| Bx::new(p.x, p.y, 0.0, 0.0))).collect();
     union(pts.iter().map(Some)).unwrap_or(Bx::new(0.0, 0.0, 0.0, 0.0))
 }
+
+/// A scene's pen marks, ink and camera, laid out once from the boxes it gives each step: what most scenes need
+/// (see engine/README.md, "Pen marks, ink and the camera").
+pub struct Pen {
+    targets: Vec<MarkTargets>,
+    /// One set of targets serves every step: the scene does not move between steps.
+    same: bool,
+    board: Board,
+    camera: crate::camera::Camera,
+}
+
+impl Pen {
+    /// `targets` holds each step's targets, or one set for every step when `same`; `area` is the content box the
+    /// camera frames (`headerBox`).
+    pub fn new(
+        scene: &Value,
+        segments: &[Segment],
+        refs: &dyn Refs,
+        targets: Vec<MarkTargets>,
+        same: bool,
+        area: (f64, f64),
+    ) -> Pen {
+        let step_refs = StepRefs::Scene(refs);
+        let of = |k: usize| if same { targets.first().cloned() } else { targets.get(k).cloned() };
+        let board = Board::new(scene, segments, &step_refs, &of, &|_| None);
+        let camera = crate::camera::Camera::new(scene, &step_refs, area);
+        Pen { targets, same, board, camera }
+    }
+
+    fn target(&self, k: usize) -> Option<MarkTargets> {
+        if self.same { self.targets.first().cloned() } else { self.targets.get(k).cloned() }
+    }
+
+    /// Draws `content` (in content-box coordinates) through the camera, with the marks and ink over it.
+    pub fn draw(&self, dl: &mut DisplayList, frame: f64, segments: &[Segment], content: impl FnOnce(&mut DisplayList)) {
+        let view = self.camera.view(frame, segments, &|k| self.target(k));
+        self.camera.draw(dl, view, |dl| {
+            dl.group(content);
+            self.board.draw(dl, frame, segments, &|_| None);
+        });
+    }
+}
