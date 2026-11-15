@@ -121,8 +121,16 @@ no order, scene type, count or length. Explanations and quick videos are unchang
 
 ### 5. The player
 
-A scene's chapter in the sidebar carries the question it answers as a small label, and the reading panel shows the
-check-first list in any branch video.
+A scene's chapter in the sidebar carries the question it answers as a small label (Why, One case, The idea, The parts,
+Proof, Check first), and the reading panel shows the check-first list in any branch video.
+
+A branch video with a `brief` also has a guide panel in the page, where the reading panel sits and with its style (a
+pre-read keeps its reading panel as it is). It lists the six questions with the brief's short answer to each, marks
+the ones the video has reached, and seeks to the first scene that answers one when it is clicked. Under that it lists
+"Open first" (each `check` item, seeking to the scene that shows that place when there is one) and "Ask the author". An
+answer that is "unknown" reads "Not stated". The `G` key shows or hides it. It is part of the page, not of the
+composition, so the rendered MP4 never has it; it stacks under the video on a small screen, as the reading panel
+does, and never narrows the video. `shared/guide.mjs` shapes its data.
 
 ### 6. The eval
 

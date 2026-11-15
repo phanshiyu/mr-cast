@@ -35,7 +35,9 @@ import { normalizeStoryboard } from '../shared/normalize.mjs';
 import { parseStoryboard } from '../shared/storyboard-json.mjs';
 import { checkPlan } from '../shared/plan.mjs';
 import { PlanPage, type BuiltPicks } from './PlanPage';
+import { GuidePanel } from './GuidePanel';
 import { ReadingPanel } from './ReadingPanel';
+import { guidePanel, sceneQuestions } from '../shared/guide.mjs';
 import { readingOrder } from '../shared/reading.mjs';
 import type { HunkMap, ImageManifest, Plan, Scene, Voiceover, WalkthroughProps } from './types';
 import { captionPage } from './utils/captions';
@@ -274,6 +276,12 @@ export const App: React.FC = () => {
     () => (shown ? readingOrder(shown.storyboard, shown.hunks, planData) : null),
     [shown, planData],
   );
+  // A branch video's brief; a pre-read keeps its reading panel as it is.
+  const guide = useMemo(
+    () => (shown && ready?.settings?.audience !== 'preread' ? guidePanel(shown.storyboard, shown.hunks) : null),
+    [shown, ready?.settings?.audience],
+  );
+  const [guideOpen, setGuideOpen] = useState(true);
   const seekChapter = useCallback(
     (index: number) => {
       const target = chapters[Math.max(0, Math.min(chapters.length - 1, index))];
@@ -302,11 +310,14 @@ export const App: React.FC = () => {
       } else if (e.key === 'ArrowRight' || e.key === 'k') {
         e.preventDefault();
         seekChapter(current + 1);
+      } else if (e.key === 'g' && guide) {
+        e.preventDefault();
+        setGuideOpen((open) => !open);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [current, seekChapter, view]);
+  }, [current, seekChapter, view, guide]);
 
   if (state.status === 'loading') {
     return <div className="flex h-screen items-center justify-center text-sm text-slate-400">Loading walkthrough…</div>;
@@ -411,6 +422,11 @@ export const App: React.FC = () => {
                         </span>
                         <span className="font-mono text-xs text-slate-500">{formatTime(c.from)}</span>
                       </div>
+                      {guide && sceneQuestions(c.scene).length ? (
+                        <div className="mt-0.5 truncate pl-[3.25rem] text-[11px] text-slate-500">
+                          {sceneQuestions(c.scene).join(' · ')}
+                        </div>
+                      ) : null}
                       {isActive ? (
                         <div
                           className="absolute bottom-0 left-0 h-0.5 bg-indigo-400"
@@ -450,11 +466,18 @@ export const App: React.FC = () => {
               {meta?.quick && ended ? <QuickEndCard /> : null}
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />
+            {guide && guideOpen ? <GuidePanel guide={guide} scene={current} onScene={seekChapter} /> : null}
             {reading ? <ReadingPanel order={reading} onScene={seekChapter} /> : null}
             <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
               <span>
                 <Kbd>Space</Kbd> play / pause · <Kbd>←</Kbd> <Kbd>→</Kbd> or <Kbd>J</Kbd> <Kbd>K</Kbd> previous / next
                 chapter
+                {guide ? (
+                  <>
+                    {' '}
+                    · <Kbd>G</Kbd> show / hide the guide
+                  </>
+                ) : null}
               </span>
               <PlaybackRate rate={rate} onChange={setRate} />
             </footer>
