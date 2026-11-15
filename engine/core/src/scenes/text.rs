@@ -671,10 +671,7 @@ fn part_boxes(scene: &TextScene, l: &TextLayout, w: f32, h: f32) -> Vec<(String,
     }
     for (i, (item, &top)) in l.items.iter().zip(&s.items).enumerate() {
         // An item's box takes in its dot (34px left of its text), where it sits once lit.
-        out.push((
-            format!("b:{i}"),
-            Bx::new(LIT_SHIFT as f64, top as f64, item.width + 34.0, item.height),
-        ));
+        out.push((format!("b:{i}"), Bx::new(LIT_SHIFT as f64, top as f64, item.width + 34.0, item.height)));
     }
     if let Some(sides) = &l.sides {
         let inner = if l.mark.is_some() { w * (1.0 - QUESTION_ROOM as f32) } else { w };

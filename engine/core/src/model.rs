@@ -32,6 +32,9 @@ pub struct Storyboard {
     pub subtitle: Option<String>,
     /// Scenes stay JSON: each scene module reads its own fields with serde (see `scenes`).
     pub scenes: Vec<Value>,
+    /// A reviewed storyboard's findings (shared/review.mjs); a code step's `flag` names one.
+    #[serde(default)]
+    pub findings: Option<Vec<Value>>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
