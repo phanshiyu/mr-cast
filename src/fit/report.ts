@@ -153,9 +153,9 @@ const SCENE_FITS: SceneFits = {
     const order = readingOrder(storyboard, hunks);
     return order ? layoutReading(order, scene.items ?? order.items, box.width, box.height) : null;
   },
-  compare: (scene) => {
+  compare: (scene, _storyboard, hunks) => {
     const box = contentBox(Boolean(scene.title));
-    const layout = layoutCompare(scene, box.width, box.height);
+    const layout = layoutCompare(scene, box.width, box.height, hunks);
     return new Scaled('comparison', layout.scale, layout);
   },
   // A drawing's text is checked against its viewBox in bin/lib/validate-svg.mjs; nothing here wraps it.

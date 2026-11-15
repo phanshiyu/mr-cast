@@ -760,6 +760,18 @@ export const SLOTS = {
     width: 0,
     fix: "shorten the snippet's longest line, or show the code in a code scene",
   },
+  compareCaption: {
+    ...MONO,
+    name: 'compare snippet caption',
+    weight: 400,
+    size: 16,
+    min: 11,
+    lines: 1,
+    lineHeight: 1.5,
+    markup: false,
+    width: 0,
+    fix: "the caption is the hunk's file path and line numbers; it is drawn smaller, so shorten the path by reading a hunk of a file with a shorter one",
+  },
   terminalWindow: {
     ...SANS,
     name: 'window title',

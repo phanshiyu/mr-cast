@@ -1437,7 +1437,24 @@ export interface FilesScene extends SceneBase {
  * One side's cell in a compare row: display text, a short code snippet of a few lines drawn with syntax colours, or a
  * picture, such as a screenshot of each side, in a 16:9 box (see ImageScene for what `image` may be).
  */
-export type CompareCell = DisplayText | { code: string; lang?: string } | { image: string; fit?: ImageFit };
+export type CompareCell =
+  | DisplayText
+  | { code: string; lang?: string }
+  | { image: string; fit?: ImageFit }
+  | HunkCell;
+
+/**
+ * A cell whose code is read from hunks.json, so it cannot drift from the real diff. `side: "old"` shows the removed
+ * and context lines in `lines` by old-file line numbers, `"new"` the added and context lines by new-file numbers.
+ * The cell names its file and line numbers quietly above the code. Up to 8 lines read well.
+ */
+export interface HunkCell {
+  /** A hunk id from `mr-cast extract`, or a snippet id from `explain snippet` (for "new"). */
+  hunk: string;
+  side: 'old' | 'new';
+  /** A line number or "a-b" range in that side's file, e.g. "4-6". */
+  lines: string | number;
+}
 
 /** Which side of a compare row is better: a green check, a red cross, or an amber warning on that side's cell. */
 export type Verdict = 'good' | 'bad' | 'warn';
@@ -1447,6 +1464,8 @@ export interface CompareSide {
   title: string;
   /** Colour of the side's title and frame. Defaults to neutral for the first side and accent for the second. */
   tone?: Tone;
+  /** In `mode: "options"`, true for the side that was taken: drawn as the one chosen, the other quieter and labelled "Not taken". */
+  chosen?: boolean;
 }
 
 export interface CompareRow {
@@ -1461,6 +1480,8 @@ export interface CompareRow {
   same?: boolean;
   /** Which side is better on this row, one entry per side, null for no verdict, e.g. ["bad", "good"]. */
   verdict?: (Verdict | null)[];
+  /** In `mode: "options"`, which side this row took, 0 or 1: that cell is drawn as the one chosen, the other quieter and labelled "Not taken". */
+  chosen?: 0 | 1;
 }
 
 /**
@@ -1473,6 +1494,12 @@ export interface CompareScene extends SceneBase {
   title?: string;
   /** The two sides, left then right. Defaults to "Before" and "After". */
   sides?: CompareSide[];
+  /**
+   * "changes" (the default) is old against new: a row that differs gets an arrow between the sides, a row that
+   * matches dims. "options" is a decision against the alternative not taken: no arrows between the sides, and
+   * `chosen` on a side or a row marks the one taken.
+   */
+  mode?: 'changes' | 'options';
   /** Up to 6. */
   rows: CompareRow[];
   /**

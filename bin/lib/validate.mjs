@@ -682,7 +682,7 @@ async function validateScenes(
         break;
 
       case 'compare':
-        checkCompare(s, p, errors, warnings);
+        checkCompare(s, p, errors, warnings, hunks ?? {});
         break;
 
       case 'terminal':

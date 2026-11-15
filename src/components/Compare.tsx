@@ -69,6 +69,9 @@ const CodeBlock: React.FC<{ cell: Extract<PlacedCompareCell, { kind: 'code' }> }
       color: plainCodeColor,
     }}
   >
+    {cell.caption ? (
+      <FitText fit={cell.caption} style={{ color: colors.faint, marginBottom: 6, letterSpacing: 0.2 }} />
+    ) : null}
     {tokenizeLines(cell.code, cell.lang).map((tokens, i) => (
       <div key={i} style={{ whiteSpace: 'pre' }}>
         {tokens.map((t, j) => (
@@ -301,7 +304,10 @@ export const Compare: React.FC<SceneProps<CompareScene>> = ({ scene, hunks, dura
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const box = contentBox(Boolean(scene.title));
-  const layout = useMemo(() => layoutCompare(scene, box.width, box.height), [scene, box.width, box.height]);
+  const layout = useMemo(
+    () => layoutCompare(scene, box.width, box.height, hunks),
+    [scene, box.width, box.height, hunks],
+  );
   const count = layout.rows.length;
   const lasts = useMemo(() => rowReach(scene), [scene]);
   const stepped = lasts.length > 0 && segments.length > 1;

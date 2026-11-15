@@ -1,7 +1,7 @@
-import { compareRowSame, compareTitles } from '../../shared/compare.mjs';
+import { compareRowSame, compareTitles, isHunkCell, resolveHunkCell } from '../../shared/compare.mjs';
 import { fitBlock, fitLines, fitText, fitTextAt, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
-import type { CompareCell, CompareRow, CompareScene, ImageFit, Tone, Verdict } from '../types';
+import type { CompareCell, CompareRow, CompareScene, HunkMap, ImageFit, Tone, Verdict } from '../types';
 import type { Box, LayoutBoxes } from './penGeometry';
 
 /** Height of a side's title band, above its first row. */
@@ -23,7 +23,7 @@ const MIN_FONT = 18;
 
 export type PlacedCompareCell = (
   | { kind: 'text'; text: Fit }
-  | { kind: 'code'; code: string; lang: string; lines: Fit }
+  | { kind: 'code'; code: string; lang: string; lines: Fit; caption: Fit | null; capH: number }
   | { kind: 'image'; src: string; fit: ImageFit }
 ) & {
   verdict: Verdict | null;
@@ -65,8 +65,12 @@ export interface CompareLayout {
 }
 
 const codeLines = (code: string) => code.replace(/\s+$/, '').split('\n');
-
-function fitCell(cell: CompareCell, width: number, font: number, path: string): PlacedCompareCell {
+function fitCell(cell: CompareCell, width: number, font: number, path: string, hunks: HunkMap): PlacedCompareCell {
+  if (isHunkCell(cell)) {
+    const read = resolveHunkCell(cell, hunks);
+    if ('error' in read) return fitCell(`Not shown: ${read.error}`, width, font, path, hunks);
+    return fitCode(read.code, read.lang, read.caption, width, font, path);
+  }
   if (typeof cell === 'string') {
     const text = fitTextAt(cell.trim(), sized(SLOTS.compareCell, width), path, font);
     return { kind: 'text', text, verdict: null, h: text.height };
@@ -80,18 +84,39 @@ function fitCell(cell: CompareCell, width: number, font: number, path: string): 
       verdict: null,
       h: Math.round((width * 9) / 16),
     };
+  return fitCode(cell.code, cell.lang ?? 'plain', null, width, font, path);
+}
+
+function fitCode(
+  code: string,
+  lang: string,
+  caption: string | null,
+  width: number,
+  font: number,
+  path: string,
+): PlacedCompareCell {
   const slot = {
     ...sized(SLOTS.compareCode, width - 2 * CODE_PAD),
     size: Math.min(SLOTS.compareCode.size, Math.round(font * 0.8)),
   };
-  const lines = fitLines(codeLines(cell.code), slot, Infinity, `${path}.code`);
+  const lines = fitLines(codeLines(code), slot, Infinity, `${path}.code`);
+  const cap = caption
+    ? fitText(
+        caption,
+        { ...sized(SLOTS.compareCaption, width - 2 * CODE_PAD), size: Math.max(12, Math.round(lines.size * 0.75)) },
+        `${path}.caption`,
+      )
+    : null;
+  const capH = cap ? cap.height + 6 : 0;
   return {
     kind: 'code',
-    code: codeLines(cell.code).join('\n'),
-    lang: cell.lang ?? 'plain',
+    code: codeLines(code).join('\n'),
+    lang,
     lines,
+    caption: cap,
+    capH,
     verdict: null,
-    h: lines.height + 2 * CODE_PAD,
+    h: lines.height + capH + 2 * CODE_PAD,
   };
 }
 
@@ -108,7 +133,7 @@ function shareCodeSize(cells: PlacedCompareCell[], width: number, path: string):
       Infinity,
       `${path}.cells[${k}].code`,
     );
-    return { ...c, lines, h: lines.height + 2 * CODE_PAD };
+    return { ...c, lines, h: lines.height + c.capH + 2 * CODE_PAD };
   });
 }
 
@@ -121,7 +146,7 @@ function labelWidth(rows: readonly CompareRow[], width: number): number {
   return Math.round(Math.min(LABEL_MAX, width * 0.22, Math.max(LABEL_MIN, widest + 8)));
 }
 
-function attempt(scene: CompareScene, width: number, font: number) {
+function attempt(scene: CompareScene, width: number, font: number, hunks: HunkMap) {
   const labelW = labelWidth(scene.rows, width);
   const sideW = (width - labelW - (labelW ? LABEL_GAP : 0) - GUTTER) / 2;
   const x0 = labelW ? labelW + LABEL_GAP : 0;
@@ -143,7 +168,7 @@ function attempt(scene: CompareScene, width: number, font: number) {
   const rows = scene.rows.map((row, i): PlacedCompareRow => {
     const path = `rows[${i}]`;
     const fitted = shareCodeSize(
-      row.cells.slice(0, 2).map((cell, k) => fitCell(cell, cellW, font, `${path}.cells[${k}]`)),
+      row.cells.slice(0, 2).map((cell, k) => fitCell(cell, cellW, font, `${path}.cells[${k}]`, hunks)),
       cellW,
       path,
     ).map((c, k) => ({ ...c, verdict: row.verdict?.[k] ?? null }));
@@ -186,15 +211,15 @@ function attempt(scene: CompareScene, width: number, font: number) {
  * Places a comparison in a box. Picks the largest font at which every cell and label fits and the rows fit
  * the height; failing that, the smallest font laid out wider and scaled down, which `validate` reports.
  */
-export function layoutCompare(scene: CompareScene, width: number, height: number): CompareLayout {
+export function layoutCompare(scene: CompareScene, width: number, height: number, hunks: HunkMap = {}): CompareLayout {
   for (let font = MAX_FONT; font >= MIN_FONT; font -= 2) {
-    const { fits, ...result } = attempt(scene, width, font);
+    const { fits, ...result } = attempt(scene, width, font, hunks);
     if (fits && result.height <= height) return result;
   }
-  const { fits: _, ...last } = attempt(scene, width, MIN_FONT);
+  const { fits: _, ...last } = attempt(scene, width, MIN_FONT, hunks);
   if (last.height <= height) return last;
   const scale = height / last.height;
-  const { fits: __, ...wide } = attempt(scene, width / scale, MIN_FONT);
+  const { fits: __, ...wide } = attempt(scene, width / scale, MIN_FONT, hunks);
   return {
     ...wide,
     scale,
