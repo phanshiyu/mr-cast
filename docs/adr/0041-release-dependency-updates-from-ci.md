@@ -1,4 +1,4 @@
-# 38. Release dependency updates from CI when users would get something new
+# 41. Release dependency updates from CI when users would get something new
 
 - Status: Accepted
 - Date: 2026-11-15

@@ -1,4 +1,4 @@
-# 37. An advisory on main must not block the pull request that fixes it
+# 40. An advisory on main must not block the pull request that fixes it
 
 - Status: Accepted
 - Date: 2026-11-15
@@ -43,7 +43,7 @@ Good:
 Bad:
 - A pull request's audit says nothing about advisories already on main, so a person who never opens the issue can ship
   a version with a known advisory. The daily run, the issue and the Renovate alert are what keep it in view, and
-  ADR 38 makes a release when the fix merges.
+  ADR 41 makes a release when the fix merges.
 - The base's audit and the head's audit are two calls to the advisory service, so the job takes a little longer.
 - An advisory is told apart by its id and its package, so a pull request that bumps a package from one affected
   version to another is judged as the base was, but a second advisory on a package already affected counts as new.

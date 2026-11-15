@@ -7,7 +7,7 @@ name: Publish
 # release still a draft, such as "Re-run all jobs" after a shard failed, renders and attaches the videos again.
 #
 # A release is also made without a version bump by hand when a package that ships with mr-cast changed
-# (docs/adr/0038-release-dependency-updates-from-ci.md): after CI passes on a push to main whose head commit is a
+# (docs/adr/0041-release-dependency-updates-from-ci.md): after CI passes on a push to main whose head commit is a
 # Renovate security update, every Monday, and when started by hand with "dependencies" ticked. The dependency-release
 # job bumps the patch version, commits, tags and pushes as github-actions, then publishes in the same run, because a
 # tag or commit pushed with the workflow token starts no other workflow.
@@ -86,7 +86,7 @@ jobs:
 
   # A release without a version bump by hand is three jobs, so that the job that runs the repository's code (the install
   # and the build, with the dependencies that just changed) holds no write access, and the job that pushes to main runs
-  # none of it: plan, then push, then publish. docs/adr/0038-release-dependency-updates-from-ci.md says why.
+  # none of it: plan, then push, then publish. docs/adr/0041-release-dependency-updates-from-ci.md says why.
   dependency-plan:
     name: Plan a dependency release
     if: >-

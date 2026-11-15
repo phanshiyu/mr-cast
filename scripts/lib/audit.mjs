@@ -1,5 +1,5 @@
 // Reads `pnpm audit --json` and `npm audit --json` output as one list of advisories, so a pull request's audit can be
-// compared with the base branch's (docs/adr/0037-advisories-do-not-block-their-fix.md).
+// compared with the base branch's (docs/adr/0040-advisories-do-not-block-their-fix.md).
 
 const RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };
 

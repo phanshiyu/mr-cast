@@ -1,5 +1,5 @@
 // Decides whether a release is due because a shipped dependency changed, and with --apply makes the release's file
-// changes (docs/adr/0038-release-dependency-updates-from-ci.md).
+// changes (docs/adr/0041-release-dependency-updates-from-ci.md).
 //   node scripts/dependency-release.mjs <lock file at the last tag> <lock file now> [--apply]
 // Prints JSON: { release, version, changes }. Run it in the repository root.
 import { readFileSync, writeFileSync } from 'node:fs';

@@ -68,7 +68,7 @@ jobs:
       - run: pnpm validate:examples
 
   # Fails only on an advisory that the base does not already have, so an advisory on main never blocks the pull request
-  # that fixes it. The full audit of main is .github/workflows/audit.yml (docs/adr/0037-advisories-do-not-block-their-fix.md).
+  # that fixes it. The full audit of main is .github/workflows/audit.yml (docs/adr/0040-advisories-do-not-block-their-fix.md).
   audit:
     name: Dependency audit
     runs-on: ubuntu-24.04
@@ -170,7 +170,7 @@ jobs:
           "$MRC" still 0 7 --dir "$RUNNER_TEMP/gallery" --out "$RUNNER_TEMP/stills"
           test "$(find "$RUNNER_TEMP/stills" -name '*.png' -size +10k | wc -l)" -eq 2
       # The installed tree is what npm resolves from the dependencies in package.json, so the base's tree is the same
-      # install made from the base's package.json. Only advisories the base does not have fail (ADR 37).
+      # install made from the base's package.json. Only advisories the base does not have fail (ADR 40).
       - name: Audit the installed dependency tree against the base
         run: |
           mkdir -p "$RUNNER_TEMP/consumer" "$RUNNER_TEMP/consumer-base"

@@ -1,7 +1,7 @@
 name: Audit main
 
 # Checks main itself against the advisory database, every day and on every push to main. It is not part of ci-ok, so an
-# advisory on main never blocks the pull request that fixes it (docs/adr/0037-advisories-do-not-block-their-fix.md).
+# advisory on main never blocks the pull request that fixes it (docs/adr/0040-advisories-do-not-block-their-fix.md).
 # It fails loudly instead, and keeps one open issue that lists the advisories, which it closes once main is clean.
 # Renovate's vulnerability alerts open the fix.
 on:
