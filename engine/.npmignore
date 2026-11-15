@@ -1,0 +1,3 @@
+# npm reads this instead of .gitignore here, so the engine binaries CI puts in bin/ go into the package; package.json
+# "files" picks only bin/ from this directory.
+target/
