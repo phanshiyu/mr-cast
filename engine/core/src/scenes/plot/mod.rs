@@ -19,7 +19,7 @@ use crate::states::{BoundModel, FnModel as StateModel, SceneState, SetEntry, Sta
 use crate::steps::FocusSpotlight as Focus;
 use crate::text::{Face, Style, line_metrics};
 use crate::theme::{ACCENT_GLOW, BG, BORDER_STRONG, MUTED, TEXT, content_box, tone};
-use crate::timing::{FPS, STEP_SETTLE_FRAMES, Segment};
+use crate::timing::{FPS, STEP_SETTLE_FRAMES};
 use layout::{
     AXIS_FONT, Axes, Geo, Item, Kind, LABEL_FONT, Model, POINT_R, Part, Px, TICK_FONT, TICK_LEN, geometry, labels,
 };
@@ -79,53 +79,6 @@ fn state_model() -> StateModel {
             with_model(|m| m.part(r).filter(|p| p.kind != Kind::Points).map(|_| format!("p:{r}"))).flatten()
         }),
     }
-}
-
-// ─── Cues ───
-
-/// A spoken text's words, lower case without punctuation, each with its index among the text's words.
-fn cue_tokens(text: &str) -> Vec<(String, usize)> {
-    text.split_whitespace()
-        .enumerate()
-        .map(|(i, w)| (w.to_lowercase().chars().filter(|c| c.is_alphanumeric()).collect::<String>(), i))
-        .filter(|(w, _)| !w.is_empty())
-        .collect()
-}
-
-fn cue_word(text: &str, cue: &str) -> Option<usize> {
-    let said = cue_tokens(text);
-    let want: Vec<String> =
-        cue_tokens(&crate::speech::speech_text(&crate::markup::plain_text(cue))).into_iter().map(|t| t.0).collect();
-    if want.is_empty() {
-        return None;
-    }
-    (0..said.len().checked_sub(want.len())? + 1)
-        .find(|&i| want.iter().enumerate().all(|(j, w)| said[i + j].0 == *w))
-        .map(|i| said[i].1)
-}
-
-/// Seconds after a segment's voice starts at which it reaches word `index`.
-fn word_start(seg: &Segment, index: usize) -> f64 {
-    let words = crate::timing::word_count(&seg.text);
-    if let Some(sentences) = seg.clip.as_ref().and_then(|c| c.sentences.as_deref())
-        && !sentences.is_empty()
-        && sentences.iter().map(|s| s.words).sum::<usize>() == words
-    {
-        let mut before = 0;
-        for s in sentences {
-            if index < before + s.words {
-                return s.start + ((index - before) as f64 / s.words as f64) * (s.end - s.start);
-            }
-            before += s.words;
-        }
-    }
-    if words > 0 { (index as f64 / words as f64) * (seg.speaking_frames / FPS) } else { 0.0 }
-}
-
-/// Frame at which a segment's voice says `cue`, less a short lead (`cueFrame`).
-fn cue_frame(seg: &Segment, cue: &str) -> Option<f64> {
-    let index = cue_word(&seg.text, cue)?;
-    Some(seg.mark_from.max(seg.voice_from + crate::timing::js_round(word_start(seg, index) * FPS) - 3.0))
 }
 
 // ─── The view ───
@@ -354,7 +307,7 @@ impl SceneView for PlotView {
             Some(k) => {
                 let seg = &f.segments[k + 1];
                 let when = self.scene["steps"][k].get("when").and_then(Value::as_str);
-                let start = when.and_then(|w| cue_frame(seg, w)).unwrap_or(seg.from);
+                let start = when.and_then(|w| crate::timing::cue_frame(seg, w)).unwrap_or(seg.from);
                 let traces = !self.states[k + 1].traces.is_empty();
                 let end = if traces {
                     (start + STEP_SETTLE_FRAMES).max(seg.voice_from + seg.speaking_frames)

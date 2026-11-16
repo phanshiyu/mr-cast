@@ -1867,6 +1867,8 @@ export interface VoiceSentence {
   /** Seconds from the clip's start to the sentence's first and last sound. */
   start: number;
   end: number;
+  /** Seconds from the clip's start to where each of its words starts, from the voice model's durations. */
+  times?: number[];
 }
 
 export interface Voiceover {

@@ -203,6 +203,13 @@ fn words_spoken(seg: &Segment, seconds: f64) -> usize {
                 return before;
             }
             if seconds < s.end {
+                if let Some(times) = s.times.as_deref().filter(|t| t.len() == s.words) {
+                    let mut k = 0;
+                    while k + 1 < times.len() && times[k + 1] <= seconds {
+                        k += 1;
+                    }
+                    return before + k;
+                }
                 return before + (((seconds - s.start) / (s.end - s.start)) * s.words as f64).floor() as usize;
             }
             before += s.words;
@@ -275,12 +282,16 @@ pub fn cue_word(text: &str, cue: &str) -> Option<usize> {
         .map(|i| said[i].1)
 }
 
-fn word_start(seg: &Segment, index: usize) -> f64 {
+/// Seconds after a segment's voice starts at which it reaches word `index` (`wordStart`).
+pub fn word_start(seg: &Segment, index: usize) -> f64 {
     let words = word_count(&seg.text);
     if let Some(sentences) = sentences_match(seg, words) {
         let mut before = 0;
         for s in sentences {
             if index < before + s.words {
+                if let Some(times) = s.times.as_deref().filter(|t| t.len() == s.words) {
+                    return times[index - before];
+                }
                 return s.start + ((index - before) as f64 / s.words as f64) * (s.end - s.start);
             }
             before += s.words;

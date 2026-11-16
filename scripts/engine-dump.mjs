@@ -24,6 +24,7 @@ async function load() {
     export { syntaxColours } from './src/engine/highlight';
     export * as textfit from './shared/textfit.mjs';
     export * as timing from './shared/timing.mjs';
+    export * as voice from './shared/voice.mjs';
     export * as metrics from './shared/font-metrics.mjs';
     export { speechText } from './shared/speech.mjs';
     export { normalizeStoryboard } from './shared/normalize.mjs';
@@ -119,9 +120,31 @@ const TEXTS = [
   '',
 ];
 
+/** The frames of each scene at which the fixtures say which word is spoken. */
+const SPOKEN_FRAMES = [0, 7, 45, 70, 90, 110, 130, 200];
+
 function fixtures(m) {
   const dir = path.join(REPO, 'engine/core/tests/fixtures');
-  const voiceovers = [null, { voice: 'kitten:luna', speed: 0.85, pauses: 1.5, clips: {} }];
+  const voiceovers = [null, { voice: 'tiny-voca:m2', speed: 0.85, pauses: 1.5, clips: {} }];
+  /** A voiceover with a clip for each text the scene speaks: two sentences, the second with each word timed. */
+  const timed = (scene) => {
+    const voiceover = { voice: 'tiny-voca:m2', speed: 1, pauses: 1, clips: {} };
+    for (const text of m.timing.spokenTexts(scene)) {
+      if (typeof text !== 'string' || !text.trim()) continue;
+      const words = m.timing.wordCount(text);
+      const first = Math.floor(words / 2);
+      const times = Array.from({ length: words - first }, (_, k) => 1.6 + k * 0.31 + (k % 3) * 0.05);
+      voiceover.clips[m.voice.narrationKey(text, voiceover.voice, 1)] = {
+        src: 'audio/00000000.wav',
+        seconds: 2 + words * 0.4,
+        sentences: [
+          { words: first, start: 0.2, end: 1.3 },
+          { words: words - first, start: 1.6, end: 1.6 + (words - first) * 0.33, times },
+        ],
+      };
+    }
+    return voiceover;
+  };
   const timing = [];
   for (const file of storyboards()) {
     let sb;
@@ -130,8 +153,8 @@ function fixtures(m) {
     } catch {
       continue;
     }
-    for (const voiceover of voiceovers)
-      for (const scene of sb.scenes ?? [])
+    for (const scene of sb.scenes ?? [])
+      for (const voiceover of [...voiceovers, timed(scene)])
         timing.push({
           // Only what timing reads, to keep the fixture small.
           scene: {
@@ -142,7 +165,17 @@ function fixtures(m) {
           voiceover,
           segments: m.timing.sceneSegments(scene, voiceover).map(({ clip, ...s }) => s),
           duration: m.timing.sceneDurationInFrames(scene, voiceover),
-          spoken: [0, 7, 45, 90, 200].map((f) => m.timing.spokenAt(m.timing.sceneSegments(scene, voiceover), f)),
+          spoken: SPOKEN_FRAMES.map((f) => m.timing.spokenAt(m.timing.sceneSegments(scene, voiceover), f)),
+          // Where the voice says each segment's last word, as a cue.
+          cues: m.timing.sceneSegments(scene, voiceover).map((s) =>
+            m.timing.cueFrame(
+              s,
+              String(s.text ?? '')
+                .trim()
+                .split(/\s+/)
+                .at(-1) ?? '',
+            ),
+          ),
         });
   }
   write(path.join(dir, 'timing.json'), timing);

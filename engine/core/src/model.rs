@@ -134,6 +134,9 @@ pub struct Sentence {
     pub start: f64,
     pub end: f64,
     pub words: usize,
+    /// Where each word starts, when the voice timed its words.
+    #[serde(default)]
+    pub times: Option<Vec<f64>>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
