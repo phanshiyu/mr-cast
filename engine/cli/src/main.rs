@@ -4,6 +4,7 @@
 //!   mr-cast-engine still --props props.json (--frame N | --scene N [--step k]) --out file.png [--scale s]
 //!   mr-cast-engine still --props props.json --scenes 1,3..5 [--step k] --out-dir dir
 //!   mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
+//!   mr-cast-engine voice --model-dir dir --job job.json   (voice.rs: speaks clips with tiny-voca)
 //!
 //! Frames render and encode in parallel, one run of frames per core, into an MP4 written here (encode.rs).
 
@@ -13,6 +14,7 @@ mod encode;
 mod h264;
 mod mp4;
 mod sheet;
+mod voice;
 
 use mrc_core::model::{Picture, Props};
 use mrc_core::{Project, render_frame, timing};
@@ -28,7 +30,8 @@ fn usage() -> ExitCode {
                         [--encoder h264|none] [--qp n] [--cfr yes] [--skip-repeats no] [--scale s] [--progress yes]
   mr-cast-engine still --props props.json (--frame N | --scene N) [--step k] --out file.png [--scale s]
   mr-cast-engine still --props props.json --scenes 1,2,5..7 [--step k] --out-dir dir
-  mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png"
+  mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
+  mr-cast-engine voice --model-dir dir --job job.json"
     );
     ExitCode::from(2)
 }
@@ -438,6 +441,7 @@ fn main() -> ExitCode {
         "sheet" => sheet::sheet(&f, &load(&f)?),
         "compare" => compare(&f),
         "probe" => probe(&f),
+        "voice" => voice::command(&f),
         _ => Err(format!("unknown command {cmd}")),
     });
     match result {

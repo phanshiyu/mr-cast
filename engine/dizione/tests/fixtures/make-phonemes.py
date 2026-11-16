@@ -167,3 +167,7 @@ for text in corpus:
         fixtures.append([text, None])
 json.dump(fixtures, open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "phonemes.json"), "w"), ensure_ascii=False, indent=0)
 print(len(fixtures))
+
+# tiny-voca's sentence splitting of each example text, for engine/cli/src/voice.rs.
+splits = [[text, sentences(finished(text))] for text in examples]
+json.dump(splits, open(os.path.join(ROOT, "engine/cli/tests/fixtures/voice-splits.json"), "w"), ensure_ascii=False, indent=0)
