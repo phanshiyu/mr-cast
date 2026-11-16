@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.31.0
 
 **A new voice that is much faster and much smaller.** mr-cast now speaks with tiny-voca, a small voice model that runs inside mr-cast's own renderer. Voicing the demo takes about 1.5 seconds instead of 32, the first voice-over downloads about 27 MB instead of 82, and installing mr-cast takes about 270 MB of disk instead of 1 GB. There are two voices, male (`tiny-voca:m2`, the default) and female (`tiny-voca:f2`), both American English (ADR 0046).
 
