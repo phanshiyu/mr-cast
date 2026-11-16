@@ -164,14 +164,6 @@ jobs:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
       - run: cargo build --release --locked --manifest-path engine/Cargo.toml
-      # The smoke's text scan drives the Chrome that Remotion downloads (scripts/smoke.sh).
-      - id: versions
-        run: echo "remotion=$(node -p "require('./node_modules/@remotion/renderer/package.json').version")" >> "$GITHUB_OUTPUT"
-      - name: Cache Chrome Headless Shell
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: .cache/mr-cast/remotion
-          key: chrome-${{ runner.os }}-remotion-${{ steps.versions.outputs.remotion }}
       - name: Cache the Kitten voice model
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -182,18 +174,18 @@ jobs:
       - name: Show the smoke logs as annotations
         if: failure()
         run: |
-          for f in "$RUNNER_TEMP"/smoke/*.txt "$RUNNER_TEMP"/smoke/textscan/console.txt; do
+          for f in "$RUNNER_TEMP"/smoke/*.txt "$RUNNER_TEMP"/smoke/page/console.txt; do
             [ -s "$f" ] || continue
             echo "::error title=$(basename "$f")::$(tail -n 30 "$f" | cut -c1-300 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
           done
-      - name: Upload stills and the text scan
+      - name: Upload stills and the page capture
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: smoke-node-${{ matrix.node }}
           path: |
             ${{ runner.temp }}/smoke/stills
-            ${{ runner.temp }}/smoke/textscan
+            ${{ runner.temp }}/smoke/page
             ${{ runner.temp }}/smoke/*.txt
           if-no-files-found: ignore
           retention-days: 14

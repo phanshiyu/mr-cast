@@ -1,6 +1,6 @@
 # Browser player
 
-`mr-cast play` validates the storyboard and serves the player at once on `http://127.0.0.1:4747`, or the next free port up to 20 above it. Unless `--no-voice`, it voices the narration before it opens the browser (see [quick-mode.md](./quick-mode.md)). It opens the browser unless `--no-open`. The page shows the storyboard title, a `Chapters` list with start times, the Remotion player and a subtitle panel. Space plays or pauses, `←`/`→` or `J`/`K` move between chapters. When `storyboard.json` or `hunks.json` changes on disk, the server revalidates, revoices and pushes a reload over SSE (`/events`), or an `updating` event first while an edit is voiced. The page reloads at the same frame.
+`mr-cast play` validates the storyboard and serves the player at once on `http://127.0.0.1:4747`, or the next free port up to 20 above it. Unless `--no-voice`, it voices the narration before it opens the browser (see [quick-mode.md](./quick-mode.md)). It opens the browser unless `--no-open`. The page shows the storyboard title, a `Chapters` list with start times, the video, drawn on a canvas by the engine's WebAssembly build, and a subtitle panel. Space plays or pauses, `←`/`→` or `J`/`K` move between chapters. When `storyboard.json` or `hunks.json` changes on disk, the server revalidates, revoices and pushes a reload over SSE (`/events`), or an `updating` event first while an edit is voiced. The page reloads at the same frame.
 
 ## Sub-features
 
@@ -51,4 +51,5 @@ Preconditions:
 - Some labels are uppercased by CSS, so the page text reads `COULD NOT LOAD STORYBOARD.JSON` and `CHAPTERS`. `wait:` ignores case. Assertions on the saved `.txt` files must ignore case too.
 - The header's branch badge comes from `meta.json`. A run dir without one, such as the hand-made `short` run, shows only the title and length.
 - The Host check accepts `127.0.0.1:<port>` and `localhost:<port>` only. Curl with the printed URL sends the right Host.
-- Plain `chrome-headless-shell --screenshot` hangs on this machine (Chromium 157), even on a blank page. Use `$V browse`, which drives Chrome over CDP.
+- Plain `chrome --headless --screenshot` can hang. Use `$V browse`, which drives an installed Chrome over CDP.
+- The video is pixels on a canvas, so the page text holds the title, chapters and subtitles but not the text inside scenes. Read a `shot:` PNG to see a scene, and use `still` for exact frames.

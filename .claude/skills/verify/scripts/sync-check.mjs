@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks a rendered MP4 against the scene timing the composition used: every diagram is fully drawn
+// Checks a rendered MP4 against the scene timing mr-cast's renderer used: every diagram is fully drawn
 // one frame before its narration's voice, and every step's items are on screen before its words.
 //
 //   node sync-check.mjs <data dir> <mp4> <out dir> [--no-voice]
@@ -16,12 +16,13 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, existsSync } from 'node:fs';
-import path from 'node:path';
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // MR_CAST_REPO points at another checkout, such as an older release, to time its render with its own code.
 const REPO = process.env.MR_CAST_REPO ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
+const fromRepo = createRequire(path.join(REPO, 'package.json'));
 const timing = await import(path.join(REPO, 'shared/timing.mjs'));
 const { FPS, sceneSegments, sceneDurationInFrames, settledFrame } = timing;
 const buildFrames = timing.buildFrames ?? (() => 0);
@@ -44,24 +45,21 @@ const voicePath = path.join(dataDir, 'voiceover.json');
 const voiceover = !silent && existsSync(voicePath) ? JSON.parse(readFileSync(voicePath, 'utf8')) : null;
 mkdirSync(outDir, { recursive: true });
 
-// pnpm keeps the compositor beside @remotion/renderer, not at the top of node_modules.
-const fromRepo = createRequire(path.join(REPO, 'package.json'));
-const fromRenderer = createRequire(fromRepo.resolve('@remotion/renderer/package.json'));
-const COMPOSITOR = path.dirname(fromRenderer.resolve('@remotion/compositor-darwin-arm64/package.json'));
-const env = { ...process.env, DYLD_LIBRARY_PATH: COMPOSITOR };
+// mr-cast itself needs no ffmpeg; this check reads frames back with one from MR_CAST_FFMPEG or the PATH.
+const FFMPEG = process.env.MR_CAST_FFMPEG ?? 'ffmpeg';
+const FFPROBE = process.env.MR_CAST_FFPROBE ?? 'ffprobe';
+const env = process.env;
 const W = 1920;
-/** Frames after the next step starts by which a pen mark has faded (src/components/PenMarks.tsx), plus one. */
+/** Frames after the next step starts by which a pen mark has faded (the engine's pen), plus one. */
 const MARK_CLEAR = 9;
 const CROP_H = 920;
 
 // The middle of a frame's interval, so the decoder lands on that frame and not its neighbour.
 const at = (frame) => ((frame + 0.5) / FPS).toFixed(4);
 const png = (frame, file) =>
-  execFileSync(
-    path.join(COMPOSITOR, 'ffmpeg'),
-    ['-v', 'error', '-y', '-ss', at(frame), '-i', mp4, '-frames:v', '1', path.join(outDir, file)],
-    { env },
-  );
+  execFileSync(FFMPEG, ['-v', 'error', '-y', '-ss', at(frame), '-i', mp4, '-frames:v', '1', path.join(outDir, file)], {
+    env,
+  });
 const { default: sharp } = await import(pathToFileURL(fromRepo.resolve('sharp')).href);
 const grey = (file) =>
   sharp(path.join(outDir, file)).extract({ left: 0, top: 0, width: W, height: CROP_H }).greyscale().raw().toBuffer();
@@ -109,11 +107,7 @@ async function movedUnderPen(beforeFile, inkedFile) {
 }
 
 const probed = Number(
-  execFileSync(
-    path.join(COMPOSITOR, 'ffprobe'),
-    ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4],
-    { env },
-  )
+  execFileSync(FFPROBE, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4], { env })
     .toString()
     .trim(),
 );
