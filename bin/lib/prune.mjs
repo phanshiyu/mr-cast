@@ -4,7 +4,8 @@
 //   run:.  explain:<name>                 a walkthrough mr-cast 0.11 left in .mr-cast/ or .mr-cast/explain/<name>
 //   video:<run>/<file>.mp4                a rendered video          (<run> is <name>, . or explain/<name>)
 //   stills:<run>  audio:<run>             PNG stills, voice-over clips; render and voice regenerate them
-//   cache:kitten  cache:models   the voice models in ~/.cache/mr-cast (models: Kokoro)
+//   cache:tiny-voca               the voice model in ~/.cache/mr-cast
+//   cache:kitten  cache:models    the voice models of older versions (Kitten, Kokoro), listed only while still there
 //   cache:bundle  cache:remotion  what renders used before the engine, listed only while still there
 //
 // Ids name places, not contents, so the same id means the same thing across listings. Deletion takes
@@ -46,16 +47,21 @@ const CACHES = [
     lock: true,
   },
   {
+    name: 'tiny-voca',
+    label: 'Voice model',
+    detail: 'tiny-voca voice model; the next voice-over downloads it again (about 27 MB)',
+    lock: true,
+  },
+  {
     name: 'kitten',
     label: 'Kitten voice model',
-    detail: 'Kitten voice model; the next voice-over in a kitten voice downloads it again (about 82 MB)',
+    detail: 'Kitten voice model, which older versions spoke with; nothing needs it now, so it is safe to delete',
     lock: true,
   },
   {
     name: 'models',
     label: 'Kokoro voice model',
-    detail:
-      'Kokoro voice model, the default voice before 0.27; the next voice-over in a kokoro voice downloads it again (about 90 MB)',
+    detail: 'Kokoro voice model, which older versions spoke with; nothing needs it now, so it is safe to delete',
     lock: true,
   },
 ];

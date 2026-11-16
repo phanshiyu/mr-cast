@@ -142,42 +142,61 @@ export function parseProgress(line) {
 }
 
 /**
- * Runs the engine with `args`. Its progress goes to `onProgress`; its stdout lines are returned; its other
- * stderr shows only when it fails.
+ * Runs the engine with `args`. Its progress goes to `onProgress`; each stdout line goes to `onLine` as it comes, and
+ * all of them are returned; its other stderr shows only when it fails. `signal` stops it. Its stdin is a pipe this
+ * process holds, so an engine run with `--parent-pipe yes` exits when this process dies, however it dies.
  */
-export function runEngine(args, { onProgress } = {}) {
+export function runEngine(args, { onProgress, onLine, signal } = {}) {
   const bin = engineBinary();
   return new Promise((resolve, reject) => {
-    const child = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    if (signal?.aborted) return reject(signal.reason ?? new Error('aborted'));
+    const child = spawn(bin, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     running.add(child);
-    let stdout = '';
+    const abort = () => child.kill('SIGTERM');
+    signal?.addEventListener('abort', abort, { once: true });
+    const lines = [];
+    let pending = '';
     let rest = '';
     const log = [];
     child.stdout.setEncoding('utf8').on('data', (d) => {
-      stdout += d;
+      const parts = (pending + d).split('\n');
+      pending = parts.pop();
+      for (const line of parts.filter(Boolean)) {
+        lines.push(line);
+        onLine?.(line);
+      }
     });
     child.stderr.setEncoding('utf8').on('data', (d) => {
-      const lines = (rest + d).split('\n');
-      rest = lines.pop();
-      for (const line of lines) {
+      const parts = (rest + d).split('\n');
+      rest = parts.pop();
+      for (const line of parts) {
         const fraction = parseProgress(line);
         if (fraction !== null) onProgress?.(fraction);
         else if (process.env.MR_CAST_DEBUG === '1') console.error(`[engine] ${line}`);
         else log.push(line);
       }
     });
+    child.stdin.on('error', () => {});
     child.on('error', (err) => {
       running.delete(child);
+      signal?.removeEventListener('abort', abort);
       reject(new Error(`could not start the render engine ${bin}: ${err.message}`));
     });
-    child.on('close', (code, signal) => {
+    child.on('close', (code, killedBy) => {
       running.delete(child);
+      signal?.removeEventListener('abort', abort);
+      child.stdin.destroy();
       if (rest) log.push(rest);
-      if (code === 0) return resolve(stdout.split('\n').filter(Boolean));
+      if (pending) {
+        lines.push(pending);
+        onLine?.(pending);
+      }
+      if (code === 0) return resolve(lines);
+      if (signal?.aborted) return reject(signal.reason ?? new Error('aborted'));
       const said = log.filter((l) => l.trim()).join('\n');
       reject(
         new Error(
-          `the render engine ${signal ? `was stopped (${signal})` : `failed (exit ${code})`}${said ? `:\n${said}` : ''}`,
+          `the render engine ${killedBy ? `was stopped (${killedBy})` : `failed (exit ${code})`}${said ? `:\n${said}` : ''}`,
         ),
       );
     });

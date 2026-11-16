@@ -1,18 +1,10 @@
-// The voice engines and their voices. A voice is named `engine:name`, such as kitten:luna or kokoro:af_heart,
-// and that full name keys its clips, so clips of one engine never stand in for another's.
+// The voice engine and its voices. A voice is named `engine:name`, such as tiny-voca:m2, and that full name keys its
+// clips, so clips of one voice never stand in for another's. tiny-voca is the one engine (docs/adr/0046); a voice of
+// the engines before it, Kitten and Kokoro, reads as the closest tiny-voca voice.
 
-import fs from 'node:fs';
-import path from 'node:path';
 import { cacheDir, cacheLock } from './cache.mjs';
 import { UserError } from './errors.mjs';
-import { KITTEN_MB, kittenDir, kittenDownloaded } from './kitten.mjs';
-import { VOICES as KOKORO_VOICES } from './kokoro/voice-list.js';
-
-export const KOKORO_MODEL_ID = 'onnx-community/Kokoro-82M-v1.0-ONNX';
-/** The weights transformers.js fetches for dtype q8; its absence means a load downloads them. */
-const KOKORO_MODEL_FILE = 'model_quantized.onnx';
-
-const ACCENTS = { 'en-us': 'American English', 'en-gb': 'British English' };
+import { TINY_VOCA_MB, tinyVocaDir, tinyVocaDownloaded } from './tiny-voca.mjs';
 
 /**
  * @typedef {{
@@ -21,90 +13,100 @@ const ACCENTS = { 'en-us': 'American English', 'en-gb': 'British English' };
  * }} Engine  `voices` maps each voice's name to its line in `mr-cast voices`, as the model card describes it. `lock`
  *   is held while the model downloads into `dir`; prune holds it to delete the engine's cache.
  */
-/** @type {Record<'kitten' | 'kokoro', Engine>} */
+/** @type {Record<'tiny-voca', Engine>} */
 export const ENGINES = {
-  kitten: {
-    label: 'Kitten TTS mini 0.8 (KittenML, 80M parameters)',
-    mb: KITTEN_MB,
-    defaultVoice: 'luna',
-    voices: Object.fromEntries(
-      ['bella', 'jasper', 'luna', 'bruno', 'rosie', 'hugo', 'kiki', 'leo'].map((name, i) => [
-        name,
-        `${i % 2 ? 'male' : 'female'}, American English`,
-      ]),
-    ),
-    dir: () => kittenDir(cacheDir('kitten')),
-    lock: () => cacheLock('kitten'),
-    downloaded: () => kittenDownloaded(kittenDir(cacheDir('kitten'))),
-  },
-  kokoro: {
-    label: 'Kokoro 82M v1.0 (hexgrad, 82M parameters)',
-    mb: 90,
-    defaultVoice: 'af_heart',
-    voices: Object.fromEntries(
-      Object.entries(KOKORO_VOICES).map(([name, v]) => [
-        name,
-        `${v.gender.toLowerCase()}, ${ACCENTS[v.language] ?? v.language}, model card grade ${v.overallGrade}`,
-      ]),
-    ),
-    dir: () => cacheDir('models'),
-    lock: () => cacheLock('models'),
-    downloaded: () => fs.existsSync(path.join(cacheDir('models'), KOKORO_MODEL_ID, 'onnx', KOKORO_MODEL_FILE)),
+  'tiny-voca': {
+    label: 'tiny-voca (n4ze3m, 4.5M parameters)',
+    mb: TINY_VOCA_MB,
+    defaultVoice: 'm2',
+    voices: {
+      f2: 'female, American English (the model card says it sounds younger than intended)',
+      m2: 'male, American English',
+    },
+    dir: () => tinyVocaDir(cacheDir('tiny-voca')),
+    lock: () => cacheLock('tiny-voca'),
+    downloaded: () => tinyVocaDownloaded(tinyVocaDir(cacheDir('tiny-voca'))),
   },
 };
-const DEFAULT_ENGINE = 'kitten';
+const DEFAULT_ENGINE = 'tiny-voca';
 export const DEFAULT_VOICE = `${DEFAULT_ENGINE}:${ENGINES[DEFAULT_ENGINE].defaultVoice}`;
+
+/** Kitten's voices, female and male in turn, and Kokoro's prefixes (af_, bm_, ...), as tiny-voca's f2 or m2. */
+const KITTEN = { bella: 'f2', jasper: 'm2', luna: 'f2', bruno: 'm2', rosie: 'f2', hugo: 'm2', kiki: 'f2', leo: 'm2' };
+const KOKORO = /^[a-z][fm]_[a-z]+$/;
+
+/** The tiny-voca voice closest to a Kitten or Kokoro voice (`engine:name` or bare), or undefined. */
+function closest(engine, name) {
+  if ((engine === undefined || engine === 'kitten') && Object.hasOwn(KITTEN, name)) return KITTEN[name];
+  if ((engine === undefined || engine === 'kokoro') && KOKORO.test(name)) return name[1] === 'f' ? 'f2' : 'm2';
+  return undefined;
+}
 
 const engineNames = () => Object.keys(ENGINES).join(', ');
 
-/** The engine and name of a full voice name such as kitten:luna. */
+/** The engine and name of a full voice name such as tiny-voca:m2. */
 export function voiceParts(voice) {
-  const [engine, name] = voice.split(':');
-  return { engine, name };
+  const at = voice.lastIndexOf(':');
+  return { engine: voice.slice(0, at), name: voice.slice(at + 1) };
 }
+
+/** Each old voice name told about once per process. */
+const told = new Set();
 
 /**
- * The full voice name that --engine and --voice ask for. --voice takes `engine:name` or a bare name, which
- * belongs to --engine when it is given and otherwise to the one engine that has it, so the Kokoro names of
- * mr-cast 0.26 and earlier, such as af_heart, still pick Kokoro. --engine alone picks its default voice.
+ * The full voice name that --engine and --voice ask for. --voice takes `engine:name` or a bare name, which belongs
+ * to --engine when it is given. --engine alone picks its default voice. A Kitten or Kokoro voice, from a flag or a
+ * saved choice, is the closest tiny-voca voice, with a one-line notice through `notify`.
  */
-export function resolveVoice({ engine, voice }) {
-  if (engine !== undefined && !Object.hasOwn(ENGINES, engine))
+export function resolveVoice({ engine, voice }, notify = (line) => console.error(line)) {
+  const old = engine === 'kitten' || engine === 'kokoro';
+  if (engine !== undefined && !old && !Object.hasOwn(ENGINES, engine))
     throw new UserError(`--engine must be one of ${engineNames()} (got "${engine}")`);
-  if (voice === undefined) return `${engine ?? DEFAULT_ENGINE}:${ENGINES[engine ?? DEFAULT_ENGINE].defaultVoice}`;
-  const given = voice.trim().toLowerCase();
-  let [named, name] = given.includes(':') ? given.split(':', 2) : [undefined, given];
-  if (named !== undefined && !Object.hasOwn(ENGINES, named))
-    throw new UserError(`--voice ${voice}: no engine "${named}"; engines are ${engineNames()}`);
+  if (voice === undefined && !old) return DEFAULT_VOICE;
+  const given = (voice ?? '').trim().toLowerCase();
+  const at = given.lastIndexOf(':');
+  const [named, name] = at < 0 ? [undefined, given] : [given.slice(0, at), given.slice(at + 1)];
+  const asked = named ?? engine;
   if (named !== undefined && engine !== undefined && named !== engine)
     throw new UserError(`--voice ${voice} is a ${named} voice, but --engine is ${engine}; drop one`);
-  named ??= engine ?? Object.keys(ENGINES).find((e) => Object.hasOwn(ENGINES[e].voices, name));
-  if (named === undefined || !Object.hasOwn(ENGINES[named].voices, name)) {
-    const where = named ?? DEFAULT_ENGINE;
+  if (asked === 'kitten' || asked === 'kokoro' || (asked === undefined && closest(undefined, name))) {
+    const mapped = `${DEFAULT_ENGINE}:${closest(asked, name) ?? ENGINES[DEFAULT_ENGINE].defaultVoice}`;
+    const was = voice === undefined ? `the ${asked} engine` : `${asked ? `${asked}:` : ''}${name}`;
+    if (!told.has(was)) {
+      told.add(was);
+      notify(`mr-cast: ${was} is no longer available; using ${mapped}, the closest voice`);
+    }
+    return mapped;
+  }
+  if (asked !== undefined && !Object.hasOwn(ENGINES, asked))
+    throw new UserError(`--voice ${voice}: no engine "${asked}"; engines are ${engineNames()}`);
+  const owner = asked ?? Object.keys(ENGINES).find((e) => Object.hasOwn(ENGINES[e].voices, name));
+  if (owner === undefined || !Object.hasOwn(ENGINES[owner].voices, name)) {
+    const where = owner ?? DEFAULT_ENGINE;
     throw new UserError(
-      `unknown voice "${voice}"${named ? ` for ${named}` : ''}; ${where} has ${Object.keys(ENGINES[where].voices).join(', ')} (\`mr-cast voices\` lists every engine)`,
+      `unknown voice "${voice}"${owner ? ` for ${owner}` : ''}; ${where} has ${Object.keys(ENGINES[where].voices).join(', ')} (\`mr-cast voices\` lists them)`,
     );
   }
-  return `${named}:${name}`;
+  return `${owner}:${name}`;
 }
 
-/** `mr-cast voices`: each engine with its download and whether it is here, then its voices; `current` is marked. */
+/** `mr-cast voices`: the engine with its download and whether it is here, then its voices; `current` is marked. */
 export function formatVoices(current = DEFAULT_VOICE) {
   const out = [];
   for (const [engine, e] of Object.entries(ENGINES)) {
     const here = e.downloaded() ? 'downloaded' : `downloads about ${e.mb} MB on first use`;
-    out.push(`${engine}${engine === DEFAULT_ENGINE ? ' (default engine)' : ''} · ${e.label} · ${here}`);
+    out.push(`${engine} · ${e.label} · ${here}`);
     for (const [name, line] of Object.entries(e.voices)) {
       const id = `${engine}:${name}`;
       const marks = [id === DEFAULT_VOICE && 'default', id === current && id !== DEFAULT_VOICE && 'last chosen'].filter(
         Boolean,
       );
-      out.push(`  ${id.padEnd(18)} ${line}${marks.length ? ` (${marks.join(', ')})` : ''}`);
+      out.push(`  ${id.padEnd(14)} ${line}${marks.length ? ` (${marks.join(', ')})` : ''}`);
     }
   }
   out.push(
     '',
-    'Pick one with --voice engine:name (or --engine and --voice); `mr-cast voices --sample engine:name` voices a sentence to hear it.',
+    'Pick one with --voice engine:name, or a bare name such as --voice f2; `mr-cast voices --sample engine:name` voices a sentence to hear it.',
   );
   return out;
 }

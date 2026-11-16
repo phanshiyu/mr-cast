@@ -30,7 +30,7 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0020](0020-stepped-scene-additions-and-svg.md) | Callout, tint, growing diagrams, several arrays, changing tables, and an svg scene | Accepted |
 | [0021](0021-example-videos-as-release-assets.md) | Example videos are rendered in CI and attached to the GitHub release; stills are committed | Accepted; the single job superseded by 0022 |
 | [0022](0022-shard-the-example-renders.md) | Render the examples on six runners from their meta.json flags, and keep the release a draft until all finish | Accepted; amended: a draft is finished by a rerun, renders run read-only |
-| [0023](0023-kitten-tts-default-voice-engine.md) | Kitten TTS is the default voice engine, and Kokoro stays as an option | Accepted |
+| [0023](0023-kitten-tts-default-voice-engine.md) | Kitten TTS is the default voice engine, and Kokoro stays as an option | Accepted; engine choice superseded by 0046 |
 | [0024](0024-tests-scene-as-behaviour-matrix.md) | The tests scene is a behaviour matrix of situations, promised outcomes and the tests that check them | Accepted |
 | [0025](0025-ink-board.md) | Ink: a step's `draw` stays on the board until a step erases it, timed to the words and placed clear of the scene | Accepted |
 | [0026](0026-text-scene.md) | A text scene whose lead field says how it is drawn, with intent as its alias | Accepted |
@@ -53,3 +53,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0043](0043-engine-ships-in-the-package.md) | Ship the engine inside the one npm package, and switch to it before every scene is ported | Accepted; its ffmpeg part superseded by 0044 |
 | [0044](0044-encode-in-the-engine.md) | The engine encodes the MP4 itself (OpenH264, FDK AAC, its own MP4 writer), with no ffmpeg | Accepted |
 | [0045](0045-draw-svg-diagrams-with-resvg-and-merman.md) | Draw the svg, map and mermaid scenes with resvg, and mermaid with merman | Accepted |
+| [0046](0046-tiny-voca-voice.md) | Voice with tiny-voca in the engine (dizione ported to Rust, the model in tract), and drop Kitten and Kokoro | Accepted |

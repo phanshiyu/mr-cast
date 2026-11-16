@@ -12,7 +12,7 @@ export const PACES = {
 
 /**
  * FNV-1a (32-bit) over the voice, the speed and the spoken text, as 8 hex digits. Names a clip in
- * voiceover.json. The voice is its full name with its engine, such as kitten:luna, so no engine's clip stands in
+ * voiceover.json. The voice is its full name with its engine, such as tiny-voca:m2, so no engine's clip stands in
  * for another's. Speed 1 is left out of the hash, so clips voiced before speeds existed keep their names.
  */
 export function narrationKey(text, voice, speed = 1) {

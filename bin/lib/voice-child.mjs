@@ -1,6 +1,5 @@
-// ensureVoiceover in a child process. Kokoro's inference holds the thread it runs on for seconds per clip, so the
-// player's server voices this way to keep answering while the clips are made. A child process, not a worker
-// thread: stopping a worker in the middle of a clip aborts the whole process inside onnxruntime.
+// ensureVoiceover in a child process, which the player's server stops when an edit makes its voicing stale. The
+// engine speaks the clips; it holds a pipe from the child and exits with it, so stopping the child stops the engine.
 
 import { fork } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

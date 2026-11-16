@@ -1,14 +1,14 @@
 // Voice-over: one clip per distinct spoken text (a scene's narration or a code step's `say`), cached in
-// .mr-cast/audio under its narrationKey, made by the voice's engine: Kitten TTS by default, or Kokoro.
+// .mr-cast/audio under its narrationKey, spoken by tiny-voca in the engine (bin/lib/tiny-voca.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { spokenTexts, wordCount } from '../../shared/timing.mjs';
+import { spokenTexts } from '../../shared/timing.mjs';
 import { PACES, clipFor, narrationKey } from '../../shared/voice.mjs';
 import { UserError } from './errors.mjs';
-import { KITTEN_REPO, downloadKitten, hubUrl, loadKitten } from './kitten.mjs';
 import { removeDeadPartials, withLock } from './lock.mjs';
-import { ENGINES, KOKORO_MODEL_ID, voiceParts } from './voices.mjs';
+import { TINY_VOCA_REPO, downloadTinyVoca, hubUrl, speakClips } from './tiny-voca.mjs';
+import { ENGINES, voiceParts } from './voices.mjs';
 
 const VOICEOVER_FILE = 'voiceover.json';
 const AUDIO_DIR = 'audio';
@@ -44,6 +44,8 @@ export function parsePace({ pace, speed }) {
 
 const isSentence = (s) =>
   Number.isInteger(s?.words) && s.words >= 0 && Number.isFinite(s.start) && Number.isFinite(s.end) && s.end >= s.start;
+/** Where each of a sentence's words starts, when the clip has them. */
+const hasTimes = (s) => Array.isArray(s.times) && s.times.length === s.words && s.times.every(Number.isFinite);
 
 /** How far voicing has come, in spoken lines: each distinct narration or `say` is one clip. */
 export function voicedLines(storyboard, voiceover) {
@@ -68,7 +70,10 @@ export function readVoiceover(dataDir) {
     clips[key] = { src: clip.src, seconds: clip.seconds };
     if (typeof clip.voice === 'string' && isSpeed(clip.speed))
       Object.assign(clips[key], { voice: clip.voice, speed: clip.speed });
-    if (Array.isArray(clip.sentences) && clip.sentences.every(isSentence)) clips[key].sentences = clip.sentences;
+    if (Array.isArray(clip.sentences) && clip.sentences.every(isSentence))
+      clips[key].sentences = clip.sentences.map(({ words, start, end, times }) =>
+        hasTimes({ words, times }) ? { words, start, end, times } : { words, start, end },
+      );
   }
   return {
     voice: raw.voice,
@@ -78,174 +83,52 @@ export function readVoiceover(dataDir) {
   };
 }
 
-/** Each engine's loaded model, once per process. A failed load is forgotten so the next call retries. */
-const models = new Map();
-
 const waitingFor = (what) => (pid) =>
   console.error(`mr-cast: waiting for another mr-cast (pid ${pid}) to finish ${what} the voice model`);
 
-/** Kitten's files, each checked against its pinned sha256, downloaded under the engine's lock so two processes share one download. */
-async function downloadKittenFiles(onProgress) {
-  const dir = ENGINES.kitten.dir();
-  if (ENGINES.kitten.downloaded()) return;
-  fs.mkdirSync(path.dirname(dir), { recursive: true });
-  await withLock(
-    ENGINES.kitten.lock(),
-    async () => {
-      removeDeadPartials(dir);
-      if (ENGINES.kitten.downloaded()) return;
-      onProgress?.({ type: 'download', engine: 'kitten', mb: ENGINES.kitten.mb, cacheDir: dir });
-      await downloadKitten(dir);
-    },
-    waitingFor('downloading'),
-  );
-}
-
-/**
- * Each engine's loader. A loaded model's `speak(text, name, speed)` yields `text` in chunks, each { sentence, audio }
- * at its `sampleRate`.
- */
-const LOADERS = {
-  async kitten(onProgress) {
-    await downloadKittenFiles(onProgress);
-    return loadKitten(ENGINES.kitten.dir());
-  },
-  /**
-   * transformers.js downloads as it loads, so a load holds the engine's lock while the weights may be downloading:
-   * prune must not delete them meanwhile, and two processes share one download.
-   */
-  async kokoro(onProgress) {
-    const modelDir = ENGINES.kokoro.dir();
-    const { env } = await import('@huggingface/transformers');
-    env.cacheDir = modelDir;
-    if (process.env.HF_ENDPOINT) env.remoteHost = `${hubUrl()}/`;
-    const { KokoroTTS, TextSplitterStream } = await import('./kokoro/kokoro.js');
-    fs.mkdirSync(modelDir, { recursive: true });
-    const tts = await withLock(
-      ENGINES.kokoro.lock(),
-      () => {
-        removeDeadPartials(modelDir);
-        if (!ENGINES.kokoro.downloaded())
-          onProgress?.({ type: 'download', engine: 'kokoro', mb: ENGINES.kokoro.mb, cacheDir: modelDir });
-        return KokoroTTS.from_pretrained(KOKORO_MODEL_ID, { dtype: 'q8', device: 'cpu' });
-      },
-      waitingFor('loading'),
-    );
-    const { getVoiceData } = await import('./kokoro/voices.js');
-    return {
-      sampleRate: 24000,
-      async prepare(name) {
-        try {
-          await getVoiceData(name);
-        } catch (err) {
-          throw new UserError(
-            `could not get voice "${name}" (${err.cause?.message ?? err.message}); the first use of a Kokoro voice downloads about 0.5 MB from huggingface.co into ${modelDir}`,
-          );
-        }
-      },
-      async *speak(text, name, speed) {
-        // generate() truncates past 510 tokens, so speak sentence by sentence. stream() never closes the splitter
-        // it builds from a string and hangs before the last sentence, so pass it a closed one.
-        const splitter = new TextSplitterStream();
-        splitter.push(text);
-        splitter.close();
-        for await (const { text: sentence, audio } of tts.stream(splitter, { voice: name, speed }))
-          yield { sentence, audio: audio.audio };
-      },
-    };
-  },
-};
-
-const SOURCES = { kitten: KITTEN_REPO, kokoro: KOKORO_MODEL_ID };
-
-const loadFailure = (engine, err) => {
-  const { mb, dir } = ENGINES[engine];
+const loadFailure = (err) => {
+  const { mb, dir } = ENGINES['tiny-voca'];
   return new UserError(
-    `could not load the ${engine} voice model (${err.message}); its first use downloads about ${mb} MB from ${hubUrl().replace(/^https?:\/\//, '')}/${SOURCES[engine]} into ${dir()}`,
+    `could not get the voice model (${err.message}); its first use downloads about ${mb} MB from ${hubUrl().replace(/^https?:\/\//, '')}/${TINY_VOCA_REPO} into ${dir()}`,
   );
 };
 
-function loadEngine(engine, onProgress) {
-  if (!models.has(engine)) {
-    models.set(
-      engine,
-      LOADERS[engine](onProgress).catch((err) => {
-        models.delete(engine);
-        throw loadFailure(engine, err);
-      }),
-    );
-  }
-  return models.get(engine);
-}
-
 /**
- * Downloads what voicing in `voice` needs, so play can run the download where an edit does not stop it. Kitten's
- * files download without loading the model; Kokoro downloads as it loads.
+ * Downloads the voice model, each file checked against its pinned sha256, under the engine's lock so two processes
+ * share one download and prune does not delete it meanwhile. Play runs it where an edit does not stop it.
  */
-export async function downloadVoice(voice, onProgress) {
-  const { engine, name } = voiceParts(voice);
-  if (engine !== 'kitten') return (await loadEngine(engine, onProgress)).prepare?.(name);
+export async function downloadVoice(_voice, onProgress) {
+  const engine = ENGINES['tiny-voca'];
+  if (engine.downloaded()) return;
+  const dir = engine.dir();
   try {
-    await downloadKittenFiles(onProgress);
+    fs.mkdirSync(path.dirname(dir), { recursive: true });
+    await withLock(
+      engine.lock(),
+      async () => {
+        removeDeadPartials(dir);
+        if (engine.downloaded()) return;
+        onProgress?.({ type: 'download', engine: 'tiny-voca', mb: engine.mb, cacheDir: dir });
+        await downloadTinyVoca(dir);
+      },
+      waitingFor('downloading'),
+    );
   } catch (err) {
-    throw loadFailure(engine, err);
+    throw err instanceof UserError ? err : loadFailure(err);
   }
 }
 
-/** Samples quieter than this are silence when finding where a sentence's speech starts and ends. */
-const SILENCE = 0.02;
-
-/** First and last sample index above the silence level, or the whole chunk when it is all quiet. */
-function soundBounds(chunk) {
-  let first = 0;
-  while (first < chunk.length && Math.abs(chunk[first]) < SILENCE) first++;
-  let last = chunk.length - 1;
-  while (last > first && Math.abs(chunk[last]) < SILENCE) last--;
-  return first < chunk.length ? [first, last + 1] : [0, chunk.length];
+/** Voices `texts` ([{ text, out }]) in `voice` at `speed`; each clip's { seconds, sentences } goes to `onClip(i, ...)`. */
+async function speak(texts, voice, speed, onClip, onProgress) {
+  const { engine, name } = voiceParts(voice);
+  if (!Object.hasOwn(ENGINES, engine) || !Object.hasOwn(ENGINES[engine].voices, name))
+    throw new UserError(`unknown voice "${voice}"; \`mr-cast voices\` lists them`);
+  await downloadVoice(voice, onProgress);
+  const clips = texts.map(({ text, out }) => ({ text, voice: name, speed, out }));
+  await speakClips(ENGINES[engine].dir(), clips, { onClip: (r) => onClip(r.clip, r) });
 }
 
 const roundMs = (seconds) => Math.round(seconds * 1000) / 1000;
-
-async function speak(model, text, name, speed) {
-  const chunks = [];
-  for await (const chunk of model.speak(text, name, speed)) chunks.push(chunk);
-  const { sampleRate } = model;
-  const samples = new Float32Array(chunks.reduce((n, c) => n + c.audio.length, 0));
-  const sentences = [];
-  let offset = 0;
-  for (const { sentence, audio } of chunks) {
-    samples.set(audio, offset);
-    const [first, end] = soundBounds(audio);
-    sentences.push({
-      words: wordCount(sentence),
-      start: roundMs((offset + first) / sampleRate),
-      end: roundMs((offset + end) / sampleRate),
-    });
-    offset += audio.length;
-  }
-  return { samples, sampleRate, sentences };
-}
-
-function encodeWav(samples, sampleRate) {
-  const bytes = samples.length * 2;
-  const buf = Buffer.alloc(44 + bytes);
-  buf.write('RIFF', 0);
-  buf.writeUInt32LE(36 + bytes, 4);
-  buf.write('WAVEfmt ', 8);
-  buf.writeUInt32LE(16, 16);
-  buf.writeUInt16LE(1, 20); // PCM
-  buf.writeUInt16LE(1, 22); // mono
-  buf.writeUInt32LE(sampleRate, 24);
-  buf.writeUInt32LE(sampleRate * 2, 28);
-  buf.writeUInt16LE(2, 32);
-  buf.writeUInt16LE(16, 34);
-  buf.write('data', 36);
-  buf.writeUInt32LE(bytes, 40);
-  for (let i = 0; i < samples.length; i++) {
-    buf.writeInt16LE(Math.round(Math.max(-1, Math.min(1, samples[i])) * 32767), 44 + i * 2);
-  }
-  return buf;
-}
 
 function writeAtomic(file, data) {
   const tmp = `${file}.tmp-${process.pid}`;
@@ -279,31 +162,24 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
   }
 
   if (missing.size) {
-    const { engine, name } = voiceParts(chosen);
-    if (!Object.hasOwn(ENGINES, engine) || !Object.hasOwn(ENGINES[engine].voices, name))
-      throw new UserError(`unknown voice "${chosen}"; \`mr-cast voices\` lists them`);
-    const model = await loadEngine(engine, onProgress);
-    await model.prepare?.(name);
     fs.mkdirSync(path.join(dataDir, AUDIO_DIR), { recursive: true });
+    const todo = [...missing].map(([key, text]) => ({ key, text, src: `${AUDIO_DIR}/${key}.wav` }));
     let done = 0;
-    for (const [key, text] of missing) {
-      const { samples, sampleRate, sentences } = await speak(model, text, name, speed);
-      const src = `${AUDIO_DIR}/${key}.wav`;
-      writeAtomic(path.join(dataDir, src), encodeWav(samples, sampleRate));
-      clips[key] = { src, seconds: roundMs(samples.length / sampleRate), sentences, voice: chosen, speed };
-      // The clips so far, so a player already open can voice the scenes they cover while the rest are made, and a
-      // voicing stopped for a newer edit keeps them.
-      const partial = { voice: chosen, speed, pauses, clips: { ...clips } };
-      writeAtomic(path.join(dataDir, VOICEOVER_FILE), `${JSON.stringify(partial, null, 2)}\n`);
-      onProgress?.({
-        type: 'clip',
-        text,
-        seconds: clips[key].seconds,
-        done: ++done,
-        total: missing.size,
-        voiceover: partial,
-      });
-    }
+    await speak(
+      todo.map(({ text, src }) => ({ text, out: path.join(dataDir, src) })),
+      chosen,
+      speed,
+      (i, { seconds, sentences }) => {
+        const { key, text, src } = todo[i];
+        clips[key] = { src, seconds, sentences, voice: chosen, speed };
+        // The clips so far, so a player already open can voice the scenes they cover while the rest are made, and a
+        // voicing stopped for a newer edit keeps them.
+        const partial = { voice: chosen, speed, pauses, clips: { ...clips } };
+        writeAtomic(path.join(dataDir, VOICEOVER_FILE), `${JSON.stringify(partial, null, 2)}\n`);
+        onProgress?.({ type: 'clip', text, seconds, done: ++done, total: missing.size, voiceover: partial });
+      },
+      onProgress,
+    );
   }
 
   const voiceover = { voice: chosen, speed, pauses, clips };
@@ -329,10 +205,15 @@ const SAMPLE_TEXT = 'Here is how this change works: the request takes a token, a
 
 /** Voices SAMPLE_TEXT in `voice` at `speed` into the WAV file `out`; returns its length in seconds. */
 export async function sampleVoice({ voice, speed, out, onProgress }) {
-  const { engine, name } = voiceParts(voice);
-  const model = await loadEngine(engine, onProgress);
-  await model.prepare?.(name);
-  const { samples, sampleRate } = await speak(model, SAMPLE_TEXT, name, speed);
-  writeAtomic(out, encodeWav(samples, sampleRate));
-  return roundMs(samples.length / sampleRate);
+  let length = 0;
+  await speak(
+    [{ text: SAMPLE_TEXT, out }],
+    voice,
+    speed,
+    (_i, { seconds }) => {
+      length = seconds;
+    },
+    onProgress,
+  );
+  return roundMs(length);
 }

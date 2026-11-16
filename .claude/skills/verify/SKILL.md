@@ -38,7 +38,7 @@ It prints `verify: ready run=<run> repo=<run>/work/repo evidence=<run>/evidence`
 
 There is no server to keep alive for the CLI. The player is started per recipe with `play-start` (see Drive).
 
-First use on a fresh machine downloads the Kitten voice model (about 82 MB; Kokoro, about 90 MB, only for a kokoro voice) into `~/.cache/mr-cast` on the first `voice`, or the first `render` or `play` with a voice. Stills and silent renders download nothing. Doctor reports whether the model is already there.
+First use on a fresh machine downloads the tiny-voca voice model (about 27 MB) into `~/.cache/mr-cast/tiny-voca` on the first `voice`, or the first `render` or `play` with a voice. Stills and silent renders download nothing. Doctor reports whether the model is already there.
 
 ## Doctor
 

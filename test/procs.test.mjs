@@ -645,7 +645,7 @@ async function stalledHub() {
   });
   const server = http.createServer((req, res) => {
     requests.push(req);
-    res.writeHead(200, { 'content-length': '78268016' });
+    res.writeHead(200, { 'content-length': '21386372' });
     res.write('ONNX');
     arrived();
   });
@@ -661,7 +661,7 @@ async function stalledHub() {
 
 /** Gives the run's narration a clip on disk, so play serves it at once without a voice model. */
 function voiceRun(dir, text) {
-  const voice = 'kitten:luna';
+  const voice = 'tiny-voca:m2';
   const src = 'audio/0000abcd.wav';
   fs.mkdirSync(path.join(dir, 'audio'), { recursive: true });
   fs.writeFileSync(path.join(dir, src), Buffer.alloc(44 + 4800));

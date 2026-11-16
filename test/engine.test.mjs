@@ -115,7 +115,7 @@ test('a voiced render plays each clip from its frame', { skip: !engine() && 'no 
   try {
     const scene = (text) => ({ type: 'text', narration: text, headline: 'H', items: ['a'] });
     const scenes = [scene('One two three four.'), scene('Five six.')];
-    const voiceover = { voice: 'kitten:luna', speed: 1, pauses: 1, clips: {} };
+    const voiceover = { voice: 'tiny-voca:m2', speed: 1, pauses: 1, clips: {} };
     fs.mkdirSync(path.join(work, 'audio'));
     for (const [i, s] of scenes.entries()) {
       toneWav(path.join(work, `audio/${i}0000000.wav`), 24000, 0, 1.5);

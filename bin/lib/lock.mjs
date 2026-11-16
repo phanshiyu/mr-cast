@@ -93,7 +93,7 @@ export function usersOf(dir) {
   return names.map(Number).filter((pid) => Number.isInteger(pid) && pid > 0 && alive(pid));
 }
 
-/** A download's partial file, named for the pid writing it: ours `<name>.tmp-<pid>`, transformers.js's `<name>.tmp.<pid>.<random>`. */
+/** A download's partial file, named for the pid writing it: ours `<name>.tmp-<pid>`, and `<name>.tmp.<pid>.<random>`, which transformers.js left in older versions. */
 const PARTIAL = /\.tmp(?:-(\d+)|\.(\d+)\.[0-9a-z]+)$/;
 
 /** Removes the partial files under `dir` whose writer is gone, as a process killed mid-download leaves them. */

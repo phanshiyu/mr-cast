@@ -22,7 +22,7 @@
   // The engine compiled to WebAssembly: vite.config.ts aliases it to engine/wasm/pkg, which `pnpm build:wasm` writes, so
   // a checkout that has not built it yet has nothing to resolve (its types are in src/engine/mrc-wasm.d.ts).
   "ignoreUnresolvedImports": ["mrc-wasm"],
-  "ignorePatterns": ["bin/lib/kokoro/**", "shared/world/**", "dist/**"],
+  "ignorePatterns": ["shared/world/**", "dist/**"],
   "ignoreExports": [
     // bin/mr-cast.mjs imports render.mjs on demand and destructures the result, which fallow cannot follow.
     { "file": "bin/lib/render.mjs", "exports": ["renderVideo", "renderStills", "renderSheets", "stopRenders"] },

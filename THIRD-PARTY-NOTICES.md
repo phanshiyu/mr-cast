@@ -146,6 +146,56 @@ English text to phonemes, by Muhammed Nazeem (https://github.com/n4ze3m/dizione,
 `engine/dizione` is a Rust port of its Python source, and the binaries contain its hand-written tables
 (`engine/dizione/data/*.txt`, unmodified). The licence's full text is at the end of this file.
 
+## The voice model, downloaded on first use
+
+These files are not in the package: the first voice-over downloads them from Hugging Face
+(https://huggingface.co/n4ze3m/tiny-voca, revision e5f9b11651a4db525fb207a56a91e4df2d1dd387) into
+`~/.cache/mr-cast/tiny-voca/`, and the engine reads them there.
+
+- tiny-voca (`onnx/model.onnx`, `config.json`), by Muhammed Nazeem: a 4.5M-parameter text-to-speech model trained from
+  scratch on synthetic speech, Apache License 2.0 (the full text is at the end of this file).
+- dizione's built data (`phonemizer/`): the dictionary, the alignment table and the unknown-word model are built from
+  CMUdict (commit 74790861), under the licence below; the homograph classifier weights are trained on the Wikipedia
+  Homograph Data of Google (commit 8f008f02), Apache License 2.0. Only the weights are shipped, not its sentences.
+
+CMUdict's licence:
+
+```
+Copyright (C) 1993-2015 Carnegie Mellon University. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+   The contents of this file are deemed to be source code.
+
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in
+   the documentation and/or other materials provided with the
+   distribution.
+
+This work was supported in part by funding from the Defense Advanced
+Research Projects Agency, the Office of Naval Research and the National
+Science Foundation of the United States of America, and by member
+companies of the Carnegie Mellon Sphinx Speech Consortium. We acknowledge
+the contributions of many volunteers to the expansion and improvement of
+this dictionary.
+
+THIS SOFTWARE IS PROVIDED BY CARNEGIE MELLON UNIVERSITY ``AS IS'' AND
+ANY EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL CARNEGIE MELLON UNIVERSITY
+NOR ITS EMPLOYEES BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
 ## Apache License 2.0
 
 ```

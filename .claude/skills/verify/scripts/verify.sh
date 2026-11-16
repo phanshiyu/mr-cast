@@ -100,7 +100,7 @@ cmd_doctor() {
   check "evidence dir exists ($EV)" "[ -d '$EV' ]"
   local cache="${XDG_CACHE_HOME:-$HOME/.cache}/mr-cast"
   check "a Chrome for browse (MR_CAST_CHROME or an installed Chrome or Chromium)" "[ -x \"\${MR_CAST_CHROME:-}\" ] || [ -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ] || command -v google-chrome chromium chromium-browser"
-  check "Kitten voice model cached (voice, play and render without --no-voice)" "[ -d '$cache/kitten' ]"
+  check "voice model cached (voice, play and render without --no-voice)" "[ -d '$cache/tiny-voca' ]"
   check "ffprobe runs (the harness's probe and frame use it)" "'$FFPROBE' -version"
   local f pid port
   for f in "$WORK"/play/*.pid; do

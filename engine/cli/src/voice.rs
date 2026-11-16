@@ -1,6 +1,6 @@
 //! `mr-cast-engine voice`: speaks clips with tiny-voca (docs/adr/0046-tiny-voca-voice.md).
 //!
-//!   mr-cast-engine voice --model-dir <dir> --job job.json
+//!   mr-cast-engine voice --model-dir <dir> --job job.json [--parent-pipe yes]
 //!
 //! job.json is `{"clips": [{"text", "voice": "f2" | "m2", "speed", "out": "<file.wav>"}]}`. Each clip is read as
 //! tiny-voca's `speak_text` reads a text: a full stop added when it ends without a mark, then sentence by sentence,
@@ -431,6 +431,13 @@ pub fn command(f: &HashMap<String, String>) -> Result<(), String> {
     let job_file = f.get("job").ok_or("--job is required")?;
     let job: Job = serde_json::from_str(&std::fs::read_to_string(job_file).map_err(|e| format!("{job_file}: {e}"))?)
         .map_err(|e| format!("{job_file}: {e}"))?;
+    if f.get("parent-pipe").is_some_and(|v| v == "yes") {
+        // stdin is a pipe the caller holds: when it closes, the caller is gone, and its clips with it.
+        std::thread::spawn(|| {
+            let _ = std::io::copy(&mut std::io::stdin().lock(), &mut std::io::sink());
+            std::process::exit(1);
+        });
+    }
     let voice = Voice::load(&dir)?;
     let total = job.clips.len();
     eprintln!("progress 0/{total}");
