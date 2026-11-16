@@ -1,6 +1,6 @@
 ---
 name: mr-cast-prune
-description: Free disk space used by mr-cast and stop mr-cast processes left running, letting the user pick what goes, such as old walkthroughs, rendered videos, stills, voice clips, the downloaded voice models, the Chrome and player bundle older versions left, and players, plan pages or renders an agent started and forgot. Use when the user asks to prune, clean up, or delete mr-cast files, videos or caches, asks what mr-cast is using disk space on, or asks which mr-cast servers or processes are running or to stop them.
+description: Free disk space used by mr-cast and stop mr-cast processes left running, letting the user pick what goes, such as old walkthroughs, rendered videos, stills, voice clips, the downloaded voice models, the browser and player bundle older versions left, and players, plan pages or renders an agent started and forgot. Use when the user asks to prune, clean up, or delete mr-cast files, videos or caches, asks what mr-cast is using disk space on, or asks which mr-cast servers or processes are running or to stop them.
 ---
 
 # mr-cast prune

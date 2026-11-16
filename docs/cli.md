@@ -128,7 +128,7 @@ A branch video with a `brief` has a **guide panel** where the reading panel sits
 
 `mr-cast render` writes the MP4 in the run's directory. It names the file after the storyboard title, or else the run's name, or else `walkthrough.mp4`. `--out file.mp4` writes it somewhere else. When the run has a `review.md`, a `reading.md` or a `guide.md`, `render --out` also writes a copy of each beside the MP4, named after it, such as `demo.review.md`, `demo.reading.md` and `demo.guide.md`.
 
-mr-cast draws the frames itself, with a renderer that comes with it, and writes the MP4 itself too: the picture as H.264 and the voice as AAC, which every browser and video player plays. It needs no ffmpeg or other program. Frames that repeat the one before are left out of the file, which a video player shows as the earlier frame held; `MR_CAST_CFR=1` writes every frame instead. The voice-over and the chapter markers go into the same MP4. Until every scene type is drawn by mr-cast's renderer, the ones it does not draw yet show a card naming the scene type, and `MR_CAST_RENDERER=remotion` renders and plays with Remotion and Chrome as before.
+mr-cast draws the frames itself, with a renderer that comes with it, and writes the MP4 itself too: the picture as H.264 and the voice as AAC, which every browser and video player plays. It needs no ffmpeg or other program. Frames that repeat the one before are left out of the file, which a video player shows as the earlier frame held; `MR_CAST_CFR=1` writes every frame instead. The voice-over and the chapter markers go into the same MP4. A scene type the renderer does not draw yet shows a card naming the type.
 
 ## Picture downloads
 
@@ -155,7 +155,7 @@ Each scene names its topic in `topic`, and the storyboard records the picks it w
 | `video:<run>/<file>.mp4` | A rendered video. `<run>` is a run name, or `.` or `explain/<name>` for 0.11 data. |
 | `stills:<run>`, `audio:<run>` | A run's PNG stills, or its voice clips and `voiceover.json`. `still` and `voice` make them again. |
 | `cache:kitten`, `cache:models` | The Kitten voice model (about 82 MB) or the Kokoro voice model (about 90 MB). The next voice-over in that engine downloads it again. |
-| `cache:bundle`, `cache:remotion` | The player bundle and Chrome Headless Shell (about 580 MB) that renders used before; listed only when they are still there. Nothing needs them unless you render with `MR_CAST_RENDERER=remotion`. |
+| `cache:bundle`, `cache:remotion` | The player bundle and the browser (about 580 MB) that older versions used to draw videos; listed only when they are still there. Nothing needs them now, so delete them. |
 
 Selectors pick what to delete, and they combine:
 

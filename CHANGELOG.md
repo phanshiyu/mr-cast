@@ -6,7 +6,9 @@
 
 **The player in the browser draws with the same renderer**, so what you watch is what the MP4 shows. It keeps its controls, speeds, chapters, keys and the voice-over in step with the picture, and draws sharp on any screen.
 
-**Not every scene type is drawn this way yet.** Text, code and flow scenes are; the others show a card with the scene's type until they are. To render and play with Remotion and Chrome as before, set `MR_CAST_RENDERER=remotion`. `mr-cast prune` still lists the Chrome and player bundle folders that older versions left, so you can delete them.
+**Remotion and Chrome are gone.** mr-cast no longer opens a browser to draw a video, and no longer carries the code it used to. Nothing is downloaded for a still or a silent render, and `MR_CAST_RENDERER` does nothing. The install is smaller: the packages mr-cast needs take 1.0 GB in `node_modules` instead of 1.2 GB (the voice models' runtime is most of what is left), and the 580 MB Chrome that the first render fetched is not fetched at all. `mr-cast prune` still lists the Chrome and player bundle folders that older versions left, so you can delete them.
+
+**A scene type the renderer does not draw yet shows a card naming the type.** Today those are `image`, `map`, `mermaid` and `svg`.
 
 **mr-cast writes the MP4 itself, with no ffmpeg.** Nothing else needs installing, and nothing is downloaded when mr-cast installs, so npm versions that block install scripts can render too. Text is as sharp as before and files are a little smaller: the silent 7.4-minute demo is 10.6 MB instead of 13.7 MB. `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
 

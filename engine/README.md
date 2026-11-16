@@ -1,7 +1,6 @@
 # mr-cast engine
 
-A native renderer for mr-cast videos, meant to replace Remotion (React drawn by headless Chrome). It reads the same
-props the composition gets, draws every frame on the CPU, and encodes and writes the MP4 itself (no ffmpeg; see
+The renderer for mr-cast videos. It reads the props `bin/lib/engine.mjs` writes (storyboard, hunks, voice timing, images), draws every frame on the CPU, and encodes and writes the MP4 itself (no ffmpeg; see
 docs/adr/0044-encode-in-the-engine.md).
 
 ```
@@ -59,7 +58,7 @@ output). `--scene N` and `--step k` pick the frame `mr-cast still` shows (N is 1
 with `--pcm` writes the voice-over as it plays, 16-bit mono at 48 kHz; the tests and `scripts/smoke.sh` use it.
 
 With `--media-dir`, `render` mixes each segment's voice clip (`clip.src` under that directory) into one track from the
-segment's voice frame to its end, as Walkthrough.tsx played them, and encodes it as AAC-LC (mono, 48 kHz, 96 kbit/s)
+segment's voice frame to its end, as the player plays them, and encodes it as AAC-LC (mono, 48 kHz, 96 kbit/s)
 while the frames render. A whole-video render also writes a chapter per run of scenes with one chapter title.
 
 By default a frame that draws exactly what the frame before drew (equal display-list fingerprints) is neither drawn
@@ -84,7 +83,7 @@ Checks: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo
 
 ## Adding a scene type
 
-A scene type is one file, `core/src/scenes/<type>.rs`, ported from `src/components/<Component>.tsx` and its layout in
+A scene type is one file, `core/src/scenes/<type>.rs`, ported from the React scene that drew it before Remotion was removed (`git show b6e4efd:src/components/<Component>.tsx`) and its layout in
 `src/utils/*Layout.ts`. Register it with one line in `scenes/mod.rs`: `pub mod <type>;` and an entry in `REGISTRY`.
 Until then the type draws a placeholder card.
 
@@ -162,7 +161,7 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
 
 ### CSS that needs care
 
-- The Remotion bundle does not load Tailwind's preflight: boxes are `content-box` unless the TSX says
+- The old React scenes did not load Tailwind's preflight: boxes are `content-box` unless the TSX says
   `boxSizing: 'border-box'`, so a bordered box is 2 px larger, and flex then shrinks items in proportion to their
   inner sizes (see the strip and card in `scenes/flow.rs`).
 - Line boxes come from line heights, not font sizes: a unitless `lineHeight` multiplies the size; a parent with
@@ -175,43 +174,26 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
 1. Pick an example that uses the type, such as `examples/primitives/<type>` (any directory with a storyboard.json;
    hunks.json and meta.json are optional, so explanation runs work too).
 2. Write `core/src/scenes/<type>.rs` from the TSX and register it (above).
-3. Build and compare, and repeat until the table is flat:
+3. Build, look at the stills (`mr-cast still`), and compare them with the old React drawing by checking out
+   b6e4efd in a separate worktree and rendering the same run there; the comparison script went with Remotion.
 
 ```
 cargo build --release --manifest-path engine/Cargo.toml
-scripts/engine-compare.sh examples/primitives/<type> [--scenes 0,3,5] [--out dir]
 ```
 
-For each chosen scene (0-based, as `mr-cast still` counts; all by default) it takes Remotion's still at the scene's
-end and at the end of every step, and the engine's matching still, and prints one line per still:
+## Font metrics
 
-```
-still                                  mean worst-tile  at
-scene-01-text                          1.31        7.1  896,704
-scene-04-flow-step-2                   0.90       12.3  960,576
-scene-07-code-step-2                   1.54       22.7  1344,576
-```
-
-`mean` is the mean absolute difference over the frame and `worst-tile` the worst 64-pixel tile, whose top left is
-`at`, both in levels of 255. A faithful port reads about 1 to 1.5 mean and under about 25 in the worst tile (text
-anti-aliasing never matches exactly); a misplaced or missing element shows as a worst tile of 50 or more. In `--out`
-(default `/tmp/engine-compare/<dir name>`) are `compare-<still>.png` (Remotion on top, engine below),
-`diff-<still>.png` (the difference four times brighter, black where they agree) and both originals; look at the
-compare image of every still whose numbers stand out.
-
-Remotion's stills are cached in `~/.cache/mr-cast-engine-compare/<hash>`, keyed by the run's files and by `src/`,
-`shared/` and `bin/`, so the first run takes Chrome a few seconds per step index and a re-run only redraws the
-engine's side (about 2 s for 14 stills). The mr-cast commands run with temporary config, state and Claude
-directories; the real `~/.cache/mr-cast` is kept so Chrome and the bundle are not fetched again.
-
-`mr-cast-engine compare --remotion a.png --engine b.png [--out-compare c.png] [--out-diff d.png]` is the
-comparison on its own. Stills show settled states; for motion, compare frames of a Remotion MP4 with the engine's
-(`mr-cast-engine still --frame N`). Text, flow and code match Remotion to under 1.5 levels of mean grey difference
-on every sampled frame of the demo.
+`shared/font-metrics.mjs` holds the width of every character mr-cast draws, for each font, weight and size, with the
+kerning pairs. `validate` and the layout code in `src/utils/` fit text with it, so a text that passes `validate` fits
+the picture. It is fixed data: it was measured once from the fonts in `engine/assets/fonts/` and `src/assets/` (Inter,
+JetBrains Mono, Caveat), and nothing regenerates it. The fonts must not change (a new version, a different subset)
+without measuring again, or `validate` will pass text that does not fit. The engine shapes with swash and the file
+was measured in Chrome, so a new measurement would have to be checked against `mr-cast still` on the examples; there
+is no `metrics` command because writing a file that matches the old one is not a few lines of work.
 
 ## What is not ported yet
 
-- 21 scene types draw a placeholder. Of the three ported: text steps that `set` new text, number and question
+- `image`, `map`, `mermaid` and `svg` scenes draw a placeholder. Of the ones ported: text steps that `set` new text, number and question
   gradient fills (solid colour instead), flow steps with real `code` and step icons, code `typing` and output panes,
   and every scene's pen marks, ink and camera.
-- The source line of pre-read diagrams (`SourceLine` in src/Walkthrough.tsx) and images.
+- The source line of pre-read diagrams (`SourceLine` in the old src/Walkthrough.tsx) and images.

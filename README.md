@@ -91,4 +91,4 @@ Bug reports and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.m
 
 ## License
 
-MIT. Until every scene type is drawn by mr-cast's own renderer, `MR_CAST_RENDERER=remotion` renders with [Remotion](https://www.remotion.dev/license), which is free for individuals and companies with up to 3 employees; larger companies need a Remotion company license for that.
+MIT.
