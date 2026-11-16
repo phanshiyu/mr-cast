@@ -1,99 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { build } from 'esbuild';
 import { cameraShots, frameShot, tweenView, viewRect } from '../shared/camera.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
-
-// The scene as the player draws it at `globalThis.FRAME`, through react-dom/server with remotion's hooks stubbed.
-const REMOTION = `import { createElement } from 'react';
-export const AbsoluteFill = ({ children, style }) => createElement('div', { style }, children);
-export const useCurrentFrame = () => globalThis.FRAME;
-export const useVideoConfig = () => ({ fps: 30, width: 1920, height: 1080, durationInFrames: 600 });
-export const spring = () => 1;
-export const interpolate = (x, [a, b], [c, d]) => c + (d - c) * Math.min(1, Math.max(0, (x - a) / (b - a)));
-export const Easing = { bezier: () => (t) => t };
-export const delayRender = () => 0;
-export const continueRender = () => {};`;
-const root = new URL('..', import.meta.url).pathname;
-const bundled = await build({
-  stdin: {
-    contents: `export { SvgDiagram } from './src/components/SvgDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`,
-    resolveDir: root,
-    loader: 'ts',
-  },
-  bundle: true,
-  write: false,
-  format: 'esm',
-  platform: 'node',
-  logLevel: 'silent',
-  loader: { '.woff2': 'empty' },
-  banner: {
-    js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});`,
-  },
-  plugins: [
-    {
-      name: 'remotion',
-      setup: (b) => {
-        b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
-        b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({
-          contents: REMOTION,
-          loader: 'js',
-          resolveDir: root,
-        }));
-      },
-    },
-  ],
-});
-const { SvgDiagram, renderToStaticMarkup, createElement } = await import(
-  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
-);
-
-const segmentsFor = (scene) => [
-  { from: 0, voiceFrom: 0, markFrom: 0, text: scene.narration, speakingFrames: 90 },
-  ...scene.steps.map((step, k) => ({
-    from: 100 + 200 * k,
-    voiceFrom: 115 + 200 * k,
-    markFrom: 115 + 200 * k,
-    text: step.say,
-    speakingFrames: 150,
-  })),
-];
-const drawnAt = (frame, scene) => {
-  globalThis.FRAME = frame;
-  return renderToStaticMarkup(
-    createElement(SvgDiagram, { scene, hunks: {}, durationInFrames: 600, segments: segmentsFor(scene) }),
-  );
-};
-/** The camera's transform at a frame, as [x, y, zoom]; null when the scene draws no camera. */
-const cameraAt = (frame, scene) => {
-  const m = /transform-origin:0 0;transform:translate\(([-\d.e]+)px, ([-\d.e]+)px\) scale\(([\d.e]+)\)/.exec(
-    drawnAt(frame, scene),
-  );
-  return m ? m.slice(1).map((n) => Math.round(Number(n) * 1000) / 1000) : null;
-};
 
 // A viewBox the size of the content box (1712 by 804 without a title), so viewBox units are px on stage.
 const cell =
   '<svg viewBox="0 0 1712 804"><rect id="a" x="100" y="100" width="100" height="100"/><rect id="b" x="1400" y="600" width="100" height="100"/></svg>';
 const scene = (steps, extra = {}) => ({ type: 'svg', narration: 'Two boxes.', svg: cell, steps, ...extra });
-
-test('a step camera zooms on its ref with a margin, kept inside the scene, and pulls back on "all"', () => {
-  const s = scene([
-    { camera: 'a', say: 'Look at a.' },
-    { camera: 'all', say: 'And back.' },
-  ]);
-  assert.deepEqual(cameraAt(50, s), [0, 0, 1]);
-  // a's box is 100 px with 48 px each side: 804 / 196 high. Its centre, x 150, is pulled right so the view stays on the stage.
-  const zoom = Math.round((804 / 196) * 1000) / 1000;
-  assert.deepEqual(cameraAt(250, s), [0, Math.round((402 - 150 * (804 / 196)) * 1000) / 1000, zoom]);
-  assert.deepEqual(cameraAt(450, s), [0, 0, 1]);
-});
-
-test('a scene with no camera draws its content as it always has, with no camera wrapper', () => {
-  const html = drawnAt(250, scene([{ focus: 'a', say: 'Look at a.' }]));
-  assert.match(html, /<div style="flex:1;position:relative;min-height:0"><svg width="1776"/);
-  assert.equal(cameraAt(250, scene([{ focus: 'a', say: 'Look at a.' }])), null);
-});
 
 test('a zoom straight in keeps one point still on screen the whole way', () => {
   const area = { width: 1600, height: 800 };

@@ -9,11 +9,11 @@ import { layoutSteps, type FlowSteps, type StepLayout } from './stepsLayout';
 
 export type View = 'split' | 'morph';
 
-export const SIGN_W = 26;
-export const SPLIT_NUMBER_W = 66;
-export const MORPH_NUMBER_W = 58;
+const SIGN_W = 26;
+const SPLIT_NUMBER_W = 66;
+const MORPH_NUMBER_W = 58;
 export const SPLIT_GUTTER_W = SPLIT_NUMBER_W + SIGN_W;
-export const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
+const MORPH_GUTTER_W = MORPH_NUMBER_W * 2 + SIGN_W;
 /** Code sizes: the readable range, largest first. Past the smallest, code still shrinks to HARD_MIN rather than lose a character. */
 const FONT_RANGE: Record<View, { min: number; max: number }> = {
   split: { min: 14, max: 20 },
@@ -22,22 +22,22 @@ const FONT_RANGE: Record<View, { min: number; max: number }> = {
 const HARD_MIN = 10;
 /** Room kept between the end of the longest line and the edge of its panel. */
 const CODE_RIGHT_PAD = 14;
-export const PANEL_PAD = 18;
-export const HEADER_H = 92;
-export const HEADER_GAP = 22;
-export const CALLOUT_W = 420;
-export const CALLOUT_GAP = 56;
-export const CALLOUT_BELOW_H = 112;
+const PANEL_PAD = 18;
+const HEADER_H = 92;
+const HEADER_GAP = 22;
+const CALLOUT_W = 420;
+const CALLOUT_GAP = 56;
+const CALLOUT_BELOW_H = 112;
 /** Padding of a callout card, across and down. */
 const CALLOUT_PAD = { x: 52, y: 44 };
 /** With a flow the code keeps this share of the width; the step diagram takes the rest. */
 const FLOW_CODE_SHARE = 0.6;
 const FLOW_GAP = 72;
-export const FLOW_CALLOUT_GAP = 36;
+const FLOW_CALLOUT_GAP = 36;
 /** Unfocused rows kept above the first step and below the last; the rest of the hunk is cropped away. */
 const CONTEXT_ROWS = 3;
 
-export const STATUS_LABEL: Record<Hunk['status'], string> = {
+const STATUS_LABEL: Record<Hunk['status'], string> = {
   added: CHANGE_WORD.added,
   modified: CHANGE_WORD.modified,
   deleted: CHANGE_WORD.removed,
@@ -46,7 +46,7 @@ export const STATUS_LABEL: Record<Hunk['status'], string> = {
 };
 
 /** Morph numbers each row with its old and new line like a unified diff; a source snippet has only its own numbers. */
-export const morphGutterW = (hunk: Hunk) => (hunk.status === 'source' ? SPLIT_GUTTER_W : MORPH_GUTTER_W);
+const morphGutterW = (hunk: Hunk) => (hunk.status === 'source' ? SPLIT_GUTTER_W : MORPH_GUTTER_W);
 
 /** A code line with its tabs turned into spaces at CODE_TAB_SIZE stops, as the code is drawn. */
 function expandTabs(text: string): string {
@@ -167,8 +167,7 @@ export interface OutputPaneLayout {
   lines: { step: number; fit: Fit; y: number; h: number }[];
 }
 
-export const OUTPUT_CHROME_H = 46;
-export const OUTPUT_PAD = { x: 24, y: 18 };
+const OUTPUT_PAD = { x: 24, y: 18 };
 const OUTPUT_GAP = 40;
 /** With an output pane the code keeps this share of the width. */
 const OUTPUT_CODE_SHARE = 0.58;

@@ -2,13 +2,12 @@ import { outputLines } from '../../shared/terminal.mjs';
 import { fitText, measure, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { TerminalEntry, TerminalScene } from '../types';
-import type { Box, LayoutBoxes } from './penGeometry';
 
 /** Height of the window's title bar. */
-export const CHROME_H = 52;
+const CHROME_H = 52;
 /** Padding inside the window around the session. */
-export const PAD_X = 34;
-export const PAD_Y = 24;
+const PAD_X = 34;
+const PAD_Y = 24;
 /** Text sizes to try, largest first. The smallest is the floor: a longer session scrolls rather than shrinks. */
 const SIZES = [28, 26, 24];
 const LINE_HEIGHT = 1.5;
@@ -16,7 +15,7 @@ const LINE_HEIGHT = 1.5;
 const ENTRY_GAP = 0.5;
 /** The window is at least this share of the frame's height, so a short session still reads as a terminal. */
 const MIN_BODY = 0.5;
-export const EXIT_FONT = 17;
+const EXIT_FONT = 17;
 const EXIT_PAD = 13;
 const EXIT_GAP = 20;
 /** A prompt takes at most this share of the window's width, so the command beside it has room. */
@@ -147,42 +146,4 @@ export function layoutTerminal(scene: TerminalScene, width: number, height: numb
   const viewH = Math.min(room, Math.max(chosen.height, Math.round(room * MIN_BODY)));
   const window = scene.window ? fitText(scene.window, sized(SLOTS.terminalWindow, width - 260), 'window') : null;
   return { ...chosen, viewH, window };
-}
-
-/** An entry's rows, from its prompt to its last output line, in session units. */
-const entryBox = (layout: TerminalLayout, e: PlacedEntry): Box => ({
-  x: PAD_X - 10,
-  y: e.top - 4,
-  width: Math.min(layout.innerW, e.textW) + 20,
-  height: e.bottom - e.top + 8,
-});
-
-/**
- * The box of each item a step can focus, by its key in shared/targets.mjs, in session units (the window's
- * body before it scrolls): an entry, and one output line's text. A note keeps off every line of text.
- */
-export function terminalBoxes(layout: TerminalLayout): LayoutBoxes {
-  const boxes = new Map<string, Box>();
-  const obstacles: Box[] = [];
-  for (const e of layout.entries) {
-    boxes.set(`en:${e.index}`, entryBox(layout, e));
-    if (e.command)
-      obstacles.push({
-        x: PAD_X,
-        y: e.command.y,
-        width: e.promptW + e.command.fit.width,
-        height: e.command.fit.lines.length * layout.rowH,
-      });
-    for (const line of e.lines) {
-      const box = {
-        x: PAD_X + line.indent,
-        y: line.y,
-        width: Math.max(24, line.fit.width),
-        height: Math.max(1, line.fit.lines.length) * layout.rowH,
-      };
-      boxes.set(`ln:${e.index}/${line.index}`, box);
-      if (line.fit.width > 0) obstacles.push(box);
-    }
-  }
-  return { boxes, obstacles };
 }

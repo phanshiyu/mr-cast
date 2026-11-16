@@ -29,7 +29,7 @@ const isChange = (v) =>
   Object.keys(v).length === 2;
 
 /** Two values are the same when they read the same, or point at the same object. */
-export const sameValue = (a, b) => {
+const sameValue = (a, b) => {
   if (isPointer(a) || isPointer(b)) return isPointer(a) && isPointer(b) && a.ref === b.ref;
   if (isChange(a) || isChange(b)) return isChange(a) && isChange(b) && a.before === b.before && a.after === b.after;
   return String(a) === String(b);

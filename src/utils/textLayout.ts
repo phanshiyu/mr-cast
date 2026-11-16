@@ -9,7 +9,7 @@ type LeadKind = (typeof TEXT_LEADS)[number] & keyof TextLead;
 const SANS = { family: 'sans', balanced: true } as const;
 
 /** Vertical rhythm, in px. */
-export const GAP = {
+const GAP = {
   kicker: 22,
   note: 26,
   rule: 30,
@@ -22,14 +22,14 @@ export const GAP = {
   sideItem: 14,
   bottom: 24,
 };
-export const RULE = { width: 120, height: 7 };
+const RULE = { width: 120, height: 7 };
 /** The question mark beside a question takes this share of the width. */
-export const QUESTION_ROOM = 0.2;
-export const SIDE_GUTTER = 64;
+const QUESTION_ROOM = 0.2;
+const SIDE_GUTTER = 64;
 /** Items sit after their dot, its gap and the shift a lit item takes. */
 const BULLET_INDENT = 12 + 22 + 12;
 /** A quote's opening mark, as a multiple of the quote's size, and the gap between it and the quote. */
-export const QUOTE_MARK = { scale: 3.2, gap: 0.35 };
+const QUOTE_MARK = { scale: 3.2, gap: 0.35 };
 
 /**
  * Each lead's type: its size alone, above items or sides, and in a side; how small it may get; its lines; and the

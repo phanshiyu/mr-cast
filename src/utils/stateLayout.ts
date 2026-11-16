@@ -6,13 +6,13 @@ import { around, type Box, type LayoutBoxes, type Pt } from './penGeometry';
 
 const STATE_H = 72;
 const STATE_FONT = 26;
-export const BADGE_FONT = 14;
+const BADGE_FONT = 14;
 const LABEL_FONT = 18;
 const LABEL_LINE_H = 22;
 const LABEL_PAD_Y = 6;
 const LABEL_MAX_CHARS = 22;
 const MONO_ADVANCE = 0.61;
-export const ARROW_LEN = 14;
+const ARROW_LEN = 14;
 const MIN_W = 170;
 const MAX_W = 360;
 const PAD_X = 28;

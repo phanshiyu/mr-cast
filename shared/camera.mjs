@@ -122,7 +122,7 @@ function readShot(scene, hunks, step, k, value, names, problem) {
  */
 
 /** The whole scene, as it draws without a camera. */
-export const wholeView = (area) => ({ x: area.width / 2, y: area.height / 2, zoom: 1 });
+const wholeView = (area) => ({ x: area.width / 2, y: area.height / 2, zoom: 1 });
 
 /**
  * The view at rest on a shot: the union of its keys' boxes with a margin, fitted to the screen and kept inside the
@@ -165,5 +165,5 @@ export function tweenView(a, b, t) {
 }
 
 /** A CSS transform, with its origin at the top left, that shows `view` of a content box of `area`. */
-export const viewTransform = (view, area) =>
+const _viewTransform = (view, area) =>
   `translate(${area.width / 2 - view.x * view.zoom}px, ${area.height / 2 - view.y * view.zoom}px) scale(${view.zoom})`;

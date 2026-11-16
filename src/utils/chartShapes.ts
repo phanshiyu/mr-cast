@@ -105,7 +105,7 @@ const SWATCH = 24;
 const SWATCH_GAP = 18;
 
 /** "40%" or "120 ms · 40%": what the legend prints for a slice, a share alone when the unit is already one. */
-export function sliceText(scene: ChartScene, value: number, total: number): string {
+function sliceText(scene: ChartScene, value: number, total: number): string {
   const share = total > 0 ? (value / total) * 100 : 0;
   const pct = `${share >= 10 || share === 0 ? Math.round(share) : Math.round(share * 10) / 10}%`;
   return scene.unit === '%' ? formatValue(value, scene) : `${formatValue(value, scene)} · ${pct}`;
@@ -147,5 +147,3 @@ export function layoutPie(scene: ChartScene, width: number, height: number): Pie
       : null,
   };
 }
-
-export const PIE_SWATCH = { size: SWATCH, gap: SWATCH_GAP };

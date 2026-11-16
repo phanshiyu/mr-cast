@@ -82,21 +82,7 @@ export async function withLock(file, fn, onWait) {
 
 const usersDir = (dir) => `${dir}.users`;
 
-/** Runs `fn` with a `<dir>.users/<pid>` marker on each of `dirs`, so `prune` leaves them alone meanwhile. */
-export async function whileUsing(dirs, fn) {
-  const markers = dirs.map((dir) => path.join(usersDir(dir), String(process.pid)));
-  for (const marker of markers) {
-    fs.mkdirSync(path.dirname(marker), { recursive: true });
-    fs.writeFileSync(marker, '');
-  }
-  try {
-    return await fn();
-  } finally {
-    for (const marker of markers) fs.rmSync(marker, { force: true });
-  }
-}
-
-/** Pids of live processes with a `whileUsing` marker on `dir`. A crashed process's marker counts for nothing. */
+/** Pids of live processes with a `<dir>.users/<pid>` marker, as an older mr-cast left while it used `dir`. A crashed process's marker counts for nothing. */
 export function usersOf(dir) {
   let names = [];
   try {

@@ -4,13 +4,13 @@ import type { CodeScene } from '../types';
 
 export type FlowSteps = NonNullable<CodeScene['flow']>;
 
-export const NODE_PAD_X = 20;
-export const NODE_PAD_Y = 16;
-export const BADGE = 40;
-export const BADGE_GAP = 16;
+const NODE_PAD_X = 20;
+const NODE_PAD_Y = 16;
+const BADGE = 40;
+const BADGE_GAP = 16;
 /** Gap between nodes, where the arrow runs; it tightens before the font shrinks. */
 const ARROW_GAPS = [42, 26];
-export const OUTCOME_GAP = 8;
+const OUTCOME_GAP = 8;
 const FONT_MAX = 26;
 const FONT_MIN = 17;
 
@@ -27,7 +27,7 @@ export interface StepLayout {
   height: number;
 }
 
-export const outcomeFont = (fontSize: number) => Math.round(fontSize * 0.8);
+const outcomeFont = (fontSize: number) => Math.round(fontSize * 0.8);
 
 function layoutAt(
   steps: FlowSteps,

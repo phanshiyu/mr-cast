@@ -1,86 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { build } from 'esbuild';
 import { pairShapes, tweenShape, tweenTransform } from '../shared/svg-motion.mjs';
 import { walkStates } from '../shared/state-steps.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 
-// The scene as the player draws it at `globalThis.FRAME`, through react-dom/server with remotion's hooks stubbed.
-const REMOTION = `import { createElement } from 'react';
-export const AbsoluteFill = ({ children, style }) => createElement('div', { style }, children);
-export const useCurrentFrame = () => globalThis.FRAME;
-export const useVideoConfig = () => ({ fps: 30, width: 1920, height: 1080, durationInFrames: 600 });
-export const spring = () => 1;
-export const interpolate = (x, [a, b], [c, d]) => c + (d - c) * Math.min(1, Math.max(0, (x - a) / (b - a)));
-export const Easing = { bezier: () => (t) => t };
-export const delayRender = () => 0;
-export const continueRender = () => {};`;
-const root = new URL('..', import.meta.url).pathname;
-const bundled = await build({
-  stdin: {
-    contents: `export { SvgDiagram } from './src/components/SvgDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`,
-    resolveDir: root,
-    loader: 'ts',
-  },
-  bundle: true,
-  write: false,
-  format: 'esm',
-  platform: 'node',
-  logLevel: 'silent',
-  loader: { '.woff2': 'empty' },
-  banner: {
-    js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});`,
-  },
-  plugins: [
-    {
-      name: 'remotion',
-      setup: (b) => {
-        b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
-        b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({
-          contents: REMOTION,
-          loader: 'js',
-          resolveDir: root,
-        }));
-      },
-    },
-  ],
-});
-const { SvgDiagram, renderToStaticMarkup, createElement } = await import(
-  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
-);
-
-/** The narration over frames 0 to 99, then one segment a step, each 200 frames long with its voice 15 frames in. */
-const segmentsFor = (scene) => [
-  { from: 0, voiceFrom: 0, markFrom: 0, text: scene.narration, speakingFrames: 90 },
-  ...scene.steps.map((step, k) => ({
-    from: 100 + 200 * k,
-    voiceFrom: 115 + 200 * k,
-    markFrom: 115 + 200 * k,
-    text: step.say,
-    speakingFrames: 150,
-  })),
-];
-const drawnAt = (frame, scene) => {
-  globalThis.FRAME = frame;
-  return renderToStaticMarkup(
-    createElement(SvgDiagram, { scene, hunks: {}, durationInFrames: 600, segments: segmentsFor(scene) }),
-  );
-};
 const svgScene = (svg, steps, extra = {}) => ({ type: 'svg', narration: 'A drawing.', svg, steps, ...extra });
-const attr = (html, id, name) =>
-  new RegExp(`id="[^"]*-${id}"[^>]*?\\s${name}="([^"]*)"`).exec(html)?.[1] ??
-  new RegExp(`<[^>]*\\s${name}="([^"]*)"[^>]*id="[^"]*-${id}"`).exec(html)?.[1];
-
 test("a move tweens a rotation about its pivot, outside the element's own transform", () => {
   assert.equal(tweenTransform('', 'rotate(90 350 350)', 0.5), 'rotate(45 350 350)');
   assert.equal(tweenTransform('translate(10 0)', 'translate(30 20)', 0.5), 'translate(20 10)');
-  const scene = svgScene(
-    '<svg viewBox="0 0 400 400"><g id="needle" transform="rotate(-60 200 200)"><line x1="200" y1="200" x2="200" y2="80"/></g></svg>',
-    [{ move: { needle: 'rotate(120 200 200)' }, say: 'It swings round.' }],
-  );
-  assert.equal(attr(drawnAt(50, scene), 'needle', 'transform'), 'rotate(-60 200 200)');
-  assert.equal(attr(drawnAt(400, scene), 'needle', 'transform'), 'rotate(120 200 200) rotate(-60 200 200)');
-  assert.equal(attr(drawnAt(100 + 7.5, scene), 'needle', 'transform'), 'rotate(60 200 200) rotate(-60 200 200)');
 });
 
 test("a move given as { to, when } plays evenly from its words to the end of the step's say, and { to } across the whole say", () => {
@@ -92,11 +19,6 @@ test("a move given as { to, when } plays evenly from its words to the end of the
       say: 'It goes all the way round in twelve hours.',
     },
   ]);
-  // The voice runs from frame 115 for 150 frames; "all" is the third of nine words, so its cue is frame 145.
-  assert.equal(attr(drawnAt(140, scene), 'sat', 'transform'), '');
-  assert.equal(attr(drawnAt(205, scene), 'sat', 'transform'), 'rotate(180 200 200)');
-  assert.equal(attr(drawnAt(265, scene), 'sat', 'transform'), 'rotate(360 200 200)');
-  assert.equal(attr(drawnAt(115 + 75, scene), 'hand', 'transform'), 'rotate(45 200 200)');
   const { states, problems } = walkStates(scene);
   assert.deepEqual(problems, []);
   assert.deepEqual(states[1].transforms, { 's:sat': 'rotate(360 200 200)', 's:hand': 'rotate(90 200 200)' });
@@ -132,9 +54,6 @@ test("a morphed path draws the other path's shape once the step settles, and its
     ],
     { hidden: ['sq'] },
   );
-  assert.equal(attr(drawnAt(250, scene), 'blob', 'd'), 'M0 0 H50 V50 H0 Z');
-  assert.match(attr(drawnAt(105, scene), 'blob', 'd'), /^M0 0C/);
-  assert.equal(attr(drawnAt(450, scene), 'blob', 'd'), 'M0 0 L10 0 L10 10 Z');
   const { states, problems } = walkStates(scene);
   assert.deepEqual(
     states.map((s) => s.shapes),
@@ -149,11 +68,6 @@ test('a trace shows a hidden line and draws it on from its cue, then leaves it w
     [{ trace: [{ ref: 'route', when: 'south' }], say: 'The route runs south round the coast.' }],
     { hidden: ['route'] },
   );
-  const offset = (frame) => attr(drawnAt(frame, scene), 'route', 'stroke-dashoffset');
-  // "south" is the fourth of seven words, about 64 frames into the voice, which starts at 115; the stroke starts 3 frames early.
-  assert.equal(offset(170), '1');
-  assert.ok(Number(offset(190)) > 0 && Number(offset(190)) < 1);
-  assert.equal(offset(290), undefined);
   assert.deepEqual(
     walkStates(scene).states.map((s) => [s.hidden['s:route'] === true, s.traces]),
     [
@@ -161,21 +75,6 @@ test('a trace shows a hidden line and draws it on from its cue, then leaves it w
       [false, { 's:route': 'south' }],
     ],
   );
-});
-
-test('a line with class flow draws a faint copy under dashes that march with the frame', () => {
-  const scene = svgScene(
-    '<svg viewBox="0 0 1712 800"><path id="wire" class="flow" d="M0 0 H600" stroke="var(--accent)" stroke-width="3"/></svg>',
-    [{ focus: 'wire', say: 'Current flows.' }],
-  );
-  const html = drawnAt(10, scene);
-  assert.match(
-    html,
-    /<path d="M0 0 H600" stroke="#7c8cff" stroke-width="3" fill="none" stroke-opacity="0.25"><\/path>/,
-  );
-  const dash = (frame) => /stroke-dasharray="([^"]*)" stroke-dashoffset="([^"]*)"/.exec(drawnAt(frame, scene)).slice(1);
-  assert.deepEqual(dash(10), ['10 12', '-14']);
-  assert.deepEqual(dash(20), ['10 12', '-28']);
 });
 
 const check = async (scene) => {

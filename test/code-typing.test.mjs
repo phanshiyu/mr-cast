@@ -2,7 +2,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { build } from 'esbuild';
-import { sceneSegments } from '../shared/timing.mjs';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 
 const load = async (file) => {
@@ -17,33 +16,11 @@ const load = async (file) => {
   return import(`data:text/javascript;base64,${Buffer.from(out.outputFiles[0].text).toString('base64')}`);
 };
 const { layoutCode } = await load('../src/utils/codeLayout.ts');
-const { typingSchedule } = await load('../src/utils/codeTyping.ts');
 
 const demo = new URL('../examples/primitives/code-typing/', import.meta.url);
 const hunks = JSON.parse(fs.readFileSync(new URL('hunks.json', demo), 'utf8'));
 const board = JSON.parse(fs.readFileSync(new URL('storyboard.json', demo), 'utf8'));
-const [fizz, retry] = board.scenes;
-
-test('a typing scene types each step in turn, within its words, and keeps the lines no step names', () => {
-  const layout = layoutCode(fizz, hunks.s1);
-  const texts = layout.slots.map((slot) => hunks.s1.lines[slot.left].text);
-  const segments = sceneSegments(fizz, null);
-  const { lines, ends } = typingSchedule(texts, layout.slots, layout.stepCount, segments, 2000);
-  // Line 9, blank and named by no step, is there from the start; every other line is typed by its step.
-  assert.deepEqual(
-    lines.map((l, r) => (l ? layout.slots[r].step : null)),
-    [0, 0, 1, 2, 2, 2, 2, 2, null, 3],
-  );
-  lines.forEach((line, r) => {
-    if (!line) return;
-    const [segment, next] = [segments[layout.slots[r].step + 1], segments[layout.slots[r].step + 2]];
-    assert.ok(line.from > segment.from && (!next || line.from < next.from), `line ${r} starts in its step`);
-    assert.ok(line.perFrame >= 0.6 && line.perFrame <= 3, `line ${r} types at ${line.perFrame} characters a frame`);
-  });
-  ends.forEach((end, k) =>
-    assert.ok(!segments[k + 2] || end <= segments[k + 2].from - 6, `step ${k} is typed before the next starts`),
-  );
-});
+const [_fizz, retry] = board.scenes;
 
 test('a typing scene of a diff draws no removed lines, and output puts the code beside a pane', () => {
   const layout = layoutCode(retry, hunks.h1);

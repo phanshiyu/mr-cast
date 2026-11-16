@@ -7,7 +7,6 @@
     "diff",
     "code-review",
     "video",
-    "remotion",
     "claude-code",
     "merge-request"
   ],
@@ -75,9 +74,6 @@
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",
-    "@remotion/bundler": "4.0.543",
-    "@remotion/player": "4.0.543",
-    "@remotion/renderer": "4.0.543",
     "d3-geo": "3.1.2",
     "dompurify": "^3.4.17",
     "esbuild": "0.28.2",
@@ -87,8 +83,7 @@
     "phonemizer": "1.2.1",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "remotion": "4.0.543"
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.7",

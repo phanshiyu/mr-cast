@@ -27,7 +27,7 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { sceneChapter } from '../shared/chapters.mjs';
 import { loadWorld, needsWorld } from '../shared/map.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
@@ -66,11 +66,7 @@ type PlanData = { status: 'ok'; plan: Plan; built: BuiltPicks | null } | { statu
 /** What the command serving the page was run with (`settings.json`). */
 interface ServedSettings {
   audience?: string;
-  /** `remotion` under MR_CAST_RENDERER=remotion, until every scene type is drawn by the engine. */
-  renderer?: string;
 }
-
-const RemotionPlayer = lazy(() => import('./player/RemotionPlayer'));
 
 type LoadState =
   | { status: 'loading' }
@@ -457,13 +453,7 @@ export const App: React.FC = () => {
 
           <main className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl shadow-black/50">
-              {settings?.renderer === 'remotion' ? (
-                <Suspense fallback={null}>
-                  <RemotionPlayer ref={playerRef} {...playerProps} />
-                </Suspense>
-              ) : (
-                <CanvasPlayer ref={playerRef} {...playerProps} />
-              )}
+              <CanvasPlayer ref={playerRef} {...playerProps} />
               {meta?.quick && ended ? <QuickEndCard /> : null}
             </div>
             <SubtitleHud segments={active.segments} frameInScene={frame - active.from} />

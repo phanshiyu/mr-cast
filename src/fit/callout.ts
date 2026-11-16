@@ -4,7 +4,7 @@ import { SLOTS, sized } from './slots';
 
 /** The most header room a callout takes, at the right end of the header row; a shorter one takes less. */
 const CALLOUT_W = 560;
-export const CALLOUT_PAD = { x: 22, y: 12 };
+const CALLOUT_PAD = { x: 22, y: 12 };
 
 type WithCallout = Scene & { callout?: string; steps?: readonly { callout?: string }[] };
 

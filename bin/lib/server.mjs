@@ -41,7 +41,7 @@ const TYPES = {
 };
 
 /** Streams `file`, honouring a single-range Range header so media elements can seek. */
-export function sendFile(req, res, file, headers = {}) {
+function sendFile(req, res, file, headers = {}) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'not found');
     const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
@@ -221,12 +221,7 @@ export async function startServer({
       return;
     }
 
-    if (pathname === '/data/settings.json')
-      // The player draws with the engine unless MR_CAST_RENDERER=remotion asks for Remotion's player.
-      return sendJson(res, 200, {
-        audience,
-        ...(process.env.MR_CAST_RENDERER === 'remotion' ? { renderer: 'remotion' } : {}),
-      });
+    if (pathname === '/data/settings.json') return sendJson(res, 200, { audience });
 
     if (pathname === '/data/voiceover.json') {
       const voiceover = getVoiceover?.();

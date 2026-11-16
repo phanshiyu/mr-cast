@@ -8,8 +8,8 @@ import { SPLIT_GUTTER_W } from './codeLayout';
 /** The step rail's width; a flow with real code narrows it, so the code panel has room for long lines. */
 const LIST_W = 600;
 const CODE_LIST_W = 420;
-export const COLUMN_GAP = 56;
-export const STRIP_H = 76;
+const COLUMN_GAP = 56;
+const STRIP_H = 76;
 const STRIP_GAP = 20;
 /** The step's number badge and its gap, left of the actor and action. */
 const BADGE = 48 + 22;
@@ -34,8 +34,8 @@ export function formatPayload(payload: string): { text: string; language: string
 }
 
 /** The file bar above real code, and the padding around it. */
-export const CODE_BAR_H = 64;
-export const CODE_PAD = 24;
+const CODE_BAR_H = 64;
+const CODE_PAD = 24;
 /** The rail's `path:line` under a code stage's action, and the gap above it. */
 const WHERE_GAP = 4;
 

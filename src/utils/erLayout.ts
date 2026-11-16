@@ -4,8 +4,8 @@ import { badgesWidth, badgeWords } from './marks';
 import { around, type Box, type LayoutBoxes, type Pt } from './penGeometry';
 import type { ErEntity, ErField, ErRelation } from '../types';
 
-export const HEADER_H = 64;
-export const ROW_H = 42;
+const HEADER_H = 64;
+const ROW_H = 42;
 const CARD_PAD_BOTTOM = 10;
 const COL_GAP = 220;
 const ROW_GAP = 120;
@@ -248,7 +248,7 @@ function selfKeyRows(entity: ErEntity, all: readonly ErEntity[]): { from: number
 }
 
 /** Outward unit vector of each card side. */
-export const normal: Record<Side, Pt> = {
+const normal: Record<Side, Pt> = {
   left: { x: -1, y: 0 },
   right: { x: 1, y: 0 },
   top: { x: 0, y: -1 },
@@ -265,7 +265,7 @@ interface EndSpec {
 }
 
 /** A relation label's pill: at most this wide, and its padding and border across. */
-export const RELATION_LABEL_MAX = 170;
+const RELATION_LABEL_MAX = 170;
 const RELATION_LABEL_CHROME = 2 * 12 + 2;
 
 /**

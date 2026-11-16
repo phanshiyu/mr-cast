@@ -36,15 +36,13 @@ const CACHES = [
   {
     name: 'bundle',
     label: 'Player bundle',
-    detail:
-      'the player bundle older versions rendered with; nothing needs it unless you render with MR_CAST_RENDERER=remotion',
+    detail: 'the player bundle older versions rendered with; nothing needs it now, so it is safe to delete',
     lock: false,
   },
   {
     name: 'remotion',
     label: 'Chrome cache',
-    detail:
-      'Chrome Headless Shell, which older versions rendered with; nothing needs it unless you render with MR_CAST_RENDERER=remotion',
+    detail: 'Chrome Headless Shell, which older versions rendered with; nothing needs it now, so it is safe to delete',
     lock: true,
   },
   {

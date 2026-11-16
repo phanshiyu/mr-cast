@@ -1,18 +1,13 @@
-// Renders a walkthrough to MP4, PNG stills or contact sheets with the Rust engine (bin/lib/engine.mjs). Until every
-// scene type is drawn by the engine, MR_CAST_RENDERER=remotion renders with Remotion instead (render-remotion.mjs).
+// Renders a walkthrough to MP4, PNG stills or contact sheets with the Rust engine (bin/lib/engine.mjs).
 
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { runEngine, stopEngines, writeProps } from './engine.mjs';
 import { SHEET_SCENES, sheetNames } from './stills.mjs';
 
-const remotion = () => process.env.MR_CAST_RENDERER === 'remotion';
-const withRemotion = async (name, options) => (await import('./render-remotion.mjs'))[name](options);
-
-/** Stops what a render started: the engine, or Remotion's browsers. */
+/** Stops what a render started. */
 export async function stopRenders() {
   stopEngines();
-  if (remotion()) await (await import('./render-remotion.mjs')).closeBrowsers();
 }
 
 const voiced = (voiceover) => Object.keys(voiceover?.clips ?? {}).length > 0;
@@ -34,7 +29,6 @@ async function withProps(dir, options, fn) {
  * scenes with one chapter title. `MR_CAST_CFR=1` sends every frame to the encoder instead of leaving repeats out.
  */
 export async function renderVideo(options) {
-  if (remotion()) return withRemotion('renderVideo', options);
   const { dataDir, outFile, voiceover, onProgress } = options;
   const out = path.resolve(outFile);
   await mkdir(path.dirname(out), { recursive: true });
@@ -63,7 +57,6 @@ export async function renderVideo(options) {
  * stills.mjs `stillFrame` does). Stills take scene timing from `voiceover` but play no audio. Returns the files, in scene order.
  */
 export async function renderStills(options) {
-  if (remotion()) return withRemotion('renderStills', options);
   const { storyboard, dataDir, outDir, scenes, step } = options;
   const dir = path.resolve(outDir);
   await mkdir(dir, { recursive: true });
@@ -90,7 +83,6 @@ export async function renderStills(options) {
  * a sheet. Returns the sheets' paths.
  */
 export async function renderSheets(options) {
-  if (remotion()) return withRemotion('renderSheets', options);
   const { outDir, tiles, dataDir } = options;
   const dir = path.resolve(outDir);
   const names = sheetNames(tiles.length);

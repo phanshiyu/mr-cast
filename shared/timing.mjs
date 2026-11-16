@@ -26,7 +26,7 @@ const SILENT_TAIL = 1.5;
 /** Without a clip, the shortest a segment's words and tail last. */
 const MIN_SILENT_SECONDS = 3;
 /** Every scene fades out over its last SCENE_EXIT_FRAMES. */
-export const SCENE_EXIT_FRAMES = 8;
+const SCENE_EXIT_FRAMES = 8;
 /**
  * Seconds each scene type takes to draw in, from the scene's first frame. With steps, the scene draws
  * its base (lifelines, axes, every node) in this time, and each step shows or lights its own items.
@@ -62,7 +62,7 @@ const BUILD_SECONDS = {
  * Frames every scene has, from a step's start, to bring the step's items to rest: move its camera, draw
  * them in and light them. A step's lead never ends sooner, and its pen mark starts here.
  */
-export const STEP_SETTLE_FRAMES = 15;
+const STEP_SETTLE_FRAMES = 15;
 /** Frames a step's pen mark takes to draw, between the settled items and the step's words. */
 const PEN_FRAMES = 12;
 /** Pause between the end of the build and the narration's voice, at every pace. */

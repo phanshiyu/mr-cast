@@ -109,7 +109,7 @@ async function highlighter() {
 }
 
 /**
- * Writes the props the engine draws from into `dir`: what Remotion's composition received, plus the syntax colours.
+ * Writes the props the engine draws from into `dir`: the storyboard, hunks, voice timing and images, plus the syntax colours.
  * Returns the file, which the caller removes when the engine is done.
  */
 export async function writeProps(dir, { storyboard, hunks, voiceover = null, images = {} }) {

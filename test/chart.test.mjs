@@ -111,92 +111,19 @@ test('validate names a chart prefix that is not a string', async () => {
   assert.deepEqual(await check(1), ['scenes[0].prefix: must be a string']);
 });
 
-// The chart as the player draws it, through react-dom/server with remotion's hooks stubbed, at frame 200.
-const REMOTION = `import { createElement } from 'react';
-export const AbsoluteFill = ({ children, style }) => createElement('div', { style }, children);
-export const useCurrentFrame = () => 200;
-export const useVideoConfig = () => ({ fps: 30, width: 1920, height: 1080, durationInFrames: 300 });
-export const spring = () => 1;
-export const interpolate = (x, [a, b], [c, d], o) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return c + (d - c) * (o?.easing ? o.easing(t) : t); };
-export const Easing = { bezier: () => (t) => t, linear: (t) => t, out: (f) => f, inOut: (f) => f, cubic: (t) => t };
-export const delayRender = () => 0;
-export const continueRender = () => {};`;
-const root = new URL('..', import.meta.url).pathname;
-const player = await build({
-  stdin: {
-    contents: `export { Chart } from './src/components/Chart.tsx'; export { chartStepTargets } from './src/utils/chartTargets.ts'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`,
-    resolveDir: root,
-    loader: 'ts',
-  },
+const bundledTargets = await build({
+  entryPoints: [new URL('../src/utils/chartTargets.ts', import.meta.url).pathname],
   bundle: true,
   write: false,
   format: 'esm',
   platform: 'node',
   logLevel: 'silent',
-  loader: { '.woff2': 'empty' },
-  banner: {
-    js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});`,
-  },
-  plugins: [
-    {
-      name: 'remotion',
-      setup: (b) => {
-        b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
-        b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({
-          contents: REMOTION,
-          loader: 'js',
-          resolveDir: root,
-        }));
-      },
-    },
-  ],
 });
-const { Chart, chartStepTargets, renderToStaticMarkup, createElement } = await import(
-  `data:text/javascript;base64,${Buffer.from(player.outputFiles[0].text).toString('base64')}`
+const { chartStepTargets } = await import(
+  `data:text/javascript;base64,${Buffer.from(bundledTargets.outputFiles[0].text).toString('base64')}`
 );
-const drawn = (scene) =>
-  renderToStaticMarkup(
-    createElement(Chart, {
-      scene,
-      hunks: {},
-      durationInFrames: 300,
-      segments: [
-        { text: 'x', from: 0, markFrom: 0, voiceFrom: 0, durationInFrames: 300, speakingFrames: 60, clip: undefined },
-      ],
-    }),
-  );
 
-test('a drawn chart prints its prefix on the values and axis, and its legend names only the series', () => {
-  const html = drawn({
-    type: 'chart',
-    kind: 'bar',
-    prefix: '$',
-    narration: 'x',
-    labels: ['2GB', '4GB'],
-    series: [
-      { name: 'price', values: [45, 55] },
-      { name: 'sale', values: [40, 50] },
-    ],
-  });
-  assert.match(html, />\$45</);
-  assert.match(html, />\$60</);
-  assert.doesNotMatch(html, /\$45 \$|45 \$/);
-  const unit = drawn({
-    type: 'chart',
-    kind: 'bar',
-    unit: '×',
-    narration: 'x',
-    labels: ['Pi 4', 'Pi 5'],
-    series: [
-      { name: 'times the Pi 4', values: [1, 3] },
-      { name: 'claim', values: [1, 2] },
-    ],
-  });
-  assert.match(unit, />3×</);
-  assert.doesNotMatch(unit, /·/);
-});
-
-test('handwriting beside a chart label steps out past the foot of the bar above it, level with the label', () => {
+test('handwriting beside a chart label has the bar above it and the label to be placed by', () => {
   const draw = [{ write: 'mostly the newer core,\nnot the clock', near: 'Pi 5', side: 'left' }];
   const scene = {
     type: 'chart',
@@ -207,28 +134,6 @@ test('handwriting beside a chart label steps out past the foot of the bar above 
     series: [{ name: 'times the Pi 4', values: [1, 3] }],
     steps: [{ focus: 'Pi 5', say: 'Most of it is the core.', draw }],
   };
-  const segments = [
-    { text: 'x', from: 0, markFrom: 0, voiceFrom: 0, durationInFrames: 30, speakingFrames: 20 },
-    {
-      text: 'Most of it is the core.',
-      from: 30,
-      markFrom: 30,
-      voiceFrom: 30,
-      durationInFrames: 270,
-      speakingFrames: 60,
-    },
-  ];
-  const html = renderToStaticMarkup(createElement(Chart, { scene, hunks: {}, durationInFrames: 300, segments }));
-  const lines = [...html.matchAll(/left:([\d.]+)px;top:([\d.]+)px;height:\d+px;width:([\d.]+)px/g)].map((m) => ({
-    left: +m[1],
-    top: +m[2],
-    right: +m[1] + +m[3] - 20,
-  }));
   const [bar, label] = [chartStepTargets(scene)[0].obstacles[1], chartStepTargets(scene)[0].boxes.get('l:1')];
   assert.deepEqual([bar.x, label.y], [1197.75, 767]);
-  // The first line ends 16px short of the bar's foot at 1197.75, not across it; the second is on the label's row.
-  assert.deepEqual(lines, [
-    { left: 782.75, top: 704, right: 1181.75 },
-    { left: 782.75, top: 754, right: 1022.75 },
-  ]);
 });

@@ -53,10 +53,7 @@ fi
 mkdir -p "$OUT/work/fits"
 cp "$ROOT/examples/demo/hunks.json" "$OUT/work/fits/"
 cp "$ROOT/.claude/skills/verify/fixtures/stress/fits.json" "$OUT/work/fits/storyboard.json"
-# The text scan reads the scenes' text from the page, which only Remotion's player draws as HTML; it runs there until
-# the React scenes go. A Remotion still downloads the Chrome the scan drives.
-export MR_CAST_RENDERER=remotion
-"${MRC[@]}" still 0 --no-voice --dir "$OUT/work/fits" --out "$OUT/work/fits-still" > "$OUT/chrome.txt" 2>&1 || { cat "$OUT/chrome.txt"; fail "Remotion still exited non-zero"; }
+"${MRC[@]}" still 0 --no-voice --dir "$OUT/work/fits" --out "$OUT/work/fits-still" > "$OUT/still.txt" 2>&1 || { cat "$OUT/still.txt"; fail "still exited non-zero"; }
 "${MRC[@]}" play --no-open --no-voice --dir "$OUT/work/fits" > "$OUT/play.txt" 2>&1 &
 PLAY=$!
 trap 'kill $PLAY 2>/dev/null || true' EXIT
@@ -66,7 +63,7 @@ for _ in $(seq 1 100); do
   sleep 0.2
 done
 [ -n "$URL" ] || { cat "$OUT/play.txt"; fail "player did not start"; }
-node "$VERIFY/browse.mjs" "$URL/" "$OUT/textscan" wait:Stress click:1.5x textscan:50 > "$OUT/browse.txt" 2>&1 || fail "browse exited non-zero"
-node "$VERIFY/text-check.mjs" "$OUT/work/fits/storyboard.json" "$OUT/textscan/textscan.json" | tee "$OUT/text-check.txt"
-grep -q '^text-check: ok' "$OUT/text-check.txt" || fail "text-check found clipped text"
+# The canvas draws the scenes, so the page's own text is the chapter list; the page loading with it is the check.
+# Text fitting is checked by the engine's tests against shared/textfit.mjs, which validate uses too.
+node "$VERIFY/browse.mjs" "$URL/" "$OUT/page" wait:Stress > "$OUT/browse.txt" 2>&1 || { cat "$OUT/browse.txt"; fail "browse exited non-zero"; }
 echo "smoke: ok"

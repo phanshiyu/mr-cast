@@ -1,12 +1,11 @@
-import { continueRender, delayRender } from 'remotion';
 import hand from './assets/caveat-latin-600.woff2';
 import mono from './assets/jetbrains-mono-latin.woff2';
 import sans from './assets/inter-latin.woff2';
 
 // Every face mr-cast draws text in ships with it, so text measures the same on every system as in
-// shared/font-metrics.mjs, which scripts/measure-fonts.mjs measured from these files.
+// shared/font-metrics.mjs, which is fixed data measured from these files (see engine/README.md).
 
-export const FACES = { sans: 'mr-cast-sans', mono: 'mr-cast-mono', hand: 'mr-cast-hand' } as const;
+const FACES = { sans: 'mr-cast-sans', mono: 'mr-cast-mono', hand: 'mr-cast-hand' } as const;
 
 const SOURCES = [
   { family: FACES.sans, url: sans, weight: '400 800' },
@@ -14,29 +13,11 @@ const SOURCES = [
   { family: FACES.hand, url: hand, weight: '600' },
 ];
 
-let measurer: CanvasRenderingContext2D | null | undefined;
-/** Width of text in the handwriting at `size`, or an estimate without a DOM or before the face has loaded. */
-export function handWidth(text: string, size: number): number {
-  const font = `600 ${size}px ${FACES.hand}`;
-  try {
-    measurer ??= document.createElement('canvas').getContext('2d');
-    if (measurer && document.fonts.check(font)) {
-      measurer.font = font;
-      return Math.ceil(measurer.measureText(text).width);
-    }
-  } catch {
-    // No DOM: fall through to the estimate.
-  }
-  return Math.ceil(text.length * size * 0.42);
-}
-
 /** Settles once every face is loaded and added to the document, or has failed to load and warned. */
 export const fontsReady: Promise<void> =
   typeof document === 'undefined' || typeof FontFace === 'undefined'
     ? Promise.resolve()
     : (() => {
-        // A render waits for the faces before its first frame; the player waits before it first paints.
-        const handle = delayRender('Loading the fonts mr-cast draws text in');
         return Promise.all(
           SOURCES.map(({ family, url, weight }) =>
             new FontFace(family, `url(${url}) format('woff2')`, { weight })
@@ -44,5 +25,5 @@ export const fontsReady: Promise<void> =
               .then((face) => void document.fonts.add(face))
               .catch((err) => console.warn(`mr-cast: ${family} falls back to a system font: ${err}`)),
           ),
-        ).then(() => continueRender(handle));
+        ).then(() => undefined);
       })();

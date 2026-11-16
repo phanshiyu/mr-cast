@@ -1,32 +1,30 @@
-import { layerRoute } from '../../shared/layers.mjs';
 import { fitBlock, fitText, type Fit, type Slot } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { Layer, LayerItem, LayersScene } from '../types';
 import { cardTexts, type CardText } from './nodeText';
 import type { Box, LayoutBoxes, Pt } from './penGeometry';
 
-export const BAND_GAP = 16;
+const BAND_GAP = 16;
 const BAND_MAX_H = 180;
 const BAND_MIN_H = 72;
-export const PAD_X = 28;
+const PAD_X = 28;
 const PAD_Y = 14;
 const LABEL_MIN_W = 260;
 const LABEL_MAX_W = 440;
 /** A band with no items in the scene keeps its label to this width, so it reads as a label and not a line of prose. */
 const LABEL_ALONE_W = 900;
 const LABEL_ALONE_MIN_W = 760;
-export const CAPTION_GAP = 4;
+const CAPTION_GAP = 4;
 const ITEM_GAP = 20;
 const ITEM_MAX_W = 300;
 const ITEM_MAX_H = 84;
 /** From the bands' right edge to the lane the token goes down, then to the lane it comes back up. */
 const RAIL_GAP = 34;
 const LANE_GAP = 28;
-export const DOT_R = 11;
+const DOT_R = 11;
 /** From a lane to the token's pill. */
-export const PILL_GAP = DOT_R + 10;
-export const PILL_PAD_X = 14;
-export const PILL_H = 40;
+const PILL_GAP = DOT_R + 10;
+const PILL_PAD_X = 14;
 const PILL_MAX_W = 340;
 
 export interface PlacedItem {
@@ -188,25 +186,6 @@ export function layoutLayers(scene: LayersScene, box: { width: number; height: n
   const yOf = new Map([...wires].map(([key, points]) => [key, points[points.length - 1]!.y]));
   const height = n * h + (n - 1) * BAND_GAP;
   return { width: bandW + railW, height, bandW, labelW, layers, rail, wires, yOf, boxes };
-}
-
-/** Where the token is at a route position: on the down or up lane, level with its stop's band. */
-export function tokenPoint(scene: LayersScene, layout: LayersLayout, p: number): { x: number; y: number } {
-  const { visits } = layerRoute(scene);
-  const rail = layout.rail!;
-  const at = (i: number) => {
-    const v = visits[Math.max(0, Math.min(visits.length - 1, i))]!;
-    return { x: v.leg === 'down' ? rail.downX : rail.upX, y: layout.yOf.get(v.key)! };
-  };
-  if (p <= 0) {
-    const first = at(0);
-    return { x: first.x, y: first.y + 60 * p };
-  }
-  const i = Math.floor(p);
-  const a = at(i);
-  const b = at(i + 1);
-  const t = p - i;
-  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
 /**

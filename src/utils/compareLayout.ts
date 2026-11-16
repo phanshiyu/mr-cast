@@ -3,10 +3,9 @@ import { fitBlock, fitLines, fitText, fitTextAt, measure, type Fit } from '../..
 import { CODE_READABLE_MIN } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
 import type { CompareCell, CompareRow, CompareScene, HunkMap, ImageFit, Tone, Verdict } from '../types';
-import type { Box, LayoutBoxes } from './penGeometry';
 
 /** Height of a side's title band, above its first row. */
-export const HEADER_H = 66;
+const HEADER_H = 66;
 /** Padding inside a side's frame, left and right of its cells. */
 const PANEL_PAD = 26;
 /** Room between the two sides, where each row's "=" or arrow sits. */
@@ -17,14 +16,14 @@ const HUNK_GUTTER = 64;
 const OPTIONS_GUTTER = 40;
 /** Room for the "Chosen" or "Not taken" label in a side's title band, and over a row's cell. */
 const TAG_W = 150;
-export const TAG_H = 32;
+const TAG_H = 32;
 const LABEL_GAP = 30;
 const LABEL_MIN = 200;
 const LABEL_MAX = 360;
 /** Room a verdict's icon takes at the right of each cell, when any row has a verdict. */
-export const VERDICT_W = 44;
+const VERDICT_W = 44;
 /** Padding around a snippet inside its code block. */
-export const CODE_PAD = 12;
+const CODE_PAD = 12;
 /** Room kept between a hunk's code block and the edge of its side, which is all the code gives up to the side's padding. */
 const HUNK_EDGE = 10;
 const BOTTOM_PAD = 14;
@@ -331,48 +330,4 @@ export function layoutCompare(scene: CompareScene, width: number, height: number
     scale,
     room: fitBlock('rows', 'comparison', false, 'shorten the cells, or split the comparison into two scenes'),
   };
-}
-
-/** A cell's text or code block, in layout units: where a pen mark draws and the note keeps off. */
-function cellBox(layout: CompareLayout, row: PlacedCompareRow, side: 0 | 1): Box {
-  const cell = row.cells[side];
-  const width =
-    cell.kind === 'text' ? cell.text.width : cell.kind === 'code' ? cell.lines.width + 2 * CODE_PAD : layout.cellW;
-  return {
-    x: layout.sides[side].x + layout.cellX - (cell.kind === 'code' ? cell.bleed : 0),
-    y: row.y + (row.h - cell.h) / 2,
-    width: Math.max(24, Math.min(layout.cellW + (cell.kind === 'code' ? 2 * cell.bleed : 0), width)),
-    height: cell.h,
-  };
-}
-
-/**
- * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a row across both
- * sides, a side's whole frame, and one cell's text. A note keeps off the titles, the labels, and every row shown
- * by `shownThrough` (all of them by default) from one side's edge to the other, so it lands in free space.
- */
-export function compareBoxes(layout: CompareLayout, shownThrough = Infinity): LayoutBoxes {
-  const boxes = new Map<string, Box>();
-  const left = layout.sides[0].x;
-  const right = layout.sides[1].x + layout.sides[1].w;
-  layout.sides.forEach((side, j) => boxes.set(`s:${j}`, { x: side.x, y: 0, width: side.w, height: layout.height }));
-  const obstacles: Box[] = layout.sides.map((side) => ({ x: side.x, y: 0, width: side.w, height: HEADER_H }));
-  layout.rows.forEach((row) => {
-    boxes.set(`r:${row.index}`, {
-      x: row.label ? 0 : left,
-      y: row.y,
-      width: right - (row.label ? 0 : left),
-      height: row.h,
-    });
-    ([0, 1] as const).forEach((side) => boxes.set(`x:${row.index}/${side}`, cellBox(layout, row, side)));
-    if (row.label)
-      obstacles.push({
-        x: 0,
-        y: row.y + (row.h - row.label.height) / 2,
-        width: row.label.width,
-        height: row.label.height,
-      });
-    if (row.index <= shownThrough) obstacles.push({ x: left, y: row.y, width: right - left, height: row.h });
-  });
-  return { boxes, obstacles };
 }

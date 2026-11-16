@@ -5,7 +5,7 @@ import type { WalkthroughProps } from '../types';
 export type PlayerEvent = 'frameupdate' | 'seeked' | 'ended' | 'play';
 export type PlayerListener = (e: { detail: { frame: number } }) => void;
 
-/** What the page drives a player with: the engine's canvas player, or Remotion's under MR_CAST_RENDERER=remotion. */
+/** What the page drives the engine's canvas player with. */
 export interface PlayerHandle {
   seekTo(frame: number): void;
   toggle(): void;

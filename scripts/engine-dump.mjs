@@ -26,7 +26,6 @@ async function load() {
     export * as timing from './shared/timing.mjs';
     export * as metrics from './shared/font-metrics.mjs';
     export { speechText } from './shared/speech.mjs';
-    export { interpolate, spring, Easing } from 'remotion';
     export { normalizeStoryboard } from './shared/normalize.mjs';
     export { parseStoryboard } from './shared/storyboard-json.mjs';
   `;
@@ -202,25 +201,7 @@ function fixtures(m) {
     phrases.map((text) => ({ text, spoken: m.speechText(text) })),
   );
 
-  const frames = [-3, 0, 1, 2.5, 5, 9, 14, 20, 33, 47.25, 80];
-  const springs = [];
-  for (const config of [
-    {},
-    { damping: 18 },
-    { damping: 16, stiffness: 120 },
-    { damping: 18, stiffness: 120 },
-    { damping: 200 },
-  ])
-    for (const frame of frames) {
-      springs.push({ config, frame, value: m.spring({ frame, fps: 30, config }) });
-      springs.push({ config, frame, duration: 12, value: m.spring({ frame, fps: 30, config, durationInFrames: 12 }) });
-    }
-  const easings = [];
-  for (let i = 0; i <= 20; i++) {
-    const t = i / 20;
-    easings.push({ t, bezier: m.Easing.bezier(0.25, 0.1, 0.25, 1)(t), outCubic: m.Easing.out(m.Easing.cubic)(t) });
-  }
-  write(path.join(dir, 'anim.json'), { springs, easings });
+  // anim.json, the springs and easings the engine's animation follows, is no longer regenerated; it stays as recorded.
 }
 
 /** An icon element as SVG path data, so the engine draws every Lucide icon with one primitive. */
