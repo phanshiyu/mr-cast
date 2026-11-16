@@ -5,9 +5,9 @@ import type { Finding } from '../types';
 
 const MAX_FONT = 30;
 const LINE_HEIGHT = 1.3;
-export const PILL_W = 104;
-export const ROW_PAD_X = 22;
-export const COL_GAP = 26;
+const PILL_W = 104;
+const ROW_PAD_X = 22;
+const COL_GAP = 26;
 const ROW_GAP = 10;
 /** The file:line column never takes more than this share of the row, so the claim keeps its room. */
 const WHERE_SHARE = 0.4;

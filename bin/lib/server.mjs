@@ -41,7 +41,7 @@ const TYPES = {
 };
 
 /** Streams `file`, honouring a single-range Range header so media elements can seek. */
-export function sendFile(req, res, file, headers = {}) {
+function sendFile(req, res, file, headers = {}) {
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) return send(res, 404, 'not found');
     const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';

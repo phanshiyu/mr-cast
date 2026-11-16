@@ -1,0 +1,14 @@
+[package]
+name = "mrc_wasm"
+description = "mrc_core for the browser player: draws a walkthrough's frames into an RGBA buffer."
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+mrc_core = { path = "../core" }
+wasm-bindgen = "=0.2.130"

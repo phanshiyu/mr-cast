@@ -20,14 +20,13 @@ import {
 } from './chartLayout';
 import { layoutBarRows, layoutPie, rowBarY, sum, VALUE_PAD, type BarRowsLayout, type PieLayout } from './chartShapes';
 import { areaOf, union, type Box, type MarkTargets } from './penGeometry';
-import type { StateFrame } from './stateTrack';
 
-export const BADGE_H = 34;
+const BADGE_H = 34;
 
-export const showsBadges = (scene: ChartScene) => scene.series.length === 2 && scene.badges !== false && !scene.stacked;
+const showsBadges = (scene: ChartScene) => scene.series.length === 2 && scene.badges !== false && !scene.stacked;
 
 /** The top of the labels above a slot's highest value, where its change badge sits. */
-export function slotTop(scene: ChartScene, layout: ChartLayout, i: number): number {
+function slotTop(scene: ChartScene, layout: ChartLayout, i: number): number {
   const valueH = VALUE_FONT * 1.25 + 14;
   if (scene.kind === 'line') {
     const [a, b] = [scene.series[0]!.values[i]!, scene.series[1]!.values[i]!];
@@ -119,8 +118,16 @@ function chartTargets(scene: ChartScene, layout: ChartLayout, size: { width: num
   return { boxes, obstacles, lines, area: areaOf(size) };
 }
 
+/** A state scene partway through a step: the state before and after it, and how far the change has gone (1 once settled). */
+interface StateFrame {
+  before: SceneState;
+  now: SceneState;
+  t: number;
+  lit: number;
+}
+
 /** The chart as the step at `frame` shows it: its values partway to the step's, and each label's slot sliding to its place. */
-export function chartAt(
+function chartAt(
   source: ChartScene,
   base: ChartLayout,
   f: StateFrame,
@@ -133,7 +140,7 @@ export function chartAt(
 }
 
 /** Where a step leaves the chart: values partway from the step's start to its own, and each label's place in the order. */
-export function framed(scene: ChartScene, f: StateFrame) {
+function framed(scene: ChartScene, f: StateFrame) {
   const [before, now] = [chartStateOf(scene, f.before), chartStateOf(scene, f.now)];
   const values = valuesBetween(before.values, now.values, f.t);
   const shown = shownBetween(before.values, now.values, f.t);
@@ -144,8 +151,7 @@ export function framed(scene: ChartScene, f: StateFrame) {
 const settledFrame = (state: SceneState): StateFrame => ({ before: state, now: state, t: 1, lit: 0 });
 
 /** Angles are radians clockwise from twelve o'clock. */
-export const point = (cx: number, cy: number, r: number, a: number) =>
-  [cx + r * Math.sin(a), cy - r * Math.cos(a)] as const;
+const point = (cx: number, cy: number, r: number, a: number) => [cx + r * Math.sin(a), cy - r * Math.cos(a)] as const;
 
 /** The box around a wedge, from points along its arcs. */
 function wedgeBox(layout: PieLayout, from: number, to: number): Box {
@@ -165,7 +171,7 @@ function wedgeBox(layout: PieLayout, from: number, to: number): Box {
 }
 
 /** Each slice's start angle, clockwise from the top in the given order, and its sweep. */
-export function sliceAngles(values: readonly number[], order: readonly number[]): { from: number; span: number }[] {
+function sliceAngles(values: readonly number[], order: readonly number[]): { from: number; span: number }[] {
   const total = sum(values) || 1;
   const byPlace = values.map((_, i) => i).sort((a, b) => order[a]! - order[b]!);
   const out = new Array<{ from: number; span: number }>(values.length);

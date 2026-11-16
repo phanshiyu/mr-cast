@@ -1,0 +1,35 @@
+name: Set up Rust
+description: Install the Rust release rust-toolchain.toml names, with rustfmt and clippy, the given targets, and with wasm-bindgen true, wasm-bindgen-cli at the version engine/wasm/Cargo.toml pins. Restores or saves no cache, so jobs that publish can use it.
+inputs:
+  targets:
+    description: Extra compilation targets, comma separated, such as wasm32-unknown-unknown
+    required: false
+    default: ''
+  wasm-bindgen:
+    description: Whether to install wasm-bindgen-cli
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Install Rust
+      shell: bash
+      env:
+        TARGETS: ${{ inputs.targets }}
+      run: |
+        if ! command -v rustup > /dev/null; then
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          export PATH="$HOME/.cargo/bin:$PATH"
+        fi
+        # Installs the release rust-toolchain.toml names, with its components.
+        rustup toolchain install
+        [ -z "$TARGETS" ] || rustup target add ${TARGETS//,/ }
+        rustc --version
+    - name: Install wasm-bindgen-cli
+      if: inputs.wasm-bindgen == 'true'
+      shell: bash
+      run: |
+        version=$(sed -n 's/^wasm-bindgen = "=\(.*\)"$/\1/p' engine/wasm/Cargo.toml)
+        [ -n "$version" ] || { echo "::error::engine/wasm/Cargo.toml pins no wasm-bindgen version"; exit 1; }
+        cargo install wasm-bindgen-cli --version "$version" --locked

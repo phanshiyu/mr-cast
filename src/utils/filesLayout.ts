@@ -7,13 +7,13 @@ import type { ShownFile } from '../../shared/files.mjs';
 const MONO_ADVANCE = 0.61;
 const MAX_FONT = 26;
 const MIN_FONT = 17;
-export const PAD_X = 20;
-export const MARKER_W = 26;
+const PAD_X = 20;
+const MARKER_W = 26;
 const COL_GAP = 40;
 const COLUMN_GUTTER = 56;
 /** Below this a single column of names stops reading at a glance, so the tree flows into two columns. */
 const ONE_COLUMN_MIN_FONT = 21;
-export const BAR_MAX = 110;
+const BAR_MAX = 110;
 /** Widest "+1234 −1234" the counts column holds, in characters. */
 const COUNT_CHARS = 11;
 

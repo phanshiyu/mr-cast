@@ -73,7 +73,7 @@ After Claude explains something, ask it to "animate that" to get a video of the 
 - A review mode that flags bugs and risks on the lines that hold them and writes them to `review.md`.
 - 20 scene types, among them graphs, sequence diagrams, state machines, code with line-by-line steps, arrays, memory, timelines and terminals.
 - `mr-cast validate` checks that the storyboard renders, that every text fits, and that what lights up matches the words.
-- An offline voice, [Kitten TTS](https://github.com/KittenML/KittenTTS) by default or [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), and a local render ([Remotion](https://www.remotion.dev)). `mr-cast voices` lists the voices.
+- An offline voice, [Kitten TTS](https://github.com/KittenML/KittenTTS) by default or [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), and a fast local render: mr-cast draws every frame itself, in the terminal and in the browser player. `mr-cast voices` lists the voices.
 
 ## Documentation
 
@@ -91,4 +91,4 @@ Bug reports and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.m
 
 ## License
 
-MIT. mr-cast renders with [Remotion](https://www.remotion.dev/license), which is free for individuals and companies with up to 3 employees. Larger companies need a Remotion company license to render videos with mr-cast.
+MIT.

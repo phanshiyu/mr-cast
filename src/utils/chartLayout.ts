@@ -122,7 +122,7 @@ export function niceTicks(min: number, max: number): number[] {
   return options.reduce((best, t) => (waste(t) < waste(best) - span * 0.02 ? t : best));
 }
 
-export type Direction = 'good' | 'bad' | 'neutral';
+type Direction = 'good' | 'bad' | 'neutral';
 
 /** The change from `a` to `b` as a badge: "−42%", or "×3.1" past a tripling. Null when `a` is 0. */
 export function delta(
@@ -181,7 +181,7 @@ export interface ChartLayout {
 }
 
 /** A value label: its text centred on `x`, `top` its top edge, above its bar or point, or below the lower of two lines. */
-export interface ValueLabel {
+interface ValueLabel {
   series: number;
   label: number;
   text: string;

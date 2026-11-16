@@ -114,7 +114,7 @@ const ATTRIBUTES = new Set([
 ]);
 
 /** Colours a drawing can name as `var(--name)`, the player's own palette. Kept in step with src/components/theme.ts and tones.ts. */
-export const SVG_COLORS = {
+const SVG_COLORS = {
   text: '#f2f4f8',
   muted: '#9097a8',
   faint: '#5b6172',
@@ -127,7 +127,7 @@ export const SVG_COLORS = {
   warn: '#fbbf24',
   neutral: '#8f98ad',
 };
-export const SVG_TONES = ['accent', 'good', 'bad', 'warn', 'neutral'];
+const SVG_TONES = ['accent', 'good', 'bad', 'warn', 'neutral'];
 
 /** The font size SVG text takes when nothing sets one, in viewBox units. */
 const DEFAULT_FONT = 16;

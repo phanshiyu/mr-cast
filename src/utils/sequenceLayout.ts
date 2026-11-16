@@ -1,11 +1,10 @@
 import { fitText, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS } from '../fit/slots';
 import type { MessageKind, SequenceMessage, SequenceParticipant } from '../types';
-import { badgeWords } from './marks';
 import { cardTexts, type CardText } from './nodeText';
-import type { Box, LayoutBoxes, Pt } from './penGeometry';
+import type { Pt } from './penGeometry';
 
-export const CARD_H = 84;
+const CARD_H = 84;
 /** Room above the cards for the "changed" pill. */
 const CARD_TOP = 18;
 const CARD_MAX_W = 300;
@@ -15,7 +14,7 @@ const BOTTOM_PAD = 24;
 const MAX_UNIT = 92;
 /** A self-call needs room for its loop, so its row is taller than a plain one. */
 const SELF_WEIGHT = 1.5;
-export const BAR_W = 14;
+const BAR_W = 14;
 const BAR_STEP = 8;
 const LOOP_W = 40;
 const LABEL_GAP = 6;
@@ -338,27 +337,6 @@ export function layoutSequence(
     messages: placed,
     activations,
   };
-}
-
-/**
- * The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a
- * participant's card, and a message's row between the lifelines it joins. A note keeps off both.
- */
-export function sequenceBoxes(layout: SequenceLayout): LayoutBoxes {
-  const card = (p: PlacedParticipant): Box => {
-    const lift = badgeWords(p.participant).length ? 14 : 0;
-    return { x: p.x - layout.cardW / 2, y: layout.cardTop - lift, width: layout.cardW, height: CARD_H + lift };
-  };
-  const message = (m: PlacedMessage): Box => {
-    const xs = m.points.map((p) => p.x);
-    const [x0, x1] = [Math.min(...xs) - (m.self ? 10 : 0), Math.max(...xs) + (m.self ? LOOP_W : 0)];
-    return { x: x0, y: m.top, width: Math.max(40, x1 - x0), height: m.bottom - m.top };
-  };
-  const boxes = new Map<string, Box>([
-    ...layout.participants.map((p): [string, Box] => [`p:${p.participant.id}`, card(p)]),
-    ...layout.messages.map((m, i): [string, Box] => [`m:${i}`, message(m)]),
-  ]);
-  return { boxes, obstacles: [...boxes.values()] };
 }
 
 /** The scale a sequence draws at in `box`. It keeps its rows readable: it scales only to fit across, and scrolls when it is taller than the frame. */

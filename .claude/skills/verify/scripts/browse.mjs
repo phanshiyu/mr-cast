@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Drives the mr-cast player in Chrome Headless Shell over CDP and saves what it saw.
+// Drives the mr-cast player in a headless Chrome over CDP and saves what it saw.
 // usage: node browse.mjs <url> <outdir> <step>...
 //   wait:<text>    wait (15s max) until the page text contains <text>, ignoring case (CSS uppercases some labels)
 //   click:<text>   click the first button whose text contains <text>
@@ -14,11 +14,6 @@
 //   sleep:<ms>     wait
 //   run:<command>  run a shell command (sh -c) and wait for it, e.g. to edit storyboard.json
 //   shot:<name>    save <outdir>/<name>.png (1920x1080) and <outdir>/<name>.txt (the page's visible text)
-//   textscan:<s>   for <s> seconds, sample the page every 200 ms and save <outdir>/textscan.json: every line of
-//                  page text seen, and for each fitted line (a [data-fit-w] span) its drawn width against the
-//                  width the text fit measured, and every text the video clips: an element in the Remotion player
-//                  with its own text that ends in a CSS ellipsis, clamps its lines, or hides what overflows it.
-//                  Let the walkthrough play while it runs.
 // Console errors and uncaught exceptions go to <outdir>/console.txt. When a step fails, the page as it
 // was goes to <outdir>/failed.png and failed.txt, and the exit code is 1.
 import { execSync, spawn } from 'node:child_process';
@@ -33,18 +28,21 @@ if (!url || !outDir) {
 }
 fs.mkdirSync(outDir, { recursive: true });
 
+/** A Chrome to drive: MR_CAST_CHROME, else an installed Google Chrome or Chromium. */
 function chromePath() {
-  const root = path.join(
-    process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'),
-    'mr-cast/remotion/node_modules/.remotion/chrome-headless-shell',
-  );
-  const found = execSync(
-    `find ${JSON.stringify(root)} -name chrome-headless-shell -type f -perm -u+x 2>/dev/null | head -1`,
-    { encoding: 'utf8' },
-  ).trim();
-  if (!found)
-    throw new Error(`no Chrome Headless Shell under ${root}; run any mr-cast still or render once to download it`);
-  return found;
+  const candidates = [
+    process.env.MR_CAST_CHROME,
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  ];
+  for (const c of candidates) if (c && fs.existsSync(c)) return c;
+  for (const name of ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']) {
+    try {
+      const found = execSync(`command -v ${name}`, { encoding: 'utf8', shell: '/bin/sh' }).trim();
+      if (found) return found;
+    } catch {}
+  }
+  throw new Error('no Chrome found; install Google Chrome or set MR_CAST_CHROME to a Chrome or Chromium binary');
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -60,7 +58,7 @@ const chrome = spawn(
     '--remote-debugging-port=0',
     `--user-data-dir=${profile}`,
     '--window-size=1920,1080',
-    // As Remotion renders: without it, Linux hints glyphs to whole-pixel advances and text draws wider than measured.
+    // Without it, Linux hints glyphs to whole-pixel advances and text draws wider than measured.
     '--font-render-hinting=none',
     // Ubuntu 24.04 blocks the unprivileged user namespaces Chrome's sandbox needs, as on GitHub's runners.
     ...(process.platform === 'linux' ? ['--no-sandbox'] : []),
@@ -178,36 +176,6 @@ const STEPS = {
   sleep: (ms) => sleep(Number(ms)),
   run(command) {
     execSync(command, { stdio: 'inherit', shell: '/bin/sh' });
-  },
-  async textscan(seconds) {
-    const lines = new Set();
-    const fits = new Map();
-    const clipped = new Set();
-    const end = Date.now() + Number(seconds) * 1000;
-    while (Date.now() < end) {
-      const sample = await evaluate(`(() => ({
-        text: document.body ? document.body.innerText : '',
-        fits: [...document.querySelectorAll('[data-fit-w]')].map((el) => [el.textContent, Number(el.dataset.fitW), el.offsetWidth]),
-        clipped: [...document.querySelectorAll('.__remotion-player *')].filter((el) => {
-          if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
-          const cs = getComputedStyle(el);
-          const hides = ['hidden', 'clip'].includes(cs.overflowX) || ['hidden', 'clip'].includes(cs.overflowY);
-          return cs.textOverflow === 'ellipsis' || (cs.webkitLineClamp && cs.webkitLineClamp !== 'none') || (hides && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1));
-        }).map((el) => el.textContent.trim()),
-      }))()`);
-      for (const line of sample.text.split('\n')) if (line.trim()) lines.add(line.trim());
-      for (const text of sample.clipped) clipped.add(text);
-      for (const [text, measured, drawn] of sample.fits) {
-        const key = `${text}\u0000${measured}`;
-        if (!fits.has(key) || fits.get(key).drawn < drawn) fits.set(key, { text, measured, drawn });
-      }
-      await sleep(200);
-    }
-    fs.writeFileSync(
-      path.join(outDir, 'textscan.json'),
-      JSON.stringify({ lines: [...lines], fits: [...fits.values()], clipped: [...clipped] }, null, 1),
-    );
-    console.log(path.join(outDir, 'textscan.json'));
   },
   async fullshot(name) {
     const { cssContentSize: size } = await cdp('Page.getLayoutMetrics');

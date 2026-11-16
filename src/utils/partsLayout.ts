@@ -5,7 +5,7 @@ import type { PartWeight } from '../types';
 import type { Box, LayoutBoxes } from './penGeometry';
 
 /** Padding inside a part's card. */
-export const CARD_PAD = 22;
+const CARD_PAD = 22;
 const GAP_Y = 24;
 /** Room between columns that holds the links; without links the cards sit closer. */
 const LINK_GAP = 76;
@@ -15,16 +15,14 @@ const MAX_CARD_W = 600;
 /** The most rows of cards; past it the cards fill a grid instead of layers. */
 const MAX_LAYER_ROWS = 2;
 /** Heights of a card's rows, in px: the tags, the counts, each listed file and the "+ N more" line. */
-export const TAGS_H = 22;
-export const STATS_H = 26;
-export const FILE_ROW_H = 26;
+const TAGS_H = 22;
+const STATS_H = 26;
+const FILE_ROW_H = 26;
 const BLOCK_GAP = 10;
 /** Most files a card lists under it, by weight; a card with less room lists fewer. */
 const LISTED: Record<PartWeight, number> = { core: 3, support: 3, routine: 2 };
 /** The name's largest size by weight: the part that matters is the largest. */
 const NAME_SIZE: Record<PartWeight, number> = { core: 30, support: 27, routine: 24 };
-/** How strong a card draws, by weight: routine parts are quiet. */
-export const CARD_OPACITY: Record<PartWeight, number> = { core: 1, support: 0.92, routine: 0.6 };
 
 export interface PlacedFile {
   file: ShownFile;

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.0
+
+**Videos render about 18 times faster, with no browser and no ffmpeg.** mr-cast now draws and encodes every frame itself, with a renderer written in Rust, instead of opening Chrome for each frame. The 7.5-minute demo took 189 seconds to render before and takes about 11 now on the same laptop. Every kind of scene looks as it did. The MP4 holds the voice and the chapter markers as before, and frames that do not change are stored once, so files are smaller: the silent demo is 10.6 MB instead of 13.7 MB.
+
+**Nothing is downloaded on the first render any more.** Chrome (about 580 MB) is gone, and so is the player bundle each render built first. mr-cast also needs no ffmpeg, and nothing runs when it installs, so npm versions that block install scripts work too. `mr-cast prune` still lists the Chrome and player bundle folders older versions left, so you can delete them.
+
+**The player in the browser draws with the same renderer**, so what you watch is what the MP4 shows. It keeps its controls, speeds, chapters, keys and the voice-over in step with the picture, and draws sharp on any screen. Mermaid diagrams draw in the MP4 and stills; the browser player shows a card in their place.
+
+**Symbols the main fonts lack, such as ∞, π and ⌊ ⌋, now draw** from bundled fallback fonts instead of blank spaces.
+
+Also: `MR_CAST_RENDERER` no longer does anything, and `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
+
 ## 0.29.0
 
 A video of a branch now answers the six questions a reviewer has. mr-cast reads the facts a diff does not show, Claude writes the answers in the storyboard, and `validate` says which are missing. Nothing about the order, the scene types or the length of a video is set. Storyboards from 0.28 still validate and render: every new check is a warning (ADR 0037 and ADR 0038).

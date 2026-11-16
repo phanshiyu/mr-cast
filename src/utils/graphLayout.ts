@@ -41,7 +41,7 @@ const BAND_GAP = 40;
 
 const LABEL_FONT = 19;
 const LABEL_LINE_HEIGHT = 1.3;
-export const LABEL_PAD = { x: 12, y: 5 };
+const LABEL_PAD = { x: 12, y: 5 };
 const GROUP_FONT = 18;
 const MONO_ADVANCE = 0.61;
 /** Room between an edge label and whatever closes the gap before it or opens after it. */
@@ -53,7 +53,7 @@ const BORDER_CLEAR = 6;
 
 export type GraphDirection = NonNullable<GraphScene['layout']>;
 
-export const shapeOf = (node: GraphNode): NodeShape => node.shape ?? 'card';
+const shapeOf = (node: GraphNode): NodeShape => node.shape ?? 'card';
 
 /** A graph's direction: its own, or top to bottom when it branches at a decision, as a flowchart reads. */
 const graphDirection = (scene: Pick<GraphScene, 'layout' | 'nodes'>): GraphDirection =>
@@ -504,7 +504,7 @@ function overlap(a: Rect, b: Rect): number {
 }
 
 /** Where a group's name sits inside its box, and the font it is set in. */
-export const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
+const GROUP_NAME = { x: 22, y: 12, font: GROUP_FONT, letterSpacing: 1.4 };
 
 /** Widest a group's name may run: top to bottom it keeps to half the box, clear of edges entering at the middle. */
 const groupNameMax = (g: { width: number }, direction: GraphDirection) =>
@@ -838,7 +838,7 @@ function fitGraph(
 }
 
 /** A node as a state shows it: the badge the steps have set on it, or none. */
-export const asShown = (node: GraphNode, state: SceneState): GraphNode => {
+const asShown = (node: GraphNode, state: SceneState): GraphNode => {
   const badge = state.values[`b:${node.id}`];
   return badge === undefined || badge === (node.badge ?? '')
     ? node

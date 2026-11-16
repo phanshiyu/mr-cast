@@ -22,12 +22,12 @@ export const TRACEABLE = ['functions', 'series', 'vectors', 'areas'];
 /** Line colours in the order parts without a tone take them. */
 const LINE_TONES = ['accent', 'good', 'warn', 'bad', 'neutral'];
 
-export const TICK_FONT = { family: 'sans', weight: 500, size: 22 };
-export const AXIS_FONT = { family: 'sans', weight: 600, size: 24 };
-export const LABEL_FONT = { family: 'sans', weight: 600, size: 26 };
+const TICK_FONT = { family: 'sans', weight: 500, size: 22 };
+const AXIS_FONT = { family: 'sans', weight: 600, size: 24 };
+const LABEL_FONT = { family: 'sans', weight: 600, size: 26 };
 const lineHeight = (font) => Math.round(font.size * 1.3);
 const SAMPLES = 480;
-export const POINT_R = 9;
+const POINT_R = 9;
 
 /** Every part with its kind, index, id and the field path it is written at, in drawing order. */
 export function plotParts(scene) {
@@ -257,7 +257,7 @@ const textBox = (text, font, x, y, anchor = 'start') => {
 
 /** Gap between an axis and its tick text, and the length of a tick mark. */
 const TICK_GAP = 14;
-export const TICK_LEN = 10;
+const _TICK_LEN = 10;
 
 /**
  * The axes in a content box: the plot rectangle, the value-to-pixel maps, where each axis line runs, the ticks with
@@ -462,7 +462,7 @@ const pointOf = (pair, scope, axes) => {
 };
 
 /** The tone a part draws in: its own, or the next line colour by its place among the lines. */
-export function partTone(scene, part) {
+function partTone(scene, part) {
   if (typeof part.item?.tone === 'string') return part.item.tone;
   if (part.kind === 'areas') {
     const fn = partOf(scene, areaFunctions(part.item)[0]);

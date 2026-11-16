@@ -4,7 +4,7 @@ import { fitText, measure, type Fit } from '../../shared/textfit.mjs';
 import { SLOTS, sized } from '../fit/slots';
 import type { Box, LayoutBoxes } from './penGeometry';
 
-export const STAMP_FONT = 17;
+const STAMP_FONT = 17;
 const STAMP_LINE = 24;
 const BOX_PAD_X = 18;
 const BOX_PAD_Y = 12;
@@ -19,7 +19,7 @@ const STEM_LEAD = 96;
 /** Height of a leader's straight rise from the axis, and of its straight drop into the card. */
 const LEAD_STRAIGHT = 18;
 const TICK_ZONE = 44;
-export const SPAN_H = 44;
+const SPAN_H = 44;
 const SPAN_GAP = 14;
 
 export interface PlacedEvent {

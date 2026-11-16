@@ -1,7 +1,6 @@
-// The plot scene: its expression language, its steps, what validate reports, and what the player draws.
+// The plot scene: its expression language, its steps, and what validate reports.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { build } from 'esbuild';
 import { exprOf } from '../shared/expr.mjs';
 import { plotAxes, plotGeometry } from '../shared/plot.mjs';
 import { viewRect } from '../shared/camera.mjs';
@@ -265,74 +264,6 @@ test('ink circles a plot part by its id', async () => {
     steps: [growth.steps[0], { ...growth.steps[1], draw: [{ circle: 'marker', note: 'doubled' }] }],
   });
   assert.deepEqual(errors, []);
-});
-
-// The scene as the player draws it, through react-dom/server with remotion's hooks stubbed, at frame 120.
-const REMOTION = `import { createElement } from 'react';
-export const AbsoluteFill = ({ children, style }) => createElement('div', { style }, children);
-export const useCurrentFrame = () => 120;
-export const useVideoConfig = () => ({ fps: 30, width: 1920, height: 1080, durationInFrames: 300 });
-export const spring = () => 1;
-export const interpolate = (x, [a, b], [c, d], o) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return c + (d - c) * (o?.easing ? o.easing(t) : t); };
-export const Easing = { bezier: () => (t) => t, linear: (t) => t };
-export const delayRender = () => 0;
-export const continueRender = () => {};`;
-const root = new URL('..', import.meta.url).pathname;
-const bundled = await build({
-  stdin: {
-    contents: `export { PlotDiagram } from './src/components/PlotDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react';`,
-    resolveDir: root,
-    loader: 'ts',
-  },
-  bundle: true,
-  write: false,
-  format: 'esm',
-  platform: 'node',
-  logLevel: 'silent',
-  loader: { '.woff2': 'empty' },
-  banner: {
-    js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});`,
-  },
-  plugins: [
-    {
-      name: 'remotion',
-      setup: (b) => {
-        b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
-        b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({
-          contents: REMOTION,
-          loader: 'js',
-          resolveDir: root,
-        }));
-      },
-    },
-  ],
-});
-const { PlotDiagram, renderToStaticMarkup, createElement } = await import(
-  `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`
-);
-const segment = (from, voiceFrom, speakingFrames) => ({
-  text: 'It bends upward over thirty years.',
-  from,
-  markFrom: voiceFrom,
-  voiceFrom,
-  durationInFrames: 200,
-  speakingFrames,
-  clip: undefined,
-});
-
-test('a traced step moves its parameter across its words, so the marker rides the line as it draws', () => {
-  // Step 0 starts at frame 60 and its words end at 165: at frame 120 the trace is 60/105 of the way, year 17.14.
-  const html = renderToStaticMarkup(
-    createElement(PlotDiagram, {
-      scene: growth,
-      hunks: {},
-      durationInFrames: 400,
-      segments: [segment(0, 30, 20), segment(60, 75, 90), segment(260, 275, 60)],
-    }),
-  );
-  assert.match(html, />\$31,895<\/text>/);
-  assert.match(html, />\$20k<\/text>/);
-  assert.match(html, />seven percent growth<\/text>/);
 });
 
 test('a line under a zoomed camera is drawn through enough points to stay smooth on screen, and its label spots do not move', () => {

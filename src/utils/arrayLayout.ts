@@ -16,19 +16,17 @@ const CELL_PAD = 10;
 const LABEL_H = 50;
 /** Between a label left of its array and the array's first cell. */
 const LABEL_GAP = 28;
-export const CHIP_H = 38;
+const CHIP_H = 38;
 const CHIP_GAP = 6;
-export const ARROW_LEN = 30;
+const ARROW_LEN = 30;
 const INDEX_H = 34;
-export const BAND_H = 36;
+const BAND_H = 36;
 const BAND_GAP = 10;
 /** Between one array's block and the next. */
 const ROW_GAP = 30;
 /** A hexagon's height for its width, point to point, and how far apart its rows sit. */
 const HEX_H = 2 / Math.sqrt(3);
 const HEX_PITCH = 0.75;
-/** Room a range keeps inside its band around its name. */
-export const BAND_PAD = 14;
 
 /** One array as placed: its cells' row, the slots past either end, its label and its ranges' bands. */
 export interface PlacedRow {
@@ -80,10 +78,10 @@ function cellX(layout: ArrayLayout, row: PlacedRow, i: number): number {
 }
 
 /** Top of a pointer chip stacked `lane` chips above its cell's arrow. */
-export const chipY = (row: PlacedRow, lane: number) => row.cellsY - ARROW_LEN - CHIP_H - lane * (CHIP_H + CHIP_GAP);
+const chipY = (row: PlacedRow, lane: number) => row.cellsY - ARROW_LEN - CHIP_H - lane * (CHIP_H + CHIP_GAP);
 
 /** Each shown pointer's lane in its cell's stack, in declaration order from the cell up. */
-export function pointerLanes(scene: ArrayScene, state: SceneState): Map<string, number> {
+function pointerLanes(scene: ArrayScene, state: SceneState): Map<string, number> {
   const taken = new Map<string, number>();
   const lanes = new Map<string, number>();
   for (const p of scene.pointers ?? []) {
@@ -290,16 +288,8 @@ export const ghostShown = (
 ): number =>
   Math.max(0, ...pointers.filter((p) => p.row === row).map((p) => p.shown * Math.max(0, 1 - Math.abs(p.at - i))));
 
-/** A slot's box past either end of a row, where a pointer can stand. */
-export const ghostBox = (layout: ArrayLayout, row: PlacedRow, i: number): Box => ({
-  x: cellX(layout, row, i),
-  y: row.cellsY,
-  width: layout.cellW,
-  height: layout.cellH,
-});
-
 /** A range's band under its array's cells, spanning cells `a` to `b` (fractional while it moves). */
-export function bandBox(layout: ArrayLayout, rowName: string, y: number, [a, b]: readonly [number, number]): Box {
+function bandBox(layout: ArrayLayout, rowName: string, y: number, [a, b]: readonly [number, number]): Box {
   const row = rowOf(layout, rowName);
   const at = (i: number) => {
     const lo = Math.floor(i);
@@ -308,13 +298,6 @@ export function bandBox(layout: ArrayLayout, rowName: string, y: number, [a, b]:
     );
   };
   return { x: at(a), y, width: at(b) - at(a) + layout.cellW, height: BAND_H };
-}
-
-/** The x of a pointer standing at a place that may be fractional while it moves. */
-export function pointerX(layout: ArrayLayout, rowName: string, at: number): number {
-  const row = rowOf(layout, rowName);
-  const lo = Math.floor(at);
-  return cellX(layout, row, lo) + (cellX(layout, row, lo + 1) - cellX(layout, row, lo)) * (at - lo);
 }
 
 /**

@@ -70,7 +70,7 @@ Each walkthrough is a run: one directory in `.mr-cast/`, made by `extract` or `i
 - `--name <slug>` on `extract` or `init` names the run. On a later command, it picks that run instead of the current one. A slug is lowercase letters, digits and dashes. `explain`, `audio` and `stills` are reserved for the folders of older versions.
 - `--dir <path>` points a command at any other directory, such as a walkthrough made by mr-cast 0.11.
 
-Several runs can render at once, in one repository or in several, and they share the cache in `~/.cache/mr-cast`. Each render bundles the player into a temporary folder and moves it into the cache when complete, so no render reads a half-written bundle. Bundles of other versions are deleted after an hour unused. The Chrome and voice model downloads take a lock, so a second render waits for the first download. A running render marks the bundle and Chrome caches in use, and `mr-cast prune` refuses to delete them while it runs.
+Several runs can render at once, in one repository or in several, and they share the voice models in `~/.cache/mr-cast`. A voice model download takes a lock, so a second voice-over waits for the first download.
 
 ## Settings flags
 
@@ -128,7 +128,7 @@ A branch video with a `brief` has a **guide panel** where the reading panel sits
 
 `mr-cast render` writes the MP4 in the run's directory. It names the file after the storyboard title, or else the run's name, or else `walkthrough.mp4`. `--out file.mp4` writes it somewhere else. When the run has a `review.md`, a `reading.md` or a `guide.md`, `render --out` also writes a copy of each beside the MP4, named after it, such as `demo.review.md`, `demo.reading.md` and `demo.guide.md`.
 
-The first render downloads Chrome Headless Shell into `~/.cache/mr-cast/remotion`.
+mr-cast draws the frames itself, with a renderer that comes with it, and writes the MP4 itself too: the picture as H.264 and the voice as AAC, which every browser and video player plays. It needs no ffmpeg or other program. Frames that repeat the one before are left out of the file, which a video player shows as the earlier frame held; `MR_CAST_CFR=1` writes every frame instead. The voice-over and the chapter markers go into the same MP4. A scene type the renderer does not draw yet shows a card naming the type.
 
 ## Picture downloads
 
@@ -154,7 +154,8 @@ Each scene names its topic in `topic`, and the storyboard records the picks it w
 | `run:.`, `explain:<name>` | A walkthrough from mr-cast 0.11 or earlier: the default run's files in `.mr-cast/` (other runs stay), or an explanation in `.mr-cast/explain/<name>/`. |
 | `video:<run>/<file>.mp4` | A rendered video. `<run>` is a run name, or `.` or `explain/<name>` for 0.11 data. |
 | `stills:<run>`, `audio:<run>` | A run's PNG stills, or its voice clips and `voiceover.json`. `still` and `voice` make them again. |
-| `cache:bundle`, `cache:remotion`, `cache:kitten`, `cache:models` | The player bundle, Chrome Headless Shell (about 580 MB), the Kitten voice model (about 82 MB), or the Kokoro voice model (about 90 MB). The next render or voice-over in that engine rebuilds or downloads them. |
+| `cache:kitten`, `cache:models` | The Kitten voice model (about 82 MB) or the Kokoro voice model (about 90 MB). The next voice-over in that engine downloads it again. |
+| `cache:bundle`, `cache:remotion` | The player bundle and the browser (about 580 MB) that older versions used to draw videos; listed only when they are still there. Nothing needs them now, so delete them. |
 
 Selectors pick what to delete, and they combine:
 
@@ -164,7 +165,7 @@ Selectors pick what to delete, and they combine:
 - `--older-than <days>` keeps only what has not changed in that many days. Without another selector, it filters the listing.
 - `--except <id>`, repeatable, keeps an artifact. Keeping a walkthrough keeps its parts, and keeping a part keeps its walkthrough.
 
-`prune` makes the selection from a fresh listing. It never picks an artifact in use, such as the Chrome cache during a render, and prints it as `in use, not removed`. An unknown id, or an id in use, makes it delete nothing. Deleting a run also deletes its videos, stills and clips, and their bytes count once.
+`prune` makes the selection from a fresh listing. It never picks an artifact in use, such as a voice model while it downloads, and prints it as `in use, not removed`. An unknown id, or an id in use, makes it delete nothing. Deleting a run also deletes its videos, stills and clips, and their bytes count once.
 
 `--dry-run` prints exactly what would be removed and the bytes, and removes nothing. `--json` prints the listing as JSON. With `--json`, a dry run or a deletion prints `dryRun`, the `artifacts` with their bytes, `inUse`, and the total `bytes`.
 
@@ -198,7 +199,7 @@ stop with `mr-cast stop <pid|run|all>`; --idle and --older-than 2h narrow it, --
 - `--idle` keeps only servers with no page open.
 - `--older-than <30m|2h|1d>` keeps only processes started longer ago than that.
 
-A process's voice and download children always go with it. `stop` sends SIGTERM, waits up to 5 seconds, and sends SIGKILL only to a process still running. Before each signal it checks the pid again, and it never signals a process that is not an mr-cast process of yours. A pid that has exited since it was listed prints `skipped pid <pid>: it has exited already`, and the other targets are still stopped. A pid that runs something other than an mr-cast process of yours, or a run that matches nothing, stops nothing and exits 1. Each line it prints says `stopped`, `killed` (SIGKILL was needed), `already gone` or `could not stop`. A render stopped this way closes its Chrome before it exits.
+A process's voice and download children always go with it. `stop` sends SIGTERM, waits up to 5 seconds, and sends SIGKILL only to a process still running. Before each signal it checks the pid again, and it never signals a process that is not an mr-cast process of yours. A pid that has exited since it was listed prints `skipped pid <pid>: it has exited already`, and the other targets are still stopped. A pid that runs something other than an mr-cast process of yours, or a run that matches nothing, stops nothing and exits 1. Each line it prints says `stopped`, `killed` (SIGKILL was needed), `already gone` or `could not stop`. A render stopped this way stops its renderer before it exits.
 
 `--dry-run` prints `would stop` lines and stops nothing. `--json` prints `dryRun`, the `processes`, each with its `outcome`, and the `exited` pids it skipped. `mr-cast stop --choices --json` prints a menu in the shape of prune's: one group, `Running processes`, with up to 4 options, such as every process, the servers with no page open, those running for over 2 hours, or each process. Each option's `command` is `stop` with the pids of the processes it names, and its `ids` are those pids. Their children are not in `ids`; `stop` takes them with each pid. An option stops only what ran when the menu was printed. `mr-cast prune --choices` adds the same group after its own.
 

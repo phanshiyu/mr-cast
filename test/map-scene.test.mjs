@@ -236,66 +236,7 @@ test('the scene draws 1:110m for the world and 1:50m once a view zooms in or nam
   assert.equal(mapLayout(flight, stage).detail, '50m');
 });
 
-// The scene as the player draws it after the trace, through react-dom/server with remotion's hooks stubbed.
-const REMOTION = `import { createElement } from 'react';
-export const AbsoluteFill = ({ children, style }) => createElement('div', { style }, children);
-export const useCurrentFrame = () => 100000;
-export const useVideoConfig = () => ({ fps: 30, width: 1920, height: 1080, durationInFrames: 300 });
-export const spring = () => 1;
-export const interpolate = (x, [a, b], [c, d]) => c + (d - c) * Math.min(1, Math.max(0, (x - a) / (b - a)));
-export const Easing = { bezier: () => (t) => t, inOut: (f) => f, cubic: (t) => t };
-export const delayRender = () => 0;
-export const continueRender = () => {};`;
 const root = new URL('..', import.meta.url).pathname;
-
-test('the map scene draws every country, the traced route and its labels', async () => {
-  const bundled = await build({
-    stdin: {
-      contents: `export { MapDiagram } from './src/components/MapDiagram.tsx'; export { renderToStaticMarkup } from 'react-dom/server'; export { createElement } from 'react'; export { sceneSegments } from './shared/timing.mjs'; export { loadWorld } from './shared/map.mjs';`,
-      resolveDir: root,
-      loader: 'ts',
-    },
-    bundle: true,
-    write: false,
-    format: 'esm',
-    platform: 'node',
-    logLevel: 'silent',
-    loader: { '.woff2': 'empty' },
-    banner: {
-      js: `import { createRequire } from 'node:module'; const require = createRequire(${JSON.stringify(root)});`,
-    },
-    plugins: [
-      {
-        name: 'remotion',
-        setup: (b) => {
-          b.onResolve({ filter: /^remotion$/ }, (a) => ({ path: a.path, namespace: 'remotion' }));
-          b.onLoad({ filter: /.*/, namespace: 'remotion' }, () => ({
-            contents: REMOTION,
-            loader: 'js',
-            resolveDir: root,
-          }));
-        },
-      },
-    ],
-  });
-  const {
-    MapDiagram,
-    renderToStaticMarkup,
-    createElement,
-    sceneSegments,
-    loadWorld: loadBundledWorld,
-  } = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
-  await loadBundledWorld();
-  const scene = { ...flight, steps: [flight.steps[0]] };
-  const html = renderToStaticMarkup(
-    createElement(MapDiagram, { scene, hunks: {}, durationInFrames: 300, segments: sceneSegments(scene) }),
-  );
-  // Every 1:110m country, the sphere, and the route.
-  assert.equal((html.match(/<path /g) ?? []).length, countriesAt('110m').size + 2);
-  assert.match(html, />Singapore<\/text>/);
-  assert.match(html, />London<\/text>/);
-  assert.doesNotMatch(html, /NaN/);
-});
 
 test('the outline is its own chunk, read only by loadWorld, so a player without a map scene never parses it', async () => {
   const bundled = await build({

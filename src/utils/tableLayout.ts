@@ -13,10 +13,10 @@ const MAX_FONT = 30;
 const MIN_FONT = 17;
 const LINE_HEIGHT = 1.3;
 
-export const HEADER_H = 44;
-export const MARKER_W = 30;
-export const PAD_X = 22;
-export const COL_GAP = 28;
+const HEADER_H = 44;
+const MARKER_W = 30;
+const PAD_X = 22;
+const COL_GAP = 28;
 const ROW_GAP = 6;
 const ARROW = ' → ';
 /** Width of one header character: 17px uppercase with 2.5px letter spacing. */
@@ -125,7 +125,7 @@ function columnWidths(columns: readonly string[], rows: readonly TableRow[], tex
 }
 
 /** Font size of a row's own badges, drawn at its right end. */
-export const ROW_BADGE = 13;
+const ROW_BADGE = 13;
 
 /** A cell's text at the table's font, in at most `lines` lines of its column; the first column is bolder. */
 function fitCell(

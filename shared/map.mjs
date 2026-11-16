@@ -32,8 +32,8 @@ const PAD = 0.08;
 const ROUTE_STEP = 1;
 const LINE_STEP = 0.5;
 const EDGE_STEP = 1;
-export const LABEL_FONT = { family: 'sans', weight: 600, size: 26 };
-export const DOT_RADIUS = 9;
+const LABEL_FONT = { family: 'sans', weight: 600, size: 26 };
+const DOT_RADIUS = 9;
 const LABEL_GAP = 10;
 
 const list = (v) => (Array.isArray(v) ? v : []);
@@ -76,7 +76,7 @@ export async function loadWorld() {
   const [coarse, fine] = await Promise.all([import('./world/ne-110m.mjs'), import('./world/ne-50m.mjs')]);
   world = { coarse: coarse.default, fine: fine.default };
 }
-export const worldLoaded = () => world !== null;
+const _worldLoaded = () => world !== null;
 /** Whether a storyboard has a map scene, so its reader must loadWorld first. */
 export const needsWorld = (storyboard) => list(storyboard?.scenes).some((s) => s?.type === 'map');
 const decoded = {};
@@ -488,7 +488,7 @@ function pathAnchor(proj, camera, path, stage) {
 }
 
 /** An SVG path of a geometry through the projection at zoom 1, or "" when none of it shows. */
-export const geoPathOf = (proj, geometry) => geoPath(proj.projection)(geometry) ?? '';
+const _geoPathOf = (proj, geometry) => geoPath(proj.projection)(geometry) ?? '';
 
 /** The box of a geometry through the projection at zoom 1. */
 function geoBoxOf(proj, geometry) {

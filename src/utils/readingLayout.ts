@@ -4,15 +4,15 @@ import { SLOTS, sized } from '../fit/slots';
 
 const MAX_FONT = 30;
 const LINE_HEIGHT = 1.3;
-export const NUMBER_W = 52;
-export const ROW_PAD_X = 22;
-export const COL_GAP = 28;
+const NUMBER_W = 52;
+const ROW_PAD_X = 22;
+const COL_GAP = 28;
 const ROW_GAP = 12;
 /** The gap between a check and the quiet why under it. */
-export const WHY_GAP = 4;
+const WHY_GAP = 4;
 /** "Read first" above the rows, and the line that counts the rest below them. */
-export const HEAD_H = 40;
-export const MORE_H = 44;
+const HEAD_H = 40;
+const MORE_H = 44;
 /** The file:line column never takes more than this share of the row, so the check keeps its room. */
 const WHERE_SHARE = 0.42;
 

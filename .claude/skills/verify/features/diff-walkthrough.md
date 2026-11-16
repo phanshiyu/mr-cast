@@ -30,7 +30,7 @@ A user on a feature branch runs `mr-cast extract` to index the branch's diff int
 Preconditions:
 
 - Baseline from `README.md`. `$DEMO/.mr-cast` does not exist yet. `R=$DEMO/.mr-cast/feature-rate-limit` names the run in the steps below.
-- Doctor reports Chrome Headless Shell and the voice model as present, or the run allows minutes for the first download.
+- Doctor reports the voice model as present, or the run allows minutes for the first download. Stills and `--no-voice` renders need no download.
 
 - **Extract.** Index the branch. Run `$V mrc $RUN extract -- extract`. Exit 0. Stderr has `mr-cast: run "feature-rate-limit" in .mr-cast/feature-rate-limit; later commands use it until the next extract or init`. Stdout starts with `mr-cast: feature/rate-limit vs main (1 commit) · 6 files · 6 hunks · +34 −8` and lists `h1`-`h6`. Then run `tail -1 $DEMO/.git/info/exclude`, which prints `.mr-cast/`, and `cat $DEMO/.mr-cast/.current`, which prints `feature-rate-limit`. Run `cmp $R/hunks.json $REPO/examples/demo/hunks.json`, which is silent.
 - **Write the storyboard.** Copy the demo storyboard. Run `cp $REPO/examples/demo/storyboard.json $R/`.

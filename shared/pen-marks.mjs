@@ -9,7 +9,7 @@ export const PEN_MARKS = ['circle', 'underline', 'box', 'arrow', 'strike', 'cros
 export const NOTE_MAX = 40;
 
 /** Item keys a focus step's mark draws on: everything its first ref names. */
-export function markedKeys(scene, step, hunks) {
+function _markedKeys(scene, step, hunks) {
   const first = focusRefs(step?.focus)[0];
   return first === undefined ? [] : (resolveRef(scene, first, hunks) ?? []);
 }

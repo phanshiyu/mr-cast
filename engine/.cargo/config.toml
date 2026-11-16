@@ -1,0 +1,3 @@
+# The browser player's wasm uses SIMD, which every current browser runs; tiny-skia's pipelines are much faster with it.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]

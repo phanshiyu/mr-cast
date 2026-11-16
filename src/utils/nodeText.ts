@@ -5,7 +5,7 @@ import type { DiagramNode } from '../types';
 /** Card proportions: a graph node is a large card, a sequence participant a smaller one, compact when its column is narrow. */
 export type CardSize = 'large' | 'small' | 'compact';
 
-export const CARD_METRICS: Record<
+const CARD_METRICS: Record<
   CardSize,
   {
     icon: number;

@@ -377,7 +377,7 @@ const along = (pts, closed) =>
   (closed && pts.length > 1 ? Math.hypot(pts[0][0] - pts.at(-1)[0], pts[0][1] - pts.at(-1)[1]) : 0);
 
 /** About how long the line a trace draws on an element is, in its own units; a group's is its longest line's. */
-export function traceLength(node, d) {
+function _traceLength(node, d) {
   if (!node?.tag) return 0;
   const n = (name) => attrNum(node, name);
   switch (node.tag) {
@@ -397,6 +397,6 @@ export function traceLength(node, d) {
       return Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
     }
     default:
-      return Math.max(0, ...node.children.map((child) => traceLength(child)));
+      return Math.max(0, ...node.children.map((child) => _traceLength(child)));
   }
 }

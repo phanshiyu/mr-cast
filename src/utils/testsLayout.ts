@@ -20,8 +20,8 @@ const ROW_GAP = 8;
 /** Room between a cell's value and its tag. */
 const TAG_GAP = 10;
 /** The column titles' row, and the line under the matrix with the subject and the counts. */
-export const HEAD_H = 40;
-export const FOOT_H = 44;
+const HEAD_H = 40;
+const FOOT_H = 44;
 const FOOT_GAP = 14;
 /** A test's name may take this many lines in the names column. */
 const NAME_LINES = 2;
@@ -87,7 +87,7 @@ const TAG_OF: Record<MatrixCell['state'], (cell: MatrixCell) => CellTag> = {
   none: () => null,
 };
 
-export const tagFont = (tag: NonNullable<CellTag>, size: number): Font =>
+const tagFont = (tag: NonNullable<CellTag>, size: number): Font =>
   tag === 'unchecked' ? { family: 'sans', weight: 600, size } : { family: 'sans', weight: 800, size, letterSpacing: 1 };
 const tagWidth = (tag: CellTag, size: number) => (tag ? measure(tag, tagFont(tag, size)) + TAG_GAP : 0);
 

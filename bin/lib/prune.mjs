@@ -4,7 +4,8 @@
 //   run:.  explain:<name>                 a walkthrough mr-cast 0.11 left in .mr-cast/ or .mr-cast/explain/<name>
 //   video:<run>/<file>.mp4                a rendered video          (<run> is <name>, . or explain/<name>)
 //   stills:<run>  audio:<run>             PNG stills, voice-over clips; render and voice regenerate them
-//   cache:bundle  cache:remotion  cache:kitten  cache:models   the shared cache in ~/.cache/mr-cast (models: Kokoro)
+//   cache:kitten  cache:models   the voice models in ~/.cache/mr-cast (models: Kokoro)
+//   cache:bundle  cache:remotion  what renders used before the engine, listed only while still there
 //
 // Ids name places, not contents, so the same id means the same thing across listings. Deletion takes
 // artifacts only from a fresh listing, picked by `select`, so nothing outside .mr-cast/ and the cache can be named.
@@ -35,13 +36,13 @@ const CACHES = [
   {
     name: 'bundle',
     label: 'Player bundle',
-    detail: 'player bundle; the next render rebuilds it in a few seconds',
+    detail: 'the player bundle older versions rendered with; nothing needs it now, so it is safe to delete',
     lock: false,
   },
   {
     name: 'remotion',
     label: 'Chrome cache',
-    detail: 'Chrome Headless Shell; the next render downloads it again',
+    detail: 'Chrome Headless Shell, which older versions rendered with; nothing needs it now, so it is safe to delete',
     lock: true,
   },
   {

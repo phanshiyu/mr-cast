@@ -47,6 +47,6 @@ if [ -z "$NODE" ]; then
   exit 1
 fi
 
-# Child processes (vite, remotion) look up `node` on PATH.
+# Child processes (vite, the voice children) look up `node` on PATH.
 export PATH="$(dirname "$NODE"):$PATH"
 exec "$NODE" "$DIR/mr-cast.mjs" "$@"

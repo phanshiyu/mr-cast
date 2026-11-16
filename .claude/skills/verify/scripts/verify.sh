@@ -28,7 +28,7 @@ usage: verify.sh <command> <run-dir> [args]
                                         start \`mr-cast plan --no-open\` in the background; print the plan
                                         page's URL with its write token
   play-stop  <run> [label]              stop the player(s) this run started; copy their logs to evidence
-  browse  <run> <label> <url> <step>... drive the player in Chrome Headless Shell (steps: see scripts/browse.mjs)
+  browse  <run> <label> <url> <step>... drive the player in an installed Chrome (steps: see scripts/browse.mjs)
   probe   <mp4>                         ffprobe duration and streams
   frame   <mp4> <seconds> <out.png>     extract one frame
   cleanup <run>                         stop players, delete <run>/work, keep <run>/evidence
@@ -44,12 +44,9 @@ pick_node() {
   die "no Node 22.12 or newer found; install Node 24 with nvm (the checkout's .nvmrc)"
 }
 
-# ffmpeg and ffprobe ship in the compositor package, which pnpm keeps beside @remotion/renderer.
-compositor() {
-  "$(pick_node)" -e 'const { createRequire } = require("node:module"); const path = require("node:path");
-    const renderer = createRequire(path.join(process.argv[1], "package.json")).resolve("@remotion/renderer/package.json");
-    console.log(path.dirname(createRequire(renderer).resolve("@remotion/compositor-darwin-arm64/package.json")))' "$REPO"
-}
+# The harness's own checks use ffmpeg and ffprobe from MR_CAST_FFMPEG / MR_CAST_FFPROBE or the PATH; mr-cast needs neither.
+FFMPEG="${MR_CAST_FFMPEG:-ffmpeg}"
+FFPROBE="${MR_CAST_FFPROBE:-ffprobe}"
 
 run_paths() {
   [ -n "${1:-}" ] || die "missing <run-dir>; pick one under your scratchpad or from mktemp -d"
@@ -102,11 +99,9 @@ cmd_doctor() {
   check "demo repo on feature/rate-limit ahead of main" "[ \"\$(git -C '$DEMO' symbolic-ref --short HEAD)\" = feature/rate-limit ] && [ \"\$(git -C '$DEMO' rev-list --count main..HEAD)\" = 1 ]"
   check "evidence dir exists ($EV)" "[ -d '$EV' ]"
   local cache="${XDG_CACHE_HOME:-$HOME/.cache}/mr-cast"
-  check "Chrome Headless Shell cached (renders and browse need it)" "find '$cache/remotion' -name chrome-headless-shell -type f -perm -u+x | grep -q ."
+  check "a Chrome for browse (MR_CAST_CHROME or an installed Chrome or Chromium)" "[ -x \"\${MR_CAST_CHROME:-}\" ] || [ -x '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ] || command -v google-chrome chromium chromium-browser"
   check "Kitten voice model cached (voice, play and render without --no-voice)" "[ -d '$cache/kitten' ]"
-  local comp
-  comp="$(compositor 2>/dev/null || true)"
-  check "ffprobe runs" "DYLD_LIBRARY_PATH='$comp' '$comp/ffprobe' -version"
+  check "ffprobe runs (the harness's probe and frame use it)" "'$FFPROBE' -version"
   local f pid port
   for f in "$WORK"/play/*.pid; do
     [ -f "$f" ] || continue
@@ -129,7 +124,7 @@ cmd_mrc() {
   [ "${1:-}" = "--" ] && shift
   case "$cwd/" in "$RUN"/*) ;; *) die "--cwd $cwd is outside $RUN; drive only directories this run owns" ;; esac
   if [ "${1:-}" = prune ] && printf '%s\n' "$@" | grep -q '^cache:'; then
-    case "${XDG_CACHE_HOME:-}" in "$RUN"/*) ;; *) die "refusing to prune cache:* outside $RUN; set XDG_CACHE_HOME=$WORK/xdg (the real ~/.cache/mr-cast holds Chrome and the voice model)" ;; esac
+    case "${XDG_CACHE_HOME:-}" in "$RUN"/*) ;; *) die "refusing to prune cache:* outside $RUN; set XDG_CACHE_HOME=$WORK/xdg (the real ~/.cache/mr-cast holds the voice model)" ;; esac
   fi
   mkdir -p "$EV"
   local out="$EV/$label.txt" so se code=0
@@ -206,16 +201,12 @@ cmd_browse() {
 }
 
 cmd_probe() {
-  local comp
-  comp="$(compositor)"
-  DYLD_LIBRARY_PATH="$comp" "$comp/ffprobe" -v error \
+  "$FFPROBE" -v error \
     -show_entries format=duration:stream=codec_type,codec_name,width,height,r_frame_rate -of compact "${1:?missing <mp4>}"
 }
 
 cmd_frame() {
-  local comp
-  comp="$(compositor)"
-  DYLD_LIBRARY_PATH="$comp" "$comp/ffmpeg" -v error -y -ss "${2:?missing <seconds>}" -i "${1:?missing <mp4>}" -frames:v 1 "${3:?missing <out.png>}"
+  "$FFMPEG" -v error -y -ss "${2:?missing <seconds>}" -i "${1:?missing <mp4>}" -frames:v 1 "${3:?missing <out.png>}"
   echo "$3"
 }
 

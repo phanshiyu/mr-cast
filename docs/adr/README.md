@@ -49,3 +49,7 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0039](0039-parts-as-a-map.md) | The parts of a change drawn as a map: what each part does, how parts link, and which hold a place to check | Accepted |
 | [0040](0040-advisories-do-not-block-their-fix.md) | An advisory on main must not block the pull request that fixes it: audits compare with the base, and main is audited on a schedule | Accepted |
 | [0041](0041-release-dependency-updates-from-ci.md) | Release dependency updates from CI when a shipped package changed, without a manual step | Accepted |
+| [0042](0042-rust-engine.md) | Draw and encode videos with a Rust engine, not Remotion | Accepted; amended by 0043 |
+| [0043](0043-engine-ships-in-the-package.md) | Ship the engine inside the one npm package, and switch to it before every scene is ported | Accepted; its ffmpeg part superseded by 0044 |
+| [0044](0044-encode-in-the-engine.md) | The engine encodes the MP4 itself (OpenH264, FDK AAC, its own MP4 writer), with no ffmpeg | Accepted |
+| [0045](0045-draw-svg-diagrams-with-resvg-and-merman.md) | Draw the svg, map and mermaid scenes with resvg, and mermaid with merman | Accepted |

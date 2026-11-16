@@ -6,8 +6,8 @@ import { SLOTS, sized } from '../fit/slots';
 import type { MemoryMembers, MemoryScene } from '../types';
 import type { Box, LayoutBoxes, Pt } from './penGeometry';
 
-export const ROW_H = 48;
-export const HEAD_H = 50;
+const ROW_H = 48;
+const HEAD_H = 50;
 const PAD = 18;
 const NAME_GAP = 20;
 const CARD_GAP = 24;
@@ -289,13 +289,13 @@ export function layoutMemory(scene: MemoryScene, box: { width: number; height: n
 }
 
 /** A row's value box. */
-export function valueBox(layout: MemoryLayout, key: string): Box {
+function valueBox(layout: MemoryLayout, key: string): Box {
   const { card, row } = layout.row.get(key)!;
   return { x: card.x + card.valueX, y: card.y + row.y + 7, width: card.valueW, height: ROW_H - 14 };
 }
 
 /** A path from a reference's dot to the object it points at: its start, then three points per cubic segment. */
-export interface Arrow {
+interface Arrow {
   points: Pt[];
 }
 
@@ -346,7 +346,7 @@ const padded = (points: Pt[]): Pt[] => [
  * the cards and up into the object: into its bottom when it is the lowest in its column and no further
  * right, else beside its header. Arrows into one side of an object end apart, in the order of their dots.
  */
-export function arrowsOf(layout: MemoryLayout, state: SceneState): Map<string, Arrow> {
+function arrowsOf(layout: MemoryLayout, state: SceneState): Map<string, Arrow> {
   const refs = Object.entries(state.values).flatMap(([key, v]) => {
     if (!isPointer(v) || !layout.row.has(key)) return [];
     const [from, to] = [layout.row.get(key)!.card, layout.card.get(`o:${v.ref}`)!];
