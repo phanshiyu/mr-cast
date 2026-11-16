@@ -275,3 +275,5 @@ is no `metrics` command because writing a file that matches the old one is not a
 - Handwriting (Caveat) is shaped by swash, where the TS measures notes with a canvas: a note can sit a few pixels off.
 - A glyph none of the bundled fonts has (Inter, JetBrains Mono, Caveat) is drawn from the bundled fallbacks, where
   Chrome draws it from the system's fonts: on macOS, SF Pro or Apple Symbols, whose glyphs are a little narrower.
+- Mermaid diagrams are sized with the engine's own shaping of Inter (merman's text measurer is replaced), so boxes fit
+  their labels, but merman's layout is not Mermaid.js's: node positions and edge routes can differ from the browser's.

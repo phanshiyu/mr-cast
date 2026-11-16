@@ -32,6 +32,44 @@ struct MermaidView {
     body: Body,
 }
 
+/// The CSS `font-weight` merman asks about, as a number: keywords and numbers, 400 when absent or unknown.
+#[cfg(feature = "mermaid")]
+fn css_weight(w: Option<&str>) -> f32 {
+    match w.map(str::trim) {
+        Some(w) if w.eq_ignore_ascii_case("bold") => 700.0,
+        Some(w) if w.eq_ignore_ascii_case("bolder") => 800.0,
+        Some(w) => w.parse::<f32>().map_or(400.0, |n| n.clamp(100.0, 900.0)),
+        None => 400.0,
+    }
+}
+
+/// The width of `text` as the engine's shaper sets it in the font resvg draws: Inter at the style's size and weight
+/// (JetBrains Mono for a monospace family). Merman measures each line it wraps itself, so `text` is one line.
+#[cfg(feature = "mermaid")]
+fn shaped_width(text: &str, style: &merman::svg::TextStyle) -> f64 {
+    use crate::text::{Face, Style};
+    let mono = style.font_family.as_deref().is_some_and(|f| {
+        let f = f.to_ascii_lowercase();
+        f.contains("mono") && !f.contains("inter")
+    });
+    let face = if mono { Face::Mono } else { Face::Sans };
+    let size = style.font_size.max(0.0) as f32;
+    let weight = css_weight(style.font_weight.as_deref());
+    f64::from(crate::text::width(text, Style::new(face, weight, size)))
+}
+
+#[cfg(feature = "mermaid")]
+fn measurement_policy() -> merman::svg::TextMeasurementPolicy {
+    use merman::svg::{
+        DeterministicTextMeasurer, MeasurementProfileId, TextMeasurementPolicy, TextMeasurementProfile,
+        TextMeasurementProfileIdentity,
+    };
+    let id = MeasurementProfileId::new("mr-cast.inter-swash").expect("static profile id");
+    let identity = TextMeasurementProfileIdentity::new(id, "1").expect("static profile version");
+    let measurer = DeterministicTextMeasurer::default().with_width_callback(shaped_width);
+    TextMeasurementPolicy::uniform(TextMeasurementProfile::new(identity, measurer))
+}
+
 #[cfg(feature = "mermaid")]
 fn render(code: &str) -> Result<(String, f64, f64), String> {
     use merman::svg::SvgPipeline;
@@ -115,6 +153,7 @@ fn render(code: &str) -> Result<(String, f64, f64), String> {
     let renderer = Renderer::new().with_presentation_engine(MermaidEngine::new().with_site_config(site));
     let mut request = SvgRequest::default();
     request.options.diagram_id = Some("mermaid-scene".to_string());
+    request.environment = request.environment.with_text_measurement_policy(measurement_policy());
     request.pipeline = Some(SvgPipeline::resvg_safe());
     let out = renderer.render(RenderRequest::svg(code, OperationControl::new(), request)).map_err(|e| e.to_string())?;
     let RenderOutput::Svg(Some(svg)) = out else { return Err("no Mermaid diagram detected".into()) };
