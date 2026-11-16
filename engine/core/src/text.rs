@@ -31,16 +31,52 @@ impl From<Family> for Face {
     }
 }
 
-static INTER: &[u8] = include_bytes!("../../assets/fonts/inter-latin.ttf");
-static MONO: &[u8] = include_bytes!("../../assets/fonts/jetbrains-mono-latin.ttf");
-static HAND: &[u8] = include_bytes!("../../assets/fonts/caveat-latin-600.ttf");
+/// Every bundled font, by its index in a glyph's `font`: the three faces' Latin files first (index = `Face`), then
+/// the fallbacks a glyph they lack is drawn from, as Chrome falls back per character.
+static FONT_DATA: [&[u8]; 8] = [
+    include_bytes!("../../assets/fonts/inter-latin.ttf"),
+    include_bytes!("../../assets/fonts/jetbrains-mono-latin.ttf"),
+    include_bytes!("../../assets/fonts/caveat-latin-600.ttf"),
+    // Inter and JetBrains Mono beyond Latin: Greek, Cyrillic, arrows, math operators, shapes.
+    include_bytes!("../../assets/fonts/inter-extra.ttf"),
+    include_bytes!("../../assets/fonts/jetbrains-mono-extra.ttf"),
+    // Noto Sans Math and Noto Sans Symbols 2, subset to their symbol blocks, for what neither has (∀ ∃).
+    include_bytes!("../../assets/fonts/noto-sans-math.ttf"),
+    include_bytes!("../../assets/fonts/noto-sans-symbols-2.ttf"),
+    // Noto Sans Symbols, which varies its weight, for the technical symbols (⌊ ⌋ ⌈ ⌉).
+    include_bytes!("../../assets/fonts/noto-sans-symbols.ttf"),
+];
+const INTER_EXTRA: u8 = 3;
+const MONO_EXTRA: u8 = 4;
+const NOTO_MATH: u8 = 5;
+const NOTO_SYMBOLS: u8 = 6;
+const NOTO_TECHNICAL: u8 = 7;
+
+/// The bundled font at `index` (see `FONT_DATA`).
+pub fn font_at(index: u8) -> FontRef<'static> {
+    static FONTS: OnceLock<Vec<FontRef<'static>>> = OnceLock::new();
+    FONTS.get_or_init(|| FONT_DATA.iter().map(|d| FontRef::from_index(d, 0).expect("bundled font")).collect())
+        [index as usize]
+}
 
 pub fn font_ref(face: Face) -> FontRef<'static> {
-    static FONTS: OnceLock<[FontRef<'static>; 3]> = OnceLock::new();
-    FONTS.get_or_init(|| {
-        let f = |d: &'static [u8]| FontRef::from_index(d, 0).expect("bundled font");
-        [f(INTER), f(MONO), f(HAND)]
-    })[face as usize]
+    font_at(face as u8)
+}
+
+/// The fonts a face's text is drawn from, in the order a character looks for its glyph.
+fn chain(face: Face) -> &'static [u8] {
+    match face {
+        Face::Sans => &[Face::Sans as u8, INTER_EXTRA, NOTO_TECHNICAL, NOTO_MATH, NOTO_SYMBOLS],
+        Face::Mono => &[Face::Mono as u8, MONO_EXTRA, INTER_EXTRA, NOTO_TECHNICAL, NOTO_MATH, NOTO_SYMBOLS],
+        // The handwriting names no fallback, so Chrome draws what Caveat lacks in a plain regular face.
+        Face::Hand => &[Face::Hand as u8, NOTO_MATH, NOTO_TECHNICAL, INTER_EXTRA, NOTO_SYMBOLS],
+    }
+}
+
+/// The first font of `face`'s chain with a glyph for `c`, or the face's own when none has one.
+fn font_for(face: Face, c: char) -> u8 {
+    let fonts = chain(face);
+    fonts.iter().copied().find(|&f| font_at(f).charmap().map(c) != 0).unwrap_or(fonts[0])
 }
 
 /// A text style: face, weight, size in px and CSS `letter-spacing` in px.
@@ -71,15 +107,17 @@ impl Style {
     }
     /// The variation coordinates Chrome draws this style at.
     pub fn coords(&self) -> Vec<NormalizedCoord> {
-        let font = font_ref(self.face);
-        match self.face {
-            Face::Sans => font
-                .variations()
-                .normalized_coords([("wght", self.weight), ("opsz", self.size.clamp(14.0, 32.0))])
-                .collect(),
-            Face::Mono => font.variations().normalized_coords([("wght", self.weight)]).collect(),
-            Face::Hand => Vec::new(),
+        self.coords_in(self.face as u8)
+    }
+
+    /// The variation coordinates of this style in bundled font `index`: its weight and optical size where the font
+    /// varies them.
+    pub fn coords_in(&self, index: u8) -> Vec<NormalizedCoord> {
+        let font = font_at(index);
+        if font.variations().len() == 0 {
+            return Vec::new();
         }
+        font.variations().normalized_coords([("wght", self.weight), ("opsz", self.size.clamp(14.0, 32.0))]).collect()
     }
 }
 
@@ -109,6 +147,8 @@ pub fn baseline_in(face: Face, size: f32, height: f32) -> f32 {
 #[derive(Clone, Copy, Debug)]
 pub struct Glyph {
     pub id: u16,
+    /// The bundled font it is drawn from (see `font_at`).
+    pub font: u8,
     /// Pen position from the run's origin, in px.
     pub x: f32,
     pub y: f32,
@@ -161,27 +201,42 @@ pub fn shape(text: &str, style: Style) -> Arc<ShapedRun> {
 
 fn shape_uncached(text: &str, style: Style) -> ShapedRun {
     let coords = style.coords();
-    let font = font_ref(style.face);
     let mut glyphs = Vec::new();
     let mut x = 0.0f32;
+    // Runs of characters by the font that has them: a space or a combining mark stays in the run before it.
+    let mut runs: Vec<(u8, usize, usize)> = Vec::new();
+    for (i, c) in text.char_indices() {
+        let keep = c.is_whitespace() || ('\u{300}'..='\u{36f}').contains(&c) || c == '\u{200d}' || c == '\u{fe0f}';
+        let font = match runs.last() {
+            Some(&(f, _, _)) if keep => f,
+            _ => font_for(style.face, c),
+        };
+        match runs.last_mut() {
+            Some(r) if r.0 == font => r.2 = i + c.len_utf8(),
+            _ => runs.push((font, i, i + c.len_utf8())),
+        }
+    }
     SHAPER.with(|ctx| {
         let mut ctx = ctx.borrow_mut();
-        let mut builder = ctx.builder(font).size(style.size).normalized_coords(coords.iter().copied());
-        // Chrome turns off optional ligatures when letters are spaced out.
-        if style.letter_spacing != 0.0 {
-            builder = builder.features([("liga", 0), ("clig", 0), ("calt", 0)]);
+        for (font, from, to) in runs {
+            let own = if font == style.face as u8 { coords.clone() } else { style.coords_in(font) };
+            let mut builder = ctx.builder(font_at(font)).size(style.size).normalized_coords(own.iter().copied());
+            // Chrome turns off optional ligatures when letters are spaced out.
+            if style.letter_spacing != 0.0 {
+                builder = builder.features([("liga", 0), ("clig", 0), ("calt", 0)]);
+            }
+            let mut shaper = builder.build();
+            shaper.add_str(&text[from..to]);
+            shaper.shape_with(|cluster| {
+                for g in cluster.glyphs {
+                    glyphs.push(Glyph { id: g.id, font, x: x + g.x, y: -g.y });
+                    x += g.advance;
+                }
+                if !cluster.is_empty() || cluster.glyphs.is_empty() {
+                    x += style.letter_spacing * cluster.components.len().max(1) as f32;
+                }
+            });
         }
-        let mut shaper = builder.build();
-        shaper.add_str(text);
-        shaper.shape_with(|cluster| {
-            for g in cluster.glyphs {
-                glyphs.push(Glyph { id: g.id, x: x + g.x, y: -g.y });
-                x += g.advance;
-            }
-            if !cluster.is_empty() || cluster.glyphs.is_empty() {
-                x += style.letter_spacing * cluster.components.len().max(1) as f32;
-            }
-        });
     });
     ShapedRun { style, coords, glyphs, width: x, key: hash_of(text, &style) }
 }

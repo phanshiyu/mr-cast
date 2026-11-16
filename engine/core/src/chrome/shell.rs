@@ -175,3 +175,32 @@ impl Shell {
         dl.restore();
     }
 }
+
+/// A pre-read diagram's quiet "In the code:" line at the top right, naming the files of the hunks its `from` cites
+/// (`SourceLine` of src/Walkthrough.tsx, src/fit/source.ts). Drawn over the scene, outside its shell.
+pub fn source_line(scene: &Value, hunks: &std::collections::HashMap<String, crate::model::Hunk>) -> Option<Fit> {
+    let mut files: Vec<String> = Vec::new();
+    for id in scene.get("from").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str) {
+        if let Some(h) = hunks.get(id) {
+            let name = h.file.rsplit('/').next().unwrap_or(&h.file).to_string();
+            if !files.contains(&name) {
+                files.push(name);
+            }
+        }
+    }
+    (!files.is_empty()).then(|| {
+        fit_text(
+            &format!("In the code: {}", files.join(", ")),
+            &Slot::named("sourceLine", 1920.0 - SAFE.left as f64 - SAFE.right as f64),
+        )
+    })
+}
+
+/// Draws a source line fit at the top right of the frame.
+pub fn draw_source_line(dl: &mut DisplayList, fit: &Fit) {
+    let w = crate::chrome::fittext::drawn_width(fit, &fit.lines[0], None);
+    dl.group(|dl| {
+        dl.fade(0.85);
+        draw_fit(dl, fit, 1920.0 - SAFE.right - w, 22.0, TextOpts::new(crate::theme::MUTED).normal());
+    });
+}

@@ -2,15 +2,15 @@
 
 ## Unreleased
 
-**Videos render about ten times faster, with no browser.** mr-cast now draws every frame itself instead of opening Chrome for each one. The 7.5-minute demo took 189 seconds to render before and takes about 20 now on the same laptop, with or without the voice. Nothing is downloaded on the first render any more: Chrome (about 580 MB) is gone, and so is the player bundle that each render built first. The MP4 holds the voice and the chapter markers as before. Frames that do not change are stored once, so files are smaller.
+**Videos render about 18 times faster, with no browser and no ffmpeg.** mr-cast now draws and encodes every frame itself, with a renderer written in Rust, instead of opening Chrome for each frame. The 7.5-minute demo took 189 seconds to render before and takes about 11 now on the same laptop. Every kind of scene looks as it did. The MP4 holds the voice and the chapter markers as before, and frames that do not change are stored once, so files are smaller: the silent demo is 10.6 MB instead of 13.7 MB.
 
-**The player in the browser draws with the same renderer**, so what you watch is what the MP4 shows. It keeps its controls, speeds, chapters, keys and the voice-over in step with the picture, and draws sharp on any screen.
+**Nothing is downloaded on the first render any more.** Chrome (about 580 MB) is gone, and so is the player bundle each render built first. mr-cast also needs no ffmpeg, and nothing runs when it installs, so npm versions that block install scripts work too. `mr-cast prune` still lists the Chrome and player bundle folders older versions left, so you can delete them.
 
-**Remotion and Chrome are gone.** mr-cast no longer opens a browser to draw a video, and no longer carries the code it used to. Nothing is downloaded for a still or a silent render, and `MR_CAST_RENDERER` does nothing. The install is smaller: the packages mr-cast needs take 1.0 GB in `node_modules` instead of 1.2 GB (the voice models' runtime is most of what is left), and the 580 MB Chrome that the first render fetched is not fetched at all. `mr-cast prune` still lists the Chrome and player bundle folders that older versions left, so you can delete them.
+**The player in the browser draws with the same renderer**, so what you watch is what the MP4 shows. It keeps its controls, speeds, chapters, keys and the voice-over in step with the picture, and draws sharp on any screen. Mermaid diagrams draw in the MP4 and stills; the browser player shows a card in their place.
 
-**A scene type the renderer does not draw yet shows a card naming the type.** Today those are `image`, `map`, `mermaid` and `svg`.
+**Symbols the main fonts lack, such as ∞, π and ⌊ ⌋, now draw** from bundled fallback fonts instead of blank spaces.
 
-**mr-cast writes the MP4 itself, with no ffmpeg.** Nothing else needs installing, and nothing is downloaded when mr-cast installs, so npm versions that block install scripts can render too. Text is as sharp as before and files are a little smaller: the silent 7.4-minute demo is 10.6 MB instead of 13.7 MB. `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
+Also: `MR_CAST_RENDERER` no longer does anything, and `MR_CAST_CFR=1` writes every frame instead of storing unchanged ones once.
 
 ## 0.29.0
 

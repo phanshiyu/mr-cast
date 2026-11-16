@@ -3,18 +3,23 @@
 
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::arrays::{self, array_rows, cell_key, marker_row, row_key};
+use crate::camera::Camera;
+use crate::chrome::callout::{HeaderCallout, header_box};
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, fit_height};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
-use crate::state::{
-    Focus, HeaderCallout, SceneState, StateFrame, array_rows, as_bright_as, cell_key, dim_opacity, hex_alpha,
-    js_string, list, main_tone, marker_row, row_key, scene_states, state_frame, target_steps, tint_fill, tint_mix,
-};
+use crate::marks::geometry::Bx;
+use crate::marks::{Board, LayoutBoxes, MarkTargets, Stage, StepRefs};
+use crate::states::{SceneState, StateFrame, hex_alpha, js_string, list, ordered_entries, tint_fill, walk_states};
+use crate::steps::{FocusSpotlight, as_bright_as};
+use crate::targets::target_steps;
+
 use crate::steps::Emphasis;
 use crate::text::{Face, Style, baseline_in, line_metrics};
 use crate::textfit::{Fit, Slot, fit_text, fit_text_at};
-use crate::theme::{ACCENT, BG, BORDER_STRONG, FAINT, MUTED, RAISED, TEXT, content_box, tone};
+use crate::theme::{ACCENT, BG, BORDER_STRONG, FAINT, MUTED, RAISED, TEXT, tone};
 use crate::timing::{FPS, js_round};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -139,6 +144,54 @@ impl Layout {
     }
 }
 
+impl Layout {
+    /// The box of each item a step can focus in this state, in layout units; a note keeps off them and the index
+    /// numbers (`arrayBoxes`).
+    fn boxes(&self, scene: &Value, state: &SceneState) -> LayoutBoxes {
+        let mut out = LayoutBoxes::default();
+        let cell = |row: &PlacedRow, i: usize| {
+            let (x, y, w, h) = self.cell_box(row, i);
+            Bx::new(x, y, w, h)
+        };
+        for row in &self.rows {
+            for i in 0..row.count {
+                out.add(cell_key(&row.name, i), cell(row, i));
+            }
+        }
+        for row in &self.rows {
+            if state.hidden.contains(&row.key) || row.name.is_empty() || row.count == 0 {
+                continue;
+            }
+            let (first, last) = (cell(row, 0), cell(row, row.count - 1));
+            out.add(row.key.clone(), Bx::new(first.x, first.y, last.right() - first.x, self.cell_h));
+        }
+        let lanes = pointer_lanes(scene, state);
+        for p in &self.pointers {
+            let Some(&lane) = lanes.get(&p.name) else { continue };
+            let row = self.row(&p.row);
+            let at = state.places.get(&format!("ptr:{}", p.name)).map_or(0.0, |p| p.0);
+            let x = self.cell_x(row, at as i64);
+            let top = chip_y(row, lane as f64);
+            out.add(format!("ptr:{}", p.name), Bx::new(x + 4.0, top, self.cell_w - 8.0, row.cells_y - top));
+        }
+        for r in &self.ranges {
+            let key = format!("rg:{}", r.name);
+            if state.hidden.contains(&key) {
+                continue;
+            }
+            let place = state.places.get(&key).copied().unwrap_or((0.0, 0.0));
+            let (x, w) = self.band(self.row(&r.row), place);
+            out.add(key, Bx::new(x, r.y, w, BAND_H));
+        }
+        let mut obstacles: Vec<Bx> = out.boxes.iter().map(|(_, b)| *b).collect();
+        if self.indexes {
+            obstacles.extend(self.rows.iter().map(|row| Bx::new(row.x, row.index_y, row.width, INDEX_H)));
+        }
+        out.obstacles = Some(obstacles);
+        out
+    }
+}
+
 /// Top of a pointer chip stacked `lane` chips above its cell's arrow.
 fn chip_y(row: &PlacedRow, lane: f64) -> f64 {
     row.cells_y - ARROW_LEN - CHIP_H - lane * (CHIP_H + CHIP_GAP)
@@ -159,16 +212,6 @@ fn pointer_lanes(scene: &Value, state: &SceneState) -> HashMap<String, usize> {
         taken.insert(at, lane + 1);
     }
     lanes
-}
-
-/// The content box a scene with a title or callout has (`headerBox`).
-pub fn header_box(scene: &Value, shell: &Shell) -> (f64, f64) {
-    let has_callout = HeaderCallout::new(scene).is_some();
-    let (w, h) = content_box(shell.title.is_some() || has_callout);
-    match &shell.title {
-        Some(t) => (w, h - (t.lines.len() as f64 - 1.0) * js_round(t.size * t.line_height)),
-        None => (w, h),
-    }
 }
 
 struct Shape {
@@ -340,7 +383,7 @@ fn layout_array(scene: &Value, states: &[SceneState], (bw, bh): (f64, f64)) -> R
     }
     for step in list(scene, "steps") {
         if let Some(set) = step.get("set").and_then(Value::as_object) {
-            for (_, v) in crate::state::ordered_entries(&Value::Object(set.clone())) {
+            for (_, v) in ordered_entries(Some(&Value::Object(set.clone()))) {
                 note(js_string(&v));
             }
         }
@@ -441,6 +484,9 @@ struct ArrayView {
     targets: HashMap<String, Vec<usize>>,
     callout: Option<HeaderCallout>,
     box_size: (f64, f64),
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -449,10 +495,24 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         return Err("an array scene without values".into());
     }
     let shell = Shell::new(&scene);
-    let box_size = header_box(&scene, &shell);
-    let states = scene_states(&scene);
+    let box_size = header_box(&scene);
+    let states = walk_states(&arrays::Model(&scene), &scene);
     let layout = layout_array(&scene, &states, box_size)?;
+    let stage = Stage {
+        left: js_round((box_size.0 - layout.width) / 2.0),
+        top: js_round((box_size.1 - layout.height).max(0.0) * 0.4),
+        scale: 1.0,
+    };
+    let marks: Vec<MarkTargets> =
+        states[1..].iter().map(|st| stage.targets(&layout.boxes(&scene, st), box_size)).collect();
+    let refs = crate::targets::SceneRefs(&scene);
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(&scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(&scene, &step_refs, box_size);
     Ok(Box::new(ArrayView {
+        marks,
+        board,
+        camera,
         targets: target_steps(&scene),
         callout: HeaderCallout::new(&scene),
         scene,
@@ -566,8 +626,8 @@ impl ArrayView {
         let lit = if changed { s.lit } else { 0.0 };
         let (x, y, w, h) = l.cell_box(row, i);
         let empty = now.is_empty() && (!changed || s.t >= 1.0);
-        let mix = tint_mix(s, &key);
-        let tone_name = main_tone(&mix).map(str::to_string);
+        let mix = s.tint(&key);
+        let tone_name = mix.main_tone().map(str::to_string);
         let ink = if mix.dim > 0.5 { MUTED } else { TEXT };
         let glow = emphasis.glow;
         let edge = if glow > 0.0 {
@@ -580,8 +640,8 @@ impl ArrayView {
             BORDER_STRONG
         };
         let mut all: Vec<Fill> = fills;
-        all.extend(mix.tones.iter().map(|(t, amount)| Fill { color: tint_fill(t), amount: *amount }));
-        let opacity = pop * emphasis.opacity * dim_opacity(&mix);
+        all.extend(mix.tones.iter().map(|(t, amount)| Fill { color: tint_fill(tone(t).0), amount: *amount }));
+        let opacity = pop * emphasis.opacity * mix.dim_opacity();
         let (cx, cy) = ((x + w / 2.0) as f32, (y + h / 2.0) as f32);
         let (fx, fy, fw, fh) = (x as f32, y as f32, w as f32, h as f32);
         let values = |dl: &mut DisplayList, inner: (f64, f64, f64, f64)| {
@@ -779,8 +839,8 @@ impl SceneView for ArrayView {
         let frame = f.frame;
         let l = &self.layout;
         let scene = &self.scene;
-        let s = state_frame(&self.states, f.segments, frame);
-        let focus = Focus::new(&self.targets, f.segments, frame);
+        let s = StateFrame::at(&self.states, f.segments, frame);
+        let focus = FocusSpotlight::borrowed(&self.targets, f.segments, frame);
         let (bw, bh) = self.box_size;
         let stage_left = js_round((bw - l.width) / 2.0) as f32;
         let stage_top = js_round((bh - l.height).max(0.0) * 0.4) as f32;
@@ -796,7 +856,7 @@ impl SceneView for ArrayView {
         let markers_in = interpolate(frame, &[MARKERS_IN, MARKERS_IN + 10.0], &[0.0, 1.0], CLAMP);
         let lanes_before = pointer_lanes(scene, s.before);
         let lanes_now = pointer_lanes(scene, s.now);
-        let row_shown: HashMap<&str, f64> = l.rows.iter().map(|r| (r.name.as_str(), s.shown_of(&r.key))).collect();
+        let row_shown: HashMap<&str, f64> = l.rows.iter().map(|r| (r.name.as_str(), s.shown(&r.key))).collect();
         let spans: Vec<Span> = l
             .ranges
             .iter()
@@ -804,8 +864,8 @@ impl SceneView for ArrayView {
                 name: r.name.clone(),
                 row: r.row.clone(),
                 tone: r.tone.clone(),
-                place: s.place_of(&format!("rg:{}", r.name)),
-                shown: s.shown_of(&format!("rg:{}", r.name)) * markers_in * row_shown[r.row.as_str()],
+                place: s.place(&format!("rg:{}", r.name)),
+                shown: s.shown(&format!("rg:{}", r.name)) * markers_in * row_shown[r.row.as_str()],
             })
             .collect();
         let pointers: Vec<Pointer> = l
@@ -825,7 +885,7 @@ impl SceneView for ArrayView {
                 } else if s.before.hidden.contains(&key) {
                     first(s.now)
                 } else {
-                    s.place_of(&key).0
+                    s.place(&key).0
                 };
                 Pointer {
                     name: p.name.clone(),
@@ -833,18 +893,18 @@ impl SceneView for ArrayView {
                     tone: p.tone.clone(),
                     lane,
                     at,
-                    shown: s.shown_of(&key) * markers_in * row_shown[p.row.as_str()],
+                    shown: s.shown(&key) * markers_in * row_shown[p.row.as_str()],
                     key,
                 }
             })
             .collect();
         let cell_emphasis = |row: &PlacedRow, i: usize| -> Emphasis {
-            let mut others = vec![focus.of(&row.key)];
+            let mut others = vec![focus.emphasis(&row.key)];
             others.extend(
                 pointers
                     .iter()
                     .filter(|p| p.row == row.name && p.shown > 0.5 && js_round(p.at) == i as f64)
-                    .map(|p| focus.of(&p.key)),
+                    .map(|p| focus.emphasis(&p.key)),
             );
             others.extend(
                 spans
@@ -855,9 +915,9 @@ impl SceneView for ArrayView {
                             && i as f64 >= js_round(r.place.0)
                             && i as f64 <= js_round(r.place.1)
                     })
-                    .map(|r| focus.of(&format!("rg:{}", r.name))),
+                    .map(|r| focus.emphasis(&format!("rg:{}", r.name))),
             );
-            as_bright_as(focus.of(&cell_key(&row.name, i)), &others)
+            as_bright_as(focus.emphasis(&cell_key(&row.name, i)), &others)
         };
         let cover = |i: usize, (a, b): (f64, f64)| ((b + 1.0).min(i as f64 + 1.0) - a.max(i as f64)).max(0.0);
         let right_edge = (bw + l.width) / 2.0;
@@ -943,16 +1003,14 @@ impl SceneView for ArrayView {
                     continue;
                 }
                 let info = l.ranges.iter().find(|x| x.name == r.name).expect("range");
-                self.band(dl, r, info.y, focus.of(&format!("rg:{}", r.name)), right_edge);
+                self.band(dl, r, info.y, focus.emphasis(&format!("rg:{}", r.name)), right_edge);
             }
             for p in &pointers {
                 if p.shown <= 0.0 {
                     continue;
                 }
-                self.pointer(dl, p, focus.of(&p.key));
+                self.pointer(dl, p, focus.emphasis(&p.key));
             }
-            // TODO(marks): PenMarks over the stage.
-            // TODO(camera): the scene's camera targets (arrayTargets).
         };
 
         let aside_draw = |dl: &mut DisplayList, right: f32, top: f32| {
@@ -961,6 +1019,12 @@ impl SceneView for ArrayView {
             }
         };
         let aside = self.callout.as_ref().map(|c| c.aside(&aside_draw));
-        self.shell.draw(dl, frame, f.duration, aside, |dl, bx| draw_all(dl, bx.h));
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
+        self.shell.draw(dl, frame, f.duration, aside, |dl, bx| {
+            self.camera.draw(dl, view, |dl| {
+                dl.group(|dl| draw_all(dl, bx.h));
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            })
+        });
     }
 }

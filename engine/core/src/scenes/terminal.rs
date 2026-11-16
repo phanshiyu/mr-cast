@@ -6,10 +6,13 @@
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, interpolate};
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, Shadow};
+use crate::marks::geometry::{Bx, Pt as MPt};
+use crate::marks::{LayoutBoxes, MarkTargets, Pen, Refs, Stage};
 use crate::steps::{Emphasis, Spotlight, step_move};
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::{Family, Fit, Font, Slot, fit_text, measure};
@@ -57,8 +60,6 @@ struct EntrySrc {
 
 #[derive(Deserialize)]
 struct StepSrc {
-    #[serde(default)]
-    focus: Value,
     #[serde(default)]
     mark: Value,
 }
@@ -111,6 +112,8 @@ struct Placed {
     exit: Option<Exit>,
     top: f64,
     bottom: f64,
+    /// How wide its text runs.
+    text_w: f64,
 }
 
 struct Layout {
@@ -146,11 +149,13 @@ fn attempt(scene: &TerminalScene, w: f64, size: f64) -> Layout {
         let prompt = entry.prompt.clone().unwrap_or_else(|| "$".into());
         let prompt_w = measure(&format!("{prompt} "), &mono(700.0, size));
         let mut command = None;
+        let mut text_w: f64 = 0.0;
         if let Some(c) = &entry.command {
             let fit = wrap(c, "terminalCommand", inner_w - prompt_w, size);
             let rows: Vec<String> = fit.lines.iter().map(|l| l.iter().map(|r| r.text.as_str()).collect()).collect();
             let chars = rows.iter().map(|r| r.chars().count()).sum();
             y_add(&mut y, fit.lines.len() as f64 * row_h);
+            text_w = prompt_w + fit.width;
             command = Some(Command { rows, fit, chars, y: top });
         }
         let mut lines = Vec::new();
@@ -162,6 +167,7 @@ fn attempt(scene: &TerminalScene, w: f64, size: f64) -> Layout {
             let indent = (inner_w / 2.0).min(measure(&" ".repeat(spaces), &mono(400.0, size)));
             let fit = wrap(body, "terminalOutput", inner_w - indent, size);
             let n = fit.lines.len().max(1) as f64;
+            text_w = text_w.max(indent + fit.width);
             lines.push(OutLine { index: l, indent, fit, y });
             y += n * row_h;
         }
@@ -175,13 +181,14 @@ fn attempt(scene: &TerminalScene, w: f64, size: f64) -> Layout {
                 command.as_ref().map(|c| prompt_w + c.fit.widths.last().copied().unwrap_or(0.0))
             };
             let own = last_w.is_none_or(|lw| lw + EXIT_GAP + w > inner_w);
+            text_w = text_w.max(if own { w } else { inner_w });
             exit = Some(Exit { text, ok: code == 0.0, y: if own { y } else { y - row_h }, w });
             if own {
                 y += row_h;
             }
         }
         let failed = entry.exit.is_some_and(|c| c != 0.0);
-        entries.push(Placed { index, failed, prompt, prompt_w, command, lines, exit, top, bottom: y });
+        entries.push(Placed { index, failed, prompt, prompt_w, command, lines, exit, top, bottom: y, text_w });
         y += gap;
     }
     Layout { width: w, font: size, row_h, inner_w, entries, height: y - gap + PAD_Y, view_h: 0.0, window: None }
@@ -221,6 +228,49 @@ fn boxes(layout: &Layout) -> HashMap<String, (f64, f64)> {
     m
 }
 
+/// The box of each item a step can focus, in session units (the window's body before it scrolls): an entry, and one
+/// output line's text. A note keeps off every line of text (`terminalBoxes`).
+fn terminal_boxes(layout: &Layout) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    let mut obstacles = Vec::new();
+    for e in &layout.entries {
+        out.add(
+            format!("en:{}", e.index),
+            Bx::new(PAD_X - 10.0, e.top - 4.0, layout.inner_w.min(e.text_w) + 20.0, e.bottom - e.top + 8.0),
+        );
+        if let Some(c) = &e.command {
+            obstacles.push(Bx::new(PAD_X, c.y, e.prompt_w + c.fit.width, c.fit.lines.len() as f64 * layout.row_h));
+        }
+        for l in &e.lines {
+            let b =
+                Bx::new(PAD_X + l.indent, l.y, l.fit.width.max(24.0), l.fit.lines.len().max(1) as f64 * layout.row_h);
+            out.add(format!("ln:{}/{}", e.index, l.index), b);
+            if l.fit.width > 0.0 {
+                obstacles.push(b);
+            }
+        }
+    }
+    out.obstacles = Some(obstacles);
+    out
+}
+
+/// Where step k's camera settles: how far the session has scrolled.
+fn stop_of(camera: &Camera, layout: &Layout, k: usize) -> f64 {
+    match camera {
+        Camera::Still => 0.0,
+        Camera::Steps(stops) => stops.get(k).copied().unwrap_or(0.0),
+        Camera::Follow { .. } => (layout.height - layout.view_h).max(0.0),
+    }
+}
+
+struct TerminalRefs<'a>(&'a TerminalScene);
+
+impl Refs for TerminalRefs<'_> {
+    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
+        Some(resolve_ref(self.0, r)).filter(|k| !k.is_empty())
+    }
+}
+
 // --- focus refs (shared/targets.mjs, `terminal`) ---
 
 fn resolve_ref(scene: &TerminalScene, r: &Value) -> Vec<String> {
@@ -248,27 +298,6 @@ fn resolve_ref(scene: &TerminalScene, r: &Value) -> Vec<String> {
         return vec![format!("en:{i}")];
     }
     keys
-}
-
-fn step_keys(scene: &TerminalScene) -> Vec<Vec<String>> {
-    scene
-        .steps
-        .iter()
-        .map(|step| {
-            let refs = match &step.focus {
-                Value::Array(a) => a.clone(),
-                Value::Null => Vec::new(),
-                v => vec![v.clone()],
-            };
-            let mut keys: Vec<String> = Vec::new();
-            for key in refs.iter().flat_map(|r| resolve_ref(scene, r)) {
-                if !keys.contains(&key) {
-                    keys.push(key);
-                }
-            }
-            keys
-        })
-        .collect()
 }
 
 /// Per step, the last entry typed by its end.
@@ -478,13 +507,15 @@ struct TerminalView {
     timing: Vec<Timing>,
     camera: Camera,
     targets: HashMap<String, Vec<usize>>,
+    stops: Vec<f64>,
+    pen: Pen,
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let scene: TerminalScene = parse(input)?;
     let (bw, bh) = content_box(scene.title.is_some());
     let layout = layout_terminal(&scene, bw, bh);
-    let keys = step_keys(&scene);
+    let keys = crate::targets::step_targets_with(input.scene, |r| TerminalRefs(&scene).resolve(r));
     let reach = entry_reach(&keys);
     let timing = schedule(&scene, &layout, &reach, input.segments);
     let camera = camera(&layout, &timing, &keys, &reach, input.segments, &scene);
@@ -494,7 +525,33 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             targets.entry(key.clone()).or_default().push(k);
         }
     }
-    Ok(Box::new(TerminalView { shell: Shell::new(input.scene), layout, box_h: bh, timing, camera, targets }))
+    // Marks scroll with the session: placed where step k's camera settles, then carried along while it moves.
+    let win_top = (bh - (CHROME_H + layout.view_h)).max(0.0) * 0.4;
+    let stage = Stage { left: 0.0, top: win_top + CHROME_H, scale: 1.0 };
+    let boxes = terminal_boxes(&layout);
+    let stops: Vec<f64> = (0..scene.steps.len()).map(|k| stop_of(&camera, &layout, k)).collect();
+    let marks: Vec<MarkTargets> = stops
+        .iter()
+        .map(|&stop| {
+            let moved = LayoutBoxes {
+                boxes: boxes.boxes.iter().map(|(k, b)| (k.clone(), b.translate(0.0, -stop))).collect(),
+                obstacles: boxes.obstacles.as_ref().map(|o| o.iter().map(|b| b.translate(0.0, -stop)).collect()),
+                lines: Vec::new(),
+            };
+            MarkTargets { shifts: true, ..stage.targets(&moved, (bw, bh)) }
+        })
+        .collect();
+    let pen = Pen::new(input.scene, input.segments, &TerminalRefs(&scene), marks, false, header_box(input.scene));
+    Ok(Box::new(TerminalView {
+        shell: Shell::new(input.scene),
+        layout,
+        box_h: bh,
+        timing,
+        camera,
+        targets,
+        stops,
+        pen,
+    }))
 }
 
 fn byte_alpha(v: f64) -> f32 {
@@ -681,60 +738,61 @@ impl SceneView for TerminalView {
         let more = scroll < l.height - l.view_h - 1.0;
         let (w, wh, view_h) = (l.width as f32, win_h as f32, l.view_h as f32);
 
-        // TODO(camera): the scene's `camera` field moves the content box here.
+        let shift = |k: usize| Some(MPt { x: 0.0, y: self.stops.get(k).copied().unwrap_or(0.0) - scroll });
         self.shell.draw(dl, frame, f.duration, None, |dl, _bx| {
-            dl.group(|dl| {
-                dl.fade(appear as f32);
-                dl.translate(0.0, win_top as f32 + ((1.0 - appear) * 14.0) as f32);
-                let mut ring = Shadow::new(0.0, 0.0, 0.0, BORDER_STRONG);
-                ring.spread = 1.5;
-                dl.rect(
-                    0.0,
-                    0.0,
-                    w,
-                    wh,
-                    BoxStyle::fill(BODY_BG).radius(16.0).shadow(ring).shadow(Shadow::new(
-                        0.0,
-                        24.0,
-                        70.0,
-                        Color::rgba8(0, 0, 0, 0.55),
-                    )),
-                );
-                self.chrome(dl, wh);
+            self.pen.draw_shifted(dl, frame, f.segments, &shift, |dl| {
                 dl.group(|dl| {
-                    dl.translate(0.0, CHROME_H as f32);
-                    dl.push_clip(0.0, 0.0, w, view_h, 0.0);
+                    dl.fade(appear as f32);
+                    dl.translate(0.0, win_top as f32 + ((1.0 - appear) * 14.0) as f32);
+                    let mut ring = Shadow::new(0.0, 0.0, 0.0, BORDER_STRONG);
+                    ring.spread = 1.5;
+                    dl.rect(
+                        0.0,
+                        0.0,
+                        w,
+                        wh,
+                        BoxStyle::fill(BODY_BG).radius(16.0).shadow(ring).shadow(Shadow::new(
+                            0.0,
+                            24.0,
+                            70.0,
+                            Color::rgba8(0, 0, 0, 0.55),
+                        )),
+                    );
+                    self.chrome(dl, wh);
                     dl.group(|dl| {
-                        dl.translate(0.0, -scroll as f32);
-                        for p in &self.layout.entries {
-                            self.entry(dl, p, self.timing[p.index], frame, &spot);
+                        dl.translate(0.0, CHROME_H as f32);
+                        dl.push_clip(0.0, 0.0, w, view_h, 0.0);
+                        dl.group(|dl| {
+                            dl.translate(0.0, -scroll as f32);
+                            for p in &self.layout.entries {
+                                self.entry(dl, p, self.timing[p.index], frame, &spot);
+                            }
+                        });
+                        // The mask that fades scrolled lines out under the title bar and over the bottom edge
+                        // is drawn as the window's own colour fading in over them.
+                        let clear = BODY_BG.alpha(0.0);
+                        if scroll > 1.0 {
+                            dl.rect(
+                                0.0,
+                                1.0,
+                                w,
+                                FADE - 1.0,
+                                BoxStyle::fill(Paint::vertical(-1.0, FADE - 1.0, BODY_BG, clear)),
+                            );
                         }
+                        if more {
+                            dl.rect(
+                                0.0,
+                                view_h - FADE,
+                                w,
+                                FADE,
+                                BoxStyle::fill(Paint::vertical(0.0, FADE, clear, BODY_BG)),
+                            );
+                        }
+                        dl.pop_clip();
                     });
-                    // The mask that fades scrolled lines out under the title bar and over the bottom edge
-                    // is drawn as the window's own colour fading in over them.
-                    let clear = BODY_BG.alpha(0.0);
-                    if scroll > 1.0 {
-                        dl.rect(
-                            0.0,
-                            1.0,
-                            w,
-                            FADE - 1.0,
-                            BoxStyle::fill(Paint::vertical(-1.0, FADE - 1.0, BODY_BG, clear)),
-                        );
-                    }
-                    if more {
-                        dl.rect(
-                            0.0,
-                            view_h - FADE,
-                            w,
-                            FADE,
-                            BoxStyle::fill(Paint::vertical(0.0, FADE, clear, BODY_BG)),
-                        );
-                    }
-                    dl.pop_clip();
                 });
-            });
-            // TODO(marks): the pen marks of the current step draw over the window here.
+            })
         });
     }
 }

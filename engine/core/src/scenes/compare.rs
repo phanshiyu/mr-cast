@@ -7,11 +7,14 @@
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
 use crate::icons;
+use crate::marks::geometry::Bx;
+use crate::marks::{LayoutBoxes, MarkTargets, Pen, Refs, Stage};
 use crate::model::{Hunk, LineType, Props, TokenLine};
 use crate::steps::{Emphasis, Spotlight, step_spring};
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
@@ -79,12 +82,6 @@ struct RowSrc {
 }
 
 #[derive(Deserialize)]
-struct StepSrc {
-    #[serde(default)]
-    focus: Value,
-}
-
-#[derive(Deserialize)]
 struct CompareScene {
     title: Option<String>,
     #[serde(default)]
@@ -94,7 +91,7 @@ struct CompareScene {
     #[serde(default)]
     rows: Vec<RowSrc>,
     #[serde(default)]
-    steps: Vec<StepSrc>,
+    steps: Vec<Value>,
 }
 
 // --- shared/compare.mjs ---
@@ -231,6 +228,10 @@ enum Body {
     },
     Image {
         src: String,
+        /// `contain` or `cover`.
+        fit: String,
+        /// The run's copy of the picture, when it has one.
+        picture: Option<std::sync::Arc<tiny_skia::Pixmap>>,
     },
 }
 
@@ -348,7 +349,10 @@ fn fit_cell(props: &Props, cell: &Value, room: &Room, font: f64) -> PlacedCell {
         return placed(Body::Text(text), h);
     }
     if let Some(src) = cell.get("image") {
-        return placed(Body::Image { src: js_string(src) }, js_round(room.width * 9.0 / 16.0));
+        let src = js_string(src);
+        let fit = cell.get("fit").and_then(Value::as_str).unwrap_or("contain").to_string();
+        let picture = props.pictures.get(&src).map(|p| p.pixmap.clone());
+        return placed(Body::Image { src, fit, picture }, js_round(room.width * 9.0 / 16.0));
     }
     let code = cell.get("code").map(js_string).unwrap_or_default();
     let lang = cell.get("lang").and_then(Value::as_str).unwrap_or("plain");
@@ -554,29 +558,57 @@ fn resolve_ref(scene: &CompareScene, r: &Value) -> Vec<String> {
     keys
 }
 
-/// Each step's focus as the item keys it lights.
-fn step_keys(scene: &CompareScene) -> Vec<Vec<String>> {
-    scene
-        .steps
-        .iter()
-        .map(|step| {
-            let refs = match &step.focus {
-                Value::Array(a) => a.clone(),
-                Value::Null => Vec::new(),
-                v => vec![v.clone()],
+/// Per step, the last row shown by its end: every row up to the last one it or an earlier step names.
+/// The box of each item a step can focus, in layout units: a row across both sides, a side's whole frame, and one
+/// cell's text. A note keeps off the titles, the labels, and every row shown by `shown_through` from one side's edge to
+/// the other (`compareBoxes`).
+fn compare_boxes(layout: &Layout, shown_through: i64) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    let left = layout.sides[0].x;
+    let right = layout.sides[1].x + layout.sides[1].w;
+    for (j, side) in layout.sides.iter().enumerate() {
+        out.add(format!("s:{j}"), Bx::new(side.x, 0.0, side.w, layout.height));
+    }
+    let mut obstacles: Vec<Bx> = layout.sides.iter().map(|s| Bx::new(s.x, 0.0, s.w, HEADER_H)).collect();
+    for (i, row) in layout.rows.iter().enumerate() {
+        let x = if row.label.is_some() { 0.0 } else { left };
+        out.add(format!("r:{i}"), Bx::new(x, row.y, right - x, row.h));
+        for side in 0..2 {
+            let cell = &row.cells[side];
+            let (width, bleed) = match &cell.body {
+                Body::Text(t) => (t.width, 0.0),
+                Body::Code { lines, bleed, .. } => (lines.width + 2.0 * CODE_PAD, *bleed),
+                Body::Image { .. } => (layout.cell_w, 0.0),
             };
-            let mut keys: Vec<String> = Vec::new();
-            for key in refs.iter().flat_map(|r| resolve_ref(scene, r)) {
-                if !keys.contains(&key) {
-                    keys.push(key);
-                }
-            }
-            keys
-        })
-        .collect()
+            out.add(
+                format!("x:{i}/{side}"),
+                Bx::new(
+                    layout.sides[side].x + layout.cell_x - bleed,
+                    row.y + (row.h - cell.h) / 2.0,
+                    (layout.cell_w + 2.0 * bleed).min(width).max(24.0),
+                    cell.h,
+                ),
+            );
+        }
+        if let Some(label) = &row.label {
+            obstacles.push(Bx::new(0.0, row.y + (row.h - label.height) / 2.0, label.width, label.height));
+        }
+        if i as i64 <= shown_through {
+            obstacles.push(Bx::new(left, row.y, right - left, row.h));
+        }
+    }
+    out.obstacles = Some(obstacles);
+    out
 }
 
-/// Per step, the last row shown by its end: every row up to the last one it or an earlier step names.
+struct CompareRefs<'a>(&'a CompareScene);
+
+impl Refs for CompareRefs<'_> {
+    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
+        Some(resolve_ref(self.0, r)).filter(|k| !k.is_empty())
+    }
+}
+
 fn row_reach(keys: &[Vec<String>]) -> Vec<i64> {
     let mut last = -1i64;
     keys.iter()
@@ -632,6 +664,7 @@ struct CompareView {
     /// For each item key, the steps that light it.
     targets: HashMap<String, Vec<usize>>,
     lasts: Vec<i64>,
+    pen: Pen,
 }
 
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
@@ -641,7 +674,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     }
     let (bw, bh) = content_box(scene.title.is_some());
     let layout = layout_compare(&scene, input.props, bw, bh);
-    let keys = step_keys(&scene);
+    let keys = crate::targets::step_targets_with(input.scene, |r| CompareRefs(&scene).resolve(r));
     let lasts = row_reach(&keys);
     let mut targets: HashMap<String, Vec<usize>> = HashMap::new();
     for (k, step) in keys.iter().enumerate() {
@@ -649,7 +682,17 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             targets.entry(key.clone()).or_default().push(k);
         }
     }
-    Ok(Box::new(CompareView { shell: Shell::new(input.scene), layout, box_h: bh, targets, lasts }))
+    // A step's note keeps off the rows shown by then, and may sit where later rows have yet to appear.
+    let top = (bh - layout.height * layout.scale).max(0.0) * 0.35;
+    let stage = Stage { left: 0.0, top, scale: layout.scale };
+    let marks: Vec<MarkTargets> = (0..scene.steps.len())
+        .map(|k| {
+            let through = if k + 1 == lasts.len() { i64::MAX } else { lasts.get(k).copied().unwrap_or(i64::MIN) };
+            stage.targets(&compare_boxes(&layout, through), (bw, bh))
+        })
+        .collect();
+    let pen = Pen::new(input.scene, input.segments, &CompareRefs(&scene), marks, false, header_box(input.scene));
+    Ok(Box::new(CompareView { shell: Shell::new(input.scene), layout, box_h: bh, targets, lasts, pen }))
 }
 
 /// `hex(v)` as an alpha: the value rounded to a byte, as the TSX writes it into a colour's last two digits.
@@ -887,7 +930,25 @@ impl CompareView {
                     }
                 }
             }
-            Body::Image { src } => {
+            Body::Image { picture: Some(p), fit, .. } => {
+                // `Picture`: the copy, fitted into the cell's 16:9 box on the raised colour, with rounded corners.
+                let (w, h) = (l.cell_w as f32, cell.h as f32);
+                dl.rect(x, y, w, h, BoxStyle::fill(RAISED).radius(12.0));
+                let (pw, ph) = (p.width() as f32, p.height() as f32);
+                let k = if fit == "cover" { (w / pw).max(h / ph) } else { (w / pw).min(h / ph) };
+                let (dw, dh) = (pw * k, ph * k);
+                dl.push_clip(x, y, w, h, 12.0);
+                dl.image(
+                    p.clone(),
+                    std::sync::Arc::as_ptr(p) as usize as u64,
+                    x + (w - dw) / 2.0,
+                    y + (h - dh) / 2.0,
+                    dw,
+                    dh,
+                );
+                dl.pop_clip();
+            }
+            Body::Image { src, .. } => {
                 // Picture's placeholder, as drawn when the run holds no copy of the picture.
                 let w = l.cell_w as f32;
                 let h = cell.h as f32;
@@ -1012,56 +1073,62 @@ impl SceneView for CompareView {
         let top = (self.box_h - l.height * l.scale).max(0.0) * 0.35;
         let right = l.sides[1].x + l.sides[1].w;
 
-        // TODO(camera): the scene's `camera` field moves the content box here.
         self.shell.draw(dl, frame, f.duration, None, |dl, _bx| {
-            dl.translate(0.0, top as f32);
-            dl.scale_about(l.scale as f32, 0.0, 0.0);
-            self.panel(dl, 0, panel_in(0.0), title_in, side_e[0]);
-            self.panel(dl, 1, panel_in(1.0), title_in, side_e[1]);
-            for (i, row) in l.rows.iter().enumerate() {
-                let own = emphasis(&format!("r:{i}"));
-                let cell_e = [emphasis(&format!("x:{i}/0")), emphasis(&format!("x:{i}/1"))];
-                let cell_opacity = |j: usize| own.opacity.max(side_e[j].opacity).max(cell_e[j].opacity);
-                let row_opacity = own.opacity.max(cell_e[0].opacity).max(cell_e[1].opacity);
-                let left_in = motion(i, 0.0);
-                let cue = interpolate(frame, &[starts[i] + 3.0, starts[i] + 9.0], &[0.0, 1.0], CLAMP);
-                let right_in = motion(i, 5.0);
-                if i > 0 {
-                    for side in &l.sides {
+            self.pen.draw(dl, frame, f.segments, |dl| {
+                dl.translate(0.0, top as f32);
+                dl.scale_about(l.scale as f32, 0.0, 0.0);
+                self.panel(dl, 0, panel_in(0.0), title_in, side_e[0]);
+                self.panel(dl, 1, panel_in(1.0), title_in, side_e[1]);
+                for (i, row) in l.rows.iter().enumerate() {
+                    let own = emphasis(&format!("r:{i}"));
+                    let cell_e = [emphasis(&format!("x:{i}/0")), emphasis(&format!("x:{i}/1"))];
+                    let cell_opacity = |j: usize| own.opacity.max(side_e[j].opacity).max(cell_e[j].opacity);
+                    let row_opacity = own.opacity.max(cell_e[0].opacity).max(cell_e[1].opacity);
+                    let left_in = motion(i, 0.0);
+                    let cue = interpolate(frame, &[starts[i] + 3.0, starts[i] + 9.0], &[0.0, 1.0], CLAMP);
+                    let right_in = motion(i, 5.0);
+                    if i > 0 {
+                        for side in &l.sides {
+                            dl.group(|dl| {
+                                dl.fade(left_in as f32);
+                                dl.fill_rect((side.x + 18.0) as f32, row.y as f32, (side.w - 36.0) as f32, 1.0, BORDER);
+                            });
+                        }
+                    }
+                    if own.glow > 0.0 {
+                        let left = if row.label.is_some() { -14.0 } else { l.sides[0].x - 8.0 };
+                        dl.rect(
+                            left as f32,
+                            (row.y + 2.0) as f32,
+                            (right + 8.0 - left) as f32,
+                            (row.h - 4.0) as f32,
+                            BoxStyle::fill(Color::rgba8(124, 140, 255, (0.08 * own.glow) as f32))
+                                .radius(14.0)
+                                .border(accent_a(byte_alpha(own.glow * 0.6)), 2.0)
+                                .shadow(Shadow::new(0.0, 0.0, (30.0 * own.glow) as f32, ACCENT_GLOW)),
+                        );
+                    }
+                    if let Some(label) = &row.label {
                         dl.group(|dl| {
-                            dl.fade(left_in as f32);
-                            dl.fill_rect((side.x + 18.0) as f32, row.y as f32, (side.w - 36.0) as f32, 1.0, BORDER);
+                            dl.fade((title_in * row_opacity * if left_in > 0.0 { 1.0 } else { UNSHOWN_LABEL }) as f32);
+                            let color = if row.same { MUTED } else { Color::css("#d5d9e3") };
+                            draw_fit(
+                                dl,
+                                label,
+                                0.0,
+                                (row.y + (row.h - label.height) / 2.0) as f32,
+                                TextOpts::new(color),
+                            );
                         });
                     }
+                    self.cell(dl, row, 0, left_in, cell_opacity(0), cell_e[0].glow);
+                    if !l.options {
+                        self.cue(dl, row, cue, row_opacity * if row.same { SAME_OPACITY + 0.2 } else { 1.0 });
+                    }
+                    self.cell(dl, row, 1, right_in, cell_opacity(1), cell_e[1].glow);
                 }
-                if own.glow > 0.0 {
-                    let left = if row.label.is_some() { -14.0 } else { l.sides[0].x - 8.0 };
-                    dl.rect(
-                        left as f32,
-                        (row.y + 2.0) as f32,
-                        (right + 8.0 - left) as f32,
-                        (row.h - 4.0) as f32,
-                        BoxStyle::fill(Color::rgba8(124, 140, 255, (0.08 * own.glow) as f32))
-                            .radius(14.0)
-                            .border(accent_a(byte_alpha(own.glow * 0.6)), 2.0)
-                            .shadow(Shadow::new(0.0, 0.0, (30.0 * own.glow) as f32, ACCENT_GLOW)),
-                    );
-                }
-                if let Some(label) = &row.label {
-                    dl.group(|dl| {
-                        dl.fade((title_in * row_opacity * if left_in > 0.0 { 1.0 } else { UNSHOWN_LABEL }) as f32);
-                        let color = if row.same { MUTED } else { Color::css("#d5d9e3") };
-                        draw_fit(dl, label, 0.0, (row.y + (row.h - label.height) / 2.0) as f32, TextOpts::new(color));
-                    });
-                }
-                self.cell(dl, row, 0, left_in, cell_opacity(0), cell_e[0].glow);
-                if !l.options {
-                    self.cue(dl, row, cue, row_opacity * if row.same { SAME_OPACITY + 0.2 } else { 1.0 });
-                }
-                self.cell(dl, row, 1, right_in, cell_opacity(1), cell_e[1].glow);
-            }
-            let _ = l.label_w;
-            // TODO(marks): the pen marks of the current step draw over the rows here.
+                let _ = l.label_w;
+            })
         });
     }
 }

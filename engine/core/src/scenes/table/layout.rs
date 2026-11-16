@@ -1,5 +1,7 @@
 //! Where a table's columns, headers and rows go: a port of src/utils/tableLayout.ts.
 
+use crate::marks::LayoutBoxes;
+use crate::marks::geometry::Bx;
 use crate::markup::{parse_markup, plain_text};
 use crate::textfit::{Fit, Slot, fit_text, fit_text_at};
 use crate::timing::js_round;
@@ -96,6 +98,50 @@ pub struct Layout {
     pub truncated: bool,
     /// Below 1 when even the smallest font overflows: the table draws at `width / scale` and shrinks to fit.
     pub scale: f64,
+}
+
+impl Row {
+    /// A row from its JSON, with a cell for each of `columns`.
+    pub fn from_json(v: &Value, columns: usize) -> Row {
+        let cells = v.get("cells").and_then(Value::as_array);
+        let text = |k: &str| match v.get(k) {
+            Some(Value::String(s)) => Some(s.clone()),
+            Some(Value::Number(n)) => Some(n.to_string()),
+            _ => None,
+        };
+        Row {
+            cells: (0..columns).map(|c| Cell::from_json(cells.and_then(|cs| cs.get(c)))).collect(),
+            change: v.get("change").and_then(Value::as_str).and_then(Change::parse),
+            badge: text("badge"),
+            tone: v.get("tone").and_then(Value::as_str).map(str::to_string),
+        }
+    }
+}
+
+impl Change {
+    pub fn parse(s: &str) -> Option<Change> {
+        match s {
+            "added" => Some(Change::Added),
+            "removed" => Some(Change::Removed),
+            "modified" => Some(Change::Modified),
+            _ => None,
+        }
+    }
+}
+
+/// A table's columns and rows from its JSON (`{ columns, rows }`).
+pub fn table_of(v: &Value) -> (Vec<String>, Vec<Row>) {
+    let columns: Vec<String> = v
+        .get("columns")
+        .and_then(Value::as_array)
+        .map(|cs| cs.iter().map(|c| c.as_str().unwrap_or("").to_string()).collect())
+        .unwrap_or_default();
+    let rows = v
+        .get("rows")
+        .and_then(Value::as_array)
+        .map(|rs| rs.iter().map(|r| Row::from_json(r, columns.len())).collect())
+        .unwrap_or_default();
+    (columns, rows)
 }
 
 fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
@@ -307,7 +353,7 @@ pub fn layout_table_states(columns: &[String], states: &[Vec<Row>], width: f64, 
 }
 
 /// A table's rows as each state shows them (`stateRows`).
-pub fn state_rows(columns: &[String], rows: &[Row], states: &[super::super::step_state::SceneState]) -> Vec<Vec<Row>> {
+pub fn state_rows(columns: &[String], rows: &[Row], states: &[crate::states::SceneState]) -> Vec<Vec<Row>> {
     states
         .iter()
         .map(|state| {
@@ -325,4 +371,45 @@ pub fn state_rows(columns: &[String], rows: &[Row], states: &[super::super::step
                 .collect()
         })
         .collect()
+}
+
+/// How wide a placed cell's text runs and how many lines it takes (`cellExtent`).
+fn cell_extent(cell: &Placed, font: i32) -> (f64, usize) {
+    match cell {
+        Placed::Text { text } => (text.width, text.lines.len()),
+        Placed::Change { mono, inline: true, before, after } => {
+            (before.width + after.width + inline_arrow(cell_font(font, *mono)), 1)
+        }
+        Placed::Change { before, after, .. } => (before.width.max(after.width), before.lines.len() + after.lines.len()),
+    }
+}
+
+/// The box of each item a step can focus, by its key in shared/targets.mjs, in layout units: a row, a column from its
+/// header down, and the text of one cell. A note keeps off the headers and the text of every cell (`tableBoxes`).
+pub fn table_boxes(layout: &Layout) -> LayoutBoxes {
+    let mut out = LayoutBoxes::default();
+    let bottom = layout.rows.last().map_or(HEADER_H, |r| r.y + r.h);
+    for (c, &(x, w)) in layout.cols.iter().enumerate() {
+        out.add(format!("c:{c}"), Bx::new(x - 10.0, 4.0, w + 20.0, bottom - 4.0));
+    }
+    let mut cells = Vec::new();
+    for (r, row) in layout.rows.iter().enumerate() {
+        out.add(format!("r:{r}"), Bx::new(0.0, row.y, layout.width, row.h));
+        for (c, cell) in row.cells.iter().enumerate() {
+            let (width, lines) = cell_extent(cell, layout.font);
+            let height = lines as f64 * layout.line_height;
+            let b = Bx::new(
+                layout.cols[c].0,
+                row.y + (row.h - height) / 2.0,
+                width.min(layout.cols[c].1).max(24.0),
+                height,
+            );
+            out.add(format!("x:{r}/{c}"), b);
+            cells.push(b);
+        }
+    }
+    let mut obstacles = vec![Bx::new(0.0, 0.0, layout.width, HEADER_H)];
+    obstacles.extend(cells);
+    out.obstacles = Some(obstacles);
+    out
 }

@@ -7,7 +7,6 @@ use crate::timing::Segment;
 use serde_json::Value;
 
 pub mod array;
-pub mod callout;
 pub mod chart;
 pub mod code;
 pub mod compare;
@@ -15,15 +14,19 @@ pub mod er;
 pub mod files;
 pub mod flow;
 pub mod graph;
+pub mod image;
 pub mod layers;
+pub mod map;
+pub mod media;
 pub mod memory;
+pub mod mermaid;
 pub mod placeholder;
 pub mod plot;
 pub mod reading;
 pub mod review;
 pub mod sequence;
 pub mod state;
-pub mod step_state;
+pub mod svg;
 pub mod table;
 pub mod terminal;
 pub mod tests;
@@ -84,6 +87,10 @@ pub const REGISTRY: &[(&str, Prepare)] = &[
     ("graph", graph::prepare),
     ("state", state::prepare),
     ("er", er::prepare),
+    ("image", image::prepare),
+    ("svg", svg::prepare),
+    ("mermaid", mermaid::prepare),
+    ("map", map::prepare),
 ];
 
 /// Prepares any scene: its type's own view, or a placeholder naming the type (and the problem, if any).

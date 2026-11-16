@@ -145,6 +145,14 @@ pub enum Item {
         color: Color,
         glow: Option<(f32, Color)>,
     },
+    /// A shaped run filled with a gradient, as CSS `background-clip: text` draws it; the paint is in the item's
+    /// coordinates.
+    TextPaint {
+        run: Arc<ShapedRun>,
+        x: f32,
+        y: f32,
+        paint: Paint,
+    },
     /// Clips what follows, until the matching `PopClip`, to a rounded rect.
     PushClip {
         rect: Rect,
@@ -156,6 +164,19 @@ pub enum Item {
         opacity: f32,
     },
     PopLayer,
+    /// Draws what follows into a layer shown only inside `rect`, fading out over `fade` px at its edges: a CSS mask of
+    /// two edge gradients, as the camera's view uses. Ends at the matching `PopLayer`.
+    PushFadeLayer {
+        rect: Rect,
+        fade: f32,
+    },
+    /// A premultiplied RGBA picture scaled into `rect`. `key` names its content for frame equality: pictures
+    /// with equal keys are the same pixels.
+    Image {
+        pixmap: Arc<tiny_skia::Pixmap>,
+        key: u64,
+        rect: Rect,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -259,6 +280,10 @@ impl DisplayList {
     pub fn run_glow(&mut self, run: Arc<ShapedRun>, x: f32, y: f32, color: Color, glow: (f32, Color)) {
         self.push(Item::Text { run, x, y, color, glow: Some(glow) });
     }
+    /// A run filled with a gradient (or any paint) instead of a colour.
+    pub fn run_paint(&mut self, run: Arc<ShapedRun>, x: f32, y: f32, paint: Paint) {
+        self.push(Item::TextPaint { run, x, y, paint });
+    }
     /// Shapes and draws `text` with its baseline origin at (x, y); returns its advance.
     pub fn text(&mut self, text: &str, style: Style, x: f32, y: f32, color: Color) -> f32 {
         let run = shape(text, style);
@@ -274,8 +299,20 @@ impl DisplayList {
     pub fn pop_clip(&mut self) {
         self.push(Item::PopClip);
     }
+    /// A picture scaled to the box at (x, y), `w` by `h`; `key` identifies its pixels (see [`Item::Image`]).
+    pub fn image(&mut self, pixmap: Arc<tiny_skia::Pixmap>, key: u64, x: f32, y: f32, w: f32, h: f32) {
+        if let Some(rect) = Rect::from_xywh(x, y, w, h) {
+            self.push(Item::Image { pixmap, key, rect });
+        }
+    }
     pub fn push_layer(&mut self, opacity: f32) {
         self.push(Item::PushLayer { opacity });
+    }
+    /// A layer that shows only inside the rect, fading out over `fade` px at its edges.
+    pub fn push_fade_layer(&mut self, x: f32, y: f32, w: f32, h: f32, fade: f32) {
+        if let Some(rect) = Rect::from_xywh(x, y, w.max(0.001), h.max(0.001)) {
+            self.push(Item::PushFadeLayer { rect, fade });
+        }
     }
     pub fn pop_layer(&mut self) {
         self.push(Item::PopLayer);
@@ -411,6 +448,13 @@ impl DisplayList {
                         h.color(*c);
                     }
                 }
+                Item::TextPaint { run, x, y, paint } => {
+                    h.u(18);
+                    h.u(run.key);
+                    h.f(*x);
+                    h.f(*y);
+                    h.paint(paint);
+                }
                 Item::PushClip { rect, radius } => {
                     h.u(13);
                     for v in [rect.left(), rect.top(), rect.width(), rect.height(), *radius] {
@@ -423,6 +467,19 @@ impl DisplayList {
                     h.f(*opacity);
                 }
                 Item::PopLayer => h.u(16),
+                Item::PushFadeLayer { rect, fade } => {
+                    h.u(17);
+                    for v in [rect.left(), rect.top(), rect.width(), rect.height(), *fade] {
+                        h.f(v);
+                    }
+                }
+                Item::Image { key, rect, .. } => {
+                    h.u(18);
+                    h.u(*key);
+                    for v in [rect.left(), rect.top(), rect.width(), rect.height()] {
+                        h.f(v);
+                    }
+                }
             }
         }
         std::hash::Hasher::finish(&h.0)

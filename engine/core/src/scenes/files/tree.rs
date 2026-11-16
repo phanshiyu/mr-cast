@@ -33,7 +33,7 @@ pub enum TreeRow {
 }
 
 impl TreeRow {
-    fn depth(&self) -> usize {
+    pub fn depth(&self) -> usize {
         match self {
             TreeRow::Dir { depth, .. } | TreeRow::File { depth, .. } => *depth,
         }
@@ -60,8 +60,10 @@ pub struct FilesLayout {
     pub rows: Vec<PlacedRow>,
     pub width: f64,
     pub name_x: f64,
+    pub name_w: f64,
     pub counts_x: Option<f64>,
     pub note_x: f64,
+    pub note_w: f64,
     pub max_lines: f64,
     pub height: f64,
     pub scale: f64,
@@ -230,7 +232,21 @@ fn attempt(columns: &[Vec<TreeRow>], total_width: f64, font: f64, counts: bool) 
     }
     let height = heights.iter().copied().fold(0.0, f64::max);
     (
-        FilesLayout { font, row_h, indent, rows, width, name_x, counts_x, note_x, max_lines: 1.0, height, scale: 1.0 },
+        FilesLayout {
+            font,
+            row_h,
+            indent,
+            rows,
+            width,
+            name_x,
+            name_w,
+            counts_x,
+            note_x,
+            note_w,
+            max_lines: 1.0,
+            height,
+            scale: 1.0,
+        },
         height,
     )
 }

@@ -19,6 +19,17 @@ pub struct Camera {
 }
 
 impl Camera {
+    /// Where step k's camera settles.
+    pub fn stop(&self, k: usize) -> f64 {
+        if !self.scrolls {
+            0.0
+        } else if self.stepped {
+            self.stops.get(k).copied().unwrap_or(0.0)
+        } else {
+            self.max_scroll
+        }
+    }
+
     /// How far the messages are scrolled at a frame.
     pub fn scroll_at(&self, frame: f64, segments: &[Segment]) -> f64 {
         if !self.scrolls {

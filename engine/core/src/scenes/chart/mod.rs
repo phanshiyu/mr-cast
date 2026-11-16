@@ -11,15 +11,19 @@ mod column;
 mod layout;
 mod pie;
 mod rows;
+mod targets;
 
-use super::callout::HeaderCallout;
-use super::step_state::{self as state, Focus, Model, SceneState, SetEntry, StateFrame, list, state_frame};
 use super::{Frame, SceneInput, SceneView, parse};
+use crate::camera::Camera;
+use crate::chrome::callout::HeaderCallout;
 use crate::chrome::fittext::{TextOpts, draw_fit, drawn_width};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList};
+use crate::marks::{Board, MarkTargets, StepRefs};
+use crate::states::{BoundModel, FnModel as Model, SceneState, SetEntry, StateFrame, items as list, walk_states};
 use crate::steps::Emphasis;
+use crate::steps::FocusSpotlight as Focus;
 use crate::text::{Face, Style, baseline_in, line_metrics, shape};
 use crate::textfit::Fit;
 use crate::theme::{self, BG, TEXT};
@@ -88,7 +92,7 @@ fn names<'a>(scene: &'a Value, field: &str, key: &str) -> Vec<&'a str> {
         .collect()
 }
 
-fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
+pub fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
     let labels = names(scene, "labels", "");
     let series = names(scene, "series", "name");
     let r = r.as_str()?;
@@ -125,7 +129,7 @@ fn set(scene: &Value, r: &str, value: &Value) -> Option<Vec<SetEntry>> {
         let arr = value.as_array().filter(|a| a.len() == labels.len())?;
         arr.iter().enumerate().map(|(l, v)| (format!("p:{s}/{l}"), v.clone())).collect()
     } else {
-        let keys = state::resolve_ref(&MODEL, scene, &Value::String(r.to_string()))?;
+        let keys = crate::targets::with_fallback(&Value::String(r.to_string()), |r| resolve(scene, r))?;
         match keys.as_slice() {
             [k] if k.starts_with("p:") && !value.is_array() => vec![(k.clone(), value.clone())],
             _ => return None,
@@ -171,10 +175,7 @@ pub fn slice_color(index: usize) -> Color {
     ][index % 8]
 }
 
-/// A colour with its alpha written as two hex digits, as `${color}aa`.
-pub fn hex_alpha(c: Color, a: u32) -> Color {
-    c.alpha(a.min(255) as f32 / 255.0)
-}
+pub use crate::color::hex_alpha;
 
 pub fn label_color() -> Color {
     Color::css("#c9cedb")
@@ -221,8 +222,8 @@ pub fn centred_text(
 
 /// How lit one value is through its label, its series or itself (`emphasisOf` of ChartShapes.tsx).
 pub fn value_emphasis(focus: &Focus, s: usize, i: usize) -> Emphasis {
-    let own = state::brighter(focus.at(&format!("s:{s}")), focus.at(&format!("p:{s}/{i}")));
-    let label = focus.at(&format!("l:{i}"));
+    let own = crate::steps::brighter(focus.emphasis(&format!("s:{s}")), focus.emphasis(&format!("p:{s}/{i}")));
+    let label = focus.emphasis(&format!("l:{i}"));
     Emphasis { glow: own.glow.max(label.glow), opacity: own.opacity.max(label.opacity), ..own }
 }
 
@@ -242,6 +243,9 @@ struct ChartView {
     box_w: f64,
     box_h: f64,
     body: Body,
+    marks: Vec<MarkTargets>,
+    board: Board,
+    camera: Camera,
 }
 
 /// What the body draws with at one frame.
@@ -250,7 +254,7 @@ pub struct Ctx<'a> {
     pub sf: StateFrame<'a>,
     pub before: &'a ChartState,
     pub now: &'a ChartState,
-    pub focus: Focus,
+    pub focus: Focus<'a>,
     pub segments: &'a [crate::timing::Segment],
 }
 
@@ -265,7 +269,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let shell = Shell::new(input.scene);
     let callout = HeaderCallout::new(input.scene);
     let (box_w, box_h) = header_box(input.scene, &shell, callout.is_some());
-    let states = state::scene_states(&MODEL, input.scene);
+    let states = walk_states(&BoundModel { model: &MODEL, scene: input.scene }, input.scene);
     let cstates: Vec<ChartState> = states.iter().map(|s| chart_state_of(&scene, s)).collect();
     let pie = matches!(scene.kind.as_str(), "pie" | "donut");
     let body = if pie {
@@ -275,7 +279,25 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     } else {
         Body::Column(column::Column::new(&scene, box_w, box_h, &cstates))
     };
-    Ok(Box::new(ChartView { shell, raw: input.scene.clone(), scene, states, cstates, callout, box_w, box_h, body }))
+    let marks = targets::step_targets(&scene, &body, &cstates[1..], (box_w, box_h));
+    let refs = crate::targets::SceneRefs(input.scene);
+    let step_refs = StepRefs::Scene(&refs);
+    let board = Board::new(input.scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
+    let camera = Camera::new(input.scene, &step_refs, (box_w, box_h));
+    Ok(Box::new(ChartView {
+        shell,
+        raw: input.scene.clone(),
+        scene,
+        states,
+        cstates,
+        callout,
+        box_w,
+        box_h,
+        body,
+        marks,
+        board,
+        camera,
+    }))
 }
 
 /// A legend: the series names with their colours (`Legend` of ChartShapes.tsx).
@@ -333,14 +355,14 @@ impl Legend {
 impl SceneView for ChartView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
-        let sf = state_frame(&self.states, f.segments, frame);
+        let sf = StateFrame::at(&self.states, f.segments, frame);
         let idx = |s: &SceneState| self.states.iter().position(|x| std::ptr::eq(x, s)).unwrap_or(0);
         let (before, now) = (&self.cstates[idx(sf.before)], &self.cstates[idx(sf.now)]);
         let ctx = Ctx {
             frame,
             before,
             now,
-            focus: Focus::new(&MODEL, &self.raw, f.segments, frame),
+            focus: Focus::new(crate::targets::target_steps(&self.raw), f.segments, frame),
             segments: f.segments,
             sf,
         };
@@ -360,7 +382,7 @@ impl SceneView for ChartView {
         let draw_aside = |dl: &mut DisplayList, right: f32, top: f32| {
             let mut right = right;
             if let Some(c) = &self.callout {
-                c.draw(dl, right - c.width, top + height - c.height, &ctx.sf);
+                c.draw(dl, right, top + height - c.height, &ctx.sf);
                 right -= c.width + 32.0;
             }
             if let Some((l, fits)) = &legend {
@@ -368,10 +390,16 @@ impl SceneView for ChartView {
             }
         };
         let aside = has_aside.then_some(Aside { height, draw: &draw_aside });
-        self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| match &self.body {
-            Body::Column(c) => c.draw(dl, &self.scene, &ctx, self.box_w as f32, self.box_h as f32),
-            Body::Rows(r) => r.draw(dl, &self.scene, &ctx, self.box_w as f32),
-            Body::Pie(p) => p.draw(dl, &self.scene, &ctx, self.box_w as f32),
+        let view = self.camera.view(frame, f.segments, &|k| self.marks.get(k).cloned());
+        self.shell.draw(dl, frame, f.duration, aside, |dl, _bx| {
+            self.camera.draw(dl, view, |dl| {
+                dl.group(|dl| match &self.body {
+                    Body::Column(c) => c.draw(dl, &self.scene, &ctx, self.box_w as f32, self.box_h as f32),
+                    Body::Rows(r) => r.draw(dl, &self.scene, &ctx, self.box_w as f32),
+                    Body::Pie(p) => p.draw(dl, &self.scene, &ctx, self.box_w as f32),
+                });
+                self.board.draw(dl, frame, f.segments, &|_| None);
+            })
         });
     }
 }

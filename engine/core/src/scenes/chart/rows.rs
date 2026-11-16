@@ -47,7 +47,7 @@ impl Rows {
             let top = (layout.top + f.place(l, ctx.sf.t) * layout.row_h) as f32;
             let grow = spring(frame - START - l as f64 * stagger, FPS, Spring::damping(18.0).with_stiffness(110.0));
             let label = &layout.labels[l];
-            let lit = ctx.focus.at(&format!("l:{l}"));
+            let lit = ctx.focus.emphasis(&format!("l:{l}"));
             let row_opacity = (0..scene.series.len())
                 .map(|s| value_emphasis(&ctx.focus, s, l).opacity)
                 .fold(f64::NEG_INFINITY, f64::max);
@@ -129,8 +129,5 @@ impl Rows {
             });
         }
         let _ = box_w;
-        // TODO(marks): PenMarks
-        // TODO(ink): Ink
-        // TODO(camera): the scene's `camera` field
     }
 }

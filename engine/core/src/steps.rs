@@ -92,22 +92,38 @@ pub fn as_bright_as(own: Emphasis, others: &[Emphasis]) -> Emphasis {
 }
 
 /// Emphasis by item key for a scene whose steps take `focus` (`focusSpotlight`); `steps` is `targets::target_steps`.
-pub struct FocusSpotlight {
+pub struct FocusSpotlight<'a> {
     spot: Spotlight,
-    steps: std::collections::HashMap<String, Vec<usize>>,
+    steps: std::borrow::Cow<'a, std::collections::HashMap<String, Vec<usize>>>,
 }
 
-impl FocusSpotlight {
-    pub fn new(
-        steps: std::collections::HashMap<String, Vec<usize>>,
+impl<'a> FocusSpotlight<'a> {
+    /// From the steps that light each key, owned.
+    pub fn new(steps: std::collections::HashMap<String, Vec<usize>>, segments: &[Segment], frame: f64) -> Self {
+        Self::of(std::borrow::Cow::Owned(steps), segments, frame)
+    }
+    /// From the steps that light each key, as a scene keeps them from `prepare`.
+    pub fn borrowed(
+        steps: &'a std::collections::HashMap<String, Vec<usize>>,
         segments: &[Segment],
         frame: f64,
-    ) -> FocusSpotlight {
+    ) -> Self {
+        Self::of(std::borrow::Cow::Borrowed(steps), segments, frame)
+    }
+    fn of(
+        steps: std::borrow::Cow<'a, std::collections::HashMap<String, Vec<usize>>>,
+        segments: &[Segment],
+        frame: f64,
+    ) -> Self {
         let starts: Vec<f64> = segments.iter().skip(1).map(|s| s.from).collect();
         FocusSpotlight { spot: Spotlight::new(frame, &starts), steps }
     }
     pub fn emphasis(&self, key: &str) -> Emphasis {
         self.spot.emphasis(self.steps.get(key).map_or(&[], Vec::as_slice))
+    }
+    /// The steps that light `key`.
+    pub fn steps(&self, key: &str) -> &[usize] {
+        self.steps.get(key).map_or(&[], Vec::as_slice)
     }
 }
 

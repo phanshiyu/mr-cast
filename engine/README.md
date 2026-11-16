@@ -7,11 +7,16 @@ docs/adr/0044-encode-in-the-engine.md).
 engine/
   Cargo.toml             workspace (core, cli); rustfmt.toml: max_width 120
   assets/fonts/          Inter (variable, wght 400-800, opsz 14-32), JetBrains Mono (variable), Caveat 600, as TTF, with OFL texts
+                         and the fallbacks for glyphs they lack, as Chrome falls back per character: Inter and
+                         JetBrains Mono beyond Latin (Greek, Cyrillic, arrows, math), Noto Sans Symbols (variable),
+                         Noto Sans Math and Noto Sans Symbols 2, each subset to its symbol blocks with pyftsubset
   core/                  mrc_core: no threads, files or processes; builds for wasm32-unknown-unknown
-    data/                font-metrics.json and slots.json, written by scripts/engine-dump.mjs from the JS and TS
+    data/                font-metrics.json, slots.json, lucide.json (icons) and world-110m/50m.json (map outlines), written
+                         by scripts/engine-dump.mjs from the JS and TS
     src/
       lib.rs             Project, build_frame, render_frame (and _with/_into variants for reused buffers)
-      model.rs           Props: storyboard (scenes kept as JSON), hunks, voiceover, highlight (syntax colours)
+      model.rs           Props: storyboard (scenes kept as JSON, findings), hunks, voiceover, highlight (syntax colours),
+                         icons (the storyboard's Lucide icons)
       timing.rs          shared/timing.mjs + steps.mjs + voice lookup: segments, durations, spoken_at
       speech.rs, markup.rs   shared/speech.mjs and shared/markup.mjs
       textfit.rs         shared/textfit.mjs over the measured advances: fit_text, fit_text_at, fit_lines, measure, Slot::named
@@ -23,10 +28,18 @@ engine/
       text.rs            fonts, swash shaping (Chrome's wght/opsz/kerning/ligatures), line metrics, baselines
       display.rs         the display list and its builder; svg_path; fingerprint (frame equality)
       raster.rs          tiny-skia for paths, hand-rolled box fills, cached glyph/shadow/glow masks, clips, layers
-      icons.rs           lucide icons as path data
-      chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit), captions, fittext
+      icons.rs           Lucide icons as path data (data/lucide.json)
+      marks/             pen marks and ink: MarkTargets, Board, ref resolution (mod.rs); their geometry (geometry.rs)
+      camera.rs          shared/camera.mjs: Camera, View, frame_shot, tween_view; draws a scene's content through a view
+      states.rs          shared/state-steps.mjs's walk: StateModel (ClosureModel for svg and map), walk_states,
+                         StateFrame (shown, place, tint, changed)
+      targets/           shared/targets.mjs: each type's resolve, step_targets, target_steps
+      chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit, header_box,
+                         HeaderCallout, source line), captions, fittext
       scenes/            mod.rs (registry and contract), one module per scene type, placeholder.rs
+                         media.rs: what image, svg, mermaid and map share (picture downscale, resvg, svg_boxes)
     tests/js_fixtures.rs timing, speech, text fitting, springs and easings against the JS's own outputs
+    tests/marks_geometry.rs  pen and ink geometry against src/utils/penGeometry.ts and inkGeometry.ts
   cli/                   mr-cast-engine: render, still, sheet, probe
     src/encode.rs        repeats, runs of frames per core, rendering and encoding in rounds, yuv420p
     src/h264.rs          OpenH264 (openh264-sys2, built from source): one encoder per run, samples as MP4 wants them
@@ -140,8 +153,10 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
   `Paint::Linear`, `Paint::Radial` (elliptical), `Paint::css_linear(angle, w, h, stops)`, `Paint::vertical`.
 - paths: `path(Path, fill, Some(Stroke::solid(c, w)))`, `Stroke::dashed`, `.rounded()`; `circle`; `display::svg_path(d)`.
 - text: `text(str, Style, x, baseline_y, color)` returns the advance; `run(shape(..), ..)`; `run_glow` for a
-  text-shadow glow.
-- clips: `push_clip(x, y, w, h, radius)`/`pop_clip` (CSS `overflow: hidden`; square clips snap to pixels).
+  text-shadow glow (a transparent colour draws the glow alone, as a halo); `run_paint(run, x, y, Paint)` for
+  gradient-filled text (`background-clip: text`).
+- clips: `push_clip(x, y, w, h, radius)`/`pop_clip` (CSS `overflow: hidden`; square clips snap to pixels);
+  `push_fade_layer(x, y, w, h, fade)`/`pop_layer` for content masked to a rect with soft edges (the camera's view).
 
 ### Helpers that mirror the TSX
 
@@ -156,8 +171,72 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
   `spring(frame - delay, FPS, Spring::damping(18.0).with_stiffness(120.0))`, `spring_full(.., Some(duration))`.
 - Steps: `steps::Spotlight::new(frame, &starts).emphasis(&[k])`, `spotlight_starts`, `current_step`, `step_move`,
   `step_spring`, `timing::build_frames(type)`, `timing::index_range`; `focus::line_focus_ranges` for code refs.
-- Look: `theme::*` colours and `theme::tone(name)`, `icons::draw(dl, "Check", x, y, size, color, stroke_width)`
-  (add icons to `icons.rs` from lucide-react), `color::Color::css("...")` for colours written in the TSX.
+- Look: `theme::*` colours and `theme::tone(name)`, `color::Color::css("...")` for colours written in the TSX.
+- Icons: a component's fixed icon (`<Check/>`) is `icons::draw(dl, "Check", x, y, size, color, stroke_width)`; add
+  it to `icons.rs` from lucide-react. An icon the storyboard names (a node's `icon: "server"`) is
+  `icons::draw_named(dl, name, ...)`, from every Lucide icon in `core/data/lucide.json` (written by
+  `node scripts/engine-dump.mjs icons`), so the props carry no icons.
+- Steps that change what a scene shows (`set`, `show`, `hide`, `tint`, `move`, `callout`, `sort`): implement
+  `states::StateModel` for the type (its MODELS entry in shared/state-steps.mjs: `initial`, `set_prefixes`,
+  `show_prefixes`, `tint_prefixes`, `callout`, `apply_move`, `apply_extra` for trace/morph), call
+  `walk_states(&model, scene)` in `prepare`, and `StateFrame::at(&states, segments, frame)` in `draw` for
+  `before`/`now`/`t`/`lit`, `shown(key)`, `place(key)`, `changed(key)` and `tint(key)` (`TintMix`, `main_tone`,
+  `opacity`, `states::tint_fill`). `scenes/text.rs` (`TextModel`) is the worked example.
+- The header callout (HeaderCallout.tsx): `chrome::shell::HeaderCallout::new(scene)`, drawn as the shell's aside with
+  `.draw(dl, right, top, &state_frame)`; `shell::header_box(scene)` is the content box the TS layouts and camera use.
+
+### Pen marks, ink and the camera
+
+Every scene whose steps take `focus` (and code) gets pen marks (`mark`, `note`, code `token`, review `flag`), ink
+(`draw`, `erase`) and the camera (`camera`) from the same boxes. In the TSX the scene computes
+`targets(k): MarkTargets` and passes it to `SceneShell`'s `camera` and to `<PenMarks>`. In Rust:
+
+1. Refs. Implement `marks::Refs` for the type: `resolve(&Value) -> Option<Vec<String>>` is the type's `resolve` in
+   shared/targets.mjs (item keys such as `"n:api"`, `"b:2"`). Wrap it as `StepRefs::Scene(&refs)`; a code scene uses
+   `StepRefs::Code(&hunk)`, which resolves lines (`ln:<i>`) and text (`tx:<i>:<at>:<len>`). `marks::resolve_ref`
+   adds the "a digit string is an index" fallback.
+2. Targets. In `prepare`, build each step's `MarkTargets` in content-box px, as the TSX's targets give them for step k
+   once it has settled: `boxes` (key, `geometry::Bx`) in the TS map's order, `obstacles` (None for every box),
+   `lines` (points on connectors), `area` (the content box, usually `0, 0, w, h`), `box_of` for keys not listed
+   (code lines), `clip` (where ink shows, if content scrolls), `shifts: true` if the scene scrolls towards the step
+   while it plays. `MarkTargets::new(boxes, area)` covers the common case; a diagram that scales its layout onto the
+   stage (`staged`/`centredStage` in penGeometry.ts) scales its boxes the same way here.
+3. Board. `let board = Board::new(scene, segments, &step_refs, &|k| targets[k].clone(), &|step| ink_of(step))`
+   lays out every mark and ink item once (`ink_of` returns `Some(InkOf { color, label })` for a review flag; `|_| None`
+   elsewhere).
+4. Camera. `let camera = Camera::new(scene, &step_refs, shell::header_box(scene))`.
+5. Draw. Inside the shell's content closure:
+
+```rust
+let view = self.camera.view(frame, f.segments, &|k| self.targets.get(k).cloned().flatten());
+self.shell.draw(dl, frame, f.duration, aside, |dl, bx| {
+    self.camera.draw(dl, view, |dl| {
+        // ... the scene's content ...
+        self.board.draw(dl, frame, f.segments, &|_k| None); // or Some(Pt) per step, while it scrolls
+    });
+});
+```
+
+The board draws last, over the content, inside the camera, so marks zoom and pan with what they mark, as `<PenMarks>`
+inside `<SceneShell camera>` does. Ink that marks parts a later step moves follows them by itself (`follow`); a scene
+that scrolls (code, terminal, sequence) passes the shift instead.
+
+Most scenes need no more than `marks::Pen`, which holds the board and the camera:
+
+```rust
+// prepare: a diagram laid out in its own units, scaled onto the stage as the TSX's `staged`/`centredStage` do
+let marks = Stage::centred(area, (layout.width, layout.height), scale).targets(&my_boxes(&layout), area);
+let pen = Pen::new(scene, segments, &SceneRefs(scene), vec![marks], true, header_box(scene)); // true: every step
+// draw
+self.shell.draw(dl, frame, f.duration, aside, |dl, bx| self.pen.draw(dl, frame, f.segments, |dl| { /* content */ }));
+```
+
+`LayoutBoxes` (boxes, obstacles, lines in layout units) and `Stage { left, top, scale }` port `LayoutBoxes`, `staged`
+and `centredStage` of penGeometry.ts; each scene's `*_boxes` ports its layout's `*Boxes`. `Pen::draw_shifted` takes
+the scroll shift; `Pen::view` and `Pen::draw_at` let a scene draw its content for the view (svg redraws its vectors at
+the zoom, plot samples its lines finer). Every scene type is wired: text, code and flow drive `Board` and `Camera`
+themselves (text measures its parts only when a step marks or draws, as TextCard does; code is the scrolling case),
+the rest go through `Pen`.
 
 ### CSS that needs care
 
@@ -169,7 +248,7 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
 - An `inline-block` with `overflow: hidden` sits on the line with its bottom edge as its baseline.
 - `transform-origin` defaults to the centre; `scale_about` takes it explicitly.
 
-## Porting a scene
+## Checking a new scene type
 
 1. Pick an example that uses the type, such as `examples/primitives/<type>` (any directory with a storyboard.json;
    hunks.json and meta.json are optional, so explanation runs work too).
@@ -191,9 +270,8 @@ without measuring again, or `validate` will pass text that does not fit. The eng
 was measured in Chrome, so a new measurement would have to be checked against `mr-cast still` on the examples; there
 is no `metrics` command because writing a file that matches the old one is not a few lines of work.
 
-## What is not ported yet
+## Known differences from the Remotion version
 
-- `image`, `map`, `mermaid` and `svg` scenes draw a placeholder. Of the ones ported: text steps that `set` new text, number and question
-  gradient fills (solid colour instead), flow steps with real `code` and step icons, code `typing` and output panes,
-  and every scene's pen marks, ink and camera.
-- The source line of pre-read diagrams (`SourceLine` in the old src/Walkthrough.tsx) and images.
+- Handwriting (Caveat) is shaped by swash, where the TS measures notes with a canvas: a note can sit a few pixels off.
+- A glyph none of the bundled fonts has (Inter, JetBrains Mono, Caveat) is drawn from the bundled fallbacks, where
+  Chrome draws it from the system's fonts: on macOS, SF Pro or Apple Symbols, whose glyphs are a little narrower.

@@ -5,24 +5,35 @@ mod layout;
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
+use crate::chrome::callout::header_box;
 use crate::chrome::callout::{aside_height, draw_aside};
 use crate::chrome::fittext::{Align, LineHeight, TextOpts, draw_fit, drawn_width, fit_height};
+use crate::chrome::marks::badge_words;
+use crate::chrome::marks::{
+    EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, draw_pill, emphasis_card, pill,
+};
 use crate::chrome::shell::{Aside, Shell};
 use crate::color::Color;
 use crate::diagram::{bez, skia, strike, trim};
 use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
-use crate::graph_targets::{Focus, as_bright_as, brighter, target_steps};
 use crate::icons;
-use crate::marks::{
-    EMPHASIS, EMPHASIS_GLOW, EMPHASIS_SOFT, badges_of, change_tone, corner_badges, draw_pill, emphasis_card, pill,
-};
+use crate::marks::geometry::{Bx, Pt as MPt};
+use crate::marks::{LayoutBoxes, Pen, Stage, around};
 use crate::steps::Emphasis;
+use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
+use crate::targets::SceneRefs;
+use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in, line_metrics};
 use crate::theme::{
     ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, ADD_BG, BORDER, BORDER_STRONG, DEL, FAINT, MUTED, RAISED, TEXT, content_box,
 };
 use crate::timing::{FPS, build_frames};
-use layout::{ErEntity, ErField, ErLayout, ErRelation, HEADER_H, ROW_H, Side, er_scale, layout_er};
+use layout::{
+    ErEntity, ErField, ErLayout, ErRelation, HEADER_H, ROW_H, Side, er_scale, label_half_height, label_half_width,
+    layout_er,
+};
+
+const BADGE_LIFT: f64 = 15.0;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -57,6 +68,7 @@ struct ErScene {
 }
 
 struct ErView {
+    pen: Pen,
     shell: Shell,
     scene: ErScene,
     layout: ErLayout,
@@ -108,8 +120,13 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             legend.push(c);
         }
     }
-    let scale = er_scale(&layout, content_box(scene.title.is_some()));
+    let box_ = content_box(scene.title.is_some());
+    let scale = er_scale(&layout, box_);
+    let marks = Stage::centred(box_, (layout.width, layout.height), scale).targets(&er_boxes(&layout, &scene), box_);
+    let pen =
+        Pen::new(input.scene, input.segments, &SceneRefs(input.scene), vec![marks], true, header_box(input.scene));
     Ok(Box::new(ErView {
+        pen,
         shell: Shell::new(input.scene),
         targets: target_steps(input.scene),
         scene,
@@ -120,6 +137,41 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         relation_at,
         field_at,
     }))
+}
+
+/// The box of each item a step can focus, in layout units: an entity's card (with its badges), a field's row, a
+/// relation's label or middle. A note keeps off the cards and the labels (`erBoxes`).
+fn er_boxes(layout: &ErLayout, scene: &ErScene) -> LayoutBoxes {
+    let card = |e: &layout::PlacedEntity| {
+        let lift = if badge_words(&scene.entities[e.entity].marks).is_empty() { 0.0 } else { BADGE_LIFT };
+        Bx::new(e.x, e.y - lift, e.w, e.h + lift)
+    };
+    let relation = |r: &layout::RoutedRelation| {
+        let mid = MPt { x: r.mid.x, y: r.mid.y };
+        match scene.relations[r.relation].label.as_deref() {
+            Some(l) => around(mid, 2.0 * label_half_width(l), 2.0 * label_half_height(r.label.as_ref())),
+            None => around(mid, 40.0, 40.0),
+        }
+    };
+    let mut out = LayoutBoxes::default();
+    for e in &layout.entities {
+        out.add(format!("e:{}", scene.entities[e.entity].id), card(e));
+    }
+    for e in &layout.entities {
+        let entity = &scene.entities[e.entity];
+        for k in 0..entity.fields.len() {
+            let y = e.y + HEADER_H + k as f64 * ROW_H + 2.0;
+            out.add(format!("f:{}/{k}", entity.id), Bx::new(e.x + 6.0, y, e.w - 12.0, ROW_H - 4.0));
+        }
+    }
+    for (i, r) in layout.relations.iter().enumerate() {
+        out.add(format!("r:{i}"), relation(r));
+    }
+    let mut obstacles: Vec<Bx> = layout.entities.iter().map(card).collect();
+    obstacles.extend(layout.relations.iter().filter(|r| scene.relations[r.relation].label.is_some()).map(relation));
+    out.obstacles = Some(obstacles);
+    out.lines = layout.relations.iter().flat_map(|r| r.points.iter().map(|p| MPt { x: p.x, y: p.y })).collect();
+    out
 }
 
 fn alpha(c: Color, a: f64) -> Color {
@@ -164,14 +216,14 @@ fn end_mark(dl: &mut DisplayList, end: &layout::RelationEnd, many: bool, color: 
 
 impl ErView {
     fn entity_emphasis(&self, focus: &Focus, id: &str) -> Emphasis {
-        let own = focus.of(&format!("e:{id}"));
+        let own = focus.emphasis(&format!("e:{id}"));
         let mut others: Vec<Emphasis> = Vec::new();
         if let Some(e) = self.scene.entities.iter().find(|e| e.id == id) {
-            others.extend((0..e.fields.len()).map(|k| focus.of(&format!("f:{id}/{k}"))));
+            others.extend((0..e.fields.len()).map(|k| focus.emphasis(&format!("f:{id}/{k}"))));
         }
         for (i, r) in self.scene.relations.iter().enumerate() {
             if r.from == id || r.to == id {
-                others.push(focus.of(&format!("r:{i}")));
+                others.push(focus.emphasis(&format!("r:{i}")));
             }
         }
         as_bright_as(own, &others)
@@ -180,7 +232,7 @@ impl ErView {
     fn relation_emphasis(&self, focus: &Focus, i: usize) -> Emphasis {
         let rel = &self.scene.relations[self.layout.relations[i].relation];
         let ends = brighter(self.entity_emphasis(focus, &rel.from), self.entity_emphasis(focus, &rel.to));
-        brighter(focus.of(&format!("r:{i}")), Emphasis { glow: 0.0, bar: 0.0, ..ends })
+        brighter(focus.emphasis(&format!("r:{i}")), Emphasis { glow: 0.0, bar: 0.0, ..ends })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -335,7 +387,7 @@ impl ErView {
         let g = emphasis.glow as f32;
         let mut style = BoxStyle::fill(match change {
             Some("modified") => crate::display::Paint::vertical(0.0, h, Color::css("#1c2033"), Color::css("#151826")),
-            _ if highlight => emphasis_card(h),
+            _ if highlight => emphasis_card(0.0, h),
             _ => RAISED.into(),
         })
         .radius(18.0);
@@ -399,7 +451,7 @@ impl ErView {
                 );
             }
             for (k, field) in entity.fields.iter().enumerate() {
-                let lit = focus.of(&format!("f:{}/{k}", entity.id)).glow;
+                let lit = focus.emphasis(&format!("f:{}/{k}", entity.id)).glow;
                 self.draw_field(
                     dl,
                     field,
@@ -536,40 +588,40 @@ impl ErView {
 impl SceneView for ErView {
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
-        let focus = Focus::new(&self.targets, f.segments, frame);
+        let focus = Focus::borrowed(&self.targets, f.segments, frame);
         let layout = &self.layout;
         let used: Vec<&str> = self.legend.to_vec();
         let aside_fn = |dl: &mut DisplayList, right: f32, top: f32| draw_aside(dl, &used, None, None, right, top);
         let aside = Aside { height: aside_height(&used, None), draw: &aside_fn };
         self.shell.draw(dl, frame, f.duration, Some(aside), |dl, bx| {
-            let (lw, lh) = (layout.width, layout.height);
-            let draws: Vec<f64> = self
-                .relation_at
-                .iter()
-                .map(|&at| interpolate(frame, &[at, at + RELATION_FRAMES], &[0.0, 1.0], CLAMP))
-                .collect();
-            dl.group(|dl| {
-                dl.translate((bx.w - lw as f32) / 2.0, (bx.h - lh as f32) / 2.0);
-                dl.scale_about(self.scale as f32, (lw / 2.0) as f32, (lh / 2.0) as f32);
-                for (i, &draw) in draws.iter().enumerate() {
-                    self.draw_relation(dl, i, draw, self.relation_emphasis(&focus, i));
-                }
-                for i in 0..layout.entities.len() {
-                    self.draw_card(dl, i, f, &focus);
-                }
-                for (i, &draw) in draws.iter().enumerate() {
-                    if layout.relations[i].label.is_some() {
-                        self.draw_label(
-                            dl,
-                            i,
-                            interpolate(draw, &[0.6, 1.0], &[0.0, 1.0], CLAMP),
-                            self.relation_emphasis(&focus, i),
-                        );
+            self.pen.draw(dl, frame, f.segments, |dl| {
+                let (lw, lh) = (layout.width, layout.height);
+                let draws: Vec<f64> = self
+                    .relation_at
+                    .iter()
+                    .map(|&at| interpolate(frame, &[at, at + RELATION_FRAMES], &[0.0, 1.0], CLAMP))
+                    .collect();
+                dl.group(|dl| {
+                    dl.translate((bx.w - lw as f32) / 2.0, (bx.h - lh as f32) / 2.0);
+                    dl.scale_about(self.scale as f32, (lw / 2.0) as f32, (lh / 2.0) as f32);
+                    for (i, &draw) in draws.iter().enumerate() {
+                        self.draw_relation(dl, i, draw, self.relation_emphasis(&focus, i));
                     }
-                }
-            });
-            // TODO(marks): PenMarks.
-            // TODO(camera): the scene's generic `camera` field.
+                    for i in 0..layout.entities.len() {
+                        self.draw_card(dl, i, f, &focus);
+                    }
+                    for (i, &draw) in draws.iter().enumerate() {
+                        if layout.relations[i].label.is_some() {
+                            self.draw_label(
+                                dl,
+                                i,
+                                interpolate(draw, &[0.6, 1.0], &[0.0, 1.0], CLAMP),
+                                self.relation_emphasis(&focus, i),
+                            );
+                        }
+                    }
+                });
+            })
         });
     }
 }

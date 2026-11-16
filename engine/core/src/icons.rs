@@ -67,7 +67,7 @@ fn source(name: &str) -> &'static [&'static str] {
     }
 }
 
-/// Icons without hand-copied paths: those in data/lucide.json (scripts/engine-icons.mjs), by component name.
+/// Icons without hand-copied paths: those in data/lucide.json (`node scripts/engine-dump.mjs icons`), by component name.
 fn extra(name: &str) -> &'static [String] {
     #[derive(serde::Deserialize)]
     struct Lucide {

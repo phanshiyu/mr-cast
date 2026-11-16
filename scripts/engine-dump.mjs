@@ -34,6 +34,8 @@ async function load() {
     bundle: true,
     format: 'esm',
     platform: 'node',
+    // Packages load from node_modules as they are; bundled, their CommonJS cannot require Node's built-ins or React.
+    packages: 'external',
     write: false,
     logLevel: 'error',
   });
@@ -52,6 +54,15 @@ const write = (file, value) => {
   console.log(path.relative(process.cwd(), file));
 };
 
+/** The run's images.json, each copy's file made absolute so the engine finds it from any directory. */
+function readImages(dir) {
+  const file = path.join(dir, 'images.json');
+  if (!fs.existsSync(file)) return {};
+  const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+  for (const entry of Object.values(manifest)) entry.file = path.resolve(dir, entry.file);
+  return manifest;
+}
+
 async function props(m, dir, out) {
   // An explanation run may have no hunks.json; it then shows no code.
   const hunksFile = path.join(dir, 'hunks.json');
@@ -59,10 +70,10 @@ async function props(m, dir, out) {
   const raw = m.parseStoryboard(fs.readFileSync(path.join(dir, 'storyboard.json'), 'utf8'));
   const storyboard = m.normalizeStoryboard(raw, hunks);
   const highlight = m.syntaxColours(storyboard, hunks);
-  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: {}, highlight });
+  write(out, { storyboard, hunks, showCaptions: true, voiceover: null, images: readImages(dir), highlight });
 }
 
-function data(m) {
+async function data(m) {
   const dir = path.join(REPO, 'engine/core/data');
   const { MEASURED_CHARS, MEASURED_SIZES, MEASURED_WEIGHTS, ADVANCES, KERNING } = m.metrics;
   write(path.join(dir, 'font-metrics.json'), {
@@ -73,6 +84,9 @@ function data(m) {
     kerning: KERNING,
   });
   write(path.join(dir, 'slots.json'), m.SLOTS);
+  // The map scene's country outlines, as shared/world keeps them.
+  for (const scale of ['110m', '50m'])
+    write(path.join(dir, `world-${scale}.json`), (await import(`../shared/world/ne-${scale}.mjs`)).default);
 }
 
 /** Every storyboard in examples/, for timing fixtures. */
@@ -201,7 +215,8 @@ function fixtures(m) {
     phrases.map((text) => ({ text, spoken: m.speechText(text) })),
   );
 
-  // anim.json, the springs and easings the engine's animation follows, is no longer regenerated; it stays as recorded.
+  // anim.json and marks.json, recorded from Remotion's springs and the TypeScript pen and ink geometry before both
+  // were removed, stay as recorded; the engine's tests compare against them.
 }
 
 /** An icon element as SVG path data, so the engine draws every Lucide icon with one primitive. */
@@ -270,7 +285,7 @@ function icons() {
 const [cmd, ...args] = process.argv.slice(2);
 const m = await load();
 if (cmd === 'props' && args.length === 2) await props(m, path.resolve(args[0]), path.resolve(args[1]));
-else if (cmd === 'data') data(m);
+else if (cmd === 'data') await data(m);
 else if (cmd === 'fixtures') fixtures(m);
 else if (cmd === 'icons') icons();
 else {

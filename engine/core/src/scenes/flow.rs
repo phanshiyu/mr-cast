@@ -1,8 +1,5 @@
 //! The flow scene: a request's steps in a rail at the left, a strip naming who acts now and next, and a card with
 //! each step's payload or action. A port of src/components/DataFlow.tsx and src/utils/flowLayout.ts.
-//!
-//! Not ported yet: steps with real `code` (shared/flow-code.mjs) draw their action as a headline, and step
-//! icons and tones are left out.
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, interpolate, spring};
@@ -11,17 +8,20 @@ use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Shadow};
 use crate::icons;
-use crate::model::TokenLine;
+use crate::model::{Hunk, HunkStatus, LineType, TokenLine};
 use crate::steps::spotlight_starts;
 use crate::text::{Face, Style, baseline_in, line_metrics, width};
 use crate::textfit::{Fit, Slot, fit_lines, fit_text};
+use crate::theme;
 use crate::theme::{
     ACCENT, ACCENT_GLOW, ACCENT_SOFT, BORDER, BORDER_STRONG, FAINT, MUTED, RAISED, SURFACE, TEXT, content_box,
 };
-use crate::timing::{FPS, build_frames};
+use crate::timing::{FPS, build_frames, js_round};
 use serde::Deserialize;
+use serde_json::Value;
 
 const LIST_W: f64 = 600.0;
+const CODE_LIST_W: f64 = 420.0;
 const COLUMN_GAP: f32 = 56.0;
 const STRIP_H: f32 = 76.0;
 const STRIP_GAP: f32 = 20.0;
@@ -41,6 +41,17 @@ struct FlowStep {
     action: String,
     payload: Option<String>,
     icon: Option<String>,
+    tone: Option<String>,
+    code: Option<StageCode>,
+}
+
+/// A stage's real code: lines of a hunk or snippet, some lit (shared/flow-code.mjs).
+#[derive(Deserialize)]
+struct StageCode {
+    hunk: Option<String>,
+    snippet: Option<String>,
+    lines: Option<Value>,
+    light: Option<Value>,
 }
 
 #[derive(Deserialize)]
@@ -50,14 +61,107 @@ struct FlowScene {
 }
 
 enum Card {
-    Payload { lines: Fit, tokens: Vec<TokenLine> },
+    Payload {
+        lines: Fit,
+        tokens: Vec<TokenLine>,
+    },
     Headline(Fit),
+    /// Real lines of the diff: the hunk, its rows (hunk line index, lit), whether any is lit, its tokens and the fit.
+    Code {
+        hunk: Box<Hunk>,
+        rows: Vec<(usize, bool)>,
+        light: bool,
+        tokens: Vec<TokenLine>,
+        lines: Fit,
+        where_: String,
+    },
+}
+
+/// "47-60" or 47 as [first, last] (`parseSpan`).
+fn parse_span(r: Option<&Value>) -> Option<(i64, i64)> {
+    let r = r?;
+    if let Some(n) = r.as_i64() {
+        return (n > 0).then_some((n, n));
+    }
+    let t = r.as_str()?.trim();
+    let (a, b) = match t.split_once('-') {
+        Some((a, b)) => (a.trim().parse().ok()?, b.trim().parse().ok()?),
+        None => {
+            let n: i64 = t.parse().ok()?;
+            (n, n)
+        }
+    };
+    (a >= 1 && a <= b).then_some((a, b))
+}
+
+/// The rows a stage's `code` shows, each lit or not, and the first line's number (`codeRows`); None for a problem.
+fn code_rows(hunk: &Hunk, code: &StageCode) -> Option<(Vec<(usize, bool)>, i64)> {
+    let number = |l: &crate::model::DiffLine| if hunk.status == HunkStatus::Deleted { l.old_line } else { l.new_line };
+    let (a, b) = parse_span(code.lines.as_ref())?;
+    let nums: Vec<i64> = hunk.lines.iter().filter_map(number).collect();
+    let (lo, hi) = (*nums.iter().min()?, *nums.iter().max()?);
+    if a < lo || b > hi {
+        return None;
+    }
+    let picked: Vec<usize> = hunk
+        .lines
+        .iter()
+        .enumerate()
+        .filter(|(_, l)| number(l).is_some_and(|n| n >= a && n <= b))
+        .map(|(i, _)| i)
+        .collect();
+    let (&from, &to) = (picked.first()?, picked.last()?);
+    let mut rows: Vec<(usize, bool)> = (from..=to).map(|i| (i, false)).collect();
+    if code.light.is_some() {
+        let (la, lb) = parse_span(code.light.as_ref())?;
+        let mut any = false;
+        for row in &mut rows {
+            if number(&hunk.lines[row.0]).is_some_and(|n| n >= la && n <= lb) {
+                row.1 = true;
+                any = true;
+            }
+        }
+        if !any {
+            return None;
+        }
+    }
+    Some((rows, number(&hunk.lines[from])?))
+}
+
+const CODE_BAR_H: f32 = 64.0;
+const CODE_PAD: f32 = 24.0;
+
+fn code_card(code: &StageCode, input: &SceneInput, width: f64, height: f64) -> Option<Card> {
+    let id = code.hunk.as_ref().or(code.snippet.as_ref())?;
+    let hunk = input.props.hunks.get(id)?;
+    let (rows, first) = code_rows(hunk, code)?;
+    let column = width - 2.0 * CODE_PAD as f64 - 92.0;
+    let room = height - CODE_BAR_H as f64 - 2.0 * CODE_PAD as f64;
+    let texts: Vec<String> = rows.iter().map(|r| hunk.lines[r.0].text.replace('\t', "  ")).collect();
+    let plain = input.props.highlight.plain.clone().unwrap_or_else(|| "#abb2bf".into());
+    let tokens = input
+        .props
+        .highlight
+        .hunks
+        .get(id)
+        .cloned()
+        .unwrap_or_else(|| hunk.lines.iter().map(|l| vec![(l.text.clone(), plain.clone())]).collect());
+    Some(Card::Code {
+        light: rows.iter().any(|r| r.1),
+        where_: format!("{}:{first}", hunk.file),
+        lines: fit_lines(&texts, &Slot::named("flowCode", column), room),
+        hunk: Box::new(hunk.clone()),
+        rows,
+        tokens,
+    })
 }
 
 struct Row {
     actor: Fit,
     action: Fit,
     idle: Fit,
+    /// A code stage's `path:line` under its action.
+    where_: Option<Fit>,
 }
 
 struct FlowView {
@@ -114,11 +218,13 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let (bw, bh) = content_box(scene.title.is_some());
     let n = scene.steps.len() as f64;
     let step_h = 170f64.min(bh / n);
-    let panel_w = bw - LIST_W - COLUMN_GAP as f64;
+    // A flow with real code narrows its rail, so the code panel has room for long lines.
+    let list_w = if scene.steps.iter().any(|s| s.code.is_some()) { CODE_LIST_W } else { LIST_W };
+    let panel_w = bw - list_w - COLUMN_GAP as f64;
     let card_h = bh - STRIP_H as f64 - STRIP_GAP as f64;
-    let text_w = LIST_W - BADGE;
+    let text_w = list_w - BADGE;
     let lines = if step_h >= 150.0 { 2 } else { 1 };
-    let rows = scene
+    let rows: Vec<Row> = scene
         .steps
         .iter()
         .map(|s| {
@@ -134,19 +240,49 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
                 ),
                 action: fit_text(&s.action, &action),
                 idle: fit_text(&s.action, &idle),
+                where_: None,
             }
         })
         .collect();
     let strip =
         scene.steps.iter().map(|s| fit_text(&s.actor, &Slot::named("flowStrip", panel_w * STRIP_SHARE))).collect();
-    let cards = scene.steps.iter().map(|s| card(&s.action, s.payload.as_deref(), input, panel_w, card_h)).collect();
+    let cards: Vec<Card> = scene
+        .steps
+        .iter()
+        .map(|s| {
+            s.code
+                .as_ref()
+                .and_then(|c| code_card(c, input, panel_w, card_h))
+                .unwrap_or_else(|| card(&s.action, s.payload.as_deref(), input, panel_w, card_h))
+        })
+        .collect();
+    // The rail's `path:line` of a code stage, with directories dropped from its front while it is too wide.
+    let wheres: Vec<Option<Fit>> = cards
+        .iter()
+        .map(|c| {
+            let Card::Code { where_, .. } = c else { return None };
+            let slot = Slot::named("flowWhere", text_w);
+            let parts: Vec<&str> = where_.split('/').collect();
+            let mut fit = fit_text(where_, &slot);
+            let mut from = 1;
+            while !fit.fits && from < parts.len() {
+                fit = fit_text(&parts[from..].join("/"), &slot);
+                from += 1;
+            }
+            Some(fit)
+        })
+        .collect();
+    let mut rows: Vec<Row> = rows;
+    for (r, w) in rows.iter_mut().zip(wheres) {
+        r.where_ = w;
+    }
     let intro_text = scene.title.clone().unwrap_or_else(|| format!("{} steps", scene.steps.len()));
     let intro = card(&intro_text, None, input, panel_w, card_h);
     Ok(Box::new(FlowView {
         shell: Shell::new(input.scene),
         steps: scene.steps,
         step_h: step_h as f32,
-        list_w: LIST_W as f32,
+        list_w: list_w as f32,
         panel_w: panel_w as f32,
         card_h: card_h as f32,
         rows,
@@ -208,20 +344,89 @@ impl FlowView {
             let size = row.actor.size as f32;
             let chip_line = line_metrics(Face::Mono, size).normal;
             let chip_h = chip_line + 6.0;
-            let chip_w = drawn_width(&row.actor, &row.actor.lines[0], None) + 24.0;
-            let bg = if active { ACCENT_SOFT } else { Color::rgba8(255, 255, 255, 0.05) };
+            let step = &self.steps[i];
+            let icon = step.icon.as_deref().filter(|n| icons::has_lucide(n));
+            let chip_w =
+                drawn_width(&row.actor, &row.actor.lines[0], None) + 24.0 + if icon.is_some() { 27.0 } else { 0.0 };
+            let tone = step.tone.as_deref().map(theme::tone);
+            let ink = tone.map_or(if active { ACCENT } else { MUTED }, |t| t.0);
+            let bg = tone.map_or(if active { ACCENT_SOFT } else { Color::rgba8(255, 255, 255, 0.05) }, |t| t.1);
             dl.rect(x, top, chip_w, chip_h, BoxStyle::fill(bg).radius(8.0));
-            draw_fit(dl, &row.actor, x + 12.0, top + 3.0, TextOpts::new(if active { ACCENT } else { MUTED }).normal());
+            let mut tx = x + 12.0;
+            if let Some(name) = icon {
+                // An inline-block 19px icon, `vertical-align: -3px`: its bottom 3px under the baseline.
+                let base = top + 3.0 + baseline_in(Face::Mono, size, chip_line);
+                icons::draw_named(dl, name, tx, base + 3.0 - 19.0, 19.0, ink, 2.2);
+                tx += 27.0;
+            }
+            draw_fit(dl, &row.actor, tx, top + 3.0, TextOpts::new(ink).normal());
             // The chip's bottom edge is its baseline, on the line of the column's 16px text.
             let strut = line_metrics(Face::Sans, 16.0);
             let line_h = chip_h.max(strut.ascent) + strut.descent;
             let fit = if active { &row.action } else { &row.idle };
-            draw_fit(dl, fit, x, top + line_h + 6.0, TextOpts::new(TEXT));
+            let h = draw_fit(dl, fit, x, top + line_h + 6.0, TextOpts::new(TEXT));
+            if let Some(w) = &row.where_ {
+                draw_fit(dl, w, x, top + line_h + 6.0 + h + 4.0, TextOpts::new(MUTED));
+            }
         });
     }
 
     fn payload(&self, dl: &mut DisplayList, card: &Card, w: f32, h: f32) {
         match card {
+            Card::Code { hunk, rows, light, tokens, lines, .. } => {
+                // The file bar, then each line in the code scene's own colours, unlit lines dimmed.
+                let bar = Style::mono(600.0, 22.0);
+                let m22 = line_metrics(Face::Mono, 22.0).normal;
+                dl.fill_rect(CODE_PAD, CODE_BAR_H - 1.0, w - 2.0 * CODE_PAD, 1.0, BORDER);
+                dl.text(
+                    &hunk.file,
+                    bar,
+                    CODE_PAD + 6.0,
+                    (CODE_BAR_H - 1.0 - m22) / 2.0 + baseline_in(Face::Mono, 22.0, m22),
+                    TEXT,
+                );
+                let size = lines.size as f32;
+                let row_h = size * lines.line_height as f32;
+                let st = Style::mono(400.0, size);
+                let small = js_round(size as f64 * 0.85) as f32;
+                let mut y = CODE_BAR_H + CODE_PAD;
+                for &(i, lit) in rows {
+                    let line = &hunk.lines[i];
+                    dl.group(|dl| {
+                        dl.fade(if *light && !lit { 0.45 } else { 1.0 });
+                        let bg = match line.kind {
+                            LineType::Add => theme::ADD_BG,
+                            LineType::Del => theme::DEL_BG,
+                            LineType::Context => Color::TRANSPARENT,
+                        };
+                        dl.fill_rect(CODE_PAD, y, w - 2.0 * CODE_PAD, row_h, bg);
+                        if lit {
+                            dl.fill_rect(CODE_PAD, y, 4.0, row_h, ACCENT);
+                        }
+                        let center = |face: Face, sz: f32| {
+                            let m = line_metrics(face, sz);
+                            y + (row_h - m.normal) / 2.0 + m.ascent
+                        };
+                        if let Some(n) = line.new_line.or(line.old_line) {
+                            let t = n.to_string();
+                            let sst = Style::mono(400.0, small);
+                            dl.text(&t, sst, CODE_PAD + 66.0 - 14.0 - width(&t, sst), center(Face::Mono, small), FAINT);
+                        }
+                        let (sign, sc) = match line.kind {
+                            LineType::Add => ("+", theme::ADD),
+                            LineType::Del => ("−", theme::DEL),
+                            LineType::Context => (" ", FAINT),
+                        };
+                        dl.text(sign, Style::mono(700.0, size), CODE_PAD + 66.0, center(Face::Mono, size), sc);
+                        let mut pen = CODE_PAD + 92.0;
+                        let base = center(Face::Mono, size);
+                        for (text, color) in tokens.get(i).map_or(&[][..], |t| &t[..]) {
+                            pen += dl.text(&text.replace('\t', "  "), st, pen, base, Color::css(color));
+                        }
+                    });
+                    y += row_h;
+                }
+            }
             Card::Headline(fit) => {
                 let fh = fit_height(fit, LineHeight::Fit);
                 draw_fit(

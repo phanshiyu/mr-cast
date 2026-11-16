@@ -95,6 +95,11 @@ fn parse(s: &str) -> Option<Color> {
     }
 }
 
+/// A colour with its alpha written as two hex digits, as `${color}aa` in the TSX.
+pub fn hex_alpha(c: Color, a: u32) -> Color {
+    c.alpha(a.min(255) as f32 / 255.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::Color;

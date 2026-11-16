@@ -26,6 +26,17 @@ pub fn js_round(x: f64) -> f64 {
     (x + 0.5).floor()
 }
 
+/// JS `String(n)` for a number: whole numbers without a fraction, and -0 as "0".
+pub fn js_num(v: f64) -> String {
+    if v == 0.0 {
+        "0".into()
+    } else if v.fract() == 0.0 && v.abs() < 9e15 {
+        format!("{}", v as i64)
+    } else {
+        v.to_string()
+    }
+}
+
 fn build_seconds(ty: &str) -> f64 {
     match ty {
         "graph" | "sequence" | "er" | "state" | "table" | "timeline" | "layers" | "files" | "review" | "reading"
@@ -241,4 +252,45 @@ pub fn timeline(scenes: &[Value], voiceover: Option<&Voiceover>) -> Vec<TimedSce
             t
         })
         .collect()
+}
+
+/// A spoken text's words, lower case without punctuation, each with its index among the text's words.
+fn cue_tokens(text: &str) -> Vec<(String, usize)> {
+    text.split_whitespace()
+        .enumerate()
+        .map(|(i, w)| (w.to_lowercase().chars().filter(|c| c.is_alphanumeric()).collect::<String>(), i))
+        .filter(|(w, _)| !w.is_empty())
+        .collect()
+}
+
+/// Where `cue` starts among the words of a spoken `text`, as the index of its first word (`cueWord`).
+pub fn cue_word(text: &str, cue: &str) -> Option<usize> {
+    let said = cue_tokens(text);
+    let want: Vec<String> = cue_tokens(&speech_text(&plain_text(cue))).into_iter().map(|t| t.0).collect();
+    if want.is_empty() || want.len() > said.len() {
+        return None;
+    }
+    (0..=said.len() - want.len())
+        .find(|&i| want.iter().enumerate().all(|(j, w)| &said[i + j].0 == w))
+        .map(|i| said[i].1)
+}
+
+fn word_start(seg: &Segment, index: usize) -> f64 {
+    let words = word_count(&seg.text);
+    if let Some(sentences) = sentences_match(seg, words) {
+        let mut before = 0;
+        for s in sentences {
+            if index < before + s.words {
+                return s.start + ((index - before) as f64 / s.words as f64) * (s.end - s.start);
+            }
+            before += s.words;
+        }
+    }
+    if words > 0 { (index as f64 / words as f64) * (seg.speaking_frames / FPS) } else { 0.0 }
+}
+
+/// Frame, from the scene's start, at which a segment's voice says `cue`, less a short lead (`cueFrame`).
+pub fn cue_frame(seg: &Segment, cue: &str) -> Option<f64> {
+    let index = cue_word(&seg.text, cue)?;
+    Some(seg.mark_from.max(seg.voice_from + js_round(word_start(seg, index) * FPS) - 3.0))
 }

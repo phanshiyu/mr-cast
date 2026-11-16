@@ -7,12 +7,16 @@
 
 use super::{Frame, SceneInput, SceneView, parse};
 use crate::anim::{CLAMP, Spring, clamped, interpolate, spring};
+use crate::camera::Camera;
+use crate::chrome::callout::header_box;
 use crate::chrome::fittext::{LineHeight, TextOpts, draw_fit, fit_height};
 use crate::chrome::shell::Shell;
 use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
 use crate::focus::line_focus_ranges;
 use crate::icons;
+use crate::marks::geometry::{Bx, Pt, union};
+use crate::marks::{Board, BoxOf, InkOf, MarkTargets, StepRefs, token_hits};
 use crate::model::{Hunk, HunkStatus, LineType, TokenLine};
 use crate::steps::step_move;
 use crate::text::{Face, Style, line_metrics, width};
@@ -22,8 +26,11 @@ use crate::theme::{
     TEXT, WARN, code_columns, content_box,
 };
 use crate::timing::{FPS, js_round};
+use crate::timing::{Segment, cue_frame};
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 const STEP_FADE: f64 = 14.0;
 const VISITED_OPACITY: f64 = 0.6;
@@ -57,9 +64,12 @@ const ARROW_GAPS: [f64; 2] = [42.0, 26.0];
 const OUTCOME_GAP: f64 = 8.0;
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CodeStep {
     label: Option<String>,
     outcome: Option<String>,
+    output: Option<String>,
+    output_when: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -71,6 +81,9 @@ struct CodeScene {
     view: Option<String>,
     flow: Option<Vec<CodeStep>>,
     callout_text: Option<String>,
+    #[serde(default)]
+    typing: bool,
+    output_title: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -145,6 +158,125 @@ struct CodeView {
     diagram_top: f32,
     /// Index of the last step that names only old lines, if any.
     last_old: Option<usize>,
+    /// When each typed row types, for a typing scene.
+    typing: Option<Typing>,
+    output: Option<OutputPane>,
+    /// The scroll stop of each step, planned on the settled layout.
+    stops: Vec<f32>,
+    /// Pen marks and ink, the camera, and the pen's boxes for each step.
+    board: Option<Board>,
+    camera: Option<Camera>,
+    marks: Vec<Option<MarkTargets>>,
+    /// The step currently at each step's top row is in `slots`; its first row.
+    first_row: Vec<Option<usize>>,
+}
+
+/// When each row of a typing scene types (`TypingSchedule` of src/utils/codeTyping.ts).
+struct Typing {
+    /// By row: the frame its first character appears, how many it types and how fast; None for a line already there.
+    lines: Vec<Option<(f64, usize, f64)>>,
+    /// By step: the frame its typing ends.
+    ends: Vec<f64>,
+}
+
+const TYPE_FASTEST: f64 = 3.0;
+const TYPE_SLOWEST: f64 = 0.6;
+const TYPED_BY: f64 = 0.8;
+
+fn indent_of(text: &str) -> usize {
+    text.chars().count() - text.trim_start().chars().count()
+}
+
+/// `typingSchedule`.
+fn typing_schedule(
+    texts: &[String],
+    slots: &[Slot2],
+    step_count: usize,
+    segments: &[Segment],
+    duration: f64,
+) -> Typing {
+    let mut lines = vec![None; slots.len()];
+    let mut ends = Vec::new();
+    for k in 0..step_count {
+        let own: Vec<usize> = slots.iter().enumerate().filter(|(_, s)| s.step == Some(k)).map(|(r, _)| r).collect();
+        let Some(seg) = segments.get(k + 1).filter(|_| !own.is_empty()) else {
+            ends.push(segments.get(k + 1).map_or(0.0, |s| s.from));
+            continue;
+        };
+        let start = seg.from + 4.0;
+        let next = segments.get(k + 2).map_or(duration, |s| s.from);
+        let chars: usize = own.iter().map(|&r| texts[r].trim_start().chars().count()).sum();
+        let window = 10f64.max(seg.voice_from + seg.speaking_frames * TYPED_BY - start);
+        let frames =
+            window.max(chars as f64 / TYPE_FASTEST).min(chars as f64 / TYPE_SLOWEST).min(1f64.max(next - 6.0 - start));
+        let per = (chars as f64 / frames.max(1.0)).max(1e-6);
+        let mut at = start;
+        for &r in &own {
+            let n = texts[r].trim_start().chars().count();
+            lines[r] = Some((at, n, per));
+            at += n as f64 / per;
+        }
+        ends.push(at);
+    }
+    Typing { lines, ends }
+}
+
+impl Typing {
+    /// The row the cursor sits on at `frame`, and whether it is typing (true) or resting there (`cursorAt`).
+    fn cursor(&self, frame: f64) -> Option<(usize, bool)> {
+        let mut best = None;
+        for (r, l) in self.lines.iter().enumerate() {
+            if let Some((from, chars, per)) = l
+                && frame >= *from
+            {
+                best = Some((r, frame < from + *chars as f64 / per));
+            }
+        }
+        best
+    }
+}
+
+const OUTPUT_CHROME_H: f32 = 46.0;
+const OUTPUT_PAD: (f32, f32) = (24.0, 18.0);
+const OUTPUT_GAP: f64 = 40.0;
+const OUTPUT_CODE_SHARE: f64 = 0.58;
+const OUTPUT_FONT: f64 = 22.0;
+const OUTPUT_LINE_GAP: f64 = 4.0;
+
+/// The terminal-like pane steps print into (`OutputPaneLayout` and `OutputPane`).
+struct OutputPane {
+    x: f32,
+    width: f32,
+    title: Fit,
+    lines: Vec<(usize, Fit, f32, f32)>,
+    /// When each step's output starts printing.
+    starts: Vec<f64>,
+}
+
+fn layout_output(steps: &[CodeStep], title: Option<&str>, x: f64, width: f64) -> OutputPane {
+    let row_h = js_round(OUTPUT_FONT * 1.5);
+    let inner = width - 2.0 * OUTPUT_PAD.0 as f64;
+    let mut y = OUTPUT_PAD.1 as f64;
+    let mut lines = Vec::new();
+    for (k, step) in steps.iter().enumerate() {
+        let Some(out) = &step.output else { continue };
+        for raw in out.split('\n') {
+            let mut slot = Slot::named("terminalOutput", inner);
+            slot.size = OUTPUT_FONT;
+            slot.min = OUTPUT_FONT;
+            let fit = fit_text(raw.replace('\t', "  ").trim_end(), &slot);
+            let h = fit.lines.len().max(1) as f64 * row_h;
+            lines.push((k, fit, y as f32, h as f32));
+            y += h;
+        }
+    }
+    OutputPane {
+        x: x as f32,
+        width: width as f32,
+        title: fit_text(title.unwrap_or("Output"), &Slot::named("terminalWindow", width - 140.0)),
+        lines,
+        starts: Vec::new(),
+    }
 }
 
 /// Pairs each run of deletions with the run of additions after it, GitHub style (`splitRows`).
@@ -185,11 +317,15 @@ fn default_view(hunk: &Hunk, scene: &Value) -> View {
     if paired > 0 && 2 * paired >= focused.len() { View::Split } else { View::Morph }
 }
 
-fn crop_slots(hunk: &Hunk, view: View, scene: &Value, stepped: usize) -> (Vec<Slot2>, usize) {
+fn crop_slots(hunk: &Hunk, view: View, scene: &Value, stepped: usize, typing: bool) -> (Vec<Slot2>, usize) {
     let range_of = line_focus_ranges(scene, hunk);
+    // Typing writes the new code, so removed lines are not drawn.
     let rows: Vec<(Option<usize>, Option<usize>)> = match view {
         View::Split => split_rows(hunk),
-        View::Morph => (0..hunk.lines.len()).map(|i| (Some(i), Some(i))).collect(),
+        View::Morph => (0..hunk.lines.len())
+            .filter(|&i| !(typing && hunk.lines[i].kind == LineType::Del))
+            .map(|i| (Some(i), Some(i)))
+            .collect(),
     };
     let mut order: Vec<usize> = Vec::new();
     let slots: Vec<Slot2> = rows
@@ -323,7 +459,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     } else {
         scene.flow.as_ref().filter(|f| !f.is_empty()).map(|f| f.iter().collect())
     };
-    let view = if hunk.status == HunkStatus::Source {
+    let view = if hunk.status == HunkStatus::Source || scene.typing {
         View::Morph
     } else {
         match scene.view.as_deref() {
@@ -333,12 +469,13 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             _ => default_view(&hunk, raw),
         }
     };
-    let (slots, step_count) = crop_slots(&hunk, view, raw, scene.steps.len());
+    let (slots, step_count) = crop_slots(&hunk, view, raw, scene.steps.len(), scene.typing);
     let callout_text = scene.callout_text.as_deref().map(str::trim).filter(|t| !t.is_empty());
+    let printing = flow.is_none() && scene.steps.iter().any(|s| s.output.is_some());
     let at = callout_text.map(|_| {
         if flow.is_some() {
             CalloutAt::Flow
-        } else if view == View::Morph {
+        } else if view == View::Morph && !printing {
             CalloutAt::Beside
         } else {
             CalloutAt::Below
@@ -346,6 +483,8 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     });
     let panel_w = if flow.is_some() {
         js_round(bw * FLOW_CODE_SHARE)
+    } else if printing {
+        js_round(bw * OUTPUT_CODE_SHARE)
     } else if at == Some(CalloutAt::Beside) {
         bw - CALLOUT_W as f64 - CALLOUT_GAP as f64
     } else {
@@ -413,7 +552,38 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         .get(&hunk.id)
         .cloned()
         .unwrap_or_else(|| hunk.lines.iter().map(|l| vec![(l.text.clone(), plain.clone())]).collect());
-    Ok(Box::new(CodeView {
+    let typing = (scene.typing && stepped).then(|| {
+        let texts: Vec<String> = slots.iter().map(|sl| hunk.lines[sl.left.unwrap_or(0)].text.clone()).collect();
+        typing_schedule(&texts, &slots, step_count, input.segments, input.duration)
+    });
+    let output = printing.then(|| {
+        let mut o =
+            layout_output(&scene.steps, scene.output_title.as_deref(), panel_w + OUTPUT_GAP, bw - panel_w - OUTPUT_GAP);
+        o.starts = scene
+            .steps
+            .iter()
+            .enumerate()
+            .map(|(k, st)| {
+                let Some(seg) = input.segments.get(k + 1) else { return f64::INFINITY };
+                if let Some(c) = st.output_when.as_deref().and_then(|w| cue_frame(seg, w)) {
+                    return c;
+                }
+                match &typing {
+                    Some(t) => seg.from.max(t.ends[k] + 6.0),
+                    None => seg.voice_from,
+                }
+            })
+            .collect();
+        o
+    });
+    let mut view = CodeView {
+        typing,
+        output,
+        stops: Vec::new(),
+        board: None,
+        camera: None,
+        marks: Vec::new(),
+        first_row: Vec::new(),
         shell: Shell::new(raw),
         path: fit_text(&path_text, &Slot::named("codePath", text_w)),
         header: hunk
@@ -438,7 +608,228 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         diagram_w: diagram_w as f32,
         last_old,
         hunk,
-    }))
+    };
+    view.plan(input);
+    Ok(Box::new(view))
+}
+
+/// Advance of the mono font per em as the render browser draws it, for placing a token on its line (`MONO_DRAWN`).
+const MONO_DRAWN: f64 = 0.602;
+
+impl CodeView {
+    /// Each row's height once the morph has played: a removed line of a morph collapses to nothing.
+    fn final_heights(&self) -> Vec<f32> {
+        self.slots
+            .iter()
+            .map(|s| {
+                if self.view == View::Morph
+                    && self.typing.is_none()
+                    && self.hunk.lines[s.left.unwrap()].kind == LineType::Del
+                {
+                    0.0
+                } else {
+                    self.row_h
+                }
+            })
+            .collect()
+    }
+
+    /// Row tops at the heights rows have while step k plays: removed lines stay until the steps leave them.
+    fn row_tops(&self, k: usize) -> Vec<f32> {
+        let mut top = 0.0;
+        self.slots
+            .iter()
+            .map(|s| {
+                let at = top;
+                let line = &self.hunk.lines[s.left.or(s.right).unwrap()];
+                top += if self.view == View::Morph && line.kind == LineType::Del && self.typing.is_none() {
+                    if self.last_old.is_some_and(|lo| k <= lo) { self.row_h } else { 0.0 }
+                } else {
+                    self.row_h
+                };
+                at
+            })
+            .collect()
+    }
+
+    /// Lays out what does not change with the frame: scroll stops, the pen's boxes, the board and the camera.
+    fn plan(&mut self, input: &SceneInput) {
+        let n = self.step_count;
+        let heights = self.final_heights();
+        let mut spans = vec![(f32::INFINITY, f32::NEG_INFINITY); n];
+        let mut y = 0.0;
+        for (s, h) in self.slots.iter().zip(&heights) {
+            if let Some(span) = s.step.and_then(|k| spans.get_mut(k)) {
+                span.0 = span.0.min(y);
+                span.1 = span.1.max(y + h);
+            }
+            y += h;
+        }
+        let max_scroll = (y - self.viewport_h).max(0.0);
+        let mut stops: Vec<f32> = Vec::new();
+        for s in &spans {
+            let previous = stops.last().copied().unwrap_or(0.0);
+            let target = if s.0.is_finite() {
+                max_scroll.min(((s.0 + s.1) / 2.0 - self.viewport_h / 2.0).max(0.0))
+            } else {
+                previous
+            };
+            stops.push(previous.max(target));
+        }
+        self.stops = stops;
+        self.first_row = (0..n).map(|k| self.slots.iter().position(|s| s.step == Some(k))).collect();
+        let steps: Vec<Value> = input.scene.get("steps").and_then(Value::as_array).cloned().unwrap_or_default();
+        if steps.is_empty() {
+            return;
+        }
+        self.marks = (0..steps.len()).map(|k| self.code_targets(&steps, k)).collect();
+        // A review flag draws in its finding's severity (`flaggedFinding`).
+        let findings = crate::review::findings(&input.props.storyboard);
+        let ink_of = |step: &Value| -> Option<InkOf> {
+            let id = step.get("flag")?.as_str()?;
+            let f = findings.iter().find(|f| f.id == id)?;
+            Some(InkOf { color: Color::css(crate::review::severity_ink(&f.severity)), label: f.severity.clone() })
+        };
+        let refs = StepRefs::Code(&self.hunk);
+        let board = Board::new(input.scene, input.segments, &refs, &|k| self.marks.get(k).cloned().flatten(), &ink_of);
+        let camera = Camera::new(input.scene, &refs, header_box(input.scene));
+        self.board = (!board.is_empty()).then_some(board);
+        self.camera = camera.moves().then_some(camera);
+    }
+
+    /// Where step k's lines and token sit once its camera move has settled (`codeTargets`).
+    fn code_targets(&self, steps: &[Value], k: usize) -> Option<MarkTargets> {
+        let step = steps.get(k)?;
+        let (bw, bh) = content_box(false);
+        let panel_top = HEADER_H as f64 + HEADER_GAP as f64;
+        let viewport_top = panel_top + PANEL_PAD as f64;
+        let font = self.font as f64;
+        let row_h = self.row_h as f64;
+        let advance = font * MONO_DRAWN;
+        let inner = self.panel_w as f64 - 2.0;
+        let half = (inner - 1.0) / 2.0;
+        let gutter = morph_gutter_w(&self.hunk) as f64;
+        let stop = self.stops.get(k).copied().unwrap_or(0.0) as f64;
+        let tops = self.row_tops(k);
+        let old_only =
+            step.get("oldLines").is_some_and(|v| !v.is_null()) && step.get("lines").is_none_or(Value::is_null);
+        // (hunk line, text box, x and y of its code)
+        let mut text_boxes: Vec<(usize, Bx, f64, f64)> = Vec::new();
+        for (r, slot) in self.slots.iter().enumerate() {
+            let y = viewport_top + tops[r] as f64 - stop;
+            let sides = if self.view == View::Morph {
+                vec![slot.left]
+            } else if old_only {
+                vec![slot.left, slot.right]
+            } else {
+                vec![slot.right, slot.left]
+            };
+            let mut seen = Vec::new();
+            for i in sides.into_iter().flatten() {
+                if seen.contains(&i) {
+                    continue;
+                }
+                seen.push(i);
+                let x = if self.view == View::Morph {
+                    1.0 + gutter
+                } else if slot.right == Some(i) && slot.left != Some(i) {
+                    1.0 + half + 1.0 + SPLIT_GUTTER_W as f64
+                } else {
+                    1.0 + SPLIT_GUTTER_W as f64
+                };
+                let w = 24f64.max(code_columns(&self.hunk.lines[i].text) as f64 * advance);
+                text_boxes.push((i, Bx::new(x - 4.0, y + 2.0, w + 8.0, row_h - 4.0), x, y));
+            }
+        }
+        let own: Vec<usize> =
+            self.slots.iter().filter(|s| s.step == Some(k)).flat_map(|s| [s.left, s.right]).flatten().collect();
+        let mut boxes = Vec::new();
+        let lines: Vec<Bx> = text_boxes
+            .iter()
+            .filter(|t| own.contains(&t.0) && !self.hunk.lines[t.0].text.trim().is_empty())
+            .map(|t| t.1)
+            .collect();
+        if let Some(u) = union(lines.iter().map(Some)) {
+            boxes.push(("lines".to_string(), u));
+        }
+        let text_h = (font * 1.3).round();
+        let cols = |t: &str, units: (usize, usize)| -> f64 {
+            let u: Vec<u16> = t.encode_utf16().collect();
+            code_columns(&String::from_utf16_lossy(&u[units.0.min(u.len())..units.1.min(u.len())])) as f64 * advance
+        };
+        if let Some(&(line, at)) = token_hits(&self.hunk, step).first()
+            && let Some(tb) = text_boxes.iter().find(|t| t.0 == line)
+        {
+            let text = &self.hunk.lines[line].text;
+            let token = step.get("token").and_then(Value::as_str).unwrap_or("");
+            boxes.push((
+                "token".to_string(),
+                Bx::new(
+                    tb.2 + cols(text, (0, at)),
+                    tb.3 + (row_h - text_h) / 2.0,
+                    code_columns(token) as f64 * advance,
+                    text_h,
+                ),
+            ));
+        }
+        let mut obstacles: Vec<Bx> =
+            text_boxes.iter().filter(|t| t.1.y + t.1.height > viewport_top && t.1.y < bh).map(|t| t.1).collect();
+        obstacles.push(Bx::new(0.0, 0.0, bw, HEADER_H as f64));
+        if let Some(c) = &self.callout {
+            match c.at {
+                CalloutAt::Beside => obstacles.push(Bx::new(
+                    self.panel_w as f64 + CALLOUT_GAP as f64,
+                    panel_top + ((self.panel_h - c.height) / 2.0).max(0.0) as f64,
+                    CALLOUT_W as f64,
+                    c.height as f64,
+                )),
+                CalloutAt::Below => {
+                    obstacles.push(Bx::new(0.0, panel_top + self.panel_h as f64 + 28.0, bw, CALLOUT_BELOW_H as f64))
+                }
+                CalloutAt::Flow => {}
+            }
+        }
+        if let Some(st) = &self.steps {
+            let block =
+                self.callout.as_ref().filter(|c| c.at == CalloutAt::Flow).map_or(0.0, |c| c.height + FLOW_CALLOUT_GAP);
+            obstacles.push(Bx::new(
+                self.diagram_left as f64,
+                panel_top + self.diagram_top as f64,
+                self.diagram_w as f64,
+                st.height + block as f64,
+            ));
+        }
+        let rows: Vec<(usize, f64, f64)> = text_boxes.iter().map(|t| (t.0, t.2, t.3)).collect();
+        let lines_text: Vec<String> = self.hunk.lines.iter().map(|l| l.text.clone()).collect();
+        let row_box: Vec<(usize, Bx)> = text_boxes.iter().map(|t| (t.0, t.1)).collect();
+        let box_of: BoxOf = Arc::new(move |key: &str| {
+            let parts: Vec<&str> = key.split(':').collect();
+            let line: usize = parts.get(1)?.parse().ok()?;
+            let (_, x, y) = *rows.iter().find(|r| r.0 == line)?;
+            match parts[0] {
+                "ln" => row_box.iter().find(|r| r.0 == line).map(|r| r.1),
+                "tx" => {
+                    let from: usize = parts.get(2)?.parse().ok()?;
+                    let len: usize = parts.get(3)?.parse().ok()?;
+                    let u: Vec<u16> = lines_text[line].encode_utf16().collect();
+                    let c = |a: usize, b: usize| {
+                        code_columns(&String::from_utf16_lossy(&u[a.min(u.len())..b.min(u.len())])) as f64 * advance
+                    };
+                    Some(Bx::new(x + c(0, from), y + (row_h - text_h) / 2.0, c(from, from + len), text_h))
+                }
+                _ => None,
+            }
+        });
+        Some(MarkTargets {
+            boxes,
+            obstacles: Some(obstacles),
+            lines: Vec::new(),
+            area: Bx::new(0.0, 0.0, bw, bh),
+            box_of: Some(box_of),
+            clip: Some(Bx::new(0.0, viewport_top, bw, self.viewport_h as f64)),
+            shifts: true,
+        })
+    }
 }
 
 fn morph_timeline(h: &Hunk, span: f64, drawn_by: f64) -> Morph {
@@ -653,7 +1044,7 @@ impl SceneView for CodeView {
             .iter()
             .enumerate()
             .map(|(r, s)| {
-                if self.view == View::Split {
+                if self.view == View::Split || self.typing.is_some() {
                     return Row { slot: r, add_index: 0, height: row_h, final_height: row_h };
                 }
                 let line = &self.hunk.lines[s.left.unwrap()];
@@ -715,147 +1106,318 @@ impl SceneView for CodeView {
         let callout_h = self.callout.as_ref().filter(|c| c.at == CalloutAt::Beside).map_or(0.0, |c| c.height);
         let callout_top = (self.panel_h - callout_h).min((focus_y - callout_h / 2.0).max(0.0));
 
+        let view =
+            self.camera.as_ref().and_then(|c| c.view(frame, f.segments, &|k| self.marks.get(k).cloned().flatten()));
+        let cursor = self.typing.as_ref().and_then(|t| t.cursor(frame));
+        // How far step k's rows have yet to move to where they settle: the scroll and the collapsing lines catching up.
+        let shift = |k: usize| -> Option<Pt> {
+            let first = (*self.first_row.get(k)?)?;
+            let settled = self.row_tops(k)[first] - self.stops.get(k).copied().unwrap_or(0.0);
+            let live = tops[first] - scroll;
+            Some(Pt { x: 0.0, y: (live - settled) as f64 })
+        };
         self.shell.draw(dl, frame, f.duration, None, |dl, bx| {
-            self.file_header(dl, bx.w);
-            dl.translate(0.0, HEADER_H + HEADER_GAP);
-            let (pw, ph) = (self.panel_w, self.panel_h);
-            dl.rect(
-                0.0,
-                0.0,
-                pw,
-                ph,
-                BoxStyle::fill(SURFACE).radius(20.0).border(BORDER, 1.0).shadow(Shadow::new(
-                    0.0,
-                    30.0,
-                    80.0,
-                    Color::rgba8(0, 0, 0, 0.45),
-                )),
-            );
-            dl.push_clip(1.0, 1.0, pw - 2.0, ph - 2.0, 19.0);
-            if self.hunk.additions == 0 && content_h < row_h {
-                let k = interpolate(content_h as f64, &[0.0, row_h as f64], &[1.0, 0.0], CLAMP) as f32;
-                let text = format!(
-                    "{} {} removed",
-                    self.hunk.deletions,
-                    if self.hunk.deletions == 1 { "line" } else { "lines" }
-                );
-                let st = Style::sans(600.0, 30.0);
-                let tw = width(&text, st);
-                let x0 = (pw - (34.0 + 18.0 + tw)) / 2.0;
+            let body = |dl: &mut DisplayList| {
                 dl.group(|dl| {
-                    dl.fade(k);
-                    icons::draw(dl, "Trash2", x0, ph / 2.0 - 17.0, 34.0, DEL, 2.0);
-                    dl.text(&text, st, x0 + 52.0, center_base(Face::Sans, 30.0, ph), MUTED);
-                });
-            }
-            let inner = pw - 2.0;
-            dl.push_clip(1.0, 1.0 + PANEL_PAD, inner, vh, 0.0);
-            for (row, &top) in rows.iter().zip(&tops) {
-                let s = &self.slots[row.slot];
-                let ry = 1.0 + PANEL_PAD + top - scroll;
-                if row.height <= 0.0 || ry > 1.0 + PANEL_PAD + vh || ry + row.height < 1.0 + PANEL_PAD {
-                    continue;
-                }
-                let now = s.step.map_or(0.0, reached);
-                let passed = s.step.map_or(0.0, |k| reached(k + 1));
-                let opacity = 1.0 - (1.0 - DIM_OPACITY) * (dim - now) - (1.0 - VISITED_OPACITY) * passed;
-                let bar = now - 0.7 * passed;
-                let glow = now - passed;
-                dl.group(|dl| {
-                    dl.translate(1.0, ry);
-                    dl.push_clip(0.0, 0.0, inner, row.height, 0.0);
-                    dl.fade(opacity as f32);
-                    if glow > 0.0 {
-                        dl.fill_rect(0.0, 0.0, inner, row.height, Color::rgba8(124, 140, 255, 0.08 * glow as f32));
+                    self.file_header(dl, bx.w);
+                    dl.translate(0.0, HEADER_H + HEADER_GAP);
+                    let (pw, ph) = (self.panel_w, self.panel_h);
+                    dl.rect(
+                        0.0,
+                        0.0,
+                        pw,
+                        ph,
+                        BoxStyle::fill(SURFACE).radius(20.0).border(BORDER, 1.0).shadow(Shadow::new(
+                            0.0,
+                            30.0,
+                            80.0,
+                            Color::rgba8(0, 0, 0, 0.45),
+                        )),
+                    );
+                    dl.push_clip(1.0, 1.0, pw - 2.0, ph - 2.0, 19.0);
+                    if self.hunk.additions == 0 && content_h < row_h {
+                        let k = interpolate(content_h as f64, &[0.0, row_h as f64], &[1.0, 0.0], CLAMP) as f32;
+                        let text = format!(
+                            "{} {} removed",
+                            self.hunk.deletions,
+                            if self.hunk.deletions == 1 { "line" } else { "lines" }
+                        );
+                        let st = Style::sans(600.0, 30.0);
+                        let tw = width(&text, st);
+                        let x0 = (pw - (34.0 + 18.0 + tw)) / 2.0;
+                        dl.group(|dl| {
+                            dl.fade(k);
+                            icons::draw(dl, "Trash2", x0, ph / 2.0 - 17.0, 34.0, DEL, 2.0);
+                            dl.text(&text, st, x0 + 52.0, center_base(Face::Sans, 30.0, ph), MUTED);
+                        });
                     }
-                    if bar > 0.0 {
-                        dl.fill_rect(0.0, 0.0, 5.0, row.height, ACCENT.fade(bar as f32));
-                    }
-                    match self.view {
-                        View::Morph => self.morph_row(dl, s.left.unwrap(), row.add_index, frame, &morph, inner),
-                        View::Split => {
-                            let half = (inner - 1.0) / 2.0;
-                            for (side, i) in [(0, s.left), (1, s.right)] {
-                                let x = if side == 0 { 0.0 } else { half + 1.0 };
-                                if side == 1 {
-                                    dl.fill_rect(half, 0.0, 1.0, row_h, BORDER);
+                    let inner = pw - 2.0;
+                    dl.push_clip(1.0, 1.0 + PANEL_PAD, inner, vh, 0.0);
+                    for (row, &top) in rows.iter().zip(&tops) {
+                        let s = &self.slots[row.slot];
+                        let ry = 1.0 + PANEL_PAD + top - scroll;
+                        if row.height <= 0.0 || ry > 1.0 + PANEL_PAD + vh || ry + row.height < 1.0 + PANEL_PAD {
+                            continue;
+                        }
+                        // A line a typing step has not reached yet draws nothing, not even its step's light.
+                        let typed = self.typing.as_ref().and_then(|t| t.lines[row.slot]);
+                        if typed.is_some_and(|(from, _, _)| frame < from) {
+                            continue;
+                        }
+                        let now = s.step.map_or(0.0, reached);
+                        let passed = s.step.map_or(0.0, |k| reached(k + 1));
+                        let opacity = 1.0 - (1.0 - DIM_OPACITY) * (dim - now) - (1.0 - VISITED_OPACITY) * passed;
+                        let bar = now - 0.7 * passed;
+                        let glow = now - passed;
+                        dl.group(|dl| {
+                            dl.translate(1.0, ry);
+                            dl.push_clip(0.0, 0.0, inner, row.height, 0.0);
+                            dl.fade(opacity as f32);
+                            if glow > 0.0 {
+                                dl.fill_rect(
+                                    0.0,
+                                    0.0,
+                                    inner,
+                                    row.height,
+                                    Color::rgba8(124, 140, 255, 0.08 * glow as f32),
+                                );
+                            }
+                            if bar > 0.0 {
+                                dl.fill_rect(0.0, 0.0, 5.0, row.height, ACCENT.fade(bar as f32));
+                            }
+                            match self.view {
+                                View::Morph if self.typing.is_some() => {
+                                    let i = s.left.unwrap();
+                                    dl.fill_rect(0.0, 0.0, inner, row_h, line_bg(self.hunk.lines[i].kind));
+                                    let numbers = self.numbers(i);
+                                    let x = self.gutter(dl, i, &numbers, 0.0, row_h);
+                                    let base = center_base(Face::Mono, font, row_h);
+                                    match typed {
+                                        Some(t) => {
+                                            let c = cursor.filter(|c| c.0 == row.slot).map(|c| c.1);
+                                            self.typed_code(dl, i, x, base, frame, t, c);
+                                        }
+                                        None => self.code(dl, i, x, base),
+                                    }
                                 }
-                                match i {
-                                    None => dl.fill_rect(x, 0.0, half, row_h, Color::rgba8(255, 255, 255, 0.025)),
-                                    Some(i) => {
-                                        let line = &self.hunk.lines[i];
-                                        dl.fill_rect(x, 0.0, half, row_h, line_bg(line.kind));
-                                        let n = if side == 0 { line.old_line } else { line.new_line };
-                                        let cx = self.gutter(dl, i, &[n], x, row_h);
-                                        self.code(dl, i, cx, center_base(Face::Mono, font, row_h));
+                                View::Morph => self.morph_row(dl, s.left.unwrap(), row.add_index, frame, &morph, inner),
+                                View::Split => {
+                                    let half = (inner - 1.0) / 2.0;
+                                    for (side, i) in [(0, s.left), (1, s.right)] {
+                                        let x = if side == 0 { 0.0 } else { half + 1.0 };
+                                        if side == 1 {
+                                            dl.fill_rect(half, 0.0, 1.0, row_h, BORDER);
+                                        }
+                                        match i {
+                                            None => {
+                                                dl.fill_rect(x, 0.0, half, row_h, Color::rgba8(255, 255, 255, 0.025))
+                                            }
+                                            Some(i) => {
+                                                let line = &self.hunk.lines[i];
+                                                dl.fill_rect(x, 0.0, half, row_h, line_bg(line.kind));
+                                                let n = if side == 0 { line.old_line } else { line.new_line };
+                                                let cx = self.gutter(dl, i, &[n], x, row_h);
+                                                self.code(dl, i, cx, center_base(Face::Mono, font, row_h));
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        }
+                            dl.pop_clip();
+                        });
                     }
                     dl.pop_clip();
+                    dl.pop_clip();
+
+                    if let Some(o) = &self.output {
+                        self.output_pane(dl, o, ph, frame, crate::steps::current_step(f.segments, frame));
+                    }
+                    if let Some(steps) = &self.steps {
+                        let code_y: Vec<f32> = spans.iter().map(|s| anchor_y((s.0, s.1))).collect();
+                        self.step_diagram(dl, steps, frame, &reached, &code_y);
+                    }
+                    if let Some(c) = &self.callout {
+                        match c.at {
+                            CalloutAt::Flow => {
+                                if let Some(steps) = &self.steps {
+                                    let top = self.diagram_top + steps.height as f32;
+                                    dl.group(|dl| {
+                                        dl.fade(callout_appear as f32);
+                                        dl.fill_rect(
+                                            self.diagram_left + self.diagram_w / 2.0 - 1.5,
+                                            top,
+                                            3.0,
+                                            FLOW_CALLOUT_GAP,
+                                            ACCENT,
+                                        );
+                                    });
+                                    self.callout_card(
+                                        dl,
+                                        c,
+                                        self.diagram_left,
+                                        top + FLOW_CALLOUT_GAP,
+                                        self.diagram_w,
+                                        callout_appear,
+                                    );
+                                }
+                            }
+                            CalloutAt::Beside => {
+                                let mut pb = PathBuilder::new();
+                                let x0 = pw - 4.0;
+                                let x1 = pw + CALLOUT_GAP;
+                                let cy = callout_top + callout_h / 2.0;
+                                pb.move_to(x0, focus_y);
+                                pb.cubic_to(pw + CALLOUT_GAP / 2.0, focus_y, pw + CALLOUT_GAP / 2.0, cy, x1, cy);
+                                dl.group(|dl| {
+                                    dl.fade(callout_appear as f32);
+                                    if let Some(p) = pb.finish() {
+                                        dl.path(p, None, Some(Stroke::solid(ACCENT, 3.0)));
+                                    }
+                                    dl.circle(x0, focus_y, 7.0, ACCENT);
+                                });
+                                self.callout_card(dl, c, x1, callout_top, CALLOUT_W, callout_appear);
+                            }
+                            CalloutAt::Below => {
+                                if n > 0 {
+                                    let top = focus_y + (last.1 - last_center);
+                                    dl.group(|dl| {
+                                        dl.fade(callout_appear as f32);
+                                        dl.fill_rect(10.0, top, 3.0, (ph + 28.0 - top).max(0.0), ACCENT);
+                                    });
+                                }
+                                self.callout_card(dl, c, 0.0, ph + 28.0, bx.w, callout_appear);
+                            }
+                        }
+                    }
+                });
+                if let Some(b) = &self.board {
+                    b.draw(dl, frame, f.segments, &shift);
+                }
+            };
+            match &self.camera {
+                Some(c) => c.draw(dl, view, body),
+                None => body(dl),
+            }
+        });
+    }
+}
+
+const BLINK: f64 = 16.0;
+const OUTPUT_BODY: Color = Color::rgba8(0x0b, 0x0d, 0x13, 1.0);
+const OUTPUT_TEXT: Color = Color::rgba8(0xc3, 0xc8, 0xd4, 1.0);
+
+impl CodeView {
+    /// A typed line (`TypedCode`): its indent and the characters typed so far, with the cursor after them while it
+    /// types, blinking there once its step's typing is done.
+    #[allow(clippy::too_many_arguments)]
+    fn typed_code(
+        &self,
+        dl: &mut DisplayList,
+        i: usize,
+        x: f32,
+        base: f32,
+        frame: f64,
+        line: (f64, usize, f64),
+        cursor: Option<bool>,
+    ) {
+        let (from, chars, per) = line;
+        let typed = chars.min(((frame - from) * per).floor().max(-1.0) as usize + 1);
+        let mut left = indent_of(&self.hunk.lines[i].text) + typed;
+        let st = Style::mono(400.0, self.font);
+        let mut pen = x;
+        let mut col = 0;
+        for (text, color) in self.tokens.get(i).map_or(&[][..], |t| &t[..]) {
+            if left == 0 {
+                break;
+            }
+            let part: String = text.chars().take(left).collect();
+            left -= part.chars().count();
+            let mut shown = String::new();
+            for ch in part.chars() {
+                if ch == '\t' {
+                    let n = CODE_TAB_SIZE - (col % CODE_TAB_SIZE);
+                    shown.push_str(&" ".repeat(n));
+                    col += n;
+                } else {
+                    shown.push(ch);
+                    col += 1;
+                }
+            }
+            pen += dl.text(&shown, st, pen, base, Color::css(color));
+        }
+        if let Some(typing) = cursor {
+            let on = typing || (frame / BLINK).floor() as i64 % 2 == 0;
+            if on {
+                let m = line_metrics(Face::Mono, self.font);
+                let h = self.font * 1.25;
+                dl.fill_rect(pen + 1.0, base + m.descent - h, (self.font * 0.12).max(3.0), h, ACCENT);
+            }
+        }
+    }
+
+    /// The terminal-like pane each step's output prints into, a line every few frames, scrolling to keep the newest
+    /// in view (`OutputPane`).
+    fn output_pane(&self, dl: &mut DisplayList, o: &OutputPane, height: f32, frame: f64, current: Option<usize>) {
+        let view_h = height - OUTPUT_CHROME_H;
+        let mut first: HashMap<usize, usize> = HashMap::new();
+        for (i, l) in o.lines.iter().enumerate() {
+            first.entry(l.0).or_insert(i);
+        }
+        let appear_of: Vec<f64> = o
+            .lines
+            .iter()
+            .enumerate()
+            .map(|(i, l)| {
+                let at = o.starts[l.0] + (i - first[&l.0]) as f64 * OUTPUT_LINE_GAP;
+                clamped(frame, at, at + 3.0, 0.0, 1.0)
+            })
+            .collect();
+        let scroll = o
+            .lines
+            .iter()
+            .zip(&appear_of)
+            .map(|(l, a)| (l.2 + l.3 + OUTPUT_PAD.1 - view_h).max(0.0) * (a * 2.0).min(1.0) as f32)
+            .fold(0.0, f32::max);
+        let appear = clamped(frame, 2.0, 14.0, 0.0, 1.0) as f32;
+        let (x, w) = (o.x, o.width);
+        dl.group(|dl| {
+            dl.fade(appear);
+            dl.rect(
+                x,
+                0.0,
+                w,
+                height,
+                BoxStyle::fill(OUTPUT_BODY)
+                    .radius(16.0)
+                    .shadow(Shadow { dx: 0.0, dy: 0.0, blur: 0.0, spread: 1.5, color: BORDER_STRONG })
+                    .shadow(Shadow::new(0.0, 24.0, 70.0, Color::rgba8(0, 0, 0, 0.55))),
+            );
+            dl.push_clip(x, 0.0, w, height, 16.0);
+            dl.fill_rect(x, 0.0, w, OUTPUT_CHROME_H, Color::css("#171a23"));
+            dl.fill_rect(x, OUTPUT_CHROME_H - 1.0, w, 1.0, BORDER);
+            for (j, c) in ["#ff5f57", "#febc2e", "#28c840"].iter().enumerate() {
+                dl.rect(
+                    x + 20.0 + j as f32 * 21.0,
+                    OUTPUT_CHROME_H / 2.0 - 6.0,
+                    12.0,
+                    12.0,
+                    BoxStyle::fill(Color::css(c).fade(0.85)).radius(6.0),
+                );
+            }
+            let th = fit_height(&o.title, LineHeight::Fit);
+            draw_fit(dl, &o.title, x, (OUTPUT_CHROME_H - th) / 2.0, TextOpts::new(MUTED).centered(w));
+            dl.push_clip(x, OUTPUT_CHROME_H, w, view_h, 0.0);
+            for ((step, fit, y, _), a) in o.lines.iter().zip(&appear_of) {
+                if *a <= 0.0 {
+                    continue;
+                }
+                dl.group(|dl| {
+                    dl.fade((*a * if Some(*step) == current { 1.0 } else { 0.62 }) as f32);
+                    draw_fit(dl, fit, x + OUTPUT_PAD.0, OUTPUT_CHROME_H + y - scroll, TextOpts::new(OUTPUT_TEXT));
                 });
             }
             dl.pop_clip();
             dl.pop_clip();
-
-            if let Some(steps) = &self.steps {
-                let code_y: Vec<f32> = spans.iter().map(|s| anchor_y((s.0, s.1))).collect();
-                self.step_diagram(dl, steps, frame, &reached, &code_y);
-            }
-            if let Some(c) = &self.callout {
-                match c.at {
-                    CalloutAt::Flow => {
-                        if let Some(steps) = &self.steps {
-                            let top = self.diagram_top + steps.height as f32;
-                            dl.group(|dl| {
-                                dl.fade(callout_appear as f32);
-                                dl.fill_rect(
-                                    self.diagram_left + self.diagram_w / 2.0 - 1.5,
-                                    top,
-                                    3.0,
-                                    FLOW_CALLOUT_GAP,
-                                    ACCENT,
-                                );
-                            });
-                            self.callout_card(
-                                dl,
-                                c,
-                                self.diagram_left,
-                                top + FLOW_CALLOUT_GAP,
-                                self.diagram_w,
-                                callout_appear,
-                            );
-                        }
-                    }
-                    CalloutAt::Beside => {
-                        let mut pb = PathBuilder::new();
-                        let x0 = pw - 4.0;
-                        let x1 = pw + CALLOUT_GAP;
-                        let cy = callout_top + callout_h / 2.0;
-                        pb.move_to(x0, focus_y);
-                        pb.cubic_to(pw + CALLOUT_GAP / 2.0, focus_y, pw + CALLOUT_GAP / 2.0, cy, x1, cy);
-                        dl.group(|dl| {
-                            dl.fade(callout_appear as f32);
-                            if let Some(p) = pb.finish() {
-                                dl.path(p, None, Some(Stroke::solid(ACCENT, 3.0)));
-                            }
-                            dl.circle(x0, focus_y, 7.0, ACCENT);
-                        });
-                        self.callout_card(dl, c, x1, callout_top, CALLOUT_W, callout_appear);
-                    }
-                    CalloutAt::Below => {
-                        if n > 0 {
-                            let top = focus_y + (last.1 - last_center);
-                            dl.group(|dl| {
-                                dl.fade(callout_appear as f32);
-                                dl.fill_rect(10.0, top, 3.0, (ph + 28.0 - top).max(0.0), ACCENT);
-                            });
-                        }
-                        self.callout_card(dl, c, 0.0, ph + 28.0, bx.w, callout_appear);
-                    }
-                }
-            }
         });
     }
 }

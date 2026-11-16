@@ -1,7 +1,7 @@
 //! The graph's layout: layers, groups, routed edges and their labels (src/utils/graphLayout.ts).
 
 use super::text::{CardIn, CardText, card_texts, shared_title_size};
-use crate::marks::{Marks, js_len};
+use crate::chrome::marks::{Marks, js_len};
 use crate::textfit::{Fit, Slot, fit_text, fit_text_fn};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
@@ -20,7 +20,7 @@ const LOOP_LIFT: f64 = 90.0;
 const LANE_MARGIN: f64 = 14.0;
 const LANE_EDGE: f64 = 8.0;
 const GROUP_PAD: f64 = 26.0;
-const GROUP_HEAD: f64 = 44.0;
+pub const GROUP_HEAD: f64 = 44.0;
 const BORDERED_GAP: f64 = 64.0;
 const BAND_GAP: f64 = 40.0;
 const LABEL_FONT: f64 = 19.0;
@@ -38,7 +38,7 @@ pub const GROUP_NAME: (f64, f64) = (22.0, 12.0);
 #[derive(Clone, Debug, Deserialize)]
 pub struct GraphNode {
     pub id: String,
-    #[serde(default, deserialize_with = "crate::marks::text_or_number")]
+    #[serde(default, deserialize_with = "crate::chrome::marks::text_or_number")]
     pub label: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
@@ -78,7 +78,7 @@ pub enum Shape {
 pub struct GraphEdge {
     pub from: String,
     pub to: String,
-    #[serde(default, deserialize_with = "crate::marks::text_or_number")]
+    #[serde(default, deserialize_with = "crate::chrome::marks::text_or_number")]
     pub label: Option<String>,
     #[serde(default)]
     pub direction: Option<String>,
@@ -126,14 +126,21 @@ pub struct PositionedNode {
 
 pub struct EdgeLabelBox {
     pub text: Fit,
+    /// Centre in layout units.
     pub x: f64,
     pub y: f64,
+    pub width: f64,
+    pub height: f64,
 }
 
 pub struct RoutedEdge {
     pub edge: usize,
     pub d: String,
     pub label: Option<EdgeLabelBox>,
+    /// Where a label would sit: the curve's middle.
+    pub mid: Pt,
+    /// Points along the curve.
+    pub points: Vec<Pt>,
 }
 
 pub struct PlacedGroup {
@@ -946,8 +953,10 @@ fn layout_pass(
             d: curves[i].d.clone(),
             label: labels.get(&i).map(|at| {
                 let s = sizes[i].take().expect("size");
-                EdgeLabelBox { text: s.text, x: at.x, y: at.y }
+                EdgeLabelBox { text: s.text, x: at.x, y: at.y, width: s.width, height: s.height }
             }),
+            mid: curves[i].at.at(curves[i].t0),
+            points: curves[i].points.clone(),
         })
         .collect();
 

@@ -1,11 +1,8 @@
-//! What a step's `focus` can point at in graph, state and er scenes: a port of shared/targets.mjs. A ref resolves
-//! to item keys such as "n:api" or "e:2"; a scene lights every item whose key a step's refs resolve to.
+//! The `graph`, `er` and `state` entries of TARGETS in shared/targets.mjs, with their pair refs ("a->b").
 
 use crate::markup::plain_text;
-use crate::steps::{Emphasis, Spotlight};
-use crate::timing::Segment;
 use serde_json::Value;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 /// A focus ref as a storyboard writes it: text, or a number.
 #[derive(Clone, Debug, PartialEq)]
@@ -30,9 +27,7 @@ impl Ref {
     }
 }
 
-fn list<'a>(v: &'a Value, field: &str) -> &'a [Value] {
-    v.get(field).and_then(Value::as_array).map_or(&[], Vec::as_slice)
-}
+use crate::states::list;
 
 fn str_of<'a>(v: &'a Value, field: &str) -> Option<&'a str> {
     v.get(field).and_then(Value::as_str)
@@ -231,97 +226,35 @@ fn resolve_state(scene: &Value, r: &Ref) -> Option<Vec<String>> {
     (!labelled.is_empty()).then_some(labelled)
 }
 
-/// The item keys a ref lights in a scene, or None when the scene has nothing it names (`resolveRef`).
-pub fn resolve_ref(scene: &Value, r: &Ref) -> Option<Vec<String>> {
-    let resolve: fn(&Value, &Ref) -> Option<Vec<String>> = match str_of(scene, "type")? {
-        "graph" => resolve_graph,
-        "er" => resolve_er,
-        "state" => resolve_state,
-        _ => return None,
-    };
-    resolve(scene, r).or_else(|| {
-        // An index written as a string, "2", means the index when nothing in the scene is named "2".
-        let t = r.text()?;
-        if !t.trim().is_empty() && t.trim().chars().all(|c| c.is_ascii_digit()) {
-            resolve(scene, &Ref::Num(t.trim().parse().ok()?))
-        } else {
-            None
-        }
-    })
+/// The item keys a ref names in a graph, er or state scene.
+pub fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
+    let r = Ref::from_value(r)?;
+    match str_of(scene, "type")? {
+        "graph" => resolve_graph(scene, &r),
+        "er" => resolve_er(scene, &r),
+        "state" => resolve_state(scene, &r),
+        _ => None,
+    }
 }
 
 /// In a graph with a table beside it, a bare number is an edge index. When the table has a row of that index
 /// too, this says how to name each one (`ambiguousIndex`).
-pub fn ambiguous_index(scene: &Value, r: &Ref) -> bool {
+pub fn ambiguous_index(scene: &Value, r: &Value) -> bool {
+    let Some(r) = Ref::from_value(r) else { return false };
     if str_of(scene, "type") != Some("graph") {
         return false;
     }
     let Some(table) = scene.get("table").filter(|t| !t.is_null()) else { return false };
     let nodes = list(scene, "nodes");
     let n = match r {
-        Ref::Text(t)
+        Ref::Text(ref t)
             if !t.trim().is_empty()
                 && t.trim().chars().all(|c| c.is_ascii_digit())
-                && !nodes.iter().any(|n| str_of(n, "id") == Some(t)) =>
+                && !nodes.iter().any(|n| str_of(n, "id") == Some(t.as_str())) =>
         {
             Ref::Num(t.trim().parse().unwrap_or(f64::NAN))
         }
-        other => other.clone(),
+        other => other,
     };
     index(&n, list(scene, "edges").len()).is_some() && index(&n, list(table, "rows").len()).is_some()
-}
-
-/// A step's focus refs.
-pub fn focus_refs(step: &Value) -> Vec<Ref> {
-    match step.get("focus") {
-        Some(Value::Array(a)) => a.iter().filter_map(Ref::from_value).collect(),
-        Some(v) => Ref::from_value(v).into_iter().collect(),
-        None => Vec::new(),
-    }
-}
-
-/// For each item key, the steps that light it, in order (`targetSteps`).
-pub fn target_steps(scene: &Value) -> HashMap<String, Vec<usize>> {
-    let mut out: HashMap<String, Vec<usize>> = HashMap::new();
-    for (k, step) in list(scene, "steps").iter().enumerate() {
-        let mut seen: Vec<String> = Vec::new();
-        for r in focus_refs(step) {
-            for key in resolve_ref(scene, &r).unwrap_or_default() {
-                if !seen.contains(&key) {
-                    seen.push(key);
-                }
-            }
-        }
-        for key in seen {
-            out.entry(key).or_default().push(k);
-        }
-    }
-    out
-}
-
-/// Emphasis by item key for a scene whose steps take `focus` (`focusSpotlight`).
-pub struct Focus<'a> {
-    steps: &'a HashMap<String, Vec<usize>>,
-    spot: Spotlight,
-}
-
-impl<'a> Focus<'a> {
-    pub fn new(steps: &'a HashMap<String, Vec<usize>>, segments: &[Segment], frame: f64) -> Focus<'a> {
-        let starts: Vec<f64> = segments.iter().skip(1).map(|s| s.from).collect();
-        Focus { steps, spot: Spotlight::new(frame, &starts) }
-    }
-
-    pub fn of(&self, key: &str) -> Emphasis {
-        self.spot.emphasis(self.steps.get(key).map_or(&[], Vec::as_slice))
-    }
-}
-
-/// The stronger of two emphases, part by part (`brighter`).
-pub fn brighter(a: Emphasis, b: Emphasis) -> Emphasis {
-    Emphasis { opacity: a.opacity.max(b.opacity), bar: a.bar.max(b.bar), glow: a.glow.max(b.glow) }
-}
-
-/// An item at least as bright as the brightest of `others` (`asBrightAs`).
-pub fn as_bright_as(own: Emphasis, others: &[Emphasis]) -> Emphasis {
-    Emphasis { opacity: others.iter().fold(own.opacity, |m, e| m.max(e.opacity)), ..own }
 }
