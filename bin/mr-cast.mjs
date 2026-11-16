@@ -153,9 +153,9 @@ Used by the Claude Code skills:
   only, and a command without it uses the default, so pass the same flags to each command:
       --audience preread                 a pre-read: no code on screen, ending on the order to read the code in
       --pace slower|normal|faster        the voice's speed and the pauses around it (default normal)
-      --voice engine:name                the voice, such as kitten:luna (the default) or kokoro:af_heart;
+      --voice engine:name                the voice: tiny-voca:m2 (the default) or tiny-voca:f2, or m2 or f2;
                                          mr-cast voices lists them
-      --engine kitten|kokoro             the voice engine, for a --voice name without one or its default voice
+      --engine tiny-voca                 the voice engine, for a --voice name without one or its default voice
       --no-voice                         silent, with subtitles timed for reading`;
 
 const USAGE_ALL = `${USAGE}

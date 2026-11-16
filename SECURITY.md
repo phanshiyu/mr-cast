@@ -9,7 +9,6 @@ Report it privately through GitHub: open the repository's **Security** tab and c
 - CI runs `pnpm audit --audit-level moderate` on every push and pull request, and audits a plain `npm install` of the packed tarball, which is what users get.
 - Renovate keeps dependencies, Node and pnpm current. It waits 3 days after a release before it proposes it, except for security fixes, which it proposes at once. Minor and patch updates, lockfile maintenance and action digests merge themselves once the `ci-ok` check passes. Major updates wait for a review.
 - Dependency install scripts do not run: `pnpm-workspace.yaml` denies them (`allowBuilds`), and npm 11.19 and later skip them for users. mr-cast needs none of them.
-- `bin/lib/kokoro/` is vendored from kokoro-js 1.2.1 (Apache-2.0), which pinned a vulnerable `@huggingface/transformers` 3. Its README says what changed.
 
 ## Setting up Renovate
 

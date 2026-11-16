@@ -3,7 +3,7 @@
 
 use mrc_core::model::Voiceover;
 use mrc_core::textfit::{Family, Font, Slot, fit_lines, fit_text, measure};
-use mrc_core::timing::{scene_duration, scene_segments, spoken_at};
+use mrc_core::timing::{cue_frame, scene_duration, scene_segments, spoken_at};
 use serde_json::Value;
 
 fn fixture(name: &str) -> Value {
@@ -40,13 +40,19 @@ fn timing_matches_the_js() {
             }
         }
         assert_eq!(scene_duration(&segments), case["duration"].as_f64().unwrap(), "case {n}: duration");
-        for (f, w) in [0.0, 7.0, 45.0, 90.0, 200.0].iter().zip(case["spoken"].as_array().unwrap()) {
+        let spoken = case["spoken"].as_array().unwrap();
+        assert_eq!(spoken.len(), 8, "case {n}: the spoken frames");
+        for (f, w) in [0.0, 7.0, 45.0, 70.0, 90.0, 110.0, 130.0, 200.0].iter().zip(spoken) {
             let (index, word) = spoken_at(&segments, *f);
             assert_eq!(
                 (index as u64, word as u64),
                 (w["index"].as_u64().unwrap(), w["word"].as_u64().unwrap()),
                 "case {n}: spokenAt({f})"
             );
+        }
+        for (seg, cue) in segments.iter().zip(case["cues"].as_array().unwrap()) {
+            let last = seg.text.split_whitespace().last().unwrap_or("");
+            assert_eq!(cue_frame(seg, last), cue.as_f64(), "case {n}: cueFrame({last:?})");
         }
     }
 }

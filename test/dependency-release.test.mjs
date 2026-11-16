@@ -115,13 +115,11 @@ test('a real update of a tool changes nothing that ships, and one of a runtime p
     [],
   );
   // The importer's version, the snapshot key and every dependency line that names the package move together.
-  // phonemizer has one version in the lock; d3-geo can hold two, which would make the bump ambiguous.
+  // esbuild has one version in the lock; d3-geo can hold two, which would make the bump ambiguous.
   const bumped = realLock
-    .replace(/(\n {6}phonemizer:\n {8}specifier: [^\n]+\n {8}version: )1\.2\.1/, (_, head) => `${head}1.2.2`)
-    .replace(/\bphonemizer(@|: )1\.2\.1/g, (_, glue) => `phonemizer${glue}1.2.2`);
-  assert.deepEqual(shippedChanges(realLock, bumped, manifest), [
-    { name: 'phonemizer', from: ['1.2.1'], to: ['1.2.2'] },
-  ]);
+    .replace(/(\n {6}esbuild:\n {8}specifier: [^\n]+\n {8}version: )0\.28\.2/, (_, head) => `${head}0.28.3`)
+    .replace(/(?<![\w/@-])esbuild(@|: )0\.28\.2/g, (_, glue) => `esbuild${glue}0.28.3`);
+  assert.deepEqual(shippedChanges(realLock, bumped, manifest), [{ name: 'esbuild', from: ['0.28.2'], to: ['0.28.3'] }]);
 });
 
 test('every dev dependency that the player imports is listed as bundled', () => {

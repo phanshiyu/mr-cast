@@ -28,7 +28,7 @@ async function stalledHub() {
   });
   const server = http.createServer((req, res) => {
     requests.push(req);
-    res.writeHead(200, { 'content-length': '78268016' });
+    res.writeHead(200, { 'content-length': '21386372' });
     res.write('ONNX');
     arrived();
   });
@@ -45,7 +45,7 @@ async function stalledHub() {
   const args = {
     dataDir: project,
     storyboard: { scenes: [{ narration: 'The limiter keeps a bucket per client.' }] },
-    voice: 'kitten:luna',
+    voice: 'tiny-voca:m2',
     pace: { speed: 1, pauses: 1 },
   };
   return { requests, firstRequest, close, args };
@@ -53,25 +53,25 @@ async function stalledHub() {
 
 const settle = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-test('prune sees the Kitten download in progress and will not delete the model under it', async () => {
+test('prune sees the voice model download in progress and will not delete the model under it', async () => {
   const hub = await stalledHub();
   const voicing = ensureVoiceover(hub.args).catch((err) => err);
   await hub.firstRequest;
-  const kitten = listArtifacts(path.join(root, 'none')).find((a) => a.id === 'cache:kitten');
-  assert.equal(kitten.busy, `mr-cast pid ${process.pid} is downloading into it`);
+  const model = listArtifacts(path.join(root, 'none')).find((a) => a.id === 'cache:tiny-voca');
+  assert.equal(model.busy, `mr-cast pid ${process.pid} is downloading into it`);
   assert.throws(
     () =>
       select(listArtifacts(path.join(root, 'none')), {
-        ids: ['cache:kitten'],
+        ids: ['cache:tiny-voca'],
         kinds: null,
         all: false,
         except: [],
         olderThanDays: null,
       }),
-    /not pruning anything: cache:kitten is in use, mr-cast pid \d+ is downloading into it/,
+    /not pruning anything: cache:tiny-voca is in use, mr-cast pid \d+ is downloading into it/,
   );
   await hub.close();
-  assert.match((await voicing).message, /could not load the kitten voice model/);
+  assert.match((await voicing).message, /could not get the voice model/);
 });
 
 test("an edit that stops play's voicing leaves the model download running, and the next voicing waits on that one", async () => {
@@ -93,17 +93,17 @@ test("an edit that stops play's voicing leaves the model download running, and t
 
 test('a download removes the partial files a killed download left, and keeps a live one', async () => {
   const hub = await stalledHub();
-  const dir = ENGINES.kitten.dir();
+  const dir = ENGINES['tiny-voca'].dir();
   fs.mkdirSync(dir, { recursive: true });
   const gone = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], {
     encoding: 'utf8',
   }).stdout;
-  const dead = `kitten_tts_mini_v0_8.onnx.tmp-${gone}`;
-  const live = `voices.npz.tmp-${process.ppid}`;
+  const dead = `config.json.tmp-${gone}`;
+  const live = `lexicon.tsv.tmp-${process.ppid}`;
   for (const name of [dead, live]) fs.writeFileSync(path.join(dir, name), 'partial');
   const voicing = ensureVoiceover(hub.args).catch((err) => err);
   await hub.firstRequest;
-  const left = fs.readdirSync(dir).filter((name) => name !== `kitten_tts_mini_v0_8.onnx.tmp-${process.pid}`);
+  const left = fs.readdirSync(dir).filter((name) => name !== 'onnx');
   await hub.close();
   await voicing;
   assert.deepEqual(left, [live]);

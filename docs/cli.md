@@ -81,8 +81,8 @@ Several runs can render at once, in one repository or in several, and they share
 | `--audience preread` | Makes a [pre-read](storyboard.md#pre-read): no code on screen, and the reading order in `reading.md`. |
 | `--pace slower\|normal\|faster` | The voice's speed and the pauses around it. The default is `normal`. |
 | `--speed x` | The voice's speed alone, from 0.5 to 2. It overrides the speed that `--pace` sets. |
-| `--voice engine:name` | The voice, such as `kitten:luna` (the default) or `kokoro:af_heart`. A name alone, such as `bruno` or `af_heart`, picks the engine that has it. `mr-cast voices` lists them. |
-| `--engine kitten\|kokoro` | The voice engine. Alone, it picks the engine's default voice: `kitten:luna` or `kokoro:af_heart`. |
+| `--voice engine:name` | The voice: `tiny-voca:m2` (the default) or `tiny-voca:f2`. A name alone, such as `f2`, works too. `mr-cast voices` lists them. |
+| `--engine tiny-voca` | The voice engine. Alone, it picks its default voice, `tiny-voca:m2`. |
 | `--no-voice` | A silent walkthrough, with subtitles timed for reading. |
 
 `--audience` also accepts `familiar`, `new` and `overview`, and these commands also accept `--simple`, so skills from before 0.25 keep working. All four make the plain video, the same as no flag. Any other `--audience` value is an error.
@@ -93,22 +93,21 @@ mr-cast remembers your last pace and voice in `~/.config/mr-cast/last-choices.js
 
 ## The voice
 
-`play`, `render` and `voice` read the narration aloud with a small text-to-speech model that runs offline on the CPU. There are two engines, and each has its own voices:
+`play`, `render` and `voice` read the narration aloud with a small text-to-speech model that runs offline on the CPU, inside mr-cast's own renderer:
 
 | Engine | Model | First use downloads | Voices |
 | --- | --- | --- | --- |
-| `kitten` (the default) | [Kitten TTS mini 0.8](https://huggingface.co/KittenML/kitten-tts-mini-0.8), Apache 2.0 | About 82 MB into `~/.cache/mr-cast/kitten`, checked against a pinned sha256 | `bella`, `luna` (the default), `rosie` and `kiki` (female); `jasper`, `bruno`, `hugo` and `leo` (male); all American English |
-| `kokoro` | [Kokoro 82M v1.0](https://huggingface.co/hexgrad/Kokoro-82M), Apache 2.0 | About 90 MB into `~/.cache/mr-cast/models`, and about 0.5 MB for each voice | 28 voices, such as `af_heart` (its default), `af_bella`, `am_michael`, `bf_emma` and `bm_george`, in American and British English |
+| `tiny-voca` | [tiny-voca](https://huggingface.co/n4ze3m/tiny-voca), Apache 2.0 | About 27 MB into `~/.cache/mr-cast/tiny-voca`, each file checked against a pinned sha256 | `m2` (male, the default) and `f2` (female), American English |
 
-Only the engine you use is downloaded.
+It reads English only. A sentence in another script is skipped.
 
 - `mr-cast voices` lists each engine, its size and whether it is downloaded, then its voices with a description. It marks the default and the voice you chose last.
-- `mr-cast voices --sample <engine:name>` voices one sentence into a WAV file and prints its path, so you can hear a voice before you choose it. `--out <file.wav>` names the file, and `--pace` or `--speed` sets its speed. The first sample of an engine downloads its model.
-- `--voice <engine:name>` picks the voice, and `--engine <engine>` picks an engine's default voice. Voice names of mr-cast 0.26 and earlier, such as `af_heart`, still pick Kokoro.
+- `mr-cast voices --sample <engine:name>` voices one sentence into a WAV file and prints its path, so you can hear a voice before you choose it. `--out <file.wav>` names the file, and `--pace` or `--speed` sets its speed. The first sample downloads the model.
+- `--voice <engine:name>` picks the voice, such as `--voice tiny-voca:f2` or just `--voice f2`. A voice of an older version, such as `kitten:luna` or `af_heart`, picks the closest one, the female or the male voice, and says so in one line.
 - `--pace slower` is speed 0.85 with pauses 1.5 times as long. `--pace faster` is speed 1.15 with pauses 0.85 times as long. `play` and `render` print `mr-cast: pace: slower` when the pace is not `normal`.
 - `--no-voice` makes every scene silent and timed for reading at 130 words a minute, scaled by the pace.
 
-Each spoken text, a scene's narration or a step's `say`, is one clip in the run's `audio/`, named by a hash of the voice with its engine, the speed and the text. A rerun speaks only the texts that changed, and each voice and speed keeps its own clips. `voiceover.json` records when each sentence of a clip starts and ends, so the subtitles follow the voice through the pauses.
+Each spoken text, a scene's narration or a step's `say`, is one clip in the run's `audio/`, named by a hash of the voice with its engine, the speed and the text. A rerun speaks only the texts that changed, and each voice and speed keeps its own clips. `voiceover.json` records when each sentence of a clip starts and ends and when each word starts, so the subtitles light each word as it is said.
 
 The voice reads a few written forms as words. "e.g." becomes "for example", "5s" becomes "5 seconds", "200 ms" becomes "200 milliseconds", an arrow becomes "to", and "v0.14.0" becomes "version 0 point 14 point 0". The subtitles show the same words.
 
@@ -154,7 +153,8 @@ Each scene names its topic in `topic`, and the storyboard records the picks it w
 | `run:.`, `explain:<name>` | A walkthrough from mr-cast 0.11 or earlier: the default run's files in `.mr-cast/` (other runs stay), or an explanation in `.mr-cast/explain/<name>/`. |
 | `video:<run>/<file>.mp4` | A rendered video. `<run>` is a run name, or `.` or `explain/<name>` for 0.11 data. |
 | `stills:<run>`, `audio:<run>` | A run's PNG stills, or its voice clips and `voiceover.json`. `still` and `voice` make them again. |
-| `cache:kitten`, `cache:models` | The Kitten voice model (about 82 MB) or the Kokoro voice model (about 90 MB). The next voice-over in that engine downloads it again. |
+| `cache:tiny-voca` | The voice model (about 27 MB). The next voice-over downloads it again. |
+| `cache:kitten`, `cache:models` | The Kitten and Kokoro voice models older versions spoke with; listed only when they are still there. Nothing needs them now, so delete them. |
 | `cache:bundle`, `cache:remotion` | The player bundle and the browser (about 580 MB) that older versions used to draw videos; listed only when they are still there. Nothing needs them now, so delete them. |
 
 Selectors pick what to delete, and they combine:

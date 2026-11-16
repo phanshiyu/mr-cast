@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.31.0
+
+**A new voice that is much faster and much smaller.** mr-cast now speaks with tiny-voca, a small voice model that runs inside mr-cast's own renderer. Voicing the demo takes about 1.5 seconds instead of 32, the first voice-over downloads about 27 MB instead of 82, and installing mr-cast takes about 270 MB of disk instead of 1 GB. There are two voices, male (`tiny-voca:m2`, the default) and female (`tiny-voca:f2`), both American English (ADR 0046).
+
+**Subtitles light each word as it is said**, and pen marks timed to a word start on it, instead of words being spread evenly over each sentence.
+
+**Kitten and Kokoro are gone, and their many voices with them.** If you chose one of their voices, such as `kitten:luna` or `af_heart`, mr-cast uses the closest new voice and says so; nothing fails. Videos you voiced before are voiced again the first time. `mr-cast prune` lists the old voice models (`cache:kitten`, `cache:models`) so you can delete them.
+
 ## 0.30.0
 
 **Videos render about 18 times faster, with no browser and no ffmpeg.** mr-cast now draws and encodes every frame itself, with a renderer written in Rust, instead of opening Chrome for each frame. The 7.5-minute demo took 189 seconds to render before and takes about 11 now on the same laptop. Every kind of scene looks as it did. The MP4 holds the voice and the chapter markers as before, and frames that do not change are stored once, so files are smaller: the silent demo is 10.6 MB instead of 13.7 MB.

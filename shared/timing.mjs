@@ -136,10 +136,18 @@ export function settledFrame(durationInFrames) {
   return Math.max(0, durationInFrames - SCENE_EXIT_FRAMES - 2);
 }
 
+/** The words of `sentence` whose start has passed `seconds`, less one: the index of the word being said. */
+function timedWord(sentence, seconds) {
+  let k = 0;
+  while (k + 1 < sentence.times.length && sentence.times[k + 1] <= seconds) k++;
+  return k;
+}
+
 /**
  * How many of a segment's words have been spoken `seconds` after its voice starts. A clip with
  * sentence timings spreads each sentence's words over that sentence's speech, so the count holds
- * still through the pauses between sentences. Otherwise words are spread evenly.
+ * still through the pauses between sentences; a sentence that has `times`, where each word starts,
+ * moves on as each word starts. Otherwise words are spread evenly.
  */
 function wordsSpoken(segment, seconds) {
   const words = wordCount(segment.text);
@@ -148,7 +156,10 @@ function wordsSpoken(segment, seconds) {
     let before = 0;
     for (const s of sentences) {
       if (seconds < s.start) return before;
-      if (seconds < s.end) return before + Math.floor(((seconds - s.start) / (s.end - s.start)) * s.words);
+      if (seconds < s.end) {
+        if (s.times?.length === s.words) return before + timedWord(s, seconds);
+        return before + Math.floor(((seconds - s.start) / (s.end - s.start)) * s.words);
+      }
       before += s.words;
     }
     return words;
@@ -189,7 +200,10 @@ function wordStart(segment, index) {
   if (sentences?.length && sentences.reduce((n, s) => n + s.words, 0) === words) {
     let before = 0;
     for (const s of sentences) {
-      if (index < before + s.words) return s.start + ((index - before) / s.words) * (s.end - s.start);
+      if (index < before + s.words) {
+        if (s.times?.length === s.words) return s.times[index - before];
+        return s.start + ((index - before) / s.words) * (s.end - s.start);
+      }
       before += s.words;
     }
   }

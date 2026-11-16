@@ -1,0 +1,14 @@
+[package]
+name = "dizione"
+description = "English text to tiny-voca's phoneme tokens: a Rust port of the dizione Python package (Apache-2.0)."
+edition.workspace = true
+license = "Apache-2.0"
+version.workspace = true
+
+[dependencies]
+fancy-regex = "0.14"
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: the homograph weights must parse to the same doubles Python's json gives.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+unicode-normalization = "0.1"
+unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }

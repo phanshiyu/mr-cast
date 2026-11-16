@@ -5,7 +5,7 @@ docs/adr/0044-encode-in-the-engine.md).
 
 ```
 engine/
-  Cargo.toml             workspace (core, cli); rustfmt.toml: max_width 120
+  Cargo.toml             workspace (core, cli, wasm, dizione); rustfmt.toml: max_width 120
   assets/fonts/          Inter (variable, wght 400-800, opsz 14-32), JetBrains Mono (variable), Caveat 600, as TTF, with OFL texts
                          and the fallbacks for glyphs they lack, as Chrome falls back per character: Inter and
                          JetBrains Mono beyond Latin (Greek, Cyrillic, arrows, math), Noto Sans Symbols (variable),
@@ -46,7 +46,13 @@ engine/
     src/aac.rs           FDK AAC (fdk-aac-sys, built from source): the voice-over as AAC-LC, and back for checks
     src/mp4.rs           the MP4 writer (faststart, VFR durations, edit lists, chapters both ways) and its reader
     src/audio.rs         the voice clips mixed at their frames, at 48 kHz
+    src/voice.rs         `voice`: speaks clips with tiny-voca (dizione, then the ONNX model in tract, pure Rust), clips and
+                         sentences on every core, and times each word from the model's durations
   wasm/                  mrc_wasm: the core for the browser player (wasm-bindgen); scripts/build-wasm.mjs builds wasm/pkg
+  dizione/               English text to tiny-voca's phoneme tokens: a port of the dizione Python package (Apache-2.0),
+                         module by module; data/ holds its tables, tests/fixtures.rs checks 7,700 sentences against
+                         the Python package (DIZIONE_DATA=<the model's phonemizer/ directory>), and
+                         tests/fixtures/make-phonemes.py writes them
 ```
 
 ## Running it
@@ -61,7 +67,12 @@ engine/target/release/mr-cast-engine still --props props.json (--frame N | --sce
 engine/target/release/mr-cast-engine still --props props.json --scenes 1,3..6 [--step k] --out-dir stills/
 engine/target/release/mr-cast-engine sheet --props props.json --tiles tiles.json --out sheet.png
 engine/target/release/mr-cast-engine probe --in video.mp4 [--pcm voice.raw]
+engine/target/release/mr-cast-engine voice --model-dir ~/.cache/mr-cast/tiny-voca/<revision> --job job.json
 ```
+
+`voice` reads `{"clips": [{"text", "voice": "f2"|"m2", "speed", "out"}]}`, writes each clip's WAV (16-bit, 24 kHz) and
+prints a line per clip, `{"clip", "seconds", "sentences": [{"words", "start", "end", "times"}]}`, as it finishes. The
+model directory is what bin/lib/tiny-voca.mjs downloads: `onnx/model.onnx`, `config.json` and `phonemizer/`.
 
 The Node CLI runs these (bin/lib/engine.mjs and render.mjs): `mr-cast render`, `still` and `still --sheet` write the
 props into the run's directory, call the engine and remove them (`MR_CAST_DEBUG=1` keeps them and shows the engine's

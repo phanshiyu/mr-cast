@@ -1,5 +1,5 @@
-// Spoken text as the voice should read it. Kokoro reads a few written forms badly ("e.g." as "ee jee", "5s" as
-// "fives", "ms" as "em ess", an arrow as nothing), so each is rewritten to the words a person would say. Only forms
+// Spoken text as the voice should read it. Voice models have read a few written forms badly ("e.g." as "ee jee", "5s"
+// as "fives", "ms" as "em ess", an arrow as nothing), so each is rewritten to the words a person would say. Only forms
 // with one reading are rewritten. Anything else that reads as code is left for `validate` to point out.
 
 /** [written form, spoken form], applied in order. */

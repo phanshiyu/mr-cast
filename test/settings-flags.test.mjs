@@ -23,7 +23,7 @@ test('every command the skill names accepts the settings flags', () => {
       CLAUDE_CONFIG_DIR: path.join(dir, 'claude'),
     };
     const run = (...args) => spawnSync(process.execPath, [BIN, ...args], { encoding: 'utf8', env, cwd: dir });
-    const flagSets = [['--no-voice'], ['--pace', 'slower'], ['--voice', 'kitten:luna'], ['--audience', 'preread']];
+    const flagSets = [['--no-voice'], ['--pace', 'slower'], ['--voice', 'tiny-voca:f2'], ['--audience', 'preread']];
     // Commands that stop at a missing run or an argument still got past the flags: only "Unknown option" fails.
     const commands = [
       ['status'],

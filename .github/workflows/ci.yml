@@ -62,6 +62,23 @@ jobs:
           wasm-bindgen: 'true'
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
+      # The dizione port's fixtures need the phonemizer data the voice model ships (5 MB), checked by hash.
+      - name: Download the phonemizer data
+        run: |
+          dir="$RUNNER_TEMP/phonemizer"
+          mkdir -p "$dir"
+          base=https://huggingface.co/n4ze3m/tiny-voca/resolve/e5f9b11651a4db525fb207a56a91e4df2d1dd387/phonemizer
+          while read -r sha name; do
+            curl -fsSL --retry 3 -o "$dir/$name" "$base/$name"
+            echo "$sha  $dir/$name" | sha256sum -c -
+          done <<'LIST'
+          3fc930345c6b3cabc533981c4b212fa309eec83913fcdbd42919338270d64b06 lexicon.tsv
+          864763dbd558a864950266b2c30627f1cad203e75062ee842ee63c653e823b75 align.json
+          c518fd839ea0109c0b2b4f778c17506bf0d7653557b8b8c97a4c8dd9883d4432 g2p.json
+          eb3fd519ff00e72d850928d2fccb968adc36134bca2f3bda09de7e794c2ed01b g2p.npz
+          9c3a96fcdf79fa27d1b3686dc6a507c37e4f754966928608ee9ddb617ba39192 homographs.json
+          LIST
+          echo "DIZIONE_DATA=$dir" >> "$GITHUB_ENV"
       - run: cargo test --locked
       - run: node ../scripts/build-wasm.mjs
 
@@ -165,11 +182,11 @@ jobs:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
       - run: cargo build --release --locked --manifest-path engine/Cargo.toml
-      - name: Cache the Kitten voice model
+      - name: Cache the voice model
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .cache/mr-cast/kitten
-          key: kitten-tts-mini-0.8-c0272566
+          path: .cache/mr-cast/tiny-voca
+          key: tiny-voca-e5f9b116
       - run: pnpm build
       - run: scripts/smoke.sh "$RUNNER_TEMP/smoke"
       - name: Show the smoke logs as annotations

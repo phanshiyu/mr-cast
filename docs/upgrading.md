@@ -4,6 +4,10 @@ To upgrade, run `mr-cast upgrade` or ask Claude to "upgrade mr-cast". See [Upgra
 
 Storyboards from older versions keep working. Steps from 0.10 that named `messages`, `events`, `entity` and so on, and nodes with `kind` and `modified: true` from 0.10 and earlier, are rewritten where the storyboard enters.
 
+## From 0.30
+
+- The voice is tiny-voca, `tiny-voca:m2` (male) by default or `tiny-voca:f2` (female). Its first voice-over downloads about 27 MB into `~/.cache/mr-cast/tiny-voca`. Kitten and Kokoro are gone: a `--voice` or a saved choice that names one of their voices, such as `kitten:luna` or `af_heart`, uses the closest tiny-voca voice and says so. Clips voiced before are voiced again on the next voice-over. `mr-cast prune` lists the old models in `cache:kitten` and `cache:models` so you can delete them.
+
 ## From 0.26
 
 - The default voice is Kitten TTS, `kitten:luna`. Its first voice-over downloads about 82 MB into `~/.cache/mr-cast/kitten`. A Kokoro name on its own, such as `--voice af_heart`, still picks Kokoro, and so does `--engine kokoro`. Clips voiced with Kokoro before 0.27 are voiced again on the next voice-over.

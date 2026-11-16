@@ -26,7 +26,7 @@ const audienceOf = (audience) => (audience === 'preread' ? 'preread' : 'familiar
  *   voice: string,
  *   silent: boolean,
  * }} Settings  What one command runs with.
- * @typedef {{ pace?: 'slower' | 'normal' | 'faster' | 'silent', voice?: string }} Choices  `voice` is a full name, such as kitten:luna.
+ * @typedef {{ pace?: 'slower' | 'normal' | 'faster' | 'silent', voice?: string }} Choices  `voice` is a full name, such as tiny-voca:m2.
  */
 
 // --simple was --audience new before 0.25; it is still accepted, and ignored.
@@ -77,7 +77,7 @@ export function settingsArgs(values) {
 const configDir = () => path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'mr-cast');
 const choicesFile = () => path.join(configDir(), 'last-choices.json');
 
-/** The full voice name a stored `voice` names, a bare Kokoro name included, or undefined. */
+/** The full voice name a stored `voice` names, or undefined; a Kitten or Kokoro voice reads as the closest tiny-voca one. */
 const storedVoice = (voice) => {
   try {
     return typeof voice === 'string' ? resolveVoice({ voice }) : undefined;

@@ -67,9 +67,9 @@ A branch video can also end on a **Check first** scene: a `reading` scene with n
 
 ## Change the voice
 
-mr-cast voices with Kitten TTS (`kitten:luna`) by default, and Kokoro is the other engine. Each engine has its own voices. Ask Claude to change the voice, such as "use a male voice" or "use the Kokoro voice", or name one, such as `kitten:bruno` or `kokoro:af_heart`. Claude asks for the engine, then the voice, only when you ask to change it, and keeps your choice for later videos.
+mr-cast speaks with tiny-voca, a small voice model that runs on your computer. It has two voices, male (`tiny-voca:m2`, the default) and female (`tiny-voca:f2`), both American English. Ask Claude to change the voice, such as "use the female voice". Claude asks only when you ask to change it, and keeps your choice for later videos.
 
-To hear the voices yourself, run `mr-cast voices` to list them, and `mr-cast voices --sample kitten:bruno` to voice one sentence into a WAV file. The first use of an engine downloads its model, about 82 MB for Kitten or 90 MB for Kokoro, into `~/.cache/mr-cast`. See [The voice](cli.md#the-voice).
+To hear the voices yourself, run `mr-cast voices` to list them, and `mr-cast voices --sample tiny-voca:f2` to voice one sentence into a WAV file. The first use downloads the model, about 27 MB, into `~/.cache/mr-cast`. See [The voice](cli.md#the-voice).
 
 ## Get an MP4
 
