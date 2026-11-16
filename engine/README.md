@@ -11,7 +11,8 @@ engine/
                          JetBrains Mono beyond Latin (Greek, Cyrillic, arrows, math), Noto Sans Symbols (variable),
                          Noto Sans Math and Noto Sans Symbols 2, each subset to its symbol blocks with pyftsubset
   core/                  mrc_core: no threads, files or processes; builds for wasm32-unknown-unknown
-    data/                font-metrics.json and slots.json, written by scripts/engine-dump.mjs from the JS and TS
+    data/                font-metrics.json, slots.json, lucide.json (icons) and world-110m/50m.json (map outlines), written
+                         by scripts/engine-dump.mjs from the JS and TS
     src/
       lib.rs             Project, build_frame, render_frame (and _with/_into variants for reused buffers)
       model.rs           Props: storyboard (scenes kept as JSON, findings), hunks, voiceover, highlight (syntax colours),
@@ -27,13 +28,16 @@ engine/
       text.rs            fonts, swash shaping (Chrome's wght/opsz/kerning/ligatures), line metrics, baselines
       display.rs         the display list and its builder; svg_path; fingerprint (frame equality)
       raster.rs          tiny-skia for paths, hand-rolled box fills, cached glyph/shadow/glow masks, clips, layers
-      icons.rs           built-in Lucide icons as path data, and the storyboard's own (`props.icons`)
+      icons.rs           Lucide icons as path data (data/lucide.json)
       marks/             pen marks and ink: MarkTargets, Board, ref resolution (mod.rs); their geometry (geometry.rs)
       camera.rs          shared/camera.mjs: Camera, View, frame_shot, tween_view; draws a scene's content through a view
-      states.rs          shared/state-steps.mjs's walk: StateModel, walk_states, StateFrame (shown, place, tint, changed)
+      states.rs          shared/state-steps.mjs's walk: StateModel (ClosureModel for svg and map), walk_states,
+                         StateFrame (shown, place, tint, changed)
+      targets/           shared/targets.mjs: each type's resolve, step_targets, target_steps
       chrome/            backdrop, shell (chapter label, title, aside, content box, enter/exit, header_box,
                          HeaderCallout, source line), captions, fittext
       scenes/            mod.rs (registry and contract), one module per scene type, placeholder.rs
+                         media.rs: what image, svg, mermaid and map share (picture downscale, resvg, svg_boxes)
     tests/js_fixtures.rs timing, speech, text fitting, springs and easings against the JS's own outputs
     tests/marks_geometry.rs  pen and ink geometry against src/utils/penGeometry.ts and inkGeometry.ts
   cli/                   mr-cast-engine: render (parallel, repeats skipped, ffmpeg) and still
@@ -143,8 +147,8 @@ self.shell.draw(dl, f.frame, f.duration, aside, |dl, bx| {
 - Look: `theme::*` colours and `theme::tone(name)`, `color::Color::css("...")` for colours written in the TSX.
 - Icons: a component's fixed icon (`<Check/>`) is `icons::draw(dl, "Check", x, y, size, color, stroke_width)`; add
   it to `icons.rs` from lucide-react. An icon the storyboard names (a node's `icon: "server"`) is
-  `icons::draw_named(dl, &props.icons, name, ...)`: Node puts every `icon` the storyboard names into `props.icons`
-  (`scripts/engine-dump.mjs`, `iconNames`/`iconPaths`; the CLI must do the same).
+  `icons::draw_named(dl, name, ...)`, from every Lucide icon in `core/data/lucide.json` (written by
+  `node scripts/engine-dump.mjs icons`), so the props carry no icons.
 - Steps that change what a scene shows (`set`, `show`, `hide`, `tint`, `move`, `callout`, `sort`): implement
   `states::StateModel` for the type (its MODELS entry in shared/state-steps.mjs: `initial`, `set_prefixes`,
   `show_prefixes`, `tint_prefixes`, `callout`, `apply_move`, `apply_extra` for trace/morph), call
@@ -188,8 +192,24 @@ self.shell.draw(dl, frame, f.duration, aside, |dl, bx| {
 
 The board draws last, over the content, inside the camera, so marks zoom and pan with what they mark, as `<PenMarks>`
 inside `<SceneShell camera>` does. Ink that marks parts a later step moves follows them by itself (`follow`); a scene
-that scrolls (code) passes the shift instead. Text, code and flow are wired this way: `scenes/text.rs` measures its
-parts only when a step marks or draws, as TextCard does, and `scenes/code.rs` is the scrolling case.
+that scrolls (code, terminal, sequence) passes the shift instead.
+
+Most scenes need no more than `marks::Pen`, which holds the board and the camera:
+
+```rust
+// prepare: a diagram laid out in its own units, scaled onto the stage as the TSX's `staged`/`centredStage` do
+let marks = Stage::centred(area, (layout.width, layout.height), scale).targets(&my_boxes(&layout), area);
+let pen = Pen::new(scene, segments, &SceneRefs(scene), vec![marks], true, header_box(scene)); // true: every step
+// draw
+self.shell.draw(dl, frame, f.duration, aside, |dl, bx| self.pen.draw(dl, frame, f.segments, |dl| { /* content */ }));
+```
+
+`LayoutBoxes` (boxes, obstacles, lines in layout units) and `Stage { left, top, scale }` port `LayoutBoxes`, `staged`
+and `centredStage` of penGeometry.ts; each scene's `*_boxes` ports its layout's `*Boxes`. `Pen::draw_shifted` takes
+the scroll shift; `Pen::view` and `Pen::draw_at` let a scene draw its content for the view (svg redraws its vectors at
+the zoom, plot samples its lines finer). Every scene type is wired: text, code and flow drive `Board` and `Camera`
+themselves (text measures its parts only when a step marks or draws, as TextCard does; code is the scrolling case),
+the rest go through `Pen`.
 
 ### CSS that needs care
 
@@ -242,7 +262,7 @@ on every sampled frame of the demo.
 
 ## What is not ported yet
 
-- Scene types other than text, code and flow draw a placeholder until their ports merge.
-- Images (`ImagesContext` of src/Walkthrough.tsx) belong to the image scene's port.
 - Audio: the engine writes silent video; the Node CLI muxes the voice.
 - Handwriting (Caveat) is shaped by swash, where the TS measures notes with a canvas: a note can sit a few pixels off.
+- A glyph none of the bundled fonts has (Inter, JetBrains Mono, Caveat) is drawn from the bundled fallbacks, where
+  Chrome draws it from the system's fonts: on macOS, SF Pro or Apple Symbols, whose glyphs are a little narrower.

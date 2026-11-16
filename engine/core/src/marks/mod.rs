@@ -1057,7 +1057,25 @@ impl Pen {
         shift: &dyn Fn(usize) -> Option<Pt>,
         content: impl FnOnce(&mut DisplayList),
     ) {
-        let view = self.camera.view(frame, segments, &|k| self.target(k));
+        let view = self.view(frame, segments);
+        self.draw_at(dl, view, frame, segments, shift, content);
+    }
+
+    /// Where the camera looks at `frame`, or None when no step moves it.
+    pub fn view(&self, frame: f64, segments: &[Segment]) -> Option<crate::camera::View> {
+        self.camera.view(frame, segments, &|k| self.target(k))
+    }
+
+    /// `draw_shifted` through a view the scene has already asked for (one that draws its content for the view).
+    pub fn draw_at(
+        &self,
+        dl: &mut DisplayList,
+        view: Option<crate::camera::View>,
+        frame: f64,
+        segments: &[Segment],
+        shift: &dyn Fn(usize) -> Option<Pt>,
+        content: impl FnOnce(&mut DisplayList),
+    ) {
         self.camera.draw(dl, view, |dl| {
             dl.group(content);
             self.board.draw(dl, frame, segments, shift);

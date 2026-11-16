@@ -67,8 +67,12 @@ pub struct SceneState {
     pub traces: BTreeMap<String, Option<String>>,
     /// Whether a sortable scene is sorted.
     pub sort: Option<bool>,
-    /// Anything else a model keeps per state (svg transforms and shapes, ...), by its own keys.
-    pub extra: HashMap<String, Value>,
+    /// A moved svg element's transform, by item key.
+    pub transforms: HashMap<String, String>,
+    /// A morphed svg path's target id, by item key.
+    pub shapes: HashMap<String, String>,
+    /// The moves this step plays across its words, with the words they start on; a span lasts only its own step.
+    pub spans: HashMap<String, Option<String>>,
 }
 
 /// What a type's steps can change: the scene type's entry in MODELS of shared/state-steps.mjs. Its refs are the
@@ -317,7 +321,7 @@ pub fn walk_states(model: &dyn StateModel, scene: &Value) -> Vec<SceneState> {
     apply_tints(model, scene, scene.get("tint"), &mut state);
     let mut states = vec![state.clone()];
     for step in list(scene, "steps") {
-        let mut next = SceneState { traces: BTreeMap::new(), ..state.clone() };
+        let mut next = SceneState { traces: BTreeMap::new(), spans: HashMap::new(), ..state.clone() };
         for (r, value) in ordered_entries(step.get("set").filter(|v| v.is_object())) {
             if let Some(entries) = model.set_entries(scene, &r, &value) {
                 if entries.is_empty() || entries.iter().all(|(k, v)| same_value(next.values.get(k), Some(v))) {
@@ -503,4 +507,97 @@ pub fn tint_fill(c: Color) -> Color {
 /// An alpha as `#rrggbbaa` carries it: rounded to eight bits.
 pub fn hex_alpha(alpha: f64) -> f32 {
     ((alpha.clamp(0.0, 1.0) * 255.0).round() / 255.0) as f32
+}
+
+/// The key an svg `move` names, or None.
+pub type MoveKey<'a> = dyn Fn(&str) -> Option<String> + Sync + 'a;
+/// Whether path `id` can morph into `target` from a state.
+pub type MorphCheck<'a> = dyn Fn(&SceneState, &str, &str) -> bool + Sync + 'a;
+
+/// A model given as data and closures over a scene's own parse, for a type that resolves refs through what it has
+/// parsed (an svg's elements, a map's items) rather than its JSON alone.
+pub struct ClosureModel<'a> {
+    pub initial_values: Vec<(String, Value)>,
+    pub initial_hidden: HashSet<String>,
+    /// The item keys a ref names; empty for none.
+    pub resolve: &'a (dyn Fn(&Value) -> Vec<String> + Sync),
+    pub set_prefixes: &'a [&'a str],
+    pub show_prefixes: &'a [&'a str],
+    pub tint_prefixes: &'a [&'a str],
+    /// Whether a set value is acceptable for a key.
+    pub check_value: &'a (dyn Fn(&str, &Value) -> bool + Sync),
+    /// The key a trace ref draws, when it can be traced.
+    pub trace_key: &'a (dyn Fn(&Value) -> Option<String> + Sync),
+    /// An svg's moves: the key a move names, or None.
+    pub move_key: Option<&'a MoveKey<'a>>,
+    /// An svg's morphs: whether path `id` can morph into `target` from this state.
+    pub morph: Option<&'a MorphCheck<'a>>,
+}
+
+impl Refs for ClosureModel<'_> {
+    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
+        Some((self.resolve)(r)).filter(|k| !k.is_empty())
+    }
+}
+
+impl StateModel for ClosureModel<'_> {
+    fn initial(&self, _scene: &Value) -> SceneState {
+        let mut s = SceneState { hidden: self.initial_hidden.clone(), ..SceneState::default() };
+        s.values.extend(self.initial_values.iter().cloned());
+        s
+    }
+    fn set_prefixes(&self) -> &[&str] {
+        self.set_prefixes
+    }
+    fn value_ok(&self, value: &Value, key: &str) -> bool {
+        (self.check_value)(key, value)
+    }
+    fn show_prefixes(&self) -> Option<&[&str]> {
+        Some(self.show_prefixes)
+    }
+    fn tint_prefixes(&self) -> Option<&[&str]> {
+        Some(self.tint_prefixes)
+    }
+    fn callout(&self) -> bool {
+        true
+    }
+    fn trace_key(&self, _scene: &Value, entry: &str) -> Option<String> {
+        (self.trace_key)(&Value::String(entry.to_string()))
+    }
+    /// An svg step's `move` (a transform, played across its `when` words) and `morph` (a path into another's shape).
+    fn apply_extra(&self, _scene: &Value, step: &Value, next: &mut SceneState) {
+        if let (Some(mv), Some(move_key)) = (step.get("move").and_then(Value::as_object), self.move_key) {
+            for (name, value) in mv {
+                let Some(key) = move_key(name) else { continue };
+                let (to, when) = match value {
+                    Value::Object(o) => (
+                        o.get("to").and_then(Value::as_str),
+                        Some(o.get("when").and_then(Value::as_str).map(String::from)),
+                    ),
+                    Value::String(s) => (Some(s.as_str()), None),
+                    _ => (None, None),
+                };
+                let Some(to) = to else { continue };
+                if crate::scenes::svg::motion::parse_transform(to).is_some() {
+                    next.transforms.insert(key.clone(), to.trim().to_string());
+                    if let Some(w) = when {
+                        next.spans.insert(key, w);
+                    }
+                }
+            }
+        }
+        if let (Some(morph), Some(check)) = (step.get("morph").and_then(Value::as_object), self.morph) {
+            for (id, target) in morph {
+                let Some(target) = target.as_str() else { continue };
+                if check(next, id, target) {
+                    let key = format!("s:{id}");
+                    if target == id {
+                        next.shapes.remove(&key);
+                    } else {
+                        next.shapes.insert(key, target.to_string());
+                    }
+                }
+            }
+        }
+    }
 }

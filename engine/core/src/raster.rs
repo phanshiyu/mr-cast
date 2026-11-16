@@ -277,6 +277,7 @@ impl Renderer {
                             Item::Box { rect, .. } if rect.width() * rect.height() > 100_000.0 => "big box",
                             Item::Box { .. } => "box",
                             Item::Path { .. } => "path",
+                            Item::Image { .. } => "image",
                             Item::Text { glow: Some(_), .. } => "text+glow",
                             Item::Text { .. } => "text",
                             _ => "other",
@@ -397,6 +398,20 @@ impl Renderer {
                     blit(target, &m, ox.round() as i32, oy.round() as i32, gc.fade(op), clip);
                 }
                 self.glyphs(run, *x, *y, color.fade(op), t, target, clip);
+            }
+            Item::Image { pixmap, rect, .. } => {
+                let (sx, sy) = (rect.width() / pixmap.width() as f32, rect.height() / pixmap.height() as f32);
+                let local = Transform::from_row(sx, 0.0, 0.0, sy, rect.left(), rect.top());
+                let quality = if (sx - 1.0).abs() < 1e-3 && (sy - 1.0).abs() < 1e-3 && t.is_translate() {
+                    tiny_skia::FilterQuality::Nearest
+                } else {
+                    tiny_skia::FilterQuality::Bicubic
+                };
+                let pattern =
+                    tiny_skia::Pattern::new((**pixmap).as_ref(), tiny_skia::SpreadMode::Pad, quality, op, local);
+                let mask = self.skia_mask(clip, rect.transform(t), target.width(), target.height());
+                let paint = tiny_skia::Paint { shader: pattern, ..Default::default() };
+                target.fill_rect(*rect, &paint, t, mask.as_deref());
             }
             _ => {}
         }

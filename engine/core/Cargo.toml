@@ -5,7 +5,12 @@ edition.workspace = true
 license.workspace = true
 version.workspace = true
 
+[features]
+# Mermaid diagrams drawn natively with merman; without it a mermaid scene draws a message in the frame.
+mermaid = ["dep:merman"]
+
 [dependencies]
+merman = { version = "0.10", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd", "png-format"] }
@@ -13,3 +18,4 @@ swash = "0.2"
 kurbo = "0.11"
 fancy-regex = "0.14"
 unicode-normalization = "0.1"
+resvg = { version = "0.50", default-features = false, features = ["text"] }

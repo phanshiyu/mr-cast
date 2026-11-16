@@ -62,6 +62,8 @@ mkdir -p "$run" "$work/config" "$work/state" "$work/claude"
 cp "$src/storyboard.json" "$run/"
 if [ -f "$src/hunks.json" ]; then cp "$src/hunks.json" "$run/"; else echo '{}' > "$run/hunks.json"; fi
 if [ -f "$src/meta.json" ]; then cp "$src/meta.json" "$run/"; elif [ ! -f "$src/hunks.json" ]; then echo '{ "mode": "explain" }' > "$run/meta.json"; fi
+# Pictures a storyboard shows sit beside it.
+for f in "$src"/*.png "$src"/*.jpg "$src"/*.jpeg "$src"/*.webp "$src"/*.gif; do [ -f "$f" ] && cp "$f" "$run/"; done
 
 mrcast() {
   XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" CLAUDE_CONFIG_DIR="$work/claude" \
@@ -111,7 +113,8 @@ while [ "$k" -lt "$most" ]; do
   k=$((k + 1))
 done
 
-# The engine's side, every time.
+# The engine's side, every time. Validating copies the pictures into the run's images/ and writes images.json.
+mrcast validate --dir "$run" > /dev/null 2>&1 || true
 node "$repo/scripts/engine-dump.mjs" props "$run" "$work/props.json" > /dev/null
 printf '%-34s %8s %10s  %s\n' still mean worst-tile at
 while read -r i type steps; do

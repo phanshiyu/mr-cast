@@ -228,6 +228,10 @@ enum Body {
     },
     Image {
         src: String,
+        /// `contain` or `cover`.
+        fit: String,
+        /// The run's copy of the picture, when it has one.
+        picture: Option<std::sync::Arc<tiny_skia::Pixmap>>,
     },
 }
 
@@ -345,7 +349,10 @@ fn fit_cell(props: &Props, cell: &Value, room: &Room, font: f64) -> PlacedCell {
         return placed(Body::Text(text), h);
     }
     if let Some(src) = cell.get("image") {
-        return placed(Body::Image { src: js_string(src) }, js_round(room.width * 9.0 / 16.0));
+        let src = js_string(src);
+        let fit = cell.get("fit").and_then(Value::as_str).unwrap_or("contain").to_string();
+        let picture = props.pictures.get(&src).map(|p| p.pixmap.clone());
+        return placed(Body::Image { src, fit, picture }, js_round(room.width * 9.0 / 16.0));
     }
     let code = cell.get("code").map(js_string).unwrap_or_default();
     let lang = cell.get("lang").and_then(Value::as_str).unwrap_or("plain");
@@ -923,7 +930,25 @@ impl CompareView {
                     }
                 }
             }
-            Body::Image { src } => {
+            Body::Image { picture: Some(p), fit, .. } => {
+                // `Picture`: the copy, fitted into the cell's 16:9 box on the raised colour, with rounded corners.
+                let (w, h) = (l.cell_w as f32, cell.h as f32);
+                dl.rect(x, y, w, h, BoxStyle::fill(RAISED).radius(12.0));
+                let (pw, ph) = (p.width() as f32, p.height() as f32);
+                let k = if fit == "cover" { (w / pw).max(h / ph) } else { (w / pw).min(h / ph) };
+                let (dw, dh) = (pw * k, ph * k);
+                dl.push_clip(x, y, w, h, 12.0);
+                dl.image(
+                    p.clone(),
+                    std::sync::Arc::as_ptr(p) as usize as u64,
+                    x + (w - dw) / 2.0,
+                    y + (h - dh) / 2.0,
+                    dw,
+                    dh,
+                );
+                dl.pop_clip();
+            }
+            Body::Image { src, .. } => {
                 // Picture's placeholder, as drawn when the run holds no copy of the picture.
                 let w = l.cell_w as f32;
                 let h = cell.h as f32;

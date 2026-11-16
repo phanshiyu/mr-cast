@@ -92,10 +92,7 @@ pub fn chart_order(scene: &ChartScene, values: &Vals, sort: bool) -> Vec<usize> 
     place
 }
 
-/// JS `String(n)` for the numbers a chart prints.
-pub fn js_num(v: f64) -> String {
-    if v.fract() == 0.0 && v.abs() < 1e21 { format!("{}", v as i64) } else { v.to_string() }
-}
+pub use crate::timing::js_num;
 
 /// Groups the integer part's digits in threes, as `toLocaleString('en-US')`.
 fn group(digits: &str) -> String {

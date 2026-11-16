@@ -26,6 +26,17 @@ pub fn js_round(x: f64) -> f64 {
     (x + 0.5).floor()
 }
 
+/// JS `String(n)` for a number: whole numbers without a fraction, and -0 as "0".
+pub fn js_num(v: f64) -> String {
+    if v == 0.0 {
+        "0".into()
+    } else if v.fract() == 0.0 && v.abs() < 9e15 {
+        format!("{}", v as i64)
+    } else {
+        v.to_string()
+    }
+}
+
 fn build_seconds(ty: &str) -> f64 {
     match ty {
         "graph" | "sequence" | "er" | "state" | "table" | "timeline" | "layers" | "files" | "review" | "reading"

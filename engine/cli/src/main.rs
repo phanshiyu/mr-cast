@@ -8,6 +8,7 @@
 mod encode;
 mod mkv;
 
+use mrc_core::model::{Picture, Props};
 use mrc_core::{Project, render_frame, timing};
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -43,7 +44,33 @@ fn range(s: &str, max: u32) -> Result<std::ops::Range<u32>, String> {
 fn load(f: &HashMap<String, String>) -> Result<Project, String> {
     let path = f.get("props").ok_or("--props is required")?;
     let json = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
-    Project::from_json(&json)
+    let mut props: Props = serde_json::from_str(&json).map_err(|e| format!("props: {e}"))?;
+    let dir = std::path::Path::new(path).parent().map(|d| d.to_path_buf()).unwrap_or_default();
+    for (src, entry) in props.images.clone() {
+        match decode_picture(&dir.join(&entry.file)) {
+            Ok(p) => {
+                props.pictures.insert(src, p);
+            }
+            Err(e) => eprintln!("image {src}: {e}"),
+        }
+    }
+    Ok(Project::new(props))
+}
+
+/// Decodes an image file of the run (PNG, JPEG, WebP or GIF), turned upright by its EXIF orientation.
+fn decode_picture(file: &std::path::Path) -> Result<Picture, String> {
+    use image::{ImageDecoder, ImageReader};
+    let mut decoder = ImageReader::open(file)
+        .map_err(|e| e.to_string())?
+        .with_guessed_format()
+        .map_err(|e| e.to_string())?
+        .into_decoder()
+        .map_err(|e| e.to_string())?;
+    let orientation = decoder.orientation().map_err(|e| e.to_string())?;
+    let mut img = image::DynamicImage::from_decoder(decoder).map_err(|e| e.to_string())?;
+    img.apply_orientation(orientation);
+    let rgba = img.to_rgba8();
+    Picture::from_rgba8(rgba.width(), rgba.height(), rgba.as_raw()).ok_or_else(|| "empty image".to_string())
 }
 
 /// The frame `mr-cast still` shows for scene `n` (1-based): its settled end, or the end of step `step`.

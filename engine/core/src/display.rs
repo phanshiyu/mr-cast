@@ -170,6 +170,13 @@ pub enum Item {
         rect: Rect,
         fade: f32,
     },
+    /// A premultiplied RGBA picture scaled into `rect`. `key` names its content for frame equality: pictures
+    /// with equal keys are the same pixels.
+    Image {
+        pixmap: Arc<tiny_skia::Pixmap>,
+        key: u64,
+        rect: Rect,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -291,6 +298,12 @@ impl DisplayList {
     }
     pub fn pop_clip(&mut self) {
         self.push(Item::PopClip);
+    }
+    /// A picture scaled to the box at (x, y), `w` by `h`; `key` identifies its pixels (see [`Item::Image`]).
+    pub fn image(&mut self, pixmap: Arc<tiny_skia::Pixmap>, key: u64, x: f32, y: f32, w: f32, h: f32) {
+        if let Some(rect) = Rect::from_xywh(x, y, w, h) {
+            self.push(Item::Image { pixmap, key, rect });
+        }
     }
     pub fn push_layer(&mut self, opacity: f32) {
         self.push(Item::PushLayer { opacity });
@@ -457,6 +470,13 @@ impl DisplayList {
                 Item::PushFadeLayer { rect, fade } => {
                     h.u(17);
                     for v in [rect.left(), rect.top(), rect.width(), rect.height(), *fade] {
+                        h.f(v);
+                    }
+                }
+                Item::Image { key, rect, .. } => {
+                    h.u(18);
+                    h.u(*key);
+                    for v in [rect.left(), rect.top(), rect.width(), rect.height()] {
                         h.f(v);
                     }
                 }
