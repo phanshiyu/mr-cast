@@ -80,8 +80,14 @@ function cdp(method, params = {}) {
 
 async function connect() {
   const portFile = path.join(profile, 'DevToolsActivePort');
-  for (let i = 0; i < 100 && !fs.existsSync(portFile); i++) await sleep(100);
-  const port = fs.readFileSync(portFile, 'utf8').split('\n')[0];
+  // A full Chrome on a busy CI runner can take well over ten seconds to write its port.
+  const readPort = () => (fs.existsSync(portFile) ? fs.readFileSync(portFile, 'utf8').split('\n')[0].trim() : '');
+  let port = readPort();
+  for (let i = 0; i < 600 && !port; i++) {
+    await sleep(100);
+    port = readPort();
+  }
+  if (!port) throw new Error(`Chrome wrote no DevToolsActivePort in 60 s (${portFile})`);
   const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
   const page = targets.find((t) => t.type === 'page');
   ws = new WebSocket(page.webSocketDebuggerUrl);
