@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # End-to-end smoke test of a built checkout, as CI runs it: stills of the gallery and demo examples, one
-# voiced clip rendered to an MP4 with its voice and chapters, and a scan of the live player for clipped text.
+# voiced clip rendered to an MP4 with its voice and chapters, and the live player loading in an installed Chrome.
 # Needs `pnpm install`, `pnpm build` and the render engine (a checkout builds it with cargo).
 # usage: scripts/smoke.sh <out dir> [--no-voice]
-# Downloads Chrome Headless Shell (and the voice model unless --no-voice) into $XDG_CACHE_HOME/mr-cast on
-# first use. Writes nothing outside <out dir> and that cache.
+# Downloads the voice model (unless --no-voice) into $XDG_CACHE_HOME/mr-cast on first use. The player step needs a
+# Chrome (MR_CAST_CHROME, or Google Chrome or Chromium installed). Writes nothing outside <out dir> and that cache.
 set -euo pipefail
 OUT="${1:?usage: scripts/smoke.sh <out dir> [--no-voice]}"
 VOICE=1
