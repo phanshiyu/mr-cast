@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.30.0
 
 **Videos render about 18 times faster, with no browser and no ffmpeg.** mr-cast now draws and encodes every frame itself, with a renderer written in Rust, instead of opening Chrome for each frame. The 7.5-minute demo took 189 seconds to render before and takes about 11 now on the same laptop. Every kind of scene looks as it did. The MP4 holds the voice and the chapter markers as before, and frames that do not change are stored once, so files are smaller: the silent demo is 10.6 MB instead of 13.7 MB.
 
