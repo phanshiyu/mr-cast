@@ -4,7 +4,7 @@
 
 mod geo;
 
-use super::media::{drop_shadow_filter, hash64, raster_svg, xml_escape};
+use super::media::{drop_shadow_filter_in, hash64, raster_svg, xml_escape};
 use super::svg::tone_color;
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{CLAMP, Easing, Spring, interpolate, spring};
@@ -43,6 +43,9 @@ const LABEL_SIZE: f64 = 26.0;
 const LABEL_WEIGHT: f64 = 600.0;
 const DOT_RADIUS: f64 = 9.0;
 const LABEL_GAP: f64 = 10.0;
+/// How far past the stage a glow's filter region reaches. A zoomed-in glow blurs by hundreds of pixels, and the
+/// renderer's cost follows the region; what lies farther out only fades the glow's edges a little.
+const MAX_REACH: f64 = 256.0;
 const SIDES: &[&str] = &["right", "left", "above", "below"];
 
 // ─── The world ───
@@ -378,6 +381,18 @@ struct Camera {
     k: f64,
     x: f64,
     y: f64,
+}
+
+impl Camera {
+    /// A box `[x0, y0, x1, y1]` of projected points on the stage, grown by `pad`.
+    fn screen(self, b: [f64; 4], pad: f64) -> [f64; 4] {
+        [
+            b[0] * self.k + self.x - pad,
+            b[1] * self.k + self.y - pad,
+            b[2] * self.k + self.x + pad,
+            b[3] * self.k + self.y + pad,
+        ]
+    }
 }
 
 fn map_ref(scene: &Value, r: &Value) -> Vec<String> {
@@ -765,13 +780,23 @@ impl DrawCtx<'_> {
         e
     }
 
-    fn glow(&self, e: Emphasis, scale: f64) -> String {
+    /// The filter attribute that glows an element whose drawing (stroke included) lies within `bounds`, `[x0, y0, x1,
+    /// y1]` on the stage, or anywhere when that is unknown. Its filter region is those bounds and the reach of the
+    /// blur, kept to the stage: the renderer's cost follows the region, not the element.
+    fn glow(&self, e: Emphasis, scale: f64, bounds: Option<[f64; 4]>) -> String {
         if e.glow <= 0.0 {
             return String::new();
         }
         let id = format!("glow{}", self.defs.borrow().len());
-        self.defs.borrow_mut().push(drop_shadow_filter(
+        // The two chained shadows blur by 1.5 and 7 deviations; four of their sum holds what is visible.
+        let reach = (4.0 * (1.5 + 7.0) * e.glow * scale + 5.0).min(MAX_REACH);
+        let (w, h) = self.me.stage;
+        let [x0, y0, x1, y1] = bounds.unwrap_or([0.0, 0.0, w, h]);
+        let (x0, y0) = ((x0 - reach).max(-reach), (y0 - reach).max(-reach));
+        let (x1, y1) = ((x1 + reach).min(w + reach), (y1 + reach).min(h + reach));
+        self.defs.borrow_mut().push(drop_shadow_filter_in(
             &id,
+            (x0.floor(), y0.floor(), (x1 - x0.floor()).max(1.0).ceil(), (y1 - y0.floor()).max(1.0).ceil()),
             &[(3.0 * e.glow * scale, ACCENT, 1.0), (14.0 * e.glow * scale, ACCENT, 0.45)],
         ));
         format!(" filter=\"url(#{id})\"")
@@ -840,7 +865,7 @@ impl SceneView for MapView {
                 "<path d=\"{}\" fill=\"{fill}\" stroke=\"{stroke}\" stroke-width=\"{width}\" stroke-linejoin=\"round\" opacity=\"{}\"{}/>",
                 path.svg(cam.k, cam.x, cam.y),
                 n(e.opacity * mix.dim_opacity()),
-                cx.glow(e, cam.k)
+                cx.glow(e, cam.k, path.bounds().map(|b| cam.screen(b, 3.0)))
             ));
         }
         for (key, path) in &self.regions {
@@ -857,7 +882,7 @@ impl SceneView for MapView {
                 tone_color(&tone),
                 tone_color(&tone),
                 n(shown * e.opacity * dim),
-                cx.glow(e, cam.k)
+                cx.glow(e, cam.k, path.bounds().map(|b| cam.screen(b, 3.0)))
             ));
         }
         // Routes and lines drawn on, with the head of one still arriving.
@@ -877,7 +902,8 @@ impl SceneView for MapView {
             let e = cx.light(key);
             let (tone, dim) = cx.colour(key, item.tone.as_deref().unwrap_or(default_tone(item.kind)));
             let color = tone_color(&tone);
-            let d = self.layout.proj.path(&Geom::Line(&path)).svg(cam.k, cam.x, cam.y);
+            let projected = self.layout.proj.path(&Geom::Line(&path));
+            let d = projected.svg(cam.k, cam.x, cam.y);
             if drawing && let Some(last) = path.last().and_then(|p| self.on_screen(cam, *p)) {
                 heads.push((last.0, last.1, color));
             }
@@ -886,7 +912,7 @@ impl SceneView for MapView {
                 "<path d=\"{d}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{}\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"{}\"{}/>",
                 if item.kind == Kind4::Route { 4 } else { 3 },
                 n((if drawing { 1.0 } else { shown }) * e.opacity * dim),
-                cx.glow(e, cam.k)
+                cx.glow(e, cam.k, projected.bounds().map(|b| cam.screen(b, 3.0)))
             ));
         }
         for (x, y, color) in heads {
@@ -1045,7 +1071,22 @@ impl MapView {
             }
             let changed = sf.before.values.get(key) != sf.now.values.get(key);
             let color = tone_color(&tone);
-            out.push_str(&format!("<g opacity=\"{}\"{}>", n(fade), cx.glow(e, 1.0)));
+            // The dot and the text with its outline.
+            let mut glow_box = [
+                anchor.0 - DOT_RADIUS - 3.0,
+                anchor.1 - DOT_RADIUS - 3.0,
+                anchor.0 + DOT_RADIUS + 3.0,
+                anchor.1 + DOT_RADIUS + 3.0,
+            ];
+            if let Some((x, y, w, h)) = spot.text_box {
+                glow_box = [
+                    glow_box[0].min(x - 4.0),
+                    glow_box[1].min(y - 4.0),
+                    glow_box[2].max(x + w + 4.0),
+                    glow_box[3].max(y + h + 4.0),
+                ];
+            }
+            out.push_str(&format!("<g opacity=\"{}\"{}>", n(fade), cx.glow(e, 1.0, Some(glow_box))));
             if item.kind == Kind4::Place && item.dot {
                 out.push_str(&format!("<circle cx=\"{}\" cy=\"{}\" r=\"{DOT_RADIUS}\" fill=\"{color}\" stroke=\"{BG}\" stroke-width=\"3\"/>", n(anchor.0), n(anchor.1)));
             }

@@ -109,8 +109,15 @@ pub fn xml_escape(s: &str) -> String {
 /// A filter that draws `shadows` (blur radius in px as CSS gives it, colour as hex, opacity) around what it
 /// filters, one after another as chained CSS `drop-shadow()`s do.
 pub fn drop_shadow_filter(id: &str, shadows: &[(f64, &str, f64)]) -> String {
+    drop_shadow_filter_in(id, (-100000.0, -100000.0, 200000.0, 200000.0), shadows)
+}
+
+/// `drop_shadow_filter` limited to a region `(x, y, width, height)` in user units, so the renderer need not size its
+/// buffers for an effectively infinite one. The region must hold everything the shadows reach that is on screen.
+pub fn drop_shadow_filter_in(id: &str, region: (f64, f64, f64, f64), shadows: &[(f64, &str, f64)]) -> String {
+    let (x, y, w, h) = region;
     let mut s = format!(
-        r#"<filter id="{id}" filterUnits="userSpaceOnUse" x="-100000" y="-100000" width="200000" height="200000" color-interpolation-filters="sRGB">"#
+        r#"<filter id="{id}" filterUnits="userSpaceOnUse" x="{x}" y="{y}" width="{w}" height="{h}" color-interpolation-filters="sRGB">"#
     );
     for (blur, color, alpha) in shadows {
         s.push_str(&format!(
