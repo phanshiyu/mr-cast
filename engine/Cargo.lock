@@ -270,6 +270,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dizione"
+version = "0.1.0"
+dependencies = [
+ "fancy-regex",
+ "serde",
+ "serde_json",
+ "unicode-normalization",
+ "unicode-properties",
+]
+
+[[package]]
 name = "dtoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1856,6 +1867,12 @@ checksum = "75cd3fb03d5288b3ba9a1ee103ac7e9cbb59f0b03d64f8ddfcc04dd42758a85d"
 dependencies = [
  "tinyvec",
 ]
+
+[[package]]
+name = "unicode-properties"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993ad287eb20e8ba755312801cfe1413e0f25d604075863acaddca10b04c1833"
 
 [[package]]
 name = "unicode-script"

@@ -5,7 +5,7 @@ docs/adr/0044-encode-in-the-engine.md).
 
 ```
 engine/
-  Cargo.toml             workspace (core, cli); rustfmt.toml: max_width 120
+  Cargo.toml             workspace (core, cli, wasm, dizione); rustfmt.toml: max_width 120
   assets/fonts/          Inter (variable, wght 400-800, opsz 14-32), JetBrains Mono (variable), Caveat 600, as TTF, with OFL texts
                          and the fallbacks for glyphs they lack, as Chrome falls back per character: Inter and
                          JetBrains Mono beyond Latin (Greek, Cyrillic, arrows, math), Noto Sans Symbols (variable),
@@ -47,6 +47,10 @@ engine/
     src/mp4.rs           the MP4 writer (faststart, VFR durations, edit lists, chapters both ways) and its reader
     src/audio.rs         the voice clips mixed at their frames, at 48 kHz
   wasm/                  mrc_wasm: the core for the browser player (wasm-bindgen); scripts/build-wasm.mjs builds wasm/pkg
+  dizione/               English text to tiny-voca's phoneme tokens: a port of the dizione Python package (Apache-2.0),
+                         module by module; data/ holds its tables, tests/fixtures.rs checks 7,700 sentences against
+                         the Python package (DIZIONE_DATA=<the model's phonemizer/ directory>), and
+                         tests/fixtures/make-phonemes.py writes them
 ```
 
 ## Running it
