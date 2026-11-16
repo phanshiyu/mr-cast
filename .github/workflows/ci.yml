@@ -70,7 +70,8 @@ jobs:
   engine-platforms:
     name: Engine on ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 40
+    # The Intel macOS runner takes about 40 minutes to build the engine and its encoders.
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
