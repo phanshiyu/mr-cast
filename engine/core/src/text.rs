@@ -164,6 +164,8 @@ pub struct ShapedRun {
     pub width: f32,
     /// A key unique to this text and style, for caches of what is drawn from it.
     pub key: u64,
+    /// The text, so a look can draw it again in another face.
+    pub text: Arc<str>,
 }
 
 fn hash_of(text: &str, style: &Style) -> u64 {
@@ -238,7 +240,7 @@ fn shape_uncached(text: &str, style: Style) -> ShapedRun {
             });
         }
     });
-    ShapedRun { style, coords, glyphs, width: x, key: hash_of(text, &style) }
+    ShapedRun { style, coords, glyphs, width: x, key: hash_of(text, &style), text: Arc::from(text) }
 }
 
 /// Advance of `text` in `style`, in px, as drawn.

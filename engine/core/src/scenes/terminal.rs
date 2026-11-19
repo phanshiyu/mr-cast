@@ -726,6 +726,11 @@ impl TerminalView {
 }
 
 impl SceneView for TerminalView {
+    fn pencil_spans(&self) -> Vec<crate::chrome::pencil::Span> {
+        let b = self.shell.content(0.0);
+        self.pen.frame_spans((b.x, b.y))
+    }
+
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
         let l = &self.layout;

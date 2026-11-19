@@ -4,6 +4,8 @@
 
 use crate::color::Color;
 use crate::display::{DisplayList, Item, Paint};
+use crate::text::{Face, ShapedRun, Style, shape};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static BOARD: AtomicBool = AtomicBool::new(false);
@@ -89,16 +91,32 @@ pub fn swap_list(dl: &mut DisplayList) {
                     s.color = swap(s.color);
                 }
             }
-            Item::Text { color, glow, .. } => {
+            Item::Text { run, color, glow, .. } => {
+                *run = by_hand(run);
                 *color = swap(*color);
                 if let Some((_, g)) = glow {
                     *g = swap(*g);
                 }
             }
-            Item::TextPaint { paint, .. } => swap_paint(paint),
+            Item::TextPaint { run, paint, .. } => {
+                *run = by_hand(run);
+                swap_paint(paint);
+            }
             _ => {}
         }
     }
+}
+
+/// The handwriting face is smaller for its size than the sans.
+const HAND_SCALE: f32 = 1.22;
+
+/// Sans text written by hand: the same words in the handwriting face, a little larger. Code stays in its mono face.
+fn by_hand(run: &Arc<ShapedRun>) -> Arc<ShapedRun> {
+    if run.style.face != Face::Sans || run.text.is_empty() {
+        return run.clone();
+    }
+    let weight = if run.style.weight >= 600.0 { 700.0 } else { 600.0 };
+    shape(&run.text, Style::new(Face::Hand, weight, run.style.size * HAND_SCALE))
 }
 
 fn hex(c: Color) -> String {

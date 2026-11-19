@@ -117,6 +117,11 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         if let Some(fit) = &project.sketches[i] {
             chrome::shell::draw_illustrative(&mut dl, fit, local, t.duration);
         }
+        // On the board the scene is recoloured and its text written by hand; the pencil and the captions, drawn after,
+        // keep their own colours and face.
+        if look::board() {
+            look::swap_list(&mut dl);
+        }
         if let Some((spans, enter)) = project.pencils.get(i) {
             let (at, lift) = chrome::pencil::tip(spans, local, *enter);
             chrome::pencil::draw(&mut dl, at, lift, 1.0);
@@ -124,9 +129,6 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         if project.props.show_captions {
             chrome::captions::draw(&mut dl, &t.segments, local, t.duration);
         }
-    }
-    if look::board() {
-        look::swap_list(&mut dl);
     }
     dl
 }

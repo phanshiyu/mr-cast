@@ -29,8 +29,12 @@ A storyboard may choose `"look": "board"`. The default look is unchanged.
   between frames. (A displacement filter over the whole drawing was tried first; it broke thin lines into pixel steps.)
 - **Drawn on, part by part.** As a scene starts, its drawing's parts draw on one after another, as a pencil would
   draw them, over up to three seconds; the voice starts partway, as someone explaining talks while they draw.
+- **Written by hand.** On the board every sans-serif text is drawn again in the handwriting face, a little larger, as
+  a frame is assembled: titles, bullets, labels, table cells. Code and terminal text keep their mono face, and the
+  captions, added after, keep the sans so they stay easy to read.
 - **A pencil.** A pencil is drawn at the point being drawn: the tip of ink as it is written, a title as it is
-  lettered, and a part of an svg drawing as it draws on. Between strokes it rests where it last drew.
+  lettered, and a part of an svg drawing as it draws on. In a scene with a pen it goes beside what each step lights
+  as the step's words start. Between strokes it rests where it last drew.
 
 ## Consequences
 
@@ -39,7 +43,9 @@ A storyboard may choose `"look": "board"`. The default look is unchanged.
 - The remap matches the palette's own colours; a colour a scene derives from them (a mix, a brighter accent) keeps
   its default hue until the scene names it. Scene types other than svg keep their card layouts on the board; making
   each of them hand-drawn is later work.
-- `validate` measures titles in the default face; the handwriting face is narrower, so a title that fits still fits.
+- `validate` measures text in the default face; the handwriting face is narrower even a little larger, so text that
+  fits still fits, but text centred in a box sits slightly left of centre.
+- Rendering on the board takes longer: a 4:41 explanation took 6:21 on 8 cores, against about 3 minutes.
 
 ## Alternatives considered
 
