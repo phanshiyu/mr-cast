@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).
 
