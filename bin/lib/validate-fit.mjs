@@ -129,9 +129,12 @@ function checkInkPoints(storyboard, hunks, stages, warnings) {
       const x = Math.min(Math.max(area.x + item.at[0] * area.width, area.x), area.x + area.width - width);
       const y = Math.min(Math.max(area.y + item.at[1] * area.height, area.y), area.y + area.height - height);
       const text = { x, y, width, height };
-      const hit = steps
-        .slice(step, Math.min(until, steps.length))
-        .flatMap((s, j) => s.boxes.filter(([, b]) => overlaps(text, b)).map(([key]) => ({ key, at: step + j })))[0];
+      const hit = steps.slice(step, Math.min(until, steps.length)).flatMap((s, j) =>
+        // A chart series' box (s:) spans all its bars and the space above the short ones; each bar has a box of its own.
+        s.boxes
+          .filter(([key, b]) => !(scene.type === 'chart' && key.startsWith('s:')) && overlaps(text, b))
+          .map(([key]) => ({ key, at: step + j })),
+      )[0];
       if (hit)
         warnings.push(
           `scenes[${i}].steps[${step}].draw[${index}].at: the text lands on ${named.has(hit.key) ? JSON.stringify(named.get(hit.key)) : 'part of the drawing'}${hit.at === step ? '' : ` once step ${hit.at} shows it`}; move it to free space, or write it near a ref`,

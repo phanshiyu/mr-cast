@@ -15,7 +15,7 @@ import { clipFor, paceOf } from './voice.mjs';
 
 export const FPS = 30;
 /** Reading pace of a scene without a voice clip, at the normal pace. */
-const WORDS_PER_MINUTE = 170;
+const WORDS_PER_MINUTE = 195;
 /** Pauses at the normal pace, in seconds. The pace multiplies each one. */
 const NARRATION_LEAD = 1.0;
 const STEP_LEAD = 0.3;

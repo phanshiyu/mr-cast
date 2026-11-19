@@ -29,7 +29,7 @@ test('a scene speaks its narration then each step say, without markup', () => {
   assert.deepEqual(spokenTexts(graph), [thirteen, 'two words']);
 });
 
-test('without a clip, the narration waits for the build and reads at 170 words a minute', () => {
+test('without a clip, the narration waits for the build and reads at 195 words a minute', () => {
   const [narration, step] = sceneSegments(graph);
   assert.deepEqual(
     {
@@ -41,15 +41,15 @@ test('without a clip, the narration waits for the build and reads at 170 words a
     {
       from: 0,
       voiceFrom: 54,
-      duration: 237,
-      speaking: (13 / 170) * 60 * 30,
+      duration: 219,
+      speaking: (13 / 195) * 60 * 30,
     },
   );
   assert.deepEqual(
     { from: step.from, voiceFrom: step.voiceFrom, duration: step.durationInFrames },
-    { from: 237, voiceFrom: 246, duration: 99 },
+    { from: 219, voiceFrom: 228, duration: 99 },
   );
-  assert.equal(sceneDurationInFrames(graph), 336);
+  assert.equal(sceneDurationInFrames(graph), 318);
 });
 
 test('a voice clip sets the speaking time and the tail follows it', () => {
@@ -66,7 +66,7 @@ test('a slower pace stretches pauses and reading time', () => {
     { voice: 'v', clips: {}, speed: 0.85, pauses: 1.5 },
   );
   assert.equal(narration.voiceFrom, 45);
-  assert.equal(Math.ceil(narration.speakingFrames), 162);
+  assert.equal(Math.ceil(narration.speakingFrames), 142);
 });
 
 test('settledFrame sits before the fade-out and never goes negative', () => {
@@ -77,6 +77,6 @@ test('settledFrame sits before the fade-out and never goes negative', () => {
 test('spokenAt follows the latest started voice and spreads words evenly', () => {
   const segments = sceneSegments(graph);
   assert.deepEqual(spokenAt(segments, 0), { index: 0, text: thirteen, word: 0 });
-  assert.deepEqual(spokenAt(segments, 54 + 90), { index: 0, text: thirteen, word: 8 });
-  assert.deepEqual(spokenAt(segments, 246), { index: 1, text: 'two words', word: 0 });
+  assert.deepEqual(spokenAt(segments, 54 + 90), { index: 0, text: thirteen, word: 9 });
+  assert.deepEqual(spokenAt(segments, 228), { index: 1, text: 'two words', word: 0 });
 });

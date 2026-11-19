@@ -66,7 +66,7 @@ function checkStill(s, p, warnings) {
     const n = spoken(step?.say);
     if (n > STILL_WORDS)
       warnings.push(
-        `${at}.say: ${n} words while the picture holds still, about ${Math.round((n / 170) * 60)} seconds; split it into steps of a sentence or two that each change something`,
+        `${at}.say: ${n} words while the picture holds still, about ${Math.round((n / 195) * 60)} seconds; split it into steps of a sentence or two that each change something`,
       );
   });
 }

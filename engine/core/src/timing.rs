@@ -7,7 +7,7 @@ use crate::speech::speech_text;
 use serde_json::Value;
 
 pub const FPS: f64 = 30.0;
-const WORDS_PER_MINUTE: f64 = 170.0;
+const WORDS_PER_MINUTE: f64 = 195.0;
 const NARRATION_LEAD: f64 = 1.0;
 const STEP_LEAD: f64 = 0.3;
 const NARRATION_TAIL: f64 = 0.4;
