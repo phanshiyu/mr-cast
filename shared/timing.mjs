@@ -3,8 +3,8 @@
 // A scene speaks one or more texts in order: its narration, then each step's `say`. Each spoken text
 // is a segment: a lead, the voice, then a tail. The narration's lead lasts until the scene has built,
 // so the voice never names something that is not on screen yet. A step's lead first brings its items
-// into view and lights them, within STEP_SETTLE_FRAMES; a step with a pen mark then draws it on the
-// settled items before the voice names them. Its longer tail leaves time to reread them. The voice lasts
+// into view and lights them, and the voice starts as they arrive; a step with a pen mark then draws it on the
+// settled items before the voice names them. The tails are short breaths, so a scene keeps the pace of someone explaining it. The voice lasts
 // as long as its clip, or as long as its words take to read at WORDS_PER_MINUTE without one. The pace
 // scales the reading speed and every pause.
 
@@ -15,12 +15,12 @@ import { clipFor, paceOf } from './voice.mjs';
 
 export const FPS = 30;
 /** Reading pace of a scene without a voice clip, at the normal pace. */
-const WORDS_PER_MINUTE = 130;
+const WORDS_PER_MINUTE = 170;
 /** Pauses at the normal pace, in seconds. The pace multiplies each one. */
 const NARRATION_LEAD = 1.0;
-const STEP_LEAD = 0.5;
-const NARRATION_TAIL = 0.8;
-const STEP_TAIL = 1.2;
+const STEP_LEAD = 0.3;
+const NARRATION_TAIL = 0.4;
+const STEP_TAIL = 0.2;
 /** Without a clip, the pause after the words; the clip's own trailing silence is part of it. */
 const SILENT_TAIL = 1.5;
 /** Without a clip, the shortest a segment's words and tail last. */
@@ -59,10 +59,11 @@ const BUILD_SECONDS = {
   image: 1.0,
 };
 /**
- * Frames every scene has, from a step's start, to bring the step's items to rest: move its camera, draw
- * them in and light them. A step's lead never ends sooner, and its pen mark starts here.
+ * The shortest a step's lead is, and where its pen mark starts. Scenes bring a step's items to rest within 15
+ * frames (moving the camera, drawing them in and lighting them); the voice starts as they are most of the way in,
+ * not once they rest, as someone explaining talks while they draw.
  */
-const STEP_SETTLE_FRAMES = 15;
+const STEP_LEAD_MIN_FRAMES = 9;
 /** Frames a step's pen mark takes to draw, between the settled items and the step's words. */
 const PEN_FRAMES = 12;
 /** Pause between the end of the build and the narration's voice, at every pace. */
@@ -103,7 +104,7 @@ export function sceneSegments(scene, voiceover) {
   let from = 0;
   return spokenTexts(scene).map((text, i) => {
     const clip = clipFor(voiceover, text);
-    const markFrom = from + (i === 0 ? narrationLead : Math.max(pause(STEP_LEAD), STEP_SETTLE_FRAMES));
+    const markFrom = from + (i === 0 ? narrationLead : Math.max(pause(STEP_LEAD), STEP_LEAD_MIN_FRAMES));
     const voiceFrom =
       markFrom +
       (i > 0 && (typeof steps[i - 1]?.mark === 'string' || typeof steps[i - 1]?.flag === 'string') ? PEN_FRAMES : 0);

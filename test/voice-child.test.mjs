@@ -23,6 +23,7 @@ function voicedRun(count) {
     clips[key] = {
       src: `audio/${key}.wav`,
       seconds: 6.1,
+      take: 2,
       voice: 'af_heart',
       speed: 1,
       sentences: [

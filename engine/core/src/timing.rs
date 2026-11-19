@@ -7,17 +7,19 @@ use crate::speech::speech_text;
 use serde_json::Value;
 
 pub const FPS: f64 = 30.0;
-const WORDS_PER_MINUTE: f64 = 130.0;
+const WORDS_PER_MINUTE: f64 = 170.0;
 const NARRATION_LEAD: f64 = 1.0;
-const STEP_LEAD: f64 = 0.5;
-const NARRATION_TAIL: f64 = 0.8;
-const STEP_TAIL: f64 = 1.2;
+const STEP_LEAD: f64 = 0.3;
+const NARRATION_TAIL: f64 = 0.4;
+const STEP_TAIL: f64 = 0.2;
 const SILENT_TAIL: f64 = 1.5;
 const MIN_SILENT_SECONDS: f64 = 3.0;
 /// Every scene fades out over its last SCENE_EXIT_FRAMES.
 pub const SCENE_EXIT_FRAMES: f64 = 8.0;
 /// Frames every scene has, from a step's start, to bring the step's items to rest.
 pub const STEP_SETTLE_FRAMES: f64 = 15.0;
+/// The shortest a step's lead is: the voice starts as its items are most of the way in, not once they rest.
+const STEP_LEAD_MIN_FRAMES: f64 = 9.0;
 const PEN_FRAMES: f64 = 12.0;
 const BUILD_SETTLE: f64 = 0.3;
 
@@ -151,7 +153,7 @@ pub fn scene_segments(scene: &Value, voiceover: Option<&Voiceover>) -> Vec<Segme
         .enumerate()
         .map(|(i, text)| {
             let clip = clip_for(voiceover, &text).cloned();
-            let mark_from = from + if i == 0 { narration_lead } else { pause(STEP_LEAD).max(STEP_SETTLE_FRAMES) };
+            let mark_from = from + if i == 0 { narration_lead } else { pause(STEP_LEAD).max(STEP_LEAD_MIN_FRAMES) };
             let pen = i > 0
                 && steps.get(i - 1).is_some_and(|s| {
                     s.get("mark").is_some_and(Value::is_string) || s.get("flag").is_some_and(Value::is_string)

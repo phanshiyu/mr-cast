@@ -17,6 +17,11 @@ export const AUDIO_NAME = /^[0-9a-f]{8}\.wav$/;
 const CLIP_SRC = /^audio\/[0-9a-f]{8}\.wav$/;
 const OWNED_FILE = /^[0-9a-f]{8}\.wav(\.tmp-\d+)?$/;
 
+/**
+ * Which reading of the voice a clip was made with. Bump it when the engine reads differently (0.32: slower, with a
+ * breath between sentences), so clips made before are voiced again.
+ */
+const TAKE = 2;
 const MIN_SPEED = 0.5;
 const MAX_SPEED = 2;
 const isSpeed = (n) => Number.isFinite(n) && n >= MIN_SPEED && n <= MAX_SPEED;
@@ -67,7 +72,8 @@ export function readVoiceover(dataDir) {
   const clips = {};
   for (const [key, clip] of Object.entries(raw.clips)) {
     if (!CLIP_SRC.test(clip?.src) || !Number.isFinite(clip.seconds) || clip.seconds <= 0) continue;
-    clips[key] = { src: clip.src, seconds: clip.seconds };
+    if (clip.take !== TAKE) continue;
+    clips[key] = { src: clip.src, seconds: clip.seconds, take: TAKE };
     if (typeof clip.voice === 'string' && isSpeed(clip.speed))
       Object.assign(clips[key], { voice: clip.voice, speed: clip.speed });
     if (Array.isArray(clip.sentences) && clip.sentences.every(isSentence))
@@ -171,7 +177,7 @@ export async function ensureVoiceover({ dataDir, storyboard, voice: chosen, pace
       speed,
       (i, { seconds, sentences }) => {
         const { key, text, src } = todo[i];
-        clips[key] = { src, seconds, sentences, voice: chosen, speed };
+        clips[key] = { src, seconds, sentences, voice: chosen, speed, take: TAKE };
         // The clips so far, so a player already open can voice the scenes they cover while the rest are made, and a
         // voicing stopped for a newer edit keeps them.
         const partial = { voice: chosen, speed, pauses, clips: { ...clips } };

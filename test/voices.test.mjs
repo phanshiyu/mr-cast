@@ -133,7 +133,7 @@ test('clip keys include the voice: a clip of one voice never voices another, nor
       speed: 1,
       pauses: 1,
       clips: {
-        [key]: { src: `audio/${key}.wav`, seconds: 2.5, voice: 'tiny-voca:m2', speed: 1 },
+        [key]: { src: `audio/${key}.wav`, seconds: 2.5, voice: 'tiny-voca:m2', speed: 1, take: 2 },
         [old]: { src: `audio/${old}.wav`, seconds: 2, voice: 'af_heart', speed: 1 },
       },
     }),
@@ -147,6 +147,7 @@ test('clip keys include the voice: a clip of one voice never voices another, nor
   assert.deepEqual(clipFor(voiceover, text), {
     src: `audio/${key}.wav`,
     seconds: 2.5,
+    take: 2,
     voice: 'tiny-voca:m2',
     speed: 1,
   });

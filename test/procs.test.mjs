@@ -671,7 +671,7 @@ function voiceRun(dir, text) {
       voice,
       speed: 1,
       pauses: 1,
-      clips: { [narrationKey(text, voice, 1)]: { src, seconds: 0.2, voice, speed: 1 } },
+      clips: { [narrationKey(text, voice, 1)]: { src, seconds: 0.2, voice, speed: 1, take: 2 } },
     }),
   );
 }
