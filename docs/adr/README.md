@@ -55,3 +55,5 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0045](0045-draw-svg-diagrams-with-resvg-and-merman.md) | Draw the svg, map and mermaid scenes with resvg, and mermaid with merman | Accepted |
 | [0046](0046-tiny-voca-voice.md) | Voice with tiny-voca in the engine (dizione ported to Rust, the model in tract), and drop Kitten and Kokoro | Accepted |
 | [0047](0047-easy-to-follow-explainers.md) | Pictures that carry across scenes, warnings for what makes a video hard to follow, and a voice paced like someone explaining | Accepted |
+| [0048](0048-a-hand-drawn-board-look.md) | A hand-drawn board look: two colours, lettered titles, wavering lines | Accepted |
+| [0049](0049-everything-drawn-on-the-board.md) | On the board, everything is drawn on the picture: a warning for card scenes, no pencil, hatching and two passes, quieter captions | Accepted |

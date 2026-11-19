@@ -1,12 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).
 
 **One picture can stay on screen across scenes.** Name a drawing in the storyboard's `pictures` and draw it with `"picture"` in svg scenes: scenes in a row on it no longer cut, and each starts where the last ended. Parts a step shows draw on like a pen stroke, at the word that names them.
 
 **`validate` warns about what makes a video hard to follow**: a title that names a topic instead of making a point, a step that changes nothing on screen, more than about eight seconds of words over a still picture, an explanation with no picture that comes back, and colours with no stated meaning (say them in `tones`). `"illustrative": true` marks a sketch.
+
+**A hand-drawn look.** `"look": "board"` draws a video by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line with slightly wavering lines (ADR 0048).
+
+**On the board, everything is drawn.** `validate` warns about scenes on the board that are not pictures (a table, a chart, a list; real commands and code keep their scenes), colours are hatched rather than painted, lines are drawn twice by a visible hand, and the captions are quieter. A longer explanation without the board look, and handwriting that the scene ends before the pen finishes, are warned about (ADR 0049).
 
 **svg scenes render far faster.** A frame with a lit shape took seconds; it now takes milliseconds.
 

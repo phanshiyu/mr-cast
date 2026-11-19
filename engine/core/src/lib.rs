@@ -12,6 +12,7 @@ pub mod diagram;
 pub mod display;
 pub mod focus;
 pub mod icons;
+pub mod look;
 pub mod marks;
 pub mod markup;
 pub mod model;
@@ -48,8 +49,9 @@ pub struct Project {
 
 impl Project {
     pub fn new(props: Props) -> Project {
+        look::set_board(props.storyboard.look.as_deref() == Some("board"));
         let timeline = timing::timeline(&props.storyboard.scenes, props.voiceover.as_ref());
-        let scenes = timeline
+        let scenes: Vec<Box<dyn SceneView>> = timeline
             .iter()
             .map(|t| {
                 scenes::prepare(&SceneInput {
@@ -101,6 +103,11 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         if let Some(fit) = &project.sketches[i] {
             chrome::shell::draw_illustrative(&mut dl, fit, local, t.duration);
         }
+        // On the board the scene is recoloured and its text written by hand; the captions, drawn after, keep their own
+        // colours and face.
+        if look::board() {
+            look::swap_list(&mut dl);
+        }
         if project.props.show_captions {
             chrome::captions::draw(&mut dl, &t.segments, local, t.duration);
         }
@@ -111,7 +118,7 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
 /// A thread's renderer and its cached backdrop.
 pub struct FrameRenderer {
     pub renderer: Renderer,
-    backdrop: Option<(f32, Pixmap)>,
+    backdrop: Option<(f32, bool, Pixmap)>,
 }
 
 impl Default for FrameRenderer {
@@ -122,15 +129,16 @@ impl Default for FrameRenderer {
 
 impl FrameRenderer {
     fn backdrop(&mut self, scale: f32) -> &Pixmap {
-        if self.backdrop.as_ref().is_none_or(|(s, _)| *s != scale) {
+        let board = look::board();
+        if self.backdrop.as_ref().is_none_or(|(s, b, _)| *s != scale || *b != board) {
             let (w, h) = frame_size(scale);
             let mut p = Pixmap::new(w, h).expect("frame size");
             let mut dl = DisplayList::new();
             chrome::backdrop::draw(&mut dl);
             self.renderer.draw(&dl, &mut p, tiny_skia::Transform::from_scale(scale, scale));
-            self.backdrop = Some((scale, p));
+            self.backdrop = Some((scale, board, p));
         }
-        &self.backdrop.as_ref().unwrap().1
+        &self.backdrop.as_ref().unwrap().2
     }
 }
 

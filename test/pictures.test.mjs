@@ -125,3 +125,50 @@ test('a longer explanation without a picture, or one that does not end on its pi
     left.warnings.some((w) => w.startsWith('pictures: the video starts on "bar" but does not come back to it')),
   );
 });
+
+test('validate takes look "board" and refuses any other look', async () => {
+  const ok = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'board' }));
+  assert.ok(!ok.errors.some((e) => e.startsWith('look')));
+  const bad = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'chalk' }));
+  assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board"')));
+});
+
+test('on the board, validate warns about a scene that is not drawn on the picture', async () => {
+  const table = { type: 'table', title: 'Who is hit by this', columns: ['a'], rows: [['b']], narration: 'Hit.' };
+  const res = await check(
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'board' }),
+  );
+  assert.ok(res.warnings.some((w) => w.startsWith('look: on the board, scene 1 (table) is a slide')));
+  const plain = await check(
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
+  );
+  assert.ok(!plain.warnings.some((w) => w.includes('on the board')));
+});
+
+test('validate warns about handwriting the scene ends before the pen finishes', async () => {
+  const long = 'update every service and restart it tonight';
+  const scene = (when) =>
+    svgScene('The decoder fills the array', [
+      { show: ['fit'], say: 'Then update and restart.', draw: [{ write: long, at: [0.1, 0.8], when }] },
+    ]);
+  const late = await check(storyboard([scene('restart')]));
+  assert.ok(late.warnings.some((w) => w.startsWith('scenes[0].steps[0].draw[0]: the pen is still writing')));
+  const short = await check(
+    storyboard([
+      svgScene('The decoder fills the array', [
+        { show: ['fit'], say: 'Then update and restart.', draw: [{ write: 'update', at: [0.1, 0.8] }] },
+      ]),
+    ]),
+  );
+  assert.ok(!short.warnings.some((w) => w.includes('still writing')));
+});
+
+test('a longer explanation without the board look is told about it', async () => {
+  const five = Array.from({ length: 5 }, (_, i) =>
+    svgScene(`Step ${i} of the array fills`, [{ show: ['fit'], say: 'One.' }]),
+  );
+  const plain = await check(storyboard(five));
+  assert.ok(plain.warnings.some((w) => w.startsWith('look: none')));
+  const board = await check(storyboard(five, { look: 'board' }));
+  assert.ok(!board.warnings.some((w) => w.startsWith('look: none')));
+});

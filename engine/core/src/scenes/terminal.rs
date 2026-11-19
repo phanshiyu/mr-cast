@@ -706,7 +706,9 @@ impl TerminalView {
         dl.fill_rect(0.0, 0.0, w, ch + 1.0, Color::css("#171a23"));
         dl.fill_rect(0.0, ch, w, 1.0, BORDER);
         dl.pop_clip();
-        for (i, c) in ["#ff5f57", "#febc2e", "#28c840"].iter().enumerate() {
+        // On the board a terminal is a pasted-in snippet of the real thing, not an app window: no window buttons.
+        let buttons: &[&str] = if crate::look::board() { &[] } else { &["#ff5f57", "#febc2e", "#28c840"] };
+        for (i, c) in buttons.iter().enumerate() {
             dl.group(|dl| {
                 dl.fade(0.85);
                 dl.rect(

@@ -1795,6 +1795,11 @@ export interface Storyboard {
    */
   tones?: Partial<Record<'accent' | 'good' | 'bad' | 'warn', string>>;
   /**
+   * "board" draws the video by hand on a dark board: two colours (green for what is normal, orange for the problem),
+   * hand-lettered titles written on as each scene starts and wavering lines.
+   */
+  look?: 'board';
+  /**
    * A video of a branch: the six questions a reviewer has, answered before the scenes are written. Not for an
    * explanation or a quick video.
    */

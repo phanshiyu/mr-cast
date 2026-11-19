@@ -1,13 +1,17 @@
 // Checks that make a video easier to follow (ADR 47), each a pattern the agent can see in the storyboard without
 // rendering: a scene title says the scene's point; something on screen changes with each step, and no stretch of
 // words holds the picture still for long; a longer video keeps one picture that comes back and ends on it; the tones
-// a video uses mean what its `tones` says; and `illustrative` is a flag.
+// a video uses mean what its `tones` says; `illustrative` is a flag; and on the board, everything is drawn (ADR 48).
 
+import { inkBoard } from '../../shared/ink.mjs';
 import { plainText } from '../../shared/markup.mjs';
 import { STATE_TYPES } from '../../shared/state-steps.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { tintEntries } from '../../shared/storyboard-json.mjs';
+import { cueFrame, sceneSegments } from '../../shared/timing.mjs';
 
+/** Scene types the board keeps: the drawing, and the real commands and code a viewer may copy. */
+const DRAWN_ON_BOARD = ['svg', 'terminal', 'code'];
 const MEANING_TONES = ['accent', 'good', 'bad', 'warn'];
 /** A title under this many words is a topic ("The ripple"), not a point ("Each carry waits for the one before"). */
 const TITLE_MIN_WORDS = 3;
@@ -17,6 +21,10 @@ const STILL_WORDS = 24;
 const PICTURE_SCENES = 5;
 /** Step fields that change nothing on screen by themselves. */
 const QUIET = new Set(['say', 'focus', 'answers', 'flag']);
+/** Frames the pen takes per character of handwriting (engine/core/src/marks/mod.rs FRAMES_PER_CHAR). */
+const FRAMES_PER_CHAR = 2.2;
+/** Frames before a scene's end that its ink fades. */
+const INK_FADE_FRAMES = 10;
 const isObj = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const words = (s) => s.trim().split(/\s+/).filter(Boolean).length;
 const spoken = (text) => (typeof text === 'string' ? words(plainText(text)) : 0);
@@ -71,6 +79,31 @@ function checkStill(s, p, warnings) {
   });
 }
 
+/** Handwriting that is still being written when its scene ends or a step erases it. */
+function checkInkTime(s, p, warnings) {
+  let items;
+  try {
+    ({ items } = inkBoard(s));
+  } catch {
+    return;
+  }
+  if (!items.length) return;
+  const segments = sceneSegments(s);
+  const end = segments.at(-1).from + segments.at(-1).durationInFrames - INK_FADE_FRAMES;
+  for (const { step, index, item, until } of items) {
+    const text = typeof item.write === 'string' ? item.write : typeof item.note === 'string' ? item.note : null;
+    const segment = segments[step + 1];
+    if (!text || !segment) continue;
+    const start = (typeof item.when === 'string' && cueFrame(segment, item.when)) || segment.markFrom;
+    const limit = Number.isFinite(until) && segments[until + 1] ? segments[until + 1].from : end;
+    const done = start + text.replace(/\n/g, '').length * FRAMES_PER_CHAR;
+    if (done > limit)
+      warnings.push(
+        `${p}.steps[${step}].draw[${index}]: the pen is still writing ${JSON.stringify(text)} when ${Number.isFinite(until) ? 'a step erases it' : 'the scene ends'}, about ${((done - limit) / 30).toFixed(1)} s short; start it earlier ("when" on an earlier word), shorten it, or say more after it`,
+      );
+  }
+}
+
 /** A longer explanation keeps one picture and ends on it. */
 function checkPictures(sb, explain, warnings) {
   const drawn = sb.scenes.map((s) => (isObj(s) && typeof s.picture === 'string' ? s.picture : null));
@@ -89,6 +122,8 @@ function checkPictures(sb, explain, warnings) {
 }
 
 export function checkStyle(sb, { explain }, errors, warnings) {
+  if (sb.look !== undefined && sb.look !== 'board')
+    errors.push(`look: must be "board", or left out for the default look (got ${JSON.stringify(sb.look)})`);
   const tones = sb.tones;
   let meant = null;
   if (tones !== undefined) {
@@ -99,6 +134,7 @@ export function checkStyle(sb, { explain }, errors, warnings) {
     else meant = new Set(Object.keys(tones));
   }
   const unmeant = new Map();
+  const slides = [];
   let firstTone = null;
   sb.scenes.forEach((s, i) => {
     if (!isObj(s)) return;
@@ -110,12 +146,23 @@ export function checkStyle(sb, { explain }, errors, warnings) {
         `${p}.title: "${s.title.trim()}" names a topic; say the scene's point in a short sentence, such as "Each carry waits for the one before", so a viewer who drifts off can catch up from the title alone`,
       );
     checkStill(s, p, warnings);
+    checkInkTime(s, p, warnings);
+    if (sb.look === 'board' && typeof s.type === 'string' && !DRAWN_ON_BOARD.includes(s.type))
+      slides.push(`${i} (${s.type})`);
     for (const { tone, at } of tonesUsed(s)) {
       if (meant && !meant.has(tone) && !unmeant.has(tone)) unmeant.set(tone, `${p} ${at}`);
       if (!meant && !firstTone) firstTone = `${p} ${at}`;
     }
   });
   checkPictures(sb, explain, warnings);
+  if (slides.length)
+    warnings.push(
+      `look: on the board, scene${slides.length > 1 ? 's' : ''} ${slides.join(', ')} ${slides.length > 1 ? 'are slides' : 'is a slide'} in the middle of a drawing; draw ${slides.length > 1 ? 'them' : 'it'} on the picture instead: points as labels written on with ink, rows as a handwritten list, numbers as bars drawn on. Real commands and code keep their terminal and code scenes`,
+    );
+  if (explain && sb.look === undefined && sb.scenes.length >= PICTURE_SCENES)
+    warnings.push(
+      'look: none; an explanation is easier to follow drawn by hand, on one picture that grows: set "look": "board" and draw it in svg scenes, keeping terminal and code scenes for real commands and code; see references/pictures.md',
+    );
   if (firstTone)
     warnings.push(
       `tones: none, but ${firstTone} colours a part; say what each colour means, such as { "good": "bytes that fit", "bad": "bytes past the end" }, and use each only for that`,

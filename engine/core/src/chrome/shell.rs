@@ -171,6 +171,17 @@ impl Shell {
         let bx = self.content(aside_h);
         let draw_header = |dl: &mut DisplayList| {
             let mut top = SAFE.top + header - self.label_height();
+            if crate::look::board() {
+                // On the board the chapter label is left out and the title is lettered by hand, written on as the
+                // scene starts.
+                if let Some(t) = &self.title {
+                    hand_title(dl, t, SAFE.left, top, frame);
+                }
+                if let Some(a) = &aside {
+                    (a.draw)(dl, 1920.0 - SAFE.right, SAFE.top + header - a.height);
+                }
+                return;
+            }
             top += draw_fit(dl, &self.eyebrow, SAFE.left, top, TextOpts::new(ACCENT).normal());
             if let Some(t) = &self.title {
                 draw_fit(dl, t, SAFE.left, top + 10.0, TextOpts::new(TEXT).normal());
@@ -246,6 +257,58 @@ pub fn draw_source_line(dl: &mut DisplayList, fit: &Fit) {
         dl.fade(0.85);
         draw_fit(dl, fit, 1920.0 - SAFE.right - w, 22.0, TextOpts::new(crate::theme::MUTED).normal());
     });
+}
+
+/// A title's size in the handwriting face, against its size in the sans: the hand is smaller for its size.
+const HAND_TITLE_SCALE: f32 = 1.3;
+/// Frames a title takes to write on, a character, and the frame it starts on.
+const HAND_FRAMES_PER_CHAR: f64 = 1.1;
+const HAND_START: f64 = 4.0;
+
+fn title_lines(t: &Fit) -> Vec<String> {
+    t.lines.iter().map(|l| l.iter().map(|r| r.text.as_str()).collect::<String>()).collect()
+}
+
+/// How far a title is written at `frame`, 0 to 1.
+fn title_written(t: &Fit, frame: f64) -> f64 {
+    let chars: usize = title_lines(t).iter().map(|l| l.chars().count()).sum();
+    ((frame - HAND_START) / (chars.max(1) as f64 * HAND_FRAMES_PER_CHAR)).clamp(0.0, 1.0)
+}
+
+/// The title lettered by hand in orange at (x, top), revealed left to right, line by line, as it is written.
+fn hand_title(dl: &mut DisplayList, t: &Fit, x: f32, top: f32, frame: f64) {
+    use crate::text::{Face, Style, baseline_in, shape};
+    let size = t.size as f32 * HAND_TITLE_SCALE;
+    let lh = (size * 1.15).round();
+    let lines = title_lines(t);
+    let total: f64 = lines.iter().map(|l| l.chars().count().max(1) as f64).sum();
+    let written = title_written(t, frame);
+    let mut before = 0.0;
+    for (i, line) in lines.iter().enumerate() {
+        let share = line.chars().count().max(1) as f64 / total;
+        let p = ((written - before) / share).clamp(0.0, 1.0);
+        before += share;
+        if p <= 0.0 {
+            continue;
+        }
+        let run = shape(line, Style::new(Face::Hand, 700.0, size));
+        let y = top + i as f32 * lh;
+        let base = y + baseline_in(Face::Hand, size, lh);
+        if p < 1.0 {
+            dl.push_clip(x - 20.0, y - 20.0, run.width * p as f32 + 20.0, lh + 40.0, 0.0);
+        }
+        dl.run(run.clone(), x, base, crate::look::ORANGE);
+        if p < 1.0 {
+            dl.pop_clip();
+        }
+    }
+}
+
+impl Shell {
+    /// The top of the header's labels, where the title is lettered on the board.
+    pub fn header_top(&self, aside_h: f32) -> f32 {
+        SAFE.top + self.header_height(aside_h) - self.label_height()
+    }
 }
 
 /// The "illustrative" tag of a scene with `"illustrative": true`: a sketch, not real data.
