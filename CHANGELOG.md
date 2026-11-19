@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).
+
+**One picture can stay on screen across scenes.** Name a drawing in the storyboard's `pictures` and draw it with `"picture"` in svg scenes: scenes in a row on it no longer cut, and each starts where the last ended. Parts a step shows draw on like a pen stroke, at the word that names them.
+
+**`validate` warns about what makes a video hard to follow**: a title that names a topic instead of making a point, a step that changes nothing on screen, more than about eight seconds of words over a still picture, an explanation with no picture that comes back, and colours with no stated meaning (say them in `tones`). `"illustrative": true` marks a sketch.
+
+**svg scenes render far faster.** A frame with a lit shape took seconds; it now takes milliseconds.
+
 ## 0.31.0
 
 **A new voice that is much faster and much smaller.** mr-cast now speaks with tiny-voca, a small voice model that runs inside mr-cast's own renderer. Voicing the demo takes about 1.5 seconds instead of 32, the first voice-over downloads about 27 MB instead of 82, and installing mr-cast takes about 270 MB of disk instead of 1 GB. There are two voices, male (`tiny-voca:m2`, the default) and female (`tiny-voca:f2`), both American English (ADR 0046).
