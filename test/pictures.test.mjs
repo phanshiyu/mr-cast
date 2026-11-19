@@ -125,3 +125,10 @@ test('a longer explanation without a picture, or one that does not end on its pi
     left.warnings.some((w) => w.startsWith('pictures: the video starts on "bar" but does not come back to it')),
   );
 });
+
+test('validate takes look "board" and refuses any other look', async () => {
+  const ok = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'board' }));
+  assert.ok(!ok.errors.some((e) => e.startsWith('look')));
+  const bad = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'chalk' }));
+  assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board"')));
+});

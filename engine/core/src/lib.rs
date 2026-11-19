@@ -12,6 +12,7 @@ pub mod diagram;
 pub mod display;
 pub mod focus;
 pub mod icons;
+pub mod look;
 pub mod marks;
 pub mod markup;
 pub mod model;
@@ -44,12 +45,15 @@ pub struct Project {
     sources: Vec<Option<textfit::Fit>>,
     /// Each scene's "illustrative" tag, for a scene that sketches rather than shows real data.
     sketches: Vec<Option<textfit::Fit>>,
+    /// On the board look, each scene's pencil spans and where the pencil was as it started.
+    pencils: Vec<(Vec<chrome::pencil::Span>, Option<marks::geometry::Pt>)>,
 }
 
 impl Project {
     pub fn new(props: Props) -> Project {
+        look::set_board(props.storyboard.look.as_deref() == Some("board"));
         let timeline = timing::timeline(&props.storyboard.scenes, props.voiceover.as_ref());
-        let scenes = timeline
+        let scenes: Vec<Box<dyn SceneView>> = timeline
             .iter()
             .map(|t| {
                 scenes::prepare(&SceneInput {
@@ -63,7 +67,19 @@ impl Project {
             .collect();
         let sources = props.storyboard.scenes.iter().map(|s| chrome::shell::source_line(s, &props.hunks)).collect();
         let sketches = props.storyboard.scenes.iter().map(chrome::shell::illustrative).collect();
-        Project { props, timeline, scenes, sources, sketches }
+        let mut pencils = Vec::new();
+        if look::board() {
+            let mut enter = None;
+            for (t, view) in timeline.iter().zip(&scenes) {
+                let shell = chrome::shell::Shell::new(&props.storyboard.scenes[t.index]);
+                let mut spans = shell.title_spans(0.0);
+                spans.extend(view.pencil_spans());
+                let last = chrome::pencil::last(&spans, enter);
+                pencils.push((spans, enter));
+                enter = last;
+            }
+        }
+        Project { props, timeline, scenes, sources, sketches, pencils }
     }
 
     pub fn from_json(json: &str) -> Result<Project, String> {
@@ -101,9 +117,16 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         if let Some(fit) = &project.sketches[i] {
             chrome::shell::draw_illustrative(&mut dl, fit, local, t.duration);
         }
+        if let Some((spans, enter)) = project.pencils.get(i) {
+            let (at, lift) = chrome::pencil::tip(spans, local, *enter);
+            chrome::pencil::draw(&mut dl, at, lift, 1.0);
+        }
         if project.props.show_captions {
             chrome::captions::draw(&mut dl, &t.segments, local, t.duration);
         }
+    }
+    if look::board() {
+        look::swap_list(&mut dl);
     }
     dl
 }
@@ -111,7 +134,7 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
 /// A thread's renderer and its cached backdrop.
 pub struct FrameRenderer {
     pub renderer: Renderer,
-    backdrop: Option<(f32, Pixmap)>,
+    backdrop: Option<(f32, bool, Pixmap)>,
 }
 
 impl Default for FrameRenderer {
@@ -122,15 +145,16 @@ impl Default for FrameRenderer {
 
 impl FrameRenderer {
     fn backdrop(&mut self, scale: f32) -> &Pixmap {
-        if self.backdrop.as_ref().is_none_or(|(s, _)| *s != scale) {
+        let board = look::board();
+        if self.backdrop.as_ref().is_none_or(|(s, b, _)| *s != scale || *b != board) {
             let (w, h) = frame_size(scale);
             let mut p = Pixmap::new(w, h).expect("frame size");
             let mut dl = DisplayList::new();
             chrome::backdrop::draw(&mut dl);
             self.renderer.draw(&dl, &mut p, tiny_skia::Transform::from_scale(scale, scale));
-            self.backdrop = Some((scale, p));
+            self.backdrop = Some((scale, board, p));
         }
-        &self.backdrop.as_ref().unwrap().1
+        &self.backdrop.as_ref().unwrap().2
     }
 }
 

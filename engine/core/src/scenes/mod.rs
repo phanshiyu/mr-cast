@@ -60,6 +60,11 @@ pub struct Frame<'a> {
 pub trait SceneView: Send + Sync {
     /// Draws the scene at `f.frame` in frame coordinates (1920 by 1080), shell included.
     fn draw(&self, f: &Frame, dl: &mut DisplayList);
+
+    /// On the board look, what the scene draws by hand and when, beyond its title, for the pencil to follow.
+    fn pencil_spans(&self) -> Vec<crate::chrome::pencil::Span> {
+        Vec::new()
+    }
 }
 
 /// Prepares a scene of one type, or explains why it cannot.

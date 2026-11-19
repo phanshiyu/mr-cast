@@ -74,6 +74,9 @@ pub struct Storyboard {
     /// The brief (what the change is for, what to check first, its parts), kept as JSON.
     #[serde(default)]
     pub brief: Option<Value>,
+    /// The look: absent for the default, or "board" (ADR 48).
+    #[serde(default)]
+    pub look: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]

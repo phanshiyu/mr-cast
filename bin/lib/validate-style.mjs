@@ -89,6 +89,8 @@ function checkPictures(sb, explain, warnings) {
 }
 
 export function checkStyle(sb, { explain }, errors, warnings) {
+  if (sb.look !== undefined && sb.look !== 'board')
+    errors.push(`look: must be "board", or left out for the default look (got ${JSON.stringify(sb.look)})`);
   const tones = sb.tones;
   let meant = null;
   if (tones !== undefined) {

@@ -8,6 +8,8 @@
 
 **`validate` warns about what makes a video hard to follow**: a title that names a topic instead of making a point, a step that changes nothing on screen, more than about eight seconds of words over a still picture, an explanation with no picture that comes back, and colours with no stated meaning (say them in `tones`). `"illustrative": true` marks a sketch.
 
+**A hand-drawn look.** `"look": "board"` draws a video by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line with slightly wavering lines, and a pencil on screen drawing whatever appears (ADR 0048).
+
 **svg scenes render far faster.** A frame with a lit shape took seconds; it now takes milliseconds.
 
 ## 0.31.0

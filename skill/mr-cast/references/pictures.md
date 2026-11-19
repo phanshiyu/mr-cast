@@ -9,6 +9,7 @@ A viewer follows a video that keeps one picture in front of them and changes it 
 - **Real things, briefly.** The actual command, error or output, a few lines at a time, where it comes up.
 - **Honest sketches.** A diagram that is not real data gets `"illustrative": true`.
 - **End on the opening picture, fixed.** Draw the picture you started with once more, now showing what the fix changes.
+- **Drawn by hand.** `"look": "board"` on the storyboard draws an explanation by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line, and a pencil drawing whatever appears. It suits a picture-led explanation best; charts, tables and code keep their layouts in the board's colours.
 
 ## Example
 

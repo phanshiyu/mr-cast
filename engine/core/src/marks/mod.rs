@@ -1022,6 +1022,35 @@ pub struct Pen {
 }
 
 impl Pen {
+    /// What the pen draws and when, in the content box, for the board look's pencil to follow: each mark's strokes
+    /// and each ink item's strokes and writing, in the order it draws them.
+    pub fn pencil_spans(&self) -> Vec<(f64, f64, Vec<Pt>)> {
+        let flat = |sk: &Sketch| sk.strokes.iter().flat_map(|s| s.points.iter().copied()).collect::<Vec<Pt>>();
+        let mut out: Vec<(f64, f64, Vec<Pt>)> =
+            self.board.marks.iter().map(|m| (m.start, m.done, flat(&m.sketch))).collect();
+        for p in &self.board.ink {
+            let mut path = p.sketch.as_ref().map(flat).unwrap_or_default();
+            if let Some(t) = &p.text {
+                let h = (t.size as f64 * 1.2).round();
+                let lines: Vec<Pt> = t
+                    .lines
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, l)| {
+                        crate::chrome::pencil::writing_path(t.bx.x, t.bx.y + i as f64 * h, hand_width(l, t.size), h)
+                    })
+                    .collect();
+                if p.text_first {
+                    path = lines.into_iter().chain(path).collect();
+                } else {
+                    path.extend(lines);
+                }
+            }
+            out.push((p.start, p.start + 8f64.max(p.stroke_frames + p.text_frames), path));
+        }
+        out
+    }
+
     /// `targets` holds each step's targets, or one set for every step when `same`; `area` is the content box the
     /// camera frames (`headerBox`).
     pub fn new(

@@ -6,4 +6,5 @@ pub mod captions;
 pub mod fittext;
 pub mod marks;
 pub mod nodecard;
+pub mod pencil;
 pub mod shell;

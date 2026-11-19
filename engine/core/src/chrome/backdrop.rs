@@ -6,6 +6,23 @@ use crate::theme::BG;
 
 pub fn draw(dl: &mut DisplayList) {
     let (w, h) = (1920.0, 1080.0);
+    if crate::look::board() {
+        // A matte board, a little lighter where the drawing is.
+        dl.rect(0.0, 0.0, w, h, BoxStyle::fill(crate::look::BOARD_BG));
+        let light = Color::rgba8(255, 250, 235, 0.025);
+        dl.rect(
+            0.0,
+            0.0,
+            w,
+            h,
+            BoxStyle::fill(Paint::Radial {
+                center: (w * 0.5, h * 0.45),
+                radius: (w * 0.7, h * 0.75),
+                stops: vec![(0.0, light), (1.0, light.alpha(0.0))],
+            }),
+        );
+        return;
+    }
     dl.rect(0.0, 0.0, w, h, BoxStyle::fill(BG));
     dl.rect(
         0.0,
