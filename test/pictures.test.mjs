@@ -138,8 +138,7 @@ test('on the board, validate warns about a scene that is not drawn on the pictur
   const res = await check(
     storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'board' }),
   );
-  assert.ok(res.warnings.some((w) => w.startsWith('scenes[1]: a table scene on the board is a slide')));
-  assert.ok(!res.warnings.some((w) => w.startsWith('scenes[0]: a svg scene')));
+  assert.ok(res.warnings.some((w) => w.startsWith('look: on the board, scene 1 (table) is a slide')));
   const plain = await check(
     storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
   );

@@ -10,6 +10,8 @@ import { sceneSteps } from '../../shared/steps.mjs';
 import { tintEntries } from '../../shared/storyboard-json.mjs';
 import { cueFrame, sceneSegments } from '../../shared/timing.mjs';
 
+/** Scene types the board keeps: the drawing, and the real commands and code a viewer may copy. */
+const DRAWN_ON_BOARD = ['svg', 'terminal', 'code'];
 const MEANING_TONES = ['accent', 'good', 'bad', 'warn'];
 /** A title under this many words is a topic ("The ripple"), not a point ("Each carry waits for the one before"). */
 const TITLE_MIN_WORDS = 3;
@@ -132,6 +134,7 @@ export function checkStyle(sb, { explain }, errors, warnings) {
     else meant = new Set(Object.keys(tones));
   }
   const unmeant = new Map();
+  const slides = [];
   let firstTone = null;
   sb.scenes.forEach((s, i) => {
     if (!isObj(s)) return;
@@ -144,19 +147,21 @@ export function checkStyle(sb, { explain }, errors, warnings) {
       );
     checkStill(s, p, warnings);
     checkInkTime(s, p, warnings);
-    if (sb.look === 'board' && typeof s.type === 'string' && s.type !== 'svg')
-      warnings.push(
-        `${p}: a ${s.type} scene on the board is a slide, not a drawing; draw it on the picture instead: its points as labels written on with ink, a command or error as a short handwritten note, numbers as bars drawn on`,
-      );
+    if (sb.look === 'board' && typeof s.type === 'string' && !DRAWN_ON_BOARD.includes(s.type))
+      slides.push(`${i} (${s.type})`);
     for (const { tone, at } of tonesUsed(s)) {
       if (meant && !meant.has(tone) && !unmeant.has(tone)) unmeant.set(tone, `${p} ${at}`);
       if (!meant && !firstTone) firstTone = `${p} ${at}`;
     }
   });
   checkPictures(sb, explain, warnings);
+  if (slides.length)
+    warnings.push(
+      `look: on the board, scene${slides.length > 1 ? 's' : ''} ${slides.join(', ')} ${slides.length > 1 ? 'are slides' : 'is a slide'} in the middle of a drawing; draw ${slides.length > 1 ? 'them' : 'it'} on the picture instead: points as labels written on with ink, rows as a handwritten list, numbers as bars drawn on. Real commands and code keep their terminal and code scenes`,
+    );
   if (explain && sb.look === undefined && sb.scenes.length >= PICTURE_SCENES)
     warnings.push(
-      'look: none; an explanation is easier to follow drawn by hand, on one picture that grows: set "look": "board" and draw it in svg scenes; see references/pictures.md',
+      'look: none; an explanation is easier to follow drawn by hand, on one picture that grows: set "look": "board" and draw it in svg scenes, keeping terminal and code scenes for real commands and code; see references/pictures.md',
     );
   if (firstTone)
     warnings.push(

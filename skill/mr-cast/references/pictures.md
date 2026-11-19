@@ -9,7 +9,7 @@ A viewer follows a video that keeps one picture in front of them and changes it 
 - **Real things, briefly.** The actual command, error or output, a few lines at a time, where it comes up.
 - **Honest sketches.** A diagram that is not real data gets `"illustrative": true`.
 - **End on the opening picture, fixed.** Draw the picture you started with once more, now showing what the fix changes.
-- **Drawn by hand.** `"look": "board"` on the storyboard draws an explanation by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line, and a pencil drawing whatever appears. On the board every scene is an svg on the picture: a point is a label written on with ink as it is said, a command or an error a short handwritten note, a number a bar drawn on. A chart, table, terminal or list scene there is a slide in the middle of a drawing; `validate` warns about one.
+- **Drawn by hand.** `"look": "board"` on the storyboard draws an explanation by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line, and a pencil drawing whatever appears. On the board every scene is an svg on the picture, except real commands and code, which keep their terminal and code scenes: a point is a label written on with ink as it is said, rows a handwritten list, a number a bar drawn on. A chart, table, text or sequence scene there is a slide in the middle of a drawing; `validate` warns about one.
 - **A beat after each reveal.** One or two short sentences per step, then let the drawing land before the next.
 
 ## Example

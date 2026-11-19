@@ -13,9 +13,10 @@ fills were solid with a glow, the wavering lines could not be seen at 1080p, and
 
 ## Decision
 
-- **Only pictures on the board.** On the board `validate` warns about every scene that is not an svg: a point is a
-  label written on the picture, a command or an error a short handwritten note, a number a bar drawn on. The skill says
-  so.
+- **Only pictures on the board, and the real things.** On the board `validate` warns, in one warning, about every scene
+  that is not an svg, a terminal or code: a point is a label written on the picture, rows a handwritten list, a number
+  a bar drawn on. Real commands and code keep their scenes, since a viewer may copy them; an unprimed agent that was
+  asked to turn its terminals into handwriting chose to leave the board instead.
 - **The pencil keeps drawing.** It goes round what each step lights, shades in a part a step colours, and draws on
   what a step shows. Over a longer gap it takes its time to get to the next stroke, rather than parking.
 - **Shaded, not painted.** An area with a colour is hatched in that colour. A box in the plain surface colour is left
