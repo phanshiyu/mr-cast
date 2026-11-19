@@ -16,6 +16,8 @@ import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup, checkUnseenCode, codeLinesOnScreen } from './validate-fit.mjs';
 import { expandBriefParts } from '../../shared/files.mjs';
 import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
+import { pictureProblems } from '../../shared/pictures.mjs';
+import { checkStyle } from './validate-style.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
 import { checkArray, checkGraphState, checkMemory, checkStateSteps } from './validate-state.mjs';
 import { resolveRef, TEXT_LEADS } from '../../shared/targets.mjs';
@@ -420,11 +422,27 @@ export async function validateStoryboard(raw, hunks, meta = {}) {
     : upgraded;
   // A files scene whose parts come from the brief is checked as the plain parts and files it reads into.
   const read = Array.isArray(sb?.scenes) ? sb.scenes.map((s) => expandBriefParts(s, sb, hunks ?? {})) : null;
-  const result = await validateScenes(
+  const checked = await validateScenes(
     read?.some((s, i) => s !== sb.scenes[i]) ? { ...sb, scenes: read } : sb,
     hunks,
     meta,
   );
+  // Pictures are checked as written: past upgradeScenes a picture scene has its markup in `svg`. A picture is drawn
+  // by several scenes, so a part one of them leaves hidden is not reported as never drawn.
+  const pictures = pictureProblems(raw);
+  const handedOn = (w) => {
+    const m = /^scenes\[(\d+)\]\.hidden\[\d+\]: starts hidden and no step shows it/.exec(w);
+    return m !== null && typeof raw.scenes?.[Number(m[1])]?.picture === 'string';
+  };
+  const pictureSaid = (level) => pictures.filter((x) => x.level === level).map((x) => `${x.at}: ${x.message}`);
+  const result =
+    pictures.length || checked.warnings.some(handedOn)
+      ? {
+          ...checked,
+          errors: [...pictureSaid('error'), ...checked.errors],
+          warnings: [...pictureSaid('warning'), ...checked.warnings.filter((w) => !handedOn(w))],
+        }
+      : checked;
   if (!intents.size && !olderTests.size) return result;
   const said = (messages) => [
     ...new Set(messages.flatMap((m) => intentMessage(m, intents)).flatMap((m) => olderTestsMessage(m, olderTests))),
@@ -764,6 +782,7 @@ async function validateScenes(
   const branch = mode === 'diff' && !quick;
   checkBrief(sb, hunks ?? {}, { branch, map, root }, errors, warnings);
   checkMix(sb, hunks ?? {}, { branch, map }, warnings);
+  checkStyle(sb, { explain: mode === 'explain' }, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   let core = [];

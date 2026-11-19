@@ -1076,9 +1076,31 @@ impl Pen {
         shift: &dyn Fn(usize) -> Option<Pt>,
         content: impl FnOnce(&mut DisplayList),
     ) {
+        self.draw_faded(dl, view, frame, segments, shift, 1.0, content);
+    }
+
+    /// `draw_at` with the ink faded to `ink_alpha`, for a scene whose picture stays for the next but its ink does not.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_faded(
+        &self,
+        dl: &mut DisplayList,
+        view: Option<crate::camera::View>,
+        frame: f64,
+        segments: &[Segment],
+        shift: &dyn Fn(usize) -> Option<Pt>,
+        ink_alpha: f32,
+        content: impl FnOnce(&mut DisplayList),
+    ) {
         self.camera.draw(dl, view, |dl| {
             dl.group(content);
-            self.board.draw(dl, frame, segments, shift);
+            if ink_alpha >= 1.0 {
+                self.board.draw(dl, frame, segments, shift);
+            } else if ink_alpha > 0.0 {
+                dl.save();
+                dl.fade(ink_alpha);
+                self.board.draw(dl, frame, segments, shift);
+                dl.restore();
+            }
         });
     }
 }

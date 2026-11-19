@@ -8,7 +8,7 @@ The statuses a thing can be in and the moves between them, with the start marked
 {
   "type": "state",
   "chapter": "A visitor's minute",
-  "title": "Visitor",
+  "title": "Each visitor is in one of three states",
   "narration": "Each visitor is in one of three states within a minute.",
   "initial": "under",
   "states": [

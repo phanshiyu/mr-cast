@@ -68,7 +68,7 @@ To show source code that is not in the diff, add it as a snippet, at most 80 lin
 
 Each snippet gets an id (`s1`, `s2`, ...) and keeps the file's line numbers. A `code` scene shows a snippet by its id, like a hunk.
 
-The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <engine:name>` or `--no-voice`. When the user names no pace, pass the last pace `status` printed: `--pace <it>`, or `--no-voice` for `silent`. When the user names no voice, pass the last voice `status` printed, `--voice <it>`, unless it says `none yet`. A flag applies to its own command only, so pass the same flags to every command.
+The run becomes the current one, which every later command works on; pass `--name <slug>` to work on another. `<flags>` are `--audience preread` for a pre-read, and `--pace slower|normal|faster`, `--voice <engine:name>` or `--no-voice`. When the user names no pace or voice, pass the last one `status` printed, `--pace <it>` (`--no-voice` for `silent`) and `--voice <it>`, unless it says `none yet`. A flag applies to its own command only, so pass the same flags to every command.
 
 ## A video of a branch
 
@@ -103,6 +103,8 @@ The scene types, each with an example: [array](references/scenes/array.md), [cha
 Worked explanations with real numbers, each with the scenes it uses: [examples](references/examples.md).
 
 Write every narration and `say` in plain words. Stop using jargon and speak coherently. State it more simply and concisely, like one human talking to another.
+
+Read [pictures](references/pictures.md) before you write the scenes: how to keep one picture on screen and change it with every sentence.
 
 The voice reads the narration and each step's `say` aloud, and each scene lasts as long as its words take. It reads "e.g.", "5s", "200 ms", an arrow and "v0.14" as words. Markup in spoken text is read as plain words.
 

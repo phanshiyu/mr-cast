@@ -8,7 +8,7 @@
 pub mod motion;
 pub mod tree;
 
-use super::media::{self, drop_shadow_filter, hash64, raster_svg, xml_escape};
+use super::media::{self, drop_shadow_filter_in, hash64, raster_svg, xml_escape};
 use super::{Frame, SceneInput, SceneView};
 use crate::anim::{Spring, spring};
 use crate::camera::View;
@@ -199,6 +199,8 @@ struct Svg {
     box_h: f64,
     pairs: Mutex<HashMap<(String, String), Option<Arc<PairedShape>>>>,
     pen: Pen,
+    /// The words each element goes by, by key: its label, its own text, and its id read as words.
+    names: HashMap<String, Vec<String>>,
 }
 
 struct Draw<'a> {
@@ -209,6 +211,10 @@ struct Draw<'a> {
     scale: f64,
     traces: HashMap<String, f64>,
     spans: HashMap<String, f64>,
+    /// How far each element a step shows or tints by name has come, from the word that names it.
+    named: HashMap<String, f64>,
+    /// How far each element a step shows has drawn on, from its start or the word that names it.
+    drawn: HashMap<String, f64>,
     defs: RefCell<Vec<String>>,
     me: &'a Svg,
 }
@@ -261,13 +267,27 @@ impl Draw<'_> {
         }
     }
 
+    /// The state frame an element changes by: the step's, or, for one the step's words name, one that changes from
+    /// the word that names it.
+    fn at(&self, key: &str) -> StateFrame<'_> {
+        match self.named.get(key) {
+            Some(&t) => StateFrame { t, ..*self.s },
+            None => StateFrame { ..*self.s },
+        }
+    }
+
     fn moved(&self, key: &str) -> f64 {
         self.spans.get(key).copied().unwrap_or(self.s.t)
     }
 
     fn def_filter(&self, shadows: &[(f64, &str, f64)]) -> String {
         let id = format!("{}glow{}", self.me.prefix, self.defs.borrow().len());
-        self.defs.borrow_mut().push(drop_shadow_filter(&id, shadows));
+        // The glow's region is the drawing and the reach of its widest blur. Without one, resvg sizes its buffers for
+        // an effectively endless region and a frame with a lit shape takes seconds.
+        let [vx, vy, vw, vh] = self.me.drawing.view_box;
+        let reach = shadows.iter().map(|s| s.0).fold(0.0, f64::max) * 1.5;
+        let region = (vx - reach, vy - reach, vw + 2.0 * reach, vh + 2.0 * reach);
+        self.defs.borrow_mut().push(drop_shadow_filter_in(&id, region, shadows));
         format!("url(#{id})")
     }
 
@@ -284,7 +304,7 @@ impl Draw<'_> {
             Some(o) => brighter(up.emphasis, self.focus.emphasis(o)),
             None => up.emphasis,
         };
-        let own_tint = own.as_ref().map(|o| self.s.tint(o));
+        let own_tint = own.as_ref().map(|o| self.at(o).tint(o));
         let tint: Option<Arc<TintMixed>> = match own_tint {
             Some(t) if !t.tones.is_empty() || t.dim > 0.0 => Some(Arc::new(TintMixed(t))),
             _ => up.tint.clone(),
@@ -367,7 +387,16 @@ impl Draw<'_> {
                 props.set("stroke", tone_color(tone));
             }
         }
-        let shown = own.as_ref().map_or(1.0, |o| self.s.shown(o));
+        let shown = own.as_ref().map_or(1.0, |o| match self.drawn.get(o) {
+            Some(&t) => {
+                if t > 0.0 {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
+            None => self.at(o).shown(o),
+        });
         let leaf_opacity =
             if is_leaf(tag) { emphasis.opacity * tint.as_ref().map_or(1.0, |t| t.0.dim_opacity()) } else { 1.0 };
         let base_opacity: f64 = a("opacity").and_then(|v| v.trim().parse().ok()).unwrap_or(1.0);
@@ -392,7 +421,7 @@ impl Draw<'_> {
                 props.set("d", d);
             }
         }
-        let trace = own.as_ref().and_then(|o| self.traces.get(o).copied()).or(up.trace);
+        let trace = own.as_ref().and_then(|o| self.traces.get(o).or(self.drawn.get(o)).copied()).or(up.trace);
         let flow = up.flow || a("class").is_some_and(|c| c.split_whitespace().any(|c| c == "flow"));
         let next = Inherited {
             fill: has_fill,
@@ -573,6 +602,69 @@ impl Svg {
         out
     }
 
+    /// Elements the step shows, each with how far it has drawn on: its lines draw from their start and its fill
+    /// comes in with them, as a pen would draw it, from the step's start or the words that name it. A text fades in
+    /// over the same time. An element the step also traces keeps its trace.
+    fn drawn_progress(
+        &self,
+        s: &StateFrame,
+        segments: &[Segment],
+        k: Option<usize>,
+        frame: f64,
+    ) -> HashMap<String, f64> {
+        let mut out = HashMap::new();
+        let Some(k) = k else { return out };
+        let Some(segment) = segments.get(k + 1) else { return out };
+        for key in &s.before.hidden {
+            if s.now.hidden.contains(key) || s.now.traces.contains_key(key) {
+                continue;
+            }
+            let named = self
+                .names
+                .get(key)
+                .and_then(|names| names.iter().filter_map(|n| crate::timing::cue_frame(segment, n)).reduce(f64::min));
+            let start = named.filter(|&c| c > segment.from).unwrap_or(segment.from);
+            out.insert(key.clone(), ((frame - start) / DRAW_ON_FRAMES).clamp(0.0, 1.0));
+        }
+        out
+    }
+
+    /// Elements the step shows, hides or tints and its `say` names, each with how far its change has come: it
+    /// starts as the voice reaches the words that name it, as someone drawing at a whiteboard adds a part as they
+    /// say it, not all at once as the step starts.
+    fn named_progress(
+        &self,
+        s: &StateFrame,
+        segments: &[Segment],
+        k: Option<usize>,
+        frame: f64,
+    ) -> HashMap<String, f64> {
+        let mut out = HashMap::new();
+        let Some(k) = k else { return out };
+        let Some(segment) = segments.get(k + 1) else { return out };
+        let settle = segment.from + STEP_SETTLE_FRAMES;
+        let changed = |key: &String| {
+            s.before.hidden.contains(key) != s.now.hidden.contains(key)
+                || s.before.tints.get(key) != s.now.tints.get(key)
+        };
+        let keys =
+            s.now.hidden.iter().chain(s.before.hidden.iter()).chain(s.now.tints.keys()).chain(s.before.tints.keys());
+        for key in keys {
+            if out.contains_key(key) || !changed(key) {
+                continue;
+            }
+            let Some(names) = self.names.get(key) else { continue };
+            let Some(cue) = names.iter().filter_map(|n| crate::timing::cue_frame(segment, n)).reduce(f64::min) else {
+                continue;
+            };
+            if cue <= settle {
+                continue;
+            }
+            out.insert(key.clone(), ((frame - cue) / NAMED_FRAMES).clamp(0.0, 1.0));
+        }
+        out
+    }
+
     fn span_progress(
         &self,
         s: &StateFrame,
@@ -608,7 +700,8 @@ impl SceneView for Svg {
         };
         let aside = self.callout.as_ref().map(|c| Aside { height: c.height, draw: &callout_draw });
         self.shell.draw(dl, f.frame, f.duration, aside, |dl, _bx| {
-            self.pen.draw_at(dl, view, f.frame, f.segments, &|_| None, |dl| {
+            let ink = self.shell.ink_alpha(f.frame, f.duration);
+            self.pen.draw_faded(dl, view, f.frame, f.segments, &|_| None, ink, |dl| {
                 let (px, py) = self.pixels(view);
                 if let Some(p) = raster_svg(&svg, px, py) {
                     dl.image(Arc::new(p), hash64(&svg), rect.0 as f32, rect.1 as f32, rect.2 as f32, rect.3 as f32);
@@ -639,6 +732,8 @@ impl Svg {
         let (scale, left, top) = stage(self.drawing.view_box, self.box_w, self.box_h);
         let traces = self.trace_progress(sf, segments, k, frame, scale);
         let spans = self.span_progress(sf, segments, k, frame);
+        let named = self.named_progress(sf, segments, k, frame);
+        let drawn = self.drawn_progress(sf, segments, k, frame);
         let d = Draw {
             s: sf,
             focus,
@@ -647,6 +742,8 @@ impl Svg {
             scale,
             traces,
             spans,
+            named,
+            drawn,
             defs: RefCell::new(Vec::new()),
             me: self,
         };
@@ -664,8 +761,11 @@ impl Svg {
         let stagger = STAGGER.min((STAGGER_END - START) / (parts.len().saturating_sub(1)).max(1) as f64);
         let mut body = String::new();
         for (i, part) in parts.iter().enumerate() {
-            let appear =
-                spring(frame - START - i as f64 * stagger, FPS, Spring::damping(18.0).with_stiffness(140.0)).min(1.0);
+            let appear = if self.shell.hold_in {
+                1.0
+            } else {
+                spring(frame - START - i as f64 * stagger, FPS, Spring::damping(18.0).with_stiffness(140.0)).min(1.0)
+            };
             body.push_str(&format!("<g opacity=\"{}\">{}</g>", fnum(appear), d.draw(part, &i.to_string(), &base)));
         }
         let mut root_props = Props::default();
@@ -740,12 +840,72 @@ fn collect_ids(e: &Elem, out: &mut Vec<String>) {
     }
 }
 
+/// Frames an element a step's words name takes to show or change colour, from those words.
+const NAMED_FRAMES: f64 = 9.0;
+/// Frames an element a step shows takes to draw on.
+const DRAW_ON_FRAMES: f64 = 20.0;
+
+/// The words each element with an id goes by: its `labels` entry, its own text, and its id with dashes and
+/// underscores read as spaces.
+fn element_names(scene: &Value, ids: &HashMap<&str, &Elem>) -> HashMap<String, Vec<String>> {
+    let labels = scene.get("labels").and_then(Value::as_object);
+    ids.iter()
+        .map(|(id, e)| {
+            let mut names = Vec::new();
+            if let Some(l) = labels.and_then(|l| l.get(*id)).and_then(Value::as_str) {
+                names.push(l.to_string());
+            }
+            if e.tag == "text" {
+                let t = text_of(e);
+                if !t.trim().is_empty() {
+                    names.push(t);
+                }
+            }
+            names.push(id.replace(['-', '_'], " "));
+            (format!("s:{id}"), names)
+        })
+        .collect()
+}
+
+/// The indexes of the scenes that draw this scene's picture in a row, this one among them; just this one when it
+/// draws no picture or draws it alone.
+fn picture_run(input: &SceneInput) -> Vec<usize> {
+    let scenes = &input.props.storyboard.scenes;
+    let picture = |i: usize| -> Option<&str> {
+        let s = scenes.get(i)?;
+        (s.get("type").and_then(Value::as_str) == Some("svg")).then(|| s.get("picture").and_then(Value::as_str))?
+    };
+    let Some(mine) = picture(input.index) else { return vec![input.index] };
+    let mut first = input.index;
+    while first > 0 && picture(first - 1) == Some(mine) {
+        first -= 1;
+    }
+    let mut last = input.index;
+    while picture(last + 1) == Some(mine) {
+        last += 1;
+    }
+    (first..=last).collect()
+}
+
 pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let scene = input.scene;
     let markup = scene.get("svg").and_then(Value::as_str).unwrap_or("");
     let drawing = read_svg(markup).ok_or("the drawing is not an <svg> with a viewBox")?;
-    let shell = Shell::new(scene);
-    let (box_w, box_h) = crate::chrome::callout::header_box(scene);
+    let mut shell = Shell::new(scene);
+    let (box_w, mut box_h) = crate::chrome::callout::header_box(scene);
+    // A picture that carries across scenes is held still between them, laid out in the same box in each.
+    let run = picture_run(input);
+    if run.len() > 1 {
+        let scenes = &input.props.storyboard.scenes;
+        shell.hold_in = run[0] < input.index;
+        shell.hold_out = *run.last().unwrap() > input.index;
+        for &i in &run {
+            let s = &scenes[i];
+            let aside = HeaderCallout::new(s).map_or(0.0, |c| c.height);
+            shell.header_min = shell.header_min.max(Shell::new(s).header_height(aside));
+            box_h = box_h.min(crate::chrome::callout::header_box(s).1);
+        }
+    }
     let list = |k: &str| scene.get(k).and_then(Value::as_array).cloned().unwrap_or_default();
     let ids = drawing.id_map();
     let mut initial_values = Vec::new();
@@ -796,6 +956,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     };
     let states = walk_states(&model, scene);
     let targets = crate::targets::target_steps_with(scene, |r| Some(resolve(r)).filter(|k| !k.is_empty()));
+    let names = element_names(scene, &ids);
     let mut me = Svg {
         prefix: hash_of(markup),
         callout: HeaderCallout::new(scene),
@@ -807,6 +968,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         box_h,
         pairs: Mutex::new(HashMap::new()),
         pen: Pen::new(scene, input.segments, &NoRefs, Vec::new(), true, (box_w, box_h)),
+        names,
     };
     let marks: Vec<MarkTargets> =
         (0..crate::timing::scene_steps(scene).len()).map(|k| me.targets_at(k, input.segments)).collect();

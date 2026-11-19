@@ -34,6 +34,14 @@ use tract_onnx::pb::{AttributeProto, NodeProto, attribute_proto::AttributeType};
 const PEAK: f32 = 0.99;
 /// A clip with nothing the model can say is this much silence, so it still has a length.
 const SILENT_SECONDS: f64 = 0.3;
+/// tiny-voca at its own speed 1 reads at about 5.4 syllables a second, faster than a person explaining something
+/// (about 4.6); the pace's speed 1 asks the model for this.
+const MODEL_SPEED: f32 = 0.8;
+/// Silence added between two sentences of one clip, on top of the model's own quarter second before each: the
+/// model reads each sentence alone, so without it they run on.
+const SENTENCE_GAP: f64 = 0.2;
+/// The silence kept before a clip's first word.
+const LEAD_KEPT: f64 = 0.05;
 
 #[derive(Deserialize)]
 struct Config {
@@ -127,7 +135,7 @@ impl Voice {
                 tensor1(&ids).into_shape(&[1, n])?.into(),
                 tensor1(&stress).into_shape(&[1, n])?.into(),
                 tensor1(&[voice]).into(),
-                tensor1(&[speed]).into(),
+                tensor1(&[speed * MODEL_SPEED]).into(),
                 tensor1(&[0f32]).into(),
                 tensor1(&[1f32]).into(),
             ];
@@ -375,13 +383,23 @@ impl Voice {
                     "times": vec![round(offset); range.len()],
                 })),
                 Part::Said(s) => {
+                    // The model starts each call with a quarter second or so of silence. The scene times its own
+                    // lead before the voice, so the clip starts on the first word; later sentences keep theirs as
+                    // part of the breath between sentences.
+                    let cut = if samples.is_empty() {
+                        (((s.start - LEAD_KEPT).max(0.0) * rate) as usize).min(s.audio.len())
+                    } else {
+                        samples.resize(samples.len() + (SENTENCE_GAP * rate) as usize, 0.0);
+                        0
+                    };
+                    let offset = samples.len() as f64 / rate - cut as f64 / rate;
                     sentences.push(json!({
                         "words": s.range.len(),
                         "start": round(offset + s.start),
                         "end": round(offset + s.end),
                         "times": s.times.iter().map(|t| round(offset + t)).collect::<Vec<_>>(),
                     }));
-                    samples.extend_from_slice(&s.audio);
+                    samples.extend_from_slice(&s.audio[cut..]);
                 }
             }
         }

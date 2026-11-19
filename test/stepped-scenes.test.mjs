@@ -391,7 +391,7 @@ test('validate names an id the drawing lacks, text set on a shape, and markup it
 test('validate warns on drawing text too small to read once scaled, and text past the viewBox', async () => {
   const tiny =
     '<svg viewBox="0 0 4000 2000"><text x="10" y="100" font-size="20">far too small</text><text x="3990" y="1000" font-size="200">cut off</text></svg>';
-  const { warnings } = await check({ type: 'svg', title: 't', narration: 'x', svg: tiny });
+  const { warnings } = await check({ type: 'svg', title: 'Small text is hard to read', narration: 'x', svg: tiny });
   assert.deepEqual(warnings, [
     'scenes[0].svg: text "far too small" draws about 7.3 px tall on screen, too small to read; make its font-size at least 41 in viewBox units, or shrink the viewBox',
     'scenes[0].svg: text "cut off" runs past the viewBox (0 0 4000 2000), so part of it is cut off; move it in, or widen the viewBox',

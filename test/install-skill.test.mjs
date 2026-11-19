@@ -45,6 +45,7 @@ const EXPECTED = [
   'skills/mr-cast/references/examples.md',
   'skills/mr-cast/references/ink.md',
   'skills/mr-cast/references/motion.md',
+  'skills/mr-cast/references/pictures.md',
   'skills/mr-cast/references/plan.md',
   ...SCENES.map((t) => `skills/mr-cast/references/scenes/${t}.md`),
   'skills/mr-cast-prune/SKILL.md',
