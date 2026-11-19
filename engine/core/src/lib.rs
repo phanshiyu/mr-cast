@@ -45,8 +45,6 @@ pub struct Project {
     sources: Vec<Option<textfit::Fit>>,
     /// Each scene's "illustrative" tag, for a scene that sketches rather than shows real data.
     sketches: Vec<Option<textfit::Fit>>,
-    /// On the board look, each scene's pencil spans and where the pencil was as it started.
-    pencils: Vec<(Vec<chrome::pencil::Span>, Option<marks::geometry::Pt>)>,
 }
 
 impl Project {
@@ -67,19 +65,7 @@ impl Project {
             .collect();
         let sources = props.storyboard.scenes.iter().map(|s| chrome::shell::source_line(s, &props.hunks)).collect();
         let sketches = props.storyboard.scenes.iter().map(chrome::shell::illustrative).collect();
-        let mut pencils = Vec::new();
-        if look::board() {
-            let mut enter = None;
-            for (t, view) in timeline.iter().zip(&scenes) {
-                let shell = chrome::shell::Shell::new(&props.storyboard.scenes[t.index]);
-                let mut spans = shell.title_spans(0.0);
-                spans.extend(view.pencil_spans());
-                let last = chrome::pencil::last(&spans, enter);
-                pencils.push((spans, enter));
-                enter = last;
-            }
-        }
-        Project { props, timeline, scenes, sources, sketches, pencils }
+        Project { props, timeline, scenes, sources, sketches }
     }
 
     pub fn from_json(json: &str) -> Result<Project, String> {
@@ -117,14 +103,10 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         if let Some(fit) = &project.sketches[i] {
             chrome::shell::draw_illustrative(&mut dl, fit, local, t.duration);
         }
-        // On the board the scene is recoloured and its text written by hand; the pencil and the captions, drawn after,
-        // keep their own colours and face.
+        // On the board the scene is recoloured and its text written by hand; the captions, drawn after, keep their own
+        // colours and face.
         if look::board() {
             look::swap_list(&mut dl);
-        }
-        if let Some((spans, enter)) = project.pencils.get(i) {
-            let (at, lift) = chrome::pencil::tip(spans, local, *enter);
-            chrome::pencil::draw(&mut dl, at, lift, 1.0);
         }
         if project.props.show_captions {
             chrome::captions::draw(&mut dl, &t.segments, local, t.duration);

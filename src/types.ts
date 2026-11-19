@@ -1796,7 +1796,7 @@ export interface Storyboard {
   tones?: Partial<Record<'accent' | 'good' | 'bad' | 'warn', string>>;
   /**
    * "board" draws the video by hand on a dark board: two colours (green for what is normal, orange for the problem),
-   * hand-lettered titles written on as each scene starts, wavering lines, and a pencil drawing what appears.
+   * hand-lettered titles written on as each scene starts and wavering lines.
    */
   look?: 'board';
   /**

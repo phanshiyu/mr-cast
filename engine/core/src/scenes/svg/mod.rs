@@ -201,8 +201,6 @@ struct Svg {
     pen: Pen,
     /// The words each element goes by, by key: its label, its own text, and its id read as words.
     names: HashMap<String, Vec<String>>,
-    /// On the board look, what the pencil draws and when, in frame coordinates.
-    spans: Vec<crate::chrome::pencil::Span>,
 }
 
 struct Draw<'a> {
@@ -469,7 +467,7 @@ impl Draw<'_> {
         self.motion_shape(n, key, props, &children, trace, flow)
     }
 
-    /// On the board an area is not painted in but hatched, as a pencil shades it, and a box with the plain surface
+    /// On the board an area is not painted in but hatched, as a hand shades it, and a box with the plain surface
     /// colour is left open. The hatching is in the fill's colour at its alpha, a little stronger since it is lines.
     fn by_hand_fill(&self, props: &mut Props) {
         let Some(fill) = props.get("fill").map(str::to_string) else { return };
@@ -808,89 +806,7 @@ impl Svg {
     }
 }
 
-impl Svg {
-    /// The pencil's spans on the board: each part a step shows, around its box as it draws on, and the pen's ink,
-    /// in frame coordinates.
-    fn board_spans(&self, marks: &[MarkTargets], segments: &[Segment]) -> Vec<crate::chrome::pencil::Span> {
-        use crate::chrome::pencil::Span;
-        use crate::marks::geometry::Pt;
-        let aside = self.callout.as_ref().map_or(0.0, |c| c.height);
-        let bx = self.shell.content(aside);
-        let at = |p: Pt| Pt { x: p.x + bx.x as f64, y: p.y + bx.y as f64 };
-        let mut out: Vec<Span> = self
-            .pen
-            .pencil_spans()
-            .into_iter()
-            .map(|(from, to, path)| Span { from, to, path: path.into_iter().map(at).collect() })
-            .collect();
-        if !self.shell.hold_in {
-            let (scale, left, top) = stage(self.drawing.view_box, self.box_w, self.box_h);
-            let gap = board_build_gap(self.drawing.root.children.len());
-            for (i, node) in self.drawing.root.children.iter().enumerate() {
-                let Node::Elem(e) = node else { continue };
-                if e.attr("id").is_some_and(|id| self.states[0].hidden.contains(&format!("s:{id}"))) {
-                    continue;
-                }
-                let Some((x0, y0, x1, y1)) = elem_box(e) else { continue };
-                let p = |x: f64, y: f64| at(Pt { x: x * scale + left, y: y * scale + top });
-                let path = vec![p(x0, y0), p(x1, y0), p(x1, y1), p(x0, y1), p(x0, y0)];
-                let from = START + i as f64 * gap;
-                out.push(Span { from, to: from + DRAW_ON_FRAMES, path });
-            }
-        }
-        for k in 0..self.states.len().saturating_sub(1) {
-            let (before, now) = (&self.states[k], &self.states[k + 1]);
-            let Some(segment) = segments.get(k + 1) else { continue };
-            let Some(targets) = marks.get(k) else { continue };
-            for key in &before.hidden {
-                if now.hidden.contains(key) {
-                    continue;
-                }
-                let Some((_, b)) = targets.boxes.iter().find(|(k, _)| k == key) else { continue };
-                let named = self.names.get(key).and_then(|names| {
-                    names.iter().filter_map(|n| crate::timing::cue_frame(segment, n)).reduce(f64::min)
-                });
-                let from = named.filter(|&c| c > segment.from).unwrap_or(segment.from);
-                let corners = [
-                    (b.x, b.y),
-                    (b.x + b.width, b.y),
-                    (b.x + b.width, b.y + b.height),
-                    (b.x, b.y + b.height),
-                    (b.x, b.y),
-                ];
-                let path = corners.iter().map(|&(x, y)| at(Pt { x, y })).collect();
-                out.push(Span { from, to: from + DRAW_ON_FRAMES, path });
-            }
-            // A part a step colours is shaded in, the pencil going back and forth across it.
-            for (key, tone) in &now.tints {
-                if tone == "dim" || before.tints.get(key) == Some(tone) || now.hidden.contains(key) {
-                    continue;
-                }
-                let Some((_, b)) = targets.boxes.iter().find(|(k, _)| k == key) else { continue };
-                let named = self.names.get(key).and_then(|names| {
-                    names.iter().filter_map(|n| crate::timing::cue_frame(segment, n)).reduce(f64::min)
-                });
-                let from = named.filter(|&c| c > segment.from).unwrap_or(segment.voice_from);
-                let rows = ((b.height / 14.0).round() as usize).clamp(2, 8);
-                let path = (0..=rows)
-                    .flat_map(|r| {
-                        let y = b.y + b.height * r as f64 / rows as f64;
-                        let (a, z) = if r % 2 == 0 { (b.x, b.x + b.width) } else { (b.x + b.width, b.x) };
-                        [at(Pt { x: a, y }), at(Pt { x: z, y: y + b.height / rows as f64 * 0.5 })]
-                    })
-                    .collect();
-                out.push(Span { from, to: from + SHADE_FRAMES, path });
-            }
-        }
-        out
-    }
-}
-
 impl SceneView for Svg {
-    fn pencil_spans(&self) -> Vec<crate::chrome::pencil::Span> {
-        self.spans.clone()
-    }
-
     fn draw(&self, f: &Frame, dl: &mut crate::display::DisplayList) {
         let sf = StateFrame::at(&self.states, f.segments, f.frame);
         let focus = FocusSpotlight::borrowed(&self.targets, f.segments, f.frame);
@@ -969,7 +885,7 @@ impl Svg {
         let board_gap = board_build_gap(parts.len());
         for (i, part) in parts.iter().enumerate() {
             if crate::look::board() && !self.shell.hold_in {
-                // On the board the parts are drawn on one after another, the pencil going round each.
+                // On the board the parts are drawn on one after another, as a hand would.
                 let t = ((frame - START - i as f64 * board_gap) / DRAW_ON_FRAMES).clamp(0.0, 1.0);
                 if t <= 0.0 {
                     continue;
@@ -1085,8 +1001,6 @@ const ROUGH_OVERSHOOT_PX: f64 = 12.0;
 
 /// Frames an element a step's words name takes to show or change colour, from those words.
 const NAMED_FRAMES: f64 = 9.0;
-/// On the board, frames the pencil takes to shade in a part a step colours.
-const SHADE_FRAMES: f64 = 24.0;
 /// Frames an element a step shows takes to draw on.
 const DRAW_ON_FRAMES: f64 = 20.0;
 /// On the board, the frames a scene's drawing takes to draw on at most, part by part; the voice starts partway.
@@ -1095,59 +1009,6 @@ const BOARD_BUILD_FRAMES: f64 = 84.0;
 /// On the board, frames between one part of a drawing starting to draw on and the next.
 fn board_build_gap(parts: usize) -> f64 {
     (DRAW_ON_FRAMES * 0.8).min(BOARD_BUILD_FRAMES / parts.max(1) as f64)
-}
-
-/// A rough box around an element in its drawing's units, from its own attributes: enough for the pencil to go
-/// round it. Transforms are not followed.
-fn elem_box(e: &Elem) -> Option<(f64, f64, f64, f64)> {
-    let num = |k: &str| e.attr(k).and_then(|v| v.trim().trim_end_matches("px").parse::<f64>().ok());
-    let union = |a: Option<(f64, f64, f64, f64)>, b: (f64, f64, f64, f64)| {
-        Some(a.map_or(b, |a| (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))))
-    };
-    match e.tag.as_str() {
-        "rect" => {
-            let (x, y) = (num("x").unwrap_or(0.0), num("y").unwrap_or(0.0));
-            Some((x, y, x + num("width")?, y + num("height")?))
-        }
-        "circle" => {
-            let (cx, cy, r) = (num("cx").unwrap_or(0.0), num("cy").unwrap_or(0.0), num("r")?);
-            Some((cx - r, cy - r, cx + r, cy + r))
-        }
-        "ellipse" => {
-            let (cx, cy) = (num("cx").unwrap_or(0.0), num("cy").unwrap_or(0.0));
-            let (rx, ry) = (num("rx")?, num("ry")?);
-            Some((cx - rx, cy - ry, cx + rx, cy + ry))
-        }
-        "line" => {
-            let (x1, y1, x2, y2) = (num("x1")?, num("y1")?, num("x2")?, num("y2")?);
-            Some((x1.min(x2), y1.min(y2), x1.max(x2), y1.max(y2)))
-        }
-        "polyline" | "polygon" => {
-            let v: Vec<f64> = e.attr("points")?.split([' ', ',']).filter_map(|t| t.trim().parse().ok()).collect();
-            let mut b = None;
-            for p in v.chunks(2).filter(|p| p.len() == 2) {
-                b = union(b, (p[0], p[1], p[0], p[1]));
-            }
-            b
-        }
-        "path" => {
-            use kurbo::Shape;
-            let r = kurbo::BezPath::from_svg(e.attr("d")?).ok()?.bounding_box();
-            Some((r.x0, r.y0, r.x1, r.y1))
-        }
-        "text" => {
-            let size = num("font-size").unwrap_or(16.0);
-            let w = text_of(e).chars().count() as f64 * size * 0.55;
-            let (x, y) = (num("x").unwrap_or(0.0), num("y").unwrap_or(0.0));
-            let x0 = match e.attr("text-anchor") {
-                Some("middle") => x - w / 2.0,
-                Some("end") => x - w,
-                _ => x,
-            };
-            Some((x0, y - size * 0.8, x0 + w, y + size * 0.2))
-        }
-        _ => e.elements().filter_map(elem_box).fold(None, union),
-    }
 }
 
 /// The words each element with an id goes by: its `labels` entry, its own text, and its id with dashes and
@@ -1274,15 +1135,10 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         pairs: Mutex::new(HashMap::new()),
         pen: Pen::new(scene, input.segments, &NoRefs, Vec::new(), true, (box_w, box_h)),
         names,
-        spans: Vec::new(),
     };
     let marks: Vec<MarkTargets> =
         (0..crate::timing::scene_steps(scene).len()).map(|k| me.targets_at(k, input.segments)).collect();
-    let pen = Pen::new(scene, input.segments, &SvgRefs(&me.drawing), marks.clone(), false, header_box(scene));
-    me.pen = pen;
-    if crate::look::board() {
-        me.spans = me.board_spans(&marks, input.segments);
-    }
+    me.pen = Pen::new(scene, input.segments, &SvgRefs(&me.drawing), marks, false, header_box(scene));
     Ok(Box::new(me))
 }
 

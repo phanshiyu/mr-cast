@@ -8,7 +8,7 @@
 
 A review of the first video made with the board look (ADR 48), against the reference explainers, found that it looked like
 a slide deck with a board skin. The agent had used a chart, a table, a sequence diagram, terminals and bullet lists, which
-the board only recolours. Between strokes the pencil parked or hovered. The captions were the clearest thing on screen,
+the board only recolours. The captions were the clearest thing on screen,
 fills were solid with a glow, the wavering lines could not be seen at 1080p, and amber was a third colour.
 
 ## Decision
@@ -17,8 +17,9 @@ fills were solid with a glow, the wavering lines could not be seen at 1080p, and
   that is not an svg, a terminal or code: a point is a label written on the picture, rows a handwritten list, a number
   a bar drawn on. Real commands and code keep their scenes, since a viewer may copy them; an unprimed agent that was
   asked to turn its terminals into handwriting chose to leave the board instead.
-- **The pencil keeps drawing.** It goes round what each step lights, shades in a part a step colours, and draws on
-  what a step shows. Over a longer gap it takes its time to get to the next stroke, rather than parking.
+- **No pencil.** The pencil ADR 48 drew is gone. It went round boxes and along text in straight passes while the
+  drawing appeared by its own rules, so it never quite drew what appeared, and the eye went to it instead of the
+  drawing. Parts still draw on, and ink is still written, without it.
 - **Shaded, not painted.** An area with a colour is hatched in that colour. A box in the plain surface colour is left
   open. Nothing glows: what a step lights is drawn over in a heavier line.
 - **A visible hand.** Rects and lines are drawn twice, each pass a little off the other, with more bow than before.

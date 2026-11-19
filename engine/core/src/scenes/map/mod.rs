@@ -828,11 +828,6 @@ impl MapView {
 }
 
 impl SceneView for MapView {
-    fn pencil_spans(&self) -> Vec<crate::chrome::pencil::Span> {
-        let b = self.shell.content(0.0);
-        self.pen.frame_spans((b.x, b.y))
-    }
-
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let sf = StateFrame::at(&self.states, f.segments, f.frame);
         let focus = FocusSpotlight::borrowed(&self.targets, f.segments, f.frame);

@@ -26,8 +26,6 @@ const CLEAR_FRAMES: f64 = 8.0;
 const INK_NOTE_FONT: f32 = 38.0;
 const WRITE_FONT: f32 = 42.0;
 const INK_CLEAR_FRAMES: f64 = 10.0;
-/// On the board, frames the pencil takes to go round what a step lights, from the step's words.
-const TAP_FRAMES: f64 = 28.0;
 const STROKE_PX_PER_FRAME: f64 = 60.0;
 const ARROW_PX_PER_FRAME: f64 = 40.0;
 const FRAMES_PER_CHAR: f64 = 2.2;
@@ -1021,42 +1019,9 @@ pub struct Pen {
     same: bool,
     board: Board,
     camera: crate::camera::Camera,
-    /// On the board look, where the pencil goes as each step's voice starts: beside what the step lights, from that
-    /// frame to a little later, in the content box.
-    taps: Vec<(f64, f64, Vec<Pt>)>,
 }
 
 impl Pen {
-    /// What the pen draws and when, in the content box, for the board look's pencil to follow: each mark's strokes
-    /// and each ink item's strokes and writing, in the order it draws them.
-    pub fn pencil_spans(&self) -> Vec<(f64, f64, Vec<Pt>)> {
-        let flat = |sk: &Sketch| sk.strokes.iter().flat_map(|s| s.points.iter().copied()).collect::<Vec<Pt>>();
-        let mut out: Vec<(f64, f64, Vec<Pt>)> =
-            self.board.marks.iter().map(|m| (m.start, m.done, flat(&m.sketch))).collect();
-        out.extend(self.taps.iter().cloned());
-        for p in &self.board.ink {
-            let mut path = p.sketch.as_ref().map(flat).unwrap_or_default();
-            if let Some(t) = &p.text {
-                let h = (t.size as f64 * 1.2).round();
-                let lines: Vec<Pt> = t
-                    .lines
-                    .iter()
-                    .enumerate()
-                    .flat_map(|(i, l)| {
-                        crate::chrome::pencil::writing_path(t.bx.x, t.bx.y + i as f64 * h, hand_width(l, t.size), h)
-                    })
-                    .collect();
-                if p.text_first {
-                    path = lines.into_iter().chain(path).collect();
-                } else {
-                    path.extend(lines);
-                }
-            }
-            out.push((p.start, p.start + 8f64.max(p.stroke_frames + p.text_frames), path));
-        }
-        out
-    }
-
     /// `targets` holds each step's targets, or one set for every step when `same`; `area` is the content box the
     /// camera frames (`headerBox`).
     pub fn new(
@@ -1071,37 +1036,7 @@ impl Pen {
         let of = |k: usize| if same { targets.first().cloned() } else { targets.get(k).cloned() };
         let board = Board::new(scene, segments, &step_refs, &of, &|_| None);
         let camera = crate::camera::Camera::new(scene, &step_refs, area);
-        let mut taps = Vec::new();
-        if crate::look::board() {
-            for (k, step) in scene_steps(scene).iter().enumerate() {
-                let (Some(seg), Some(t)) = (segments.get(k + 1), of(k)) else { continue };
-                let keys: Vec<String> =
-                    focus_refs(step.get("focus")).iter().filter_map(|r| resolve_ref(refs, r)).flatten().collect();
-                let lit = union(t.boxes.iter().filter(|(key, _)| keys.contains(key)).map(|(_, b)| Some(b)));
-                if let Some(b) = lit {
-                    // The pencil goes over what the step lights once more, round it.
-                    let (x0, y0, x1, y1) = (b.x - 6.0, b.y - 6.0, b.x + b.width + 6.0, b.y + b.height + 6.0);
-                    let round = vec![
-                        Pt { x: x0, y: y1 },
-                        Pt { x: x0, y: y0 },
-                        Pt { x: x1, y: y0 },
-                        Pt { x: x1, y: y1 },
-                        Pt { x: x0, y: y1 },
-                    ];
-                    taps.push((seg.voice_from, seg.voice_from + TAP_FRAMES, round));
-                }
-            }
-        }
-        Pen { targets, same, board, camera, taps }
-    }
-
-    /// The pencil's spans, in frame coordinates, for a scene whose content box starts at `origin`.
-    pub fn frame_spans(&self, origin: (f32, f32)) -> Vec<crate::chrome::pencil::Span> {
-        let at = |p: Pt| Pt { x: p.x + origin.0 as f64, y: p.y + origin.1 as f64 };
-        self.pencil_spans()
-            .into_iter()
-            .map(|(from, to, path)| crate::chrome::pencil::Span { from, to, path: path.into_iter().map(at).collect() })
-            .collect()
+        Pen { targets, same, board, camera }
     }
 
     fn target(&self, k: usize) -> Option<MarkTargets> {

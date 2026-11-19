@@ -32,9 +32,8 @@ A storyboard may choose `"look": "board"`. The default look is unchanged.
 - **Written by hand.** On the board every sans-serif text is drawn again in the handwriting face, a little larger, as
   a frame is assembled: titles, bullets, labels, table cells. Code and terminal text keep their mono face, and the
   captions, added after, keep the sans so they stay easy to read.
-- **A pencil.** A pencil is drawn at the point being drawn: the tip of ink as it is written, a title as it is
-  lettered, and a part of an svg drawing as it draws on. In a scene with a pen it goes beside what each step lights
-  as the step's words start. Between strokes it rests where it last drew.
+- **A pencil.** A pencil was drawn at the point being drawn. ADR 49 takes it out: it did not follow the drawing
+  closely enough, and it distracted.
 
 ## Consequences
 

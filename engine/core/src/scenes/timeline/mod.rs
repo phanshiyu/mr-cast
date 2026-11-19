@@ -455,11 +455,6 @@ const BOX_PAD_X: f32 = 18.0;
 const BOX_PAD_Y: f32 = 12.0;
 
 impl SceneView for View {
-    fn pencil_spans(&self) -> Vec<crate::chrome::pencil::Span> {
-        let b = self.shell.content(0.0);
-        self.pen.frame_spans((b.x, b.y))
-    }
-
     fn draw(&self, f: &Frame, dl: &mut DisplayList) {
         let frame = f.frame;
         let layout = &self.layout;

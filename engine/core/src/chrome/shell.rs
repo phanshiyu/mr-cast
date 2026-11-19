@@ -305,35 +305,6 @@ fn hand_title(dl: &mut DisplayList, t: &Fit, x: f32, top: f32, frame: f64) {
 }
 
 impl Shell {
-    /// The pencil's spans as it letters the title on the board, a line at a time, with the header's aside
-    /// `aside_h` tall.
-    pub fn title_spans(&self, aside_h: f32) -> Vec<super::pencil::Span> {
-        use crate::text::{Face, Style, shape};
-        let Some(t) = self.title.as_ref() else { return Vec::new() };
-        let size = t.size as f32 * HAND_TITLE_SCALE;
-        let lh = (size * 1.15).round() as f64;
-        let lines = title_lines(t);
-        let chars: Vec<f64> = lines.iter().map(|l| l.chars().count().max(1) as f64).collect();
-        let total_frames = chars.iter().sum::<f64>() * HAND_FRAMES_PER_CHAR;
-        let top = self.header_top(aside_h) as f64;
-        let mut from = HAND_START;
-        lines
-            .iter()
-            .enumerate()
-            .map(|(i, line)| {
-                let frames = total_frames * chars[i] / chars.iter().sum::<f64>();
-                let w = shape(line, Style::new(Face::Hand, 700.0, size)).width as f64;
-                let span = super::pencil::Span {
-                    from,
-                    to: from + frames,
-                    path: super::pencil::writing_path(SAFE.left as f64, top + i as f64 * lh, w, lh),
-                };
-                from += frames;
-                span
-            })
-            .collect()
-    }
-
     /// The top of the header's labels, where the title is lettered on the board.
     pub fn header_top(&self, aside_h: f32) -> f32 {
         SAFE.top + self.header_height(aside_h) - self.label_height()

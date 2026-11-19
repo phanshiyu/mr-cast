@@ -8,9 +8,9 @@
 
 **`validate` warns about what makes a video hard to follow**: a title that names a topic instead of making a point, a step that changes nothing on screen, more than about eight seconds of words over a still picture, an explanation with no picture that comes back, and colours with no stated meaning (say them in `tones`). `"illustrative": true` marks a sketch.
 
-**A hand-drawn look.** `"look": "board"` draws a video by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line with slightly wavering lines, and a pencil on screen drawing whatever appears (ADR 0048).
+**A hand-drawn look.** `"look": "board"` draws a video by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line with slightly wavering lines (ADR 0048).
 
-**On the board, everything is drawn.** `validate` warns about scenes on the board that are not pictures (a table, a terminal, a list), the pencil keeps drawing (going round what each step lights, shading what it colours), colours are hatched rather than painted, lines are drawn twice by a visible hand, and the captions are quieter. A longer explanation without the board look, and handwriting that the scene ends before the pen finishes, are warned about (ADR 0049).
+**On the board, everything is drawn.** `validate` warns about scenes on the board that are not pictures (a table, a chart, a list; real commands and code keep their scenes), colours are hatched rather than painted, lines are drawn twice by a visible hand, and the captions are quieter. A longer explanation without the board look, and handwriting that the scene ends before the pen finishes, are warned about (ADR 0049).
 
 **svg scenes render far faster.** A frame with a lit shape took seconds; it now takes milliseconds.
 
