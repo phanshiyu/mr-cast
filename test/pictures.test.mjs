@@ -145,3 +145,31 @@ test('on the board, validate warns about a scene that is not drawn on the pictur
   );
   assert.ok(!plain.warnings.some((w) => w.includes('on the board')));
 });
+
+test('validate warns about handwriting the scene ends before the pen finishes', async () => {
+  const long = 'update every service and restart it tonight';
+  const scene = (when) =>
+    svgScene('The decoder fills the array', [
+      { show: ['fit'], say: 'Then update and restart.', draw: [{ write: long, at: [0.1, 0.8], when }] },
+    ]);
+  const late = await check(storyboard([scene('restart')]));
+  assert.ok(late.warnings.some((w) => w.startsWith('scenes[0].steps[0].draw[0]: the pen is still writing')));
+  const short = await check(
+    storyboard([
+      svgScene('The decoder fills the array', [
+        { show: ['fit'], say: 'Then update and restart.', draw: [{ write: 'update', at: [0.1, 0.8] }] },
+      ]),
+    ]),
+  );
+  assert.ok(!short.warnings.some((w) => w.includes('still writing')));
+});
+
+test('a longer explanation without the board look is told about it', async () => {
+  const five = Array.from({ length: 5 }, (_, i) =>
+    svgScene(`Step ${i} of the array fills`, [{ show: ['fit'], say: 'One.' }]),
+  );
+  const plain = await check(storyboard(five));
+  assert.ok(plain.warnings.some((w) => w.startsWith('look: none')));
+  const board = await check(storyboard(five, { look: 'board' }));
+  assert.ok(!board.warnings.some((w) => w.startsWith('look: none')));
+});

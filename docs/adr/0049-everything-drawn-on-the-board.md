@@ -22,6 +22,10 @@ fills were solid with a glow, the wavering lines could not be seen at 1080p, and
   open. Nothing glows: what a step lights is drawn over in a heavier line.
 - **A visible hand.** Rects and lines are drawn twice, each pass a little off the other, with more bow than before.
 - **Two colours.** `warn` is orange, as part of the problem. In a drawing the greys are green linework.
+- **The board is asked for.** An unprimed agent chose the board in one run and not in the next. A longer explanation
+  without it gets a warning that points to it. The look stays a choice, so other videos are unchanged.
+- **Ink that finishes.** `validate` warns about a handwritten note the pen is still writing when its scene ends or a step
+  erases it.
 - **Captions step back.** On the board they are smaller and dim, with no band or glow. They stay, so the video works
   without sound.
 

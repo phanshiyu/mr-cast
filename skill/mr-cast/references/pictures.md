@@ -16,40 +16,42 @@ A viewer follows a video that keeps one picture in front of them and changes it 
 
 ```json
 {
-  "title": "Bytes past the end",
-  "tones": { "good": "bytes that fit", "bad": "bytes past the end" },
+  "title": "Retries that bring a server down",
+  "look": "board",
+  "tones": { "good": "first tries", "bad": "retries" },
   "pictures": {
-    "bar": "<svg viewBox=\"0 0 1200 300\"><g id=\"fit\"><rect x=\"40\" y=\"120\" width=\"700\" height=\"80\" class=\"tone-good\"/></g><g id=\"spill\"><rect x=\"740\" y=\"120\" width=\"170\" height=\"80\" class=\"tone-bad\"/></g><rect id=\"array\" x=\"40\" y=\"120\" width=\"700\" height=\"80\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><text id=\"label\" x=\"40\" y=\"250\" font-size=\"28\" fill=\"var(--muted)\">a 50-byte array</text></svg>"
+    "queue": "<svg viewBox=\"0 0 1200 340\"><rect id=\"server\" x=\"860\" y=\"90\" width=\"260\" height=\"160\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><text id=\"name\" x=\"990\" y=\"300\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">the server</text><g id=\"calls\"><rect x=\"80\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-good\"/><rect x=\"200\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-good\"/></g><g id=\"retries\"><rect x=\"320\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-bad\"/><rect x=\"440\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-bad\"/><rect x=\"560\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-bad\"/></g><line id=\"path\" x1=\"680\" y1=\"170\" x2=\"850\" y2=\"170\" stroke-width=\"3\"/></svg>"
   },
   "scenes": [
     {
       "type": "svg",
-      "title": "The decoder fills the array",
-      "picture": "bar",
-      "hidden": ["fit", "spill"],
-      "narration": "Here is a fifty byte array.",
-      "steps": [{ "show": ["fit"], "say": "The decoder fills it with fifty bytes." }]
+      "title": "Two calls wait for a slow server",
+      "picture": "queue",
+      "hidden": ["calls", "retries"],
+      "narration": "Here is a server that has slowed down.",
+      "steps": [{ "show": ["calls"], "say": "Two calls wait in line for it." }]
     },
     {
       "type": "svg",
-      "title": "Twelve bytes land past the end",
-      "picture": "bar",
+      "title": "Each timeout adds another call",
+      "picture": "queue",
       "illustrative": true,
-      "narration": "But it writes sixty two.",
+      "narration": "The callers give up and try again.",
       "steps": [
         {
-          "show": ["spill"],
-          "say": "Twelve bytes land past the end.",
-          "draw": [{ "brace": "spill", "note": "12 past the end", "when": "past the end" }]
-        }
+          "show": ["retries"],
+          "say": "Every retry joins the same line.",
+          "draw": [{ "brace": "retries", "note": "retries", "when": "retry" }]
+        },
+        { "focus": ["server"], "say": "So the server falls further behind." }
       ]
     },
     {
       "type": "svg",
-      "title": "The patch stops at fifty",
-      "picture": "bar",
-      "narration": "With the fix, nothing spills.",
-      "steps": [{ "hide": ["spill"], "focus": ["array"], "say": "Zero bytes past the end." }]
+      "title": "Backoff keeps the line short",
+      "picture": "queue",
+      "narration": "With backoff, callers wait before they retry.",
+      "steps": [{ "hide": ["retries"], "focus": ["calls"], "say": "Only the first tries are left." }]
     }
   ]
 }
