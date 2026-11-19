@@ -10,6 +10,8 @@
 
 **A hand-drawn look.** `"look": "board"` draws a video by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line with slightly wavering lines, and a pencil on screen drawing whatever appears (ADR 0048).
 
+**On the board, everything is drawn.** `validate` warns about scenes on the board that are not pictures (a table, a terminal, a list), the pencil keeps drawing (going round what each step lights, shading what it colours), colours are hatched rather than painted, lines are drawn twice by a visible hand, and the captions are quieter (ADR 0049).
+
 **svg scenes render far faster.** A frame with a lit shape took seconds; it now takes milliseconds.
 
 ## 0.31.0

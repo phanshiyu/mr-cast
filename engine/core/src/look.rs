@@ -24,7 +24,6 @@ pub fn board() -> bool {
 pub const BOARD_BG: Color = Color::rgba8(0x16, 0x17, 0x14, 1.0);
 pub const GREEN: Color = Color::rgba8(0x52, 0xd2, 0x8a, 1.0);
 pub const ORANGE: Color = Color::rgba8(0xf0, 0x7b, 0x4c, 1.0);
-const AMBER: Color = Color::rgba8(0xf2, 0xb6, 0x5a, 1.0);
 pub const CHALK: Color = Color::rgba8(0xec, 0xe9, 0xe0, 1.0);
 const CHALK_MUTED: Color = Color::rgba8(0xa6, 0xa3, 0x97, 1.0);
 const CHALK_FAINT: Color = Color::rgba8(0x6e, 0x6d, 0x66, 1.0);
@@ -35,7 +34,8 @@ const SWAPS: &[([u8; 3], Color)] = &[
     ([0x7c, 0x8c, 0xff], GREEN),
     ([0x3d, 0xdc, 0x97], GREEN),
     ([0xff, 0x6b, 0x7a], ORANGE),
-    ([0xfb, 0xbf, 0x24], AMBER),
+    // Two colours only: a warning is part of the problem.
+    ([0xfb, 0xbf, 0x24], ORANGE),
     // The pen's own yellow: labels are written in green, as what is normal is.
     ([0xff, 0xe0, 0x66], GREEN),
     ([0xf2, 0xf4, 0xf8], CHALK),
@@ -124,10 +124,17 @@ fn hex(c: Color) -> String {
     format!("#{r:02x}{g:02x}{b:02x}")
 }
 
+/// In a drawing the greys are linework, and linework on the board is green: muted a softer green, faint a dark one.
+const DRAWING_SWAPS: &[([u8; 3], Color)] = &[
+    ([0x90, 0x97, 0xa8], Color::rgba8(0x7f, 0xc4, 0x9c, 1.0)),
+    ([0x8f, 0x98, 0xad], Color::rgba8(0x7f, 0xc4, 0x9c, 1.0)),
+    ([0x5b, 0x61, 0x72], Color::rgba8(0x3f, 0x7a, 0x58, 1.0)),
+];
+
 /// Svg markup with the palette's hex colours swapped for the board's.
 pub fn swap_markup(svg: &str) -> String {
     let mut out = svg.to_string();
-    for (k, to) in SWAPS {
+    for (k, to) in DRAWING_SWAPS.iter().chain(SWAPS) {
         let from = format!("#{:02x}{:02x}{:02x}", k[0], k[1], k[2]);
         if out.contains(&from) {
             out = out.replace(&from, &hex(*to));

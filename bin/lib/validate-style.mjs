@@ -1,7 +1,7 @@
 // Checks that make a video easier to follow (ADR 47), each a pattern the agent can see in the storyboard without
 // rendering: a scene title says the scene's point; something on screen changes with each step, and no stretch of
 // words holds the picture still for long; a longer video keeps one picture that comes back and ends on it; the tones
-// a video uses mean what its `tones` says; and `illustrative` is a flag.
+// a video uses mean what its `tones` says; `illustrative` is a flag; and on the board, everything is drawn (ADR 48).
 
 import { plainText } from '../../shared/markup.mjs';
 import { STATE_TYPES } from '../../shared/state-steps.mjs';
@@ -112,6 +112,10 @@ export function checkStyle(sb, { explain }, errors, warnings) {
         `${p}.title: "${s.title.trim()}" names a topic; say the scene's point in a short sentence, such as "Each carry waits for the one before", so a viewer who drifts off can catch up from the title alone`,
       );
     checkStill(s, p, warnings);
+    if (sb.look === 'board' && typeof s.type === 'string' && s.type !== 'svg')
+      warnings.push(
+        `${p}: a ${s.type} scene on the board is a slide, not a drawing; draw it on the picture instead: its points as labels written on with ink, a command or error as a short handwritten note, numbers as bars drawn on`,
+      );
     for (const { tone, at } of tonesUsed(s)) {
       if (meant && !meant.has(tone) && !unmeant.has(tone)) unmeant.set(tone, `${p} ${at}`);
       if (!meant && !firstTone) firstTone = `${p} ${at}`;

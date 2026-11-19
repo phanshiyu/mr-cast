@@ -365,14 +365,14 @@ impl Draw<'_> {
                 props.set("fill", palette("surface"));
             }
             if !has_stroke {
-                props.set("stroke", palette("border"));
+                props.set("stroke", if crate::look::board() { palette("good") } else { palette("border") });
             }
         } else if LINES.contains(&tag) {
             if !has_fill {
                 props.set("fill", "none");
             }
             if !has_stroke {
-                props.set("stroke", palette("muted"));
+                props.set("stroke", if crate::look::board() { palette("good") } else { palette("muted") });
             }
         }
         let value = if tag == "text" { own.as_ref().and_then(|o| self.s.now.values.get(o)) } else { None };
@@ -395,6 +395,9 @@ impl Draw<'_> {
                 props.set("stroke", tone_color(tone));
             }
         }
+        if crate::look::board() && AREAS.contains(&tag) {
+            self.by_hand_fill(&mut props);
+        }
         let shown = own.as_ref().map_or(1.0, |o| match self.drawn.get(o) {
             Some(&t) => {
                 if t > 0.0 {
@@ -414,7 +417,13 @@ impl Draw<'_> {
         }
         if let Some(o) = &own {
             let g = self.focus.emphasis(o).glow;
-            if g > 0.0 {
+            if g > 0.0 && crate::look::board() {
+                // On the board nothing glows: what a step lights is gone over again, a heavier line.
+                if tag != "text" {
+                    let sw: f64 = props.get("stroke-width").and_then(|v| v.parse().ok()).unwrap_or(2.0);
+                    props.set("stroke-width", fnum(sw * (1.0 + 0.9 * g)));
+                }
+            } else if g > 0.0 {
                 let f = self.def_filter(&[(3.0 * g, ACCENT, 1.0), (16.0 * g, ACCENT, 0.45)]);
                 props.set("filter", f);
             }
@@ -460,6 +469,33 @@ impl Draw<'_> {
         self.motion_shape(n, key, props, &children, trace, flow)
     }
 
+    /// On the board an area is not painted in but hatched, as a pencil shades it, and a box with the plain surface
+    /// colour is left open. The hatching is in the fill's colour at its alpha, a little stronger since it is lines.
+    fn by_hand_fill(&self, props: &mut Props) {
+        let Some(fill) = props.get("fill").map(str::to_string) else { return };
+        if fill == "none" || fill.starts_with("url(") {
+            return;
+        }
+        if fill == palette("surface") || fill == palette("bg") {
+            props.set("fill", "none");
+            return;
+        }
+        let Some((hex, alpha)) = hex_alpha(&fill) else { return };
+        let defs = &mut self.defs.borrow_mut();
+        let id = format!("{}hatch{}", self.me.prefix, hex.trim_start_matches('#'));
+        let gap = HATCH_GAP_PX / self.scale;
+        if !defs.iter().any(|d| d.contains(&format!("id=\"{id}\""))) {
+            defs.push(format!(
+                "<pattern id=\"{id}\" patternUnits=\"userSpaceOnUse\" width=\"{g}\" height=\"{g}\" patternTransform=\"rotate(-38)\"><line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"{g}\" stroke=\"{hex}\" stroke-width=\"{w}\" stroke-linecap=\"round\"/></pattern>",
+                g = fnum(gap),
+                w = fnum(HATCH_WIDTH_PX / self.scale),
+            ));
+        }
+        props.set("fill", format!("url(#{id})"));
+        let fo: f64 = props.get("fill-opacity").and_then(|v| v.parse().ok()).unwrap_or(1.0);
+        props.set("fill-opacity", fnum(fo * (alpha * 3.2).clamp(0.5, 0.95)));
+    }
+
     fn motion_shape(
         &self,
         n: &Elem,
@@ -496,7 +532,8 @@ impl Draw<'_> {
         if tracing && !dashed {
             props.set("stroke-dasharray", format!("{} {}", fnum(len), fnum(len)));
             props.set("stroke-dashoffset", fnum(len * (1.0 - t)));
-            let fo: f64 = n.attr("fill-opacity").and_then(|v| v.parse().ok()).unwrap_or(1.0);
+            let fo: f64 =
+                props.get("fill-opacity").or(n.attr("fill-opacity")).and_then(|v| v.parse().ok()).unwrap_or(1.0);
             props.set("fill-opacity", fnum(fo * t));
             return el(tag, &props, children);
         }
@@ -600,13 +637,32 @@ fn rough_outline(n: &Elem, props: &Props, key: &str, scale: f64) -> Option<Strin
             }
             // The pen runs on a little past the corner it started from, along the first side.
             d.push_str(&format!(" L {} {}", fnum(c[0].0 + ROUGH_OVERSHOOT_PX * unit), fnum(c[0].1)));
+            // And goes round once more, lightly off the first line, as a sketch is drawn.
+            let mut again = c;
+            for p in &mut again {
+                p.0 += jitter(e);
+                p.1 += jitter(e);
+            }
+            d.push_str(&format!(" M {} {}", fnum(again[0].0), fnum(again[0].1)));
+            for i in 0..4 {
+                d.push_str(&side(again[i], again[(i + 1) % 4], &mut jitter));
+            }
             Some(d)
         }
         "line" => {
             let e = ROUGH_END_PX * unit;
             let a = (num("x1").unwrap_or(0.0) + jitter(e), num("y1").unwrap_or(0.0) + jitter(e));
             let b = (num("x2").unwrap_or(0.0) + jitter(e), num("y2").unwrap_or(0.0) + jitter(e));
-            Some(format!("M {} {}{}", fnum(a.0), fnum(a.1), side(a, b, &mut jitter)))
+            let (a2, b2) = ((a.0 + jitter(e), a.1 + jitter(e)), (b.0 + jitter(e), b.1 + jitter(e)));
+            Some(format!(
+                "M {} {}{} M {} {}{}",
+                fnum(a.0),
+                fnum(a.1),
+                side(a, b, &mut jitter),
+                fnum(a2.0),
+                fnum(a2.1),
+                side(a2, b2, &mut jitter)
+            ))
         }
         _ => None,
     }
@@ -805,6 +861,26 @@ impl Svg {
                 let path = corners.iter().map(|&(x, y)| at(Pt { x, y })).collect();
                 out.push(Span { from, to: from + DRAW_ON_FRAMES, path });
             }
+            // A part a step colours is shaded in, the pencil going back and forth across it.
+            for (key, tone) in &now.tints {
+                if tone == "dim" || before.tints.get(key) == Some(tone) || now.hidden.contains(key) {
+                    continue;
+                }
+                let Some((_, b)) = targets.boxes.iter().find(|(k, _)| k == key) else { continue };
+                let named = self.names.get(key).and_then(|names| {
+                    names.iter().filter_map(|n| crate::timing::cue_frame(segment, n)).reduce(f64::min)
+                });
+                let from = named.filter(|&c| c > segment.from).unwrap_or(segment.voice_from);
+                let rows = ((b.height / 14.0).round() as usize).clamp(2, 8);
+                let path = (0..=rows)
+                    .flat_map(|r| {
+                        let y = b.y + b.height * r as f64 / rows as f64;
+                        let (a, z) = if r % 2 == 0 { (b.x, b.x + b.width) } else { (b.x + b.width, b.x) };
+                        [at(Pt { x: a, y }), at(Pt { x: z, y: y + b.height / rows as f64 * 0.5 })]
+                    })
+                    .collect();
+                out.push(Span { from, to: from + SHADE_FRAMES, path });
+            }
         }
         out
     }
@@ -983,14 +1059,34 @@ fn collect_ids(e: &Elem, out: &mut Vec<String>) {
     }
 }
 
+/// A fill colour as `#rrggbb` and its alpha, from `#rgb`, `#rrggbb` or `#rrggbbaa`.
+fn hex_alpha(c: &str) -> Option<(String, f64)> {
+    let h = c.trim().strip_prefix('#')?;
+    if !h.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+    match h.len() {
+        3 => Some((format!("#{}", h.chars().flat_map(|c| [c, c]).collect::<String>()), 1.0)),
+        6 => Some((format!("#{h}"), 1.0)),
+        8 => Some((format!("#{}", &h[..6]), u8::from_str_radix(&h[6..], 16).ok()? as f64 / 255.0)),
+        _ => None,
+    }
+}
+
+/// On the board, the hatching's spacing and line width, in screen px.
+const HATCH_GAP_PX: f64 = 11.0;
+const HATCH_WIDTH_PX: f64 = 3.0;
+
 /// On the board, how far a hand-drawn side bows at most, how far its ends stray, and how far the pen runs past the
 /// corner it started from, in screen px.
-const ROUGH_BOW_PX: f64 = 3.5;
-const ROUGH_END_PX: f64 = 1.5;
-const ROUGH_OVERSHOOT_PX: f64 = 7.0;
+const ROUGH_BOW_PX: f64 = 11.0;
+const ROUGH_END_PX: f64 = 4.0;
+const ROUGH_OVERSHOOT_PX: f64 = 12.0;
 
 /// Frames an element a step's words name takes to show or change colour, from those words.
 const NAMED_FRAMES: f64 = 9.0;
+/// On the board, frames the pencil takes to shade in a part a step colours.
+const SHADE_FRAMES: f64 = 24.0;
 /// Frames an element a step shows takes to draw on.
 const DRAW_ON_FRAMES: f64 = 20.0;
 /// On the board, the frames a scene's drawing takes to draw on at most, part by part; the voice starts partway.

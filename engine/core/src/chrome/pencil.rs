@@ -15,6 +15,8 @@ pub struct Span {
 
 /// Frames the pencil takes to glide to the next thing it draws.
 const GLIDE: f64 = 14.0;
+/// The longest it takes over a glide, when there is time.
+const GLIDE_MAX: f64 = 45.0;
 /// Where the pencil rests before a scene draws anything, when nothing came before.
 const REST: Pt = Pt { x: 1640.0, y: 820.0 };
 /// How far the pencil lifts off the board between strokes.
@@ -52,9 +54,14 @@ pub fn tip(spans: &[Span], frame: f64, enter: Option<Pt>) -> (Pt, f64) {
     let prev = spans.iter().filter(|s| s.to <= frame && !s.path.is_empty()).max_by(|a, b| a.to.total_cmp(&b.to));
     let next = spans.iter().filter(|s| s.from > frame && !s.path.is_empty()).min_by(|a, b| a.from.total_cmp(&b.from));
     let rest = lifted(prev.and_then(|s| s.path.last().copied()).or(enter).unwrap_or(REST));
+    // It takes its time over a longer gap, so it is on its way rather than parked.
+    let glide = next.map_or(GLIDE, |n| {
+        let gap = n.from - prev.map_or(0.0, |p| p.to);
+        (gap * 0.6).clamp(GLIDE, GLIDE_MAX)
+    });
     match next {
-        Some(n) if frame > n.from - GLIDE => {
-            let t = ease((frame - (n.from - GLIDE)) / GLIDE);
+        Some(n) if frame > n.from - glide => {
+            let t = ease((frame - (n.from - glide)) / glide);
             let to = n.path[0];
             // It lifts as it leaves and sets down as it arrives.
             (Pt { x: rest.x + (to.x - rest.x) * t, y: rest.y + (to.y - rest.y) * t }, 1.0 - t)

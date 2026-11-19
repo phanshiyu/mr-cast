@@ -132,3 +132,16 @@ test('validate takes look "board" and refuses any other look', async () => {
   const bad = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'chalk' }));
   assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board"')));
 });
+
+test('on the board, validate warns about a scene that is not drawn on the picture', async () => {
+  const table = { type: 'table', title: 'Who is hit by this', columns: ['a'], rows: [['b']], narration: 'Hit.' };
+  const res = await check(
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'board' }),
+  );
+  assert.ok(res.warnings.some((w) => w.startsWith('scenes[1]: a table scene on the board is a slide')));
+  assert.ok(!res.warnings.some((w) => w.startsWith('scenes[0]: a svg scene')));
+  const plain = await check(
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
+  );
+  assert.ok(!plain.warnings.some((w) => w.includes('on the board')));
+});

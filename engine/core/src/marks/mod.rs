@@ -26,8 +26,8 @@ const CLEAR_FRAMES: f64 = 8.0;
 const INK_NOTE_FONT: f32 = 38.0;
 const WRITE_FONT: f32 = 42.0;
 const INK_CLEAR_FRAMES: f64 = 10.0;
-/// On the board, frames the pencil stays beside what a step lights, from the step's words.
-const TAP_FRAMES: f64 = 18.0;
+/// On the board, frames the pencil takes to go round what a step lights, from the step's words.
+const TAP_FRAMES: f64 = 28.0;
 const STROKE_PX_PER_FRAME: f64 = 60.0;
 const ARROW_PX_PER_FRAME: f64 = 40.0;
 const FRAMES_PER_CHAR: f64 = 2.2;
@@ -1023,7 +1023,7 @@ pub struct Pen {
     camera: crate::camera::Camera,
     /// On the board look, where the pencil goes as each step's voice starts: beside what the step lights, from that
     /// frame to a little later, in the content box.
-    taps: Vec<(f64, f64, Pt)>,
+    taps: Vec<(f64, f64, Vec<Pt>)>,
 }
 
 impl Pen {
@@ -1033,7 +1033,7 @@ impl Pen {
         let flat = |sk: &Sketch| sk.strokes.iter().flat_map(|s| s.points.iter().copied()).collect::<Vec<Pt>>();
         let mut out: Vec<(f64, f64, Vec<Pt>)> =
             self.board.marks.iter().map(|m| (m.start, m.done, flat(&m.sketch))).collect();
-        out.extend(self.taps.iter().map(|&(from, to, p)| (from, to, vec![p, p])));
+        out.extend(self.taps.iter().cloned());
         for p in &self.board.ink {
             let mut path = p.sketch.as_ref().map(flat).unwrap_or_default();
             if let Some(t) = &p.text {
@@ -1079,11 +1079,16 @@ impl Pen {
                     focus_refs(step.get("focus")).iter().filter_map(|r| resolve_ref(refs, r)).flatten().collect();
                 let lit = union(t.boxes.iter().filter(|(key, _)| keys.contains(key)).map(|(_, b)| Some(b)));
                 if let Some(b) = lit {
-                    taps.push((
-                        seg.voice_from,
-                        seg.voice_from + TAP_FRAMES,
-                        Pt { x: b.x + b.width, y: b.y + b.height },
-                    ));
+                    // The pencil goes over what the step lights once more, round it.
+                    let (x0, y0, x1, y1) = (b.x - 6.0, b.y - 6.0, b.x + b.width + 6.0, b.y + b.height + 6.0);
+                    let round = vec![
+                        Pt { x: x0, y: y1 },
+                        Pt { x: x0, y: y0 },
+                        Pt { x: x1, y: y0 },
+                        Pt { x: x1, y: y1 },
+                        Pt { x: x0, y: y1 },
+                    ];
+                    taps.push((seg.voice_from, seg.voice_from + TAP_FRAMES, round));
                 }
             }
         }
