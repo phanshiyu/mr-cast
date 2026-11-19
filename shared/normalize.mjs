@@ -3,6 +3,7 @@
 
 import { expandBriefParts } from './files.mjs';
 import { plainText } from './markup.mjs';
+import { expandPictures } from './pictures.mjs';
 import { FLAG_MARK, flaggedFinding } from './review.mjs';
 import { STATE_TYPES, changedRefs } from './state-steps.mjs';
 import { testsCallouts, upgradeTests } from './tests.mjs';
@@ -35,10 +36,12 @@ export const NODE_KINDS = Object.keys(KINDS);
  * The storyboard with every scene in its current shape: a type renamed since it was written replaced by its
  * current name (an `arch` scene is a `graph`), and a tests scene with `cases` and `gaps` read as a matrix. It
  * runs where a storyboard enters, before `validate` and inside normalizeStoryboard, so nothing past it sees
- * either older shape.
+ * either older shape. An svg scene that draws a picture gets the picture's markup, and one that continues the
+ * picture of the scene before it starts from what that scene ended on (shared/pictures.mjs).
  */
-export function upgradeScenes(storyboard) {
-  if (!Array.isArray(storyboard?.scenes)) return storyboard;
+export function upgradeScenes(given) {
+  if (!Array.isArray(given?.scenes)) return given;
+  const storyboard = expandPictures(given);
   const renamed = (scene) =>
     scene && typeof scene === 'object' && Object.hasOwn(LEGACY_TYPES, scene.type)
       ? { ...scene, type: LEGACY_TYPES[scene.type] }

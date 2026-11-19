@@ -42,6 +42,8 @@ pub struct Project {
     scenes: Vec<Box<dyn SceneView>>,
     /// Each scene's "In the code:" line, for a pre-read diagram that cites hunks in `from`.
     sources: Vec<Option<textfit::Fit>>,
+    /// Each scene's "illustrative" tag, for a scene that sketches rather than shows real data.
+    sketches: Vec<Option<textfit::Fit>>,
 }
 
 impl Project {
@@ -60,7 +62,8 @@ impl Project {
             })
             .collect();
         let sources = props.storyboard.scenes.iter().map(|s| chrome::shell::source_line(s, &props.hunks)).collect();
-        Project { props, timeline, scenes, sources }
+        let sketches = props.storyboard.scenes.iter().map(chrome::shell::illustrative).collect();
+        Project { props, timeline, scenes, sources, sketches }
     }
 
     pub fn from_json(json: &str) -> Result<Project, String> {
@@ -94,6 +97,9 @@ pub fn build_frame(project: &Project, frame: u32) -> DisplayList {
         project.scenes[i].draw(&f, &mut dl);
         if let Some(fit) = &project.sources[i] {
             chrome::shell::draw_source_line(&mut dl, fit);
+        }
+        if let Some(fit) = &project.sketches[i] {
+            chrome::shell::draw_illustrative(&mut dl, fit, local, t.duration);
         }
         if project.props.show_captions {
             chrome::captions::draw(&mut dl, &t.segments, local, t.duration);

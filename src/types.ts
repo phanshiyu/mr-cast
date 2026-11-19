@@ -102,6 +102,8 @@ interface SceneBase {
    * The voice starts once the scene has drawn in. A scene with `steps` says it before the first step.
    */
   narration: string;
+  /** The scene sketches rather than shows real data: a small "illustrative" is written at the stage's bottom right. */
+  illustrative?: boolean;
 }
 
 /** What a step points the viewer at. Each scene type's `steps` says which refs it takes. */
@@ -1171,8 +1173,14 @@ export interface SvgStep extends StateStep {
 export interface SvgScene extends SceneBase {
   type: 'svg';
   title?: string;
-  /** The markup: one `<svg viewBox="...">` element. Elements that steps name carry an `id`. */
-  svg: string;
+  /** The markup: one `<svg viewBox="...">` element. Elements that steps name carry an `id`. Give it or `picture`. */
+  svg?: string;
+  /**
+   * The name of one of the storyboard's `pictures`, drawn in place of `svg`. A scene on the same picture as the scene
+   * right before it continues it: the picture stays still between them, and this scene starts with what that one
+   * ended on shown and tinted, unless it sets its own `hidden` or `tint`.
+   */
+  picture?: string;
   /** Words a step's `say` may name an element by, by id, e.g. { "car": "the car" }; an element's id and its text name it too. */
   labels?: Record<string, string>;
   /** Ids of elements not drawn until a step shows them. */
@@ -1776,6 +1784,16 @@ export interface Storyboard {
   title: string;
   subtitle?: string;
   scenes: Scene[];
+  /**
+   * Drawings svg scenes draw by name with `picture`, each one `<svg viewBox="...">` element, e.g. { "bar": "<svg
+   * ...>" }. Keep one picture on screen across scenes and change it a little at a time.
+   */
+  pictures?: Record<string, string>;
+  /**
+   * What each colour means in this video, e.g. { "good": "bytes that fit", "bad": "bytes past the end" }. `validate`
+   * warns about a tint or an svg tone class in a tone not listed.
+   */
+  tones?: Partial<Record<'accent' | 'good' | 'bad' | 'warn', string>>;
   /**
    * A video of a branch: the six questions a reviewer has, answered before the scenes are written. Not for an
    * explanation or a quick video.

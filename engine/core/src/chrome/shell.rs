@@ -121,12 +121,24 @@ pub struct Aside<'a> {
 pub struct Shell {
     pub eyebrow: Fit,
     pub title: Option<Fit>,
+    /// The content is already on screen as the scene starts, held from the scene before (a picture it continues),
+    /// so only the header fades in.
+    pub hold_in: bool,
+    /// The content stays on screen as the scene ends, for the next scene to continue, so only the header fades out.
+    pub hold_out: bool,
+    /// The least height the header takes, so every scene of a held picture lays it out in the same box.
+    pub header_min: f32,
 }
 
 impl Shell {
     pub fn new(scene: &Value) -> Shell {
         let (eyebrow, title) = shell_fits(scene);
-        Shell { eyebrow, title }
+        Shell { eyebrow, title, hold_in: false, hold_out: false, header_min: 0.0 }
+    }
+
+    /// The header's height with an aside `aside_h` tall (0 without one).
+    pub fn header_height(&self, aside_h: f32) -> f32 {
+        self.label_height().max(aside_h).max(self.header_min)
     }
 
     fn label_height(&self) -> f32 {
@@ -136,7 +148,7 @@ impl Shell {
 
     /// The content box below a header with an aside `aside_h` tall (0 without one).
     pub fn content(&self, aside_h: f32) -> ContentBox {
-        let header = self.label_height().max(aside_h);
+        let header = self.header_height(aside_h);
         let y = SAFE.top + header + 36.0;
         ContentBox { x: SAFE.left, y, w: 1920.0 - SAFE.left - SAFE.right, h: 1080.0 - SAFE.bottom - y }
     }
@@ -155,24 +167,55 @@ impl Shell {
         let opacity = interpolate(frame, &[0.0, ENTER_FRAMES, exit_start, duration], &[0.0, 1.0, 1.0, 0.0], CLAMP);
         let y = clamped(frame, 0.0, ENTER_FRAMES, 28.0, 0.0) + clamped(frame, exit_start, duration, 0.0, -16.0);
         let aside_h = aside.as_ref().map_or(0.0, |a| a.height);
-        let header = self.label_height().max(aside_h);
+        let header = self.header_height(aside_h);
         let bx = self.content(aside_h);
+        let draw_header = |dl: &mut DisplayList| {
+            let mut top = SAFE.top + header - self.label_height();
+            top += draw_fit(dl, &self.eyebrow, SAFE.left, top, TextOpts::new(ACCENT).normal());
+            if let Some(t) = &self.title {
+                draw_fit(dl, t, SAFE.left, top + 10.0, TextOpts::new(TEXT).normal());
+            }
+            if let Some(a) = &aside {
+                (a.draw)(dl, 1920.0 - SAFE.right, SAFE.top + header - a.height);
+            }
+        };
+        if !self.hold_in && !self.hold_out {
+            dl.save();
+            dl.fade(opacity as f32);
+            dl.translate(0.0, y as f32);
+            draw_header(dl);
+            dl.save();
+            dl.translate(bx.x, bx.y);
+            content(dl, bx);
+            dl.restore();
+            dl.restore();
+            return;
+        }
+        // A held picture: the header fades and slides as usual, the content only at an end it does not hold.
         dl.save();
         dl.fade(opacity as f32);
         dl.translate(0.0, y as f32);
-        let mut top = SAFE.top + header - self.label_height();
-        top += draw_fit(dl, &self.eyebrow, SAFE.left, top, TextOpts::new(ACCENT).normal());
-        if let Some(t) = &self.title {
-            draw_fit(dl, t, SAFE.left, top + 10.0, TextOpts::new(TEXT).normal());
-        }
-        if let Some(a) = aside {
-            (a.draw)(dl, 1920.0 - SAFE.right, SAFE.top + header - a.height);
-        }
+        draw_header(dl);
+        dl.restore();
+        let fade_in = if self.hold_in { 1.0 } else { clamped(frame, 0.0, ENTER_FRAMES, 0.0, 1.0) };
+        let fade_out = if self.hold_out { 1.0 } else { clamped(frame, exit_start, duration, 1.0, 0.0) };
+        let slide = if self.hold_in { 0.0 } else { clamped(frame, 0.0, ENTER_FRAMES, 28.0, 0.0) }
+            + if self.hold_out { 0.0 } else { clamped(frame, exit_start, duration, 0.0, -16.0) };
         dl.save();
-        dl.translate(bx.x, bx.y);
+        dl.fade(fade_in.min(fade_out) as f32);
+        dl.translate(bx.x, bx.y + slide as f32);
         content(dl, bx);
         dl.restore();
-        dl.restore();
+    }
+
+    /// How much of the scene's ink to show at `frame`: all of it, fading out over the scene's last frames when the
+    /// scene holds its content for the next, since ink does not carry to it.
+    pub fn ink_alpha(&self, frame: f64, duration: f64) -> f32 {
+        if !self.hold_out {
+            return 1.0;
+        }
+        let exit_start = ENTER_FRAMES.max(duration - SCENE_EXIT_FRAMES);
+        clamped(frame, exit_start, duration, 1.0, 0.0) as f32
     }
 }
 
@@ -202,5 +245,29 @@ pub fn draw_source_line(dl: &mut DisplayList, fit: &Fit) {
     dl.group(|dl| {
         dl.fade(0.85);
         draw_fit(dl, fit, 1920.0 - SAFE.right - w, 22.0, TextOpts::new(crate::theme::MUTED).normal());
+    });
+}
+
+/// The "illustrative" tag of a scene with `"illustrative": true`: a sketch, not real data.
+pub fn illustrative(scene: &Value) -> Option<Fit> {
+    (scene.get("illustrative").and_then(Value::as_bool) == Some(true))
+        .then(|| fit_text("illustrative", &Slot::named("sourceLine", 400.0)))
+}
+
+/// Draws the illustrative tag at the stage's bottom right, just above the captions, fading with the scene.
+pub fn draw_illustrative(dl: &mut DisplayList, fit: &Fit, frame: f64, duration: f64) {
+    let exit_start = ENTER_FRAMES.max(duration - SCENE_EXIT_FRAMES);
+    let opacity = interpolate(frame, &[0.0, ENTER_FRAMES, exit_start, duration], &[0.0, 1.0, 1.0, 0.0], CLAMP);
+    let w = crate::chrome::fittext::drawn_width(fit, &fit.lines[0], None);
+    let h = fit_height(fit, LineHeight::Normal);
+    dl.group(|dl| {
+        dl.fade(0.7 * opacity as f32);
+        draw_fit(
+            dl,
+            fit,
+            1920.0 - SAFE.right - w,
+            1080.0 - SAFE.bottom - h - 6.0,
+            TextOpts::new(crate::theme::MUTED).normal(),
+        );
     });
 }
