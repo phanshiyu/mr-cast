@@ -2,6 +2,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { pipeline } from 'node:stream';
 import { BUILT_FILE, PLAN_FILE, writeChoice } from './plan.mjs';
 import { AUDIO_NAME } from './voice.mjs';
 import { IMAGE_NAME, IMAGES_DIR, IMAGES_FILE } from './images.mjs';
@@ -40,30 +41,49 @@ const TYPES = {
   '.wav': 'audio/wav',
 };
 
-/** Streams `file`, honouring a single-range Range header so media elements can seek. */
+/**
+ * Streams `file`, honouring a single-range Range header so media elements can seek.
+ * It opens the file first, so a clip deleted meanwhile still streams or answers 404, and a
+ * read that fails cannot take the server down.
+ */
 function sendFile(req, res, file, headers = {}) {
-  fs.stat(file, (err, st) => {
-    if (err || !st.isFile()) return send(res, 404, 'not found');
-    const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
-    const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
-    if (!range || (!range[1] && !range[2])) {
-      res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Accept-Ranges': 'bytes', ...headers });
-      return fs.createReadStream(file).pipe(res);
-    }
-    const start = range[1] ? Number(range[1]) : Math.max(0, st.size - Number(range[2]));
-    const end = range[1] && range[2] ? Math.min(Number(range[2]), st.size - 1) : st.size - 1;
-    if (start > end) {
-      res.writeHead(416, { 'Content-Range': `bytes */${st.size}` });
-      return res.end();
-    }
-    res.writeHead(206, {
-      'Content-Type': type,
-      'Content-Length': end - start + 1,
-      'Content-Range': `bytes ${start}-${end}/${st.size}`,
-      'Accept-Ranges': 'bytes',
-      ...headers,
+  fs.open(file, 'r', (openErr, fd) => {
+    if (openErr) return send(res, 404, 'not found');
+    fs.fstat(fd, (err, st) => {
+      if (err || !st.isFile()) {
+        fs.close(fd, () => {});
+        return send(res, 404, 'not found');
+      }
+      const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
+      const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+      if (!range || (!range[1] && !range[2])) {
+        res.writeHead(200, { 'Content-Type': type, 'Content-Length': st.size, 'Accept-Ranges': 'bytes', ...headers });
+        return streamFd(res, fd);
+      }
+      const start = range[1] ? Number(range[1]) : Math.max(0, st.size - Number(range[2]));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), st.size - 1) : st.size - 1;
+      if (start > end) {
+        fs.close(fd, () => {});
+        res.writeHead(416, { 'Content-Range': `bytes */${st.size}` });
+        return res.end();
+      }
+      res.writeHead(206, {
+        'Content-Type': type,
+        'Content-Length': end - start + 1,
+        'Content-Range': `bytes ${start}-${end}/${st.size}`,
+        'Accept-Ranges': 'bytes',
+        ...headers,
+      });
+      streamFd(res, fd, { start, end });
     });
-    fs.createReadStream(file, { start, end }).pipe(res);
+  });
+}
+
+/** Pipes an open file to the response; the stream closes the file itself. */
+function streamFd(res, fd, range = {}) {
+  pipeline(fs.createReadStream(null, { fd, ...range }), res, (err) => {
+    // The client went away, or the read failed after the headers went out; nothing more can be sent.
+    if (err && !res.destroyed) res.destroy();
   });
 }
 
@@ -194,11 +214,16 @@ export async function startServer({
     countDown();
   };
 
-  const server = http.createServer((req, res) => {
+  const handle = (req, res) => {
     // Binding to 127.0.0.1 does not stop DNS rebinding: a page on evil.example can resolve
     // its own name to 127.0.0.1 and read responses, but its requests carry the wrong Host.
     if (!allowedHosts.has(req.headers.host?.toLowerCase())) return send(res, 403, 'forbidden host');
-    const { pathname } = new URL(req.url, `http://${HOST}`);
+    let pathname;
+    try {
+      ({ pathname } = new URL(req.url, `http://${HOST}`));
+    } catch {
+      return send(res, 400, 'bad request');
+    }
     if (pathname === '/plan/choice') {
       if (req.method !== 'POST') return send(res, 405, 'method not allowed');
       return postChoice(req, res, { token: tokenBytes, dataDir });
@@ -264,6 +289,15 @@ export async function startServer({
       if (path.extname(pathname)) return send(res, 404, 'not found');
       sendFile(req, res, path.join(root, 'index.html'), { 'Cache-Control': 'no-store' });
     });
+  };
+  const server = http.createServer((req, res) => {
+    try {
+      handle(req, res);
+    } catch (err) {
+      console.error(`mr-cast: ${req.method} ${req.url} failed · ${err.message}`);
+      if (!res.headersSent) send(res, 500, 'internal error');
+      else res.destroy();
+    }
   });
 
   let bound;
