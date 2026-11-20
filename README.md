@@ -26,20 +26,20 @@ mr-cast is a command-line tool and a Claude Code skill. Ask Claude for a video o
 
 Two scenes from [`examples/demo`](examples/demo), a walkthrough of a rate limit change ([watch the video](https://github.com/phanshiyu/mr-cast/releases/latest/download/demo.mp4)). A video moves through diagrams and code while the voice explains it, and lights each part as the voice reaches it.
 
-Worked examples explain an idea with real numbers, such as Dijkstra's shortest path, React's two trees and how a GPT picks the next word:
+Worked examples explain an idea with real numbers, drawn by hand on a board, such as Dijkstra's shortest path, React's two trees and how a GPT picks the next word:
 
 <p align="center">
-  <img src="docs/assets/examples/algorithms-dijkstra.png" width="32%" alt="Dijkstra's shortest path: a graph of five places with the cheapest route lit, beside a tracker table whose distances change as shortcuts are found.">
-  <img src="docs/assets/examples/architecture-react.png" width="32%" alt="React's two trees: a memory diagram where the root points at one of two trees, each pointing at the other as its alternate.">
-  <img src="docs/assets/examples/explain-gpt.png" width="32%" alt="How a GPT picks the next word: a table of six candidate tokens with their scores, e to the score, and their chances.">
+  <img src="docs/assets/examples/algorithms-dijkstra.png" width="32%" alt="Dijkstra's shortest path, drawn by hand: a map of five places with the cheapest route written under it, beside a handwritten table where old guesses are struck through and settled places ticked.">
+  <img src="docs/assets/examples/architecture-react.png" width="32%" alt="React's two trees, drawn by hand: root.current points at the tree being built, beside the tree on screen.">
+  <img src="docs/assets/examples/explain-gpt.png" width="32%" alt="How a GPT picks the next word, drawn by hand: six stops from text to chances, from the tokenizer through attention and MLP to softmax.">
 </p>
 
 They work outside software too, such as a square wave built from sine waves, the 49th parallel and a loaf of bread:
 
 <p align="center">
-  <img src="docs/assets/examples/math-fourier.png" width="32%" alt="A square wave from sine waves: a plot where five sine waves added together almost make a square wave, its peak marked at 1.06.">
-  <img src="docs/assets/examples/geography-49th-parallel.png" width="32%" alt="The 49th parallel: a map of the Oregon Country, with the 54°40′ line crossed out and the 49th parallel drawn across.">
-  <img src="docs/assets/examples/cooking-bread.png" width="32%" alt="Bread by baker's percentages: a timeline of one loaf from mixing to baking, its two rises marked as 77% waiting.">
+  <img src="docs/assets/examples/math-fourier.png" width="32%" alt="A square wave from sine waves, drawn by hand: five sine waves added together almost make a square wave, its peak marked at 1.06.">
+  <img src="docs/assets/examples/geography-49th-parallel.png" width="32%" alt="The 49th parallel, drawn by hand: the coast of the Oregon Country, shaded as shared land, with the 54°40′ line and the 49th parallel drawn across.">
+  <img src="docs/assets/examples/cooking-bread.png" width="32%" alt="Bread by baker's percentages, drawn by hand: a stiff 60% water dough beside a slack 80% one, their crumb, and a ruler marking 66%.">
 </p>
 
 The [gallery](docs/gallery.md) has each example's still, storyboard and video, and a short demo of every scene type.

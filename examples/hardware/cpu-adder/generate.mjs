@@ -51,34 +51,48 @@ assert(place.join() === '8,4,2,1', 'place values');
 
 const scenes = [];
 
-// Scene 1: the two numbers as rows of lights.
-const lit = (name, values) => Object.fromEntries(values.flatMap((v, i) => (v ? [[`${name}[${i}]`, 'warn']] : [])));
+// Scenes 1 and 5: the two numbers and their sum as rows of lights, under what each column is worth.
+const colX = (i) => 520 + i * 160;
+const rowY = { worth: 90, a: 220, b: 340, sum: 530 };
+const lightRow = (name, values, label) =>
+  `<g id="row-${name}"><text x="380" y="${rowY[name] + 12}" font-size="34" text-anchor="end" fill="var(--muted)">${label}</text>` +
+  values
+    .map(
+      (v, i) =>
+        `<g id="${name}${i}"><circle cx="${colX(i)}" cy="${rowY[name]}" r="46" stroke="var(--muted)" stroke-width="3"/><text id="${name}${i}-v" x="${colX(i)}" y="${rowY[name] + 13}" font-size="36" text-anchor="middle" font-family="mono">${v}</text></g>`,
+    )
+    .join('') +
+  '</g>';
+const lights =
+  `<svg viewBox="0 0 1200 640">` +
+  `<g id="row-worth"><text x="380" y="${rowY.worth + 10}" font-size="30" text-anchor="end" fill="var(--muted)">worth</text>${place.map((v, i) => `<text id="worth${i}" x="${colX(i)}" y="${rowY.worth + 12}" font-size="36" text-anchor="middle" fill="var(--muted)">${v}</text>`).join('')}</g>` +
+  lightRow('a', a, '5') +
+  lightRow('b', b, '+ 3') +
+  `<line id="rule" x1="440" y1="430" x2="1080" y2="430" stroke="var(--text)" stroke-width="4"/>` +
+  lightRow('sum', ['?', '?', '?', '?'], 'sum') +
+  `</svg>`;
+const lit = (name, values) => Object.fromEntries(values.flatMap((v, i) => (v ? [[`${name}${i}`, 'good']] : [])));
 scenes.push({
-  type: 'array',
+  type: 'svg',
   chapter: 'Five and three',
-  title: 'Two numbers, as lights',
+  title: 'Two numbers, as rows of lights',
+  picture: 'lights',
   narration:
     "Inside a computer, a number is a row of wires, each one on or off. Let's add five and three, in four bits.",
-  arrays: [
-    { name: 'worth', label: 'worth', values: place },
-    { name: 'a', label: '5', values: a },
-    { name: 'b', label: '3', values: b },
-    { name: 'sum', label: 'sum', values: ['?', '?', '?', '?'], hidden: true },
-  ],
-  indexes: false,
-  tint: { 'array:worth': 'dim' },
+  hidden: ['rule', 'row-sum'],
+  labels: { a1: 'four', a3: 'one', b2: 'two', 'row-b': 'three', 'row-sum': 'add' },
   steps: [
     {
       tint: lit('a', a),
-      focus: ['a[1]', 'a[3]', 'worth[1]', 'worth[3]'],
+      focus: ['a1', 'a3', 'worth1', 'worth3'],
       say: 'Five is a four plus a one, so the four light and the one light are on.',
     },
-    { tint: lit('b', b), focus: ['b[2]', 'b[3]', 'worth[2]', 'worth[3]'], say: 'Three is a two plus a one.' },
+    { tint: lit('b', b), focus: ['b2', 'b3', 'worth2', 'worth3'], say: 'Three is a two plus a one.' },
     {
-      show: ['array:sum'],
-      focus: ['a[3]', 'b[3]', 'sum[3]'],
+      show: ['rule', 'row-sum'],
+      focus: ['a3', 'b3', 'sum3'],
       say: 'To add them, the computer works like you would on paper: one column at a time, starting from the right.',
-      draw: [{ box: ['a[3]', 'sum[3]'], when: 'one column' }],
+      draw: [{ box: ['a3', 'sum3'], when: 'one column' }],
     },
   ],
 });
@@ -94,33 +108,68 @@ const row = (x, y, c) => x * 4 + y * 2 + c;
 const oddRows = rows.flatMap((r, i) => (r.cells[4] === '1' ? [i] : []));
 const carryRows = rows.flatMap((r, i) => (r.cells[3] === '1' ? [i] : []));
 assert(oddRows.join() === '1,2,4,7' && carryRows.join() === '3,5,6,7', 'sum and carry rows');
+const TX = [130, 230, 360, 540, 680]; // A, B, carry in | carry out, sum
+const ty = (i) => 140 + i * 60;
+const truth =
+  `<svg viewBox="0 0 1200 640">` +
+  ['A', 'B', 'carry in']
+    .map((h, k) => `<text x="${TX[k]}" y="60" font-size="26" text-anchor="middle" fill="var(--muted)">${h}</text>`)
+    .join('') +
+  `<line x1="450" y1="30" x2="450" y2="610" stroke="var(--muted)" stroke-width="3"/><line x1="70" y1="80" x2="760" y2="80" stroke="var(--muted)" stroke-width="3"/>` +
+  rows
+    .map(
+      (r, i) =>
+        `<g id="in${i}">${r.cells
+          .slice(0, 3)
+          .map(
+            (v, k) =>
+              `<text x="${TX[k]}" y="${ty(i)}" font-size="32" text-anchor="middle" font-family="mono">${v}</text>`,
+          )
+          .join('')}</g>`,
+    )
+    .join('') +
+  `<g id="outs"><text x="${TX[3]}" y="60" font-size="26" text-anchor="middle" fill="var(--muted)">carry out</text><text x="${TX[4]}" y="60" font-size="26" text-anchor="middle" fill="var(--muted)">sum</text>` +
+  rows
+    .map(
+      (r, i) =>
+        `<text id="co${i}" x="${TX[3]}" y="${ty(i)}" font-size="32" text-anchor="middle" font-family="mono">${r.cells[3]}</text><text id="s${i}" x="${TX[4]}" y="${ty(i)}" font-size="32" text-anchor="middle" font-family="mono">${r.cells[4]}</text>`,
+    )
+    .join('') +
+  `</g></svg>`;
+const rowRefs = (i) => [`in${i}`, `co${i}`, `s${i}`];
 scenes.push({
-  type: 'table',
+  type: 'svg',
   chapter: 'One column',
-  title: 'Adding three bits',
-  narration:
-    'One column adds three bits: the two digits, and a carry from the column before. The answer is at most three, so it fits in two bits, a carry and a sum.',
-  columns: ['A', 'B', 'Carry in', 'Carry out', 'Sum'],
-  rows,
+  title: 'One column adds three bits',
+  svg: truth,
+  narration: 'One column adds three bits: the two digits, and a carry from the column before.',
+  hidden: ['outs'],
+  labels: { outs: 'two bits' },
   steps: [
-    { focus: row(0, 1, 0), say: 'Zero plus one is one. Sum one, no carry.' },
     {
-      focus: row(1, 1, 0),
-      tint: { [row(1, 1, 0)]: 'warn' },
+      show: ['outs'],
+      focus: 'outs',
+      say: 'The answer is at most three, so it fits in two bits, a carry and a sum.',
+    },
+    { focus: rowRefs(row(0, 1, 0)), say: 'Zero plus one is one. Sum one, no carry.' },
+    {
+      focus: rowRefs(row(1, 1, 0)),
       say: 'One plus one is two, which in binary is one zero. Sum zero, carry one.',
+      draw: [{ box: [`in${row(1, 1, 0)}`, `s${row(1, 1, 0)}`], when: 'one zero' }],
     },
-    { focus: row(1, 1, 1), say: 'All three on makes three, one one. Sum one, carry one.' },
+    { focus: rowRefs(row(1, 1, 1)), say: 'All three on makes three, one one. Sum one, carry one.' },
     {
-      focus: 'col:Sum',
-      tint: Object.fromEntries(oddRows.map((i) => [`Sum@${i}`, 'accent'])),
-      callout: 'Sum = A ⊕ B ⊕ Cin',
+      focus: oddRows.map((i) => `s${i}`),
+      erase: true,
+      tint: Object.fromEntries(oddRows.map((i) => [`s${i}`, 'good'])),
       say: "Look down the sum. It's on whenever an odd number of inputs are on. That's what an XOR gate does.",
+      draw: [{ write: 'Sum = A ⊕ B ⊕ Cin', near: 's1', side: 'right', when: 'XOR gate' }],
     },
     {
-      focus: 'col:Carry out',
-      tint: Object.fromEntries(carryRows.map((i) => [`Carry out@${i}`, 'accent'])),
-      callout: 'Carry = A·B + Cin·(A ⊕ B)',
+      focus: carryRows.map((i) => `co${i}`),
+      tint: Object.fromEntries(carryRows.map((i) => [`co${i}`, 'good'])),
       say: 'The carry is on whenever at least two are on. AND gates can catch that.',
+      draw: [{ write: 'Carry = A·B + Cin·(A ⊕ B)', near: 's5', side: 'right', when: 'at least two' }],
     },
   ],
 });
@@ -133,12 +182,12 @@ const orGate = (x, y) =>
   `M${x} ${y - 50} Q${x + 90} ${y - 50} ${x + 140} ${y} Q${x + 90} ${y + 50} ${x} ${y + 50} Q${x + 30} ${y} ${x} ${y - 50} Z`;
 const xorBack = (x, y) => `M${x - 16} ${y - 50} Q${x + 14} ${y} ${x - 16} ${y + 50}`;
 const G = { xor1: [460, 200], and1: [460, 440], xor2: [880, 260], and2: [880, 600], or: [1180, 520] };
-const gate = (id, kind, label, size = 26, color = 'var(--muted)') => {
+const gate = (id, kind, label, size = 32, color = 'var(--muted)') => {
   const [x, y] = G[id];
   const body = kind === 'and' ? andGate(x, y) : orGate(x, y);
   const back = kind === 'xor' ? `<path d="${xorBack(x, y)}" fill="none" stroke="${color}" stroke-width="5"/>` : '';
   return (
-    `<g id="${id}"><path d="${body}" fill="var(--surface)" stroke="${color}" stroke-width="5"/>${back}` +
+    `<g id="${id}"><path d="${body}" fill="none" stroke="${color}" stroke-width="5"/>${back}` +
     `<text x="${x + 58}" y="${y + size / 3}" text-anchor="middle" font-size="${size}" fill="var(--text)" font-family="mono">${label}</text></g>`
   );
 };
@@ -174,7 +223,7 @@ const value = {
 const wires = (ids) =>
   ids.map((id) => `<path d="${W[id]}" fill="none" stroke="var(--border)" stroke-width="6"/>`).join('');
 const live = (id, ...ids) =>
-  `<g id="${id}" class="flow" fill="none" stroke="var(--warn)" stroke-width="8">${ids.map((w) => `<path d="${W[w]}"/>`).join('')}</g>`;
+  `<g id="${id}" class="flow" fill="none" stroke="var(--good)" stroke-width="8">${ids.map((w) => `<path d="${W[w]}"/>`).join('')}</g>`;
 const label = (id, x, y, text, anchor = 'start', size = 34) =>
   `<text id="${id}" x="${x}" y="${y}" font-size="${size}" text-anchor="${anchor}" font-family="mono" fill="var(--text)">${text}</text>`;
 const adderSvg =
@@ -205,7 +254,7 @@ assert(value.p1 === 0 && value.g === 1 && value.h === 0, 'gate outputs for 1 + 1
 scenes.push({
   type: 'svg',
   chapter: 'A full adder',
-  title: 'One column, in five gates',
+  title: 'One column is five gates',
   narration: 'Here are those rules as five gates: two XORs, two ANDs and an OR. This circuit is called a full adder.',
   svg: adderSvg,
   hidden: [
@@ -297,10 +346,10 @@ for (const r of ripple) {
     `<text id="name${r.col}" x="${cx}" y="${BOX.y + BOX.h / 2 + 12}" text-anchor="middle" font-size="34" fill="var(--muted)">full adder</text>`,
     label(`a${r.col}`, x + 70, 130, `${r.a}`, 'middle'),
     label(`b${r.col}`, x + 170, 130, `${r.b}`, 'middle'),
-    `<text x="${x + 70}" y="80" text-anchor="middle" font-size="24" fill="var(--muted)">A${3 - i}</text>`,
-    `<text x="${x + 170}" y="80" text-anchor="middle" font-size="24" fill="var(--muted)">B${3 - i}</text>`,
+    `<text x="${x + 70}" y="80" text-anchor="middle" font-size="30" fill="var(--muted)">A${3 - i}</text>`,
+    `<text x="${x + 170}" y="80" text-anchor="middle" font-size="30" fill="var(--muted)">B${3 - i}</text>`,
     label(`s${r.col}`, cx, 610, `${r.sum}`, 'middle', 44),
-    `<text x="${cx}" y="660" text-anchor="middle" font-size="24" fill="var(--muted)">worth ${2 ** r.col}</text>`,
+    `<text x="${cx}" y="660" text-anchor="middle" font-size="30" fill="var(--muted)">worth ${2 ** r.col}</text>`,
     ...(r.col === 0 ? [mini(0)] : []),
   );
   // The carry out leaves the box's left side for the next column's right side, or the end of the row.
@@ -308,7 +357,7 @@ for (const r of ripple) {
   const d = `M${x} ${BOX.y + 100} H${to}`;
   chain.push(`<path d="${d}" fill="none" stroke="var(--border)" stroke-width="6"/>`);
   chain.push(
-    `<path id="carry${r.col}" class="flow" d="${d}" fill="none" stroke="${r.carry ? 'var(--warn)' : 'var(--border)'}" stroke-width="8"/>`,
+    `<path id="carry${r.col}" class="flow" d="${d}" fill="none" stroke="${r.carry ? 'var(--good)' : 'var(--border)'}" stroke-width="8"/>`,
   );
   chain.push(label(`c${r.col}`, (x + to) / 2, BOX.y + 85, `${r.carry}`, 'middle', 30));
 }
@@ -324,7 +373,7 @@ const word = ['zero', 'one'];
 scenes.push({
   type: 'svg',
   chapter: 'The ripple',
-  title: 'Four full adders, one per bit',
+  title: 'Each carry waits for the one before',
   narration:
     "Now copy that full adder four times, one per column, and wire each carry out into the next column's carry in.",
   svg: chainSvg,
@@ -376,30 +425,39 @@ for (const r of ripple) assert(r.col === 0 || r.cin === ripple[r.col - 1].carry,
 
 // Scene 5: back to the lights.
 scenes.push({
-  type: 'array',
+  type: 'svg',
   chapter: 'Eight',
-  title: 'Five plus three',
-  narration: 'Read the sum lights from left to right.',
-  arrays: [
-    { name: 'worth', label: 'worth', values: place },
-    { name: 'a', label: '5', values: a },
-    { name: 'b', label: '3', values: b },
-    { name: 'sum', label: 'sum', values: sum },
-  ],
-  indexes: false,
-  tint: { 'array:worth': 'dim', ...lit('a', a), ...lit('b', b) },
-  callout: `${a.join('')} + ${b.join('')} = ?`,
+  title: 'Five plus three makes eight',
+  picture: 'lights',
+  narration: 'Back to the lights. Read the sum from left to right.',
+  hidden: [],
+  tint: { ...lit('a', a), ...lit('b', b) },
+  labels: { 'row-sum': 'one zero zero zero', worth0: 'eights', sum0: 'eight' },
   steps: [
     {
+      set: Object.fromEntries(sum.map((v, i) => [`sum${i}-v`, String(v)])),
       tint: lit('sum', sum),
-      focus: ['array:sum', 'worth[0]'],
-      callout: `${a.join('')} + ${b.join('')} = ${sum.join('')}`,
-      say: `One zero zero zero. Only the eights light is on, so the answer is eight. Five plus three, done with nothing but on and off.`,
+      focus: ['row-sum'],
+      say: 'One zero zero zero.',
+      draw: [
+        { write: `${a.join('')} + ${b.join('')} = ${sum.join('')}`, near: 'row-sum', side: 'below', when: 'One zero' },
+      ],
+    },
+    {
+      focus: ['sum0', 'worth0'],
+      say: 'Only the eights light is on, so the answer is eight. Five plus three, done with nothing but on and off.',
+      draw: [{ circle: 'sum0', when: 'eights light' }],
     },
   ],
 });
 
-const storyboard = { title: 'How a CPU adds', subtitle: 'Five plus three, one gate at a time', scenes };
+const storyboard = {
+  title: 'How a CPU adds',
+  subtitle: 'Five plus three, one gate at a time',
+  tones: { good: 'a wire or light that is on, a one' },
+  pictures: { lights },
+  scenes,
+};
 fs.writeFileSync(here('storyboard.json'), `${JSON.stringify(storyboard, null, 2)}\n`);
 fs.writeFileSync(here('hunks.json'), '{}\n');
 fs.writeFileSync(here('meta.json'), `${JSON.stringify({ mode: 'explain' })}\n`);

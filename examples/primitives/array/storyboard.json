@@ -1,5 +1,6 @@
 {
   "title": "Rows of cells",
+  "look": "plain",
   "subtitle": "Binary search, a merge, and a hex grid",
   "scenes": [
     {

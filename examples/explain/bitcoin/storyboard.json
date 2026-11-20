@@ -1,392 +1,438 @@
 {
   "title": "How Bitcoin works",
   "subtitle": "Building digital money from a shared list",
+  "tones": {
+    "good": "what checks out, and the fix",
+    "bad": "a fake, a copy or a cheat"
+  },
+  "pictures": {
+    "ledger": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"coin\"><circle cx=\"600\" cy=\"320\" r=\"170\" stroke-width=\"4\"/><circle cx=\"600\" cy=\"320\" r=\"140\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"600\" y=\"345\" font-size=\"72\" text-anchor=\"middle\">1 BTC</text></g>\n<g id=\"page\"><rect x=\"60\" y=\"40\" width=\"680\" height=\"560\" rx=\"10\" stroke-width=\"3\"/><text x=\"400\" y=\"95\" font-size=\"26\" text-anchor=\"middle\" fill=\"var(--muted)\">who paid whom</text>\n<line x1=\"90\" y1=\"180\" x2=\"710\" y2=\"180\" stroke=\"var(--border)\" stroke-width=\"2\"/><line x1=\"90\" y1=\"280\" x2=\"710\" y2=\"280\" stroke=\"var(--border)\" stroke-width=\"2\"/><line x1=\"90\" y1=\"380\" x2=\"710\" y2=\"380\" stroke=\"var(--border)\" stroke-width=\"2\"/><line x1=\"90\" y1=\"480\" x2=\"710\" y2=\"480\" stroke=\"var(--border)\" stroke-width=\"2\"/><line x1=\"90\" y1=\"580\" x2=\"710\" y2=\"580\" stroke=\"var(--border)\" stroke-width=\"2\"/></g>\n<text id=\"row0\" x=\"110\" y=\"165\" font-size=\"36\">Alice pays Bob $20</text>\n<text id=\"row1\" x=\"110\" y=\"265\" font-size=\"36\">Bob pays Charlie $40</text>\n<text id=\"row2\" x=\"110\" y=\"365\" font-size=\"36\">Charlie pays Alice $10</text>\n<text id=\"row3\" x=\"110\" y=\"465\" font-size=\"36\">Alice pays Bob $100</text>\n<g id=\"tally\"><text x=\"970\" y=\"160\" font-size=\"30\" text-anchor=\"middle\">settle up</text>\n<text x=\"820\" y=\"250\" font-size=\"30\">Alice</text><text x=\"1150\" y=\"250\" font-size=\"30\" text-anchor=\"end\">−$10</text>\n<text x=\"820\" y=\"320\" font-size=\"30\">Bob</text><text x=\"1150\" y=\"320\" font-size=\"30\" text-anchor=\"end\">−$20</text>\n<text x=\"820\" y=\"390\" font-size=\"30\">Charlie</text><text x=\"1150\" y=\"390\" font-size=\"30\" text-anchor=\"end\">+$30</text>\n<rect x=\"880\" y=\"440\" width=\"180\" height=\"110\" rx=\"14\" stroke-width=\"3\"/><text x=\"970\" y=\"505\" font-size=\"26\" text-anchor=\"middle\">the pot</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "The question",
+      "title": "What does it mean to own a bitcoin?",
+      "picture": "ledger",
       "narration": "What does it mean to own a bitcoin?",
-      "kicker": "How Bitcoin works",
-      "question": "What does it mean to own a bitcoin?"
+      "hidden": [
+        "page",
+        "row0",
+        "row1",
+        "row2",
+        "row3",
+        "tally"
+      ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "A shared list",
-      "title": "Who paid whom",
+      "title": "Friends keep one list of who paid whom",
+      "picture": "ledger",
       "narration": "Start with something simpler. A few friends pay for each other’s dinners, and they keep one shared list of who paid whom.",
-      "columns": [
-        "Who",
-        "Pays whom",
-        "Amount"
+      "hidden": [
+        "coin",
+        "row1",
+        "row2",
+        "row3",
+        "tally"
       ],
-      "rows": [
-        {
-          "cells": [
-            "Alice",
-            "Bob",
-            "$20"
-          ]
-        },
-        {
-          "cells": [
-            "Bob",
-            "Charlie",
-            "$40"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Charlie",
-            "Alice",
-            "$10"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Alice",
-            "Bob",
-            "$100"
-          ],
-          "hidden": true,
-          "badge": "fake",
-          "tone": "bad"
-        }
-      ],
+      "labels": {
+        "row0": "Alice pays Bob twenty dollars",
+        "row1": "more lines",
+        "row3": "a hundred dollars",
+        "tally": "settle up"
+      },
       "steps": [
         {
-          "focus": 0,
+          "focus": "row0",
           "say": "Alice pays Bob twenty dollars, so she writes it down."
         },
         {
           "show": [
-            1,
-            2
+            "row1",
+            "row2"
+          ],
+          "focus": [
+            "row1",
+            "row2"
           ],
           "say": "More lines go on the list as the month goes by."
         },
         {
-          "focus": [
-            0,
-            1,
-            2
+          "show": [
+            "tally"
           ],
-          "callout": "Alice −$10 · Bob −$20 · Charlie +$30",
+          "focus": "tally",
           "say": "At the end of the month they settle up. Whoever is down puts cash in a pot, and whoever is up takes cash out."
         },
         {
           "show": [
-            3
+            "row3"
           ],
           "tint": {
-            "3": "bad"
+            "row3": "bad"
           },
-          "callout": "[who wrote this line?]{bad}",
-          "say": "But anyone can add a line. What stops Bob from writing that Alice pays him a hundred dollars?"
+          "focus": "row3",
+          "say": "But anyone can add a line. What stops Bob from writing that Alice pays him a hundred dollars?",
+          "draw": [
+            {
+              "write": "who wrote this?",
+              "near": "row3",
+              "side": "below",
+              "tone": "bad",
+              "when": "what stops"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "flow",
+      "type": "svg",
       "chapter": "Signatures",
       "title": "Sign with a secret, check in public",
-      "narration": "The fix is a digital signature. Each person makes a pair of keys: a secret key they never share, and a public key everyone can see.",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"line\"><text x=\"30\" y=\"110\" font-size=\"30\">“Alice pays Bob $100”</text></g>\n<g id=\"secret\"><circle cx=\"62\" cy=\"170\" r=\"20\" stroke-width=\"3\" fill=\"none\" stroke=\"var(--text)\"/><path d=\"M82,170 H150 M130,170 V188 M144,170 V184\" stroke=\"var(--text)\" stroke-width=\"3\" fill=\"none\"/><text x=\"164\" y=\"179\" font-size=\"24\">Alice’s secret key</text></g>\n<line x1=\"380\" y1=\"140\" x2=\"470\" y2=\"140\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><g id=\"signer\"><rect x=\"480\" y=\"100\" width=\"170\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"565\" y=\"150\" font-size=\"30\" text-anchor=\"middle\">Sign</text></g><line id=\"a-sig\" x1=\"660\" y1=\"140\" x2=\"730\" y2=\"140\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/>\n<g id=\"signature\"><text x=\"745\" y=\"128\" font-size=\"28\" font-family=\"mono\">699b849d8dad1e54…</text><text x=\"745\" y=\"168\" font-size=\"22\" fill=\"var(--muted)\">the signature, 512 bits</text></g>\n<line x1=\"30\" y1=\"230\" x2=\"1170\" y2=\"230\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<g id=\"public\"><circle cx=\"62\" cy=\"362\" r=\"20\" stroke-width=\"3\" fill=\"none\" stroke=\"var(--text)\"/><path d=\"M82,362 H150 M130,362 V380 M144,362 V376\" stroke=\"var(--text)\" stroke-width=\"3\" fill=\"none\"/><text x=\"164\" y=\"371\" font-size=\"24\">Alice’s public key</text></g><g id=\"check\"><text x=\"30\" y=\"310\" font-size=\"26\">the line + the signature</text>\n<line x1=\"380\" y1=\"335\" x2=\"470\" y2=\"335\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><g id=\"verifier\"><rect x=\"480\" y=\"295\" width=\"170\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"565\" y=\"345\" font-size=\"30\" text-anchor=\"middle\">Verify</text></g><line x1=\"660\" y1=\"335\" x2=\"730\" y2=\"335\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"745\" y=\"346\" font-size=\"34\" id=\"ok\" class=\"tone-good\">true</text></g>\n<line x1=\"30\" y1=\"430\" x2=\"1170\" y2=\"430\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<g id=\"forged\"><text x=\"30\" y=\"500\" font-size=\"30\" id=\"forged-line\">“Alice pays Bob $900”</text><text x=\"30\" y=\"550\" font-size=\"26\" fill=\"var(--muted)\">+ the same signature</text>\n<line x1=\"380\" y1=\"515\" x2=\"470\" y2=\"515\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><g id=\"verifier2\"><rect x=\"480\" y=\"475\" width=\"170\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"565\" y=\"525\" font-size=\"30\" text-anchor=\"middle\">Verify</text></g><line x1=\"660\" y1=\"515\" x2=\"730\" y2=\"515\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"745\" y=\"526\" font-size=\"34\" id=\"no\" class=\"tone-bad\">false</text></g>\n</svg>",
+      "narration": "The fix is a digital signature.",
+      "hidden": [
+        "line",
+        "signer",
+        "a-sig",
+        "signature",
+        "check",
+        "forged"
+      ],
+      "labels": {
+        "signer": "signing function",
+        "signature": "five hundred and twelve bits",
+        "check": "check",
+        "public": "public key",
+        "ok": "true",
+        "forged": "changes the line",
+        "no": "false",
+        "secret": "secret key"
+      },
       "steps": [
         {
-          "actor": "Alice",
-          "action": "signs the line with her secret key",
-          "payload": "Sign(\"Alice pays Bob $100\", secret key) → 699b849d8dad1e54…",
-          "icon": "key-round",
-          "say": "Alice runs her line and her secret key through a signing function. Out comes a signature, a string of five hundred and twelve bits."
+          "focus": [
+            "secret",
+            "public"
+          ],
+          "say": "Each person makes a pair of keys: a secret key they never share, and a public key everyone can see."
         },
         {
-          "actor": "Anyone",
-          "action": "checks it with her public key",
-          "payload": "Verify(line, signature, public key) → true",
-          "icon": "badge-check",
-          "tone": "good",
+          "show": [
+            "line",
+            "signer"
+          ],
+          "focus": [
+            "line",
+            "secret",
+            "signer"
+          ],
+          "say": "Alice runs her line and her secret key through a signing function."
+        },
+        {
+          "show": [
+            "a-sig",
+            "signature"
+          ],
+          "focus": "signature",
+          "say": "Out comes a signature, a string of five hundred and twelve bits."
+        },
+        {
+          "show": [
+            "check"
+          ],
+          "focus": [
+            "check",
+            "ok",
+            "public"
+          ],
           "say": "Anyone can check that signature against the line and Alice’s public key. The answer is true."
         },
         {
-          "actor": "Bob",
-          "action": "changes $100 to $900",
-          "payload": "Verify(changed line, same signature, public key) → false",
-          "icon": "user",
-          "tone": "bad",
-          "say": "If Bob changes the line, the old signature no longer fits, and the check says false. Without Alice’s secret key, he cannot make a new one."
+          "show": [
+            "forged"
+          ],
+          "focus": [
+            "forged",
+            "no"
+          ],
+          "say": "If Bob changes the line, the old signature no longer fits, and the check says false.",
+          "draw": [
+            {
+              "underline": "forged-line",
+              "tone": "bad",
+              "when": "changes the line"
+            }
+          ]
+        },
+        {
+          "focus": "secret",
+          "say": "Without Alice’s secret key, he cannot make a new one.",
+          "draw": [
+            {
+              "underline": "secret",
+              "tone": "good",
+              "when": "secret key"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Copies and IDs",
-      "title": "Real signatures, first 64 of 512 bits",
+      "title": "A signed line can still be copied",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<text x=\"40\" y=\"60\" font-size=\"24\" fill=\"var(--muted)\">line</text><text x=\"440\" y=\"60\" font-size=\"24\" fill=\"var(--muted)\">signature, first 64 of 512 bits</text><text x=\"900\" y=\"60\" font-size=\"24\" fill=\"var(--muted)\">check</text>\n<line x1=\"30\" y1=\"80\" x2=\"1170\" y2=\"80\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<g id=\"s0\"><text x=\"40\" y=\"135\" font-size=\"28\">Alice pays Bob $100</text><text id=\"sig0\" x=\"440\" y=\"135\" font-size=\"28\" font-family=\"mono\">699b849d8dad1e54…</text><text id=\"chk0\" x=\"900\" y=\"135\" font-size=\"28\" class=\"tone-good\">valid</text></g>\n<g id=\"s1\"><text x=\"40\" y=\"217\" font-size=\"28\">Alice pays Bob $101</text><text id=\"sig1\" x=\"440\" y=\"217\" font-size=\"28\" font-family=\"mono\">b95e7651a3c63501…</text><text id=\"chk1\" x=\"900\" y=\"217\" font-size=\"28\" class=\"tone-good\">valid</text></g>\n<g id=\"s2\"><text x=\"40\" y=\"299\" font-size=\"28\">Alice pays Bob $900</text><text id=\"sig2\" x=\"440\" y=\"299\" font-size=\"28\" font-family=\"mono\">699b849d8dad1e54…</text><text id=\"chk2\" x=\"900\" y=\"299\" font-size=\"28\" class=\"tone-bad\">fails</text></g>\n<g id=\"s3\"><text x=\"40\" y=\"381\" font-size=\"28\">Alice pays Bob $100</text><text id=\"sig3\" x=\"440\" y=\"381\" font-size=\"28\" font-family=\"mono\">699b849d8dad1e54…</text><text id=\"chk3\" x=\"900\" y=\"381\" font-size=\"28\" class=\"tone-bad\">valid, a copy</text></g>\n<g id=\"s4\"><text x=\"40\" y=\"463\" font-size=\"28\">#342 Alice pays Bob $100</text><text id=\"sig4\" x=\"440\" y=\"463\" font-size=\"28\" font-family=\"mono\">a183fa68eaea95c7…</text><text id=\"chk4\" x=\"900\" y=\"463\" font-size=\"28\" class=\"tone-good\">valid</text></g>\n<g id=\"s5\"><text x=\"40\" y=\"545\" font-size=\"28\">#342 Alice pays Bob $100</text><text id=\"sig5\" x=\"440\" y=\"545\" font-size=\"28\" font-family=\"mono\">a183fa68eaea95c7…</text><text id=\"chk5\" x=\"900\" y=\"545\" font-size=\"28\" class=\"tone-bad\">ID used already</text></g>\n</svg>",
       "narration": "Here are real signatures made with one secret key. Watch what happens when the line changes.",
-      "columns": [
-        "Line",
-        "Signature",
-        "Check"
+      "hidden": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5"
       ],
-      "rows": [
-        {
-          "cells": [
-            "Alice pays Bob $100",
-            "`699b849d8dad1e54…`",
-            "valid"
-          ]
-        },
-        {
-          "cells": [
-            "Alice pays Bob $101",
-            "`b95e7651a3c63501…`",
-            "valid"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Alice pays Bob $900",
-            "`699b849d8dad1e54…`",
-            "fails"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Alice pays Bob $100",
-            "`699b849d8dad1e54…`",
-            "valid, a copy"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "#342 Alice pays Bob $100",
-            "`a183fa68eaea95c7…`",
-            "valid"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "#342 Alice pays Bob $100",
-            "`a183fa68eaea95c7…`",
-            "ID used already"
-          ],
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "sig0": "signature",
+        "s1": "a hundred and one",
+        "s2": "changed line",
+        "s3": "whole signed line",
+        "s4": "number of its own",
+        "s5": "already on the list",
+        "sig1": "completely different"
+      },
       "steps": [
         {
-          "focus": "Signature@0",
+          "focus": "sig0",
           "say": "This is Alice’s signature for paying Bob a hundred dollars."
         },
         {
           "show": [
-            1
+            "s1"
           ],
           "focus": [
-            "Signature@0",
-            "Signature@1"
+            "sig0",
+            "sig1"
           ],
           "say": "Change one character, a hundred to a hundred and one, and the signature looks completely different."
         },
         {
           "show": [
-            2
+            "s2"
           ],
-          "tint": {
-            "2": "bad"
-          },
-          "say": "Put the old signature on a changed line, and the check fails."
+          "focus": "s2",
+          "say": "Put the old one on a changed line, and the check fails."
         },
         {
           "show": [
-            3
+            "s3"
           ],
-          "tint": {
-            "3": "warn"
-          },
-          "callout": "[same line, same signature]{warn}",
-          "say": "But Bob can still copy the whole signed line, word for word. The copy checks out, so Alice would pay him twice."
+          "focus": "s3",
+          "say": "But Bob can still copy the whole signed line, word for word.",
+          "draw": [
+            {
+              "brace": [
+                "s0",
+                "s3"
+              ],
+              "note": "same line, same signature",
+              "side": "right",
+              "tone": "bad",
+              "when": "copy"
+            }
+          ]
+        },
+        {
+          "focus": "chk3",
+          "say": "The copy checks out, so Alice would pay him twice."
         },
         {
           "show": [
-            4
+            "s4"
           ],
-          "tint": {
-            "3": "dim",
-            "4": "good"
-          },
-          "callout": "every line gets a unique ID",
-          "say": "So every line gets a number of its own, and the signature covers that number too."
+          "erase": true,
+          "focus": "s4",
+          "say": "So every line gets a number of its own, and signing covers that number too."
         },
         {
           "show": [
-            5
+            "s5"
           ],
-          "tint": {
-            "5": "bad"
-          },
-          "callout": "",
-          "say": "Now a copy carries a number that is already on the list, and everyone ignores it."
+          "focus": "s5",
+          "say": "Now a repeat has a number that is already on the list, and everyone ignores it.",
+          "draw": [
+            {
+              "cross": "s5",
+              "tone": "bad",
+              "when": "ignores"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "Ledger dollars",
-      "layout": "TB",
-      "narration": "Signatures stop fake lines, but not debt. Charlie could run up a huge bill and vanish. So add a rule: everyone starts with a hundred, and a line counts only if the list shows the payer has the money.",
-      "nodes": [
-        {
-          "id": "Alice",
-          "label": "Alice",
-          "icon": "user",
-          "badge": "100"
-        },
-        {
-          "id": "Bob",
-          "label": "Bob",
-          "icon": "user",
-          "badge": "100"
-        },
-        {
-          "id": "Charlie",
-          "label": "Charlie",
-          "icon": "user",
-          "badge": "100"
-        },
-        {
-          "id": "David",
-          "label": "David",
-          "icon": "user",
-          "badge": "100"
-        }
+      "title": "A line counts only if the payer can cover it",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"Charlie->Alice\"><line x1=\"130\" y1=\"398\" x2=\"130\" y2=\"246\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/><text x=\"114.0\" y=\"362.0\" text-anchor=\"end\" font-size=\"26\">60</text></g><g id=\"Charlie->Bob\"><line x1=\"182.5\" y1=\"420.8\" x2=\"394.6\" y2=\"222\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/><text x=\"245.2\" y=\"362.0\" text-anchor=\"middle\" font-size=\"26\">40</text></g><g id=\"Alice->David\"><line x1=\"182.5\" y1=\"219.2\" x2=\"394.6\" y2=\"418\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/><text x=\"245.2\" y=\"278.0\" text-anchor=\"middle\" font-size=\"26\">20</text></g><g id=\"Charlie->David\"><line x1=\"202\" y1=\"470\" x2=\"374\" y2=\"470\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/><text x=\"245.2\" y=\"456.0\" text-anchor=\"middle\" font-size=\"26\">30</text></g>\n<g id=\"Alice\"><circle cx=\"130\" cy=\"170\" r=\"66\" stroke-width=\"3\"/><text x=\"130\" y=\"179\" font-size=\"26\" text-anchor=\"middle\">Alice</text></g><text id=\"bal-Alice\" x=\"130\" y=\"82\" text-anchor=\"middle\" font-size=\"28\">100 LD</text><g id=\"Bob\"><circle cx=\"450\" cy=\"170\" r=\"66\" stroke-width=\"3\"/><text x=\"450\" y=\"179\" font-size=\"26\" text-anchor=\"middle\">Bob</text></g><text id=\"bal-Bob\" x=\"450\" y=\"82\" text-anchor=\"middle\" font-size=\"28\">100 LD</text><g id=\"Charlie\"><circle cx=\"130\" cy=\"470\" r=\"66\" stroke-width=\"3\"/><text x=\"130\" y=\"479\" font-size=\"26\" text-anchor=\"middle\">Charlie</text></g><text id=\"bal-Charlie\" x=\"130\" y=\"580\" text-anchor=\"middle\" font-size=\"28\">100 LD</text><g id=\"David\"><circle cx=\"450\" cy=\"470\" r=\"66\" stroke-width=\"3\"/><text x=\"450\" y=\"479\" font-size=\"26\" text-anchor=\"middle\">David</text></g><text id=\"bal-David\" x=\"450\" y=\"580\" text-anchor=\"middle\" font-size=\"28\">100 LD</text>\n<g id=\"listhead\"><text x=\"640\" y=\"140\" font-size=\"24\" fill=\"var(--muted)\">ID</text><text x=\"700\" y=\"140\" font-size=\"24\" fill=\"var(--muted)\">payment</text><text x=\"1100\" y=\"140\" font-size=\"24\" fill=\"var(--muted)\" text-anchor=\"middle\">OK?</text>\n<line x1=\"630\" y1=\"160\" x2=\"1170\" y2=\"160\" stroke=\"var(--border)\" stroke-width=\"2\"/></g>\n<g id=\"row:0\"><text x=\"640\" y=\"210\" font-size=\"26\">#1</text><text x=\"700\" y=\"210\" font-size=\"26\">Charlie pays Alice 60 LD</text></g><text id=\"ok0\" x=\"1100\" y=\"210\" text-anchor=\"middle\" font-size=\"26\">?</text>\n<g id=\"row:1\"><text x=\"640\" y=\"300\" font-size=\"26\">#2</text><text x=\"700\" y=\"300\" font-size=\"26\">Charlie pays Bob 40 LD</text></g><text id=\"ok1\" x=\"1100\" y=\"300\" text-anchor=\"middle\" font-size=\"26\">?</text>\n<g id=\"row:2\"><text x=\"640\" y=\"390\" font-size=\"26\">#3</text><text x=\"700\" y=\"390\" font-size=\"26\">Alice pays David 20 LD</text></g><text id=\"ok2\" x=\"1100\" y=\"390\" text-anchor=\"middle\" font-size=\"26\">?</text>\n<g id=\"row:3\"><text x=\"640\" y=\"480\" font-size=\"26\">#4</text><text x=\"700\" y=\"480\" font-size=\"26\">Charlie pays David 30 LD</text></g><text id=\"ok3\" x=\"1100\" y=\"480\" text-anchor=\"middle\" font-size=\"26\">?</text>\n</svg>",
+      "narration": "Signatures stop fake lines, but not debt.",
+      "hidden": [
+        "listhead",
+        "bal-Alice",
+        "bal-Bob",
+        "bal-Charlie",
+        "bal-David",
+        "row:0",
+        "ok0",
+        "Charlie->Alice",
+        "row:1",
+        "ok1",
+        "Charlie->Bob",
+        "row:2",
+        "ok2",
+        "Alice->David",
+        "row:3",
+        "ok3",
+        "Charlie->David"
       ],
-      "edges": [
-        {
-          "from": "Charlie",
-          "to": "Alice",
-          "label": "60",
-          "hidden": true
-        },
-        {
-          "from": "Charlie",
-          "to": "Bob",
-          "label": "40",
-          "hidden": true
-        },
-        {
-          "from": "Alice",
-          "to": "David",
-          "label": "20",
-          "hidden": true
-        },
-        {
-          "from": "Charlie",
-          "to": "David",
-          "label": "30",
-          "hidden": true
-        }
-      ],
-      "table": {
-        "columns": [
-          "ID",
-          "Payment",
-          "OK?"
-        ],
-        "rows": [
-          {
-            "cells": [
-              "#1",
-              "Charlie pays Alice 60 LD",
-              "?"
-            ],
-            "hidden": true
-          },
-          {
-            "cells": [
-              "#2",
-              "Charlie pays Bob 40 LD",
-              "?"
-            ],
-            "hidden": true
-          },
-          {
-            "cells": [
-              "#3",
-              "Alice pays David 20 LD",
-              "?"
-            ],
-            "hidden": true
-          },
-          {
-            "cells": [
-              "#4",
-              "Charlie pays David 30 LD",
-              "?"
-            ],
-            "hidden": true
-          }
-        ]
+      "labels": {
+        "listhead": "a line counts",
+        "Charlie->Alice": "pays Alice sixty",
+        "Charlie->Bob": "pays Bob forty",
+        "Alice->David": "pays David twenty",
+        "Charlie->David": "pays David thirty",
+        "bal-Charlie": "forty left",
+        "bal-Alice": "plenty",
+        "row:3": "pay David thirty"
       },
-      "callout": "everyone starts with 100 LD",
       "steps": [
+        {
+          "focus": "Charlie",
+          "say": "Charlie could run up a huge bill and vanish.",
+          "draw": [
+            {
+              "write": "debt?",
+              "near": "Charlie",
+              "side": "left",
+              "tone": "bad",
+              "when": "huge bill"
+            }
+          ]
+        },
+        {
+          "show": [
+            "bal-Alice",
+            "bal-Bob",
+            "bal-Charlie",
+            "bal-David"
+          ],
+          "focus": [
+            "bal-Alice",
+            "bal-Bob",
+            "bal-Charlie",
+            "bal-David"
+          ],
+          "erase": true,
+          "say": "So add a rule: everyone starts with a hundred."
+        },
+        {
+          "show": [
+            "listhead"
+          ],
+          "focus": "listhead",
+          "say": "And a line counts only if the list shows the payer has the money."
+        },
         {
           "show": [
             "row:0",
+            "ok0",
             "Charlie->Alice"
           ],
           "set": {
-            "Charlie": "40",
-            "Alice": "160",
-            "OK?@0": "yes"
+            "bal-Charlie": "40 LD",
+            "bal-Alice": "160 LD",
+            "ok0": "yes"
           },
-          "callout": "Charlie 100 − 60 = 40",
+          "tint": {
+            "ok0": "good"
+          },
+          "focus": [
+            "Charlie->Alice",
+            "bal-Charlie"
+          ],
           "say": "Charlie pays Alice sixty. He can cover it, so the line counts, and he has forty left."
         },
         {
           "show": [
             "row:1",
+            "ok1",
             "Charlie->Bob"
           ],
           "set": {
-            "Charlie": "0",
-            "Bob": "140",
-            "OK?@1": "yes"
+            "bal-Charlie": "0 LD",
+            "bal-Bob": "140 LD",
+            "ok1": "yes"
           },
-          "callout": "Charlie 40 − 40 = 0",
+          "tint": {
+            "ok1": "good"
+          },
+          "focus": [
+            "Charlie->Bob",
+            "bal-Charlie"
+          ],
           "say": "Charlie pays Bob forty. That leaves him with nothing."
         },
         {
           "show": [
             "row:2",
+            "ok2",
             "Alice->David"
           ],
           "set": {
-            "Alice": "140",
-            "David": "120",
-            "OK?@2": "yes"
+            "bal-Alice": "140 LD",
+            "bal-David": "120 LD",
+            "ok2": "yes"
           },
-          "callout": "Alice 160 − 20 = 140",
+          "tint": {
+            "ok2": "good"
+          },
+          "focus": [
+            "Alice->David",
+            "bal-Alice"
+          ],
           "say": "Alice pays David twenty. She has plenty."
         },
         {
           "show": [
             "row:3",
+            "ok3",
             "Charlie->David"
           ],
           "tint": {
             "row:3": "bad",
-            "Charlie->David": "bad"
+            "Charlie->David": "bad",
+            "ok3": "bad"
           },
           "set": {
-            "OK?@3": "no"
+            "ok3": "no"
           },
-          "callout": "[Charlie has 0, not 30]{bad}",
-          "say": "Then Charlie tries to pay David thirty. Read the list from the top, and he has nothing left, so everyone rejects that line."
+          "focus": [
+            "Charlie->David",
+            "row:3"
+          ],
+          "say": "Then Charlie tries to pay David thirty. Read the list from the top, and he has nothing left."
+        },
+        {
+          "focus": "bal-Charlie",
+          "say": "So everyone rejects that line.",
+          "draw": [
+            {
+              "cross": "Charlie->David",
+              "tone": "bad",
+              "when": "rejects"
+            }
+          ]
         },
         {
           "focus": [
@@ -395,8 +441,26 @@
             "Charlie",
             "David"
           ],
-          "callout": "the history is the money",
-          "say": "Notice that nobody holds any dollars now. The money is just the list, so call it ledger dollars. Owning some means the history says you have them."
+          "say": "Notice that nobody holds any dollars now. The money is just the list, so call it ledger dollars.",
+          "draw": [
+            {
+              "write": "the history is the money",
+              "at": [
+                0.54,
+                0.84
+              ],
+              "tone": "good",
+              "when": "just the list"
+            }
+          ]
+        },
+        {
+          "focus": [
+            "bal-Alice",
+            "bal-Bob",
+            "bal-David"
+          ],
+          "say": "Owning some means the history says you have them."
         }
       ]
     },
@@ -405,21 +469,28 @@
       "chapter": "No one in charge",
       "title": "Everyone keeps a copy",
       "narration": "So far one website holds the list. But then you have to trust whoever runs it.",
-      "svg": "<svg viewBox=\"0 0 1280 600\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--accent)\" stroke=\"none\"/></marker></defs><g id=\"site\"><rect x=\"470\" y=\"20\" width=\"340\" height=\"80\" rx=\"14\"/><text x=\"640\" y=\"70\" text-anchor=\"middle\" font-size=\"28\">one website keeps the list</text></g><g id=\"cross\" stroke=\"var(--bad)\" stroke-width=\"7\" stroke-linecap=\"round\"><line x1=\"460\" y1=\"14\" x2=\"820\" y2=\"106\"/><line x1=\"820\" y1=\"14\" x2=\"460\" y2=\"106\"/></g><g id=\"card-alice\"><rect x=\"20\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"165\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">Alice’s copy</text><text x=\"42\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"alice-a\" x=\"42\" y=\"395\" font-size=\"22\"> </text><text id=\"alice-b\" x=\"42\" y=\"450\" font-size=\"22\"> </text></g><g id=\"card-bob\"><rect x=\"340\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"485\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">Bob’s copy</text><text x=\"362\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"bob-a\" x=\"362\" y=\"395\" font-size=\"22\"> </text><text id=\"bob-b\" x=\"362\" y=\"450\" font-size=\"22\"> </text></g><g id=\"card-charlie\"><rect x=\"660\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"805\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">Charlie’s copy</text><text x=\"682\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"charlie-a\" x=\"682\" y=\"395\" font-size=\"22\"> </text><text id=\"charlie-b\" x=\"682\" y=\"450\" font-size=\"22\"> </text></g><g id=\"card-david\"><rect x=\"980\" y=\"230\" width=\"290\" height=\"340\" rx=\"16\"/><text x=\"1125\" y=\"278\" text-anchor=\"middle\" font-size=\"28\">David’s copy</text><text x=\"1002\" y=\"340\" font-size=\"22\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"david-a\" x=\"1002\" y=\"395\" font-size=\"22\"> </text><text id=\"david-b\" x=\"1002\" y=\"450\" font-size=\"22\"> </text></g><g id=\"broadcast\"><path d=\"M 165 230 Q 325 130 485 226\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path d=\"M 165 230 Q 485 110 805 226\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path d=\"M 165 230 Q 645 90 1125 226\" fill=\"none\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head)\"/></g></svg>",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs><g id=\"site\"><rect x=\"430\" y=\"20\" width=\"340\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"600\" y=\"70\" font-size=\"26\" text-anchor=\"middle\">one website keeps the list</text></g><g id=\"card-alice\"><rect x=\"21\" y=\"250\" width=\"270\" height=\"340\" rx=\"16\" stroke-width=\"3\"/><text x=\"156\" y=\"300\" font-size=\"28\" text-anchor=\"middle\">Alice’s copy</text><text x=\"39\" y=\"370\" font-size=\"24\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"alice-a\" x=\"39\" y=\"440\" font-size=\"24\"> </text><text id=\"alice-b\" x=\"39\" y=\"510\" font-size=\"24\"> </text></g><g id=\"card-bob\"><rect x=\"317\" y=\"250\" width=\"270\" height=\"340\" rx=\"16\" stroke-width=\"3\"/><text x=\"452\" y=\"300\" font-size=\"28\" text-anchor=\"middle\">Bob’s copy</text><text x=\"335\" y=\"370\" font-size=\"24\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"bob-a\" x=\"335\" y=\"440\" font-size=\"24\"> </text><text id=\"bob-b\" x=\"335\" y=\"510\" font-size=\"24\"> </text></g><g id=\"card-charlie\"><rect x=\"613\" y=\"250\" width=\"270\" height=\"340\" rx=\"16\" stroke-width=\"3\"/><text x=\"748\" y=\"300\" font-size=\"28\" text-anchor=\"middle\">Charlie’s copy</text><text x=\"631\" y=\"370\" font-size=\"24\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"charlie-a\" x=\"631\" y=\"440\" font-size=\"24\"> </text><text id=\"charlie-b\" x=\"631\" y=\"510\" font-size=\"24\"> </text></g><g id=\"card-david\"><rect x=\"909\" y=\"250\" width=\"270\" height=\"340\" rx=\"16\" stroke-width=\"3\"/><text x=\"1044\" y=\"300\" font-size=\"28\" text-anchor=\"middle\">David’s copy</text><text x=\"927\" y=\"370\" font-size=\"24\" fill=\"var(--muted)\">#6 Bob pays David 2</text><text id=\"david-a\" x=\"927\" y=\"440\" font-size=\"24\"> </text><text id=\"david-b\" x=\"927\" y=\"510\" font-size=\"24\"> </text></g><g id=\"broadcast\"><path d=\"M 156 248 Q 304 150 452 244\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path d=\"M 156 248 Q 452 130 748 244\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path d=\"M 156 248 Q 600 110 1044 244\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/></g></svg>",
       "hidden": [
-        "cross",
-        "broadcast"
+        "broadcast",
+        "card-alice",
+        "card-bob",
+        "card-charlie",
+        "card-david"
       ],
       "labels": {
         "site": "website",
-        "broadcast": "broadcast",
-        "card-charlie": "Charlie’s copy",
-        "card-david": "David’s copy"
+        "broadcast": "broadcasts",
+        "card-charlie": "Charlie and David",
+        "card-david": "his line first",
+        "card-alice": "copy"
       },
       "steps": [
         {
           "show": [
-            "cross"
+            "card-alice",
+            "card-bob",
+            "card-charlie",
+            "card-david"
           ],
           "focus": [
             "site",
@@ -428,31 +499,39 @@
             "card-charlie",
             "card-david"
           ],
-          "say": "So drop the website. Instead, everyone keeps their own copy of the list."
+          "say": "So drop the website. Instead, everyone keeps their own copy of the list.",
+          "draw": [
+            {
+              "cross": "site",
+              "tone": "bad",
+              "when": "drop the website"
+            }
+          ]
         },
         {
           "show": [
             "broadcast"
           ],
+          "set": {
+            "alice-a": "#7 Alice pays Bob 10",
+            "bob-a": "#7 Alice pays Bob 10"
+          },
           "focus": [
             "broadcast",
             "card-alice"
           ],
-          "callout": "Alice broadcasts “#7 Alice pays Bob 10”",
           "say": "To pay Bob, Alice broadcasts her signed line to everyone, and each person adds it to their copy."
         },
         {
           "set": {
-            "alice-a": "#7 Alice pays Bob 10",
-            "bob-a": "#7 Alice pays Bob 10",
             "charlie-a": "#8 David pays Charlie 5",
             "david-a": "#8 David pays Charlie 5"
           },
-          "tint": {
-            "card-charlie": "warn",
-            "card-david": "warn"
-          },
-          "say": "But messages take time to travel. At the same moment, David sends a line of his own, and Charlie and David get his line first."
+          "focus": [
+            "card-charlie",
+            "card-david"
+          ],
+          "say": "But messages take time to travel. At the same moment, David sends a line of his own."
         },
         {
           "set": {
@@ -461,541 +540,749 @@
             "charlie-b": "#7 Alice pays Bob 10",
             "david-b": "#7 Alice pays Bob 10"
           },
-          "callout": "[two orders, no one in charge]{warn}",
+          "tint": {
+            "card-charlie": "bad",
+            "card-david": "bad"
+          },
+          "focus": [
+            "card-charlie",
+            "card-david"
+          ],
+          "say": "Charlie and David get his line first, so their copies have the other order."
+        },
+        {
           "focus": [
             "card-alice",
             "card-bob",
             "card-charlie",
             "card-david"
           ],
-          "say": "Now the copies disagree about the order. With no one in charge, how does everyone agree on one history?"
+          "say": "Now the copies disagree. With no one in charge, how does everyone agree on one history?",
+          "draw": [
+            {
+              "write": "two orders, no one in charge",
+              "at": [
+                0.04,
+                0.02
+              ],
+              "tone": "bad",
+              "when": "disagree"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Hashes",
       "title": "Any text in, 256 bits out",
-      "narration": "The answer needs one more tool, a hash function called SHA-256. It takes any text, short or long, and gives back two hundred and fifty six bits, written here as sixty four hex digits.",
-      "columns": [
-        "Text",
-        "SHA-256"
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"machine\"><rect x=\"290\" y=\"90\" width=\"200\" height=\"460\" rx=\"18\" stroke-width=\"3\"/><text x=\"390\" y=\"330\" font-size=\"32\" text-anchor=\"middle\">SHA-256</text></g>\n<path id=\"back\" d=\"M700,150 C640,40 220,40 140,140\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"4\" stroke-dasharray=\"12 10\" marker-end=\"url(#head)\"/>\n<g id=\"nope\" stroke=\"var(--bad)\" stroke-width=\"6\" stroke-linecap=\"round\"><line x1=\"400\" y1=\"42\" x2=\"440\" y2=\"98\"/><line x1=\"440\" y1=\"42\" x2=\"400\" y2=\"98\"/></g>\n<g id=\"in-Hello\"><text x=\"60\" y=\"200\" font-size=\"48\">Hello</text><line x1=\"200\" y1=\"186\" x2=\"280\" y2=\"186\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/></g>\n<line id=\"out-arrow1\" x1=\"500\" y1=\"186\" x2=\"575\" y2=\"186\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><g id=\"out-Hello\"><text x=\"590\" y=\"180\" font-size=\"26\" font-family=\"mono\">185f8db3 2271fe25 f561a6fc 938b2e26</text><text x=\"590\" y=\"220\" font-size=\"26\" font-family=\"mono\">4306ec30 4eda5180 07d17648 26381969</text></g>\n<text x=\"840\" y=\"270\" font-size=\"24\" text-anchor=\"middle\" id=\"bits-note\" fill=\"var(--muted)\">256 bits = 64 hex digits</text>\n<g id=\"in-hello\"><text x=\"60\" y=\"450\" font-size=\"48\" id=\"hello-word\">hello</text><line x1=\"200\" y1=\"436\" x2=\"280\" y2=\"436\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/></g>\n<line id=\"out-arrow2\" x1=\"500\" y1=\"436\" x2=\"575\" y2=\"436\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><g id=\"out-hello\"><text x=\"590\" y=\"430\" font-size=\"26\" font-family=\"mono\">2cf24dba 5fb0a30e 26e83b2a c5b9e29e</text><text x=\"590\" y=\"470\" font-size=\"26\" font-family=\"mono\">1b161e5c 1fa7425e 73043362 938b9824</text></g>\n</svg>",
+      "narration": "The answer needs one more tool, a hash function called SHA-256.",
+      "hidden": [
+        "back",
+        "nope",
+        "in-Hello",
+        "out-arrow1",
+        "out-Hello",
+        "bits-note",
+        "in-hello",
+        "out-arrow2",
+        "out-hello"
       ],
-      "rows": [
-        {
-          "cells": [
-            "Hello",
-            "`185f8db3 2271fe25 f561a6fc 938b2e26` `4306ec30 4eda5180 07d17648 26381969`"
-          ]
-        },
-        {
-          "cells": [
-            "hello",
-            "`2cf24dba 5fb0a30e 26e83b2a c5b9e29e` `1b161e5c 1fa7425e 73043362 938b9824`"
-          ],
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "in-Hello": "Hello",
+        "out-Hello": "hash",
+        "in-hello": "lower case",
+        "out-hello": "whole result",
+        "machine": "SHA",
+        "nope": "no way back"
+      },
       "steps": [
         {
-          "focus": 0,
-          "say": "This is the hash of Hello, with a capital H."
+          "show": [
+            "in-Hello"
+          ],
+          "focus": [
+            "in-Hello",
+            "machine"
+          ],
+          "say": "It takes any text, short or long. Here, Hello, with a capital H."
         },
         {
           "show": [
-            1
+            "out-arrow1",
+            "out-Hello",
+            "bits-note"
           ],
-          "say": "Change just that one letter to lower case, and the whole result changes. Nothing about it is close to the first."
+          "focus": [
+            "out-Hello",
+            "bits-note"
+          ],
+          "say": "It gives back two hundred and fifty six bits, written here as sixty four hex digits."
         },
         {
-          "focus": "SHA-256@1",
-          "callout": "reversing it: about 2²⁵⁶ guesses",
-          "say": "And there is no way back. To find text with a given hash, all you can do is guess, and the guesses would outlast the universe."
+          "show": [
+            "in-hello",
+            "out-arrow2",
+            "out-hello"
+          ],
+          "focus": [
+            "in-hello",
+            "out-hello"
+          ],
+          "say": "Change just that one letter to lower case, and the whole result changes.",
+          "draw": [
+            {
+              "circle": "hello-word",
+              "tone": "bad",
+              "when": "one letter"
+            }
+          ]
+        },
+        {
+          "focus": [
+            "out-Hello",
+            "out-hello"
+          ],
+          "say": "Nothing about it is close to the first."
+        },
+        {
+          "focus": [
+            "back",
+            "nope"
+          ],
+          "say": "And there is no way back.",
+          "trace": [
+            "back"
+          ],
+          "show": [
+            "nope"
+          ],
+          "tint": {
+            "back": "bad"
+          }
+        },
+        {
+          "focus": [
+            "out-Hello",
+            "out-hello"
+          ],
+          "say": "To find text with a given hash, all you can do is guess, and the guesses would outlast the universe.",
+          "draw": [
+            {
+              "write": "about 2^256 guesses",
+              "at": [
+                0.04,
+                0.88
+              ],
+              "tone": "bad",
+              "when": "guess"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Proof of work",
       "title": "Hunting for 30 zeros",
-      "narration": "Now a puzzle. Take a batch of lines, add a number called a nonce, and hash the lot. The goal is a hash that starts with thirty zero bits.",
-      "columns": [
-        "Nonce",
-        "First 32 bits of the hash",
-        "Zeros"
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"block\"><rect x=\"20\" y=\"120\" width=\"390\" height=\"400\" rx=\"16\" stroke-width=\"3\"/><text x=\"44\" y=\"175\" font-size=\"24\" font-family=\"mono\">prev: 0000…0000</text>\n<text x=\"44\" y=\"235\" font-size=\"24\">#1 Alice pays Bob 10 LD</text><text x=\"44\" y=\"285\" font-size=\"24\">#2 Bob pays Charlie 5 LD</text><text x=\"44\" y=\"335\" font-size=\"24\">#3 Charlie pays David 3 LD</text>\n<text id=\"nonce\" x=\"44\" y=\"415\" font-size=\"26\" font-family=\"mono\">nonce: 0</text></g>\n<line x1=\"418\" y1=\"300\" x2=\"500\" y2=\"300\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"459\" y=\"280\" font-size=\"22\" text-anchor=\"middle\" fill=\"var(--muted)\">SHA-256</text>\n<g id=\"thead\"><text x=\"690\" y=\"120\" font-size=\"22\" fill=\"var(--muted)\" text-anchor=\"end\">nonce</text><text x=\"712\" y=\"120\" font-size=\"22\" fill=\"var(--muted)\">first 32 bits of the hash</text><text x=\"1188\" y=\"120\" font-size=\"22\" fill=\"var(--muted)\" text-anchor=\"end\">zeros</text>\n<line x1=\"520\" y1=\"138\" x2=\"1190\" y2=\"138\" stroke=\"var(--border)\" stroke-width=\"2\"/></g>\n<g id=\"try0\"><text x=\"690\" y=\"190\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\">0</text><text x=\"712\" y=\"190\" font-size=\"22\" font-family=\"mono\"><tspan class=\"fill-good\">0</tspan>1101100011111100000010010100001</text><text id=\"z0\" x=\"1188\" y=\"190\" text-anchor=\"end\" font-size=\"24\">1</text></g>\n<g id=\"try1\"><text x=\"690\" y=\"254\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\">1</text><text x=\"712\" y=\"254\" font-size=\"22\" font-family=\"mono\"><tspan class=\"fill-good\">0000000</tspan>1000111011011110011010011</text><text id=\"z1\" x=\"1188\" y=\"254\" text-anchor=\"end\" font-size=\"24\">7</text></g>\n<g id=\"try2\"><text x=\"690\" y=\"318\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\">2</text><text x=\"712\" y=\"318\" font-size=\"22\" font-family=\"mono\"><tspan class=\"fill-good\"></tspan>10100100011111101010101011101001</text><text id=\"z2\" x=\"1188\" y=\"318\" text-anchor=\"end\" font-size=\"24\">0</text></g>\n<g id=\"try3\"><text x=\"690\" y=\"382\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\">3</text><text x=\"712\" y=\"382\" font-size=\"22\" font-family=\"mono\"><tspan class=\"fill-good\"></tspan>11000111100110010101110101010110</text><text id=\"z3\" x=\"1188\" y=\"382\" text-anchor=\"end\" font-size=\"24\">0</text></g>\n<g id=\"try4\"><text x=\"690\" y=\"500\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\">1,275,982,337</text><text x=\"712\" y=\"500\" font-size=\"22\" font-family=\"mono\"><tspan class=\"fill-good\">0000000000000000000000000000000</tspan>1</text><text id=\"z4\" x=\"1188\" y=\"500\" text-anchor=\"end\" font-size=\"24\">31</text></g>\n<text id=\"dots\" x=\"900\" y=\"452\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">…</text>\n</svg>",
+      "narration": "Now a puzzle.",
+      "hidden": [
+        "thead",
+        "try0",
+        "try1",
+        "try2",
+        "try3",
+        "try4",
+        "dots"
       ],
-      "rows": [
+      "labels": {
+        "thead": "thirty zero bits",
+        "try0": "zero",
+        "z0": "zero bit",
+        "nonce": "nonce",
+        "try4": "this number",
+        "z4": "thirty zeros"
+      },
+      "steps": [
         {
-          "cells": [
-            "0",
-            "`01101100 01111110 00000100 10100001`",
-            "1"
+          "focus": [
+            "block",
+            "nonce"
+          ],
+          "say": "Take a batch of lines, add a number called a nonce, and hash the lot."
+        },
+        {
+          "show": [
+            "thead"
+          ],
+          "focus": "thead",
+          "say": "The goal is a hash that starts with thirty zero bits.",
+          "draw": [
+            {
+              "write": "goal: 30 zeros first",
+              "near": "thead",
+              "side": "above",
+              "tone": "good",
+              "when": "thirty zero bits"
+            }
           ]
         },
         {
-          "cells": [
-            "1",
-            "`00000001 00011101 10111100 11010011`",
-            "7"
+          "show": [
+            "try0"
           ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "2",
-            "`10100100 01111110 10101010 11101001`",
-            "0"
+          "focus": [
+            "nonce",
+            "try0"
           ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "3",
-            "`11000111 10011001 01011101 01010110`",
-            "0"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "1,275,982,337",
-            "`00000000 00000000 00000000 00000001`",
-            "31"
-          ],
-          "hidden": true
-        }
-      ],
-      "callout": "SHA-256(lines + nonce) starts with 30 zero bits?",
-      "steps": [
-        {
-          "focus": 0,
           "say": "With a nonce of zero, the hash starts with only 1 zero bit."
         },
         {
           "show": [
-            1,
-            2,
-            3
+            "try1",
+            "try2",
+            "try3"
+          ],
+          "set": {
+            "nonce": "nonce: 3"
+          },
+          "focus": [
+            "try1",
+            "try2",
+            "try3"
           ],
           "say": "So try one, then two, then three. Each guess gives a hash that looks random."
         },
         {
           "show": [
-            4
+            "dots",
+            "try4"
           ],
-          "tint": {
-            "4": "good"
+          "set": {
+            "nonce": "nonce: 1,275,982,337"
           },
-          "callout": "[1,275,982,337 → 31 zeros]{good}",
-          "say": "Our computer kept going for a few minutes, and this number finally worked. Each bit halves the odds, so thirty zeros takes about two to the thirty guesses, around a billion."
+          "tint": {
+            "z4": "good"
+          },
+          "focus": [
+            "try4",
+            "nonce"
+          ],
+          "say": "Our computer kept going for a few minutes, and this number finally worked."
         },
         {
-          "focus": "Nonce@4",
-          "callout": "1 hash to check it",
-          "say": "Finding it is slow, but checking it is fast. Anyone can hash the lines with this nonce once and see the zeros."
+          "focus": "z4",
+          "say": "Each bit halves the odds, so thirty zeros takes about two to the thirty guesses, around a billion.",
+          "draw": [
+            {
+              "write": "2^30 ≈ a billion guesses",
+              "near": "try4",
+              "side": "below",
+              "when": "two to the thirty"
+            }
+          ]
+        },
+        {
+          "focus": "block",
+          "say": "Finding it is slow, but checking it is fast. Anyone can hash the lines with this nonce once and see the zeros.",
+          "draw": [
+            {
+              "write": "checking: 1 hash",
+              "near": "block",
+              "side": "above",
+              "tone": "good",
+              "when": "checking it is fast"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "A chain of blocks",
-      "layout": "TB",
-      "narration": "Lines are grouped into blocks. A block counts only if it solves the puzzle, and each block starts with the hash of the block before it. That links them into a chain.",
-      "nodes": [
-        {
-          "id": "b1",
-          "label": "Block 1",
-          "shape": "step",
-          "caption": "3 payments · nonce 1,275,982,337"
-        },
-        {
-          "id": "b2",
-          "label": "Block 2",
-          "shape": "step",
-          "caption": "2 payments · nonce 1,233,325,635"
-        },
-        {
-          "id": "b3",
-          "label": "Block 3",
-          "shape": "step",
-          "caption": "2 payments · nonce 318,487,328"
-        }
+      "title": "Each block holds the hash of the one before",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"b1\"><rect x=\"20\" y=\"150\" width=\"340\" height=\"350\" rx=\"16\" stroke-width=\"3\"/><text x=\"190\" y=\"195\" font-size=\"30\" text-anchor=\"middle\">Block 1</text>\n<text id=\"prev1\" x=\"40\" y=\"245\" font-size=\"22\" font-family=\"mono\">prev 0000…</text>\n<text id=\"tx1\" x=\"40\" y=\"295\" font-size=\"22\">#1 Alice pays Bob 10 LD</text><text x=\"40\" y=\"333\" font-size=\"22\">#2 Bob pays Charlie 5 LD</text><text x=\"40\" y=\"371\" font-size=\"22\">#3 Charlie pays David 3 LD</text>\n<text x=\"40\" y=\"430\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">nonce 1,275,982,337</text>\n<text id=\"hash1\" x=\"40\" y=\"478\" font-size=\"22\" font-family=\"mono\">hash 000000015d9b…</text></g>\n<g id=\"b2\"><rect x=\"430\" y=\"150\" width=\"340\" height=\"350\" rx=\"16\" stroke-width=\"3\"/><text x=\"600\" y=\"195\" font-size=\"30\" text-anchor=\"middle\">Block 2</text>\n<text id=\"prev2\" x=\"450\" y=\"245\" font-size=\"22\" font-family=\"mono\">prev 000000015d9b…</text>\n<text id=\"tx2\" x=\"450\" y=\"295\" font-size=\"22\">#4 David pays Alice 2 LD</text><text x=\"450\" y=\"333\" font-size=\"22\">#5 Bob pays David 4 LD</text>\n<text x=\"450\" y=\"430\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">nonce 1,233,325,635</text>\n<text id=\"hash2\" x=\"450\" y=\"478\" font-size=\"22\" font-family=\"mono\">hash 000000000942…</text></g>\n<g id=\"b3\"><rect x=\"840\" y=\"150\" width=\"340\" height=\"350\" rx=\"16\" stroke-width=\"3\"/><text x=\"1010\" y=\"195\" font-size=\"30\" text-anchor=\"middle\">Block 3</text>\n<text id=\"prev3\" x=\"860\" y=\"245\" font-size=\"22\" font-family=\"mono\">prev 000000000942…</text>\n<text id=\"tx3\" x=\"860\" y=\"295\" font-size=\"22\">#6 Alice pays Charlie 7 LD</text><text x=\"860\" y=\"333\" font-size=\"22\">#7 Charlie pays Bob 1 LD</text>\n<text x=\"860\" y=\"430\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">nonce 318,487,328</text>\n<text id=\"hash3\" x=\"860\" y=\"478\" font-size=\"22\" font-family=\"mono\">hash 000000005a65…</text></g>\n<path id=\"link1\" d=\"M362,470 C410,470 380,238 424,238\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><path id=\"link2\" d=\"M772,470 C820,470 790,238 834,238\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/>\n<g id=\"break\" stroke=\"var(--bad)\" stroke-width=\"6\" stroke-linecap=\"round\"><line x1=\"378\" y1=\"330\" x2=\"412\" y2=\"378\"/><line x1=\"412\" y1=\"330\" x2=\"378\" y2=\"378\"/></g>\n</svg>",
+      "narration": "Lines are grouped into blocks.",
+      "hidden": [
+        "b2",
+        "b3",
+        "link1",
+        "link2",
+        "break"
       ],
-      "edges": [
-        {
-          "from": "b1",
-          "to": "b2",
-          "label": "prev hash"
-        },
-        {
-          "from": "b2",
-          "to": "b3",
-          "label": "prev hash"
-        }
-      ],
-      "table": {
-        "columns": [
-          "Block",
-          "Prev",
-          "Hash"
-        ],
-        "rows": [
-          {
-            "cells": [
-              "1",
-              "0000…",
-              "000000015d9b…"
-            ]
-          },
-          {
-            "cells": [
-              "2",
-              "000000015d9b…",
-              "000000000942…"
-            ]
-          },
-          {
-            "cells": [
-              "3",
-              "000000000942…",
-              "000000005a65…"
-            ]
-          }
-        ]
+      "labels": {
+        "break": "broken",
+        "b1": "block one",
+        "hash1": "block one’s hash",
+        "prev2": "its top",
+        "link1": "old hash",
+        "tx1": "old line",
+        "b2": "block two",
+        "b3": "every block after",
+        "link2": "links them"
       },
       "steps": [
         {
           "focus": [
             "b1",
-            "Hash@0"
+            "hash1"
           ],
-          "say": "Block one’s hash starts with the zeros its nonce bought."
+          "say": "A block counts only if it solves the puzzle. Block one’s hash starts with the zeros its nonce bought."
         },
         {
-          "focus": [
-            "b1->b2",
-            "b2",
-            "Prev@1"
+          "show": [
+            "b2"
           ],
-          "say": "Block two writes that hash at its top. So does every block after, about the one before it."
+          "trace": [
+            "link1"
+          ],
+          "focus": [
+            "link1",
+            "prev2"
+          ],
+          "say": "Block two writes that hash at its top."
+        },
+        {
+          "show": [
+            "b3"
+          ],
+          "trace": [
+            "link2"
+          ],
+          "focus": [
+            "link2",
+            "prev3",
+            "b3"
+          ],
+          "say": "So does every block after, about the one before it. That links them into a chain."
         },
         {
           "set": {
-            "b1": "edited",
-            "Hash@0": {
-              "before": "000000015d9b…",
-              "after": "a7b31c3cf367…"
-            }
+            "tx1": "#1 Alice pays Bob 100 LD",
+            "hash1": "hash a7b31c3cf367…"
           },
           "tint": {
-            "b1": "bad",
-            "row:0": "bad"
+            "tx1": "bad",
+            "hash1": "bad"
           },
-          "callout": "“Alice pays Bob 10” → “100”",
+          "focus": [
+            "tx1",
+            "hash1"
+          ],
           "say": "Now say someone changes an old line in block one, ten to a hundred. Its hash changes completely, and no longer starts with zeros."
         },
         {
           "tint": {
-            "b1->b2": "bad"
+            "link1": "bad",
+            "prev2": "bad"
           },
-          "focus": [
-            "b1->b2",
-            "Prev@1",
-            "Hash@0"
+          "show": [
+            "break"
           ],
-          "callout": "[block 2’s prev no longer matches]{bad}",
+          "focus": [
+            "link1",
+            "prev2",
+            "break"
+          ],
           "say": "Block two still points at the old hash, so the link is broken, and everyone can see it."
         },
         {
-          "tint": {
-            "b2": "warn",
-            "b3": "warn"
-          },
           "focus": [
             "b1",
             "b2",
             "b3"
           ],
-          "callout": "redo the work for every later block",
-          "say": "To hide the change, the cheat must solve the puzzle again for block one, then for every block after it."
+          "say": "To hide the change, the cheat must solve the puzzle again for block one, then for every block after it.",
+          "draw": [
+            {
+              "brace": [
+                "b1",
+                "b3"
+              ],
+              "note": "redo all of this work",
+              "side": "above",
+              "tone": "bad",
+              "when": "every block after"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "Miners",
-      "layout": "LR",
+      "title": "The longest chain wins",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"fb3\"><rect x=\"30\" y=\"255\" width=\"300\" height=\"130\" rx=\"16\" stroke-width=\"3\"/><text x=\"180\" y=\"305\" font-size=\"30\" text-anchor=\"middle\">Block 3</text><text x=\"180\" y=\"351\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">everyone agrees</text></g>\n<line id=\"e4a\" x1=\"330\" y1=\"300\" x2=\"440\" y2=\"170\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/><line id=\"e4b\" x1=\"330\" y1=\"340\" x2=\"440\" y2=\"470\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/>\n<g id=\"b4a\"><rect x=\"450\" y=\"80\" width=\"300\" height=\"130\" rx=\"16\" stroke-width=\"3\"/><text x=\"600\" y=\"130\" font-size=\"30\" text-anchor=\"middle\">Block 4</text><text x=\"600\" y=\"176\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">pays miner Maya 10</text></g><g id=\"b4b\"><rect x=\"450\" y=\"420\" width=\"300\" height=\"130\" rx=\"16\" stroke-width=\"3\"/><text x=\"600\" y=\"470\" font-size=\"30\" text-anchor=\"middle\">Block 4</text><text x=\"600\" y=\"516\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">pays miner Omar 10</text></g>\n<line id=\"e5\" x1=\"750\" y1=\"145\" x2=\"850\" y2=\"145\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\" stroke-width=\"4\"/><g id=\"b5\"><rect x=\"860\" y=\"80\" width=\"300\" height=\"130\" rx=\"16\" stroke-width=\"3\"/><text x=\"1010\" y=\"130\" font-size=\"30\" text-anchor=\"middle\">Block 5</text><text x=\"1010\" y=\"176\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">built on Maya’s</text></g>\n</svg>",
       "narration": "People called miners collect the lines everyone broadcasts and race to solve the puzzle for the next block.",
-      "nodes": [
-        {
-          "id": "b3",
-          "label": "Block 3",
-          "shape": "step",
-          "caption": "everyone agrees"
-        },
-        {
-          "id": "b4a",
-          "label": "Block 4",
-          "shape": "step",
-          "caption": "first line: 10 LD to miner Maya",
-          "hidden": true
-        },
-        {
-          "id": "b4b",
-          "label": "Block 4",
-          "shape": "step",
-          "caption": "first line: 10 LD to miner Omar",
-          "hidden": true
-        },
-        {
-          "id": "b5",
-          "label": "Block 5",
-          "shape": "step",
-          "caption": "built on Maya’s block 4",
-          "hidden": true
-        }
+      "hidden": [
+        "e4a",
+        "b4a",
+        "e4b",
+        "b4b",
+        "e5",
+        "b5"
       ],
-      "edges": [
-        {
-          "from": "b3",
-          "to": "b4a",
-          "hidden": true
-        },
-        {
-          "from": "b3",
-          "to": "b4b",
-          "hidden": true
-        },
-        {
-          "from": "b4a",
-          "to": "b5",
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "b4a": "Maya",
+        "b4b": "Omar",
+        "b5": "Maya’s block",
+        "e5": "longer"
+      },
       "steps": [
         {
           "show": [
-            "b4a",
-            "b3->b4a"
+            "e4a",
+            "b4a"
           ],
-          "callout": "reward: new money, from nothing",
-          "say": "Maya solves it first. The first line of her block pays her ten ledger dollars out of thin air. That reward is the only way new money appears."
+          "focus": "b4a",
+          "say": "Maya solves it first. The first line of her block pays her ten ledger dollars out of thin air."
+        },
+        {
+          "focus": "b4a",
+          "say": "That reward is the only way new money appears.",
+          "draw": [
+            {
+              "write": "new money, from nothing",
+              "near": "b4a",
+              "side": "below",
+              "tone": "good",
+              "when": "new money"
+            }
+          ]
         },
         {
           "show": [
-            "b4b",
-            "b3->b4b"
+            "e4b",
+            "b4b"
           ],
-          "tint": {
-            "b4a": "warn",
-            "b4b": "warn"
-          },
-          "callout": "[two chains, equal length]{warn}",
+          "erase": true,
+          "focus": [
+            "b4a",
+            "b4b"
+          ],
           "say": "But Omar solved a different block four at nearly the same moment. Now there are two chains of the same length."
         },
         {
           "show": [
-            "b5",
-            "b4a->b5"
+            "e5",
+            "b5"
           ],
           "tint": {
             "b4a": "good",
             "b5": "good",
-            "b4b": "dim"
+            "e4a": "good",
+            "e5": "good"
           },
-          "callout": "rule: follow the longest chain",
-          "say": "The next miner happens to build on Maya’s block. That chain is longer now, and the rule is simple: everyone follows the longest chain. Omar’s block is dropped, and its lines go back into the pool."
+          "focus": [
+            "b5",
+            "e5"
+          ],
+          "say": "The next miner happens to build on Maya’s block. That chain is longer now, and everyone follows the longest chain."
+        },
+        {
+          "tint": {
+            "b4b": "dim",
+            "e4b": "dim"
+          },
+          "focus": "b4b",
+          "say": "Omar’s block is dropped, and its lines go back into the pool.",
+          "draw": [
+            {
+              "cross": "b4b",
+              "tone": "bad",
+              "when": "dropped"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "Double spending",
-      "title": "Chance a cheat with a tenth of the computing power catches up",
-      "kind": "bar",
-      "unit": "%",
-      "better": "lower",
-      "narration": "Here is the attack. Alice pays Bob in one block, while secretly building another chain where that payment never happened. If her chain gets longer, everyone switches to it, and her money comes back.",
-      "labels": [
-        "0 blocks",
-        "1 block",
-        "2 blocks",
-        "3 blocks",
-        "4 blocks",
-        "5 blocks",
-        "6 blocks"
+      "title": "Wait a few blocks, and a cheat cannot catch up",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"100\" y1=\"540\" x2=\"1170\" y2=\"540\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<g id=\"z0\"><rect x=\"105\" y=\"140\" width=\"90\" height=\"400\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"150\" y=\"126\" font-size=\"26\" text-anchor=\"middle\">100%</text><text x=\"150\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">0 blocks</text></g>\n<g id=\"z1\"><rect x=\"255\" y=\"458\" width=\"90\" height=\"82\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"300\" y=\"444\" font-size=\"26\" text-anchor=\"middle\">20.5%</text><text x=\"300\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">1 block</text></g>\n<g id=\"z2\"><rect x=\"405\" y=\"519.6\" width=\"90\" height=\"20.4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"450\" y=\"505.6\" font-size=\"26\" text-anchor=\"middle\">5.1%</text><text x=\"450\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">2 blocks</text></g>\n<g id=\"z3\"><rect x=\"555\" y=\"534.72\" width=\"90\" height=\"5.28\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"600\" y=\"520.72\" font-size=\"26\" text-anchor=\"middle\">1.32%</text><text x=\"600\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">3 blocks</text></g>\n<g id=\"z4\"><rect x=\"705\" y=\"536\" width=\"90\" height=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"750\" y=\"522\" font-size=\"26\" text-anchor=\"middle\">0.346%</text><text x=\"750\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">4 blocks</text></g>\n<g id=\"z5\"><rect x=\"855\" y=\"536\" width=\"90\" height=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"900\" y=\"522\" font-size=\"26\" text-anchor=\"middle\">0.0914%</text><text x=\"900\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">5 blocks</text></g>\n<g id=\"z6\"><rect x=\"1005\" y=\"536\" width=\"90\" height=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"1050\" y=\"522\" font-size=\"26\" text-anchor=\"middle\">0.0243%</text><text x=\"1050\" y=\"580\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">6 blocks</text></g>\n<text x=\"635\" y=\"630\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">blocks Bob waits on top of his payment</text>\n<g id=\"race-public\"><text x=\"360\" y=\"92\" font-size=\"26\">everyone</text><rect x=\"600\" y=\"60\" width=\"66\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"690\" y=\"60\" width=\"66\" height=\"46\" rx=\"6\" stroke-width=\"3\" class=\"tone-good\"/><line x1=\"666\" y1=\"83\" x2=\"690\" y2=\"83\" stroke=\"var(--muted)\" stroke-width=\"3\"/><rect x=\"780\" y=\"60\" width=\"66\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><line x1=\"756\" y1=\"83\" x2=\"780\" y2=\"83\" stroke=\"var(--muted)\" stroke-width=\"3\"/><rect x=\"870\" y=\"60\" width=\"66\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><line x1=\"846\" y1=\"83\" x2=\"870\" y2=\"83\" stroke=\"var(--muted)\" stroke-width=\"3\"/><rect x=\"960\" y=\"60\" width=\"66\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><line x1=\"936\" y1=\"83\" x2=\"960\" y2=\"83\" stroke=\"var(--muted)\" stroke-width=\"3\"/><rect x=\"1050\" y=\"60\" width=\"66\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><line x1=\"1026\" y1=\"83\" x2=\"1050\" y2=\"83\" stroke=\"var(--muted)\" stroke-width=\"3\"/><text x=\"723\" y=\"92\" font-size=\"22\" text-anchor=\"middle\">Bob</text></g>\n<g id=\"race-secret\"><text x=\"360\" y=\"202\" font-size=\"26\">Alice, in secret</text><path d=\"M633,106 C633,150 723,140 723,170\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\"/><rect x=\"690\" y=\"170\" width=\"66\" height=\"46\" rx=\"6\" class=\"tone-bad\" stroke-width=\"3\"/><rect x=\"780\" y=\"170\" width=\"66\" height=\"46\" rx=\"6\" class=\"tone-bad\" stroke-width=\"3\"/><line x1=\"756\" y1=\"193\" x2=\"780\" y2=\"193\" stroke=\"var(--muted)\" stroke-width=\"3\"/></g>\n<text id=\"chance\" x=\"700\" y=\"320\" text-anchor=\"middle\" font-size=\"28\">chance Alice ever catches up, with 10% of the computing power</text>\n</svg>",
+      "narration": "Here is the attack.",
+      "hidden": [
+        "race-public",
+        "race-secret",
+        "chance",
+        "z0",
+        "z1",
+        "z2",
+        "z3",
+        "z4",
+        "z5",
+        "z6"
       ],
-      "series": [
-        {
-          "name": "chance",
-          "values": [
-            100,
-            20.5,
-            5.1,
-            1.32,
-            0.346,
-            0.0914,
-            0.0243
-          ]
-        }
-      ],
-      "annotation": {
-        "at": "6 blocks",
-        "text": "about 2 in 10,000"
+      "labels": {
+        "race-public": "pays Bob",
+        "race-secret": "another chain",
+        "chance": "a tenth",
+        "z0": "everyone else",
+        "z1": "one block",
+        "z6": "six blocks",
+        "z2": "extra block"
       },
       "steps": [
         {
-          "focus": "0 blocks",
+          "show": [
+            "race-public"
+          ],
+          "focus": "race-public",
+          "say": "Alice pays Bob in one block."
+        },
+        {
+          "show": [
+            "race-secret"
+          ],
+          "focus": "race-secret",
+          "say": "Meanwhile she secretly builds another chain, where that payment never happened."
+        },
+        {
+          "focus": "race-secret",
+          "say": "If her chain gets longer, everyone switches to it, and her money comes back.",
+          "draw": [
+            {
+              "write": "longer? her money comes back",
+              "near": "race-secret",
+              "side": "right",
+              "tone": "bad",
+              "when": "gets longer"
+            }
+          ]
+        },
+        {
+          "show": [
+            "chance",
+            "z0"
+          ],
+          "erase": true,
+          "focus": [
+            "chance",
+            "z0"
+          ],
           "say": "But her one machine races everyone else’s together. Say she has a tenth of all the computing power."
         },
         {
-          "focus": "1 block",
+          "show": [
+            "z1"
+          ],
+          "focus": "z1",
           "say": "If Bob waits for one block on top of his payment, her chance of ever catching up is about one in five."
         },
         {
-          "focus": "6 blocks",
-          "say": "Each extra block makes it much smaller. After six blocks it is about two in ten thousand. So Bob waits a few blocks before he trusts the payment."
+          "show": [
+            "z2",
+            "z3",
+            "z4",
+            "z5",
+            "z6"
+          ],
+          "focus": [
+            "z2",
+            "z3",
+            "z4",
+            "z5",
+            "z6"
+          ],
+          "say": "Each extra block makes it much smaller. After six blocks it is about two in ten thousand."
+        },
+        {
+          "focus": "z6",
+          "say": "So Bob waits a few blocks before he trusts the payment.",
+          "draw": [
+            {
+              "write": "about 2 in 10,000",
+              "near": "z6",
+              "side": "above",
+              "tone": "good",
+              "when": "trusts"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Bitcoin itself",
-      "title": "The reward halves",
-      "narration": "That is Bitcoin. The network adjusts the puzzle every two thousand and sixteen blocks, about two weeks, so a new block comes about every ten minutes.",
-      "columns": [
-        "Year",
-        "From block",
-        "Reward per block"
+      "title": "The reward halves every four years",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"80\" y1=\"520\" x2=\"1140\" y2=\"520\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<g id=\"era0\"><rect x=\"90\" y=\"120\" width=\"162\" height=\"400\" stroke-width=\"3\"/><text x=\"171\" y=\"106\" font-size=\"26\" text-anchor=\"middle\">50 BTC</text><text x=\"90\" y=\"556\" font-size=\"24\">2009</text><text x=\"90\" y=\"588\" font-size=\"22\" fill=\"var(--muted)\">block 0</text></g>\n<g id=\"era1\"><rect x=\"252\" y=\"320\" width=\"216\" height=\"200\" stroke-width=\"3\"/><text x=\"360\" y=\"306\" font-size=\"26\" text-anchor=\"middle\">25 BTC</text><text x=\"252\" y=\"556\" font-size=\"24\">2012</text><text x=\"252\" y=\"588\" font-size=\"22\" fill=\"var(--muted)\">block 210,000</text></g>\n<g id=\"era2\"><rect x=\"468\" y=\"420\" width=\"216\" height=\"100\" stroke-width=\"3\"/><text x=\"576\" y=\"406\" font-size=\"26\" text-anchor=\"middle\">12.5 BTC</text><text x=\"468\" y=\"556\" font-size=\"24\">2016</text><text x=\"468\" y=\"588\" font-size=\"22\" fill=\"var(--muted)\">block 420,000</text></g>\n<g id=\"era3\"><rect x=\"684\" y=\"470\" width=\"216\" height=\"50\" stroke-width=\"3\"/><text x=\"792\" y=\"456\" font-size=\"26\" text-anchor=\"middle\">6.25 BTC</text><text x=\"684\" y=\"556\" font-size=\"24\">2020</text><text x=\"684\" y=\"588\" font-size=\"22\" fill=\"var(--muted)\">block 630,000</text></g>\n<g id=\"era4\"><rect x=\"900\" y=\"495\" width=\"216\" height=\"25\" stroke-width=\"3\"/><text x=\"1008\" y=\"481\" font-size=\"26\" text-anchor=\"middle\">3.125 BTC</text><text x=\"900\" y=\"556\" font-size=\"24\">2024</text><text x=\"900\" y=\"588\" font-size=\"22\" fill=\"var(--muted)\">block 840,000</text></g>\n</svg>",
+      "narration": "That is Bitcoin.",
+      "hidden": [
+        "era1",
+        "era2",
+        "era3",
+        "era4"
       ],
-      "rows": [
+      "labels": {
+        "era0": "fifty bitcoin",
+        "era1": "reward halves",
+        "era2": "twelve and a half",
+        "era3": "six and a quarter",
+        "era4": "three point one two five"
+      },
+      "steps": [
         {
-          "cells": [
-            "2009",
-            "0",
-            "50 BTC"
+          "focus": "era0",
+          "say": "The network adjusts the puzzle every two thousand and sixteen blocks, about two weeks, so a new block comes about every ten minutes.",
+          "draw": [
+            {
+              "write": "a block every 10 minutes",
+              "at": [
+                0.45,
+                0.06
+              ],
+              "when": "every ten minutes"
+            }
           ]
         },
         {
-          "cells": [
-            "2012",
-            "210,000",
-            "25 BTC"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "2016",
-            "420,000",
-            "12.5 BTC"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "2020",
-            "630,000",
-            "6.25 BTC"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "2024",
-            "840,000",
-            "3.125 BTC"
-          ],
-          "hidden": true
-        }
-      ],
-      "steps": [
-        {
-          "focus": 0,
-          "say": "In two thousand and nine, each block paid its miner fifty bitcoin."
+          "focus": "era0",
+          "erase": true,
+          "say": "In two thousand and nine, each block paid its miner fifty bitcoin.",
+          "draw": [
+            {
+              "circle": "era0",
+              "when": "fifty"
+            }
+          ]
         },
         {
           "show": [
-            1,
-            2,
-            3
+            "era1"
           ],
-          "say": "Every two hundred and ten thousand blocks, about four years, the reward halves. Twenty five, then twelve and a half, then six and a quarter."
+          "erase": true,
+          "focus": "era1",
+          "say": "Every two hundred and ten thousand blocks, about four years, the reward halves."
         },
         {
           "show": [
-            4
+            "era2",
+            "era3"
           ],
-          "tint": {
-            "4": "accent"
-          },
-          "callout": "all ever made: 20,999,999.977 BTC",
-          "say": "Since twenty twenty four it is three point one two five. Add up every halving and the total stops just short of twenty one million bitcoin."
+          "focus": [
+            "era1",
+            "era2",
+            "era3"
+          ],
+          "say": "Twenty five, then twelve and a half, then six and a quarter."
         },
         {
-          "focus": "col:Reward per block",
-          "callout": "plus fees, for a spot in a full block",
-          "say": "Blocks also have a size limit, so people add a small fee to their line, and miners pick the lines that pay them best. As the reward shrinks, fees pay more of the miners’ bills."
-        }
-      ]
-    },
-    {
-      "type": "table",
-      "chapter": "Recap",
-      "title": "One tool for each problem",
-      "narration": "Each problem we hit along the way got one tool.",
-      "columns": [
-        "Problem",
-        "Tool"
-      ],
-      "rows": [
-        {
-          "cells": [
-            "Anyone can write a fake line",
-            "Signatures, from a secret key"
-          ]
+          "show": [
+            "era4"
+          ],
+          "focus": "era4",
+          "say": "Since twenty twenty four it is three point one two five."
         },
-        {
-          "cells": [
-            "A signed line can be copied",
-            "A unique ID on every line"
-          ]
-        },
-        {
-          "cells": [
-            "People spend money they do not have",
-            "The history is the money"
-          ]
-        },
-        {
-          "cells": [
-            "Copies disagree, and no one is in charge",
-            "Proof of work, and the longest chain wins"
-          ]
-        },
-        {
-          "cells": [
-            "Someone rewrites an old block",
-            "Redoing the work is too expensive"
-          ]
-        }
-      ],
-      "steps": [
         {
           "focus": [
-            0,
-            1
+            "era0",
+            "era1",
+            "era2",
+            "era3",
+            "era4"
+          ],
+          "say": "Add up every halving and the total stops just short of twenty one million bitcoin.",
+          "draw": [
+            {
+              "write": "all ever made: 20,999,999.977 BTC",
+              "at": [
+                0.45,
+                0.06
+              ],
+              "tone": "good",
+              "when": "twenty one million"
+            }
+          ]
+        },
+        {
+          "focus": "era4",
+          "say": "Blocks also have a size limit, so people add a small fee for a spot, and miners pick the lines that pay best.",
+          "draw": [
+            {
+              "write": "+ fees",
+              "near": "era4",
+              "side": "above",
+              "when": "fee"
+            }
+          ]
+        },
+        {
+          "focus": "era4",
+          "say": "As the reward shrinks, fees pay more of the miners’ bills.",
+          "draw": [
+            {
+              "underline": "era4",
+              "when": "fees pay"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Recap",
+      "title": "One tool for each problem",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<text id=\"p0\" x=\"30\" y=\"110\" font-size=\"28\" class=\"tone-bad\">Anyone can write a fake line</text><line id=\"a0\" x1=\"540\" y1=\"101\" x2=\"620\" y2=\"101\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text id=\"t0\" x=\"640\" y=\"110\" font-size=\"28\" class=\"tone-good\">Signatures, from a secret key</text>\n<text id=\"p1\" x=\"30\" y=\"222\" font-size=\"28\" class=\"tone-bad\">A signed line can be copied</text><line id=\"a1\" x1=\"540\" y1=\"213\" x2=\"620\" y2=\"213\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text id=\"t1\" x=\"640\" y=\"222\" font-size=\"28\" class=\"tone-good\">A unique ID on every line</text>\n<text id=\"p2\" x=\"30\" y=\"334\" font-size=\"28\" class=\"tone-bad\">People spend money they do not have</text><line id=\"a2\" x1=\"540\" y1=\"325\" x2=\"620\" y2=\"325\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text id=\"t2\" x=\"640\" y=\"334\" font-size=\"28\" class=\"tone-good\">The history is the money</text>\n<text id=\"p3\" x=\"30\" y=\"446\" font-size=\"28\" class=\"tone-bad\">Copies disagree, no one in charge</text><line id=\"a3\" x1=\"540\" y1=\"437\" x2=\"620\" y2=\"437\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text id=\"t3\" x=\"640\" y=\"446\" font-size=\"28\" class=\"tone-good\">Proof of work, longest chain wins</text>\n<text id=\"p4\" x=\"30\" y=\"558\" font-size=\"28\" class=\"tone-bad\">Someone rewrites an old block</text><line id=\"a4\" x1=\"540\" y1=\"549\" x2=\"620\" y2=\"549\" stroke=\"var(--muted)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text id=\"t4\" x=\"640\" y=\"558\" font-size=\"28\" class=\"tone-good\">Redoing the work costs too much</text>\n</svg>",
+      "narration": "Each problem we hit along the way got one tool.",
+      "hidden": [
+        "a0",
+        "t0",
+        "a1",
+        "t1",
+        "a2",
+        "t2",
+        "a3",
+        "t3",
+        "a4",
+        "t4"
+      ],
+      "labels": {
+        "t0": "signatures",
+        "t1": "IDs",
+        "p0": "fake",
+        "p1": "copied lines",
+        "t2": "shared history",
+        "t3": "proof of work",
+        "t4": "longest chain",
+        "p3": "strangers agree"
+      },
+      "steps": [
+        {
+          "show": [
+            "a0",
+            "t0",
+            "a1",
+            "t1"
+          ],
+          "focus": [
+            "p0",
+            "p1",
+            "t0",
+            "t1"
           ],
           "say": "Signatures and IDs stop fake and copied lines."
         },
         {
-          "focus": 2,
+          "show": [
+            "a2",
+            "t2"
+          ],
+          "focus": "t2",
           "say": "The shared history decides who owns what."
         },
         {
+          "show": [
+            "a3",
+            "t3",
+            "a4",
+            "t4"
+          ],
           "focus": [
-            3,
-            4
+            "t3",
+            "t4"
           ],
           "say": "And proof of work, with the longest chain, lets strangers agree on one history without anyone in charge."
         }

@@ -641,6 +641,8 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         trace_key: &trace_key,
         move_key: None,
         morph: None,
+        initial_transforms: HashMap::new(),
+        initial_shapes: HashMap::new(),
     };
     let states = walk_states(&model, scene);
     let targets = crate::targets::target_steps_with(scene, |r| Some(resolve(r)).filter(|k| !k.is_empty()));

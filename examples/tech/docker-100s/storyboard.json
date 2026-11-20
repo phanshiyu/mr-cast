@@ -1,89 +1,154 @@
 {
   "title": "Docker in 100 seconds",
   "subtitle": "Containers, images and layers, fast",
+  "tones": {
+    "good": "shared or reused",
+    "bad": "duplicated, rebuilt or missing"
+  },
+  "pictures": {
+    "machines": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"mine\"><rect x=\"40\" y=\"200\" width=\"400\" height=\"360\" rx=\"18\" stroke-width=\"4\"/><text x=\"240\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--muted)\">my machine</text></g>\n<g id=\"yours\"><rect x=\"760\" y=\"200\" width=\"400\" height=\"360\" rx=\"18\" stroke-width=\"4\"/><text x=\"960\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--muted)\">your machine</text></g>\n<g id=\"box\"><rect id=\"edge\" x=\"64\" y=\"226\" width=\"352\" height=\"306\" rx=\"12\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"4\" stroke-dasharray=\"14 8\"/><rect x=\"90\" y=\"250\" width=\"300\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"240\" y=\"291\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">server.js</text><text x=\"110\" y=\"370\" font-size=\"24\" font-family=\"mono\">Node 22</text><text x=\"110\" y=\"414\" font-size=\"24\" font-family=\"mono\">node_modules</text><text x=\"110\" y=\"458\" font-size=\"24\" font-family=\"mono\">Linux files</text></g>\n<g id=\"bare\"><g id=\"bareApp\"><rect x=\"810\" y=\"250\" width=\"300\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"960\" y=\"291\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">server.js</text></g><text x=\"830\" y=\"400\" font-size=\"24\" font-size=\"26\" class=\"tone-bad\">no Node here</text></g>\n<text id=\"pycon\" x=\"600\" y=\"60\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">first shown at PyCon, 15 March 2013</text>\n<g id=\"recipe\"><rect x=\"520\" y=\"30\" width=\"160\" height=\"150\" rx=\"8\" stroke-width=\"3\"/><text x=\"540\" y=\"66\" font-size=\"24\" font-size=\"22\" font-family=\"mono\">FROM</text><text x=\"540\" y=\"96\" font-size=\"24\" font-size=\"22\" font-family=\"mono\">COPY</text><text x=\"540\" y=\"126\" font-size=\"24\" font-size=\"22\" font-family=\"mono\">RUN</text><text x=\"540\" y=\"156\" font-size=\"24\" font-size=\"22\" font-family=\"mono\">CMD</text><text x=\"600\" y=\"200\" font-size=\"24\" text-anchor=\"middle\" font-size=\"24\">Dockerfile</text></g>\n<g id=\"image\"><rect x=\"520\" y=\"470\" width=\"160\" height=\"28\" rx=\"5\" stroke-width=\"3\"/><rect x=\"520\" y=\"436\" width=\"160\" height=\"28\" rx=\"5\" stroke-width=\"3\"/><rect x=\"520\" y=\"402\" width=\"160\" height=\"28\" rx=\"5\" stroke-width=\"3\"/><rect x=\"520\" y=\"368\" width=\"160\" height=\"28\" rx=\"5\" stroke-width=\"3\"/><rect x=\"520\" y=\"334\" width=\"160\" height=\"28\" rx=\"5\" stroke-width=\"3\"/><text x=\"600\" y=\"530\" font-size=\"24\" text-anchor=\"middle\" font-size=\"24\">image</text></g>\n<line id=\"builds\" x1=\"600\" y1=\"212\" x2=\"600\" y2=\"318\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/>\n<g id=\"runs\"><line x1=\"510\" y1=\"400\" x2=\"450\" y2=\"400\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><line x1=\"690\" y1=\"400\" x2=\"750\" y2=\"400\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/></g>\n<g id=\"box2\"><rect x=\"784\" y=\"226\" width=\"352\" height=\"306\" rx=\"12\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"4\" stroke-dasharray=\"14 8\"/><rect x=\"810\" y=\"250\" width=\"300\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"960\" y=\"291\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">server.js</text><text x=\"830\" y=\"370\" font-size=\"24\" font-family=\"mono\">Node 22</text><text x=\"830\" y=\"414\" font-size=\"24\" font-family=\"mono\">node_modules</text><text x=\"830\" y=\"458\" font-size=\"24\" font-family=\"mono\">Linux files</text></g>\n<defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "What it is",
-      "narration": "It works on my machine. Docker is how you stop saying that.",
-      "kicker": "Docker",
-      "headline": "“It works on my machine.”",
-      "note": "first shown at PyCon, 15 March 2013",
+      "title": "“It works on my machine”",
+      "picture": "machines",
       "hidden": [
-        "note"
+        "yours",
+        "bare",
+        "edge",
+        "pycon",
+        "recipe",
+        "image",
+        "builds",
+        "runs",
+        "box2"
       ],
+      "labels": {
+        "mine": "my machine",
+        "box": "everything it needs",
+        "edge": "one box",
+        "yours": "any computer"
+      },
+      "narration": "It works on my machine. Docker is how you stop saying that.",
       "steps": [
         {
-          "set": {
-            "headline": "Your app, plus everything it needs, in one box"
-          },
           "show": [
-            "note"
+            "yours",
+            "bare"
           ],
-          "focus": "headline",
-          "say": "It packs your app and everything it needs into one box, which runs the same on any computer."
+          "focus": [
+            "yours",
+            "bare"
+          ],
+          "say": "Your app runs here, but on the next computer something it needs is missing.",
+          "draw": [
+            {
+              "cross": "bareApp",
+              "tone": "bad",
+              "when": "missing"
+            }
+          ]
+        },
+        {
+          "hide": [
+            "bare"
+          ],
+          "show": [
+            "edge"
+          ],
+          "focus": [
+            "box",
+            "edge"
+          ],
+          "erase": true,
+          "say": "Docker packs your app and everything it needs into one box."
+        },
+        {
+          "move": {
+            "box": "translate(720 0)"
+          },
+          "focus": [
+            "box",
+            "yours"
+          ],
+          "say": "And that box runs the same on any computer."
+        },
+        {
+          "show": [
+            "pycon"
+          ],
+          "focus": [
+            "pycon"
+          ],
+          "say": "It was first shown at PyCon, in March 2013."
         }
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "Not a VM",
-      "title": "Two ways to keep apps apart",
-      "sides": [
-        {
-          "title": "Virtual machine"
-        },
-        {
-          "title": "Container"
-        }
+      "title": "A VM carries a whole OS",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<text x=\"300\" y=\"50\" text-anchor=\"middle\" font-size=\"32\">virtual machines</text>\n<text x=\"900\" y=\"50\" text-anchor=\"middle\" font-size=\"32\">containers</text>\n<line x1=\"600\" y1=\"30\" x2=\"600\" y2=\"620\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<g><rect x=\"30\" y=\"560\" width=\"540\" height=\"56\" rx=\"8\" stroke-width=\"3\" /><text x=\"300\" y=\"596\" font-size=\"24\" text-anchor=\"middle\">hardware</text></g><g><rect x=\"30\" y=\"494\" width=\"540\" height=\"56\" rx=\"8\" stroke-width=\"3\" /><text x=\"300\" y=\"530\" font-size=\"24\" text-anchor=\"middle\">host kernel</text></g><g><rect x=\"30\" y=\"428\" width=\"540\" height=\"56\" rx=\"8\" stroke-width=\"3\" /><text x=\"300\" y=\"464\" font-size=\"24\" text-anchor=\"middle\">hypervisor</text></g>\n<g id=\"vms\"><g id=\"os0\"><rect x=\"30\" y=\"228\" width=\"172\" height=\"190\" rx=\"8\" stroke-width=\"3\" /><text x=\"116\" y=\"331\" font-size=\"24\" text-anchor=\"middle\">OS + kernel</text></g><g><rect x=\"30\" y=\"150\" width=\"172\" height=\"66\" rx=\"8\" stroke-width=\"3\" /><text x=\"116\" y=\"191\" font-size=\"24\" text-anchor=\"middle\">app</text></g><g id=\"os1\"><rect x=\"214\" y=\"228\" width=\"172\" height=\"190\" rx=\"8\" stroke-width=\"3\" /><text x=\"300\" y=\"331\" font-size=\"24\" text-anchor=\"middle\">OS + kernel</text></g><g><rect x=\"214\" y=\"150\" width=\"172\" height=\"66\" rx=\"8\" stroke-width=\"3\" /><text x=\"300\" y=\"191\" font-size=\"24\" text-anchor=\"middle\">app</text></g><g id=\"os2\"><rect x=\"398\" y=\"228\" width=\"172\" height=\"190\" rx=\"8\" stroke-width=\"3\" /><text x=\"484\" y=\"331\" font-size=\"24\" text-anchor=\"middle\">OS + kernel</text></g><g><rect x=\"398\" y=\"150\" width=\"172\" height=\"66\" rx=\"8\" stroke-width=\"3\" /><text x=\"484\" y=\"191\" font-size=\"24\" text-anchor=\"middle\">app</text></g></g>\n<g><rect x=\"630\" y=\"560\" width=\"540\" height=\"56\" rx=\"8\" stroke-width=\"3\" /><text x=\"900\" y=\"596\" font-size=\"24\" text-anchor=\"middle\">hardware</text></g><g id=\"kernel\"><rect x=\"630\" y=\"494\" width=\"540\" height=\"56\" rx=\"8\" stroke-width=\"3\" /><text x=\"900\" y=\"530\" font-size=\"24\" text-anchor=\"middle\">one shared kernel</text></g><g><rect x=\"630\" y=\"428\" width=\"540\" height=\"56\" rx=\"8\" stroke-width=\"3\" /><text x=\"900\" y=\"464\" font-size=\"24\" text-anchor=\"middle\">Docker</text></g>\n<g id=\"cts\"><g id=\"ct0\"><rect x=\"630\" y=\"300\" width=\"100\" height=\"116\" rx=\"8\" stroke-width=\"3\" /><text x=\"680\" y=\"366\" font-size=\"24\" text-anchor=\"middle\">app</text></g><g id=\"ct1\"><rect x=\"740\" y=\"300\" width=\"100\" height=\"116\" rx=\"8\" stroke-width=\"3\" /><text x=\"790\" y=\"366\" font-size=\"24\" text-anchor=\"middle\">app</text></g><g id=\"ct2\"><rect x=\"850\" y=\"300\" width=\"100\" height=\"116\" rx=\"8\" stroke-width=\"3\" /><text x=\"900\" y=\"366\" font-size=\"24\" text-anchor=\"middle\">app</text></g></g>\n<g id=\"more\"><g id=\"ct3\"><rect x=\"960\" y=\"300\" width=\"100\" height=\"116\" rx=\"8\" stroke-width=\"3\" /><text x=\"1010\" y=\"366\" font-size=\"24\" text-anchor=\"middle\">app</text></g><g id=\"ct4\"><rect x=\"1070\" y=\"300\" width=\"100\" height=\"116\" rx=\"8\" stroke-width=\"3\" /><text x=\"1120\" y=\"366\" font-size=\"24\" text-anchor=\"middle\">app</text></g></g>\n</svg>",
+      "hidden": [
+        "more"
       ],
+      "labels": {
+        "vms": "virtual machine",
+        "os0": "operating system",
+        "kernel": "host’s kernel",
+        "cts": "container",
+        "more": "many more"
+      },
       "narration": "So it's a virtual machine? No.",
-      "rows": [
-        {
-          "label": "Kernel",
-          "cells": [
-            "Its own",
-            "Shares the host's"
-          ],
-          "verdict": [
-            null,
-            "good"
-          ]
-        },
-        {
-          "label": "Inside",
-          "cells": [
-            "A whole operating system",
-            "One process and its files"
-          ],
-          "verdict": [
-            null,
-            "good"
-          ]
-        },
-        {
-          "label": "Ten apps",
-          "cells": [
-            "Ten operating systems",
-            "Ten processes, one kernel"
-          ],
-          "verdict": [
-            "bad",
-            "good"
-          ]
-        }
-      ],
       "steps": [
         {
+          "tint": {
+            "os0": "bad",
+            "os1": "bad",
+            "os2": "bad"
+          },
           "focus": [
-            0,
-            1
+            "vms",
+            "os0"
           ],
-          "say": "A virtual machine runs a whole operating system, kernel and all. A container is one walled off process that shares the host's kernel."
+          "say": "A virtual machine runs a whole operating system, kernel and all."
         },
         {
-          "focus": 2,
-          "say": "So many more of them fit on one machine."
+          "tint": {
+            "kernel": "good"
+          },
+          "focus": [
+            "cts",
+            "kernel"
+          ],
+          "say": "A container is one walled off process that shares the host's kernel."
+        },
+        {
+          "show": [
+            "more"
+          ],
+          "focus": [
+            "more"
+          ],
+          "say": "So many more of them fit on one machine.",
+          "draw": [
+            {
+              "write": "10 apps = 10 OSes",
+              "near": "vms",
+              "side": "above",
+              "tone": "bad",
+              "when": "many more"
+            },
+            {
+              "write": "10 apps = 1 kernel",
+              "near": "more",
+              "side": "above",
+              "tone": "good",
+              "when": "fit"
+            }
+          ]
         }
       ]
     },
@@ -112,43 +177,84 @@
       ]
     },
     {
-      "type": "layers",
+      "type": "svg",
       "chapter": "Layers",
-      "title": "The image, one layer per step",
-      "narration": "That build makes an image: read only layers, one for each step, stacked on the base.",
-      "layers": [
-        {
-          "id": "code",
-          "label": "COPY . .",
-          "caption": "your code",
-          "tone": "warn"
-        },
-        {
-          "id": "deps",
-          "label": "RUN npm install",
-          "caption": "node_modules"
-        },
-        {
-          "id": "pkg",
-          "label": "COPY package*.json",
-          "caption": "the package list"
-        },
-        {
-          "id": "dir",
-          "label": "WORKDIR /app",
-          "caption": "a folder"
-        },
-        {
-          "id": "base",
-          "label": "FROM node:22-alpine",
-          "caption": "Linux files and Node",
-          "tone": "accent"
-        }
+      "title": "Change code, rebuild one layer",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"base\"><rect x=\"140\" y=\"520\" width=\"520\" height=\"84\" rx=\"10\" stroke-width=\"3\"/><text x=\"170\" y=\"570\" font-size=\"24\" font-size=\"28\" font-family=\"mono\">FROM node:22-alpine</text><text x=\"700\" y=\"570\" font-size=\"24\" font-size=\"28\" fill=\"var(--muted)\">Linux files and Node</text></g>\n<g id=\"dir\"><rect x=\"140\" y=\"420\" width=\"520\" height=\"84\" rx=\"10\" stroke-width=\"3\"/><text x=\"170\" y=\"470\" font-size=\"24\" font-size=\"28\" font-family=\"mono\">WORKDIR /app</text><text x=\"700\" y=\"470\" font-size=\"24\" font-size=\"28\" fill=\"var(--muted)\">a folder</text></g>\n<g id=\"pkg\"><rect x=\"140\" y=\"320\" width=\"520\" height=\"84\" rx=\"10\" stroke-width=\"3\"/><text x=\"170\" y=\"370\" font-size=\"24\" font-size=\"28\" font-family=\"mono\">COPY package*.json</text><text x=\"700\" y=\"370\" font-size=\"24\" font-size=\"28\" fill=\"var(--muted)\">the package list</text></g>\n<g id=\"deps\"><rect x=\"140\" y=\"220\" width=\"520\" height=\"84\" rx=\"10\" stroke-width=\"3\"/><text x=\"170\" y=\"270\" font-size=\"24\" font-size=\"28\" font-family=\"mono\">RUN npm install</text><text x=\"700\" y=\"270\" font-size=\"24\" font-size=\"28\" fill=\"var(--muted)\">node_modules</text></g>\n<g id=\"code\"><rect x=\"140\" y=\"120\" width=\"520\" height=\"84\" rx=\"10\" stroke-width=\"3\"/><text x=\"170\" y=\"170\" font-size=\"24\" font-size=\"28\" font-family=\"mono\">COPY . .</text><text x=\"700\" y=\"170\" font-size=\"24\" font-size=\"28\" fill=\"var(--muted)\">your code</text></g>\n</svg>",
+      "hidden": [
+        "dir",
+        "pkg",
+        "deps",
+        "code"
       ],
+      "labels": {
+        "base": "base",
+        "code": "top layer",
+        "dir": "layers",
+        "deps": "cache"
+      },
+      "narration": "That build makes an image: read only layers, one for each step.",
       "steps": [
         {
-          "focus": "code",
-          "say": "Change your code, and only the top layer is built again. The rest come from the cache."
+          "show": [
+            "dir",
+            "pkg",
+            "deps",
+            "code"
+          ],
+          "focus": [
+            "dir",
+            "pkg",
+            "deps",
+            "code",
+            "base"
+          ],
+          "say": "Each one is stacked on the base."
+        },
+        {
+          "tint": {
+            "code": "bad"
+          },
+          "focus": [
+            "code"
+          ],
+          "say": "Change your code, and only the top layer is built again.",
+          "draw": [
+            {
+              "write": "built again",
+              "near": "code",
+              "side": "above",
+              "tone": "bad",
+              "when": "built again"
+            }
+          ]
+        },
+        {
+          "tint": {
+            "base": "good",
+            "dir": "good",
+            "pkg": "good",
+            "deps": "good"
+          },
+          "focus": [
+            "base",
+            "dir",
+            "pkg",
+            "deps"
+          ],
+          "say": "The rest come from the cache.",
+          "draw": [
+            {
+              "brace": [
+                "base",
+                "deps"
+              ],
+              "note": "from the cache",
+              "side": "left",
+              "tone": "good",
+              "when": "cache"
+            }
+          ]
         }
       ]
     },
@@ -183,14 +289,61 @@
       ]
     },
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "Recap",
-      "narration": "The Dockerfile is the recipe. The image is what it builds. A container is that image, running, the same on every machine.",
-      "headline": "Three words",
-      "items": [
-        "**Dockerfile**: the recipe, one layer per step",
-        "**Image**: a read-only template built from it",
-        "**Container**: a running copy of an image"
+      "title": "Recipe, image, container",
+      "picture": "machines",
+      "hidden": [
+        "bare",
+        "pycon",
+        "recipe",
+        "image",
+        "builds",
+        "runs",
+        "box2"
+      ],
+      "labels": {
+        "recipe": "recipe",
+        "image": "image",
+        "box": "container",
+        "box2": "every machine",
+        "runs": "running"
+      },
+      "narration": "Three words to keep.",
+      "steps": [
+        {
+          "show": [
+            "recipe"
+          ],
+          "focus": [
+            "recipe"
+          ],
+          "say": "The Dockerfile is the recipe, one layer per step."
+        },
+        {
+          "show": [
+            "builds",
+            "image"
+          ],
+          "focus": [
+            "image",
+            "builds"
+          ],
+          "say": "The image is what it builds: a read only template."
+        },
+        {
+          "show": [
+            "runs",
+            "box2"
+          ],
+          "focus": [
+            "image",
+            "box",
+            "box2",
+            "runs"
+          ],
+          "say": "A container is that image, running, the same on every machine."
+        }
       ]
     }
   ]

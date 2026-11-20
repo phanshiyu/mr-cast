@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.33.0
+
+**Explanations are drawn on the board by default.** An explanation with no `look` is drawn by hand on the board; `"look": "plain"` turns it off. Videos of a branch stay plain unless they set `"look": "board"`. The worked examples are redrawn on the board (ADR 0050).
+
+**Labels inside a coloured box are readable on the board.** The hatching is thinner, further apart and fainter.
+
+**A picture keeps what was moved.** When the next scene draws the same picture, a part the scene before moved, reshaped or relabelled stays as it ended instead of jumping back, and can be moved on from there. The warning about parts jumping back is gone.
+
+**Ink, tint and focus land on one word of a sentence.** In svg scenes, a circle, underline or note on a `<tspan>` was missing from the video; it now marks that word, a tint colours just it, and a focus lights it while the rest of the sentence dims.
+
+**Every character in a drawing's text shows.** Symbols the lettering lacks, such as `∞ π → ⋮`, subscripts and superscripts (`₂ ²⁵⁶ ᵏ`), are drawn from a font that has them, one character at a time, instead of as empty boxes or by switching the whole line to another font.
+
+**A cross or strike on a line marks the line, not its whole box.** On an svg line, curve or arrow, `cross` draws a small X at the middle of the line and `strike` a short slash across it there; boxes and shapes are crossed out as before.
+
 ## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).

@@ -15,11 +15,12 @@ use crate::camera::View;
 use crate::chrome::callout::HeaderCallout;
 use crate::chrome::callout::header_box;
 use crate::chrome::shell::{Aside, Shell};
-use crate::marks::geometry::Bx;
+use crate::marks::geometry::{Bx, Pt, SPINE_MARK, Spine};
 use crate::marks::{MarkTargets, NoRefs, Pen, Refs};
 use crate::states::{ClosureModel, SceneState, StateFrame, TintMix, walk_states};
 use crate::steps::FocusSpotlight;
 use crate::steps::{Emphasis, current_step};
+use crate::text::Face;
 use crate::timing::{FPS, STEP_SETTLE_FRAMES, Segment};
 use motion::{PairedShape, pair_shapes, trace_length, tween_shape, tween_transform};
 use serde_json::Value;
@@ -45,7 +46,15 @@ const FLOW_SPEED: f64 = 1.4;
 const ACCENT: &str = "#7c8cff";
 
 fn is_leaf(tag: &str) -> bool {
-    AREAS.contains(&tag) || LINES.contains(&tag) || tag == "text" || tag == "use"
+    AREAS.contains(&tag) || LINES.contains(&tag) || tag == "text" || tag == "tspan" || tag == "use"
+}
+
+/// Whether a node is a tspan with an id, or holds one.
+fn named_tspan(node: &Node) -> bool {
+    match node {
+        Node::Elem(e) => (e.tag == "tspan" && e.attr("id").is_some()) || e.children.iter().any(named_tspan),
+        Node::Text(_) => false,
+    }
 }
 
 pub(crate) fn tone_color(tone: &str) -> &'static str {
@@ -156,6 +165,34 @@ impl Props {
     }
 }
 
+/// The face text in `font-family` `font` is drawn in: JetBrains Mono for a mono family, else the board's handwriting
+/// on the board and Inter off it.
+fn face_of(font: &str) -> Face {
+    if font.to_lowercase().contains("mono") {
+        Face::Mono
+    } else if crate::look::board() {
+        Face::Hand
+    } else {
+        Face::Sans
+    }
+}
+
+/// Text as markup, each run of characters `face` lacks in a `tspan` naming the bundled font that has them, as Chrome
+/// and the engine's own text fall back per character. Left to itself resvg falls back for the whole line.
+fn text_runs(text: &str, face: Face) -> String {
+    crate::text::font_runs(face, text)
+        .into_iter()
+        .map(|(font, from, to)| {
+            let run = xml_escape(&text[from..to]);
+            if font == face as u8 {
+                run
+            } else {
+                format!("<tspan font-family=\"{}\">{run}</tspan>", media::svg_family(font))
+            }
+        })
+        .collect()
+}
+
 fn el(tag: &str, props: &Props, children: &str) -> String {
     let mut s = format!("<{tag}");
     for (k, v) in &props.0 {
@@ -182,6 +219,9 @@ struct Inherited {
     font: String,
     trace: Option<f64>,
     flow: bool,
+    /// Inside a text drawn run by run: each run, a tspan or the text's own words, carries its light and tint as
+    /// its fill's opacity, so one word can be lit or dimmed apart from the rest of its sentence.
+    runs: bool,
 }
 
 struct TintMixed(TintMix);
@@ -206,7 +246,6 @@ struct Svg {
 struct Draw<'a> {
     s: &'a StateFrame<'a>,
     focus: &'a FocusSpotlight<'a>,
-    initial: &'a crate::states::Values,
     frame: f64,
     scale: f64,
     traces: HashMap<String, f64>,
@@ -305,9 +344,11 @@ impl Draw<'_> {
             None => up.emphasis,
         };
         let own_tint = own.as_ref().map(|o| self.at(o).tint(o));
+        let own_tint = own_tint.filter(|t| !t.tones.is_empty() || t.dim > 0.0);
+        let tinted = own_tint.is_some();
         let tint: Option<Arc<TintMixed>> = match own_tint {
-            Some(t) if !t.tones.is_empty() || t.dim > 0.0 => Some(Arc::new(TintMixed(t))),
-            _ => up.tint.clone(),
+            Some(t) => Some(Arc::new(TintMixed(t))),
+            None => up.tint.clone(),
         };
         let mut props = Props::default();
         for (name, value) in &n.attrs {
@@ -324,8 +365,9 @@ impl Draw<'_> {
         let has_fill = up.fill || a("fill").is_some() || cls.tone.is_some() || cls.fill.is_some();
         let has_stroke = up.stroke || a("stroke").is_some() || cls.tone.is_some() || cls.stroke.is_some();
         let tag = n.tag.as_str();
+        let texty = tag == "text" || tag == "tspan";
         if let Some(tone) = &cls.tone {
-            if tag == "text" {
+            if texty {
                 props.set_default("fill", tone_color(tone));
             } else {
                 let fill = if LINES.contains(&tag) && tag != "path" {
@@ -343,21 +385,16 @@ impl Draw<'_> {
         if let Some(t) = &cls.stroke {
             props.set_default("stroke", tone_color(t));
         }
+        if tag == "tspan"
+            && let Some(f) = a("font-family")
+        {
+            props.set("font-family", media::svg_family(face_of(f) as u8));
+        }
         if tag == "text" {
             if !has_fill {
                 props.set("fill", palette("text"));
             }
-            let font = a("font-family").unwrap_or(&up.font);
-            props.set(
-                "font-family",
-                if font.to_lowercase().contains("mono") {
-                    "JetBrains Mono"
-                } else if crate::look::board() {
-                    "Caveat"
-                } else {
-                    "Inter Variable"
-                },
-            );
+            props.set("font-family", media::svg_family(face_of(a("font-family").unwrap_or(&up.font)) as u8));
         } else if AREAS.contains(&tag) {
             if !has_fill {
                 props.set("fill", palette("surface"));
@@ -375,11 +412,13 @@ impl Draw<'_> {
         }
         let value = if tag == "text" { own.as_ref().and_then(|o| self.s.now.values.get(o)) } else { None };
         let changed = tag == "text" && own.as_ref().is_some_and(|o| self.s.before.values.get(o) != value);
+        // A tspan takes its text's tint from the text, keeping a colour of its own.
         if is_leaf(tag)
+            && (tag != "tspan" || tinted)
             && let Some(t) = &tint
             && let Some(tone) = t.0.main_tone()
         {
-            if tag == "text" {
+            if texty {
                 props.set("fill", tone_color(tone));
             } else {
                 if !LINES.contains(&tag) || tag == "path" {
@@ -406,18 +445,35 @@ impl Draw<'_> {
             }
             None => self.at(o).shown(o),
         });
-        let leaf_opacity =
-            if is_leaf(tag) { emphasis.opacity * tint.as_ref().map_or(1.0, |t| t.0.dim_opacity()) } else { 1.0 };
+        // Text a step or a continued picture rewrote, rather than the drawing's own.
+        let rewritten = value.is_some_and(|v| value_text(v) != text_of(n));
+        // A text with a tspan a step can name is lit run by run: an svg renderer takes no opacity on a tspan, and a
+        // dimmed text would dim the word lit inside it.
+        let runs = if tag == "text" { !rewritten && n.children.iter().any(named_tspan) } else { up.runs };
+        let run_opacity = emphasis.opacity * tint.as_ref().map_or(1.0, |t| t.0.dim_opacity());
+        let leaf_opacity = if is_leaf(tag) && !runs { run_opacity } else { 1.0 };
         let base_opacity: f64 = a("opacity").and_then(|v| v.trim().parse().ok()).unwrap_or(1.0);
         let opacity = base_opacity * shown * leaf_opacity * if changed { 0.35 + 0.65 * self.s.t } else { 1.0 };
-        if opacity != 1.0 {
+        if tag == "tspan" {
+            if runs {
+                let fill: f64 = a("fill-opacity").and_then(|v| v.trim().parse().ok()).unwrap_or(1.0);
+                let o = opacity * run_opacity;
+                props.remove("opacity");
+                if o * fill != 1.0 {
+                    props.set("fill-opacity", fnum(o * fill));
+                }
+                if o != 1.0 {
+                    props.set("stroke-opacity", fnum(o));
+                }
+            }
+        } else if opacity != 1.0 {
             props.set("opacity", fnum(opacity));
         }
         if let Some(o) = &own {
             let g = self.focus.emphasis(o).glow;
             if g > 0.0 && crate::look::board() {
                 // On the board nothing glows: what a step lights is gone over again, a heavier line.
-                if tag != "text" {
+                if !texty {
                     let sw: f64 = props.get("stroke-width").and_then(|v| v.parse().ok()).unwrap_or(2.0);
                     props.set("stroke-width", fnum(sw * (1.0 + 0.9 * g)));
                 }
@@ -446,14 +502,25 @@ impl Draw<'_> {
             font: a("font-family").map_or_else(|| up.font.clone(), String::from),
             trace,
             flow,
+            runs,
         };
-        let rewritten = own.as_ref().is_some_and(|o| value.is_some_and(|v| self.me.states[0].values.get(o) != Some(v)))
-            && value.is_some();
-        let _ = self.initial;
+        let face = face_of(&next.font);
         let children = if rewritten {
-            xml_escape(&value_text(value.unwrap()))
+            text_runs(&value_text(value.unwrap()), face)
         } else {
-            n.children.iter().enumerate().map(|(i, c)| self.draw(c, &format!("{key}.{i}"), &next)).collect::<String>()
+            n.children
+                .iter()
+                .enumerate()
+                .map(|(i, c)| match c {
+                    // The text's own words, between its tspans, are a run of their own.
+                    Node::Text(t) if tag == "text" && runs && run_opacity != 1.0 => {
+                        let o = fnum(run_opacity);
+                        format!("<tspan fill-opacity=\"{o}\" stroke-opacity=\"{o}\">{}</tspan>", text_runs(t, face))
+                    }
+                    Node::Text(t) if tag == "text" || tag == "tspan" => text_runs(t, face),
+                    _ => self.draw(c, &format!("{key}.{i}"), &next),
+                })
+                .collect::<String>()
         };
         if tag == "text"
             && let Some(t) = trace
@@ -491,7 +558,7 @@ impl Draw<'_> {
         }
         props.set("fill", format!("url(#{id})"));
         let fo: f64 = props.get("fill-opacity").and_then(|v| v.parse().ok()).unwrap_or(1.0);
-        props.set("fill-opacity", fnum(fo * (alpha * 3.2).clamp(0.5, 0.95)));
+        props.set("fill-opacity", fnum(fo * (alpha * 1.6).clamp(0.22, 0.4)));
     }
 
     fn motion_shape(
@@ -856,19 +923,8 @@ impl Svg {
         let spans = self.span_progress(sf, segments, k, frame);
         let named = self.named_progress(sf, segments, k, frame);
         let drawn = self.drawn_progress(sf, segments, k, frame);
-        let d = Draw {
-            s: sf,
-            focus,
-            initial: &self.states[0].values,
-            frame,
-            scale,
-            traces,
-            spans,
-            named,
-            drawn,
-            defs: RefCell::new(Vec::new()),
-            me: self,
-        };
+        let d =
+            Draw { s: sf, focus, frame, scale, traces, spans, named, drawn, defs: RefCell::new(Vec::new()), me: self };
         let root = &self.drawing.root;
         let base = Inherited {
             fill: root.attr("fill").is_some(),
@@ -878,6 +934,7 @@ impl Svg {
             font: root.attr("font-family").unwrap_or("").to_string(),
             trace: None,
             flow: false,
+            runs: false,
         };
         let parts = &root.children;
         let stagger = STAGGER.min((STAGGER_END - START) / (parts.len().saturating_sub(1)).max(1) as f64);
@@ -954,11 +1011,17 @@ impl Svg {
         let mut ids = Vec::new();
         collect_ids(&self.drawing.root, &mut ids);
         let named: Vec<String> = ids.iter().map(|id| format!("{}{id}", self.prefix)).collect();
-        let boxes = media::svg_boxes(&svg, &named)
-            .into_iter()
-            .map(|(id, (x, y, w, h))| (format!("s:{}", &id[self.prefix.len()..]), Bx::new(x - BLEED, y - BLEED, w, h)))
-            .collect();
-        MarkTargets::new(boxes, Bx::new(0.0, 0.0, self.box_w, self.box_h))
+        let (mut boxes, mut spines) = (Vec::new(), Vec::new());
+        for (id, shape) in media::svg_shapes(&svg, &named) {
+            let key = format!("s:{}", &id[self.prefix.len()..]);
+            let (x, y, w, h) = shape.bbox;
+            // A line shorter than the mark itself is crossed out across its box, as a shape is.
+            if let Some((mx, my, angle)) = shape.spine.filter(|_| w.max(h) > SPINE_MARK) {
+                spines.push((key.clone(), Spine { mid: Pt { x: mx - BLEED, y: my - BLEED }, angle }));
+            }
+            boxes.push((key, Bx::new(x - BLEED, y - BLEED, w, h)));
+        }
+        MarkTargets { spines, ..MarkTargets::new(boxes, Bx::new(0.0, 0.0, self.box_w, self.box_h)) }
     }
 }
 
@@ -990,8 +1053,8 @@ fn hex_alpha(c: &str) -> Option<(String, f64)> {
 }
 
 /// On the board, the hatching's spacing and line width, in screen px.
-const HATCH_GAP_PX: f64 = 11.0;
-const HATCH_WIDTH_PX: f64 = 3.0;
+const HATCH_GAP_PX: f64 = 16.0;
+const HATCH_WIDTH_PX: f64 = 2.0;
 
 /// On the board, how far a hand-drawn side bows at most, how far its ends stray, and how far the pen runs past the
 /// corner it started from, in screen px.
@@ -1074,12 +1137,24 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     }
     let list = |k: &str| scene.get(k).and_then(Value::as_array).cloned().unwrap_or_default();
     let ids = drawing.id_map();
+    // A scene that continues a picture starts with the moves, morphs and set text the scene before it ended on, which
+    // shared/pictures.mjs puts in its `carried`.
+    let carried = |field: &str| -> Vec<(String, String)> {
+        let record = scene.get("carried").and_then(|c| c.get(field)).and_then(Value::as_object);
+        record
+            .into_iter()
+            .flatten()
+            .filter(|(id, _)| ids.contains_key(id.as_str()))
+            .filter_map(|(id, v)| Some((format!("s:{id}"), v.as_str()?.to_string())))
+            .collect()
+    };
     let mut initial_values = Vec::new();
     for (id, e) in &ids {
         if e.tag == "text" {
             initial_values.push((format!("s:{id}"), Value::String(text_of(e))));
         }
     }
+    initial_values.extend(carried("set").into_iter().map(|(k, v)| (k, Value::String(v))));
     let initial_hidden = list("hidden")
         .iter()
         .filter_map(Value::as_str)
@@ -1119,6 +1194,8 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         trace_key: &trace_key,
         move_key: Some(&move_key),
         morph: Some(&morph),
+        initial_transforms: carried("move").into_iter().collect(),
+        initial_shapes: carried("morph").into_iter().collect(),
     };
     let states = walk_states(&model, scene);
     let targets = crate::targets::target_steps_with(scene, |r| Some(resolve(r)).filter(|k| !k.is_empty()));
@@ -1148,5 +1225,34 @@ struct SvgRefs<'a>(&'a Drawing);
 impl Refs for SvgRefs<'_> {
     fn resolve(&self, r: &Value) -> Option<Vec<String>> {
         r.as_str().filter(|id| self.0.has(id)).map(|id| vec![format!("s:{id}")])
+    }
+}
+
+#[cfg(test)]
+mod font_tests {
+    use super::*;
+
+    /// Every character of svg text is drawn: in the face where it has the glyph, and only the rest in a fallback.
+    #[test]
+    fn text_falls_back_per_character() {
+        for face in [Face::Hand, Face::Mono, Face::Sans] {
+            let text = "a → b ∞ π xᵏ H₂O ⋮ 2²⁵⁶";
+            let svg = format!(
+                r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 100"><text x="10" y="60" font-size="40" font-family="{}">{}</text></svg>"#,
+                media::svg_family(face as u8),
+                text_runs(text, face)
+            );
+            let glyphs = media::svg_glyph_fonts(&svg);
+            assert_eq!(glyphs.iter().map(|g| g.0.as_str()).collect::<String>().replace(' ', ""), text.replace(' ', ""));
+            for (c, font) in glyphs {
+                let font = font.unwrap_or_else(|| panic!("{face:?} draws no glyph for {c}"));
+                if c.chars().all(|c| c.is_ascii_alphanumeric()) {
+                    assert_eq!(font, face as u8, "{face:?} draws {c} in font {font}");
+                }
+            }
+        }
+        // Caveat has ² but not ⁵ or ⁶: the figures of 2²⁵⁶ come from one font, so they line up.
+        let fonts: Vec<u8> = crate::text::font_runs(Face::Hand, "2²⁵⁶").iter().map(|r| r.0).collect();
+        assert_eq!(fonts, [Face::Hand as u8, 3]);
     }
 }

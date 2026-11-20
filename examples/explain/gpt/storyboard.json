@@ -1,265 +1,344 @@
 {
   "title": "How a GPT picks the next word",
   "subtitle": "From text to tokens to chances, one token at a time",
+  "tones": {
+    "good": "the token the model picks",
+    "bad": "a pick that makes nonsense"
+  },
+  "pictures": {
+    "next": "<svg viewBox=\"0 0 1200 640\"><g id=\"cells\"><rect id=\"c0\" x=\"20\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c1\" x=\"166\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c2\" x=\"312\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c3\" x=\"458\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c4\" x=\"604\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c5\" x=\"750\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c6\" x=\"896\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c7\" x=\"1042\" y=\"24\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c8\" x=\"20\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c9\" x=\"166\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c10\" x=\"312\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c11\" x=\"458\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c12\" x=\"604\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><rect id=\"c13\" x=\"750\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/></g><g id=\"words\"><text x=\"90.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">Once</text><text x=\"236.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp1\">·</tspan>upon</text><text x=\"382.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp2\">·</tspan>a</text><text x=\"528.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp3\">·</tspan>time</text><text x=\"674.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">,</text><text x=\"820.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp5\">·</tspan>in</text><text x=\"966.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp6\">·</tspan>a</text><text x=\"1112.0\" y=\"63.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp7\">·</tspan>land</text><text x=\"90.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp8\">·</tspan>of</text><text x=\"236.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp9\">·</tspan>math</text><text x=\"382.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">,</text><text x=\"528.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp11\">·</tspan>there</text><text x=\"674.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp12\">·</tspan>lived</text><text x=\"820.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp13\">·</tspan>a</text></g>\n<g id=\"tok-pick\"><rect id=\"c14\" x=\"896\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><text x=\"966.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\"><tspan id=\"sp14\">·</tspan>creature</text></g>\n<g id=\"tok-next\"><rect id=\"c15\" x=\"1042\" y=\"100\" width=\"140\" height=\"58\" rx=\"10\" stroke-width=\"3\"/><text x=\"1112.0\" y=\"139.0\" font-size=\"24\" text-anchor=\"middle\" font-family=\"mono\">?</text></g>\n<g id=\"bar-creature\"><text x=\"300.0\" y=\"248.0\" font-size=\"26\" text-anchor=\"end\">creature</text><rect x=\"320\" y=\"214\" width=\"756\" height=\"48\" rx=\"6\" stroke-width=\"3\"/><text x=\"1090.0\" y=\"248.0\" font-size=\"24\" >42%</text></g><g id=\"bar-wizard\"><text x=\"300.0\" y=\"316.0\" font-size=\"26\" text-anchor=\"end\">wizard</text><rect x=\"320\" y=\"282\" width=\"324\" height=\"48\" rx=\"6\" stroke-width=\"3\"/><text x=\"658.0\" y=\"316.0\" font-size=\"24\" >18%</text></g><g id=\"bar-king\"><text x=\"300.0\" y=\"384.0\" font-size=\"26\" text-anchor=\"end\">king</text><rect x=\"320\" y=\"350\" width=\"216\" height=\"48\" rx=\"6\" stroke-width=\"3\"/><text x=\"550.0\" y=\"384.0\" font-size=\"24\" >12%</text></g><g id=\"bar-dragon\"><text x=\"300.0\" y=\"452.0\" font-size=\"26\" text-anchor=\"end\">dragon</text><rect x=\"320\" y=\"418\" width=\"144\" height=\"48\" rx=\"6\" stroke-width=\"3\"/><text x=\"478.0\" y=\"452.0\" font-size=\"24\" >8%</text></g><g id=\"bar-girl\"><text x=\"300.0\" y=\"520.0\" font-size=\"26\" text-anchor=\"end\">girl</text><rect x=\"320\" y=\"486\" width=\"90\" height=\"48\" rx=\"6\" stroke-width=\"3\"/><text x=\"424.0\" y=\"520.0\" font-size=\"24\" >5%</text></g><g id=\"bar-every\"><text x=\"300.0\" y=\"588.0\" font-size=\"26\" text-anchor=\"end\">every other token</text><rect x=\"320\" y=\"554\" width=\"270\" height=\"48\" rx=\"6\" stroke-width=\"3\"/><text x=\"604.0\" y=\"588.0\" font-size=\"24\" >15%</text></g></svg>",
+    "trip": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker><marker id=\"head-muted\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs><g id=\"s-tok\"><rect x=\"90\" y=\"20\" width=\"240\" height=\"64\" rx=\"12\" stroke-width=\"3\"/><text x=\"210.0\" y=\"62.0\" font-size=\"28\" text-anchor=\"middle\">Tokenizer</text><text x=\"370.0\" y=\"46.0\" font-size=\"24\" >cuts text into tokens</text><text x=\"370.0\" y=\"78.0\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">\"tokenization\" → token | ization</text></g><g id=\"s-emb\"><line x1=\"210\" y1=\"84\" x2=\"210\" y2=\"118\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><rect x=\"90\" y=\"122\" width=\"240\" height=\"64\" rx=\"12\" stroke-width=\"3\"/><text x=\"210.0\" y=\"164.0\" font-size=\"28\" text-anchor=\"middle\">Embedding</text><text x=\"370.0\" y=\"148.0\" font-size=\"24\" >looks up a list of numbers per token</text><text x=\"370.0\" y=\"180.0\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">king → [0.12, −0.83, 0.40, …]</text></g><g id=\"s-att\"><line x1=\"210\" y1=\"186\" x2=\"210\" y2=\"220\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><rect x=\"90\" y=\"224\" width=\"240\" height=\"64\" rx=\"12\" stroke-width=\"3\"/><text x=\"210.0\" y=\"266.0\" font-size=\"28\" text-anchor=\"middle\">Attention</text><text x=\"370.0\" y=\"250.0\" font-size=\"24\" >lets tokens share meaning</text><text x=\"370.0\" y=\"282.0\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">machine learning model ≠ fashion model</text></g><g id=\"s-mlp\"><line x1=\"210\" y1=\"288\" x2=\"210\" y2=\"322\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><rect x=\"90\" y=\"326\" width=\"240\" height=\"64\" rx=\"12\" stroke-width=\"3\"/><text x=\"210.0\" y=\"368.0\" font-size=\"28\" text-anchor=\"middle\">MLP</text><text x=\"370.0\" y=\"352.0\" font-size=\"24\" >works on each token on its own</text><text x=\"370.0\" y=\"384.0\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">every token, in parallel</text></g><g id=\"s-unemb\"><line x1=\"210\" y1=\"390\" x2=\"210\" y2=\"424\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><rect x=\"90\" y=\"428\" width=\"240\" height=\"64\" rx=\"12\" stroke-width=\"3\"/><text x=\"210.0\" y=\"470.0\" font-size=\"28\" text-anchor=\"middle\">Unembedding</text><text x=\"370.0\" y=\"454.0\" font-size=\"24\" >scores every token it knows</text><text x=\"370.0\" y=\"486.0\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">50,257 scores</text></g><g id=\"s-soft\"><line x1=\"210\" y1=\"492\" x2=\"210\" y2=\"526\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><rect x=\"90\" y=\"530\" width=\"240\" height=\"64\" rx=\"12\" stroke-width=\"3\"/><text x=\"210.0\" y=\"572.0\" font-size=\"28\" text-anchor=\"middle\">Softmax</text><text x=\"370.0\" y=\"556.0\" font-size=\"24\" >turns scores into chances</text><text x=\"370.0\" y=\"588.0\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">creature 42%, wizard 18%, …</text></g>\n<path id=\"loop\" d=\"M90,358 C30,358 30,256 86,256\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/>\n<path id=\"again\" d=\"M210,594 V630 H1170 V6 H210 V16\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"12 8\" marker-end=\"url(#head)\"/></svg>",
+    "softmax": "<svg viewBox=\"0 0 1200 640\"><text x=\"40.0\" y=\"40.0\" font-size=\"26\" fill=\"var(--muted)\">Harry Potter’s least favourite teacher, Professor …</text>\n<text x=\"40.0\" y=\"96.0\" font-size=\"24\" text-anchor=\"start\" fill=\"var(--muted)\">next token</text><g id=\"zh\"><text x=\"330.0\" y=\"96.0\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">score z</text></g><g id=\"eh\"><text x=\"520.0\" y=\"96.0\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">e^z</text></g><g id=\"ph\"><text x=\"600.0\" y=\"96.0\" font-size=\"24\" text-anchor=\"start\" fill=\"var(--muted)\">chance</text></g>\n<g id=\"row0\"><text x=\"40.0\" y=\"160.0\" font-size=\"26\" font-family=\"mono\">·<tspan id=\"tk0\">Snape</tspan></text><text x=\"330.0\" y=\"160.0\" font-size=\"26\" id=\"z0\" text-anchor=\"end\">4.2</text><text x=\"520.0\" y=\"160.0\" font-size=\"26\" id=\"e0\" text-anchor=\"end\">66.69</text><path id=\"b0\" d=\"M600,130 H860.5 V172 H600 Z\" stroke-width=\"3\" class=\"tone-good\"/><text x=\"1170.0\" y=\"160.0\" font-size=\"24\" id=\"p0\" text-anchor=\"end\">52.1%</text></g><g id=\"row1\"><text x=\"40.0\" y=\"232.0\" font-size=\"26\" font-family=\"mono\">·<tspan id=\"tk1\">Um</tspan></text><text x=\"330.0\" y=\"232.0\" font-size=\"26\" id=\"z1\" text-anchor=\"end\">3.4</text><text x=\"520.0\" y=\"232.0\" font-size=\"26\" id=\"e1\" text-anchor=\"end\">29.96</text><path id=\"b1\" d=\"M600,202 H717.1 V244 H600 Z\" stroke-width=\"3\"/><text x=\"1170.0\" y=\"232.0\" font-size=\"24\" id=\"p1\" text-anchor=\"end\">23.4%</text></g><g id=\"row2\"><text x=\"40.0\" y=\"304.0\" font-size=\"26\" font-family=\"mono\">·<tspan id=\"tk2\">Qu</tspan></text><text x=\"330.0\" y=\"304.0\" font-size=\"26\" id=\"z2\" text-anchor=\"end\">2.9</text><text x=\"520.0\" y=\"304.0\" font-size=\"26\" id=\"e2\" text-anchor=\"end\">18.17</text><path id=\"b2\" d=\"M600,274 H671.0 V316 H600 Z\" stroke-width=\"3\"/><text x=\"1170.0\" y=\"304.0\" font-size=\"24\" id=\"p2\" text-anchor=\"end\">14.2%</text></g><g id=\"row3\"><text x=\"40.0\" y=\"376.0\" font-size=\"26\" font-family=\"mono\">·<tspan id=\"tk3\">Lock</tspan></text><text x=\"330.0\" y=\"376.0\" font-size=\"26\" id=\"z3\" text-anchor=\"end\">2.1</text><text x=\"520.0\" y=\"376.0\" font-size=\"26\" id=\"e3\" text-anchor=\"end\">8.17</text><path id=\"b3\" d=\"M600,346 H631.9 V388 H600 Z\" stroke-width=\"3\"/><text x=\"1170.0\" y=\"376.0\" font-size=\"24\" id=\"p3\" text-anchor=\"end\">6.4%</text></g><g id=\"row4\"><text x=\"40.0\" y=\"448.0\" font-size=\"26\" font-family=\"mono\">·<tspan id=\"tk4\">McG</tspan></text><text x=\"330.0\" y=\"448.0\" font-size=\"26\" id=\"z4\" text-anchor=\"end\">1.6</text><text x=\"520.0\" y=\"448.0\" font-size=\"26\" id=\"e4\" text-anchor=\"end\">4.95</text><path id=\"b4\" d=\"M600,418 H619.3 V460 H600 Z\" stroke-width=\"3\"/><text x=\"1170.0\" y=\"448.0\" font-size=\"24\" id=\"p4\" text-anchor=\"end\">3.9%</text></g><g id=\"row5\"><text x=\"40.0\" y=\"520.0\" font-size=\"26\" font-family=\"mono\">·<tspan id=\"tk5\">banana</tspan></text><text x=\"330.0\" y=\"520.0\" font-size=\"26\" id=\"z5\" text-anchor=\"end\">−3.0</text><text x=\"520.0\" y=\"520.0\" font-size=\"26\" id=\"e5\" text-anchor=\"end\">0.05</text><path id=\"b5\" d=\"M600,490 H600.2 V532 H600 Z\" stroke-width=\"3\"/><text x=\"1170.0\" y=\"520.0\" font-size=\"24\" id=\"p5\" text-anchor=\"end\">0.04%</text></g><path id=\"b0-t0\" d=\"M600,130 H1090.3 V172 H600 Z\"/><path id=\"b1-t0\" d=\"M600,202 H609.0 V244 H600 Z\"/><path id=\"b2-t0\" d=\"M600,274 H600.7 V316 H600 Z\"/><path id=\"b3-t0\" d=\"M600,346 H600.0 V388 H600 Z\"/><path id=\"b4-t0\" d=\"M600,418 H600.0 V460 H600 Z\"/><path id=\"b5-t0\" d=\"M600,490 H600.0 V532 H600 Z\"/><path id=\"b0-t2\" d=\"M600,130 H775.9 V172 H600 Z\"/><path id=\"b1-t2\" d=\"M600,202 H717.9 V244 H600 Z\"/><path id=\"b2-t2\" d=\"M600,274 H691.8 V316 H600 Z\"/><path id=\"b3-t2\" d=\"M600,346 H661.6 V388 H600 Z\"/><path id=\"b4-t2\" d=\"M600,418 H647.9 V460 H600 Z\"/><path id=\"b5-t2\" d=\"M600,490 H604.8 V532 H600 Z\"/>\n<g id=\"total\"><text x=\"330.0\" y=\"610.0\" font-size=\"26\" text-anchor=\"end\" fill=\"var(--muted)\">total</text><text x=\"520.0\" y=\"610.0\" font-size=\"26\" text-anchor=\"end\">127.99</text></g>\n<text x=\"1160.0\" y=\"40.0\" font-size=\"28\" id=\"temp\" text-anchor=\"end\">T = 1</text></svg>"
+  },
   "scenes": [
     {
-      "type": "chart",
-      "kind": "bar",
+      "type": "svg",
       "chapter": "One job",
-      "title": "What comes next?",
-      "narration": "A GPT does one job. You give it some text, and it guesses what comes next. Here the text is: Once upon a time, in a land of math, there lived a.",
-      "unit": "%",
-      "labels": [
-        "creature",
-        "wizard",
-        "king",
-        "dragon",
-        "girl",
-        "every other token"
+      "title": "It guesses what comes next",
+      "picture": "next",
+      "illustrative": true,
+      "hidden": [
+        "cells",
+        "words",
+        "tok-pick",
+        "tok-next",
+        "bar-creature",
+        "bar-wizard",
+        "bar-king",
+        "bar-dragon",
+        "bar-girl",
+        "bar-every"
       ],
-      "series": [
-        {
-          "name": "chance",
-          "values": [
-            42,
-            18,
-            12,
-            8,
-            5,
-            15
-          ]
-        }
-      ],
+      "labels": {
+        "words": "once upon a time",
+        "bar-every": "every other piece of text"
+      },
+      "narration": "A GPT does one job. You give it some text, and it guesses what comes next.",
       "steps": [
         {
-          "focus": "creature",
-          "say": "It doesn't give one answer. It gives a chance for every possible next piece of text. Creature gets forty two percent."
+          "show": [
+            "words"
+          ],
+          "focus": "words",
+          "say": "Here the text is: Once upon a time, in a land of math, there lived a."
         },
         {
+          "show": [
+            "bar-creature"
+          ],
+          "focus": "bar-creature",
+          "say": "It doesn't give one answer. It gives a chance for every possible next piece. Creature gets forty two percent."
+        },
+        {
+          "show": [
+            "bar-wizard",
+            "bar-king",
+            "bar-dragon",
+            "bar-girl"
+          ],
           "focus": [
-            "wizard",
-            "king"
+            "bar-wizard",
+            "bar-king"
           ],
           "say": "Wizard and king get less. These numbers are made up, but the shape is the real thing."
         },
         {
-          "focus": "every other token",
+          "show": [
+            "bar-every"
+          ],
+          "focus": "bar-every",
           "say": "Every other piece of text it knows shares what is left."
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "One job",
-      "title": "One piece at a time",
-      "narration": "The model doesn't see words. It sees pieces called tokens. This sentence is fourteen of them.",
-      "arrays": [
-        {
-          "name": "a",
-          "label": "tokens 1 to 7",
-          "values": [
-            "Once",
-            "·upon",
-            "·a",
-            "·time",
-            ",",
-            "·in",
-            "·a"
-          ]
-        },
-        {
-          "name": "b",
-          "label": "tokens 8 to 16",
-          "values": [
-            "·land",
-            "·of",
-            "·math",
-            ",",
-            "·there",
-            "·lived",
-            "·a",
-            "",
-            ""
-          ]
-        }
-      ],
-      "indexes": false,
-      "callout": "`·` marks a space at the start of a token",
+      "title": "It adds one token at a time",
+      "picture": "next",
+      "labels": {
+        "cells": "tokens",
+        "sp1": "space",
+        "tok-pick": "creature",
+        "tok-next": "after that"
+      },
+      "narration": "The model doesn't see words. It sees pieces called tokens.",
       "steps": [
         {
-          "focus": [
-            "array:a",
-            "b[0-6]"
+          "show": [
+            "cells"
           ],
-          "say": "Most common words are one token each, and the space in front of a word rides along with it."
+          "focus": "cells",
+          "say": "This sentence is fourteen of them.",
+          "draw": [
+            {
+              "write": "14 tokens",
+              "near": "c13",
+              "side": "right",
+              "id": "n14",
+              "when": "fourteen"
+            }
+          ]
         },
         {
-          "set": {
-            "b[7]": "·creature"
-          },
-          "tint": {
-            "b[7]": "good"
-          },
-          "callout": "pick one by its chance: `·creature`",
-          "say": "The model picks one next token by its chance, say creature, and adds it to the end."
+          "focus": [
+            "c1",
+            "c2",
+            "c3",
+            "sp1"
+          ],
+          "say": "Most common words are one token each, and the space in front of a word rides along with it.",
+          "draw": [
+            {
+              "circle": "sp1",
+              "note": "a space",
+              "when": "the space"
+            }
+          ]
         },
         {
-          "set": {
-            "b[8]": "?"
-          },
+          "show": [
+            "tok-pick"
+          ],
           "tint": {
-            "b[8]": "warn"
+            "tok-pick": "good",
+            "bar-creature": "good"
           },
-          "callout": "run again on all 15 tokens",
-          "say": "Then it runs again on the longer text to guess the token after that. Over and over, token after token. That's how a whole story comes out."
+          "focus": "tok-pick",
+          "erase": true,
+          "say": "The model picks one next token by its chance, say creature, and adds it to the end.",
+          "draw": [
+            {
+              "arrow": [
+                "bar-creature",
+                "tok-pick"
+              ],
+              "when": "adds it"
+            }
+          ]
+        },
+        {
+          "show": [
+            "tok-next"
+          ],
+          "focus": "tok-next",
+          "say": "Then it runs again on the longer text to guess the next one. Token after token, a whole story comes out.",
+          "draw": [
+            {
+              "write": "run again on all 15 tokens",
+              "near": "tok-next",
+              "side": "below",
+              "when": "runs again"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "flow",
+      "type": "svg",
       "chapter": "Inside the model",
-      "title": "From text to chances",
+      "title": "Six stops from text to chances",
+      "picture": "trip",
+      "hidden": [
+        "s-tok",
+        "s-emb",
+        "s-att",
+        "s-mlp",
+        "s-unemb",
+        "s-soft",
+        "loop",
+        "again"
+      ],
+      "labels": {
+        "s-tok": "cut",
+        "s-emb": "list of numbers",
+        "s-att": "talk to each other",
+        "s-mlp": "same set of questions",
+        "loop": "take turns",
+        "s-unemb": "score",
+        "s-soft": "chances"
+      },
       "narration": "Here is the whole trip from text to chances, in six stops.",
       "steps": [
         {
-          "actor": "Tokenizer",
-          "action": "cuts text into tokens",
-          "payload": "\"tokenization\" → token | ization",
-          "icon": "scissors",
+          "show": [
+            "s-tok"
+          ],
+          "focus": "s-tok",
           "say": "First the text is cut into tokens. A rare word gets split into smaller pieces."
         },
         {
-          "actor": "Embedding",
-          "action": "looks up a list of numbers per token",
-          "payload": "king → [0.12, −0.83, 0.40, …]",
-          "icon": "table",
-          "say": "Each token is swapped for a long list of numbers that stands for its meaning. The model looks it up in a big table."
+          "show": [
+            "s-emb"
+          ],
+          "focus": "s-emb",
+          "say": "Each token is swapped for a long list of numbers that stands for its meaning, looked up in a big table."
         },
         {
-          "actor": "Attention",
-          "action": "lets tokens share meaning",
-          "payload": "machine learning model ≠ fashion model",
-          "icon": "arrow-left-right",
-          "tone": "accent",
-          "say": "Then the tokens talk to each other. The word model means something different after machine learning than after fashion."
+          "show": [
+            "s-att"
+          ],
+          "focus": "s-att",
+          "say": "Then the tokens talk to each other. Model means something different after machine learning than after fashion."
         },
         {
-          "actor": "MLP",
-          "action": "works on each token on its own",
-          "payload": "every token, in parallel",
-          "icon": "cpu",
-          "tone": "accent",
-          "say": "Next, each token's numbers go through the same set of questions, all at once. These two stops take turns, again and again."
+          "show": [
+            "s-mlp"
+          ],
+          "trace": [
+            {
+              "ref": "loop",
+              "when": "take turns"
+            }
+          ],
+          "focus": [
+            "s-mlp",
+            "loop"
+          ],
+          "say": "Next, each token's numbers go through the same set of questions. These two stops take turns, again and again."
         },
         {
-          "actor": "Unembedding",
-          "action": "scores every token it knows",
-          "payload": "50,257 scores",
-          "icon": "list-ordered",
+          "show": [
+            "s-unemb"
+          ],
+          "focus": "s-unemb",
           "say": "At the end, the last token's numbers are turned into a score for every token the model knows."
         },
         {
-          "actor": "Softmax",
-          "action": "turns scores into chances",
-          "payload": "creature 42%, wizard 18%, …",
-          "icon": "percent",
-          "tone": "good",
+          "show": [
+            "s-soft"
+          ],
+          "focus": "s-soft",
           "say": "And one last step turns those scores into chances that add up to one hundred percent."
         }
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "Inside the model",
-      "title": "Written rules or learned numbers",
-      "narration": "A normal program follows rules a person wrote. A model like this has almost no hand written rules. It's mostly numbers that were tuned.",
-      "sides": [
-        {
-          "title": "A program you write"
-        },
-        {
-          "title": "A trained model"
-        }
+      "title": "Not written rules, but learned numbers",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><text x=\"300.0\" y=\"50.0\" font-size=\"30\" text-anchor=\"middle\">a program you write</text><text x=\"900.0\" y=\"50.0\" font-size=\"30\" text-anchor=\"middle\">a trained model</text>\n<line x1=\"600\" y1=\"20\" x2=\"600\" y2=\"620\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<g id=\"code\"><text x=\"60.0\" y=\"150.0\" font-size=\"26\" font-family=\"mono\">if (word === \"king\")</text><text x=\"92.0\" y=\"192.0\" font-size=\"26\" font-family=\"mono\">return \"queen\";</text></g>\n<g id=\"dots\"><circle cx=\"680\" cy=\"360\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"740\" cy=\"300\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"790\" cy=\"330\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"850\" cy=\"260\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"900\" cy=\"280\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"960\" cy=\"210\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"1010\" cy=\"230\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"1070\" cy=\"160\" r=\"7\" fill=\"var(--text)\"/><circle cx=\"1120\" cy=\"175\" r=\"7\" fill=\"var(--text)\"/></g>\n<line id=\"fit\" x1=\"650\" y1=\"380\" x2=\"1150\" y2=\"140\" stroke=\"var(--text)\" stroke-width=\"4\"/>\n<text x=\"660.0\" y=\"150.0\" font-size=\"26\" id=\"eq\" font-family=\"mono\">y = m·x + b</text>\n<text x=\"60.0\" y=\"300.0\" font-size=\"26\" id=\"sizeL\">rules you can read</text><text x=\"640.0\" y=\"420.0\" font-size=\"26\" id=\"sizeR\">175 billion weights in GPT-3</text>\n<text x=\"60.0\" y=\"370.0\" font-size=\"26\" id=\"runL\">each run, the input changes</text>\n<g id=\"loopsL\"><text x=\"60.0\" y=\"520.0\" font-size=\"26\" >branches and loops</text></g>\n<g id=\"grid\"><rect x=\"700\" y=\"470\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"740\" y=\"470\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"780\" y=\"470\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"820\" y=\"470\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"700\" y=\"504\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"740\" y=\"504\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"780\" y=\"504\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"820\" y=\"504\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"700\" y=\"538\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"740\" y=\"538\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"780\" y=\"538\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"820\" y=\"538\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"700\" y=\"572\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"740\" y=\"572\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"780\" y=\"572\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"820\" y=\"572\" width=\"40\" height=\"34\" stroke-width=\"2\"/><text x=\"880.0\" y=\"552.0\" font-size=\"34\" text-anchor=\"middle\">×</text><rect x=\"920\" y=\"470\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"920\" y=\"504\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"920\" y=\"538\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"920\" y=\"572\" width=\"40\" height=\"34\" stroke-width=\"2\"/><text x=\"1000.0\" y=\"552.0\" font-size=\"34\" text-anchor=\"middle\">=</text><rect x=\"1040\" y=\"470\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"1040\" y=\"504\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"1040\" y=\"538\" width=\"40\" height=\"34\" stroke-width=\"2\"/><rect x=\"1040\" y=\"572\" width=\"40\" height=\"34\" stroke-width=\"2\"/>\n<text x=\"780.0\" y=\"630.0\" font-size=\"22\" text-anchor=\"middle\" fill=\"var(--muted)\">weights</text><text x=\"940.0\" y=\"630.0\" font-size=\"22\" text-anchor=\"middle\" fill=\"var(--muted)\">text</text></g></svg>",
+      "hidden": [
+        "code",
+        "dots",
+        "fit",
+        "eq",
+        "sizeL",
+        "sizeR",
+        "runL",
+        "loopsL",
+        "grid"
       ],
-      "rows": [
+      "labels": {
+        "code": "rules",
+        "dots": "training nudges",
+        "fit": "line",
+        "eq": "m x plus b",
+        "sizeR": "hundred and seventy five billion",
+        "grid": "grids"
+      },
+      "narration": "A normal program follows rules a person wrote. A model like this is mostly numbers that were tuned.",
+      "steps": [
         {
-          "label": "Who decides what it does",
-          "cells": [
-            "A programmer writes rules",
-            "Training tunes numbers, called weights"
-          ]
+          "show": [
+            "code",
+            "dots"
+          ],
+          "focus": [
+            "code",
+            "dots"
+          ],
+          "say": "In a program, a person writes the rules. In a model, training nudges numbers called weights until the guesses get good."
         },
         {
-          "label": "A tiny example",
-          "cells": [
+          "show": [
+            "eq"
+          ],
+          "trace": [
             {
-              "code": "if (word === \"king\")\n  return \"queen\";",
-              "lang": "js"
-            },
+              "ref": "fit",
+              "when": "finds"
+            }
+          ],
+          "focus": [
+            "eq",
+            "fit"
+          ],
+          "say": "Think of a line, y equals m x plus b. Training finds good values for m and b.",
+          "draw": [
             {
-              "code": "y = m * x + b\n// m and b are learned",
-              "lang": "js"
+              "write": "m and b are learned",
+              "near": "fit",
+              "side": "below",
+              "when": "good values"
             }
           ]
         },
         {
-          "label": "How big",
-          "cells": [
-            "Rules you can read",
-            "175 billion weights in GPT-3"
-          ]
-        },
-        {
-          "label": "What changes each run",
-          "cells": [
-            "The input",
-            "Only your text: the weights stay fixed"
-          ]
-        },
-        {
-          "label": "The work inside",
-          "cells": [
-            "Branches and loops",
-            "Weights times your text, as big grids of numbers"
-          ]
-        }
-      ],
-      "steps": [
-        {
-          "focus": 0,
-          "say": "In a program, a person writes the rules. In a model, training nudges numbers called weights until the guesses get good."
-        },
-        {
-          "focus": 1,
-          "say": "Think of a line, y equals m x plus b. Training finds good values for m and b."
-        },
-        {
-          "focus": 2,
+          "show": [
+            "sizeL",
+            "sizeR"
+          ],
+          "erase": true,
+          "focus": "sizeR",
           "say": "Now scale that up. GPT-3 has a hundred and seventy five billion of those numbers."
         },
         {
-          "focus": 3,
+          "show": [
+            "runL"
+          ],
+          "set": {
+            "sizeR": "175 billion weights, fixed once trained"
+          },
+          "focus": [
+            "sizeR",
+            "runL"
+          ],
           "say": "Once training is done, the weights stay fixed. Only your text changes from run to run."
         },
         {
-          "focus": 4,
-          "say": "And almost all the work is multiplying grids of weights by your text's numbers. Graphics chips are very good at that."
+          "show": [
+            "loopsL",
+            "grid"
+          ],
+          "focus": "grid",
+          "say": "Almost all the work is multiplying grids of weights by your text's numbers. Graphics chips are very good at that."
         }
       ]
     },
     {
       "type": "svg",
       "chapter": "Meaning as a place",
-      "title": "Words as points",
-      "narration": "Each token's list of numbers is a point in a huge space. GPT-3 uses 12,288 numbers per token. Here is a flat sketch of the idea.",
-      "svg": "<svg viewBox=\"0 0 1200 610\"><defs><marker id=\"head-accent\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--accent)\"/></marker><marker id=\"head-good\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--good)\"/></marker><marker id=\"head-warn\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--warn)\"/></marker></defs><g stroke=\"var(--border)\" stroke-width=\"2\"><line x1=\"40\" y1=\"590\" x2=\"1180\" y2=\"590\"/><line x1=\"40\" y1=\"590\" x2=\"40\" y2=\"30\"/></g><g id=\"tall\" class=\"tone-neutral\"><g id=\"w-tower\" class=\"tone-neutral\"><circle cx=\"190\" cy=\"130\" r=\"9\"/><text x=\"190.0\" y=\"110.0\" font-size=\"24\" text-anchor=\"middle\">tower</text></g><g id=\"w-skyscraper\" class=\"tone-neutral\"><circle cx=\"110\" cy=\"200\" r=\"9\"/><text x=\"110.0\" y=\"180.0\" font-size=\"24\" text-anchor=\"middle\">skyscraper</text></g><g id=\"w-spire\" class=\"tone-neutral\"><circle cx=\"290\" cy=\"90\" r=\"9\"/><text x=\"290.0\" y=\"70.0\" font-size=\"24\" text-anchor=\"middle\">spire</text></g><g id=\"w-lighthouse\" class=\"tone-neutral\"><circle cx=\"280\" cy=\"215\" r=\"9\"/><text x=\"280.0\" y=\"195.0\" font-size=\"24\" text-anchor=\"middle\">lighthouse</text></g></g><g id=\"royal\"><g id=\"w-man\" class=\"tone-accent\"><circle cx=\"470\" cy=\"330\" r=\"9\"/><text x=\"470.0\" y=\"310.0\" font-size=\"24\" text-anchor=\"middle\">man</text></g><g id=\"w-woman\" class=\"tone-accent\"><circle cx=\"610\" cy=\"250\" r=\"9\"/><text x=\"610.0\" y=\"230.0\" font-size=\"24\" text-anchor=\"middle\">woman</text></g><g id=\"w-king\" class=\"tone-accent\"><circle cx=\"520\" cy=\"470\" r=\"9\"/><text x=\"520.0\" y=\"450.0\" font-size=\"24\" text-anchor=\"middle\">king</text></g><g id=\"w-queen\" class=\"tone-accent\"><circle cx=\"660\" cy=\"390\" r=\"9\"/><text x=\"660.0\" y=\"370.0\" font-size=\"24\" text-anchor=\"middle\">queen</text></g></g><g id=\"food\"><g id=\"w-Japan\" class=\"tone-good\"><circle cx=\"860\" cy=\"110\" r=\"9\"/><text x=\"860.0\" y=\"90.0\" font-size=\"24\" text-anchor=\"middle\">Japan</text></g><g id=\"w-Germany\" class=\"tone-good\"><circle cx=\"1050\" cy=\"160\" r=\"9\"/><text x=\"1050.0\" y=\"140.0\" font-size=\"24\" text-anchor=\"middle\">Germany</text></g><g id=\"w-sushi\" class=\"tone-good\"><circle cx=\"870\" cy=\"290\" r=\"9\"/><text x=\"870.0\" y=\"270.0\" font-size=\"24\" text-anchor=\"middle\">sushi</text></g><g id=\"w-bratwurst\" class=\"tone-good\"><circle cx=\"1060\" cy=\"340\" r=\"9\"/><text x=\"1060.0\" y=\"320.0\" font-size=\"24\" text-anchor=\"middle\">bratwurst</text></g></g><g id=\"plurals\"><g id=\"w-cat\" class=\"tone-warn\"><circle cx=\"140\" cy=\"420\" r=\"9\"/><text x=\"140.0\" y=\"400.0\" font-size=\"24\" text-anchor=\"middle\">cat</text></g><g id=\"w-cats\" class=\"tone-warn\"><circle cx=\"260\" cy=\"470\" r=\"9\"/><text x=\"260.0\" y=\"450.0\" font-size=\"24\" text-anchor=\"middle\">cats</text></g><g id=\"w-dog\" class=\"tone-warn\"><circle cx=\"120\" cy=\"500\" r=\"9\"/><text x=\"120.0\" y=\"480.0\" font-size=\"24\" text-anchor=\"middle\">dog</text></g><g id=\"w-dogs\" class=\"tone-warn\"><circle cx=\"240\" cy=\"550\" r=\"9\"/><text x=\"240.0\" y=\"530.0\" font-size=\"24\" text-anchor=\"middle\">dogs</text></g></g><g id=\"gender\"><line id=\"a-mw\" x1=\"482.2\" y1=\"323.1\" x2=\"596.1\" y2=\"257.9\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\"/><line id=\"a-kq\" x1=\"532.2\" y1=\"463.1\" x2=\"646.1\" y2=\"397.9\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\" stroke-dasharray=\"10 7\"/></g><g id=\"country\"><line id=\"a-jg\" x1=\"873.5\" y1=\"113.6\" x2=\"1034.5\" y2=\"155.9\" stroke=\"var(--good)\" stroke-width=\"4\" marker-end=\"url(#head-good)\"/><line id=\"a-sb\" x1=\"883.5\" y1=\"293.6\" x2=\"1044.5\" y2=\"335.9\" stroke=\"var(--good)\" stroke-width=\"4\" marker-end=\"url(#head-good)\" stroke-dasharray=\"10 7\"/></g><g id=\"plural\"><line id=\"a-cc\" x1=\"152.9\" y1=\"425.4\" x2=\"245.2\" y2=\"463.8\" stroke=\"var(--warn)\" stroke-width=\"4\" marker-end=\"url(#head-warn)\"/><line id=\"a-dd\" x1=\"132.9\" y1=\"505.4\" x2=\"225.2\" y2=\"543.8\" stroke=\"var(--warn)\" stroke-width=\"4\" marker-end=\"url(#head-warn)\" stroke-dasharray=\"10 7\"/></g><text x=\"1180.0\" y=\"30.0\" font-size=\"22\" text-anchor=\"end\" fill=\"var(--muted)\">a flat sketch of a 12,288-number space</text></svg>",
+      "title": "Close meanings sit close together",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker><marker id=\"head-muted\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs><g stroke=\"var(--border)\" stroke-width=\"2\"><line x1=\"40\" y1=\"590\" x2=\"1180\" y2=\"590\"/><line x1=\"40\" y1=\"590\" x2=\"40\" y2=\"30\"/></g><g id=\"tall\"><g id=\"w-tower\"><circle cx=\"190\" cy=\"130\" r=\"9\" fill=\"var(--text)\"/><text x=\"190.0\" y=\"110.0\" font-size=\"24\" text-anchor=\"middle\">tower</text></g><g id=\"w-skyscraper\"><circle cx=\"110\" cy=\"200\" r=\"9\" fill=\"var(--text)\"/><text x=\"110.0\" y=\"180.0\" font-size=\"24\" text-anchor=\"middle\">skyscraper</text></g><g id=\"w-spire\"><circle cx=\"290\" cy=\"90\" r=\"9\" fill=\"var(--text)\"/><text x=\"290.0\" y=\"70.0\" font-size=\"24\" text-anchor=\"middle\">spire</text></g><g id=\"w-lighthouse\"><circle cx=\"280\" cy=\"215\" r=\"9\" fill=\"var(--text)\"/><text x=\"280.0\" y=\"195.0\" font-size=\"24\" text-anchor=\"middle\">lighthouse</text></g></g><g id=\"royal\"><g id=\"w-man\"><circle cx=\"470\" cy=\"330\" r=\"9\" fill=\"var(--text)\"/><text x=\"470.0\" y=\"310.0\" font-size=\"24\" text-anchor=\"middle\">man</text></g><g id=\"w-woman\"><circle cx=\"610\" cy=\"250\" r=\"9\" fill=\"var(--text)\"/><text x=\"610.0\" y=\"230.0\" font-size=\"24\" text-anchor=\"middle\">woman</text></g><g id=\"w-king\"><circle cx=\"520\" cy=\"470\" r=\"9\" fill=\"var(--text)\"/><text x=\"520.0\" y=\"450.0\" font-size=\"24\" text-anchor=\"middle\">king</text></g><g id=\"w-queen\"><circle cx=\"660\" cy=\"390\" r=\"9\" fill=\"var(--text)\"/><text x=\"660.0\" y=\"370.0\" font-size=\"24\" text-anchor=\"middle\">queen</text></g></g><g id=\"food\"><g id=\"w-Japan\"><circle cx=\"860\" cy=\"110\" r=\"9\" fill=\"var(--text)\"/><text x=\"860.0\" y=\"90.0\" font-size=\"24\" text-anchor=\"middle\">Japan</text></g><g id=\"w-Germany\"><circle cx=\"1050\" cy=\"160\" r=\"9\" fill=\"var(--text)\"/><text x=\"1050.0\" y=\"140.0\" font-size=\"24\" text-anchor=\"middle\">Germany</text></g><g id=\"w-sushi\"><circle cx=\"870\" cy=\"290\" r=\"9\" fill=\"var(--text)\"/><text x=\"870.0\" y=\"270.0\" font-size=\"24\" text-anchor=\"middle\">sushi</text></g><g id=\"w-bratwurst\"><circle cx=\"1060\" cy=\"340\" r=\"9\" fill=\"var(--text)\"/><text x=\"1060.0\" y=\"320.0\" font-size=\"24\" text-anchor=\"middle\">bratwurst</text></g></g><g id=\"plurals\"><g id=\"w-cat\"><circle cx=\"140\" cy=\"420\" r=\"9\" fill=\"var(--text)\"/><text x=\"140.0\" y=\"400.0\" font-size=\"24\" text-anchor=\"middle\">cat</text></g><g id=\"w-cats\"><circle cx=\"260\" cy=\"470\" r=\"9\" fill=\"var(--text)\"/><text x=\"260.0\" y=\"450.0\" font-size=\"24\" text-anchor=\"middle\">cats</text></g><g id=\"w-dog\"><circle cx=\"120\" cy=\"500\" r=\"9\" fill=\"var(--text)\"/><text x=\"120.0\" y=\"480.0\" font-size=\"24\" text-anchor=\"middle\">dog</text></g><g id=\"w-dogs\"><circle cx=\"240\" cy=\"550\" r=\"9\" fill=\"var(--text)\"/><text x=\"240.0\" y=\"530.0\" font-size=\"24\" text-anchor=\"middle\">dogs</text></g></g><g id=\"gender\"><line id=\"a-mw\" x1=\"482.2\" y1=\"323.1\" x2=\"596.1\" y2=\"257.9\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><line id=\"a-kq\" x1=\"532.2\" y1=\"463.1\" x2=\"646.1\" y2=\"397.9\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\" stroke-dasharray=\"10 7\"/></g><g id=\"country\"><line id=\"a-jg\" x1=\"873.5\" y1=\"113.6\" x2=\"1034.5\" y2=\"155.9\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><line id=\"a-sb\" x1=\"883.5\" y1=\"293.6\" x2=\"1044.5\" y2=\"335.9\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\" stroke-dasharray=\"10 7\"/></g><g id=\"plural\"><line id=\"a-cc\" x1=\"152.9\" y1=\"425.4\" x2=\"245.2\" y2=\"463.8\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><line id=\"a-dd\" x1=\"132.9\" y1=\"505.4\" x2=\"225.2\" y2=\"543.8\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\" stroke-dasharray=\"10 7\"/></g><text x=\"1180.0\" y=\"625.0\" font-size=\"22\" text-anchor=\"end\" fill=\"var(--muted)\">a flat sketch of a 12,288-number space</text></svg>",
+      "illustrative": true,
       "labels": {
-        "tall": "tall buildings",
+        "tall": "tower skyscraper spire lighthouse",
         "royal": "man woman king queen",
         "food": "sushi bratwurst Japan Germany",
         "plurals": "plural",
-        "gender": "direction",
-        "country": "direction",
+        "gender": "step",
+        "country": "step",
         "plural": "direction"
       },
       "hidden": [
@@ -267,6 +346,7 @@
         "country",
         "plural"
       ],
+      "narration": "Each token's list of numbers is a point in a huge space. GPT-3 uses 12,288 numbers per token.",
       "steps": [
         {
           "focus": [
@@ -282,19 +362,34 @@
             "gender",
             "royal"
           ],
-          "callout": "king + (woman − man) ≈ queen",
-          "say": "Directions mean something too. The step from man to woman is about the same as the step from king to queen."
+          "say": "Directions mean something too. The step from man to woman is about the same as the step from king to queen.",
+          "draw": [
+            {
+              "write": "king + (woman − man) ≈ queen",
+              "near": "w-queen",
+              "side": "right",
+              "when": "king to queen"
+            }
+          ]
         },
         {
           "show": [
             "country"
           ],
+          "erase": true,
           "focus": [
             "country",
             "food"
           ],
-          "callout": "sushi + (Germany − Japan) ≈ bratwurst",
-          "say": "Take sushi, add the step from Japan to Germany, and you land near bratwurst."
+          "say": "Take sushi, add the step from Japan to Germany, and you land near bratwurst.",
+          "draw": [
+            {
+              "write": "sushi + (Germany − Japan)\n≈ bratwurst",
+              "near": "w-bratwurst",
+              "side": "below",
+              "when": "land near"
+            }
+          ]
         },
         {
           "show": [
@@ -304,409 +399,463 @@
             "plural",
             "plurals"
           ],
-          "callout": "a · b is big when a and b point the same way",
-          "say": "There's even a direction for plural. Multiply two lists number by number and add it all up, and the total tells you how much they point the same way."
+          "say": "There's even a direction for plural, from cat to cats."
+        },
+        {
+          "focus": [
+            "a-cc",
+            "a-dd"
+          ],
+          "erase": true,
+          "say": "Multiply two lists number by number and add it all up. The total says how much they point the same way.",
+          "draw": [
+            {
+              "write": "a · b is big when a and b\npoint the same way",
+              "near": "w-dogs",
+              "side": "right",
+              "when": "the total"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Meaning as a place",
-      "title": "Context soaks in",
-      "narration": "At first, a token's numbers only mean the word itself. As they pass through the layers, they soak up the text around them. Take the word king in a play by Shakespeare.",
-      "columns": [
-        "Where",
-        "What the numbers for \"king\" hold"
+      "title": "Context soaks into each token",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><line x1=\"80\" y1=\"560\" x2=\"460\" y2=\"560\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"500\" x2=\"460\" y2=\"500\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"440\" x2=\"460\" y2=\"440\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"380\" x2=\"460\" y2=\"380\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"320\" x2=\"460\" y2=\"320\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"260\" x2=\"460\" y2=\"260\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"200\" x2=\"460\" y2=\"200\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"80\" y1=\"140\" x2=\"460\" y2=\"140\" stroke=\"var(--muted)\" stroke-width=\"3\"/><text x=\"480.0\" y=\"568.0\" font-size=\"22\" fill=\"var(--muted)\">layer 1</text><text x=\"480.0\" y=\"148.0\" font-size=\"22\" fill=\"var(--muted)\">layer 96</text>\n<g id=\"king\"><rect x=\"200\" y=\"584\" width=\"140\" height=\"48\" rx=\"10\" stroke-width=\"3\"/><text x=\"270.0\" y=\"617.0\" font-size=\"26\" text-anchor=\"middle\" font-family=\"mono\">king</text></g>\n<text x=\"560.0\" y=\"617.0\" font-size=\"26\" id=\"t0\">the word king</text><text x=\"560.0\" y=\"437.0\" font-size=\"26\" id=\"t1\">+ a king of Scotland</text><text x=\"560.0\" y=\"287.0\" font-size=\"26\" id=\"t2\">+ took the throne by murder</text><text x=\"560.0\" y=\"97.0\" font-size=\"26\" id=\"t3\">+ old, poetic English</text></svg>",
+      "illustrative": true,
+      "hidden": [
+        "t1",
+        "t2",
+        "t3"
       ],
-      "rows": [
-        {
-          "cells": [
-            "Before layer 1",
-            "the word king"
-          ]
-        },
-        {
-          "cells": [
-            "A few layers in",
-            "a king of Scotland"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Deeper",
-            "a king of Scotland who took the throne by murder"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "After layer 96",
-            "all that, plus: in old, poetic English"
-          ],
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "king": "king",
+        "t1": "Scotland",
+        "t2": "murder",
+        "t3": "poetry"
+      },
+      "narration": "At first, a token's numbers only mean the word itself. As they pass through the layers, they soak up the text around them.",
       "steps": [
         {
-          "focus": 0,
-          "say": "Before the first layer, king just means king."
+          "focus": [
+            "king",
+            "t0"
+          ],
+          "say": "Take the word king, in a play by Shakespeare. Before the first layer, king just means king."
         },
         {
+          "move": {
+            "king": {
+              "to": "translate(0 -180)"
+            }
+          },
           "show": [
-            1
+            "t1"
+          ],
+          "focus": [
+            "king",
+            "t1"
           ],
           "say": "A few layers in, it has picked up that this king rules Scotland."
         },
         {
+          "move": {
+            "king": {
+              "to": "translate(0 -330)"
+            }
+          },
           "show": [
-            2
+            "t2"
+          ],
+          "focus": [
+            "king",
+            "t2"
           ],
           "say": "Deeper still, it holds the story: he got the crown by murder."
         },
         {
+          "move": {
+            "king": {
+              "to": "translate(0 -520)"
+            }
+          },
           "show": [
-            3
+            "t3"
           ],
-          "callout": "GPT-3: 96 layers",
-          "say": "By the last of GPT-3's ninety six layers, it even knows the style is old poetry. This is a rough picture, not what the numbers literally say."
+          "focus": [
+            "king",
+            "t3"
+          ],
+          "say": "By the last of GPT-3's ninety six layers, it even knows the style is old poetry."
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Meaning as a place",
-      "title": "GPT-3 by the numbers",
+      "title": "GPT-3 is big every way you measure it",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><g id=\"dim\"><text x=\"700.0\" y=\"60.0\" font-size=\"26\" text-anchor=\"middle\">12,288 numbers per token</text><line x1=\"260\" y1=\"76\" x2=\"1140\" y2=\"76\" stroke=\"var(--muted)\" stroke-width=\"3\"/></g>\n<g id=\"row\"><rect x=\"260\" y=\"150\" width=\"880\" height=\"44\" rx=\"4\" stroke-width=\"3\"/><text x=\"280.0\" y=\"181.0\" font-size=\"24\" font-family=\"mono\">king</text></g>\n<g id=\"table\"><rect x=\"260\" y=\"96\" width=\"880\" height=\"350\" rx=\"6\" stroke-width=\"3\"/><text x=\"130.0\" y=\"260.0\" font-size=\"28\" text-anchor=\"middle\">50,257</text><text x=\"130.0\" y=\"296.0\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">tokens</text>\n<text x=\"700.0\" y=\"330.0\" font-size=\"30\" text-anchor=\"middle\">617,558,016 weights</text></g>\n<g id=\"window\"><rect x=\"260\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"300\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"340\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"380\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"420\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"460\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"500\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"540\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"580\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"620\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"660\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"700\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"740\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"780\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"820\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"860\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"900\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"940\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"980\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"1020\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"1060\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><rect x=\"1100\" y=\"490\" width=\"40\" height=\"50\" stroke-width=\"2\"/><text x=\"130.0\" y=\"512.0\" font-size=\"28\" text-anchor=\"middle\">2,048</text><text x=\"130.0\" y=\"546.0\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">at once</text></g>\n<text x=\"700.0\" y=\"610.0\" font-size=\"28\" id=\"total\" text-anchor=\"middle\">about 175,000,000,000 weights in all</text></svg>",
+      "hidden": [
+        "table",
+        "window",
+        "total"
+      ],
+      "labels": {
+        "dim": "twelve thousand",
+        "row": "token",
+        "window": "two thousand and forty eight",
+        "table": "lookup table",
+        "total": "all in"
+      },
       "narration": "Here are a few of GPT-3's real sizes.",
-      "columns": [
-        "What",
-        "Size"
-      ],
-      "rows": [
-        {
-          "cells": [
-            "Numbers per token",
-            "12,288"
-          ]
-        },
-        {
-          "cells": [
-            "Tokens it can see at once",
-            "2,048"
-          ]
-        },
-        {
-          "cells": [
-            "Tokens it knows",
-            "50,257"
-          ]
-        },
-        {
-          "cells": [
-            "Weights in the lookup table",
-            "617,558,016"
-          ]
-        },
-        {
-          "cells": [
-            "Weights in all",
-            "about 175 billion"
-          ]
-        }
-      ],
       "steps": [
         {
-          "focus": 0,
+          "focus": [
+            "dim",
+            "row"
+          ],
           "say": "Every token is a list of twelve thousand two hundred and eighty eight numbers."
         },
         {
-          "focus": 1,
-          "callout": "2,048 × 12,288 = 25,165,824 numbers",
-          "say": "It can look at two thousand and forty eight tokens at once. Anything earlier falls out of view."
-        },
-        {
-          "focus": [
-            2,
-            3
+          "show": [
+            "window"
           ],
-          "callout": "50,257 × 12,288 = 617,558,016",
-          "say": "The lookup table has one row for each of the fifty thousand two hundred and fifty seven tokens it knows. That alone is over six hundred million weights."
+          "focus": "window",
+          "say": "It can look at two thousand and forty eight tokens at once. Anything earlier falls out of view.",
+          "draw": [
+            {
+              "write": "2,048 × 12,288 = 25,165,824",
+              "near": "window",
+              "side": "below",
+              "when": "at once"
+            }
+          ]
         },
         {
-          "focus": 4,
+          "show": [
+            "table"
+          ],
+          "focus": "table",
+          "erase": true,
+          "say": "The lookup table has one row for each of the 50,257 tokens it knows. That alone is over six hundred million weights."
+        },
+        {
+          "show": [
+            "total"
+          ],
+          "focus": "total",
           "say": "All in, about a hundred and seventy five billion."
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Scores to chances",
-      "title": "Softmax on six scores",
-      "narration": "Say the text is: Harry Potter's least favourite teacher, Professor. The model scores every possible next token. Here are six of those scores, and we'll pretend they're all there is.",
-      "columns": [
-        "Next token",
-        "Score z",
-        "e^z",
-        "Chance"
+      "title": "Softmax turns scores into chances",
+      "picture": "softmax",
+      "hidden": [
+        "z0",
+        "z1",
+        "z2",
+        "z3",
+        "z4",
+        "z5",
+        "e0",
+        "e1",
+        "e2",
+        "e3",
+        "e4",
+        "e5",
+        "b0",
+        "p0",
+        "b1",
+        "p1",
+        "b2",
+        "p2",
+        "b3",
+        "p3",
+        "b4",
+        "p4",
+        "b5",
+        "p5",
+        "zh",
+        "eh",
+        "ph",
+        "total",
+        "temp",
+        "b0-t0",
+        "b1-t0",
+        "b2-t0",
+        "b3-t0",
+        "b4-t0",
+        "b5-t0",
+        "b0-t2",
+        "b1-t2",
+        "b2-t2",
+        "b3-t2",
+        "b4-t2",
+        "b5-t2"
       ],
-      "rows": [
-        {
-          "cells": [
-            "`·Snape`",
-            "4.2",
-            "",
-            ""
-          ]
-        },
-        {
-          "cells": [
-            "`·Um`",
-            "3.4",
-            "",
-            ""
-          ]
-        },
-        {
-          "cells": [
-            "`·Qu`",
-            "2.9",
-            "",
-            ""
-          ]
-        },
-        {
-          "cells": [
-            "`·Lock`",
-            "2.1",
-            "",
-            ""
-          ]
-        },
-        {
-          "cells": [
-            "`·McG`",
-            "1.6",
-            "",
-            ""
-          ]
-        },
-        {
-          "cells": [
-            "`·banana`",
-            "−3.0",
-            "",
-            ""
-          ]
-        }
-      ],
+      "labels": {
+        "zh": "pretend",
+        "z5": "minus three",
+        "eh": "e",
+        "ph": "hundred percent",
+        "b0": "Snape",
+        "tk1": "Umbridge"
+      },
+      "narration": "Say the text is: Harry Potter's least favourite teacher, Professor. The model scores every possible next token.",
       "steps": [
         {
-          "focus": "col:Score z",
-          "say": "Scores can be any size, even below zero. Banana gets minus three."
+          "show": [
+            "zh",
+            "z0",
+            "z1",
+            "z2",
+            "z3",
+            "z4",
+            "z5"
+          ],
+          "focus": [
+            "zh",
+            "z5"
+          ],
+          "say": "Here are six of those scores, and we'll pretend they're all there is. Banana gets minus three."
         },
         {
-          "set": {
-            "e^z@0": "66.69",
-            "e^z@1": "29.96",
-            "e^z@2": "18.17",
-            "e^z@3": "8.17",
-            "e^z@4": "4.95",
-            "e^z@5": "0.05"
-          },
-          "callout": "e^4.2 = 66.69, e^−3 = 0.05",
-          "say": "Raise e to each score. Now every number is above zero, and big scores pull far ahead."
+          "show": [
+            "eh",
+            "e0",
+            "e1",
+            "e2",
+            "e3",
+            "e4",
+            "e5"
+          ],
+          "focus": [
+            "eh",
+            "e0",
+            "e1",
+            "e2",
+            "e3",
+            "e4",
+            "e5"
+          ],
+          "say": "Raise e to each score. Now every number is above zero, and big scores pull far ahead.",
+          "draw": [
+            {
+              "write": "e^4.2 = 66.69",
+              "near": "e0",
+              "side": "above",
+              "when": "pull far ahead"
+            }
+          ]
         },
         {
-          "set": {
-            "Chance@0": "52.1%",
-            "Chance@1": "23.4%",
-            "Chance@2": "14.2%",
-            "Chance@3": "6.4%",
-            "Chance@4": "3.9%",
-            "Chance@5": "0.04%"
-          },
-          "callout": "66.69 ÷ 127.99 = 52.1%",
+          "show": [
+            "ph",
+            "total",
+            "b0",
+            "p0",
+            "b1",
+            "p1",
+            "b2",
+            "p2",
+            "b3",
+            "p3",
+            "b4",
+            "p4",
+            "b5",
+            "p5"
+          ],
+          "erase": true,
+          "focus": [
+            "ph",
+            "b0"
+          ],
           "say": "Divide each by the total, 127.99. Now they add up to one hundred percent. Snape gets 52 percent."
         },
         {
-          "focus": 1,
-          "tint": {
-            "1": "warn"
-          },
-          "say": "Notice the second row is only the start of Umbridge. The model picks one token at a time, so the rest of her name would come on the next turns."
+          "focus": "tk1",
+          "say": "The second row is only the start of Umbridge. The rest of her name would come on the next turns.",
+          "draw": [
+            {
+              "underline": "tk1",
+              "note": "only “Um”: the rest comes next turn",
+              "when": "only the start"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "chart",
-      "kind": "bar",
+      "type": "svg",
       "chapter": "Scores to chances",
-      "title": "Temperature",
-      "narration": "There's a dial called temperature. Each score is divided by it before softmax. Here are the same six scores at three settings.",
-      "unit": "%",
-      "labels": [
-        "·Snape",
-        "·Um",
-        "·Qu",
-        "·Lock",
-        "·McG",
-        "·banana"
-      ],
-      "series": [
-        {
-          "name": "T = 0.2",
-          "values": [
-            98.1,
-            1.8,
-            0.1,
-            0,
-            0,
-            0
-          ]
-        },
-        {
-          "name": "T = 1",
-          "values": [
-            52.1,
-            23.4,
-            14.2,
-            6.4,
-            3.9,
-            0
-          ]
-        },
-        {
-          "name": "T = 2",
-          "values": [
-            35.2,
-            23.6,
-            18.4,
-            12.3,
-            9.6,
-            1
-          ]
-        }
-      ],
+      "title": "Temperature flattens or sharpens the chances",
+      "picture": "softmax",
+      "labels": {
+        "temp": "temperature",
+        "b0": "Snape",
+        "row5": "banana"
+      },
+      "narration": "There's a dial called temperature. Each score is divided by it before softmax.",
       "steps": [
         {
-          "focus": "series:T = 0.2",
+          "show": [
+            "temp"
+          ],
+          "morph": {
+            "b0": "b0-t0",
+            "b1": "b1-t0",
+            "b2": "b2-t0",
+            "b3": "b3-t0",
+            "b4": "b4-t0",
+            "b5": "b5-t0"
+          },
+          "set": {
+            "temp": "T = 0.2",
+            "p0": "98.1%",
+            "p1": "1.8%",
+            "p2": "0.15%",
+            "p3": "<0.01%",
+            "p4": "<0.01%",
+            "p5": "<0.01%"
+          },
           "say": "Turn it down near zero, and the top token takes almost everything. Snape gets 98 percent. The text is safe and repetitive."
         },
         {
-          "focus": "series:T = 1",
+          "morph": {
+            "b0": "b0",
+            "b1": "b1",
+            "b2": "b2",
+            "b3": "b3",
+            "b4": "b4",
+            "b5": "b5"
+          },
+          "set": {
+            "temp": "T = 1",
+            "p0": "52.1%",
+            "p1": "23.4%",
+            "p2": "14.2%",
+            "p3": "6.4%",
+            "p4": "3.9%",
+            "p5": "0.04%"
+          },
           "say": "At one, you get the plain softmax from before. Writing is fluent and still varied."
         },
         {
-          "focus": "series:T = 2",
-          "say": "Turn it up to two, and the chances flatten out. Snape drops to 35 percent. Push it much higher, and odd picks like banana start to get chosen, and the text turns to nonsense."
+          "morph": {
+            "b0": "b0-t2",
+            "b1": "b1-t2",
+            "b2": "b2-t2",
+            "b3": "b3-t2",
+            "b4": "b4-t2",
+            "b5": "b5-t2"
+          },
+          "set": {
+            "temp": "T = 2",
+            "p0": "35.2%",
+            "p1": "23.6%",
+            "p2": "18.4%",
+            "p3": "12.3%",
+            "p4": "9.6%",
+            "p5": "0.96%"
+          },
+          "say": "Turn it up to two, and the chances flatten out. Snape drops to 35 percent."
+        },
+        {
+          "tint": {
+            "row5": "bad"
+          },
+          "focus": "row5",
+          "say": "Push it much higher, and odd picks like banana start to get chosen, and the text turns to nonsense."
         }
       ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "The whole map",
-      "title": "Everything in one picture",
+      "title": "The whole trip, over and over",
+      "picture": "trip",
+      "hidden": [
+        "again"
+      ],
+      "labels": {
+        "s-tok": "text becomes",
+        "s-emb": "list of numbers",
+        "s-att": "attention",
+        "s-mlp": "MLP",
+        "loop": "take turns",
+        "s-soft": "chances",
+        "again": "runs again"
+      },
       "narration": "Here is the whole map once more.",
-      "layout": "TB",
-      "nodes": [
-        {
-          "id": "tok",
-          "label": "Tokens",
-          "shape": "step",
-          "caption": "text cut into pieces"
-        },
-        {
-          "id": "emb",
-          "label": "Embedding",
-          "shape": "step",
-          "caption": "a list of numbers each"
-        },
-        {
-          "id": "att",
-          "label": "Attention",
-          "shape": "step",
-          "caption": "tokens share meaning",
-          "group": "96 layers"
-        },
-        {
-          "id": "mlp",
-          "label": "MLP",
-          "shape": "step",
-          "caption": "each token alone",
-          "group": "96 layers"
-        },
-        {
-          "id": "unemb",
-          "label": "Scores to chances",
-          "shape": "step",
-          "caption": "50,257 scores, then a pick"
-        }
-      ],
-      "edges": [
-        {
-          "from": "tok",
-          "to": "emb"
-        },
-        {
-          "from": "emb",
-          "to": "att"
-        },
-        {
-          "from": "att",
-          "to": "mlp"
-        },
-        {
-          "from": "mlp",
-          "to": "unemb"
-        },
-        {
-          "from": "unemb",
-          "to": "tok",
-          "label": "add the pick, run again",
-          "style": "dashed",
-          "hidden": true
-        }
-      ],
       "steps": [
         {
           "focus": [
-            "tok",
-            "emb"
+            "s-tok",
+            "s-emb"
           ],
           "say": "Text becomes tokens, and each token becomes a list of numbers."
         },
         {
           "focus": [
-            "group:96 layers",
-            "att",
-            "mlp"
+            "s-att",
+            "s-mlp",
+            "loop"
           ],
-          "say": "Attention and the MLP take turns, ninety six times in GPT-3."
+          "say": "Attention and the MLP take turns, ninety six times in GPT-3.",
+          "draw": [
+            {
+              "write": "× 96",
+              "near": "loop",
+              "side": "left",
+              "when": "ninety six"
+            }
+          ]
         },
         {
-          "focus": "unemb",
+          "focus": [
+            "s-unemb",
+            "s-soft"
+          ],
+          "tint": {
+            "s-soft": "good"
+          },
           "say": "Then the last list becomes scores, the scores become chances, and one token gets picked."
         },
         {
-          "show": [
-            "unemb->tok"
+          "trace": [
+            {
+              "ref": "again",
+              "when": "joins"
+            }
           ],
-          "focus": [
-            "unemb->tok"
-          ],
+          "focus": "again",
           "say": "The pick joins the text, and it all runs again."
         },
         {
           "tint": {
-            "tok": "dim",
-            "emb": "dim",
-            "mlp": "dim",
-            "unemb": "dim",
-            "att": "accent"
+            "s-tok": "dim",
+            "s-emb": "dim",
+            "s-mlp": "dim",
+            "s-unemb": "dim",
+            "s-soft": "dim",
+            "again": "dim",
+            "loop": "dim"
           },
-          "focus": "att",
-          "callout": "next: queries, keys, values and many heads",
-          "say": "The part that does the most clever work is attention. How tokens ask each other questions is a story for another video."
+          "focus": "s-att",
+          "say": "The part that does the most clever work is attention. How tokens ask each other questions is a story for another video.",
+          "draw": [
+            {
+              "write": "next: queries, keys, values",
+              "near": "s-att",
+              "side": "right",
+              "when": "clever"
+            }
+          ]
         }
       ]
     }

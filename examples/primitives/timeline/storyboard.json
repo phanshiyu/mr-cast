@@ -1,5 +1,6 @@
 {
   "title": "A nightly job that ran into itself",
+  "look": "plain",
   "subtitle": "Why two copies of the report job were running at once",
   "scenes": [
     {

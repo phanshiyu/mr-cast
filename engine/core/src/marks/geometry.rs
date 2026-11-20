@@ -281,6 +281,81 @@ pub fn sketch_mark(mark: Mark, t: &Bx, area: &Bx, obstacles: &[Bx], seed: u32, p
     Sketch { bounds: bounds_of(&strokes, pen), strokes }
 }
 
+/// The middle of a target that is mostly one line, such as a long or curved path: the point halfway along its stroke
+/// and the stroke's direction there, in radians.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Spine {
+    pub mid: Pt,
+    pub angle: f64,
+}
+
+/// How wide a cross or strike is on a line: about a line of note text, not the line's whole box.
+pub const SPINE_MARK: f64 = 72.0;
+
+/// The point halfway along a polyline and its direction there, or None for one with no length.
+pub fn spine_of(points: &[Pt]) -> Option<Spine> {
+    let total: f64 = points.windows(2).map(|w| (w[1].x - w[0].x).hypot(w[1].y - w[0].y)).sum();
+    if total <= 0.0 {
+        return None;
+    }
+    let mut left = total / 2.0;
+    for w in points.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let seg = (b.x - a.x).hypot(b.y - a.y);
+        if seg > 0.0 && left <= seg {
+            let t = left / seg;
+            return Some(Spine {
+                mid: Pt { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t },
+                angle: (b.y - a.y).atan2(b.x - a.x),
+            });
+        }
+        left -= seg;
+    }
+    None
+}
+
+/// A cross or strike on a line rather than a box: a compact X centred on the middle of the line, its arms either side
+/// of the line, or a short slash across it there. None for the other marks, which keep to the box.
+pub fn sketch_on_spine(mark: Mark, spine: &Spine, seed: u32, pen: f64) -> Option<Sketch> {
+    let mut rand = Random::new(seed);
+    let rand = &mut rand;
+    // The line's direction, turned to point rightwards so the marks read the same way on any line.
+    let mut angle = spine.angle;
+    while angle > std::f64::consts::FRAC_PI_2 {
+        angle -= std::f64::consts::PI;
+    }
+    while angle <= -std::f64::consts::FRAC_PI_2 {
+        angle += std::f64::consts::PI;
+    }
+    let (sin, cos) = angle.sin_cos();
+    let place = |p: Pt| Pt { x: spine.mid.x + p.x * cos - p.y * sin, y: spine.mid.y + p.x * sin + p.y * cos };
+    let r = SPINE_MARK / 2.0;
+    let strokes = match mark {
+        Mark::Cross => {
+            let bow1 = rand.jitter(3.0);
+            let s1 = line(Pt { x: -r, y: -r }, Pt { x: r, y: r }, 8, bow1, 0.8, rand);
+            let a = Pt { x: r, y: -r + rand.jitter(3.0) };
+            let b = Pt { x: -r + rand.jitter(3.0), y: r };
+            let bow2 = rand.jitter(3.0);
+            let s2 = line(a, b, 8, bow2, 0.8, rand);
+            vec![s1, s2]
+        }
+        Mark::Strike => {
+            // Across the line, leaning a little as a hand's slash does.
+            let lean = 0.35 + rand.jitter(0.08);
+            let (dx, dy) = (1.25 * r * lean.sin(), 1.25 * r * lean.cos());
+            let a = Pt { x: -dx, y: dy + rand.jitter(2.0) };
+            let b = Pt { x: dx, y: -dy + rand.jitter(2.0) };
+            let bow = rand.jitter(2.0);
+            vec![line(a, b, 8, bow, 0.8, rand)]
+        }
+        _ => return None,
+    };
+    let strokes: Vec<Stroke> =
+        strokes.into_iter().map(|s| Stroke { points: s.into_iter().map(place).collect(), sharp: false }).collect();
+    Some(Sketch { bounds: bounds_of(&strokes, pen), strokes })
+}
+
 /// Where a line from the centre of `b` towards `p` leaves `b` grown by 10px.
 pub fn edge_toward(b: &Bx, p: Pt) -> Pt {
     let c = b.center();
@@ -866,6 +941,19 @@ pub fn leader(mark: &Bx, size: (f64, f64), obstacles: &[Bx], area: &Bx, seed: u3
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_cross_on_a_line_is_a_small_x_at_its_middle() {
+        let spine = spine_of(&[Pt { x: 0.0, y: 0.0 }, Pt { x: 300.0, y: 400.0 }]).unwrap();
+        assert_eq!(spine.mid, Pt { x: 150.0, y: 200.0 });
+        for mark in [Mark::Cross, Mark::Strike] {
+            let s = sketch_on_spine(mark, &spine, 7, 4.5).unwrap();
+            let c = s.bounds.center();
+            assert!((c.x - 150.0).abs() < 8.0 && (c.y - 200.0).abs() < 8.0, "{mark:?} centred off the middle: {c:?}");
+            assert!(s.bounds.width < 130.0 && s.bounds.height < 130.0, "{mark:?} too big: {:?}", s.bounds);
+        }
+        assert!(sketch_on_spine(Mark::Circle, &spine, 7, 4.5).is_none());
+    }
 
     #[test]
     fn random_matches_mulberry32() {

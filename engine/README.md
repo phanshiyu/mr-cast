@@ -8,7 +8,7 @@ engine/
   Cargo.toml             workspace (core, cli, wasm, dizione); rustfmt.toml: max_width 120
   assets/fonts/          Inter (variable, wght 400-800, opsz 14-32), JetBrains Mono (variable), Caveat 600, as TTF, with OFL texts
                          and the fallbacks for glyphs they lack, as Chrome falls back per character: Inter and
-                         JetBrains Mono beyond Latin (Greek, Cyrillic, arrows, math), Noto Sans Symbols (variable),
+                         JetBrains Mono beyond Latin (Greek, Cyrillic, arrows, math, modifier letters), Noto Sans Symbols (variable),
                          Noto Sans Math and Noto Sans Symbols 2, each subset to its symbol blocks with pyftsubset
   core/                  mrc_core: no threads, files or processes; builds for wasm32-unknown-unknown
     data/                font-metrics.json, slots.json, lucide.json (icons) and world-110m/50m.json (map outlines), written

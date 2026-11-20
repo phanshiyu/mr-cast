@@ -1,413 +1,475 @@
 {
   "title": "Bread by baker’s percentages",
   "subtitle": "Why every bread recipe is four numbers, and how to scale it",
+  "tones": {
+    "good": "our loaf: 66% water",
+    "bad": "the catch"
+  },
+  "pictures": {
+    "recipe": "<svg viewBox=\"0 0 1200 640\">\n<text x=\"330\" y=\"50\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">baker’s %</text>\n<text x=\"500\" y=\"50\" text-anchor=\"end\" font-size=\"24\" fill=\"var(--muted)\">grams</text>\n<line x1=\"40\" y1=\"68\" x2=\"1160\" y2=\"68\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<g id=\"flour\"><text x=\"60\" y=\"130\" font-size=\"34\">Flour</text><text id=\"p-flour\" x=\"330\" y=\"130\" text-anchor=\"middle\" font-size=\"32\">100%</text><text id=\"g-flour\" x=\"500\" y=\"130\" text-anchor=\"end\" font-size=\"32\">500 g</text><path id=\"bar-flour\" d=\"M600,96 H875 V140 H600 Z\" stroke-width=\"3\"/><path id=\"bar2-flour\" d=\"M600,96 H1150 V140 H600 Z\"/><path id=\"bar3-flour\" d=\"M600,96 H990 V140 H600 Z\"/></g>\n<g id=\"water\"><text x=\"60\" y=\"235\" font-size=\"34\">Water</text><text id=\"p-water\" x=\"330\" y=\"235\" text-anchor=\"middle\" font-size=\"32\">66%</text><text id=\"g-water\" x=\"500\" y=\"235\" text-anchor=\"end\" font-size=\"32\">330 g</text><path id=\"bar-water\" d=\"M600,201 H782 V245 H600 Z\" stroke-width=\"3\"/><path id=\"bar2-water\" d=\"M600,201 H963 V245 H600 Z\"/><path id=\"bar3-water\" d=\"M600,201 H857 V245 H600 Z\"/></g>\n<g id=\"salt\"><text x=\"60\" y=\"340\" font-size=\"34\">Salt</text><text id=\"p-salt\" x=\"330\" y=\"340\" text-anchor=\"middle\" font-size=\"32\">2%</text><text id=\"g-salt\" x=\"500\" y=\"340\" text-anchor=\"end\" font-size=\"32\">10 g</text><path id=\"bar-salt\" d=\"M600,306 H606 V350 H600 Z\" stroke-width=\"3\"/><path id=\"bar2-salt\" d=\"M600,306 H611 V350 H600 Z\"/><path id=\"bar3-salt\" d=\"M600,306 H608 V350 H600 Z\"/></g>\n<g id=\"yeast\"><text x=\"60\" y=\"445\" font-size=\"34\">Yeast</text><text id=\"p-yeast\" x=\"330\" y=\"445\" text-anchor=\"middle\" font-size=\"32\">1.2%</text><text id=\"g-yeast\" x=\"500\" y=\"445\" text-anchor=\"end\" font-size=\"32\">6 g</text><path id=\"bar-yeast\" d=\"M600,411 H604 V455 H600 Z\" stroke-width=\"3\"/><path id=\"bar2-yeast\" d=\"M600,411 H607 V455 H600 Z\"/><path id=\"bar3-yeast\" d=\"M600,411 H605 V455 H600 Z\"/></g>\n<g id=\"total\"><line x1=\"40\" y1=\"487\" x2=\"540\" y2=\"487\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<text x=\"60\" y=\"545\" font-size=\"32\">Dough</text><text id=\"p-total\" x=\"330\" y=\"545\" text-anchor=\"middle\" font-size=\"32\">169.2%</text><text id=\"g-total\" x=\"500\" y=\"545\" text-anchor=\"end\" font-size=\"32\">846 g</text></g>\n</svg>",
+    "clock": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"knead\"><rect x=\"70\" y=\"270\" width=\"39.599999999999994\" height=\"120\" rx=\"8\" stroke-width=\"3\"/><text x=\"89.8\" y=\"245\" text-anchor=\"middle\" font-size=\"26\">knead</text><text x=\"89.8\" y=\"432\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">6 min</text></g>\n<g id=\"rise\"><rect x=\"109.6\" y=\"270\" width=\"396\" height=\"120\" rx=\"8\" stroke-width=\"3\"/><text x=\"307.6\" y=\"245\" text-anchor=\"middle\" font-size=\"26\">rise until doubled</text><text x=\"307.6\" y=\"432\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">1 to 2 h</text></g>\n<g id=\"shape\"><line x1=\"505.6\" y1=\"262\" x2=\"505.6\" y2=\"398\" stroke=\"var(--text)\" stroke-width=\"6\"/><text x=\"505.6\" y=\"245\" text-anchor=\"middle\" font-size=\"26\">shape</text></g>\n<g id=\"proof\"><rect x=\"505.6\" y=\"270\" width=\"297\" height=\"120\" rx=\"8\" stroke-width=\"3\"/><text x=\"654.1\" y=\"245\" text-anchor=\"middle\" font-size=\"26\">rise again</text><text x=\"654.1\" y=\"432\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">45 min</text></g>\n<g id=\"bake\"><rect x=\"802.6\" y=\"270\" width=\"165\" height=\"120\" rx=\"8\" stroke-width=\"3\"/><text x=\"885.1\" y=\"245\" text-anchor=\"middle\" font-size=\"26\">bake 232 °C</text><text x=\"885.1\" y=\"432\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">20–25 min</text></g>\n<g id=\"cool\"><rect x=\"981.6\" y=\"270\" width=\"188.39999999999998\" height=\"120\" rx=\"8\" stroke-width=\"3\" stroke-dasharray=\"10 8\" fill=\"none\"/><text x=\"1075.8\" y=\"245\" text-anchor=\"middle\" font-size=\"26\">cool</text><text x=\"1075.8\" y=\"432\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">then slice</text></g>\n<g id=\"times\"><line x1=\"70\" y1=\"478\" x2=\"967.6\" y2=\"478\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<text id=\"t-mix\" x=\"70\" y=\"526\" text-anchor=\"middle\" font-size=\"24\">0</text><text id=\"t-rise\" x=\"109.6\" y=\"566\" text-anchor=\"middle\" font-size=\"24\">6 min</text><text id=\"t-shape\" x=\"505.6\" y=\"526\" text-anchor=\"middle\" font-size=\"24\">1 h 06</text><text id=\"t-oven\" x=\"802.6\" y=\"526\" text-anchor=\"middle\" font-size=\"24\">1 h 51</text></g>\n<g id=\"done\"><circle cx=\"967.6\" cy=\"478\" r=\"12\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"967.6\" y=\"526\" text-anchor=\"middle\" font-size=\"26\" class=\"tone-good\">bread, 2 h 16</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "The formula",
-      "title": "White bread, in baker’s percentages",
+      "title": "Every ingredient is a share of the flour",
+      "picture": "recipe",
       "narration": "Here is the thing most bread recipes do not tell you. Every ingredient is really just a percentage of the flour.",
-      "columns": [
-        "Ingredient",
-        "Baker’s %",
-        "Grams"
+      "hidden": [
+        "water",
+        "salt",
+        "yeast",
+        "total",
+        "bar2-flour",
+        "bar3-flour",
+        "bar2-water",
+        "bar3-water",
+        "bar2-salt",
+        "bar3-salt",
+        "bar2-yeast",
+        "bar3-yeast"
       ],
-      "rows": [
+      "labels": {
+        "p-total": "percentages",
+        "g-total": "dough weighs"
+      },
+      "steps": [
         {
-          "cells": [
-            "Flour",
-            "100%",
-            "500 g"
+          "focus": "flour",
+          "say": "The flour is always one hundred percent. Say we use 500 grams.",
+          "draw": [
+            {
+              "underline": "p-flour",
+              "tone": "good",
+              "when": "one hundred percent"
+            }
           ]
         },
         {
-          "cells": [
-            "Water",
-            "66%",
-            "330 g"
+          "show": [
+            "water"
           ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Salt",
-            "2%",
-            "10 g"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Yeast",
-            "1.2%",
-            "6 g"
-          ],
-          "hidden": true
-        }
-      ],
-      "callout": "flour is always **100%**",
-      "steps": [
-        {
-          "focus": 0,
-          "say": "The flour is always one hundred percent. Say we use 500 grams."
+          "focus": "water",
+          "say": "Water is sixty six percent of that, so 330 grams.",
+          "draw": [
+            {
+              "write": "500 × 66%",
+              "near": "bar-water",
+              "side": "right",
+              "when": "sixty six"
+            }
+          ]
         },
         {
           "show": [
-            1
+            "salt"
           ],
-          "focus": 1,
-          "callout": "500 g × 66% = **330 g**",
-          "say": "Water is sixty six percent of that, so 330 grams."
-        },
-        {
-          "show": [
-            2
-          ],
-          "focus": 2,
-          "callout": "500 g × 2% = **10 g**",
+          "focus": "salt",
           "say": "Salt is two percent, 10 grams."
         },
         {
           "show": [
-            3
+            "yeast"
           ],
-          "focus": 3,
-          "callout": "500 g × 1.2% = **6 g**",
+          "focus": "yeast",
           "say": "And yeast is one point two percent, just 6 grams."
         },
         {
-          "focus": "col:Baker’s %",
-          "callout": "169.2% = **846 g** of dough",
-          "say": "Add the percentages up and you get more than a hundred, 169.2. That is fine. It just means the dough weighs 846 grams."
+          "show": [
+            "total"
+          ],
+          "focus": [
+            "p-total",
+            "g-total"
+          ],
+          "say": "Add the percentages up and you get more than a hundred, 169.2."
+        },
+        {
+          "focus": "g-total",
+          "say": "That is fine. It just means the dough weighs 846 grams.",
+          "draw": [
+            {
+              "circle": "g-total",
+              "when": "dough weighs"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "Hydration",
+      "title": "Hydration is water over flour",
+      "picture": "recipe",
       "narration": "The most important number in that list is the water. Bakers call it hydration.",
-      "kicker": "Hydration = water ÷ flour",
-      "number": "66%",
-      "note": "330 g of water ÷ 500 g of flour",
+      "tint": {
+        "p-water": "good"
+      },
+      "labels": {
+        "bar-water": "water",
+        "bar-flour": "flour"
+      },
       "steps": [
         {
-          "focus": "note",
+          "focus": [
+            "bar-water",
+            "bar-flour"
+          ],
           "say": "It is just the water divided by the flour. 330 over 500 is sixty six percent.",
           "draw": [
             {
-              "underline": "note",
+              "arrow": [
+                "bar-water",
+                "bar-flour"
+              ],
+              "note": "330 ÷ 500 = 66%",
+              "side": "right",
               "when": "divided by"
             }
           ]
         },
         {
-          "set": {
-            "note": "tells you how the dough will feel, before you touch it"
-          },
-          "say": "And that one number tells you how the dough will feel before you even touch it."
-        }
-      ]
-    },
-    {
-      "type": "compare",
-      "chapter": "Wet or dry",
-      "title": "Two doughs, each with 500 g of flour",
-      "sides": [
-        {
-          "title": "60% water",
-          "tone": "neutral"
-        },
-        {
-          "title": "80% water",
-          "tone": "accent"
-        }
-      ],
-      "narration": "So what changes if you go drier or wetter? Here is the same flour at sixty and at eighty percent.",
-      "rows": [
-        {
-          "label": "Water",
-          "cells": [
-            "300 g",
-            "400 g"
-          ]
-        },
-        {
-          "label": "In your hands",
-          "cells": [
-            "Firm, even stiff",
-            "Slack and sticky"
-          ]
-        },
-        {
-          "label": "Inside the loaf",
-          "cells": [
-            "Closed, with a chewy bite",
-            "Moister, and keeps longer"
-          ]
-        },
-        {
-          "label": "The catch",
-          "cells": [
-            "Can bake up tight",
-            "Harder to shape, longer bake"
-          ],
-          "verdict": [
-            "bad",
-            "bad"
-          ]
-        },
-        {
-          "label": "Good for",
-          "cells": [
-            "Braids, bagels, pretzels",
-            "Open-crumb, rustic loaves"
-          ]
-        }
-      ],
-      "steps": [
-        {
-          "focus": 0,
-          "say": "Only 100 grams of water separate these two."
-        },
-        {
-          "focus": 1,
-          "say": "At sixty percent the dough is firm and easy to handle. At eighty it is slack and sticky."
-        },
-        {
-          "focus": 2,
-          "say": "The drier one bakes up tight and chewy. The wetter one is moister inside, and stays fresh longer."
-        },
-        {
-          "focus": 3,
-          "say": "But a wet dough takes more skill to shape, and longer in the oven."
-        },
-        {
-          "focus": 4,
-          "say": "Which is why bagels and pretzels are stiff doughs, and big rustic loaves are wet ones. Sixty six sits comfortably in between.",
+          "focus": "p-water",
+          "say": "And that one number tells you how the dough will feel before you even touch it.",
           "draw": [
             {
-              "write": "66% sits in between",
-              "at": [
-                0.4,
-                0.79
-              ],
-              "when": "in between"
+              "write": "how the dough feels",
+              "near": "p-water",
+              "side": "below",
+              "tone": "good",
+              "when": "feel"
             }
           ]
         }
       ]
     },
     {
-      "type": "chart",
-      "chapter": "Scaling",
-      "title": "Grams of each ingredient",
-      "kind": "bar",
-      "unit": "g",
-      "narration": "And here is why bakers love percentages. Scaling a recipe stops being a headache.",
-      "labels": [
-        "Flour",
-        "Water",
-        "Salt",
-        "Yeast"
+      "type": "svg",
+      "chapter": "Wet or dry",
+      "title": "Drier is easier, wetter is lighter",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"600\" y1=\"20\" x2=\"600\" y2=\"550\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<text x=\"300\" y=\"46\" text-anchor=\"middle\" font-size=\"32\">60% water</text>\n<g id=\"water-dry\"><rect x=\"100\" y=\"68\" width=\"240\" height=\"30\" rx=\"4\" stroke-width=\"3\"/><text x=\"350\" y=\"92\" font-size=\"26\">300 g</text></g>\n<g id=\"dough-dry\"><path d=\"M180,250 C180,140 420,140 420,250 Z\" stroke-width=\"3\"/>\n<text x=\"300\" y=\"292\" text-anchor=\"middle\" font-size=\"26\">firm, even stiff</text></g>\n<g id=\"crumb-dry\"><ellipse cx=\"300\" cy=\"375\" rx=\"170\" ry=\"50\" stroke-width=\"3\"/><g fill=\"var(--bg)\" stroke=\"var(--muted)\" stroke-width=\"2\"><circle cx=\"204\" cy=\"360\" r=\"6\"/><circle cx=\"236\" cy=\"366\" r=\"6\"/><circle cx=\"268\" cy=\"360\" r=\"6\"/><circle cx=\"300\" cy=\"366\" r=\"6\"/><circle cx=\"332\" cy=\"360\" r=\"6\"/><circle cx=\"364\" cy=\"366\" r=\"6\"/><circle cx=\"396\" cy=\"360\" r=\"6\"/><circle cx=\"204\" cy=\"392\" r=\"6\"/><circle cx=\"236\" cy=\"386\" r=\"6\"/><circle cx=\"268\" cy=\"392\" r=\"6\"/><circle cx=\"300\" cy=\"386\" r=\"6\"/><circle cx=\"332\" cy=\"392\" r=\"6\"/><circle cx=\"364\" cy=\"386\" r=\"6\"/><circle cx=\"396\" cy=\"392\" r=\"6\"/></g>\n<text x=\"300\" y=\"460\" text-anchor=\"middle\" font-size=\"26\">closed, with a chewy bite</text></g>\n<text id=\"catch-dry\" x=\"300\" y=\"502\" text-anchor=\"middle\" font-size=\"26\" class=\"tone-bad\">can bake up tight</text>\n<text id=\"for-dry\" x=\"300\" y=\"544\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">bagels, pretzels, braids</text>\n<text x=\"900\" y=\"46\" text-anchor=\"middle\" font-size=\"32\">80% water</text>\n<g id=\"water-wet\"><rect x=\"700\" y=\"68\" width=\"320\" height=\"30\" rx=\"4\" stroke-width=\"3\"/><text x=\"1030\" y=\"92\" font-size=\"26\">400 g</text></g>\n<g id=\"dough-wet\"><path d=\"M710,250 C740,205 1060,205 1090,250 Z\" stroke-width=\"3\"/>\n<text x=\"900\" y=\"292\" text-anchor=\"middle\" font-size=\"26\">slack and sticky</text></g>\n<g id=\"crumb-wet\"><ellipse cx=\"900\" cy=\"375\" rx=\"170\" ry=\"50\" stroke-width=\"3\"/><g fill=\"var(--bg)\" stroke=\"var(--muted)\" stroke-width=\"2\"><ellipse cx=\"790\" cy=\"360\" rx=\"16\" ry=\"11\"/><ellipse cx=\"845\" cy=\"385\" rx=\"22\" ry=\"14\"/><ellipse cx=\"905\" cy=\"355\" rx=\"26\" ry=\"15\"/><ellipse cx=\"970\" cy=\"382\" rx=\"20\" ry=\"13\"/><ellipse cx=\"1020\" cy=\"360\" rx=\"14\" ry=\"10\"/></g>\n<text x=\"900\" y=\"460\" text-anchor=\"middle\" font-size=\"26\">moister, and keeps longer</text></g>\n<text id=\"catch-wet\" x=\"900\" y=\"502\" text-anchor=\"middle\" font-size=\"26\" class=\"tone-bad\">harder to shape, longer bake</text>\n<text id=\"for-wet\" x=\"900\" y=\"544\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">open, rustic loaves</text>\n<g id=\"ruler\"><line x1=\"300\" y1=\"586\" x2=\"900\" y2=\"586\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<line x1=\"300\" y1=\"574\" x2=\"300\" y2=\"598\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"300\" y=\"626\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">60%</text><line x1=\"600\" y1=\"574\" x2=\"600\" y2=\"598\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"600\" y=\"626\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">70%</text><line x1=\"900\" y1=\"574\" x2=\"900\" y2=\"598\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"900\" y=\"626\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">80%</text></g>\n<g id=\"ours\"><circle cx=\"480\" cy=\"586\" r=\"12\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"480\" y=\"562\" text-anchor=\"middle\" font-size=\"26\" class=\"tone-good\">66%</text></g>\n</svg>",
+      "narration": "So what changes if you go drier or wetter? Here is the same flour at sixty and at eighty percent.",
+      "hidden": [
+        "dough-dry",
+        "dough-wet",
+        "crumb-dry",
+        "crumb-wet",
+        "catch-dry",
+        "catch-wet",
+        "for-dry",
+        "for-wet",
+        "ruler",
+        "ours"
       ],
-      "series": [
-        {
-          "name": "dough",
-          "values": [
-            500,
-            330,
-            10,
-            6
-          ]
-        }
-      ],
-      "callout": "one loaf, 846 g",
+      "labels": {
+        "water-dry": "grams of water",
+        "water-wet": "grams",
+        "dough-dry": "firm",
+        "dough-wet": "slack",
+        "crumb-dry": "tight",
+        "crumb-wet": "moister",
+        "catch-wet": "shape",
+        "for-dry": "bagels",
+        "for-wet": "rustic loaves",
+        "ours": "sixty six"
+      },
       "steps": [
         {
-          "set": {
-            "dough": [
-              1000,
-              660,
-              20,
-              12
-            ]
+          "focus": [
+            "water-dry",
+            "water-wet"
+          ],
+          "say": "Only 100 grams of water separate these two."
+        },
+        {
+          "show": [
+            "dough-dry",
+            "dough-wet"
+          ],
+          "focus": [
+            "dough-dry",
+            "dough-wet"
+          ],
+          "say": "At sixty percent the dough is firm and easy to handle. At eighty it is slack and sticky."
+        },
+        {
+          "show": [
+            "crumb-dry",
+            "crumb-wet"
+          ],
+          "focus": [
+            "crumb-dry",
+            "crumb-wet"
+          ],
+          "say": "The drier one bakes up tight and chewy. The wetter one is moister inside, and stays fresh longer."
+        },
+        {
+          "show": [
+            "catch-dry",
+            "catch-wet"
+          ],
+          "focus": [
+            "catch-dry",
+            "catch-wet"
+          ],
+          "say": "But a wet dough takes more skill to shape, and longer in the oven."
+        },
+        {
+          "show": [
+            "for-dry",
+            "for-wet"
+          ],
+          "focus": [
+            "for-dry",
+            "for-wet"
+          ],
+          "say": "Which is why bagels and pretzels are stiff doughs, and big rustic loaves are wet ones."
+        },
+        {
+          "show": [
+            "ruler",
+            "ours"
+          ],
+          "focus": "ours",
+          "say": "Sixty six sits comfortably in between."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Scaling",
+      "title": "Scale the flour, and the rest follows",
+      "picture": "recipe",
+      "narration": "And here is why bakers love percentages. Scaling a recipe stops being a headache.",
+      "hidden": [
+        "bar2-flour",
+        "bar3-flour",
+        "bar2-water",
+        "bar3-water",
+        "bar2-salt",
+        "bar3-salt",
+        "bar2-yeast",
+        "bar3-yeast"
+      ],
+      "labels": {
+        "bar-flour": "flour",
+        "g-total": "grams of dough",
+        "p-total": "total percentage"
+      },
+      "steps": [
+        {
+          "morph": {
+            "bar-flour": "bar2-flour",
+            "bar-water": "bar2-water",
+            "bar-salt": "bar2-salt",
+            "bar-yeast": "bar2-yeast"
           },
-          "callout": "two loaves: flour × 2",
+          "set": {
+            "g-flour": "1000 g",
+            "g-water": "660 g",
+            "g-salt": "20 g",
+            "g-yeast": "12 g",
+            "g-total": "1692 g"
+          },
+          "focus": "flour",
           "say": "Want two loaves? Double the flour, and every other number doubles with it."
         },
         {
           "set": {
-            "dough": [
-              709,
-              468,
-              14,
-              9
-            ]
+            "g-total": "1200 g"
           },
-          "callout": "1200 g ÷ 1.692 = **709 g** flour",
-          "say": "Want exactly 1200 grams of dough for a big pan? Divide it by one point six nine two, the total percentage. That gives 709 grams of flour, and the percentages do the rest."
-        }
-      ]
-    },
-    {
-      "type": "text",
-      "chapter": "The method",
-      "narration": "Now the method. The times come from a tested recipe for this same kind of dough.",
-      "kicker": "Method",
-      "headline": "One lean loaf",
-      "items": [
-        "Mix and knead · **6 min**",
-        "Rise until doubled · **1 to 2 h**",
-        "Shape into a loaf",
-        "Rise again · **45 min**",
-        "Bake at 450 °F (232 °C) · **20 to 25 min**",
-        "Cool on a rack before slicing"
-      ],
-      "steps": [
-        {
-          "focus": 0,
-          "say": "Mix everything and knead for about 6 minutes, until it is smooth.",
-          "draw": [
-            {
-              "tick": 0
-            }
-          ]
-        },
-        {
-          "focus": 1,
-          "say": "Cover it and let it rise until it has doubled. That takes one to two hours, depending on how warm your kitchen is.",
-          "draw": [
-            {
-              "tick": 1
-            }
-          ]
-        },
-        {
-          "focus": 2,
-          "say": "Shape it into a loaf.",
-          "draw": [
-            {
-              "tick": 2
-            }
-          ]
-        },
-        {
-          "focus": 3,
-          "say": "Let it rise again, about 45 minutes.",
-          "draw": [
-            {
-              "tick": 3
-            }
-          ]
-        },
-        {
-          "focus": 4,
-          "say": "Bake it hot, four hundred and fifty Fahrenheit, for twenty to twenty five minutes.",
-          "draw": [
-            {
-              "tick": 4
-            }
-          ]
-        },
-        {
-          "focus": 5,
-          "say": "And let it cool before you cut it. It is still cooking inside.",
-          "draw": [
-            {
-              "tick": 5
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "timeline",
-      "chapter": "Where the time goes",
-      "title": "One loaf, on the clock",
-      "unit": "min",
-      "narration": "Put those times on a clock, taking the quick end of each one.",
-      "events": [
-        {
-          "at": 0,
-          "label": "Mix",
-          "detail": "hands on"
-        },
-        {
-          "at": 6,
-          "label": "Covered",
-          "detail": "first rise"
-        },
-        {
-          "at": 66,
-          "label": "Shape",
-          "detail": "hands on"
-        },
-        {
-          "at": 111,
-          "label": "Into the oven",
-          "detail": "450 °F"
-        },
-        {
-          "at": 136,
-          "label": "Bread",
-          "detail": "2 h 16",
-          "tone": "good"
-        }
-      ],
-      "spans": [
-        {
-          "from": 6,
-          "to": 66,
-          "label": "rise until doubled",
-          "tone": "warn"
-        },
-        {
-          "from": 66,
-          "to": 111,
-          "label": "rise 45 min",
-          "tone": "warn"
-        },
-        {
-          "from": 111,
-          "to": 136,
-          "label": "bake"
-        }
-      ],
-      "steps": [
-        {
           "focus": [
-            0,
-            1
+            "g-total",
+            "p-total"
+          ],
+          "say": "Want exactly 1200 grams of dough for a big pan? Divide it by one point six nine two, the total percentage.",
+          "draw": [
+            {
+              "write": "1200 ÷ 1.692 = 709",
+              "near": "g-total",
+              "side": "right",
+              "when": "divide"
+            }
+          ]
+        },
+        {
+          "morph": {
+            "bar-flour": "bar3-flour",
+            "bar-water": "bar3-water",
+            "bar-salt": "bar3-salt",
+            "bar-yeast": "bar3-yeast"
+          },
+          "set": {
+            "g-flour": "709 g",
+            "g-water": "468 g",
+            "g-salt": "14 g",
+            "g-yeast": "9 g"
+          },
+          "tint": {
+            "g-flour": "good"
+          },
+          "focus": "flour",
+          "say": "That gives 709 grams of flour, and the percentages do the rest."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "The method",
+      "title": "One lean loaf, step by step",
+      "picture": "clock",
+      "narration": "Now the method. The times come from a tested recipe for this same kind of dough.",
+      "hidden": [
+        "knead",
+        "rise",
+        "shape",
+        "proof",
+        "bake",
+        "cool",
+        "times",
+        "done"
+      ],
+      "labels": {
+        "knead": "knead",
+        "rise": "rise",
+        "proof": "rise again",
+        "bake": "bake",
+        "cool": "cool"
+      },
+      "steps": [
+        {
+          "show": [
+            "knead"
+          ],
+          "focus": "knead",
+          "say": "Mix everything and knead for about 6 minutes, until it is smooth."
+        },
+        {
+          "show": [
+            "rise"
+          ],
+          "focus": "rise",
+          "say": "Cover it and let it rise until it has doubled. That takes one to two hours, depending on how warm your kitchen is."
+        },
+        {
+          "show": [
+            "shape"
+          ],
+          "focus": "shape",
+          "say": "Shape it into a loaf."
+        },
+        {
+          "show": [
+            "proof"
+          ],
+          "focus": "proof",
+          "say": "Let it rise again, about 45 minutes."
+        },
+        {
+          "show": [
+            "bake"
+          ],
+          "focus": "bake",
+          "say": "Bake it hot, four hundred and fifty Fahrenheit, for twenty to twenty five minutes."
+        },
+        {
+          "show": [
+            "cool"
+          ],
+          "focus": "cool",
+          "say": "And let it cool before you cut it. It is still cooking inside."
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "Where the time goes",
+      "title": "Most of the time, you wait",
+      "picture": "clock",
+      "narration": "Put those times on a clock, taking the quick end of each one.",
+      "hidden": [
+        "times",
+        "t-shape",
+        "t-oven",
+        "done"
+      ],
+      "labels": {
+        "t-rise": "minutes of work",
+        "t-shape": "shape",
+        "t-oven": "into the oven",
+        "done": "bread"
+      },
+      "steps": [
+        {
+          "show": [
+            "times"
+          ],
+          "focus": [
+            "knead",
+            "t-rise"
           ],
           "say": "The mixing and kneading is about 6 minutes of work."
         },
         {
-          "focus": [
-            "span:rise until doubled",
-            2
+          "show": [
+            "t-shape"
           ],
-          "say": "Then you wait an hour while the yeast does its thing, and shape it. In a cool kitchen it can take two, which pushes the bread back to 3 hours 16 minutes."
+          "focus": [
+            "rise",
+            "t-shape"
+          ],
+          "say": "Then you wait an hour while the yeast does its thing, and shape it."
         },
         {
-          "focus": [
-            "span:rise 45 min",
-            3
+          "focus": "rise",
+          "say": "In a cool kitchen it can take two, which pushes the bread back to 3 hours 16 minutes.",
+          "draw": [
+            {
+              "write": "cool kitchen: +1 h, bread at 3 h 16",
+              "at": [
+                0.3,
+                0.06
+              ],
+              "when": "cool kitchen"
+            }
+          ]
+        },
+        {
+          "show": [
+            "t-oven"
           ],
+          "focus": [
+            "proof",
+            "t-oven"
+          ],
+          "erase": true,
           "say": "Another forty five minutes of waiting, and into the oven."
         },
         {
-          "focus": [
-            "span:bake",
-            4
+          "show": [
+            "done"
           ],
-          "say": "About two and a quarter hours from start to bread. And for 77 percent of that, you are not doing anything at all.",
+          "focus": [
+            "bake",
+            "done"
+          ],
+          "say": "About two and a quarter hours from start to bread."
+        },
+        {
+          "focus": [
+            "rise",
+            "proof"
+          ],
+          "say": "And for 77 percent of that, you are not doing anything at all.",
           "draw": [
             {
               "brace": [
-                "span:rise until doubled",
-                "span:rise 45 min"
+                "rise",
+                "proof"
               ],
               "note": "77% waiting",
+              "side": "above",
               "when": "not doing anything"
             }
           ]

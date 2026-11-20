@@ -57,3 +57,4 @@ rewrite an accepted ADR: write a new one and mark the old one "Superseded by NNN
 | [0047](0047-easy-to-follow-explainers.md) | Pictures that carry across scenes, warnings for what makes a video hard to follow, and a voice paced like someone explaining | Accepted |
 | [0048](0048-a-hand-drawn-board-look.md) | A hand-drawn board look: two colours, lettered titles, wavering lines | Accepted |
 | [0049](0049-everything-drawn-on-the-board.md) | On the board, everything is drawn on the picture: a warning for card scenes, no pencil, hatching and two passes, quieter captions | Accepted |
+| [0050](0050-the-board-by-default-for-explanations.md) | The board is the default for explanations, with lighter hatching and the worked examples redrawn | Accepted |

@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { normalizeStoryboard } from '../shared/normalize.mjs';
+import { sceneStates } from '../shared/state-steps.mjs';
 
 const bar =
   '<svg viewBox="0 0 1200 300"><rect id="fit" x="40" y="120" width="700" height="80" class="tone-good"/><rect id="spill" x="740" y="120" width="170" height="80" class="tone-bad"/><text id="label" x="40" y="250" font-size="40">a 50-byte array</text></svg>';
@@ -38,6 +39,42 @@ test('a picture scene draws the picture, and the next scene on it starts as the 
   assert.deepEqual(sb.scenes[1].hidden, ['spill']);
   assert.deepEqual(sb.scenes[1].tint, { fit: 'good' });
   assert.deepEqual(sb.scenes[2].hidden, ['spill'], "a scene's own hidden wins over what it continues");
+});
+
+test('a scene on the same picture starts where the scene before left what it moved, morphed and set', async () => {
+  const board =
+    '<svg viewBox="0 0 1200 300"><g id="marker"><circle cx="100" cy="100" r="20"/></g><path id="blob" d="M0 0 L10 0 L10 10 Z"/><path id="square" d="M0 0 L20 0 L20 20 Z"/><text id="count" x="40" y="250">0 bytes</text></svg>';
+  const scene = (title, steps, more = {}) => ({ ...svgScene(title, steps, more), picture: 'board' });
+  const sb = storyboard([
+    scene('The marker walks to the end', [
+      { move: { marker: 'translate(300 0)' }, morph: { blob: 'square' }, set: { count: 50 }, say: 'It moves on.' },
+    ]),
+    scene('The marker walks on from there', [{ move: { marker: 'translate(600 0)' }, say: 'And on again.' }], {
+      hidden: ['square'],
+    }),
+    scene('The marker goes back to the start', [{ move: { marker: '' }, say: 'Back to the start.' }]),
+  ]);
+  sb.pictures = { board };
+  const { scenes } = normalizeStoryboard(sb, {});
+  assert.deepEqual(scenes[1].carried, {
+    move: { marker: 'translate(300 0)' },
+    morph: { blob: 'square' },
+    set: { count: '50' },
+  });
+  assert.deepEqual(scenes[1].hidden, ['square'], "a scene's own hidden still wins");
+  const [start, moved] = sceneStates(scenes[1]);
+  assert.equal(start.transforms['s:marker'], 'translate(300 0)', 'the marker starts where the scene before left it');
+  assert.equal(start.shapes['s:blob'], 'square');
+  assert.equal(start.values['s:count'], '50');
+  assert.equal(moved.transforms['s:marker'], 'translate(600 0)', 'and a move takes it on from there');
+  assert.deepEqual(scenes[2].carried.move, { marker: 'translate(600 0)' }, 'and the next starts where that left it');
+  assert.equal(sceneStates(scenes[2])[1].transforms['s:marker'], '', '"" puts it back where the drawing has it');
+  const { errors, warnings } = await check(sb);
+  assert.deepEqual(errors, []);
+  assert.deepEqual(
+    warnings.filter((w) => w.startsWith('scenes')),
+    [],
+  );
 });
 
 test('validate accepts a picture run, and a part hidden in one scene may be shown by the next', async () => {
@@ -126,21 +163,23 @@ test('a longer explanation without a picture, or one that does not end on its pi
   );
 });
 
-test('validate takes look "board" and refuses any other look', async () => {
-  const ok = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'board' }));
-  assert.ok(!ok.errors.some((e) => e.startsWith('look')));
+test('validate takes look "board" or "plain" and refuses any other look', async () => {
+  for (const look of ['board', 'plain']) {
+    const ok = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look }));
+    assert.ok(!ok.errors.some((e) => e.startsWith('look')));
+  }
   const bad = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'chalk' }));
-  assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board"')));
+  assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board" or "plain"')));
 });
 
 test('on the board, validate warns about a scene that is not drawn on the picture', async () => {
   const table = { type: 'table', title: 'Who is hit by this', columns: ['a'], rows: [['b']], narration: 'Hit.' };
   const res = await check(
-    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'board' }),
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
   );
   assert.ok(res.warnings.some((w) => w.startsWith('look: on the board, scene 1 (table) is a slide')));
   const plain = await check(
-    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'plain' }),
   );
   assert.ok(!plain.warnings.some((w) => w.includes('on the board')));
 });
@@ -163,12 +202,11 @@ test('validate warns about handwriting the scene ends before the pen finishes', 
   assert.ok(!short.warnings.some((w) => w.includes('still writing')));
 });
 
-test('a longer explanation without the board look is told about it', async () => {
-  const five = Array.from({ length: 5 }, (_, i) =>
-    svgScene(`Step ${i} of the array fills`, [{ show: ['fit'], say: 'One.' }]),
-  );
-  const plain = await check(storyboard(five));
-  assert.ok(plain.warnings.some((w) => w.startsWith('look: none')));
-  const board = await check(storyboard(five, { look: 'board' }));
-  assert.ok(!board.warnings.some((w) => w.startsWith('look: none')));
+test('an explanation is drawn on the board unless it asks for plain, and a branch is plain unless it asks', () => {
+  const sb = (look) => ({ title: 'T', scenes: [], ...(look ? { look } : {}) });
+  assert.equal(normalizeStoryboard(sb(), {}).look, 'board');
+  assert.equal(normalizeStoryboard(sb('plain'), {}).look, undefined);
+  const diff = { 'a.ts': { status: 'modified' } };
+  assert.equal(normalizeStoryboard(sb(), diff).look, undefined);
+  assert.equal(normalizeStoryboard(sb('board'), diff).look, 'board');
 });

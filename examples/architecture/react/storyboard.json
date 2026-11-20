@@ -1,13 +1,23 @@
 {
   "title": "How React works under the hood",
   "subtitle": "From JSX to objects, the Fiber tree, and the two phases of an update",
+  "look": "board",
+  "tones": {
+    "good": "what React changes or keeps",
+    "bad": "what makes the page slow"
+  },
+  "pictures": {
+    "jsx": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<g id=\"you\"><rect x=\"30\" y=\"40\" width=\"470\" height=\"260\" rx=\"14\" stroke-width=\"3\"/><text x=\"265\" y=\"30\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">you write</text>\n<text x=\"60\" y=\"100\" font-size=\"24\" font-family=\"mono\">&lt;button</text><text x=\"60\" y=\"134\" font-size=\"24\" font-family=\"mono\">  className=\"primary\"</text><text x=\"60\" y=\"168\" font-size=\"24\" font-family=\"mono\">  onClick={handleClick}&gt;</text><text x=\"60\" y=\"202\" font-size=\"24\" font-family=\"mono\">  Click Me</text><text x=\"60\" y=\"236\" font-size=\"24\" font-family=\"mono\">&lt;/button&gt;</text></g>\n<g id=\"compile\"><line x1=\"510\" y1=\"170\" x2=\"680\" y2=\"170\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"595\" y=\"150\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">compiler</text></g>\n<g id=\"call\"><rect x=\"690\" y=\"40\" width=\"480\" height=\"260\" rx=\"14\" stroke-width=\"3\"/><text x=\"930\" y=\"30\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">it becomes</text>\n<text x=\"720\" y=\"100\" font-size=\"24\" font-family=\"mono\"><tspan id=\"fn\">jsx</tspan>(\"button\", {</text><text x=\"720\" y=\"134\" font-size=\"24\" font-family=\"mono\">  className: \"primary\",</text><text x=\"720\" y=\"168\" font-size=\"24\" font-family=\"mono\">  onClick: handleClick,</text><text x=\"720\" y=\"202\" font-size=\"24\" font-family=\"mono\">  children: \"Click Me\",</text><text x=\"720\" y=\"236\" font-size=\"24\" font-family=\"mono\">})</text></g>\n<g id=\"returns\"><line x1=\"930\" y1=\"310\" x2=\"760\" y2=\"400\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"880\" y=\"375\" font-size=\"22\" fill=\"var(--muted)\">returns</text></g>\n<g id=\"element\"><rect x=\"330\" y=\"400\" width=\"430\" height=\"220\" rx=\"14\" stroke-width=\"3\"/><text x=\"545\" y=\"440\" text-anchor=\"middle\" font-size=\"26\">a React element</text>\n<g id=\"eltype\"><text x=\"360\" y=\"490\" font-size=\"24\" font-family=\"mono\">type: \"button\"</text></g><g id=\"elprops\"><text x=\"360\" y=\"530\" font-size=\"24\" font-family=\"mono\">props: { className,</text><text x=\"360\" y=\"564\" font-size=\"24\" font-family=\"mono\">         onClick, children }</text></g></g>\n</svg>",
+    "trees": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<g id=\"treeA\"><line x1=\"250\" y1=\"240\" x2=\"120\" y2=\"320\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"250\" y1=\"240\" x2=\"380\" y2=\"320\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"380\" y1=\"380\" x2=\"260\" y2=\"460\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"380\" y1=\"380\" x2=\"380\" y2=\"460\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<g id=\"appA\"><rect x=\"180\" y=\"180\" width=\"140\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"250\" y=\"219\" text-anchor=\"middle\" font-size=\"24\">App</text></g><g id=\"headerA\"><rect x=\"50\" y=\"320\" width=\"140\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"120\" y=\"359\" text-anchor=\"middle\" font-size=\"24\">Header</text></g><g id=\"mainA\"><rect x=\"310\" y=\"320\" width=\"140\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"380\" y=\"359\" text-anchor=\"middle\" font-size=\"24\">Main</text></g><g id=\"card1A\"><rect x=\"140\" y=\"460\" width=\"120\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"200\" y=\"499\" text-anchor=\"middle\" font-size=\"24\">Card 1</text></g><g id=\"card2A\"><rect x=\"300\" y=\"460\" width=\"120\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"360\" y=\"499\" text-anchor=\"middle\" font-size=\"24\">Card 2</text></g></g><g id=\"treeB\"><line x1=\"850\" y1=\"240\" x2=\"720\" y2=\"320\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"850\" y1=\"240\" x2=\"980\" y2=\"320\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"980\" y1=\"380\" x2=\"860\" y2=\"460\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"980\" y1=\"380\" x2=\"980\" y2=\"460\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<g id=\"appB\"><rect x=\"780\" y=\"180\" width=\"140\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"850\" y=\"219\" text-anchor=\"middle\" font-size=\"24\">App</text></g><g id=\"headerB\"><rect x=\"650\" y=\"320\" width=\"140\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"720\" y=\"359\" text-anchor=\"middle\" font-size=\"24\">Header</text></g><g id=\"mainB\"><rect x=\"910\" y=\"320\" width=\"140\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"980\" y=\"359\" text-anchor=\"middle\" font-size=\"24\">Main</text></g><g id=\"card1B\"><rect x=\"740\" y=\"460\" width=\"120\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"800\" y=\"499\" text-anchor=\"middle\" font-size=\"24\">Card 1</text></g><g id=\"card2B\"><rect x=\"900\" y=\"460\" width=\"120\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"960\" y=\"499\" text-anchor=\"middle\" font-size=\"24\">Card 2</text></g></g><g id=\"card3B\"><line x1=\"1020\" y1=\"380\" x2=\"1140\" y2=\"460\" stroke=\"var(--muted)\" stroke-width=\"3\"/><rect x=\"1080\" y=\"460\" width=\"120\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"1140\" y=\"499\" text-anchor=\"middle\" font-size=\"24\">Card 3</text></g>\n<g id=\"namesDiff\"><text x=\"250\" y=\"580\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">last render</text><text x=\"850\" y=\"580\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">this render</text></g>\n<g id=\"namesBuf\"><text x=\"250\" y=\"580\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">tree A: on screen</text><text x=\"850\" y=\"580\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">tree B: being built</text></g>\n<g id=\"root\"><rect x=\"490\" y=\"40\" width=\"220\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"600\" y=\"79\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">root.current</text></g>\n<g id=\"ptrA\"><line x1=\"490\" y1=\"90\" x2=\"360\" y2=\"180\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/></g><g id=\"ptrB\"><line x1=\"710\" y1=\"90\" x2=\"840\" y2=\"180\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/></g>\n</svg>",
+    "stack": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<text x=\"240\" y=\"600\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">the call stack</text>\n<g id=\"fApp\"><rect x=\"40\" y=\"500\" width=\"400\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"240\" y=\"541\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">render(App)</text></g><g id=\"fDash\"><rect x=\"40\" y=\"420\" width=\"400\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"240\" y=\"461\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">render(Dashboard)</text></g><g id=\"fSide\"><rect x=\"40\" y=\"340\" width=\"400\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"240\" y=\"381\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">render(Sidebar)</text></g><g id=\"fNav\"><rect x=\"40\" y=\"260\" width=\"400\" height=\"64\" rx=\"10\" stroke-width=\"3\"/><text x=\"240\" y=\"301\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">render(NavList)</text></g>\n<g id=\"click\"><rect x=\"100\" y=\"110\" width=\"280\" height=\"64\" rx=\"10\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"240\" y=\"151\" text-anchor=\"middle\" font-size=\"24\">a click: waiting</text></g>\n<g id=\"axis\"><line x1=\"560\" y1=\"400\" x2=\"1160\" y2=\"400\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"560\" y=\"470\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0 ms</text><text x=\"710\" y=\"470\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">10 ms</text><text x=\"860\" y=\"470\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">20 ms</text><text x=\"1010\" y=\"470\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">30 ms</text><text x=\"1160\" y=\"470\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">40 ms</text></g>\n<g id=\"oneFrame\"><rect x=\"560\" y=\"260\" width=\"250.5\" height=\"50\" rx=\"8\" stroke-width=\"3\"/><text x=\"685.25\" y=\"294\" text-anchor=\"middle\" font-size=\"22\">16.7 ms</text></g>\n<g id=\"renderBar\"><rect x=\"560\" y=\"330\" width=\"600\" height=\"50\" rx=\"8\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"860\" y=\"364\" text-anchor=\"middle\" font-size=\"22\">render: cannot stop</text></g>\n<g id=\"clickT\"><line x1=\"635\" y1=\"120\" x2=\"635\" y2=\"326\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"635\" y=\"110\" text-anchor=\"middle\" font-size=\"22\">click at 5 ms</text></g>\n<g id=\"due1\"><line x1=\"810.5\" y1=\"230\" x2=\"810.5\" y2=\"400\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"8 6\"/><text x=\"810.5\" y=\"220\" text-anchor=\"middle\" font-size=\"22\">frame due</text><text x=\"810.5\" y=\"430\" text-anchor=\"middle\" font-size=\"22\" class=\"tone-bad\">missed</text></g><g id=\"due2\"><line x1=\"1061\" y1=\"230\" x2=\"1061\" y2=\"400\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"8 6\"/><text x=\"1061\" y=\"220\" text-anchor=\"middle\" font-size=\"22\">frame due</text><text x=\"1061\" y=\"430\" text-anchor=\"middle\" font-size=\"22\" class=\"tone-bad\">missed</text></g>\n<g id=\"handled\"><text x=\"1160\" y=\"520\" text-anchor=\"end\" font-size=\"24\" class=\"tone-good\">click handled at 40 ms</text></g>\n</svg>"
+  },
   "scenes": [
     {
       "type": "svg",
       "chapter": "Touching the DOM",
       "title": "Why touching the page is slow",
-      "narration": "Every web page is a tree of elements the browser keeps in memory, called the DOM. Changing it by hand is where apps get slow.",
-      "svg": "<svg viewBox=\"0 0 1200 640\">\n<rect id=\"window\" x=\"30\" y=\"30\" width=\"720\" height=\"580\" rx=\"16\" stroke-width=\"3\"/>\n<line x1=\"30\" y1=\"80\" x2=\"750\" y2=\"80\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<circle cx=\"62\" cy=\"55\" r=\"8\" fill=\"var(--bad)\" stroke=\"none\"/><circle cx=\"88\" cy=\"55\" r=\"8\" fill=\"var(--warn)\" stroke=\"none\"/><circle cx=\"114\" cy=\"55\" r=\"8\" fill=\"var(--good)\" stroke=\"none\"/>\n<text x=\"390\" y=\"63\" text-anchor=\"middle\" font-size=\"20\" fill=\"var(--muted)\">the page’s DOM tree</text>\n<g id=\"reflow\"><rect x=\"44\" y=\"94\" width=\"692\" height=\"502\" rx=\"10\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"390\" y=\"590\" text-anchor=\"middle\" font-size=\"24\" class=\"tone-bad\">Layout reflow and repaint</text></g>\n<g stroke=\"var(--muted)\" stroke-width=\"3\"><line x1=\"390\" y1=\"164\" x2=\"390\" y2=\"230\"/><line x1=\"390\" y1=\"274\" x2=\"390\" y2=\"370\"/><line x1=\"400\" y1=\"414\" x2=\"126\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"258\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"390\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"522\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"654\" y2=\"470\"/></g>\n<g id=\"body\"><rect x=\"320\" y=\"120\" width=\"140\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"150\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;body&gt;</text></g>\n<g id=\"div\"><rect x=\"320\" y=\"230\" width=\"140\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"260\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;div&gt;</text></g>\n<g id=\"ul\"><rect x=\"300\" y=\"370\" width=\"180\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"400\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;ul id=list&gt;</text></g>\n<g id=\"li0\"><rect x=\"70\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"126\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li1\"><rect x=\"202\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"258\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li2\"><rect x=\"334\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li3\"><rect x=\"466\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"522\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li4\"><rect x=\"598\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"654\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g>\n<g id=\"code\"><rect x=\"60\" y=\"300\" width=\"230\" height=\"40\" rx=\"8\" class=\"tone-warn\"/><text x=\"175\" y=\"327\" text-anchor=\"middle\" font-size=\"18\" font-family=\"mono\">innerHTML = …</text></g>\n<g id=\"node\"><rect x=\"790\" y=\"94\" width=\"380\" height=\"502\" rx=\"16\" stroke-width=\"3\"/><text x=\"980\" y=\"140\" text-anchor=\"middle\" font-size=\"26\">One &lt;li&gt;, inside the browser</text>\n<text x=\"820\" y=\"200\" font-size=\"22\">• hundreds of properties</text>\n<text x=\"820\" y=\"250\" font-size=\"22\">• a style with hundreds of values</text>\n<text x=\"820\" y=\"300\" font-size=\"22\">• its event listeners</text>\n<text x=\"820\" y=\"350\" font-size=\"22\">• a layout box: x, y, width, height</text>\n<text x=\"820\" y=\"400\" font-size=\"22\">• links to parent and children</text>\n<text x=\"820\" y=\"450\" font-size=\"22\">• a place in the paint layers</text>\n<text x=\"980\" y=\"540\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">heavy, and slow to change</text></g>\n</svg>",
+      "narration": "Every web page is a tree of elements the browser keeps in memory, called the DOM.",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<rect id=\"window\" x=\"30\" y=\"30\" width=\"720\" height=\"580\" rx=\"16\" stroke-width=\"3\"/>\n<line x1=\"30\" y1=\"80\" x2=\"750\" y2=\"80\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<text x=\"390\" y=\"63\" text-anchor=\"middle\" font-size=\"20\" fill=\"var(--muted)\">the page’s DOM tree</text>\n<g id=\"reflow\"><rect x=\"44\" y=\"94\" width=\"692\" height=\"502\" rx=\"10\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"390\" y=\"590\" text-anchor=\"middle\" font-size=\"24\" class=\"tone-bad\">Layout reflow and repaint</text></g>\n<g stroke=\"var(--muted)\" stroke-width=\"3\"><line x1=\"390\" y1=\"164\" x2=\"390\" y2=\"230\"/><line x1=\"390\" y1=\"274\" x2=\"390\" y2=\"370\"/><line x1=\"400\" y1=\"414\" x2=\"126\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"258\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"390\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"522\" y2=\"470\"/><line x1=\"400\" y1=\"414\" x2=\"654\" y2=\"470\"/></g>\n<g id=\"body\"><rect x=\"320\" y=\"120\" width=\"140\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"150\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;body&gt;</text></g>\n<g id=\"div\"><rect x=\"320\" y=\"230\" width=\"140\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"260\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;div&gt;</text></g>\n<g id=\"ul\"><rect x=\"300\" y=\"370\" width=\"180\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"400\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;ul id=list&gt;</text></g>\n<g id=\"li0\"><rect x=\"70\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"126\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li1\"><rect x=\"202\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"258\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li2\"><rect x=\"334\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"390\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li3\"><rect x=\"466\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"522\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g><g id=\"li4\"><rect x=\"598\" y=\"470\" width=\"112\" height=\"44\" rx=\"8\" /><text x=\"654\" y=\"500\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">&lt;li&gt;</text></g>\n<g id=\"code\"><rect x=\"60\" y=\"300\" width=\"230\" height=\"40\" rx=\"8\" class=\"tone-bad\"/><text x=\"175\" y=\"327\" text-anchor=\"middle\" font-size=\"18\" font-family=\"mono\">innerHTML = …</text></g>\n<g id=\"node\"><rect x=\"790\" y=\"94\" width=\"380\" height=\"502\" rx=\"16\" stroke-width=\"3\"/><text x=\"980\" y=\"140\" text-anchor=\"middle\" font-size=\"26\">One &lt;li&gt;, inside the browser</text>\n<text x=\"820\" y=\"200\" font-size=\"22\">• hundreds of properties</text>\n<text x=\"820\" y=\"250\" font-size=\"22\">• a style with hundreds of values</text>\n<text x=\"820\" y=\"300\" font-size=\"22\">• its event listeners</text>\n<text x=\"820\" y=\"350\" font-size=\"22\">• a layout box: x, y, width, height</text>\n<text x=\"820\" y=\"400\" font-size=\"22\">• links to parent and children</text>\n<text x=\"820\" y=\"450\" font-size=\"22\">• a place in the paint layers</text>\n<text x=\"980\" y=\"540\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">heavy, and slow to change</text></g>\n</svg>",
       "labels": {
         "code": "inner HTML",
         "ul": "the list",
@@ -27,9 +37,9 @@
             "ul"
           ],
           "tint": {
-            "ul": "warn"
+            "ul": "bad"
           },
-          "say": "Say our code finds the list and replaces its inner HTML."
+          "say": "Changing it by hand is slow. Say our code replaces the list’s inner HTML."
         },
         {
           "show": [
@@ -43,7 +53,7 @@
             "node"
           ],
           "focus": "node",
-          "say": "And each element is not a small thing. Inside the browser, one list item carries hundreds of properties, styles and listeners."
+          "say": "And each element is not a small thing. One list item carries hundreds of properties, styles and listeners."
         },
         {
           "focus": [
@@ -53,269 +63,152 @@
             "li3",
             "li4"
           ],
-          "callout": "50 changes, each followed by a read = 50 reflows",
-          "say": "Change fifty list items in a loop, and read a size after each one, and the browser redoes the layout fifty times. Everything stutters."
+          "draw": [
+            {
+              "brace": [
+                "li0",
+                "li4"
+              ],
+              "note": "50 changes = 50 reflows",
+              "side": "below",
+              "when": "fifty times"
+            }
+          ],
+          "say": "Change fifty list items in a loop, read a size after each, and the browser redoes the layout fifty times."
         },
         {
           "focus": "window",
-          "callout": "`UI = f(state)`",
-          "say": "React’s idea: you describe what the page should look like for your data, and React makes the fewest changes to get there."
+          "draw": [
+            {
+              "write": "UI = f(state)",
+              "near": "code",
+              "side": "above",
+              "tone": "good",
+              "when": "describe"
+            }
+          ],
+          "say": "React’s idea: you describe the page for your data, and React makes the fewest changes to get there."
         }
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "JSX is a function call",
       "title": "JSX turns into JavaScript",
-      "narration": "This looks like HTML, but it is not. Before your code runs, a compiler such as Babel or SWC rewrites it.",
-      "sides": [
-        {
-          "title": "You write",
-          "tone": "neutral"
-        },
-        {
-          "title": "The compiler writes",
-          "tone": "accent"
-        }
+      "picture": "jsx",
+      "hidden": [
+        "compile",
+        "call",
+        "returns",
+        "element"
       ],
-      "rows": [
-        {
-          "cells": [
-            {
-              "code": "<button\n  className=\"primary\"\n  onClick={handleClick}>\n  Click Me\n</button>",
-              "lang": "jsx"
-            },
-            {
-              "code": "jsx(\"button\", {\n  className: \"primary\",\n  onClick: handleClick,\n  children: \"Click Me\",\n})",
-              "lang": "js"
-            }
-          ]
-        },
-        {
-          "label": "What it is",
-          "cells": [
-            "Looks like HTML",
-            "A plain function call"
-          ]
-        }
-      ],
+      "narration": "This looks like HTML, but it is not.",
       "steps": [
         {
-          "focus": 0,
-          "say": "The tag becomes a call to a function named jsx. The tag name, the props and the text all become arguments."
+          "show": [
+            "compile",
+            "call"
+          ],
+          "focus": "call",
+          "say": "Before your code runs, a compiler such as Babel rewrites it into a call."
         },
         {
-          "focus": 1,
+          "focus": "fn",
+          "draw": [
+            {
+              "circle": "fn",
+              "when": "jsx"
+            }
+          ],
+          "say": "The tag becomes a call to a function named jsx, with the props and the text as arguments."
+        },
+        {
+          "focus": [
+            "you",
+            "call"
+          ],
           "say": "So JSX is only a nicer way to write a function call."
         }
       ]
     },
     {
-      "type": "memory",
+      "type": "svg",
       "chapter": "Just an object",
       "title": "What the call returns",
-      "narration": "And that call does not draw a button. It returns a plain object that describes one.",
-      "frames": [
-        {
-          "name": "App",
-          "vars": {
-            "element": {
-              "ref": "el"
-            }
-          }
-        }
-      ],
-      "objects": [
-        {
-          "id": "el",
-          "type": "React element",
-          "fields": {
-            "type": "\"button\"",
-            "props": {
-              "ref": "props"
-            },
-            "key": "null"
-          }
-        },
-        {
-          "id": "props",
-          "type": "props",
-          "fields": {
-            "className": "\"primary\"",
-            "onClick": {
-              "ref": "fn"
-            },
-            "children": "\"Click Me\""
-          }
-        },
-        {
-          "id": "fn",
-          "type": "function",
-          "fields": {
-            "name": "handleClick"
-          }
-        }
-      ],
+      "picture": "jsx",
+      "narration": "And that call does not draw a button.",
       "steps": [
         {
-          "focus": [
-            "App.element",
-            "el"
+          "show": [
+            "returns",
+            "element"
           ],
-          "say": "The component gets back an object, a React element."
+          "focus": "element",
+          "say": "It returns a plain object that describes one: a React element."
         },
         {
           "focus": [
-            "el.type",
-            "props"
+            "eltype",
+            "elprops"
           ],
-          "say": "It says the type is a button, and holds the props: the class, the click handler and the text."
+          "say": "It says the type is a button, and holds the props."
         },
         {
-          "focus": "el",
-          "callout": "Nothing on screen yet: **just a description**",
-          "say": "It is just a description, a few bytes in memory. Making thousands of these is cheap, unlike touching the page."
+          "focus": "element",
+          "draw": [
+            {
+              "write": "nothing on screen yet",
+              "near": "element",
+              "side": "left",
+              "tone": "good",
+              "when": "description"
+            }
+          ],
+          "say": "It is just a description, a few bytes in memory. Making thousands is cheap."
         }
       ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "Comparing trees",
       "title": "Last render and this render",
-      "layout": "TB",
-      "narration": "Each time your data changes, React builds a fresh tree of these objects and compares it with the last one.",
-      "nodes": [
-        {
-          "id": "rootA",
-          "label": "Root",
-          "shape": "step",
-          "group": "Last render"
-        },
-        {
-          "id": "headerA",
-          "label": "Header",
-          "shape": "step",
-          "group": "Last render"
-        },
-        {
-          "id": "mainA",
-          "label": "Main",
-          "shape": "step",
-          "group": "Last render"
-        },
-        {
-          "id": "card1A",
-          "label": "Card 1",
-          "shape": "step",
-          "group": "Last render"
-        },
-        {
-          "id": "card2A",
-          "label": "Card 2",
-          "shape": "step",
-          "group": "Last render"
-        },
-        {
-          "id": "rootB",
-          "label": "Root",
-          "shape": "step",
-          "group": "This render"
-        },
-        {
-          "id": "headerB",
-          "label": "Header",
-          "shape": "step",
-          "group": "This render"
-        },
-        {
-          "id": "mainB",
-          "label": "Main",
-          "shape": "step",
-          "group": "This render"
-        },
-        {
-          "id": "card1B",
-          "label": "Card 1",
-          "shape": "step",
-          "group": "This render"
-        },
-        {
-          "id": "card2B",
-          "label": "Card 2",
-          "caption": "new text colour",
-          "shape": "step",
-          "group": "This render"
-        },
-        {
-          "id": "card3B",
-          "label": "Card 3",
-          "caption": "added",
-          "shape": "step",
-          "group": "This render",
-          "hidden": true
-        }
+      "picture": "trees",
+      "hidden": [
+        "treeB",
+        "card3B",
+        "namesBuf",
+        "root",
+        "ptrA",
+        "ptrB"
       ],
-      "edges": [
-        {
-          "from": "rootA",
-          "to": "headerA",
-          "direction": "none"
-        },
-        {
-          "from": "rootA",
-          "to": "mainA",
-          "direction": "none"
-        },
-        {
-          "from": "mainA",
-          "to": "card1A",
-          "direction": "none"
-        },
-        {
-          "from": "mainA",
-          "to": "card2A",
-          "direction": "none"
-        },
-        {
-          "from": "rootB",
-          "to": "headerB",
-          "direction": "none"
-        },
-        {
-          "from": "rootB",
-          "to": "mainB",
-          "direction": "none"
-        },
-        {
-          "from": "mainB",
-          "to": "card1B",
-          "direction": "none"
-        },
-        {
-          "from": "mainB",
-          "to": "card2B",
-          "direction": "none"
-        },
-        {
-          "from": "mainB",
-          "to": "card3B",
-          "direction": "none",
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "treeA": "last tree",
+        "treeB": "fresh tree"
+      },
+      "narration": "Each time your data changes, React builds a fresh tree and compares it with the last one.",
       "steps": [
+        {
+          "show": [
+            "treeB"
+          ],
+          "focus": [
+            "treeA",
+            "treeB"
+          ],
+          "say": "Here is the last tree, and the fresh one beside it."
+        },
         {
           "focus": "card2B",
           "tint": {
-            "card2B": "warn"
+            "card2B": "good"
           },
           "say": "This time Card 2 has a new text colour."
         },
         {
           "show": [
-            "card3B",
-            "mainB->card3B"
+            "card3B"
           ],
+          "focus": "card3B",
           "tint": {
             "card3B": "good"
           },
@@ -323,137 +216,167 @@
         },
         {
           "focus": [
-            "group:Last render",
-            "group:This render"
+            "treeA",
+            "treeB"
           ],
-          "callout": "Any two trees: about n³ steps. [1,000 nodes → 1,000,000,000]{bad}",
-          "say": "Finding the smallest set of changes between any two trees takes about n cubed steps. For a thousand elements, that is a billion."
+          "draw": [
+            {
+              "write": "any two trees: n³ steps\n1,000 nodes → 1,000,000,000",
+              "at": [
+                0.02,
+                0.03
+              ],
+              "tone": "bad",
+              "when": "n cubed"
+            }
+          ],
+          "say": "Finding the fewest changes between any two trees takes about n cubed steps. For a thousand elements, a billion."
         },
         {
           "focus": [
             "card2B",
             "card3B"
           ],
-          "callout": "React’s two rules: about n steps. [1,000 nodes → about 1,000]{good}",
+          "erase": true,
+          "draw": [
+            {
+              "write": "React’s two rules: about n steps",
+              "at": [
+                0.02,
+                0.03
+              ],
+              "tone": "good",
+              "when": "two simple rules"
+            }
+          ],
           "say": "So React cheats, with two simple rules, and gets it down to about one step per element."
         }
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "Two rules",
       "title": "The two shortcuts",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<g id=\"rule1\"><text x=\"280\" y=\"50\" text-anchor=\"middle\" font-size=\"28\">a different type</text>\n<g id=\"oldDiv\"><rect x=\"40\" y=\"120\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"140\" y=\"157\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">&lt;div&gt;</text></g><g id=\"oldCounter\"><rect x=\"40\" y=\"260\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"140\" y=\"297\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">Counter</text></g><line x1=\"140\" y1=\"176\" x2=\"140\" y2=\"260\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<g id=\"newSpan\"><rect x=\"320\" y=\"120\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"420\" y=\"157\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">&lt;span&gt;</text></g><g id=\"newCounter\"><rect x=\"320\" y=\"260\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"420\" y=\"297\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">Counter</text></g><line x1=\"420\" y1=\"176\" x2=\"420\" y2=\"260\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<text x=\"140\" y=\"370\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">last render</text><text x=\"420\" y=\"370\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">this render</text></g>\n<line x1=\"600\" y1=\"40\" x2=\"600\" y2=\"600\" stroke=\"var(--border)\" stroke-width=\"2\"/>\n<g id=\"rule2\"><text x=\"900\" y=\"50\" text-anchor=\"middle\" font-size=\"28\">keys in a list</text>\n<g id=\"ann1\"><rect x=\"660\" y=\"180\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"760\" y=\"217\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">key=\"ann\"</text></g><g id=\"bob1\"><rect x=\"660\" y=\"260\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"760\" y=\"297\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">key=\"bob\"</text></g>\n<g id=\"cat\"><rect x=\"940\" y=\"100\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"1040\" y=\"137\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">key=\"cat\"</text></g><g id=\"ann2\"><rect x=\"940\" y=\"180\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"1040\" y=\"217\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">key=\"ann\"</text></g><g id=\"bob2\"><rect x=\"940\" y=\"260\" width=\"200\" height=\"56\" rx=\"12\" stroke-width=\"3\"/><text x=\"1040\" y=\"297\" text-anchor=\"middle\" font-size=\"24\" font-family=\"mono\">key=\"bob\"</text></g>\n<text x=\"760\" y=\"370\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">last render</text><text x=\"1040\" y=\"370\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">this render</text></g>\n</svg>",
+      "hidden": [
+        "rule2"
+      ],
+      "labels": {
+        "rule1": "rule one",
+        "rule2": "rule two",
+        "oldDiv": "div",
+        "newSpan": "span",
+        "cat": "cat"
+      },
       "narration": "Here are the two rules.",
-      "sides": [
-        {
-          "title": "Last render",
-          "tone": "neutral"
-        },
-        {
-          "title": "This render",
-          "tone": "accent"
-        }
-      ],
-      "rows": [
-        {
-          "label": "Different type",
-          "cells": [
-            {
-              "code": "<div>\n  <Counter />\n</div>",
-              "lang": "jsx"
-            },
-            {
-              "code": "<span>\n  <Counter />\n</span>",
-              "lang": "jsx"
-            }
-          ]
-        },
-        {
-          "label": "Keys in a list",
-          "cells": [
-            {
-              "code": "<li key=\"ann\">Ann</li>\n<li key=\"bob\">Bob</li>",
-              "lang": "jsx"
-            },
-            {
-              "code": "<li key=\"cat\">Cat</li>\n<li key=\"ann\">Ann</li>\n<li key=\"bob\">Bob</li>",
-              "lang": "jsx"
-            }
-          ]
-        }
-      ],
       "steps": [
         {
-          "focus": 0,
-          "say": "Rule one: if a div became a span, React does not look inside. It throws the old part away and builds the new one, and the counter starts over."
+          "focus": [
+            "oldDiv",
+            "newSpan"
+          ],
+          "draw": [
+            {
+              "cross": "oldDiv",
+              "when": "throws"
+            },
+            {
+              "cross": "oldCounter"
+            }
+          ],
+          "say": "Rule one: if a div became a span, React does not look inside. It throws the old part away."
         },
         {
-          "focus": 1,
-          "say": "Rule two: in a list, keys say which item is which. Cat is new at the top, so React adds one item instead of rewriting all three."
+          "focus": [
+            "newSpan",
+            "newCounter"
+          ],
+          "tint": {
+            "newSpan": "good",
+            "newCounter": "good"
+          },
+          "say": "And it builds the new one, so the counter starts over."
+        },
+        {
+          "show": [
+            "rule2"
+          ],
+          "focus": "rule2",
+          "say": "Rule two: in a list, keys say which item is which."
+        },
+        {
+          "focus": "cat",
+          "tint": {
+            "cat": "good"
+          },
+          "draw": [
+            {
+              "arrow": [
+                "ann1",
+                "ann2"
+              ],
+              "when": "adds"
+            },
+            {
+              "arrow": [
+                "bob1",
+                "bob2"
+              ]
+            }
+          ],
+          "say": "Cat is new at the top, so React adds one item instead of rewriting all three."
         }
       ]
     },
     {
-      "type": "memory",
+      "type": "svg",
       "chapter": "The old way",
       "title": "Before React 16: one long call stack",
-      "narration": "Before React 16, React walked the tree with plain function calls, each one calling the next.",
-      "frames": [
-        {
-          "name": "render(App)",
-          "vars": {
-            "depth": 1
-          }
-        },
-        {
-          "name": "render(Dashboard)",
-          "vars": {
-            "depth": 2
-          },
-          "hidden": true
-        },
-        {
-          "name": "render(Sidebar)",
-          "vars": {
-            "depth": 3
-          },
-          "hidden": true
-        },
-        {
-          "name": "render(NavList)",
-          "vars": {
-            "depth": 4
-          },
-          "hidden": true
-        }
+      "picture": "stack",
+      "hidden": [
+        "fDash",
+        "fSide",
+        "fNav",
+        "click",
+        "axis",
+        "oneFrame",
+        "renderBar",
+        "clickT",
+        "due1",
+        "due2",
+        "handled"
       ],
-      "objects": [
-        {
-          "id": "click",
-          "type": "click event",
-          "fields": {
-            "status": "waiting"
-          },
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "fApp": "App",
+        "fDash": "Dashboard",
+        "fSide": "Sidebar",
+        "fNav": "NavList",
+        "click": "click"
+      },
+      "narration": "Before React 16, React walked the tree with plain function calls.",
       "steps": [
         {
           "show": [
-            "frame:render(Dashboard)"
+            "fDash"
+          ],
+          "focus": [
+            "fApp",
+            "fDash"
           ],
           "say": "Rendering App calls render on Dashboard."
         },
         {
           "show": [
-            "frame:render(Sidebar)"
+            "fSide"
           ],
+          "focus": "fSide",
           "say": "Which calls Sidebar."
         },
         {
           "show": [
-            "frame:render(NavList)"
+            "fNav"
           ],
+          "focus": "fNav",
           "say": "Which calls NavList. Each call waits for the one below it."
         },
         {
@@ -462,84 +385,82 @@
           ],
           "focus": [
             "click",
-            "frame:render(NavList)"
+            "fNav"
           ],
-          "callout": "The stack cannot stop halfway",
-          "say": "Now the user clicks. But the page’s one thread is busy, and these calls cannot pause. The click has to wait until every one returns."
+          "tint": {
+            "click": "bad"
+          },
+          "say": "Now the user clicks. But the page’s one thread is busy."
+        },
+        {
+          "focus": [
+            "fApp",
+            "fDash",
+            "fSide",
+            "fNav",
+            "click"
+          ],
+          "draw": [
+            {
+              "brace": [
+                "fNav",
+                "fApp"
+              ],
+              "note": "cannot stop halfway",
+              "side": "right",
+              "tone": "bad",
+              "when": "cannot pause"
+            }
+          ],
+          "say": "These calls cannot pause. The click waits until every one returns."
         }
       ]
     },
     {
-      "type": "timeline",
+      "type": "svg",
       "chapter": "Dropped frames",
       "title": "A 40 ms render on the main thread",
-      "unit": "ms",
-      "narration": "Here is what that costs. The screen wants a new frame sixty times a second.",
-      "events": [
-        {
-          "at": 0,
-          "label": "Big update starts"
-        },
-        {
-          "at": 5,
-          "label": "User clicks",
-          "detail": "has to wait",
-          "tone": "warn"
-        },
-        {
-          "at": 16.7,
-          "label": "Frame due",
-          "detail": "missed",
-          "tone": "bad"
-        },
-        {
-          "at": 33.3,
-          "label": "Frame due",
-          "detail": "missed",
-          "tone": "bad"
-        },
-        {
-          "at": 40,
-          "label": "Render ends",
-          "detail": "click handled at last",
-          "tone": "good"
-        }
-      ],
-      "spans": [
-        {
-          "from": 0,
-          "to": 16.7,
-          "label": "one frame, 16.7 ms",
-          "tone": "neutral"
-        },
-        {
-          "from": 0,
-          "to": 40,
-          "label": "render, cannot stop",
-          "tone": "bad"
-        }
-      ],
+      "picture": "stack",
+      "narration": "Here is what that costs.",
       "steps": [
         {
-          "focus": [
-            0,
-            "span:one frame, 16.7 ms"
+          "show": [
+            "axis",
+            "oneFrame"
           ],
-          "say": "That gives each frame about sixteen point seven milliseconds."
+          "focus": "oneFrame",
+          "say": "The screen wants a new frame sixty times a second, about every sixteen point seven milliseconds."
         },
         {
-          "focus": [
-            1,
-            "span:render, cannot stop"
+          "show": [
+            "renderBar"
           ],
-          "say": "This update takes forty milliseconds, and the click lands five milliseconds in."
+          "focus": "renderBar",
+          "say": "This update takes forty milliseconds."
         },
         {
-          "focus": "2-3",
+          "show": [
+            "clickT"
+          ],
+          "focus": "clickT",
+          "say": "And the click lands five milliseconds in."
+        },
+        {
+          "show": [
+            "due1",
+            "due2"
+          ],
+          "focus": [
+            "due1",
+            "due2"
+          ],
           "say": "Two frames go by with nothing new drawn. The page freezes."
         },
         {
-          "focus": 4,
+          "show": [
+            "handled"
+          ],
+          "focus": "handled",
           "say": "Only at forty milliseconds does the click get its turn. Typing feels sticky."
         }
       ]
@@ -548,7 +469,7 @@
       "type": "svg",
       "chapter": "Fiber",
       "title": "Fiber: a call stack React controls",
-      "narration": "React 16 rewrote this as Fiber. Each component gets a small object, a fiber, with three links: its first child, its next sibling, and its parent, called return.",
+      "narration": "React 16 rewrote this as Fiber. Each component gets a small object, a fiber, with three links.",
       "svg": "<svg viewBox=\"0 0 1200 640\">\n<defs><marker id=\"head-accent\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--accent)\" stroke=\"none\"/></marker><marker id=\"head-muted\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"child1\"><line x1=\"560\" y1=\"160\" x2=\"380\" y2=\"294\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/><text x=\"490\" y=\"250\" font-size=\"22\" font-family=\"mono\">child</text></g>\n<g id=\"ret1\"><path d=\"M290,300 Q290,130 484,122\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"10 8\" fill=\"none\" marker-end=\"url(#head-muted)\"/><text x=\"250\" y=\"200\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">return</text></g>\n<g id=\"ret2\"><path d=\"M910,300 Q910,130 716,122\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"10 8\" fill=\"none\" marker-end=\"url(#head-muted)\"/><text x=\"950\" y=\"200\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">return</text></g>\n<g id=\"sib\"><line x1=\"450\" y1=\"340\" x2=\"744\" y2=\"340\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/><text x=\"597\" y=\"326\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">sibling</text></g>\n<g id=\"child2\"><line x1=\"820\" y1=\"380\" x2=\"820\" y2=\"514\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head-muted)\"/><text x=\"806\" y=\"455\" text-anchor=\"end\" font-size=\"22\" font-family=\"mono\">child</text></g>\n<g id=\"ret3\"><line x1=\"910\" y1=\"520\" x2=\"910\" y2=\"386\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"10 8\" marker-end=\"url(#head-muted)\"/><text x=\"924\" y=\"455\" font-size=\"22\" font-family=\"mono\" fill=\"var(--muted)\">return</text></g>\n<g id=\"app\"><rect x=\"490\" y=\"80\" width=\"220\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"600\" y=\"130\" text-anchor=\"middle\" font-size=\"28\">App</text></g>\n<g id=\"header\"><rect x=\"230\" y=\"300\" width=\"220\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"340\" y=\"350\" text-anchor=\"middle\" font-size=\"28\">Header</text></g>\n<g id=\"main\"><rect x=\"750\" y=\"300\" width=\"220\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"860\" y=\"350\" text-anchor=\"middle\" font-size=\"28\">Main</text></g>\n<g id=\"card\"><rect x=\"750\" y=\"520\" width=\"220\" height=\"80\" rx=\"14\" stroke-width=\"3\"/><text x=\"860\" y=\"570\" text-anchor=\"middle\" font-size=\"28\">Card</text></g>\n<g id=\"wip-app\"><rect x=\"110\" y=\"40\" width=\"200\" height=\"40\" rx=\"20\" fill=\"var(--surface)\" stroke=\"var(--accent)\" stroke-width=\"3\"/><text x=\"210\" y=\"67\" text-anchor=\"middle\" font-size=\"20\" font-family=\"mono\" fill=\"var(--text)\">workInProgress</text><line x1=\"310\" y1=\"60\" x2=\"486\" y2=\"100\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\"/></g>\n<g id=\"wip-header\"><rect x=\"20\" y=\"420\" width=\"200\" height=\"40\" rx=\"20\" fill=\"var(--surface)\" stroke=\"var(--accent)\" stroke-width=\"3\"/><text x=\"120\" y=\"447\" text-anchor=\"middle\" font-size=\"20\" font-family=\"mono\" fill=\"var(--text)\">workInProgress</text><line x1=\"220\" y1=\"440\" x2=\"300\" y2=\"384\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\"/></g>\n<g id=\"wip-main\"><rect x=\"990\" y=\"236\" width=\"200\" height=\"40\" rx=\"20\" fill=\"var(--surface)\" stroke=\"var(--accent)\" stroke-width=\"3\"/><text x=\"1090\" y=\"263\" text-anchor=\"middle\" font-size=\"20\" font-family=\"mono\" fill=\"var(--text)\">workInProgress</text><line x1=\"990\" y1=\"256\" x2=\"960\" y2=\"296\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\"/></g>\n<g id=\"wip-card\"><rect x=\"990\" y=\"540\" width=\"200\" height=\"40\" rx=\"20\" fill=\"var(--surface)\" stroke=\"var(--accent)\" stroke-width=\"3\"/><text x=\"1090\" y=\"567\" text-anchor=\"middle\" font-size=\"20\" font-family=\"mono\" fill=\"var(--text)\">workInProgress</text><line x1=\"990\" y1=\"560\" x2=\"974\" y2=\"560\" stroke=\"var(--accent)\" stroke-width=\"4\" marker-end=\"url(#head-accent)\"/></g>\n</svg>",
       "labels": {
         "wip-app": "work in progress",
@@ -556,15 +477,28 @@
         "sib": "sibling link",
         "child2": "child link",
         "ret3": "return link",
-        "ret2": "return link"
+        "ret2": "return link",
+        "ret1": "parent"
       },
       "hidden": [
+        "wip-app",
         "wip-header",
         "wip-main",
         "wip-card"
       ],
       "steps": [
         {
+          "focus": [
+            "child1",
+            "sib",
+            "ret1"
+          ],
+          "say": "Its first child, its next sibling, and its parent, called return."
+        },
+        {
+          "show": [
+            "wip-app"
+          ],
           "focus": [
             "wip-app",
             "app"
@@ -580,10 +514,8 @@
           ],
           "focus": [
             "child1",
-            "header",
-            "wip-header"
+            "header"
           ],
-          "callout": "follow `child`",
           "say": "It does App’s work, then follows the child link down to Header."
         },
         {
@@ -595,27 +527,34 @@
           ],
           "focus": [
             "sib",
-            "main",
-            "wip-main"
+            "main"
           ],
-          "callout": "no child, so follow `sibling`",
           "say": "Header has no child, so it follows the sibling link across to Main."
         },
         {
           "tint": {
-            "main": "warn"
+            "main": "bad"
           },
           "focus": [
             "main",
             "wip-main"
           ],
-          "callout": "[out of time: pause here]{warn}",
-          "say": "Now say a click comes in. The loop just stops. The pointer remembers where it was, and the browser handles the click."
+          "draw": [
+            {
+              "write": "out of time: pause here",
+              "near": "wip-main",
+              "side": "above",
+              "tone": "bad",
+              "when": "stops"
+            }
+          ],
+          "say": "Now a click comes in. The loop just stops. The pointer remembers where it was."
         },
         {
           "tint": {
             "main": "clear"
           },
+          "erase": true,
           "hide": [
             "wip-main"
           ],
@@ -624,11 +563,9 @@
           ],
           "focus": [
             "child2",
-            "card",
-            "wip-card"
+            "card"
           ],
-          "callout": "resume: follow `child`",
-          "say": "Then it picks up right where it left off, down to Card."
+          "say": "Once the click is handled, it picks up right where it left off, down to Card."
         },
         {
           "hide": [
@@ -639,11 +576,9 @@
           ],
           "focus": [
             "ret3",
-            "main",
-            "wip-main"
+            "main"
           ],
-          "callout": "no child, no sibling: follow `return`",
-          "say": "Card has no child and no sibling, so it climbs back up the return link to Main."
+          "say": "Card has no child and no sibling, so it climbs the return link to Main."
         },
         {
           "hide": [
@@ -654,199 +589,191 @@
           ],
           "focus": [
             "ret2",
-            "app",
-            "wip-app"
+            "app"
           ],
-          "callout": "back at the top: done",
-          "say": "Main has no sibling either, so up again to App. Back at the top, the walk is done."
+          "say": "Main has no sibling either, so up again to App. The walk is done."
         }
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "Render and commit",
       "title": "Two phases of every update",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"render\"><rect x=\"30\" y=\"40\" width=\"550\" height=\"560\" rx=\"16\" stroke-width=\"3\"/><text x=\"305\" y=\"100\" text-anchor=\"middle\" font-size=\"34\">render</text></g>\n<g id=\"commit\"><rect x=\"620\" y=\"40\" width=\"550\" height=\"560\" rx=\"16\" stroke-width=\"3\"/><text x=\"895\" y=\"100\" text-anchor=\"middle\" font-size=\"34\">commit</text></g>\n<text id=\"r1\" x=\"70\" y=\"190\" font-size=\"26\">calls your components</text><text id=\"r2\" x=\"70\" y=\"300\" font-size=\"26\">can pause or start over</text><text id=\"r3\" x=\"70\" y=\"410\" font-size=\"26\">never touches the page</text>\n<text id=\"c1\" x=\"660\" y=\"190\" font-size=\"26\">changes the real page</text><text id=\"c2\" x=\"660\" y=\"300\" font-size=\"26\">runs start to finish</text><text id=\"c3\" x=\"660\" y=\"410\" font-size=\"26\">all changes land at once</text><text id=\"c4\" x=\"660\" y=\"520\" font-size=\"26\">then refs, useLayoutEffect</text>\n</svg>",
+      "hidden": [
+        "r1",
+        "r2",
+        "r3",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "labels": {
+        "r1": "calls your components",
+        "c1": "applies them",
+        "r2": "pause",
+        "c2": "never stops",
+        "r3": "never touches",
+        "c3": "in one go",
+        "c4": "refs"
+      },
       "narration": "Every update now happens in two phases.",
-      "sides": [
-        {
-          "title": "Render phase",
-          "tone": "accent"
-        },
-        {
-          "title": "Commit phase",
-          "tone": "good"
-        }
-      ],
-      "rows": [
-        {
-          "label": "What it does",
-          "cells": [
-            "Calls your components, works out what changed",
-            "Applies those changes to the real page"
-          ]
-        },
-        {
-          "label": "Can it stop?",
-          "cells": [
-            "Yes: pause, throw away, start over",
-            "No: runs start to finish"
-          ]
-        },
-        {
-          "label": "The page",
-          "cells": [
-            "Never touched",
-            "All changes land at once"
-          ]
-        },
-        {
-          "label": "Then runs",
-          "cells": [
-            "Nothing",
-            "Updates refs, runs `useLayoutEffect`"
-          ]
-        }
-      ],
       "steps": [
         {
-          "focus": 0,
-          "say": "The render phase calls your components and works out what changed. The commit phase applies it."
+          "show": [
+            "r1",
+            "c1"
+          ],
+          "focus": [
+            "r1",
+            "c1"
+          ],
+          "say": "Render calls your components and works out what changed. Commit applies them."
         },
         {
-          "focus": 1,
+          "show": [
+            "r2",
+            "c2"
+          ],
+          "focus": [
+            "r2",
+            "c2"
+          ],
           "say": "Render can pause, give up, or start again. Commit never stops once it begins."
         },
         {
-          "focus": 2,
+          "show": [
+            "r3",
+            "c3"
+          ],
+          "focus": [
+            "r3",
+            "c3"
+          ],
           "say": "Render never touches the page. Commit changes it all in one go."
         },
         {
-          "focus": 3,
+          "show": [
+            "c4"
+          ],
+          "focus": "c4",
           "say": "And straight after, commit updates refs and runs layout effects."
         }
       ]
     },
     {
-      "type": "memory",
+      "type": "svg",
       "chapter": "Two trees",
       "title": "Double buffering: one pointer swap",
+      "picture": "trees",
+      "hidden": [
+        "treeB",
+        "card3B",
+        "namesDiff",
+        "ptrB"
+      ],
+      "labels": {
+        "root": "root",
+        "ptrA": "current pointer",
+        "treeA": "tree A",
+        "treeB": "tree B",
+        "ptrB": "pointer"
+      },
       "narration": "React keeps two trees: the one on screen, and the one it is building.",
-      "frames": [
-        {
-          "name": "root",
-          "vars": {
-            "current": {
-              "ref": "onscreen"
-            }
-          }
-        }
-      ],
-      "objects": [
-        {
-          "id": "onscreen",
-          "type": "tree A",
-          "fields": {
-            "count": 1,
-            "onScreen": "yes",
-            "alternate": "null"
-          }
-        },
-        {
-          "id": "building",
-          "type": "tree B",
-          "fields": {
-            "count": 2,
-            "onScreen": "no",
-            "alternate": {
-              "ref": "onscreen"
-            }
-          },
-          "hidden": true
-        }
-      ],
       "steps": [
         {
           "focus": [
-            "root.current",
-            "onscreen"
+            "root",
+            "ptrA",
+            "treeA"
           ],
-          "say": "The root’s current pointer marks tree A, the one the user sees, where the count is one."
+          "say": "The root’s current pointer marks tree A, the one the user sees."
         },
         {
           "show": [
-            "building"
+            "treeB",
+            "card3B"
           ],
-          "set": {
-            "onscreen.alternate": {
-              "ref": "building"
-            }
-          },
-          "focus": "building",
-          "say": "In the background, render builds tree B, with the count at two. The user sees none of it."
+          "focus": "treeB",
+          "say": "In the background, render builds tree B. The user sees none of it."
         },
         {
-          "set": {
-            "root.current": {
-              "ref": "building"
-            },
-            "building.onScreen": "yes",
-            "onscreen.onScreen": "no"
+          "hide": [
+            "ptrA"
+          ],
+          "show": [
+            "ptrB"
+          ],
+          "tint": {
+            "treeB": "good"
           },
           "focus": [
-            "root.current",
-            "building"
+            "root",
+            "ptrB",
+            "treeB"
           ],
-          "callout": "`root.current = workInProgress`",
-          "say": "When it is done, commit applies the changes and swaps one pointer. The new tree is now current."
+          "say": "When it is done, commit swaps one pointer. Tree B is now current."
         },
         {
-          "focus": "onscreen",
-          "callout": "No half-drawn page, ever",
+          "focus": "treeA",
           "say": "So the user never sees a half finished page. Tree A is kept, to build the next update in."
         }
       ]
     },
     {
-      "type": "flow",
+      "type": "svg",
       "chapter": "The whole path",
       "title": "From setState to pixels",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<g id=\"code\"><rect x=\"20\" y=\"200\" width=\"196\" height=\"100\" rx=\"14\" stroke-width=\"3\"/><text x=\"118\" y=\"258\" text-anchor=\"middle\" font-size=\"24\">your code</text><text x=\"118\" y=\"360\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">setCount(</text><text x=\"118\" y=\"394\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">count + 1)</text></g><g id=\"scheduler\"><line x1=\"216\" y1=\"250\" x2=\"250\" y2=\"250\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><rect x=\"256\" y=\"200\" width=\"196\" height=\"100\" rx=\"14\" stroke-width=\"3\"/><text x=\"354\" y=\"258\" text-anchor=\"middle\" font-size=\"24\">scheduler</text><text x=\"354\" y=\"360\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">a click first,</text><text x=\"354\" y=\"394\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">a fetch can wait</text></g><g id=\"reconciler\"><line x1=\"452\" y1=\"250\" x2=\"486\" y2=\"250\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><rect x=\"492\" y=\"200\" width=\"196\" height=\"100\" rx=\"14\" stroke-width=\"3\"/><text x=\"590\" y=\"258\" text-anchor=\"middle\" font-size=\"24\">reconciler</text><text x=\"590\" y=\"360\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">render:</text><text x=\"590\" y=\"394\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">can pause</text></g><g id=\"reactDom\"><line x1=\"688\" y1=\"250\" x2=\"722\" y2=\"250\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><rect x=\"728\" y=\"200\" width=\"196\" height=\"100\" rx=\"14\" stroke-width=\"3\"/><text x=\"826\" y=\"258\" text-anchor=\"middle\" font-size=\"24\">react-dom</text><text x=\"826\" y=\"360\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">commit:</text><text x=\"826\" y=\"394\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">all at once</text></g><g id=\"browser\"><line x1=\"924\" y1=\"250\" x2=\"958\" y2=\"250\" stroke=\"var(--text)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><rect x=\"964\" y=\"200\" width=\"196\" height=\"100\" rx=\"14\" stroke-width=\"3\"/><text x=\"1062\" y=\"258\" text-anchor=\"middle\" font-size=\"24\">browser</text><text x=\"1062\" y=\"360\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">paints the</text><text x=\"1062\" y=\"394\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">next frame</text></g>\n</svg>",
+      "hidden": [
+        "scheduler",
+        "reconciler",
+        "reactDom",
+        "browser"
+      ],
+      "labels": {
+        "code": "set state",
+        "reactDom": "react DOM"
+      },
       "narration": "Let’s follow one update from start to finish.",
       "steps": [
         {
-          "actor": "Your code",
-          "action": "calls setState",
-          "payload": "setCount(count + 1)",
-          "icon": "code",
+          "focus": "code",
           "say": "Your code calls set state."
         },
         {
-          "actor": "Scheduler",
-          "action": "picks what matters most",
-          "payload": "a click: urgent\na background fetch: can wait",
-          "icon": "list-ordered",
+          "show": [
+            "scheduler"
+          ],
+          "focus": "scheduler",
           "say": "The scheduler decides how urgent it is. A click beats a background fetch."
         },
         {
-          "actor": "Reconciler",
-          "action": "builds the work-in-progress tree",
-          "payload": "render phase: can pause",
-          "icon": "git-compare",
-          "tone": "accent",
-          "say": "The reconciler builds the new fiber tree and finds what changed. This is render, and it can pause."
+          "show": [
+            "reconciler"
+          ],
+          "focus": "reconciler",
+          "tint": {
+            "reconciler": "good"
+          },
+          "say": "The reconciler builds the new tree and finds what changed. This is render, and it can pause."
         },
         {
-          "actor": "react-dom",
-          "action": "changes the page",
-          "payload": "commit phase: all at once",
-          "icon": "monitor",
-          "tone": "good",
+          "show": [
+            "reactDom"
+          ],
+          "focus": "reactDom",
+          "tint": {
+            "reactDom": "good"
+          },
           "say": "React DOM applies the changes in one go. This is commit."
         },
         {
-          "actor": "Browser",
-          "action": "paints the pixels",
-          "payload": "next frame",
-          "icon": "paintbrush",
+          "show": [
+            "browser"
+          ],
+          "focus": "browser",
           "say": "And the browser paints the new frame."
         }
       ]

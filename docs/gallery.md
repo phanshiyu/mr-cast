@@ -12,7 +12,7 @@ Worked examples grouped by subject, then one short demo per scene type, then a d
 
 Why a sorted list can be searched in a handful of looks.
 
-![Binary search: the "Throwing half away" array scene, at the end of its last step](assets/examples/algorithms-binary-search.png)
+![Binary search: the "Throwing half away" svg scene, at the end of its last step](assets/examples/algorithms-binary-search.png)
 
 Storyboard: [examples/algorithms/binary-search/storyboard.json](../examples/algorithms/binary-search/storyboard.json). Video: [algorithms-binary-search.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/algorithms-binary-search.mp4).
 
@@ -20,7 +20,7 @@ Storyboard: [examples/algorithms/binary-search/storyboard.json](../examples/algo
 
 Pick the cheapest place, then look for shortcuts.
 
-![Dijkstra's shortest path: the "Reaching E" graph scene, at the end of its last step](assets/examples/algorithms-dijkstra.png)
+![Dijkstra's shortest path: the "Reaching E" svg scene, at the end of its last step](assets/examples/algorithms-dijkstra.png)
 
 Storyboard: [examples/algorithms/dijkstra/storyboard.json](../examples/algorithms/dijkstra/storyboard.json). Video: [algorithms-dijkstra.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/algorithms-dijkstra.mp4).
 
@@ -28,7 +28,7 @@ Storyboard: [examples/algorithms/dijkstra/storyboard.json](../examples/algorithm
 
 Turning a key into an address.
 
-![Hash tables: the "A collision" array scene, at the end of its last step](assets/examples/algorithms-hash-table.png)
+![Hash tables: the "Fix one: chaining" svg scene, at the end of its last step](assets/examples/algorithms-hash-table.png)
 
 Storyboard: [examples/algorithms/hash-table/storyboard.json](../examples/algorithms/hash-table/storyboard.json). Video: [algorithms-hash-table.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/algorithms-hash-table.mp4).
 
@@ -36,7 +36,7 @@ Storyboard: [examples/algorithms/hash-table/storyboard.json](../examples/algorit
 
 Split the list to single items, then zip them back in order.
 
-![Merge sort: the "The zipper" array scene, at the end of its last step](assets/examples/algorithms-merge-sort.png)
+![Merge sort: the "Why n log n" svg scene, at the end of its last step](assets/examples/algorithms-merge-sort.png)
 
 Storyboard: [examples/algorithms/merge-sort/storyboard.json](../examples/algorithms/merge-sort/storyboard.json). Video: [algorithms-merge-sort.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/algorithms-merge-sort.mp4).
 
@@ -44,7 +44,7 @@ Storyboard: [examples/algorithms/merge-sort/storyboard.json](../examples/algorit
 
 Pick a pivot, split around it, repeat on each side.
 
-![Quicksort: the "One split, step by step" array scene, at the end of its last step](assets/examples/algorithms-quicksort.png)
+![Quicksort: the "Recursion" svg scene, at the end of its last step](assets/examples/algorithms-quicksort.png)
 
 Storyboard: [examples/algorithms/quicksort/storyboard.json](../examples/algorithms/quicksort/storyboard.json). Video: [algorithms-quicksort.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/algorithms-quicksort.mp4).
 
@@ -54,7 +54,7 @@ Storyboard: [examples/algorithms/quicksort/storyboard.json](../examples/algorith
 
 From map shapes to one number per place.
 
-![Why Uber cut the world into hexagons: the "Finding nearby drivers" array scene, at the end of its last step](assets/examples/architecture-h3.png)
+![Why Uber cut the world into hexagons: the "Finding nearby drivers" svg scene, at the end of its last step](assets/examples/architecture-h3.png)
 
 Storyboard: [examples/architecture/h3/storyboard.json](../examples/architecture/h3/storyboard.json). Video: [architecture-h3.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/architecture-h3.mp4).
 
@@ -62,7 +62,7 @@ Storyboard: [examples/architecture/h3/storyboard.json](../examples/architecture/
 
 Letting an app into your photos without giving it your password.
 
-![How OAuth 2.0 actually works: the "Consent and the code" sequence scene, at the end of its last step](assets/examples/architecture-oauth.png)
+![How OAuth 2.0 actually works: the "The whole loop" svg scene, at the end of its last step](assets/examples/architecture-oauth.png)
 
 Storyboard: [examples/architecture/oauth/storyboard.json](../examples/architecture/oauth/storyboard.json). Video: [architecture-oauth.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/architecture-oauth.mp4).
 
@@ -70,7 +70,7 @@ Storyboard: [examples/architecture/oauth/storyboard.json](../examples/architectu
 
 From JSX to objects, the Fiber tree, and the two phases of an update.
 
-![How React works under the hood: the "Two trees" memory scene, at the end of its last step](assets/examples/architecture-react.png)
+![How React works under the hood: the "Two trees" svg scene, at the end of its last step](assets/examples/architecture-react.png)
 
 Storyboard: [examples/architecture/react/storyboard.json](../examples/architecture/react/storyboard.json). Video: [architecture-react.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/architecture-react.mp4).
 
@@ -78,7 +78,7 @@ Storyboard: [examples/architecture/react/storyboard.json](../examples/architectu
 
 From a 4 GB upload to a video that plays on any screen.
 
-![Designing YouTube at scale: the "Upload" graph scene, at the end of its last step](assets/examples/architecture-youtube.png)
+![Designing YouTube at scale: the "Playback" svg scene, at the end of its last step](assets/examples/architecture-youtube.png)
 
 Storyboard: [examples/architecture/youtube/storyboard.json](../examples/architecture/youtube/storyboard.json). Video: [architecture-youtube.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/architecture-youtube.mp4).
 
@@ -88,7 +88,7 @@ Storyboard: [examples/architecture/youtube/storyboard.json](../examples/architec
 
 Why every bread recipe is four numbers, and how to scale it.
 
-![Bread by baker’s percentages: the "Where the time goes" timeline scene, at the end of its last step](assets/examples/cooking-bread.png)
+![Bread by baker’s percentages: the "Wet or dry" svg scene, at the end of its last step](assets/examples/cooking-bread.png)
 
 Storyboard: [examples/cooking/bread/storyboard.json](../examples/cooking/bread/storyboard.json). Video: [cooking-bread.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/cooking-bread.mp4).
 
@@ -98,7 +98,7 @@ Storyboard: [examples/cooking/bread/storyboard.json](../examples/cooking/bread/s
 
 Building digital money from a shared list.
 
-![How Bitcoin works: the "A chain of blocks" graph scene, at the end of its last step](assets/examples/explain-bitcoin.png)
+![How Bitcoin works: the "A chain of blocks" svg scene, at the end of its last step](assets/examples/explain-bitcoin.png)
 
 Storyboard: [examples/explain/bitcoin/storyboard.json](../examples/explain/bitcoin/storyboard.json). Video: [explain-bitcoin.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/explain-bitcoin.mp4).
 
@@ -106,7 +106,7 @@ Storyboard: [examples/explain/bitcoin/storyboard.json](../examples/explain/bitco
 
 From text to tokens to chances, one token at a time.
 
-![How a GPT picks the next word: the "Scores to chances" table scene, at the end of its last step](assets/examples/explain-gpt.png)
+![How a GPT picks the next word: the "Inside the model" svg scene, at the end of its last step](assets/examples/explain-gpt.png)
 
 Storyboard: [examples/explain/gpt/storyboard.json](../examples/explain/gpt/storyboard.json). Video: [explain-gpt.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/explain-gpt.mp4).
 
@@ -116,7 +116,7 @@ Storyboard: [examples/explain/gpt/storyboard.json](../examples/explain/gpt/story
 
 Why the US and Canada share a straight line.
 
-![The 49th parallel: the "Oregon" map scene, at the end of its last step](assets/examples/geography-49th-parallel.png)
+![The 49th parallel: the "Oregon" svg scene, at the end of its last step](assets/examples/geography-49th-parallel.png)
 
 Storyboard: [examples/geography/49th-parallel/storyboard.json](../examples/geography/49th-parallel/storyboard.json). Video: [geography-49th-parallel.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/geography-49th-parallel.mp4).
 
@@ -126,7 +126,7 @@ Storyboard: [examples/geography/49th-parallel/storyboard.json](../examples/geogr
 
 Five plus three, one gate at a time.
 
-![How a CPU adds: the "A full adder" svg scene, at the end of its last step](assets/examples/hardware-cpu-adder.png)
+![How a CPU adds: the "The ripple" svg scene, at the end of its last step](assets/examples/hardware-cpu-adder.png)
 
 Storyboard: [examples/hardware/cpu-adder/storyboard.json](../examples/hardware/cpu-adder/storyboard.json). Video: [hardware-cpu-adder.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/hardware-cpu-adder.mp4).
 
@@ -136,7 +136,7 @@ Storyboard: [examples/hardware/cpu-adder/storyboard.json](../examples/hardware/c
 
 Two Spanish verbs for “is”, and the two questions that pick one.
 
-![Ser or estar: the "The trap" svg scene, at the end of its last step](assets/examples/language-ser-estar.png)
+![Ser or estar: the "The decision" svg scene, at the end of its last step](assets/examples/language-ser-estar.png)
 
 Storyboard: [examples/language/ser-estar/storyboard.json](../examples/language/ser-estar/storyboard.json). Video: [language-ser-estar.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/language-ser-estar.mp4).
 
@@ -146,7 +146,7 @@ Storyboard: [examples/language/ser-estar/storyboard.json](../examples/language/s
 
 How smooth waves add up to a sharp jump, and the bump that never goes away.
 
-![A square wave from sine waves: the "Adding waves" plot scene, at the end of its last step](assets/examples/math-fourier.png)
+![A square wave from sine waves: the "Adding waves" svg scene, at the end of its last step](assets/examples/math-fourier.png)
 
 Storyboard: [examples/math/fourier/storyboard.json](../examples/math/fourier/storyboard.json). Video: [math-fourier.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/math-fourier.mp4).
 
@@ -156,7 +156,7 @@ Storyboard: [examples/math/fourier/storyboard.json](../examples/math/fourier/sto
 
 Why money grows faster every year, the rule of 72, and what three percent inflation takes back.
 
-![Compound interest against inflation: the "Inflation" plot scene, at the end of its last step](assets/examples/money-compound-interest.png)
+![Compound interest against inflation: the "Inflation" svg scene, at the end of its last step](assets/examples/money-compound-interest.png)
 
 Storyboard: [examples/money/compound-interest/storyboard.json](../examples/money/compound-interest/storyboard.json). Video: [money-compound-interest.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/money-compound-interest.mp4).
 
@@ -166,7 +166,7 @@ Storyboard: [examples/money/compound-interest/storyboard.json](../examples/money
 
 Is the upgrade worth it? A spec-by-spec scorecard from the product briefs.
 
-![Raspberry Pi 5 against Pi 4: the "Scorecard" table scene, at the end of its last step](assets/examples/product-raspberry-pi.png)
+![Raspberry Pi 5 against Pi 4: the "What is new" svg scene, at the end of its last step](assets/examples/product-raspberry-pi.png)
 
 Storyboard: [examples/product/raspberry-pi/storyboard.json](../examples/product/raspberry-pi/storyboard.json). Video: [product-raspberry-pi.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/product-raspberry-pi.mp4).
 
@@ -176,7 +176,7 @@ Storyboard: [examples/product/raspberry-pi/storyboard.json](../examples/product/
 
 Clocks in orbit gain 38.6 microseconds a day, and how GPS cancels it.
 
-![Why GPS needs relativity: the "It depends on height" plot scene, at the end of its last step](assets/examples/science-gps-relativity.png)
+![Why GPS needs relativity: the "Two effects" svg scene, at the end of its last step](assets/examples/science-gps-relativity.png)
 
 Storyboard: [examples/science/gps-relativity/storyboard.json](../examples/science/gps-relativity/storyboard.json). Video: [science-gps-relativity.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/science-gps-relativity.mp4).
 
@@ -184,7 +184,7 @@ Storyboard: [examples/science/gps-relativity/storyboard.json](../examples/scienc
 
 A message that teaches your cells one shape, then disappears.
 
-![How an mRNA vaccine works: the "Inside a cell" svg scene, at the end of its last step](assets/examples/science-mrna-vaccine.png)
+![How an mRNA vaccine works: the "The real thing" svg scene, at the end of its last step](assets/examples/science-mrna-vaccine.png)
 
 Storyboard: [examples/science/mrna-vaccine/storyboard.json](../examples/science/mrna-vaccine/storyboard.json). Video: [science-mrna-vaccine.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/science-mrna-vaccine.mp4).
 
@@ -194,7 +194,7 @@ Storyboard: [examples/science/mrna-vaccine/storyboard.json](../examples/science/
 
 Containers, images and layers, fast.
 
-![Docker in 100 seconds: the "The Dockerfile" code scene, at the end of its last step](assets/examples/tech-docker-100s.png)
+![Docker in 100 seconds: the "Not a VM" svg scene, at the end of its last step](assets/examples/tech-docker-100s.png)
 
 Storyboard: [examples/tech/docker-100s/storyboard.json](../examples/tech/docker-100s/storyboard.json). Video: [tech-docker-100s.mp4](https://github.com/phanshiyu/mr-cast/releases/latest/download/tech-docker-100s.mp4).
 
@@ -242,7 +242,7 @@ Storyboard: [examples/primitives/code-typing/storyboard.json](../examples/primit
 
 ### compare
 
-Two sides in one layout, row by row. Rows that differ get an arrow between the sides, rows that match dim.
+Two sides in one layout, row by row. Rows that differ get an arrow between the sides, rows that match dim; or, as options, a decision beside the alternative not taken.
 
 ![The compare demo's compare scene, at the end of its last step](assets/scenes/compare.png)
 
@@ -258,7 +258,7 @@ Storyboard: [examples/primitives/er/storyboard.json](../examples/primitives/er/s
 
 ### files
 
-The files as a tree with their line counts, and a short note beside the ones that matter.
+The files as a tree with their line counts, and a short note beside the ones that matter; or, with parts, a map of cards, one for each part, with what it does and the links between parts.
 
 ![The files demo's files scene, at the end of its last step](assets/scenes/files.png)
 
@@ -266,7 +266,7 @@ Storyboard: [examples/primitives/files/storyboard.json](../examples/primitives/f
 
 ### flow
 
-A row of stages, each an actor and what it does, with the data as it looks after that stage.
+A row of stages, each an actor and what it does, with the data as it looks after that stage, or the real lines of code that do it.
 
 ![The flow demo's flow scene, at the end of its last step](assets/scenes/flow.png)
 
@@ -334,7 +334,7 @@ Storyboard: [examples/primitives/plot/storyboard.json](../examples/primitives/pl
 
 ### reading
 
-The order in which to read the code, each item with its file, lines and what to check there.
+The order in which to read the code, each item with its file, lines and what to check there. With no items it draws the brief's check list, in any video of a branch.
 
 ![The reading demo's reading scene, at the end of its last step](assets/scenes/reading.png)
 

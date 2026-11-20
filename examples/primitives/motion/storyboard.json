@@ -1,5 +1,6 @@
 {
   "title": "Motion on a drawing",
+  "look": "plain",
   "subtitle": "Shapes that slide, turn and change shape, lines that draw on, and lines that flow",
   "scenes": [
     {

@@ -1,260 +1,344 @@
-// Writes storyboard.json beside this file, then checks every state a viewer sees against a run of Lomuto's quicksort.
-// The split-depth drawing is generated here. hunks.json is not generated: it is `mr-cast snippet QuickSort.java 1-27`
-// on the class whose code it holds. Run: node examples/algorithms/quicksort/generate.mjs
+// Writes storyboard.json beside this file. Every drawing that shows the list is built from a run of Lomuto's
+// quicksort below: where each card slides, which pointer moves, and what each comparison says. hunks.json is not
+// generated: it is `mr-cast snippet QuickSort.java 1-27` on the class whose code it holds.
+// Run: node examples/algorithms/quicksort/generate.mjs
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { checkCallouts, distinct, plain, row, walkStates } from '../../lib/algorithm-checks.mjs';
 
-function splitDrawing() {
-  const cell = 46;
+function lomuto(input) {
+  const a = [...input];
+  const partitions = [];
+  const sort = (low, high, depth) => {
+    if (low >= high) return;
+    const before = a.slice(low, high + 1);
+    const pivot = a[high];
+    let i = low - 1;
+    const steps = [];
+    for (let j = low; j < high; j++) {
+      const less = a[j] < pivot;
+      const was = [...a];
+      if (less) {
+        i++;
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      steps.push({ j, i, value: was[j], less, swapped: less ? [was[i], was[j]] : null, after: [...a] });
+    }
+    [a[i + 1], a[high]] = [a[high], a[i + 1]];
+    const p = i + 1;
+    partitions.push({ low, high, depth, pivot, p, before, steps, after: [...a] });
+    sort(low, p - 1, depth + 1);
+    sort(p + 1, high, depth + 1);
+  };
+  sort(0, a.length - 1, 0);
+  return { sorted: a, partitions };
+}
+
+const input = [7, 2, 9, 4, 1, 8, 3, 5];
+const qs = lomuto(input);
+const first = qs.partitions[0];
+assert.deepEqual(
+  qs.sorted,
+  [...input].sort((x, y) => x - y),
+  'the run sorts the list',
+);
+
+// ---------- the row of cards: scenes 1, 2 and 6 ----------
+const PITCH = 130;
+const CARD = 110;
+const X0 = 150;
+const cx = (k) => X0 + k * PITCH + CARD / 2;
+const card = (id, k, y, v, h = 100, size = 44) =>
+  `<g id="${id}"><rect x="${X0 + k * PITCH}" y="${y}" width="${CARD}" height="${h}" rx="12" stroke-width="3"/><text x="${cx(k)}" y="${y + h / 2 + size * 0.36}" text-anchor="middle" font-size="${size}">${v}</text></g>`;
+const ROW_Y = 90;
+const pointer = (name, k) =>
+  `<g id="ptr-${name}"><line x1="${cx(k)}" y1="${ROW_Y + 160}" x2="${cx(k)}" y2="${ROW_Y + 114}" stroke="var(--text)" stroke-width="4"/><polyline points="${cx(k) - 14},${ROW_Y + 130} ${cx(k)},${ROW_Y + 114} ${cx(k) + 14},${ROW_Y + 130}" fill="none" stroke="var(--text)" stroke-width="4"/><text x="${cx(k)}" y="${ROW_Y + 196}" text-anchor="middle" font-size="34" font-family="mono">${name}</text></g>`;
+const split = first.after; // [2, 4, 1, 3, 5, 8, 7, 9]
+const AFTER_Y = 400;
+const sum = (id, y, what, time, when) =>
+  `<g id="${id}"><text x="${X0}" y="${y}" font-size="30">${what}</text><text x="${X0 + 230}" y="${y}" font-size="30" font-family="mono">${time}</text><text x="${X0 + 480}" y="${y}" font-size="26" fill="var(--muted)">${when}</text></g>`;
+const row = `<svg viewBox="0 0 1200 640">
+${input.map((v, k) => card(`c${v}`, k, ROW_Y, v)).join('')}
+<g id="after"><text x="${X0}" y="${AFTER_Y - 24}" font-size="26" fill="var(--muted)">after one split</text>${split.map((v, k) => card(`a${v}`, k, AFTER_Y, v)).join('')}</g>
+${pointer('j', 0)}${pointer('i', -1)}
+<text id="cmp" x="600" y="430" text-anchor="middle" font-size="40" font-family="mono">pivot = 5</text>
+${sum('sum-best', 330, 'Best', 'O(n log n)', 'every pivot lands in the middle')}
+${sum('sum-avg', 400, 'Average', 'O(n log n)', 'random order')}
+${sum('sum-worst', 470, 'Worst', 'O(n²)', 'already sorted, pivot at the end')}
+${sum('sum-space', 540, 'Space', 'O(log n)', 'the stack of calls; O(n) at worst')}
+</svg>`;
+
+// Moves for the cards of the row: value v from where the drawing puts it to index k.
+const home = Object.fromEntries(input.map((v, k) => [v, k]));
+const slide = (v, k) => (k === home[v] ? '' : `translate(${(k - home[v]) * PITCH} 0)`);
+const ptrAt = (name, k) => {
+  const start = name === 'i' ? -1 : 0;
+  return k === start ? '' : `translate(${(k - start) * PITCH} 0)`;
+};
+
+// ---------- scene 2: one split, built from the run ----------
+const P = first.pivot;
+// What the voice says at each comparison and swap, in the order the run makes them.
+const compareSays = [
+  'j looks at seven. Seven is not smaller than five, so it stays put.',
+  'j moves on to two. Two is smaller than the pivot, so it belongs in the small pile.',
+  'Nine is bigger, so j just moves past it.',
+  'Four is smaller. The next spot in the small pile holds seven.',
+  'One is smaller too, and the next spot holds nine.',
+  'Eight is bigger. Skip it.',
+  'Three is smaller, and the next spot holds seven.',
+];
+const swapSays = [
+  'So i steps forward, and the two swaps into the small pile.',
+  'i steps forward, and four swaps places with the seven.',
+  'So one swaps with the nine.',
+  'Three swaps with the seven.',
+];
+const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+const partitionSteps = [];
+let swapK = 0;
+first.steps.forEach((s, n) => {
+  const say = compareSays[n];
+  assert.ok(say.toLowerCase().includes(words[s.value]), `compare ${n} names ${s.value}`);
+  assert.equal(/not smaller|bigger/.test(say), !s.less, `compare ${n}: the words say the wrong side`);
+  partitionSteps.push({
+    ...(n ? { move: { 'ptr-j': ptrAt('j', s.j) } } : {}),
+    set: { cmp: `${s.value} < ${P}?  ${s.less ? 'yes' : 'no'}` },
+    tint: { cmp: s.less ? 'good' : 'bad', ...(s.less ? {} : { [`c${s.value}`]: 'bad' }) },
+    focus: ['ptr-j', `c${s.value}`, 'cmp'],
+    say,
+  });
+  if (s.less) {
+    const [a, b] = s.swapped; // a sits at i, b at j; they trade places
+    const sw = swapSays[swapK++];
+    assert.ok(sw.toLowerCase().includes(words[b]), `swap names ${b}`);
+    partitionSteps.push({
+      move: { 'ptr-i': ptrAt('i', s.i), ...(a === b ? {} : { [`c${b}`]: slide(b, s.i), [`c${a}`]: slide(a, s.j) }) },
+      set: { cmp: `i = ${s.i}, swap` },
+      tint: { cmp: 'clear', [`c${b}`]: 'good' },
+      focus: ['ptr-i', `c${b}`, `c${a}`],
+      say: sw,
+    });
+  }
+});
+const spot = first.p;
+const displaced = first.steps.at(-1).after[spot];
+partitionSteps.push(
+  {
+    set: { cmp: `spot after the pile: i + 1 = ${spot}` },
+    focus: [`c${displaced}`, `c${P}`],
+    say: 'Every number before the pivot has been checked. The spot right after the small pile holds nine.',
+  },
+  {
+    move: { [`c${P}`]: slide(P, spot), [`c${displaced}`]: slide(displaced, first.high) },
+    set: { cmp: 'swap arr[i + 1] with the pivot' },
+    focus: [`c${P}`, `c${displaced}`],
+    say: 'So the pivot and the nine swap.',
+  },
+  {
+    set: { cmp: `${P} lands at index ${spot}` },
+    focus: [`c${P}`, 'cmp'],
+    draw: [{ underline: `c${P}`, note: 'its final place', when: 'index four' }],
+    say: 'Five lands at index four. Smaller on its left, bigger on its right.',
+  },
+);
+assert.equal(words[displaced], 'nine', 'the card the pivot trades with');
+assert.equal(spot, 4, 'pivot index');
+assert.equal(partitionSteps.length, 14);
+
+// ---------- scene 3: the calls under the first split, one row per depth ----------
+const calls = qs.partitions.slice(1);
+const RY = (d) => 50 + d * 145;
+const callRow = (c) => {
+  const label = `<text x="${X0 + c.low * PITCH}" y="${RY(c.depth) - 12}" font-size="22" font-family="mono" fill="var(--muted)">sort(${c.low}, ${c.high})</text>`;
+  return `<g id="call-${c.low}-${c.high}">${label}${c.before.map((v, k) => card(`d${c.depth}-${v}`, c.low + k, RY(c.depth), v, 80, 36)).join('')}</g>`;
+};
+const callSlide = (c, v, k) => {
+  const from = c.low + c.before.indexOf(v);
+  return k === from ? '' : `translate(${(k - from) * PITCH} 0)`;
+};
+const done = qs.sorted;
+const tree = `<svg viewBox="0 0 1200 640">
+<g id="top"><text x="${X0}" y="${RY(0) - 12}" font-size="22" font-family="mono" fill="var(--muted)">sort(0, 7)</text>${split.map((v, k) => card(`t${v}`, k, RY(0), v, 80, 36)).join('')}</g>
+${calls.map(callRow).join('')}
+<g id="sorted"><text x="${X0 - 24}" y="${RY(3) + 50}" text-anchor="end" font-size="26" fill="var(--muted)">sorted</text>${done.map((v, k) => card(`s${v}`, k, RY(3), v, 80, 36)).join('')}</g>
+</svg>`;
+const callOf = (low, high) => calls.find((c) => c.low === low && c.high === high);
+const recSteps = [];
+const showCall = (c, say, extra = {}) =>
+  recSteps.push({ show: [`call-${c.low}-${c.high}`], focus: `call-${c.low}-${c.high}`, say, ...extra });
+const splitCall = (c, say, when) => {
+  const s = c.steps;
+  const final = c.after.slice(c.low, c.high + 1);
+  const move = Object.fromEntries(
+    final.map((v, k) => [`d${c.depth}-${v}`, callSlide(c, v, c.low + k)]).filter(([, t]) => t),
+  );
+  const tint = Object.fromEntries(
+    c.before.filter((v) => v !== c.pivot).map((v) => [`d${c.depth}-${v}`, v < c.pivot ? 'good' : 'bad']),
+  );
+  assert.ok(s.length === c.high - c.low);
+  recSteps.push({
+    ...(Object.keys(move).length ? { move } : {}),
+    tint,
+    focus: `d${c.depth}-${c.pivot}`,
+    draw: [{ underline: `d${c.depth}-${c.pivot}`, when }],
+    say,
+  });
+};
+const c03 = callOf(0, 3);
+const c01 = callOf(0, 1);
+const c57 = callOf(5, 7);
+const c56 = callOf(5, 6);
+assert.ok(c03.pivot === 3 && c03.p === 2 && c01.pivot === 1 && c01.p === 0, 'left calls');
+assert.ok(c57.pivot === 9 && c57.p === 7 && c56.pivot === 7 && c56.p === 5, 'right calls');
+assert.equal(calls.length, 4, 'four calls under the first split');
+showCall(c03, 'The left side runs from index zero to three. Its pivot is three.');
+splitCall(c03, 'After the split, three lands at index two.', 'index two');
+showCall(c01, 'Next, the piece from zero to one. Its pivot is one.');
+splitCall(c01, 'One is smaller than two, so it lands at index zero.', 'index zero');
+recSteps.push({
+  focus: [`d2-2`, `d1-4`],
+  draw: [
+    { circle: 'd2-2', when: 'the two' },
+    { circle: 'd1-4', note: 'one item: stop', when: 'the four' },
+  ],
+  say: 'What is left are single items: the two, and the four. One item is already sorted, so the calls stop.',
+});
+showCall(c57, 'Now the three cells on the right. Their pivot is nine.');
+splitCall(c57, 'Eight and seven are both smaller, so nine stays at the end.', 'stays at the end');
+showCall(c56, 'Then the pair left of it, with pivot seven.');
+splitCall(c56, 'Seven swaps in front of eight, and eight is left on its own.', 'on its own');
+recSteps.push({ show: ['sorted'], focus: 'sorted', say: 'Every pivot landed in its place. The whole list is sorted.' });
+
+// ---------- scene 5: how deep the splits go ----------
+function depthDrawing() {
+  const cell = 40;
   const gap = 6;
-  const rowH = 58;
-  const top = 92;
+  const rowH = 56;
+  const top = 70;
   const parts = [];
-  const row = (x, y, n, cls = '') =>
+  const cells = (x, y, n) =>
     Array.from(
       { length: n },
-      (_, k) => `<rect x="${x + k * (cell + gap)}" y="${y}" width="${cell}" height="${cell}" rx="6"${cls}/>`,
+      (_, k) => `<rect x="${x + k * (cell + gap)}" y="${y}" width="${cell}" height="${cell}" rx="6" stroke-width="2"/>`,
     ).join('');
-  parts.push(
-    '<text x="300" y="44" text-anchor="middle" font-size="28" font-weight="600">Pivot lands in the middle</text>',
-  );
-  parts.push('<text x="900" y="44" text-anchor="middle" font-size="28" font-weight="600">List already sorted</text>');
-  // Even splits: 8, then halves, quarters, single items. Each row still holds all 8 items.
+  parts.push('<text x="300" y="40" text-anchor="middle" font-size="28">Pivot lands in the middle</text>');
+  parts.push('<text x="900" y="40" text-anchor="middle" font-size="28">List already sorted</text>');
   const even = [[8], [4, 4], [2, 2, 2, 2], [1, 1, 1, 1, 1, 1, 1, 1]];
-  const evenRows = even.map((pieces, r) => {
+  even.forEach((pieces, r) => {
     const y = top + r * rowH;
     const width = pieces.reduce((w, n) => w + n * (cell + gap) - gap, 0) + (pieces.length - 1) * 18;
     let x = 300 - width / 2;
-    const cells = pieces.map((n) => {
-      const s = row(x, y, n);
+    const row = pieces.map((n) => {
+      const s = cells(x, y, n);
       x += n * (cell + gap) - gap + 18;
       return s;
     });
-    return `<g id="even-${r}">${cells.join('')}</g>`;
+    parts.push(`<g id="even-${r}">${row.join('')}</g>`);
   });
-  parts.push(`<g id="even">${evenRows.join('')}</g>`);
   parts.push(
-    `<text id="even-depth" x="300" y="${top + 4 * rowH + 50}" text-anchor="middle" font-size="26" fill="var(--muted)">3 rounds of splits: log₂ 8</text>`,
+    `<text id="even-depth" x="300" y="${top + 4 * rowH + 40}" text-anchor="middle" font-size="26" fill="var(--muted)">3 rounds: 8 → 4 → 2 → 1</text>`,
   );
-  // Sorted input with the last item as pivot: each partition peels off one item.
-  const sortedRows = Array.from({ length: 8 }, (_, r) => {
+  // Sorted input with the last item as pivot: each split peels off one item, and the pivot is the biggest.
+  const sorted = Array.from({ length: 8 }, (_, r) => {
     const n = 8 - r;
     const y = top + r * rowH;
     const x = 680;
-    return `<g id="sorted-${r}">${row(x, y, n - 1)}<rect class="tone-warn" x="${x + (n - 1) * (cell + gap)}" y="${y}" width="${cell}" height="${cell}" rx="6"/></g>`;
+    const piv = x + (n - 1) * (cell + gap);
+    return `${cells(x, y, n - 1)}<rect id="piv-${r}" x="${piv}" y="${y}" width="${cell}" height="${cell}" rx="6" fill="var(--text)" stroke="var(--text)"/>`;
   });
-  parts.push(`<g id="sorted">${sortedRows.join('')}</g>`);
+  parts.push(`<g id="sorted">${sorted.join('')}</g>`);
   parts.push(
-    `<text id="sorted-depth" x="900" y="${top + 8 * rowH + 50}" text-anchor="middle" font-size="26" fill="var(--muted)">7 rounds of splits: n − 1</text>`,
+    `<text id="sorted-depth" x="900" y="${top + 8 * rowH + 40}" text-anchor="middle" font-size="26" fill="var(--muted)">7 rounds of splits: n − 1</text>`,
   );
-  return `<svg viewBox="0 0 1200 ${top + 8 * rowH + 72}">${parts.join('')}</svg>`;
+  return `<svg viewBox="0 0 1200 640">${parts.join('')}</svg>`;
 }
+// Check the drawing's counts against the run: even splits of 8 take log₂ 8 rounds, a sorted 8 takes 7.
+assert.equal(Math.log2(8), 3);
+assert.equal(lomuto([1, 2, 3, 4, 5, 6, 7, 8]).partitions.length, 7, 'a sorted list of 8 splits 7 times');
+assert.equal(Math.max(...lomuto([1, 3, 2, 5, 7, 6, 8, 4]).partitions.map((p) => p.depth)) + 1, 3, 'middle pivots');
 
 const story = {
   title: 'Quicksort',
   subtitle: 'Pick a pivot, split around it, repeat on each side',
+  tones: { good: 'smaller than the pivot', bad: 'bigger than the pivot' },
+  pictures: { row },
   scenes: [
     {
-      type: 'array',
+      type: 'svg',
       chapter: 'The idea',
       title: 'Split around one value',
-      narration:
-        'Quicksort is a divide and conquer sort. It picks one value, called the pivot, and moves everything smaller to its left and everything bigger to its right. Then it does the same thing to each side.',
-      arrays: [
-        { name: 'before', label: 'unsorted', values: [7, 2, 9, 4, 1, 8, 3, 5] },
-        { name: 'after', label: 'after one split', values: [2, 4, 1, 3, 5, 8, 7, 9], splits: [4, 5], hidden: true },
-      ],
+      picture: 'row',
+      hidden: ['after', 'ptr-i', 'ptr-j', 'cmp', 'sum-best', 'sum-avg', 'sum-worst', 'sum-space'],
+      labels: { after: 'after one split', c5: 'five' },
+      narration: 'Quicksort is a divide and conquer sort. Here is a list of eight numbers.',
       steps: [
         {
-          focus: 'before[7]',
-          tint: { 'before[7]': 'accent' },
-          callout: 'pivot = last item = 5',
-          say: 'In this version, the pivot is always the last item. Here that is five.',
+          focus: 'c5',
+          draw: [{ write: 'pivot', near: 'c5', side: 'below', when: 'last item' }],
+          say: 'It picks one value, the pivot. In this version, the pivot is always the last item. Here that is five.',
         },
         {
-          show: ['array:after'],
-          tint: { 'after[0-3]': 'neutral', 'after[4]': 'accent', 'after[5-7]': 'neutral' },
-          callout: 'smaller · [5]{accent} · bigger',
-          say: 'After one split, the four smaller numbers sit on the left, and the three bigger ones on the right.',
+          show: ['after'],
+          tint: Object.fromEntries(split.filter((v) => v !== P).map((v) => [`a${v}`, v < P ? 'good' : 'bad'])),
+          focus: 'after',
+          say: 'One split moves the smaller numbers to its left, and the bigger ones to its right.',
         },
         {
-          focus: 'after[4]',
-          tint: { 'after[4]': 'good' },
-          callout: '[5 is done]{good}',
-          say: 'Five is now exactly where it belongs in the sorted list. It never moves again.',
+          focus: 'a5',
+          draw: [{ underline: 'a5', note: 'done', when: 'never moves' }],
+          say: 'The pivot is now exactly where it belongs in the sorted list. It never moves again.',
         },
         {
-          focus: ['after[0-3]', 'after[5-7]'],
-          callout: 'repeat on each side',
+          focus: ['a2', 'a4', 'a1', 'a3', 'a8', 'a7', 'a9'],
+          draw: [
+            { brace: ['a2', 'a3'], note: 'repeat', side: 'below', when: 'still jumbled' },
+            { brace: ['a8', 'a9'], note: 'repeat', side: 'below' },
+          ],
           say: 'The two sides are still jumbled, so quicksort splits each of them the same way.',
         },
       ],
     },
     {
-      type: 'array',
+      type: 'svg',
       chapter: 'One split, step by step',
       title: 'Partition around the pivot 5',
-      narration:
-        'Here is how one split works. The pointer j walks the list from left to right. The pointer i marks the end of the small pile, shown in green, and it starts just before the list. Bigger numbers turn amber.',
-      values: [7, 2, 9, 4, 1, 8, 3, 5],
-      pointers: [
-        { name: 'i', at: -1, tone: 'good' },
-        { name: 'j', at: 0, tone: 'accent' },
-      ],
-      tint: { 7: 'accent' },
-      callout: 'pivot = 5',
+      picture: 'row',
+      hidden: ['after', 'sum-best', 'sum-avg', 'sum-worst', 'sum-space'],
+      labels: { 'ptr-i': 'pointer i', 'ptr-j': 'pointer j', cmp: 'comparison' },
+      narration: 'Here is how one split works.',
       steps: [
         {
-          focus: ['ptr:j', 0],
-          tint: { 0: 'warn' },
-          callout: '7 < 5? [no]{bad}',
-          say: 'j looks at seven. Seven is not smaller than five, so it stays put.',
+          focus: ['ptr-j', 'ptr-i'],
+          draw: [{ write: 'pivot', near: 'c5', side: 'above', when: 'pivot' }],
+          say: 'The pointer j walks from left to right, comparing each number with the pivot.',
         },
         {
-          move: { j: 1 },
-          focus: ['ptr:j', 1, 0],
-          callout: '2 < 5? [yes]{good}',
-          say: 'j moves on to two. Two is smaller than the pivot, so it belongs in the small pile, which starts at the first cell.',
+          focus: 'ptr-i',
+          draw: [{ write: 'end of the small pile', near: 'ptr-i', side: 'below', tone: 'good', when: 'small pile' }],
+          say: 'The pointer i marks the end of the small pile. It starts just before the list.',
         },
-        {
-          move: { i: 0 },
-          set: { 0: 2, 1: 7 },
-          tint: { 0: 'good', 1: 'warn' },
-          callout: 'i = 0, swap',
-          say: 'So i steps forward, and the two swaps into the small pile.',
-        },
-        {
-          move: { j: 2 },
-          tint: { 2: 'warn' },
-          callout: '9 < 5? [no]{bad}',
-          say: 'Nine is bigger, so j just moves past it.',
-        },
-        {
-          move: { j: 3 },
-          focus: ['ptr:j', 3, 1],
-          callout: '4 < 5? [yes]{good}',
-          say: 'Four is smaller. The next spot in the small pile holds seven.',
-        },
-        {
-          move: { i: 1 },
-          set: { 1: 4, 3: 7 },
-          tint: { 1: 'good', 3: 'warn' },
-          callout: 'i = 1, swap',
-          say: 'i steps forward, and four swaps places with the seven.',
-        },
-        {
-          move: { j: 4 },
-          focus: ['ptr:j', 4, 2],
-          callout: '1 < 5? [yes]{good}',
-          say: 'One is smaller too, and the next spot holds nine.',
-        },
-        {
-          move: { i: 2 },
-          set: { 2: 1, 4: 9 },
-          tint: { 2: 'good', 4: 'warn' },
-          callout: 'i = 2, swap',
-          say: 'So one swaps with the nine.',
-        },
-        { move: { j: 5 }, tint: { 5: 'warn' }, callout: '8 < 5? [no]{bad}', say: 'Eight is bigger. Skip it.' },
-        {
-          move: { j: 6 },
-          focus: ['ptr:j', 6, 3],
-          callout: '3 < 5? [yes]{good}',
-          say: 'Three is smaller, and the next spot holds seven.',
-        },
-        {
-          move: { i: 3 },
-          set: { 3: 3, 6: 7 },
-          tint: { 3: 'good', 6: 'warn' },
-          callout: 'i = 3, swap',
-          say: 'Three swaps with the seven.',
-        },
-        {
-          focus: [4, 7],
-          callout: 'spot after the pile = i + 1 = 4',
-          say: 'Now every number before the pivot has been checked. The spot right after the small pile holds nine.',
-        },
-        {
-          set: { 4: 5, 7: 9 },
-          tint: { 4: 'accent', 7: 'warn' },
-          callout: 'swap arr[i + 1] with the pivot',
-          say: 'So the pivot and the nine swap.',
-        },
-        {
-          focus: 4,
-          callout: '[5 lands at index 4]{accent}',
-          mark: 'circle',
-          note: 'its final place',
-          say: 'Five lands at index four. Smaller on its left, bigger on its right. That is its final resting place.',
-        },
+        ...partitionSteps,
       ],
     },
     {
-      type: 'array',
+      type: 'svg',
       chapter: 'Recursion',
       title: 'The same split on each side',
-      narration:
-        'Now quicksort calls itself on the left side, then on the right side. Each call gets a smaller piece, from low to high.',
-      values: [2, 4, 1, 3, 5, 8, 7, 9],
-      tint: { 4: 'good' },
-      ranges: [{ name: 'low to high', from: 0, to: 3, tone: 'accent' }],
-      callout: 'quickSort(arr, 0, 3)',
-      steps: [
-        {
-          focus: ['range:low to high', 3],
-          tint: { 3: 'accent' },
-          say: 'The left side runs from index zero to three. Its pivot is three.',
-        },
-        {
-          set: { 1: 1, 2: 3, 3: 4 },
-          tint: { 2: 'good', 3: 'clear' },
-          callout: '[3 lands at index 2]{good}',
-          say: 'After the split, three lands at index two.',
-        },
-        {
-          move: { 'low to high': '0-1' },
-          tint: { 1: 'accent' },
-          callout: 'quickSort(arr, 0, 1)',
-          say: 'Next, the piece from zero to one. Its pivot is one.',
-        },
-        {
-          set: { 0: 1, 1: 2 },
-          tint: { 0: 'good', 1: 'clear' },
-          callout: '[1 lands at index 0]{good}',
-          say: 'One is smaller than two, so it lands at index zero.',
-        },
-        {
-          focus: [1, 3],
-          tint: { 1: 'good', 3: 'good' },
-          callout: 'low < high? [no]{bad}, stop',
-          say: 'What is left are single items: the two, and the four. A single item is already sorted, so the calls stop there. That is the base case.',
-        },
-        {
-          move: { 'low to high': '5-7' },
-          tint: { 7: 'accent' },
-          callout: 'quickSort(arr, 5, 7)',
-          say: 'Now the three cells on the right. Their pivot is nine.',
-        },
-        {
-          focus: [5, 6, 7],
-          tint: { 7: 'good' },
-          callout: '[9 stays at index 7]{good}',
-          say: 'Eight and seven are both smaller, so nine stays at the end.',
-        },
-        {
-          move: { 'low to high': '5-6' },
-          tint: { 6: 'accent' },
-          callout: 'quickSort(arr, 5, 6)',
-          say: 'Then the two cells left of it, with pivot seven.',
-        },
-        {
-          set: { 5: 7, 6: 8 },
-          tint: { 5: 'good', 6: 'good' },
-          callout: '[sorted]{good}',
-          say: 'Seven swaps in front of eight, and eight is left on its own. The whole list is sorted.',
-        },
-      ],
+      svg: tree,
+      hidden: calls.map((c) => `call-${c.low}-${c.high}`).concat('sorted'),
+      tint: Object.fromEntries(split.filter((v) => v !== P).map((v) => [`t${v}`, v < P ? 'good' : 'bad'])),
+      labels: {
+        top: 'first split',
+        'call-0-3': 'left side',
+        'call-0-1': 'zero to one',
+        'call-5-7': 'three cells on the right',
+        'call-5-6': 'the pair',
+        sorted: 'sorted list',
+        'd2-2': 'the two',
+        'd1-4': 'the four',
+      },
+      narration: 'Now quicksort calls itself on the left side, then on the right. Each call gets a smaller piece.',
+      steps: recSteps,
     },
     {
       type: 'code',
@@ -265,7 +349,7 @@ const story = {
         {
           lines: 3,
           label: 'stop when low < high is false',
-          say: 'quickSort first checks the base case. If low is not below high, the piece has one item or none, so there is nothing to do.',
+          say: 'quickSort first checks the base case. If low is not below high, the piece has one item or none.',
         },
         {
           lines: 4,
@@ -299,138 +383,91 @@ const story = {
       type: 'svg',
       chapter: 'How fast',
       title: 'How deep the splits go',
-      narration:
-        'How fast is it? Each round of splits touches every item about once. So the speed depends on how many rounds there are.',
-      svg: splitDrawing(),
-      labels: { even: 'pivot lands in the middle', sorted: 'already sorted list' },
-      hidden: ['sorted'],
+      narration: 'How fast is it? Each round of splits touches every item about once.',
+      svg: depthDrawing(),
+      labels: {
+        'even-0': 'eight items',
+        'even-1': 'halves',
+        sorted: 'already sorted list',
+        'sorted-depth': 'n rounds',
+        'even-depth': 'three rounds',
+      },
+      hidden: ['even-1', 'even-2', 'even-3', 'even-depth', 'sorted', 'sorted-depth'],
       steps: [
+        { focus: 'even-0', say: 'So the speed depends on how many rounds there are.' },
         {
-          focus: ['even', 'even-depth'],
-          callout: 'n per row × log₂ n rows',
-          say: 'When the pivot lands near the middle, each row halves the pieces. Eight items take three rounds, which is log two of eight. That gives n log n, both on average and at best.',
+          show: ['even-1', 'even-2', 'even-3'],
+          focus: 'even-1',
+          say: 'When the pivot lands near the middle, each round halves the pieces.',
+        },
+        {
+          show: ['even-depth'],
+          focus: ['even-0', 'even-depth'],
+          draw: [{ brace: ['even-1', 'even-3'], side: 'left', note: '3', when: 'three rounds' }],
+          say: 'Eight items take three rounds, which is log two of eight.',
+        },
+        {
+          focus: 'even-depth',
+          draw: [{ write: 'n × log n', near: 'even-depth', side: 'below', when: 'n log n' }],
+          say: 'Each round costs n, so that gives n log n, both on average and at best.',
         },
         {
           show: ['sorted'],
-          focus: ['sorted', 'sorted-depth'],
-          callout: 'n + (n − 1) + … + 1 ≈ n² / 2',
-          say: 'But give it a list that is already sorted. The last item is always the biggest, so each split peels off just one item. That makes about n rounds, and the time grows with n squared. This is the worst case.',
+          focus: 'sorted',
+          say: 'But give it a list that is already sorted.',
+        },
+        {
+          focus: ['piv-0', 'piv-1', 'piv-2'],
+          draw: [{ circle: 'piv-0', note: 'pivot: the biggest', when: 'always the biggest' }],
+          say: 'The last item is always the biggest, so each split peels off just one item.',
+        },
+        {
+          show: ['sorted-depth'],
+          focus: 'sorted-depth',
+          draw: [{ write: 'n + (n − 1) + … + 1 ≈ n² / 2', near: 'sorted-depth', side: 'below', when: 'n squared' }],
+          say: 'That makes about n rounds, and the time grows with n squared. This is the worst case.',
         },
       ],
     },
     {
-      type: 'table',
+      type: 'svg',
       chapter: 'Summary',
       title: 'Quicksort at a glance',
+      picture: 'row',
+      hidden: ['after', 'ptr-i', 'ptr-j', 'cmp', 'sum-best', 'sum-avg', 'sum-worst', 'sum-space'],
+      labels: { 'sum-best': 'best', 'sum-avg': 'average', 'sum-worst': 'worst case', 'sum-space': 'extra memory' },
       narration: 'Here is the summary.',
-      columns: ['Case', 'Time', 'When'],
-      rows: [
-        { cells: ['Best', '**O(n log n)**', 'every pivot lands in the middle'] },
-        { cells: ['Average', '**O(n log n)**', 'random order'] },
-        { cells: ['Worst', '**O(n²)**', 'already sorted, pivot at the end'] },
-        { cells: ['Space', '**O(log n)**', 'the stack of calls; O(n) in the worst case'] },
-      ],
       steps: [
-        { focus: [0, 1], tint: { 0: 'good', 1: 'good' }, say: 'Best and average are both n log n.' },
         {
-          focus: 2,
-          tint: { 2: 'bad' },
+          move: Object.fromEntries(done.map((v, k) => [`c${v}`, slide(v, k)]).filter(([, t]) => t)),
+          focus: done.map((v) => `c${v}`),
+          say: 'Quicksort sorted our list in place, with no second list.',
+        },
+        {
+          show: ['sum-best', 'sum-avg'],
+          focus: ['sum-best', 'sum-avg'],
+          say: 'Best and average are both n log n.',
+        },
+        {
+          show: ['sum-worst'],
+          focus: 'sum-worst',
+          draw: [{ underline: 'sum-worst', when: 'n squared' }],
           say: 'The worst case is n squared, when every pivot is the biggest or smallest item.',
         },
         {
-          focus: 3,
-          tint: { 3: 'accent' },
-          say: 'It sorts in place, so the only extra memory is the stack of calls waiting to finish. That is about log n deep on average, and n deep in that worst case.',
+          show: ['sum-space'],
+          focus: 'sum-space',
+          say: 'The only extra memory is the stack of calls waiting to finish.',
+        },
+        {
+          focus: 'sum-space',
+          draw: [{ write: 'log n deep, or n at worst', near: 'sum-space', side: 'below', when: 'log n deep' }],
+          say: 'That stack is about log n deep, and n deep when every pivot is the biggest.',
         },
       ],
     },
   ],
 };
-
-function lomuto(input) {
-  const a = [...input];
-  const partitions = [];
-  const sort = (low, high) => {
-    if (low >= high) return;
-    const pivot = a[high];
-    let i = low - 1;
-    const steps = [];
-    for (let j = low; j < high; j++) {
-      const less = a[j] < pivot;
-      if (less) {
-        i++;
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      steps.push({ j, i, after: [...a] });
-    }
-    [a[i + 1], a[high]] = [a[high], a[i + 1]];
-    const p = i + 1;
-    partitions.push({ low, high, pivot, p, steps, after: [...a] });
-    sort(low, p - 1);
-    sort(p + 1, high);
-  };
-  sort(0, a.length - 1);
-  return { sorted: a, partitions };
-}
-
-const input = [7, 2, 9, 4, 1, 8, 3, 5];
-const qs = lomuto(input);
-const first = qs.partitions[0];
-const intro = walkStates(story.scenes[0]).states.at(-1);
-assert.deepEqual(row(intro, 'before', 8), input, 'intro input');
-assert.deepEqual(row(intro, 'after', 8), first.after, 'intro after one split');
-story.scenes.slice(0, 3).forEach((scene, k) => checkCallouts(scene, `scene ${k}`));
-
-const part = walkStates(story.scenes[1]).states;
-assert.deepEqual(
-  distinct(part.map((st) => row(st, null, 8))),
-  distinct([input, ...first.steps.map((x) => x.after), first.after]),
-  'partition values differ from the simulation',
-);
-part.forEach((st, k) => {
-  if (k === 0) return;
-  const now = row(st, null, 8);
-  if (JSON.stringify(row(part[k - 1], null, 8)) === JSON.stringify(now)) return;
-  const sim = first.steps.find((x) => JSON.stringify(x.after) === JSON.stringify(now));
-  if (sim)
-    assert.ok(
-      st.places['ptr:i'][0] === sim.i && st.places['ptr:j'][0] === sim.j,
-      `partition state ${k}: i/j at ${st.places['ptr:i'][0]}/${st.places['ptr:j'][0]}, sim ${sim.i}/${sim.j}`,
-    );
-  const m = plain(st.callout).match(/^(\d+) < 5\?/);
-  if (m)
-    assert.equal(
-      st.values[`c:${st.places['ptr:j'][0]}`],
-      Number(m[1]),
-      `partition state ${k}: the callout names a value j is not on`,
-    );
-});
-assert.ok(plain(part.at(-1).callout).includes(`index ${first.p}`), 'pivot index');
-
-const rec = walkStates(story.scenes[2]).states;
-assert.deepEqual(
-  distinct(rec.map((st) => row(st, null, 8))),
-  distinct(qs.partitions.map((p) => p.after)),
-  'recursion values differ from the simulation',
-);
-assert.equal(Object.values(rec.at(-1).tints).filter((t) => t === 'good').length, 8, 'every cell ends green');
-rec.forEach((st, k) => {
-  const call = st.callout.match(/quickSort\(arr, (\d+), (\d+)\)/);
-  if (call) {
-    const [low, high] = [Number(call[1]), Number(call[2])];
-    assert.ok(
-      qs.partitions.some((p) => p.low === low && p.high === high),
-      `recursion state ${k}: no partition(${low}, ${high}) in the simulation`,
-    );
-    assert.deepEqual(st.places['rg:low to high'], [low, high], `recursion state ${k}: range is not ${low}-${high}`);
-  }
-  const lands = plain(st.callout).match(/^(\d+) (?:lands at|stays at) index (\d+)/);
-  if (lands)
-    assert.ok(
-      qs.partitions.some((p) => p.pivot === Number(lands[1]) && p.p === Number(lands[2])),
-      `pivot ${lands[1]} at ${lands[2]}`,
-    );
-});
 
 const hunk = JSON.parse(fs.readFileSync(new URL('./hunks.json', import.meta.url), 'utf8')).s1;
 const line = (n) => hunk.lines.find((l) => l.newLine === n).text.trim();

@@ -40,7 +40,6 @@ assert.equal(f3(heights[0]), '1.273');
 // ---------- the partial sums, as the scene draws them ----------
 // n is how many odd waves are added: sin x, sin 3x, ..., sin (2n − 1)x.
 const SUM = 'sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))';
-const sumAt = (xExpr) => SUM.replaceAll('* x', `* (${xExpr})`);
 const middle = (n) => at(SUM, { n, x: Math.PI / 2 });
 // The research's figures: 1.2732 with one wave, 0.8488 with two, 1.1035 with three, 1.0244 with thirteen (k ≤ 25).
 assert.equal(middle(1).toFixed(4), '1.2732');
@@ -71,227 +70,402 @@ assert.equal((overshoot * 100).toFixed(2), '8.95');
 for (const p of peaks.slice(1)) assert.equal(f2(p.y), f2(limit));
 assert.ok(peaks[3].y - limit < 1e-4);
 
-// ---------- scenes ----------
-const AXES = {
-  x: { from: 0, to: 2 * Math.PI, ticks: 'pi' },
-  y: { from: -1.5, to: 1.5, ticks: 0.5, grid: true },
+// ---------- the board: the plot drawn as svg, every curve computed here ----------
+// The board's lettering has no π, so the x ticks are written as numbers: 1.57, 3.14, 4.71, 6.28.
+const X0 = 80,
+  X1 = 1160,
+  Y0 = 320,
+  YK = 186; // px per unit of y; y runs from about −1.5 to 1.5
+const px = (x) => X0 + (x / (2 * Math.PI)) * (X1 - X0);
+const py = (y) => Y0 - y * YK;
+// Ramer-Douglas-Peucker: drop points within tol px of the line through their neighbours.
+const simplify = (pts, tol = 0.35) => {
+  const keep = new Uint8Array(pts.length);
+  keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [i, j] = stack.pop();
+    const [ax, ay] = pts[i],
+      [bx, by] = pts[j];
+    const len = Math.hypot(bx - ax, by - ay) || 1;
+    let far = -1,
+      best = tol;
+    for (let k = i + 1; k < j; k++) {
+      const d = Math.abs((bx - ax) * (ay - pts[k][1]) - (ax - pts[k][0]) * (by - ay)) / len;
+      if (d > best) [best, far] = [d, k];
+    }
+    if (far > 0) {
+      keep[far] = 1;
+      stack.push([i, far], [far, j]);
+    }
+  }
+  return pts.filter((_, k) => keep[k]);
 };
-const SQUARE = { id: 'square', y: 'sign(sin(x))', tone: 'neutral', dashed: true };
+const curve = (f, samples = 2400) => {
+  const pts = [];
+  for (let i = 0; i <= samples; i++) {
+    const x = (i / samples) * 2 * Math.PI;
+    pts.push([px(x), py(f(x))]);
+  }
+  return `M${simplify(pts)
+    .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+    .join(' L')}`;
+};
+const sumCurve = (n) => curve((x) => at(SUM, { n, x }), n > 20 ? 8000 : 2400);
+const path = (id, d, extra) => `<path id="${id}" d="${d}" fill="none" ${extra}/>`;
+const good = 'class="stroke-good" stroke-width="4"';
+const pointG = (id, x, y, label, side = 'above') => {
+  const [cx, cy] = [px(x), py(y)];
+  const t =
+    side === 'above'
+      ? `x="${cx.toFixed(1)}" y="${(cy - 22).toFixed(1)}" text-anchor="middle"`
+      : side === 'below'
+        ? `x="${cx.toFixed(1)}" y="${(cy + 44).toFixed(1)}" text-anchor="middle"`
+        : `x="${(cx - 18).toFixed(1)}" y="${(cy - 14).toFixed(1)}" text-anchor="end"`;
+  return `<g id="${id}"><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9" class="tone-bad"/><text id="${id}-v" ${t} font-size="28" class="fill-bad">${label}</text></g>`;
+};
+const tick = (x, label) =>
+  `<line x1="${px(x)}" y1="${Y0 - 8}" x2="${px(x)}" y2="${Y0 + 8}" stroke="var(--muted)" stroke-width="2"/><text x="${px(x)}" y="${Y0 + 40}" font-size="24" text-anchor="middle" fill="var(--muted)">${label}</text>`;
+const mid1 = 4 / Math.PI;
+const edgeY = mid1 * Math.sin(0.4);
+const peak13x = Math.PI - Math.PI / 26,
+  peak50x = Math.PI - Math.PI / 100;
+const waves = `<svg viewBox="0 0 1200 640">
+<g id="axes"><line x1="${X0}" y1="${Y0}" x2="${X1}" y2="${Y0}" stroke="var(--muted)" stroke-width="2"/><line x1="${X0}" y1="${py(1.5)}" x2="${X0}" y2="${py(-1.5)}" stroke="var(--muted)" stroke-width="2"/>
+${[1, 2, 3, 4].map((q) => tick((q * Math.PI) / 2, f2((q * Math.PI) / 2))).join('')}
+<text x="${X0 - 14}" y="${py(1) + 8}" font-size="24" text-anchor="end" fill="var(--muted)">1</text><text x="${X0 - 14}" y="${py(-1) + 8}" font-size="24" text-anchor="end" fill="var(--muted)">−1</text>
+<line x1="${X0 - 6}" y1="${py(1)}" x2="${X0 + 6}" y2="${py(1)}" stroke="var(--muted)" stroke-width="2"/><line x1="${X0 - 6}" y1="${py(-1)}" x2="${X0 + 6}" y2="${py(-1)}" stroke="var(--muted)" stroke-width="2"/></g>
+${path('square', `M${X0},${Y0} V${py(1)} H${px(Math.PI)} V${py(-1)} H${X1} V${Y0}`, 'stroke="var(--muted)" stroke-width="3" stroke-dasharray="12 9"')}
+${path('sin1', curve(Math.sin), good)}
+${path(
+  'sinA',
+  curve((x) => mid1 * Math.sin(x)),
+  good,
+)}
+${path(
+  'next3',
+  curve((x) => (4 / (3 * Math.PI)) * Math.sin(3 * x)),
+  'stroke="var(--text)" stroke-width="3" stroke-dasharray="10 8"',
+)}
+${path('wave', sumCurve(1), good)}
+${[2, 3, 5].map((n) => path(`n${n}`, sumCurve(n), good)).join('')}
+${path('n13', sumCurve(13), good)}
+${path('n50', sumCurve(50), good)}
+${pointG('mid', Math.PI / 2, mid1, f2(mid1))}
+${pointG('edge', 0.4, edgeY, f2(edgeY), 'below')}
+${pointG('peak13', peak13x, peaks[1].y, f3(peaks[1].y), 'left')}
+${pointG('peak50', peak50x, peaks[2].y, f3(peaks[2].y), 'left')}
+<text id="question" x="900" y="64" font-size="30" text-anchor="middle">Can smooth waves add up to a sharp jump?</text>
+</svg>`;
+const ALL = [
+  'sin1',
+  'sinA',
+  'next3',
+  'wave',
+  'n2',
+  'n3',
+  'n5',
+  'n13',
+  'n50',
+  'mid',
+  'edge',
+  'peak13',
+  'peak50',
+  'question',
+];
+const except = (...ids) => ALL.filter((id) => !ids.includes(id));
+const midShift = (n) => `translate(0 ${((middle(1) - middle(n)) * YK).toFixed(1)})`;
 
 const hook = {
-  type: 'text',
+  type: 'svg',
   chapter: 'The puzzle',
-  narration:
-    'Here is a strange claim. Take waves that are perfectly smooth, add enough of them, and you get a shape with a sharp jump in it.',
-  kicker: 'A puzzle',
-  question: 'Can smooth waves add up to a sharp jump?',
-  sides: [
-    { label: 'a sine wave', term: 'smooth', note: 'no corners anywhere', tone: 'accent' },
-    { label: 'a square wave', term: 'jumps', note: 'straight down, in no time', tone: 'warn' },
-  ],
-  hidden: ['left', 'right'],
+  title: 'Smooth waves, and a shape that jumps',
+  picture: 'waves',
+  narration: 'Here is a strange claim. Add enough perfectly smooth waves, and you get a shape with a sharp jump in it.',
+  hidden: [...except(), 'square'],
+  labels: { sin1: 'sine wave', square: 'square wave', question: 'how could this ever work' },
   steps: [
-    { show: ['left'], say: 'A sine wave bends gently, everywhere. It never has a corner.' },
-    { show: ['right'], say: 'A square wave sits flat, then jumps straight down, then jumps back up.' },
     {
-      focus: ['question'],
+      trace: [{ ref: 'sin1', when: 'bends' }],
+      focus: 'sin1',
+      say: 'A sine wave bends gently, everywhere. It never has a corner.',
+    },
+    {
+      trace: [{ ref: 'square', when: 'sits flat' }],
+      focus: 'square',
+      say: 'A square wave sits flat, then jumps straight down, then jumps back up.',
+    },
+    {
+      show: ['question'],
+      focus: 'question',
       say: 'Adding smooth things should give something smooth. So how could this ever work? Let us try it and see.',
     },
   ],
 };
 
 const oneWave = {
-  type: 'plot',
+  type: 'svg',
   chapter: 'One wave',
-  title: 'The best single wave',
-  narration: 'The dashed grey line is our target, the square wave. It is one for half the time, then minus one.',
-  ...AXES,
-  params: { a: 1 },
-  functions: [
-    { ...SQUARE, label: 'square wave' },
-    { id: 'wave', y: 'a * sin(x)', label: '{a:2} × sin x' },
-  ],
-  points: [
-    { id: 'middle', at: ['pi/2', 'a'], label: '{a:2}', side: 'above', hidden: true },
-    { id: 'edge', at: [0.4, 'a * sin(0.4)'], label: '{a * sin(0.4):2}', side: 'right', tone: 'warn', hidden: true },
-  ],
+  title: 'The best single wave is still wrong',
+  picture: 'waves',
+  narration: 'The dashed line is our target, the square wave. It is one for half the time, then minus one.',
+  hidden: except('sin1'),
+  labels: { sin1: 'sin x', sinA: 'stretch', mid: 'middle', edge: 'near the jump' },
   steps: [
     {
-      trace: ['wave'],
-      focus: ['wave', 'square'],
+      focus: ['sin1', 'square'],
       say: 'Start with the plainest wave there is, sin x. It goes up when the square wave is up, and down when it is down.',
     },
     {
-      set: { a: 4 / Math.PI },
-      focus: ['wave'],
-      callout: `best height: 4 ÷ π = ${f2(4 / Math.PI)}`,
-      say: `Now stretch it until it matches the target as well as one wave can. That happens at a height of four over pi, about ${f2(4 / Math.PI)}.`,
+      hide: ['sin1'],
+      trace: [{ ref: 'sinA', when: 'stretch' }],
+      focus: 'sinA',
+      say: `Now stretch it until it matches the target as well as one wave can. That is a height of four over pi.`,
+      draw: [{ write: `best height: 4 ÷ π = ${f2(mid1)}`, near: 'sinA', side: 'right', when: 'four over pi' }],
     },
     {
-      show: ['middle'],
-      focus: ['middle'],
+      show: ['mid'],
+      erase: true,
+      focus: ['mid'],
+      tint: { mid: 'bad' },
       say: `It is not a good match yet. In the middle it climbs to ${f2(middle(1))}, too high.`,
-      draw: [{ circle: 'middle', when: 'too high' }],
+      draw: [{ write: 'too high', near: 'mid', side: 'right', when: 'too high', tone: 'bad' }],
     },
     {
       show: ['edge'],
       focus: ['edge'],
-      say: `And near the jump it is far too low, only ${f2((4 / Math.PI) * Math.sin(0.4))}.`,
-      draw: [{ write: 'too low', near: 'edge', side: 'below', when: 'far too low' }],
+      say: `And near the jump it is far too low, only ${f2(edgeY)}.`,
+      draw: [{ write: 'too low', near: 'edge', side: 'right', when: 'far too low', tone: 'bad' }],
     },
   ],
 };
 
 const addWaves = {
-  type: 'plot',
+  type: 'svg',
   chapter: 'Adding waves',
-  title: 'Add faster, smaller waves',
+  title: 'Each faster, smaller wave fixes some of the error',
+  picture: 'waves',
   narration: 'To fix it, we add a second wave, three times as fast and one third as tall.',
-  ...AXES,
-  params: { n: 1 },
-  functions: [
-    SQUARE,
-    { id: 'next', y: '4 / (pi * (2*n + 1)) * sin((2*n + 1) * x)', label: 'next wave', tone: 'accent', dashed: true },
-    { id: 'wave', y: SUM, label: 'waves added: {n:0}' },
-  ],
-  points: [{ id: 'middle', at: ['pi/2', sumAt('pi/2')], label: '{' + sumAt('pi/2') + ':2}', side: 'above' }],
-  callout: 'sin x + sin 3x ÷ 3 + sin 5x ÷ 5 + …',
+  hidden: except('sinA', 'mid'),
+  labels: { next3: 'small, fast wave', wave: 'add it in', mid: 'middle' },
   steps: [
     {
-      trace: ['next'],
-      focus: ['next'],
-      say: 'Here is that small, fast wave on its own. Notice it dips in the middle and rises near the edges, just where our first wave was wrong.',
+      hide: ['edge'],
+      trace: [{ ref: 'next3', when: 'alone' }],
+      focus: ['next3'],
+      say: 'Here is that small, fast wave alone. It dips at the centre and rises at the edges, just where the first wave was wrong.',
     },
     {
-      set: { n: 2 },
-      hide: ['next'],
-      focus: ['wave', 'middle'],
+      hide: ['next3', 'sinA'],
+      show: ['wave'],
+      morph: { wave: 'n2' },
+      move: { mid: midShift(2) },
+      set: { 'mid-v': f2(middle(2)) },
+      focus: ['wave', 'mid'],
       say: `Add it in. The middle drops from ${f2(middle(1))} to ${f2(middle(2))}, now a little too low, and the shoulders lift.`,
     },
     {
-      set: { n: 3 },
-      focus: ['wave', 'middle'],
+      morph: { wave: 'n3' },
+      move: { mid: midShift(3) },
+      set: { 'mid-v': f2(middle(3)) },
+      focus: ['wave', 'mid'],
       say: `Then add one five times as fast and one fifth as tall. With it, the middle comes back up to ${f2(middle(3))}.`,
     },
     {
-      set: { n: 5 },
-      focus: ['wave', 'middle'],
+      morph: { wave: 'n5' },
+      move: { mid: midShift(5) },
+      set: { 'mid-v': f2(middle(5)) },
+      focus: ['wave', 'mid'],
       say: `Each wave fixes some of the last one's mistake. With five, the middle is ${f2(middle(5))} and the sides are getting steep.`,
+      draw: [{ write: 'sin x + sin 3x ÷ 3 + sin 5x ÷ 5 + …', near: 'wave', side: 'below', when: 'Each wave' }],
     },
   ],
 };
 
+// The recipe: each wave's height as a bar, odd waves only; the even slots are drawn empty.
+const BASE = 560,
+  HK = 330;
+const slotX = (k) => 110 + (k - 1) * 96;
+const slot = (k) => {
+  const h = k % 2 ? heights[ODD.indexOf(k)] : 0;
+  const x = slotX(k);
+  const name = k === 1 ? 'sin x' : `sin ${k}x`;
+  const bar = h
+    ? `<rect x="${x - 30}" y="${(BASE - h * HK).toFixed(1)}" width="60" height="${(h * HK).toFixed(1)}" class="tone-good" stroke-width="3"/><text x="${x}" y="${(BASE - h * HK - 14).toFixed(1)}" font-size="24" text-anchor="middle">${f2(h)}</text>`
+    : `<text x="${x}" y="${BASE - 14}" font-size="24" text-anchor="middle" fill="var(--muted)">0</text>`;
+  return `<g id="k${k}">${bar}<text x="${x}" y="${BASE + 40}" font-size="24" text-anchor="middle"${h ? '' : ' fill="var(--muted)"'}>${name}</text></g>`;
+};
+const recipeSvg = `<svg viewBox="0 0 1200 640"><line x1="50" y1="${BASE}" x2="1170" y2="${BASE}" stroke="var(--muted)" stroke-width="3"/>${Array.from({ length: 11 }, (_, i) => slot(i + 1)).join('')}</svg>`;
+const EVEN = [2, 4, 6, 8, 10];
 const recipe = {
-  type: 'chart',
+  type: 'svg',
   chapter: 'The recipe',
-  title: 'How tall each wave is',
-  kind: 'bar',
-  narration:
-    'So what is the recipe? Measure how much each wave lines up with the square wave, and that tells you how tall to make it.',
-  labels: ODD.map((k) => (k === 1 ? 'sin x' : `sin ${k}x`)),
-  series: [{ name: 'height', values: [Number(f3(heights[0])), 0, 0, 0, 0, 0], tone: 'accent' }],
-  callout: 'height = 4 ÷ (π × k)',
+  title: 'Each wave is a third, a fifth, a seventh as tall',
+  svg: recipeSvg,
+  narration: 'So what is the recipe? How much each wave lines up with the square wave tells you how tall to make it.',
+  hidden: ODD.slice(1)
+    .map((k) => `k${k}`)
+    .concat(EVEN.map((k) => `k${k}`)),
+  labels: { k1: 'first wave', k3: 'three times', k5: 'five times', k2: 'two', k4: 'four' },
   steps: [
-    { focus: 'sin x', say: `The first wave lines up best, so it is the tallest, ${f2(heights[0])}.` },
+    { focus: 'k1', say: `The first wave lines up best, so it is the tallest, ${f2(heights[0])}.` },
     {
-      set: { 'height@sin 3x': Number(f3(heights[1])), 'height@sin 5x': Number(f3(heights[2])) },
+      show: ['k3', 'k5'],
+      focus: ['k3', 'k5'],
       say: 'The wave three times as fast gets a third of that. Five times as fast, a fifth.',
     },
-    { set: { height: heights.map((h) => Number(f3(h))) }, say: 'And so on, smaller and smaller, forever.' },
     {
-      focus: ['sin x', 'sin 3x'],
-      draw: [{ write: 'no sin 2x, no sin 4x', near: 'height@sin 7x', side: 'above', when: 'two or four' }],
-      say: 'Notice the list skips from one to three to five. What about waves two or four times as fast? They line up with the top half exactly as much as they fight it, so they cancel out. Their height is zero. Only the odd ones are in the recipe.',
+      show: ['k7', 'k9', 'k11'],
+      focus: ['k7', 'k9', 'k11'],
+      say: 'And so on, smaller and smaller, forever.',
+      draw: [{ write: 'height = 4 ÷ (π × k)', near: 'k3', side: 'above', when: 'smaller and smaller' }],
+    },
+    {
+      focus: ['k1', 'k3', 'k5'],
+      say: 'Notice the list skips from one to three to five. What about waves two or four times as fast?',
+      draw: [{ circle: 'k2', when: 'two or four' }, { circle: 'k4' }],
+    },
+    {
+      show: EVEN.map((k) => `k${k}`),
+      focus: ['k2', 'k4'],
+      say: 'They line up with the top half exactly as much as they fight it, so they cancel out. Their height is zero.',
+    },
+    {
+      focus: ODD.map((k) => `k${k}`),
+      say: 'Only the odd ones are in the recipe.',
+      draw: [{ write: 'odd waves only', near: 'k9', side: 'above', when: 'odd ones' }],
     },
   ],
 };
 
 const jump = {
-  type: 'plot',
+  type: 'svg',
   chapter: 'The jump',
-  title: 'Zoom in on the jump',
-  narration: `Here is the sum again, with the jump down at pi in the middle. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is ${f2(middle(13))}, almost exactly one.`,
-  ...AXES,
-  params: { n: 13 },
-  functions: [SQUARE, { id: 'wave', y: SUM, label: 'waves added: {n:0}' }],
-  points: [
-    {
-      id: 'peak',
-      at: ['pi - pi/(2*n)', sumAt('pi - pi/(2*n)')],
-      label: '{' + sumAt('pi - pi/(2*n)') + ':3}',
-      side: 'left',
-      tone: 'warn',
-      hidden: true,
-    },
-  ],
+  title: 'More waves, but the bump stays',
+  picture: 'waves',
+  narration: 'Here is the sum again, with the jump down at pi in the middle. Let us keep adding waves.',
+  hidden: except('wave'),
+  labels: { peak13: 'just before it', n50: 'fifty', peak50: 'bump' },
   steps: [
     {
-      show: ['peak'],
-      camera: { on: 'peak', zoom: 3 },
-      focus: ['peak'],
+      morph: { wave: 'n13' },
+      focus: 'wave',
+      say: `With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is ${f2(middle(13))}, almost exactly one.`,
+    },
+    {
+      show: ['peak13'],
+      camera: { on: 'peak13', zoom: 3 },
+      focus: ['peak13'],
       say: `But look closely at the jump. Just before it, the sum shoots past one, up to ${f2(peaks[1].y)}.`,
     },
     {
-      set: { n: 50 },
-      focus: ['peak'],
+      morph: { wave: 'n50' },
+      hide: ['peak13'],
+      show: ['peak50'],
+      focus: ['peak50'],
       say: `Surely more waves fix that. Here are fifty. The bump gets thinner and moves closer to the jump, but it is still ${f2(peaks[2].y)} tall.`,
-      draw: [{ write: 'still there', near: 'peak', side: 'right', when: 'still' }],
+      draw: [{ write: 'still there', near: 'peak50', side: 'left', when: 'still' }],
     },
     {
       camera: 'all',
       erase: true,
-      callout: `overshoot: ${Math.round(overshoot * 100)}% of the jump`,
       focus: ['wave'],
       say: 'Everywhere else the sum gets as close as you like. At the jump, it always overshoots by about nine percent of the jump.',
+      draw: [
+        {
+          write: `overshoot: ${Math.round(overshoot * 100)}% of the jump`,
+          near: 'peak50',
+          side: 'right',
+          when: 'overshoots',
+        },
+      ],
     },
   ],
 };
 
+// The bump at each count of waves: its top as a bar against the limit, and its distance from the jump as a bar.
+const rowY = (i) => 200 + i * 100;
+const TOPK = 300,
+  DISTK = 1100;
+const bumpRow = (n, i) => {
+  const p = peaks[i],
+    d = Math.PI / (2 * n);
+  return `<g id="row${i}"><text x="150" y="${rowY(i) + 10}" font-size="28" text-anchor="end">${n} waves</text>
+<g id="top${i}"><rect x="190" y="${rowY(i) - 22}" width="${(p.y * TOPK).toFixed(1)}" height="44" class="tone-bad" stroke-width="3"/><text x="${(190 + p.y * TOPK + 14).toFixed(1)}" y="${rowY(i) + 10}" font-size="26">${f3(p.y)}</text></g>
+<g id="dist${i}"><rect x="720" y="${rowY(i) - 22}" width="${(d * DISTK).toFixed(1)}" height="44" stroke-width="3"/><text x="${(720 + d * DISTK + 14).toFixed(1)}" y="${rowY(i) + 10}" font-size="26">${f3(d)}</text></g></g>`;
+};
+const bumpSvg = `<svg viewBox="0 0 1200 640">
+<text x="190" y="110" font-size="28" fill="var(--muted)">top of the bump</text><text x="720" y="110" font-size="28" fill="var(--muted)">distance from the jump</text>
+${PEAK_N.map(bumpRow).join('')}
+<g id="limit"><line x1="${(190 + limit * TOPK).toFixed(1)}" y1="140" x2="${(190 + limit * TOPK).toFixed(1)}" y2="600" stroke="var(--text)" stroke-width="3" stroke-dasharray="10 8"/><text x="${(190 + limit * TOPK).toFixed(1)}" y="630" font-size="26" text-anchor="middle">${f3(limit)}</text></g>
+<g id="one"><line x1="${190 + TOPK}" y1="140" x2="${190 + TOPK}" y2="600" stroke="var(--muted)" stroke-width="2"/><text x="${190 + TOPK}" y="630" font-size="24" text-anchor="end" fill="var(--muted)">1  </text></g>
+</svg>`;
 const bump = {
-  type: 'table',
+  type: 'svg',
   chapter: 'The bump that stays',
-  title: 'More waves, same overshoot',
+  title: 'The bump stays as tall, and only gets thinner',
+  svg: bumpSvg,
   narration:
     'Here are the numbers. For each count of waves, how high the bump climbs, and how far it sits from the jump.',
-  columns: ['waves', 'top of the bump', 'distance from the jump'],
-  rows: PEAK_N.map((n, i) => ({ cells: [String(n), f3(peaks[i].y), f3(Math.PI / (2 * n))], hidden: true })),
-  callout: `limit: ${f3(limit)}`,
+  hidden: ['row0', 'row1', 'row2', 'row3', 'limit'],
+  labels: {
+    row0: 'five waves',
+    row1: 'thirteen',
+    row2: 'fifty',
+    row3: 'two hundred',
+    limit: 'heads to',
+    top3: 'height',
+  },
   steps: [
-    { show: [0, 1], say: `Five waves, ${f3(peaks[0].y)}. Thirteen, ${f3(peaks[1].y)}.` },
     {
-      show: [2, 3],
+      show: ['row0', 'row1'],
+      focus: ['row0', 'row1'],
+      say: `Five waves, ${f3(peaks[0].y)}. Thirteen, ${f3(peaks[1].y)}.`,
+    },
+    {
+      show: ['row2', 'row3'],
+      focus: ['row2', 'row3'],
       say: `Fifty, ${f3(peaks[2].y)}. Two hundred, ${f3(peaks[3].y)}. The height settles and stops falling.`,
     },
     {
-      focus: ['col:distance from the jump'],
+      focus: ['dist0', 'dist1', 'dist2', 'dist3'],
       say: 'Meanwhile the bump squeezes toward the jump, a quarter as far away for four times the waves.',
     },
     {
-      focus: ['col:top of the bump'],
-      tint: { 'top of the bump@3': 'warn' },
+      show: ['limit'],
+      focus: ['limit', 'top3'],
       say: `The height heads to ${f3(limit)}, never to one. People call this the Gibbs phenomenon.`,
+      draw: [{ write: 'the Gibbs phenomenon', near: 'dist3', side: 'right', when: 'Gibbs' }],
     },
   ],
 };
 
 const takeaway = {
-  type: 'text',
+  type: 'svg',
   chapter: 'What to keep',
+  title: 'Smooth waves can build a jump, almost',
+  picture: 'waves',
   narration: 'So, can smooth waves make a sharp jump? Almost.',
-  kicker: 'The answer',
-  headline: 'Smooth waves can build a jump, almost',
-  items: [
-    'Each odd wave is a third, a fifth, a seventh as tall as the first',
-    'Each one fixes part of the mistake the others leave',
-    `At the jump the sum always overshoots by about ${Math.round(overshoot * 100)}%`,
-  ],
-  hidden: ['0-2'],
+  hidden: except('n50'),
+  labels: { next3: 'odd waves', n50: 'every wave', peak50: 'overshoot' },
   steps: [
-    { show: [0], say: 'The recipe is simple: the odd waves, each one a third, a fifth, a seventh as tall.' },
-    { show: [1], say: 'Every wave you add fixes part of what the others got wrong.' },
     {
-      show: [2],
-      say: 'And right at the jump there is one mistake no amount of waves can fix: an overshoot of about nine percent, that only gets thinner.',
+      show: ['next3'],
+      focus: 'next3',
+      say: 'The recipe is simple: the odd waves, each one a third, a fifth, a seventh as tall.',
+      draw: [{ write: 'odd waves: 1, 1/3, 1/5, 1/7 as tall', near: 'next3', side: 'below', when: 'odd waves' }],
+    },
+    {
+      hide: ['next3'],
+      focus: 'n50',
+      say: 'Every wave you add fixes part of what the others got wrong.',
+      draw: [{ write: 'each fixes part of the mistake', near: 'n50', side: 'below', when: 'fixes' }],
+    },
+    {
+      show: ['peak50'],
+      focus: 'peak50',
+      say: 'But right at the jump, no amount of waves can fix one mistake: an overshoot of about nine percent, that only gets thinner.',
+      draw: [{ circle: 'peak50', when: 'overshoot' }],
     },
   ],
 };
@@ -299,6 +473,8 @@ const takeaway = {
 const storyboard = {
   title: 'A square wave from sine waves',
   subtitle: 'How smooth waves add up to a sharp jump, and the bump that never goes away',
+  tones: { good: 'the waves and their sum', bad: 'where the sum misses the square wave' },
+  pictures: { waves },
   scenes: [hook, oneWave, addWaves, recipe, jump, bump, takeaway],
 };
 const here = (f) => new URL(f, import.meta.url);

@@ -140,11 +140,16 @@ function normalizeScene(raw, explain, storyboard) {
 }
 
 /** Expects a storyboard that passed `validate`; returns it with every older field name replaced. */
+/** The look the engine draws: an explanation is drawn on the board unless it asks for "plain", a branch is plain unless it asks for the board (ADR 50). */
+export const lookOf = (storyboard, explain) =>
+  storyboard.look === 'plain' ? undefined : (storyboard.look ?? (explain ? 'board' : undefined));
+
 export function normalizeStoryboard(storyboard, hunks) {
   const explain = isExplanation(hunks);
   const current = upgradeScenes(storyboard);
   return {
     ...current,
+    look: lookOf(current, explain),
     scenes: current.scenes.map((scene) => normalizeScene(expandBriefParts(scene, current, hunks), explain, current)),
   };
 }

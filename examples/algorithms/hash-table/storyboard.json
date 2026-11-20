@@ -1,571 +1,584 @@
 {
   "title": "Hash tables",
   "subtitle": "Turning a key into an address",
+  "tones": {
+    "good": "a key in its own place",
+    "bad": "two keys after the same place"
+  },
+  "pictures": {
+    "hash": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<g id=\"catL\"><text x=\"30\" y=\"28\" font-size=\"24\" fill=\"var(--muted)\">key \"cat\"</text><rect x=\"30\" y=\"40\" width=\"80\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"70\" y=\"88\" text-anchor=\"middle\" font-size=\"34\" font-family=\"mono\">c</text><rect x=\"120\" y=\"40\" width=\"80\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"160\" y=\"88\" text-anchor=\"middle\" font-size=\"34\" font-family=\"mono\">a</text><rect x=\"210\" y=\"40\" width=\"80\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"250\" y=\"88\" text-anchor=\"middle\" font-size=\"34\" font-family=\"mono\">t</text></g>\n<g id=\"catC\"><text x=\"70\" y=\"146\" text-anchor=\"middle\" font-size=\"26\">99</text><text x=\"160\" y=\"146\" text-anchor=\"middle\" font-size=\"26\">97</text><text x=\"250\" y=\"146\" text-anchor=\"middle\" font-size=\"26\">116</text></g>\n<text id=\"catSum\" x=\"30\" y=\"196\" font-size=\"26\">99 + 97 + 116 = 312</text>\n<text id=\"catMod\" x=\"30\" y=\"240\" font-size=\"26\">312 mod 8 = 0</text>\n<g id=\"actL\"><text x=\"690\" y=\"28\" font-size=\"24\" fill=\"var(--muted)\">key \"act\"</text><rect x=\"690\" y=\"40\" width=\"80\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"730\" y=\"88\" text-anchor=\"middle\" font-size=\"34\" font-family=\"mono\">a</text><rect x=\"780\" y=\"40\" width=\"80\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"820\" y=\"88\" text-anchor=\"middle\" font-size=\"34\" font-family=\"mono\">c</text><rect x=\"870\" y=\"40\" width=\"80\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"910\" y=\"88\" text-anchor=\"middle\" font-size=\"34\" font-family=\"mono\">t</text></g>\n<g id=\"actC\"><text x=\"730\" y=\"146\" text-anchor=\"middle\" font-size=\"26\">97</text><text x=\"820\" y=\"146\" text-anchor=\"middle\" font-size=\"26\">99</text><text x=\"910\" y=\"146\" text-anchor=\"middle\" font-size=\"26\">116</text></g>\n<text id=\"actSum\" x=\"690\" y=\"196\" font-size=\"26\">97 + 99 + 116 = 312</text>\n<text id=\"actMod\" x=\"690\" y=\"240\" font-size=\"26\">312 mod 8 = 0</text>\n<text x=\"20\" y=\"380\" font-size=\"24\" fill=\"var(--muted)\">slots</text>\n<g id=\"slot0\"><rect x=\"150\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"206\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0</text><g id=\"slot1\"><rect x=\"270\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"326\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">1</text><g id=\"slot2\"><rect x=\"390\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"446\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">2</text><g id=\"slot3\"><rect x=\"510\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"566\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">3</text><g id=\"slot4\"><rect x=\"630\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"686\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">4</text><g id=\"slot5\"><rect x=\"750\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"806\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">5</text><g id=\"slot6\"><rect x=\"870\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"926\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">6</text><g id=\"slot7\"><rect x=\"990\" y=\"330\" width=\"112\" height=\"80\" rx=\"8\" stroke-width=\"3\"/></g><text x=\"1046\" y=\"318\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">7</text>\n<text id=\"catIn\" x=\"206\" y=\"382\" text-anchor=\"middle\" font-size=\"28\" font-family=\"mono\">cat</text><text id=\"actIn\" x=\"326\" y=\"382\" text-anchor=\"middle\" font-size=\"28\" font-family=\"mono\">act</text>\n<path id=\"toCat\" d=\"M120 252 Q120 290 190 326\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/>\n<path id=\"toAct\" d=\"M780 252 Q600 300 230 326\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/>\n<g id=\"ptr0\"><circle cx=\"206\" cy=\"370\" r=\"8\" fill=\"var(--text)\" stroke=\"none\"/><path d=\"M206 378 V472\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/></g>\n<g id=\"nodeCat\"><rect x=\"142\" y=\"480\" width=\"130\" height=\"64\" rx=\"8\" stroke-width=\"3\"/><text x=\"207\" y=\"522\" text-anchor=\"middle\" font-size=\"28\" font-family=\"mono\">cat</text></g>\n<g id=\"link\"><path d=\"M276 512 H336\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/></g>\n<g id=\"nodeAct\"><rect x=\"342\" y=\"480\" width=\"130\" height=\"64\" rx=\"8\" stroke-width=\"3\"/><text x=\"407\" y=\"522\" text-anchor=\"middle\" font-size=\"28\" font-family=\"mono\">act</text></g>\n<g id=\"null\"><path d=\"M476 512 H536\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"546\" y=\"521\" font-size=\"26\" fill=\"var(--muted)\" font-family=\"mono\">null</text></g>\n<path id=\"probe\" d=\"M206 416 Q262 480 320 418\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/>\n<text id=\"rule\" x=\"600\" y=\"620\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">h(key) = (sum of character codes) mod 8</text>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "The problem of scale",
       "title": "Finding one number among 10 million",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker></defs>\n<g id=\"any\"><text x=\"40\" y=\"50\" font-size=\"28\">a list in any order</text><rect x=\"40\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"90\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"140\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"190\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"240\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"290\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"340\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"390\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"440\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"490\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"540\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"590\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"640\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"690\" y=\"70\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><text x=\"746\" y=\"104\" font-size=\"28\" fill=\"var(--muted)\">…</text>\n<path d=\"M64 140 H700\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"64\" y=\"176\" font-size=\"22\" fill=\"var(--muted)\">check every one</text>\n<text id=\"anyN\" x=\"1160\" y=\"106\" text-anchor=\"end\" font-size=\"30\">10,000,000 checks</text></g>\n<g id=\"sorted\"><text x=\"40\" y=\"260\" font-size=\"28\">a sorted list, with binary search</text><rect x=\"40\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"90\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"140\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"190\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"240\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"290\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"340\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"390\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"440\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"490\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"540\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"590\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"640\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"690\" y=\"280\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><text x=\"746\" y=\"314\" font-size=\"28\" fill=\"var(--muted)\">…</text>\n<path d=\"M40 340 H730 M390 354 H730 M390 368 H560 M390 382 H470\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\"/><text x=\"760\" y=\"380\" font-size=\"22\" fill=\"var(--muted)\">halve it on each check</text>\n<text id=\"sortedN\" x=\"1160\" y=\"316\" text-anchor=\"end\" font-size=\"30\">24 checks</text></g>\n<g id=\"hash\"><text x=\"40\" y=\"470\" font-size=\"28\">a hash table</text><rect x=\"40\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"90\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"140\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"190\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"240\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"290\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"340\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"390\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"440\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"490\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"540\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"590\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"640\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><rect x=\"690\" y=\"490\" width=\"42\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><text x=\"746\" y=\"524\" font-size=\"28\" fill=\"var(--muted)\">…</text>\n<path d=\"M40 600 Q300 650 460 545\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"480\" y=\"610\" font-size=\"22\" fill=\"var(--muted)\">one jump, straight to it</text>\n<text id=\"hashN\" x=\"1160\" y=\"526\" text-anchor=\"end\" font-size=\"30\">about 1 check</text></g>\n</svg>",
+      "hidden": [
+        "sorted",
+        "hash"
+      ],
+      "labels": {
+        "any": "a list with no order",
+        "anyN": "ten million",
+        "sorted": "sort the list",
+        "sortedN": "twenty four checks",
+        "hash": "hash table"
+      },
       "narration": "Say you keep ten million phone numbers, and you need to find one of them, again and again, thousands of times a second.",
-      "columns": [
-        "How it is stored",
-        "Checks for 10 million, at most",
-        "Grows like"
-      ],
-      "rows": [
-        {
-          "cells": [
-            "A list in any order",
-            "10,000,000",
-            "O(n)"
-          ]
-        },
-        {
-          "cells": [
-            "A sorted list, with binary search",
-            "24",
-            "O(log n)"
-          ]
-        },
-        {
-          "cells": [
-            "A hash table",
-            "about 1",
-            "O(1)"
-          ],
-          "hidden": true
-        }
-      ],
       "steps": [
         {
-          "focus": 0,
+          "focus": [
+            "any",
+            "anyN"
+          ],
           "say": "In a list with no order, you may have to check every one of the ten million."
         },
         {
-          "focus": 1,
+          "show": [
+            "sorted"
+          ],
+          "focus": "sorted",
           "say": "Sort the list and you can halve it on each check, so twenty four checks are enough."
         },
         {
-          "focus": "Checks for 10 million, at most@1",
+          "focus": "sortedN",
           "say": "That is fast. But when a busy system does this thousands of times a second, even twenty four checks add up."
         },
         {
           "show": [
-            2
+            "hash"
           ],
+          "focus": "hash",
           "tint": {
-            "2": "good"
+            "hashN": "good"
           },
-          "say": "What we want is one jump, straight to the spot where the number lives. No scanning, no halving. That is what a hash table gives you."
+          "say": "What we want is one jump, straight to the spot where the number lives."
+        },
+        {
+          "focus": "hashN",
+          "say": "No scanning, no halving. That is what a hash table gives you.",
+          "draw": [
+            {
+              "circle": "hashN",
+              "tone": "good",
+              "when": "hash table"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "The hash function",
       "title": "Working out where \"cat\" goes",
+      "picture": "hash",
+      "hidden": [
+        "catC",
+        "catSum",
+        "catMod",
+        "catIn",
+        "toCat",
+        "actL",
+        "actC",
+        "actSum",
+        "actMod",
+        "actIn",
+        "toAct",
+        "ptr0",
+        "nodeCat",
+        "link",
+        "nodeAct",
+        "null",
+        "probe"
+      ],
+      "labels": {
+        "catL": "cat",
+        "catC": "number",
+        "catSum": "add them up",
+        "catMod": "remainder",
+        "slot0": "slot zero",
+        "toCat": "same sum",
+        "rule": "hash function"
+      },
       "narration": "The trick is to work out the spot from the key itself. The rule that does this is called a hash function.",
-      "arrays": [
-        {
-          "name": "key",
-          "label": "\"cat\"",
-          "values": [
-            "c",
-            "a",
-            "t"
-          ]
-        },
-        {
-          "name": "table",
-          "label": "table",
-          "values": [
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ]
-        }
-      ],
-      "pointers": [
-        {
-          "name": "h(cat)",
-          "array": "table",
-          "at": 0,
-          "hidden": true
-        }
-      ],
-      "callout": "h(key) = (sum of character codes) mod 8",
       "steps": [
         {
-          "focus": "array:key",
+          "focus": "catL",
           "say": "Our key is the word cat."
         },
         {
-          "set": {
-            "key[0]": 99,
-            "key[1]": 97,
-            "key[2]": 116
-          },
-          "callout": "c = 99,  a = 97,  t = 116",
+          "show": [
+            "catC"
+          ],
+          "focus": "catC",
           "say": "Every letter is stored as a number. C is 99, a is 97, and t is 116."
         },
         {
-          "focus": "array:key",
-          "callout": "99 + 97 + 116 = 312",
+          "show": [
+            "catSum"
+          ],
+          "focus": "catSum",
           "say": "Add them up, and you get 312."
         },
         {
-          "focus": "array:table",
-          "callout": "312 mod 8 = 0",
+          "show": [
+            "catMod"
+          ],
+          "focus": [
+            "catMod",
+            "slot0",
+            "slot7"
+          ],
           "say": "The table has only eight slots, so we keep the remainder after dividing by eight. 312 divided by eight leaves 0."
         },
         {
           "show": [
-            "ptr:h(cat)"
+            "toCat",
+            "catIn"
           ],
-          "set": {
-            "table[0]": "cat"
-          },
+          "focus": [
+            "catL",
+            "toCat",
+            "slot0",
+            "catIn"
+          ],
           "tint": {
-            "table[0]": "good"
+            "slot0": "good"
           },
           "say": "So cat goes in slot zero."
         },
         {
           "focus": [
-            "ptr:h(cat)",
-            "table[0]"
+            "rule",
+            "slot0",
+            "toCat"
           ],
-          "callout": "h(\"cat\") = 0",
-          "say": "To find cat later, we do not search. We do the same sum, get zero again, and read slot zero."
+          "say": "To find cat later, we do not search. We do the same sum, get zero again, and read slot zero.",
+          "draw": [
+            {
+              "write": "h(\"cat\") = 0",
+              "near": "toCat",
+              "side": "right",
+              "tone": "good",
+              "when": "same sum"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "A collision",
       "title": "\"act\" lands on the same slot",
-      "narration": "Now add a second word, act.",
-      "arrays": [
-        {
-          "name": "key",
-          "label": "\"act\"",
-          "values": [
-            "a",
-            "c",
-            "t"
-          ]
-        },
-        {
-          "name": "table",
-          "label": "table",
-          "values": [
-            "cat",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ]
-        }
-      ],
-      "pointers": [
-        {
-          "name": "h(act)",
-          "array": "table",
-          "at": 0,
-          "hidden": true
-        }
-      ],
-      "tint": {
-        "table[0]": "good"
+      "picture": "hash",
+      "labels": {
+        "actL": "act",
+        "actSum": "sum",
+        "actMod": "remainder",
+        "toAct": "points at slot zero",
+        "slot0": "cat is already there",
+        "slot7": "eight slots"
       },
+      "narration": "Now add a second word, act.",
       "steps": [
         {
-          "set": {
-            "key[0]": 97,
-            "key[1]": 99,
-            "key[2]": 116
-          },
-          "callout": "97 + 99 + 116 = 312",
+          "show": [
+            "actL",
+            "actC",
+            "actSum"
+          ],
+          "focus": [
+            "actL",
+            "actSum"
+          ],
           "say": "It has the same letters as the first word, in a different order, so its sum is also 312."
         },
         {
           "show": [
-            "ptr:h(act)"
+            "actMod",
+            "toAct"
           ],
-          "callout": "312 mod 8 = 0",
+          "focus": [
+            "actL",
+            "actMod",
+            "toAct"
+          ],
           "say": "And the remainder is zero again, so act points at slot zero."
         },
         {
           "tint": {
-            "table[0]": "bad"
+            "slot0": "bad"
           },
-          "callout": "[collision]{bad}",
-          "say": "But cat is already there. Two different keys want the same slot. This is called a collision."
+          "focus": "slot0",
+          "say": "But cat is already there. Two different keys want the same slot. This is called a collision.",
+          "draw": [
+            {
+              "write": "collision",
+              "near": "slot0",
+              "side": "below",
+              "tone": "bad",
+              "when": "collision"
+            }
+          ]
         },
         {
-          "focus": "array:table",
-          "callout": "endless words, 8 slots",
-          "say": "You cannot avoid it. There are endless possible words, and only eight slots. Put ten pigeons in nine holes, and some hole gets two."
+          "focus": [
+            "slot0",
+            "slot7"
+          ],
+          "erase": true,
+          "say": "You cannot avoid it. There are endless possible words, and only eight slots.",
+          "draw": [
+            {
+              "brace": [
+                "slot0",
+                "slot7"
+              ],
+              "note": "endless words, 8 slots",
+              "side": "below",
+              "when": "endless"
+            }
+          ]
+        },
+        {
+          "focus": "slot0",
+          "say": "Put ten pigeons in nine holes, and some hole gets two."
         }
       ]
     },
     {
-      "type": "memory",
+      "type": "svg",
       "chapter": "Fix one: chaining",
       "title": "Each slot holds a short list",
-      "narration": "The first fix is called chaining. Each slot holds the start of a small linked list instead of one key.",
-      "frames": [],
-      "objects": [
-        {
-          "id": "slots",
-          "type": "table, 8 slots",
-          "fields": {
-            "[0]": {
-              "ref": "n1"
-            },
-            "[1]": "null",
-            "[2]": "null",
-            "[3] to [7]": "null"
-          }
-        },
-        {
-          "id": "n1",
-          "type": "node",
-          "fields": {
-            "key": "\"cat\"",
-            "next": "null"
-          }
-        },
-        {
-          "id": "n2",
-          "type": "node",
-          "fields": {
-            "key": "\"act\"",
-            "next": "null"
-          },
-          "hidden": true
-        }
-      ],
+      "picture": "hash",
+      "labels": {
+        "ptr0": "points at a node",
+        "nodeCat": "cat",
+        "nodeAct": "act",
+        "link": "joins the end",
+        "slot0": "slot zero"
+      },
+      "narration": "The first fix is called chaining.",
       "steps": [
         {
-          "focus": [
-            "slots.[0]",
-            "n1"
+          "hide": [
+            "catIn"
           ],
-          "say": "Slot zero points at a node holding cat."
+          "show": [
+            "ptr0",
+            "nodeCat"
+          ],
+          "tint": {
+            "slot0": "clear",
+            "nodeCat": "good"
+          },
+          "focus": [
+            "slot0",
+            "ptr0",
+            "nodeCat"
+          ],
+          "say": "Each slot holds the start of a small linked list instead of one key. Slot zero points at a node holding cat."
         },
         {
           "show": [
-            "n2"
+            "link",
+            "nodeAct",
+            "null"
           ],
-          "set": {
-            "n1.next": {
-              "ref": "n2"
-            }
+          "tint": {
+            "nodeAct": "good"
           },
-          "callout": "slot 0: \"cat\" → \"act\" → null",
+          "focus": [
+            "link",
+            "nodeAct"
+          ],
           "say": "When act collides with it, act just joins the end of that list."
         },
         {
           "focus": [
-            "slots.[0]",
-            "n1",
-            "n1.next",
-            "n2"
+            "slot0",
+            "nodeCat",
+            "nodeAct"
           ],
-          "callout": "find \"act\": slot 0, then 2 checks",
-          "say": "To find act, jump to slot zero, then walk the list until you meet act. Here that is two checks."
+          "say": "To find act, jump to slot zero, then walk the list until you meet act. Here that is two checks.",
+          "draw": [
+            {
+              "write": "find \"act\": 2 checks",
+              "near": "null",
+              "side": "right",
+              "when": "walk the list"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Fix two: open addressing",
       "title": "Take the next free slot",
-      "narration": "The second fix is called open addressing. Every key lives in the table itself, and a taken slot sends you looking further along.",
-      "values": [
-        "cat",
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        ""
-      ],
-      "pointers": [
-        {
-          "name": "probe",
-          "at": 0
-        }
+      "picture": "hash",
+      "hidden": [
+        "actIn",
+        "ptr0",
+        "nodeCat",
+        "link",
+        "nodeAct",
+        "null",
+        "probe"
       ],
       "tint": {
-        "0": "good"
+        "slot0": "good"
       },
+      "labels": {
+        "toAct": "its hash",
+        "slot0": "slot zero",
+        "slot1": "slot one",
+        "probe": "steps to the next slot",
+        "actIn": "act goes there"
+      },
+      "narration": "The second fix is called open addressing. Every key lives in the table itself.",
       "steps": [
         {
           "focus": [
-            "ptr:probe",
-            0
+            "toAct",
+            "slot0"
           ],
-          "callout": "h(\"act\") = 0",
           "say": "Act starts at slot zero, its hash."
         },
         {
           "tint": {
-            "0": "bad"
+            "slot0": "bad"
           },
-          "callout": "slot 0 is taken",
+          "focus": "slot0",
           "say": "Slot zero is taken by cat."
         },
         {
-          "move": {
-            "probe": 1
-          },
-          "set": {
-            "1": "act"
-          },
+          "trace": [
+            "probe"
+          ],
+          "show": [
+            "actIn"
+          ],
           "tint": {
-            "0": "good",
-            "1": "good"
+            "slot0": "good",
+            "slot1": "good"
           },
-          "callout": "try slot 1: free",
+          "focus": [
+            "probe",
+            "slot1",
+            "actIn"
+          ],
           "say": "So it steps to the next slot, slot one, which is free, and act goes there."
         },
         {
           "focus": [
-            0,
-            1
+            "slot0",
+            "slot1"
           ],
-          "callout": "find \"act\": slot 0, then slot 1",
-          "say": "To find act later, start at slot zero, see cat, and step along until you meet act or an empty slot."
+          "say": "To find act later, start at slot zero, see cat, and step along until you meet act or an empty slot.",
+          "draw": [
+            {
+              "write": "find \"act\": slot 0, then slot 1",
+              "near": "slot1",
+              "side": "below",
+              "when": "step along"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Load factor",
       "title": "When the table gets crowded",
-      "narration": "With chaining, the danger is a crowded table. Here seven keys sit in eight slots, and each list hangs down below its slot.",
-      "arrays": [
-        {
-          "name": "old0",
-          "label": "8 slots",
-          "values": [
-            "cat",
-            "",
-            "owl",
-            "ant",
-            "",
-            "",
-            "",
-            ""
-          ]
-        },
-        {
-          "name": "old1",
-          "label": "",
-          "values": [
-            "act",
-            "",
-            "dog",
-            "hen",
-            "",
-            "",
-            "",
-            ""
-          ]
-        },
-        {
-          "name": "old2",
-          "label": "",
-          "values": [
-            "pig",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ]
-        },
-        {
-          "name": "new0",
-          "label": "16 slots",
-          "values": [
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ],
-          "hidden": true
-        },
-        {
-          "name": "new1",
-          "label": "",
-          "values": [
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
-          ],
-          "hidden": true
-        }
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"old\"><text x=\"20\" y=\"80\" font-size=\"24\" fill=\"var(--muted)\">8 slots</text><g id=\"olds0\"><rect x=\"150\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"207\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0</text><g id=\"olds1\"><rect x=\"270\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"327\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">1</text><g id=\"olds2\"><rect x=\"390\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"447\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">2</text><g id=\"olds3\"><rect x=\"510\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"567\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">3</text><g id=\"olds4\"><rect x=\"630\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"687\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">4</text><g id=\"olds5\"><rect x=\"750\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"807\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">5</text><g id=\"olds6\"><rect x=\"870\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"927\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">6</text><g id=\"olds7\"><rect x=\"990\" y=\"44\" width=\"114\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"1047\" y=\"36\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">7</text></g><g id=\"oldKeys\"><g id=\"old0_0\"><rect x=\"153\" y=\"106\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"207\" y=\"136\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">cat</text></g><g id=\"old0_1\"><rect x=\"153\" y=\"156\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"207\" y=\"186\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">act</text></g><g id=\"old0_2\"><rect x=\"153\" y=\"206\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"207\" y=\"236\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">pig</text></g><g id=\"old2_0\"><rect x=\"393\" y=\"106\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"447\" y=\"136\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">owl</text></g><g id=\"old2_1\"><rect x=\"393\" y=\"156\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"447\" y=\"186\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">dog</text></g><g id=\"old3_0\"><rect x=\"513\" y=\"106\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"567\" y=\"136\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">ant</text></g><g id=\"old3_1\"><rect x=\"513\" y=\"156\" width=\"108\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"567\" y=\"186\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">hen</text></g></g>\n<g id=\"new\"><text x=\"20\" y=\"376\" font-size=\"24\" fill=\"var(--muted)\">16 slots</text><g id=\"news0\"><rect x=\"150\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"179\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0</text><g id=\"news1\"><rect x=\"214\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"243\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">1</text><g id=\"news2\"><rect x=\"278\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"307\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">2</text><g id=\"news3\"><rect x=\"342\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"371\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">3</text><g id=\"news4\"><rect x=\"406\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"435\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">4</text><g id=\"news5\"><rect x=\"470\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"499\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">5</text><g id=\"news6\"><rect x=\"534\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"563\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">6</text><g id=\"news7\"><rect x=\"598\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"627\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">7</text><g id=\"news8\"><rect x=\"662\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"691\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">8</text><g id=\"news9\"><rect x=\"726\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"755\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">9</text><g id=\"news10\"><rect x=\"790\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"819\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">10</text><g id=\"news11\"><rect x=\"854\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"883\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">11</text><g id=\"news12\"><rect x=\"918\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"947\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">12</text><g id=\"news13\"><rect x=\"982\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"1011\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">13</text><g id=\"news14\"><rect x=\"1046\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"1075\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">14</text><g id=\"news15\"><rect x=\"1110\" y=\"340\" width=\"58\" height=\"52\" rx=\"6\" stroke-width=\"3\"/></g><text x=\"1139\" y=\"332\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">15</text></g><g id=\"newKeys\"><g id=\"new0_0\"><rect x=\"153\" y=\"402\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"179\" y=\"432\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">pig</text></g><g id=\"new2_0\"><rect x=\"281\" y=\"402\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"307\" y=\"432\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">owl</text></g><g id=\"new3_0\"><rect x=\"345\" y=\"402\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"371\" y=\"432\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">ant</text></g><g id=\"new8_0\"><rect x=\"665\" y=\"402\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"691\" y=\"432\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">cat</text></g><g id=\"new8_1\"><rect x=\"665\" y=\"452\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"691\" y=\"482\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">act</text></g><g id=\"new10_0\"><rect x=\"793\" y=\"402\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"819\" y=\"432\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">dog</text></g><g id=\"new11_0\"><rect x=\"857\" y=\"402\" width=\"52\" height=\"44\" rx=\"6\" stroke-width=\"2\"/><text x=\"883\" y=\"432\" text-anchor=\"middle\" font-size=\"22\" font-family=\"mono\">hen</text></g></g>\n</svg>",
+      "hidden": [
+        "new",
+        "newKeys"
       ],
-      "callout": "load factor α = N / M",
+      "labels": {
+        "old": "seven keys sit in eight slots",
+        "olds0": "slot zero",
+        "new": "sixteen",
+        "newKeys": "every key is hashed again",
+        "old0_2": "pig"
+      },
+      "narration": "With chaining, the danger is a crowded table. Here seven keys sit in eight slots, and each list hangs below its slot.",
       "steps": [
         {
           "focus": [
-            "array:old0",
-            "array:old1",
-            "array:old2"
+            "old",
+            "oldKeys"
           ],
-          "callout": "α = 7 / 8 = 0.875",
-          "say": "The load factor is the number of keys divided by the number of slots. Seven over eight is zero point eight seven five."
+          "say": "The load factor is the number of keys divided by the number of slots. Seven over eight is zero point eight seven five.",
+          "draw": [
+            {
+              "write": "α = 7 / 8 = 0.875",
+              "near": "olds7",
+              "side": "right",
+              "when": "seven over eight"
+            }
+          ]
         },
         {
           "tint": {
-            "old0[0]": "bad",
-            "old1[0]": "bad",
-            "old2[0]": "bad",
-            "old0[2]": "bad",
-            "old1[2]": "bad",
-            "old0[3]": "bad",
-            "old1[3]": "bad"
+            "old0_0": "bad",
+            "old0_1": "bad",
+            "old0_2": "bad",
+            "old2_0": "bad",
+            "old2_1": "bad",
+            "old3_0": "bad",
+            "old3_1": "bad"
           },
-          "say": "The keys do not spread out evenly, so the lists grow. Slot zero holds 3 keys, and finding pig means walking past cat and act first."
+          "focus": [
+            "olds0",
+            "old0_2"
+          ],
+          "say": "The keys do not spread out evenly, so the lists grow. Slot zero holds 3 keys."
+        },
+        {
+          "focus": [
+            "old0_0",
+            "old0_1",
+            "old0_2"
+          ],
+          "say": "Finding pig means walking past the two keys in front of it.",
+          "draw": [
+            {
+              "circle": "old0_2",
+              "when": "pig"
+            }
+          ]
         },
         {
           "show": [
-            "array:new0",
-            "array:new1"
+            "new"
           ],
           "tint": {
-            "array:old0": "dim",
-            "array:old1": "dim",
-            "array:old2": "dim"
+            "old": "dim",
+            "oldKeys": "dim"
           },
-          "focus": [
-            "array:new0",
-            "array:new1"
-          ],
+          "focus": "new",
+          "erase": true,
           "say": "So the table grows. We make a new one with twice the slots, sixteen."
         },
         {
-          "set": {
-            "new0[0]": "pig",
-            "new0[2]": "owl",
-            "new0[3]": "ant",
-            "new0[8]": "cat",
-            "new1[8]": "act",
-            "new0[10]": "dog",
-            "new0[11]": "hen"
-          },
+          "show": [
+            "newKeys"
+          ],
           "tint": {
-            "new0[0]": "good",
-            "new0[2]": "good",
-            "new0[3]": "good",
-            "new0[8]": "bad",
-            "new1[8]": "bad",
-            "new0[10]": "good",
-            "new0[11]": "good"
+            "new0_0": "good",
+            "new2_0": "good",
+            "new3_0": "good",
+            "new8_0": "bad",
+            "new8_1": "bad",
+            "new10_0": "good",
+            "new11_0": "good"
           },
-          "callout": "α = 7 / 16 ≈ 0.44",
-          "say": "Then every key is hashed again, this time with the remainder after dividing by sixteen, and moves to its new slot. Most lists shrink to one key."
+          "focus": [
+            "new",
+            "newKeys"
+          ],
+          "say": "Then every key is hashed again, with the remainder after dividing by sixteen, and moves to its new slot.",
+          "draw": [
+            {
+              "write": "α = 7 / 16 ≈ 0.44",
+              "near": "new0_0",
+              "side": "below",
+              "tone": "good",
+              "when": "sixteen"
+            }
+          ]
         },
         {
           "focus": [
-            "new0[8]",
-            "new1[8]"
+            "new8_0",
+            "new8_1"
           ],
-          "callout": "312 mod 16 = 8",
-          "say": "Cat and act still share slot eight, because their sums are equal whatever the size. Real hash functions mix in the order of the letters, so this happens far less."
+          "say": "Most lists shrink to one key. But cat and act still share slot eight, because their sums are equal whatever the size.",
+          "draw": [
+            {
+              "write": "312 mod 16 = 8",
+              "near": "new8_1",
+              "side": "below",
+              "tone": "bad",
+              "when": "slot eight"
+            }
+          ]
+        },
+        {
+          "focus": "newKeys",
+          "say": "Real hash functions mix in the order of the letters, so this happens far less."
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "The guarantee",
       "title": "What a hash table costs",
-      "narration": "Many tables grow once the load factor passes about two thirds to three quarters. Then the lists stay short, and every operation is one jump plus a check or two.",
-      "columns": [
-        "Operation",
-        "Average",
-        "Worst case"
-      ],
-      "rows": [
-        {
-          "cells": [
-            "Look up",
-            "O(1)",
-            "O(n)"
-          ]
-        },
-        {
-          "cells": [
-            "Insert",
-            "O(1)",
-            "O(n)"
-          ]
-        },
-        {
-          "cells": [
-            "Delete",
-            "O(1)",
-            "O(n)"
-          ]
-        }
-      ],
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<text x=\"120\" y=\"110\" font-size=\"30\" fill=\"var(--muted)\">operation</text><text id=\"avgH\" x=\"560\" y=\"110\" font-size=\"30\" fill=\"var(--muted)\">on average</text><text id=\"worstH\" x=\"880\" y=\"110\" font-size=\"30\" fill=\"var(--muted)\">worst case</text>\n<line x1=\"100\" y1=\"140\" x2=\"1100\" y2=\"140\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"520\" y1=\"60\" x2=\"520\" y2=\"520\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"840\" y1=\"60\" x2=\"840\" y2=\"520\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<text x=\"120\" y=\"230\" font-size=\"34\">look up</text><text id=\"avg0\" x=\"600\" y=\"230\" font-size=\"34\" font-family=\"mono\">O(1)</text><text id=\"worst0\" x=\"920\" y=\"230\" font-size=\"34\" font-family=\"mono\">O(n)</text><text x=\"120\" y=\"340\" font-size=\"34\">insert</text><text id=\"avg1\" x=\"600\" y=\"340\" font-size=\"34\" font-family=\"mono\">O(1)</text><text id=\"worst1\" x=\"920\" y=\"340\" font-size=\"34\" font-family=\"mono\">O(n)</text><text x=\"120\" y=\"450\" font-size=\"34\">delete</text><text id=\"avg2\" x=\"600\" y=\"450\" font-size=\"34\" font-family=\"mono\">O(1)</text><text id=\"worst2\" x=\"920\" y=\"450\" font-size=\"34\" font-family=\"mono\">O(n)</text>\n</svg>",
+      "labels": {
+        "avgH": "on average",
+        "worstH": "worst case",
+        "avg1": "insert"
+      },
+      "narration": "Many tables grow once the load factor passes about two thirds to three quarters.",
       "steps": [
         {
-          "focus": "col:Average",
+          "focus": [
+            "avg0",
+            "avg1",
+            "avg2"
+          ],
+          "say": "Then the lists stay short, and every operation is one jump plus a check or two."
+        },
+        {
+          "focus": "avgH",
           "tint": {
-            "Average@0": "good",
-            "Average@1": "good",
-            "Average@2": "good"
+            "avg0": "good",
+            "avg1": "good",
+            "avg2": "good"
           },
           "say": "On average, looking up, adding and removing all take the same short time, however big the table gets."
         },
         {
-          "focus": "col:Worst case",
+          "focus": [
+            "worstH",
+            "worst0",
+            "worst1",
+            "worst2"
+          ],
+          "tint": {
+            "worst0": "bad",
+            "worst1": "bad",
+            "worst2": "bad"
+          },
           "say": "The worst case is every key in one slot, which a good hash function makes very unlikely."
         },
         {
-          "focus": "Average@1",
-          "say": "Growing the table is slow when it happens, but it happens so rarely that it adds only a little to each insert on average. That is how dictionaries, database indexes and caches answer in an instant."
+          "focus": [
+            "avgH",
+            "avg1"
+          ],
+          "say": "Growing the table is slow when it happens, but it happens so rarely that it adds only a little to each insert on average.",
+          "draw": [
+            {
+              "write": "growing: rare, so cheap on average",
+              "near": "avg2",
+              "side": "below",
+              "tone": "good",
+              "when": "so rarely"
+            }
+          ]
+        },
+        {
+          "focus": [
+            "avg0",
+            "avg1",
+            "avg2"
+          ],
+          "say": "That is how dictionaries, database indexes and caches answer in an instant."
         }
       ]
     }

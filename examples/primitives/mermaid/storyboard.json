@@ -1,5 +1,6 @@
 {
   "title": "How a release branch works",
+  "look": "plain",
   "subtitle": "Freezing a release while main keeps moving",
   "scenes": [
     {

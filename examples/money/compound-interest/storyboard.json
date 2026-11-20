@@ -1,180 +1,195 @@
 {
   "title": "Compound interest against inflation",
   "subtitle": "Why money grows faster every year, the rule of 72, and what three percent inflation takes back",
+  "tones": {
+    "good": "growth you keep",
+    "bad": "what inflation takes"
+  },
+  "pictures": {
+    "growth": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"118\" y1=\"437.5\" x2=\"130\" y2=\"437.5\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"108\" y=\"445.5\" font-size=\"24\" text-anchor=\"end\" font-size=\"22\" fill=\"var(--muted)\">$20k</text><line x1=\"118\" y1=\"305\" x2=\"130\" y2=\"305\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"108\" y=\"313\" font-size=\"24\" text-anchor=\"end\" font-size=\"22\" fill=\"var(--muted)\">$40k</text><line x1=\"118\" y1=\"172.5\" x2=\"130\" y2=\"172.5\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"108\" y=\"180.5\" font-size=\"24\" text-anchor=\"end\" font-size=\"22\" fill=\"var(--muted)\">$60k</text><line x1=\"118\" y1=\"40\" x2=\"130\" y2=\"40\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"108\" y=\"48\" font-size=\"24\" text-anchor=\"end\" font-size=\"22\" fill=\"var(--muted)\">$80k</text><g><line x1=\"130\" y1=\"570\" x2=\"1070\" y2=\"570\" stroke=\"var(--text)\" stroke-width=\"3\"/><line x1=\"130\" y1=\"40\" x2=\"130\" y2=\"570\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"130\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0</text><text x=\"285\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">5</text><text x=\"440\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">10</text><text x=\"595\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">15</text><text x=\"750\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">20</text><text x=\"905\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">25</text><text x=\"1060\" y=\"606\" font-size=\"24\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">30</text><text x=\"1090\" y=\"606\" font-size=\"24\" font-size=\"22\" fill=\"var(--muted)\">years</text></g>\n<path id=\"extra\" class=\"tone-good\" stroke=\"none\" d=\"M130 503.8 L145.5 501.5 L161 499.1 L176.5 496.7 L192 494.2 L207.5 491.5 L223 488.8 L238.5 486 L254 483.2 L269.5 480.2 L285 477.1 L300.5 473.9 L316 470.6 L331.5 467.2 L347 463.6 L362.5 460 L378 456.2 L393.5 452.3 L409 448.2 L424.5 444 L440 439.7 L455.5 435.2 L471 430.6 L486.5 425.8 L502 420.8 L517.5 415.7 L533 410.3 L548.5 404.9 L564 399.2 L579.5 393.3 L595 387.2 L610.5 380.9 L626 374.4 L641.5 367.7 L657 360.7 L672.5 353.5 L688 346.1 L703.5 338.4 L719 330.4 L734.5 322.2 L750 313.6 L765.5 304.8 L781 295.7 L796.5 286.2 L812 276.5 L827.5 266.4 L843 255.9 L858.5 245.1 L874 234 L889.5 222.4 L905 210.4 L920.5 198.1 L936 185.3 L951.5 172 L967 158.3 L982.5 144.2 L998 129.5 L1013.5 114.4 L1029 98.7 L1044.5 82.5 L1060 65.7 L1060 364.6 L1044.5 366.9 L1029 369.3 L1013.5 371.6 L998 373.9 L982.5 376.2 L967 378.5 L951.5 380.9 L936 383.2 L920.5 385.5 L905 387.8 L889.5 390.1 L874 392.5 L858.5 394.8 L843 397.1 L827.5 399.4 L812 401.7 L796.5 404 L781 406.4 L765.5 408.7 L750 411 L734.5 413.3 L719 415.6 L703.5 418 L688 420.3 L672.5 422.6 L657 424.9 L641.5 427.2 L626 429.6 L610.5 431.9 L595 434.2 L579.5 436.5 L564 438.8 L548.5 441.1 L533 443.5 L517.5 445.8 L502 448.1 L486.5 450.4 L471 452.7 L455.5 455.1 L440 457.4 L424.5 459.7 L409 462 L393.5 464.3 L378 466.7 L362.5 469 L347 471.3 L331.5 473.6 L316 475.9 L300.5 478.2 L285 480.6 L269.5 482.9 L254 485.2 L238.5 487.5 L223 489.8 L207.5 492.2 L192 494.5 L176.5 496.8 L161 499.1 L145.5 501.4 L130 503.8 Z\"/>\n<path id=\"gap\" class=\"tone-bad\" stroke=\"none\" d=\"M130 503.8 L145.5 501.5 L161 499.1 L176.5 496.7 L192 494.2 L207.5 491.5 L223 488.8 L238.5 486 L254 483.2 L269.5 480.2 L285 477.1 L300.5 473.9 L316 470.6 L331.5 467.2 L347 463.6 L362.5 460 L378 456.2 L393.5 452.3 L409 448.2 L424.5 444 L440 439.7 L455.5 435.2 L471 430.6 L486.5 425.8 L502 420.8 L517.5 415.7 L533 410.3 L548.5 404.9 L564 399.2 L579.5 393.3 L595 387.2 L610.5 380.9 L626 374.4 L641.5 367.7 L657 360.7 L672.5 353.5 L688 346.1 L703.5 338.4 L719 330.4 L734.5 322.2 L750 313.6 L765.5 304.8 L781 295.7 L796.5 286.2 L812 276.5 L827.5 266.4 L843 255.9 L858.5 245.1 L874 234 L889.5 222.4 L905 210.4 L920.5 198.1 L936 185.3 L951.5 172 L967 158.3 L982.5 144.2 L998 129.5 L1013.5 114.4 L1029 98.7 L1044.5 82.5 L1060 65.7 L1060 362.2 L1044.5 366.2 L1029 370 L1013.5 373.8 L998 377.5 L982.5 381.1 L967 384.7 L951.5 388.2 L936 391.6 L920.5 395 L905 398.3 L889.5 401.5 L874 404.7 L858.5 407.8 L843 410.9 L827.5 413.9 L812 416.8 L796.5 419.7 L781 422.5 L765.5 425.3 L750 428.1 L734.5 430.7 L719 433.4 L703.5 435.9 L688 438.5 L672.5 441 L657 443.4 L641.5 445.8 L626 448.1 L610.5 450.4 L595 452.7 L579.5 454.9 L564 457.1 L548.5 459.2 L533 461.3 L517.5 463.3 L502 465.3 L486.5 467.3 L471 469.3 L455.5 471.2 L440 473 L424.5 474.9 L409 476.7 L393.5 478.4 L378 480.1 L362.5 481.8 L347 483.5 L331.5 485.1 L316 486.7 L300.5 488.3 L285 489.8 L269.5 491.4 L254 492.8 L238.5 494.3 L223 495.7 L207.5 497.1 L192 498.5 L176.5 499.9 L161 501.2 L145.5 502.5 L130 503.8 Z\"/>\n<path id=\"simple\" d=\"M130 503.8 L145.5 501.4 L161 499.1 L176.5 496.8 L192 494.5 L207.5 492.2 L223 489.8 L238.5 487.5 L254 485.2 L269.5 482.9 L285 480.6 L300.5 478.2 L316 475.9 L331.5 473.6 L347 471.3 L362.5 469 L378 466.7 L393.5 464.3 L409 462 L424.5 459.7 L440 457.4 L455.5 455.1 L471 452.7 L486.5 450.4 L502 448.1 L517.5 445.8 L533 443.5 L548.5 441.1 L564 438.8 L579.5 436.5 L595 434.2 L610.5 431.9 L626 429.6 L641.5 427.2 L657 424.9 L672.5 422.6 L688 420.3 L703.5 418 L719 415.6 L734.5 413.3 L750 411 L765.5 408.7 L781 406.4 L796.5 404 L812 401.7 L827.5 399.4 L843 397.1 L858.5 394.8 L874 392.5 L889.5 390.1 L905 387.8 L920.5 385.5 L936 383.2 L951.5 380.9 L967 378.5 L982.5 376.2 L998 373.9 L1013.5 371.6 L1029 369.3 L1044.5 366.9 L1060 364.6\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"12 10\"/>\n<g id=\"simpleEnd\"><circle cx=\"1060\" cy=\"364.6\" r=\"9\" fill=\"var(--muted)\"/><text x=\"1080\" y=\"372.6\" font-size=\"24\" fill=\"var(--muted)\">$31,000</text></g>\n<path id=\"growth\" d=\"M130 503.8 L145.5 501.5 L161 499.1 L176.5 496.7 L192 494.2 L207.5 491.5 L223 488.8 L238.5 486 L254 483.2 L269.5 480.2 L285 477.1 L300.5 473.9 L316 470.6 L331.5 467.2 L347 463.6 L362.5 460 L378 456.2 L393.5 452.3 L409 448.2 L424.5 444 L440 439.7 L455.5 435.2 L471 430.6 L486.5 425.8 L502 420.8 L517.5 415.7 L533 410.3 L548.5 404.9 L564 399.2 L579.5 393.3 L595 387.2 L610.5 380.9 L626 374.4 L641.5 367.7 L657 360.7 L672.5 353.5 L688 346.1 L703.5 338.4 L719 330.4 L734.5 322.2 L750 313.6 L765.5 304.8 L781 295.7 L796.5 286.2 L812 276.5 L827.5 266.4 L843 255.9 L858.5 245.1 L874 234 L889.5 222.4 L905 210.4 L920.5 198.1 L936 185.3 L951.5 172 L967 158.3 L982.5 144.2 L998 129.5 L1013.5 114.4 L1029 98.7 L1044.5 82.5 L1060 65.7\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"4\"/>\n<path id=\"real\" d=\"M130 503.8 L145.5 502.5 L161 501.2 L176.5 499.9 L192 498.5 L207.5 497.1 L223 495.7 L238.5 494.3 L254 492.8 L269.5 491.4 L285 489.8 L300.5 488.3 L316 486.7 L331.5 485.1 L347 483.5 L362.5 481.8 L378 480.1 L393.5 478.4 L409 476.7 L424.5 474.9 L440 473 L455.5 471.2 L471 469.3 L486.5 467.3 L502 465.3 L517.5 463.3 L533 461.3 L548.5 459.2 L564 457.1 L579.5 454.9 L595 452.7 L610.5 450.4 L626 448.1 L641.5 445.8 L657 443.4 L672.5 441 L688 438.5 L703.5 435.9 L719 433.4 L734.5 430.7 L750 428.1 L765.5 425.3 L781 422.5 L796.5 419.7 L812 416.8 L827.5 413.9 L843 410.9 L858.5 407.8 L874 404.7 L889.5 401.5 L905 398.3 L920.5 395 L936 391.6 L951.5 388.2 L967 384.7 L982.5 381.1 L998 377.5 L1013.5 373.8 L1029 370 L1044.5 366.2 L1060 362.2\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<g id=\"start\"><circle cx=\"130\" cy=\"503.8\" r=\"9\" fill=\"var(--text)\"/><text x=\"150\" y=\"483.8\" font-size=\"24\" >$10,000</text></g>\n<g id=\"end\"><circle cx=\"1060\" cy=\"65.7\" r=\"9\" fill=\"var(--text)\"/><text x=\"1080\" y=\"73.7\" font-size=\"24\" >$76,123</text></g>\n<g id=\"realEnd\"><circle cx=\"1060\" cy=\"362.2\" r=\"9\" class=\"tone-good\"/><text x=\"1080\" y=\"370.2\" font-size=\"24\" class=\"tone-good\">$31,361</text></g>\n<g id=\"m10\"><line x1=\"440\" y1=\"439.7\" x2=\"440\" y2=\"473\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"6 6\"/><circle cx=\"440\" cy=\"439.7\" r=\"9\" fill=\"var(--text)\"/><circle cx=\"440\" cy=\"473\" r=\"9\" class=\"tone-good\"/><text x=\"424\" y=\"425.7\" font-size=\"24\" text-anchor=\"end\">$19,672</text><text x=\"454\" y=\"513\" font-size=\"24\" class=\"tone-good\">$14,637</text></g><g id=\"m20\"><line x1=\"750\" y1=\"313.6\" x2=\"750\" y2=\"428.1\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"6 6\"/><circle cx=\"750\" cy=\"313.6\" r=\"9\" fill=\"var(--text)\"/><circle cx=\"750\" cy=\"428.1\" r=\"9\" class=\"tone-good\"/><text x=\"734\" y=\"299.6\" font-size=\"24\" text-anchor=\"end\">$38,697</text><text x=\"764\" y=\"468.1\" font-size=\"24\" class=\"tone-good\">$21,426</text></g>\n<g id=\"double\"><line x1=\"130\" y1=\"437.5\" x2=\"1070\" y2=\"437.5\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"4 8\"/><text x=\"1080\" y=\"445.5\" font-size=\"24\" >doubled</text></g>\n<g id=\"d7\"><line x1=\"447.6\" y1=\"437.5\" x2=\"447.6\" y2=\"570\" stroke=\"var(--text)\" stroke-width=\"3\"/><circle cx=\"447.6\" cy=\"437.5\" r=\"9\" fill=\"var(--text)\"/><text x=\"433.6\" y=\"415.5\" font-size=\"24\" text-anchor=\"end\">10 years</text></g>\n<g id=\"dReal\"><line x1=\"694\" y1=\"437.5\" x2=\"694\" y2=\"570\" class=\"stroke-good\" stroke-width=\"3\"/><circle cx=\"694\" cy=\"437.5\" r=\"9\" class=\"tone-good\"/><text x=\"708\" y=\"477.5\" font-size=\"24\" class=\"tone-good\">18 years</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "The question",
+      "title": "Ten thousand dollars, left alone",
+      "picture": "growth",
+      "hidden": [
+        "simple",
+        "simpleEnd",
+        "extra",
+        "gap",
+        "growth",
+        "real",
+        "realEnd",
+        "m10",
+        "m20",
+        "double",
+        "d7",
+        "dReal",
+        "end"
+      ],
+      "labels": {
+        "start": "ten thousand dollars",
+        "end": "thirty years later"
+      },
       "narration": "Say you put ten thousand dollars away today, in something that grows seven percent a year, and you do not touch it.",
-      "kicker": "Put away today",
-      "number": "$10,000",
-      "note": "growing 7% a year, untouched",
       "steps": [
         {
-          "set": {
-            "number": "$76,123",
-            "note": "thirty years later, on paper"
-          },
-          "say": "Thirty years later, the statement says $76,123. More than seven times what you put in."
+          "show": [
+            "end"
+          ],
+          "focus": [
+            "end"
+          ],
+          "say": "Thirty years later, the statement says $76,123. More than seven times what you put in.",
+          "draw": [
+            {
+              "write": "on paper",
+              "near": "end",
+              "side": "below",
+              "when": "statement"
+            }
+          ]
         },
         {
-          "set": {
-            "kicker": "But what will it buy?"
-          },
           "focus": [
-            "kicker"
+            "start",
+            "end"
           ],
-          "say": "That sounds great. But prices rise too. So how much of that is real? Let us work it out, one piece at a time."
+          "say": "That sounds great. But prices rise too. So how much of that is real?",
+          "draw": [
+            {
+              "write": "but what will it buy?",
+              "near": "end",
+              "side": "left",
+              "tone": "bad",
+              "when": "how much"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Interest on interest",
-      "title": "The first three years at 7%",
+      "title": "Each year’s interest is bigger",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"y1\"><text x=\"40\" y=\"150\" font-size=\"24\" font-size=\"28\">year 1: 7% of $10,000.00</text>\n<rect x=\"40\" y=\"174\" width=\"595\" height=\"56\" rx=\"6\"/>\n\n<text x=\"651\" y=\"212\" font-size=\"24\" font-size=\"26\">$700.00</text>\n<text x=\"1170\" y=\"212\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">ends $10,700.00</text></g>\n<g id=\"y2\"><text x=\"40\" y=\"310\" font-size=\"24\" font-size=\"28\">year 2: 7% of $10,700.00</text>\n<rect x=\"40\" y=\"334\" width=\"595\" height=\"56\" rx=\"6\"/>\n<rect id=\"extra2\" x=\"635\" y=\"334\" width=\"41.7\" height=\"56\" rx=\"6\" class=\"tone-good\"/>\n<text x=\"692.65\" y=\"372\" font-size=\"24\" font-size=\"26\">$749.00</text>\n<text x=\"1170\" y=\"372\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">ends $11,449.00</text></g>\n<g id=\"y3\"><text x=\"40\" y=\"470\" font-size=\"24\" font-size=\"28\">year 3: 7% of $11,449.00</text>\n<rect x=\"40\" y=\"494\" width=\"595\" height=\"56\" rx=\"6\"/>\n<rect id=\"extra3\" x=\"635\" y=\"494\" width=\"86.2\" height=\"56\" rx=\"6\" class=\"tone-good\"/>\n<text x=\"737.2154999999999\" y=\"532\" font-size=\"24\" font-size=\"26\">$801.43</text>\n<text x=\"1170\" y=\"532\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">ends $12,250.43</text></g>\n<g id=\"base\"><line x1=\"635\" y1=\"80\" x2=\"635\" y2=\"560\" stroke=\"var(--muted)\" stroke-width=\"2\" stroke-dasharray=\"8 8\"/><text x=\"635\" y=\"70\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">$700</text></g>\n</svg>",
+      "hidden": [
+        "y2",
+        "y3"
+      ],
+      "labels": {
+        "y1": "year one",
+        "y2": "year two",
+        "y3": "year three",
+        "extra2": "forty nine dollars",
+        "extra3": "bigger"
+      },
       "narration": "First, where the growth comes from. Here are the first three years, worked out by hand.",
-      "columns": [
-        "year",
-        "start",
-        "interest",
-        "end"
-      ],
-      "rows": [
-        {
-          "cells": [
-            "1",
-            "$10,000.00",
-            "$700.00",
-            "$10,700.00"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "2",
-            "$10,700.00",
-            "$749.00",
-            "$11,449.00"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "3",
-            "$11,449.00",
-            "$801.43",
-            "$12,250.43"
-          ],
-          "hidden": true
-        }
-      ],
       "steps": [
         {
-          "show": [
-            0
+          "focus": [
+            "y1",
+            "base"
           ],
           "say": "In year one, seven percent of ten thousand is $700. You end the year with $10,700."
         },
         {
           "show": [
-            1
+            "y2"
           ],
           "focus": [
-            "interest@1"
+            "extra2"
           ],
-          "say": "In year two you earn seven percent of the new total, which is $749. Forty nine dollars more, because last year's interest is earning too."
+          "say": "In year two you earn seven percent of the new total, $749. Forty nine dollars more, because last year's interest is earning too.",
+          "draw": [
+            {
+              "write": "+$49",
+              "near": "extra2",
+              "side": "above",
+              "tone": "good",
+              "when": "Forty nine"
+            }
+          ]
         },
         {
           "show": [
-            2
+            "y3"
           ],
           "focus": [
-            "interest@2"
+            "extra3"
           ],
           "say": "Year three pays $801.43. Each year's interest is bigger than the last.",
-          "callout": "interest earns interest"
+          "draw": [
+            {
+              "write": "interest earns interest",
+              "near": "extra3",
+              "side": "below",
+              "tone": "good",
+              "when": "bigger"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "plot",
+      "type": "svg",
       "chapter": "Interest on interest",
-      "title": "Thirty years of growth",
-      "narration": "Now stretch that over thirty years. The dashed line is what you would get if only the first ten thousand earned interest, seven hundred dollars every year.",
-      "x": {
-        "from": 0,
-        "to": 30,
-        "ticks": 5,
-        "label": "years"
-      },
-      "y": {
-        "from": 0,
-        "to": 80000,
-        "ticks": 20000,
-        "prefix": "$",
-        "grid": true
-      },
-      "params": {
-        "year": 0
-      },
-      "functions": [
-        {
-          "id": "simple",
-          "y": "10000 + 700 * x",
-          "label": "no interest on interest",
-          "tone": "neutral",
-          "dashed": true
-        },
-        {
-          "id": "growth",
-          "y": "10000 * 1.07^x",
-          "label": "at 7%"
-        }
+      "title": "Thirty years bends the line up",
+      "picture": "growth",
+      "hidden": [
+        "simple",
+        "simpleEnd",
+        "extra",
+        "gap",
+        "growth",
+        "real",
+        "realEnd",
+        "m10",
+        "m20",
+        "double",
+        "d7",
+        "dReal",
+        "end"
       ],
-      "areas": [
-        {
-          "id": "extra",
-          "between": [
-            "growth",
-            "simple"
-          ],
-          "tone": "accent",
-          "hidden": true
-        }
-      ],
-      "points": [
-        {
-          "id": "marker",
-          "at": [
-            "year",
-            "10000 * 1.07^year"
-          ],
-          "label": "${10000 * 1.07^year:0}",
-          "side": "left",
-          "guides": true,
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "simple": "dashed line",
+        "growth": "compounding",
+        "extra": "shaded gap",
+        "simpleEnd": "straight line"
+      },
+      "narration": "Now stretch that over thirty years.",
       "steps": [
         {
-          "focus": [
-            "simple"
+          "trace": [
+            {
+              "ref": "simple",
+              "when": "dashed line"
+            }
           ],
-          "say": "That straight line ends at $31,000."
+          "show": [
+            "simpleEnd"
+          ],
+          "focus": [
+            "simple",
+            "simpleEnd"
+          ],
+          "say": "The dashed line is only the first ten thousand earning, seven hundred a year. It ends at $31,000."
         },
         {
           "trace": [
-            "growth"
+            {
+              "ref": "growth",
+              "when": "bends"
+            }
           ],
-          "set": {
-            "year": 30
-          },
           "show": [
-            "marker"
+            "end"
           ],
           "focus": [
             "growth",
-            "marker"
+            "end"
           ],
           "say": "Compounding bends the line upward. It starts slow, then climbs faster every year, to $76,123."
         },
@@ -185,192 +200,152 @@
           "focus": [
             "extra"
           ],
-          "say": "The shaded gap, $45,123, is interest earned on interest."
+          "say": "The shaded gap, $45,123, is interest earned on interest.",
+          "draw": [
+            {
+              "brace": [
+                "end",
+                "simpleEnd"
+              ],
+              "note": "+$45,123",
+              "side": "right",
+              "tone": "good",
+              "when": "shaded gap"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "The rule of 72",
-      "title": "Years to double your money",
-      "kind": "bar",
-      "unit": " yr",
-      "badges": false,
-      "narration": "There is a shortcut for how fast this grows. Divide seventy two by the growth rate, and you get roughly how many years it takes to double.",
-      "labels": [
-        "2%",
-        "4%",
-        "7%",
-        "10%",
-        "12%"
+      "title": "Divide 72 by the rate",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<text id=\"formula\" x=\"1170\" y=\"60\" text-anchor=\"end\" font-size=\"30\">years to double: about 72 / rate</text>\n<line x1=\"80\" y1=\"570\" x2=\"1140\" y2=\"570\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<g id=\"bar2\"><rect x=\"150\" y=\"138\" width=\"120\" height=\"432\" rx=\"6\"/><text x=\"210\" y=\"172\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\">36</text><text x=\"210\" y=\"610\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">2%</text></g>\n<g id=\"bar4\"><rect x=\"350\" y=\"354\" width=\"120\" height=\"216\" rx=\"6\"/><text x=\"410\" y=\"388\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\">18</text><text x=\"410\" y=\"610\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">4%</text></g>\n<g id=\"bar7\"><rect x=\"550\" y=\"446.6\" width=\"120\" height=\"123.4\" rx=\"6\"/><text x=\"610\" y=\"480.6\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\">10.3</text><text x=\"610\" y=\"610\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">7%</text></g>\n<g id=\"bar10\"><rect x=\"750\" y=\"483.6\" width=\"120\" height=\"86.4\" rx=\"6\"/><text x=\"810\" y=\"517.6\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\">7.2</text><text x=\"810\" y=\"610\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">10%</text></g>\n<g id=\"bar12\"><rect x=\"950\" y=\"498\" width=\"120\" height=\"72\" rx=\"6\"/><text x=\"1010\" y=\"532\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\">6</text><text x=\"1010\" y=\"610\" font-size=\"24\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">12%</text></g>\n<g id=\"ex2\"><line x1=\"130\" y1=\"150\" x2=\"290\" y2=\"150\" class=\"stroke-good\" stroke-width=\"5\"/><text x=\"210\" y=\"122\" font-size=\"24\" text-anchor=\"middle\" class=\"tone-good\">exact 35.0</text></g>\n<g id=\"ex4\"><line x1=\"330\" y1=\"357.9\" x2=\"490\" y2=\"357.9\" class=\"stroke-good\" stroke-width=\"5\"/><text x=\"410\" y=\"338\" font-size=\"24\" text-anchor=\"middle\" class=\"tone-good\">exact 17.7</text></g>\n<g id=\"ex7\"><line x1=\"530\" y1=\"447.1\" x2=\"690\" y2=\"447.1\" class=\"stroke-good\" stroke-width=\"5\"/><text x=\"610\" y=\"430.6\" font-size=\"24\" text-anchor=\"middle\" class=\"tone-good\">exact 10.24</text></g>\n<g id=\"ex10\"><line x1=\"730\" y1=\"482.7\" x2=\"890\" y2=\"482.7\" class=\"stroke-good\" stroke-width=\"5\"/><text x=\"810\" y=\"466.7\" font-size=\"24\" text-anchor=\"middle\" class=\"tone-good\">exact 7.3</text></g>\n<g id=\"ex12\"><line x1=\"930\" y1=\"496.6\" x2=\"1090\" y2=\"496.6\" class=\"stroke-good\" stroke-width=\"5\"/><text x=\"1010\" y=\"480.6\" font-size=\"24\" text-anchor=\"middle\" class=\"tone-good\">exact 6.1</text></g>\n</svg>",
+      "hidden": [
+        "ex2",
+        "ex4",
+        "ex7",
+        "ex10",
+        "ex12"
       ],
-      "series": [
-        {
-          "name": "rule of 72",
-          "values": [
-            36,
-            18,
-            10.3,
-            7.2,
-            6
-          ],
-          "tone": "accent"
-        },
-        {
-          "name": "exact",
-          "values": [
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "tone": "good"
-        }
-      ],
-      "callout": "years to double ≈ 72 ÷ rate",
+      "labels": {
+        "formula": "seventy two",
+        "bar7": "seven percent",
+        "ex7": "exact answer"
+      },
+      "narration": "There is a shortcut for how fast this grows.",
       "steps": [
         {
           "focus": [
-            "rule of 72@7%"
+            "formula"
           ],
-          "callout": "72 ÷ 7 = 10.3 years",
-          "camera": {
-            "on": "7%",
-            "zoom": 2
-          },
-          "say": "At seven percent, seventy two divided by seven is 10.3 years."
+          "say": "Divide seventy two by the growth rate, and you get roughly how many years it takes to double."
         },
         {
-          "set": {
-            "exact": [
-              35,
-              17.7,
-              10.2,
-              7.3,
-              6.1
-            ]
-          },
           "focus": [
-            "exact@7%"
+            "bar7",
+            "formula"
           ],
-          "callout": "exact: 10.24 years",
+          "say": "At seven percent, seventy two divided by seven is 10.3 years.",
+          "draw": [
+            {
+              "write": "72 ÷ 7 = 10.3",
+              "near": "bar7",
+              "side": "above",
+              "when": "divided by seven"
+            }
+          ]
+        },
+        {
+          "show": [
+            "ex7"
+          ],
+          "focus": [
+            "ex7"
+          ],
+          "erase": true,
           "say": "The exact answer is 10.24 years. Less than a month apart."
         },
         {
-          "camera": "all",
-          "focus": [
-            "series:exact"
+          "show": [
+            "ex2",
+            "ex4",
+            "ex7",
+            "ex10",
+            "ex12"
           ],
-          "callout": "years to double ≈ 72 ÷ rate",
-          "say": "The green bars are the exact answers. At every rate here, the shortcut lands within a year of them."
+          "focus": [
+            "ex2",
+            "ex4",
+            "ex7",
+            "ex10",
+            "ex12"
+          ],
+          "say": "The green lines are the exact answers. At every rate here, the shortcut lands within a year of them."
         }
       ]
     },
     {
-      "type": "plot",
+      "type": "svg",
       "chapter": "Inflation",
-      "title": "The same money in today's dollars",
+      "title": "Inflation takes most of it back",
+      "picture": "growth",
+      "hidden": [
+        "simple",
+        "simpleEnd",
+        "extra",
+        "gap",
+        "real",
+        "realEnd",
+        "m10",
+        "m20",
+        "double",
+        "d7",
+        "dReal"
+      ],
+      "labels": {
+        "real": "today's money",
+        "realEnd": "thirty year total",
+        "gap": "shaded gap",
+        "end": "final balance"
+      },
       "narration": "Now the catch. If prices rise three percent a year, something that costs a dollar today costs $2.43 in thirty years.",
-      "x": {
-        "from": 0,
-        "to": 30,
-        "ticks": 5,
-        "label": "years"
-      },
-      "y": {
-        "from": 0,
-        "to": 80000,
-        "ticks": 20000,
-        "prefix": "$",
-        "grid": true
-      },
-      "params": {
-        "year": 0
-      },
-      "functions": [
-        {
-          "id": "growth",
-          "y": "10000 * 1.07^x",
-          "label": "on paper"
-        },
-        {
-          "id": "today",
-          "y": "10000 * (1.07 / 1.03)^x",
-          "label": "in today's dollars",
-          "tone": "good"
-        }
-      ],
-      "areas": [
-        {
-          "id": "gap",
-          "between": [
-            "growth",
-            "today"
-          ],
-          "tone": "warn",
-          "hidden": true
-        }
-      ],
-      "points": [
-        {
-          "id": "marker",
-          "at": [
-            "year",
-            "10000 * (1.07 / 1.03)^year"
-          ],
-          "label": "${10000 * (1.07 / 1.03)^year:0}",
-          "side": "left",
-          "hidden": true
-        },
-        {
-          "id": "top",
-          "at": [
-            30,
-            "10000 * 1.07^30"
-          ],
-          "label": "${10000 * 1.07^30:0}",
-          "side": "left",
-          "tone": "accent",
-          "hidden": true
-        }
-      ],
       "steps": [
         {
           "trace": [
-            "today"
+            {
+              "ref": "real",
+              "when": "divide"
+            }
           ],
-          "set": {
-            "year": 30
-          },
           "show": [
-            "marker"
+            "realEnd"
           ],
           "focus": [
-            "today",
-            "marker"
+            "real",
+            "realEnd"
           ],
           "say": "So divide each year's balance by how much prices have risen. In today's money, the thirty year total is worth $31,361."
         },
         {
           "show": [
-            "gap",
-            "top"
+            "gap"
           ],
           "focus": [
             "gap",
-            "top",
-            "marker"
+            "end",
+            "realEnd"
           ],
           "say": "The shaded gap is what inflation takes: 59 percent of the final balance.",
           "draw": [
             {
               "brace": [
-                "top",
-                "marker"
+                "end",
+                "realEnd"
               ],
               "note": "$44,761",
               "side": "right",
+              "tone": "bad",
               "when": "inflation takes"
             }
           ]
@@ -378,92 +353,108 @@
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "Inflation",
-      "title": "What the balance buys, in dollars",
-      "kind": "bar",
-      "prefix": "$",
-      "better": "higher",
-      "narration": "Here is the same story as bars. Each pair starts out as the balance on your statement.",
-      "labels": [
-        "10 years",
-        "20 years",
-        "30 years"
-      ],
-      "series": [
-        {
-          "name": "on paper",
-          "values": [
-            19672,
-            38697,
-            76123
-          ],
-          "tone": "accent"
-        },
-        {
-          "name": "in today's dollars",
-          "values": [
-            19672,
-            38697,
-            76123
-          ],
-          "tone": "good"
-        }
-      ],
+      "title": "Three times richer, not seven",
+      "picture": "growth",
+      "labels": {
+        "m10": "ten years",
+        "m20": "twenty",
+        "realEnd": "thirty",
+        "start": "what you started with"
+      },
+      "narration": "Read it at three points along the way.",
       "steps": [
         {
-          "set": {
-            "in today's dollars": [
-              14637,
-              21426,
-              31361
-            ]
-          },
-          "say": "Now take inflation out. After ten years, $19,672 buys what $14,637 buys today."
+          "show": [
+            "m10"
+          ],
+          "focus": [
+            "m10"
+          ],
+          "say": "After ten years, $19,672 buys what $14,637 buys today."
+        },
+        {
+          "show": [
+            "m20"
+          ],
+          "focus": [
+            "m20"
+          ],
+          "say": "After twenty, $38,697 buys what $21,426 does now."
         },
         {
           "focus": [
-            "in today's dollars@30 years"
+            "realEnd",
+            "start"
           ],
-          "say": "After thirty, $76,123 buys what $31,361 does now. Still three times what you started with. Just not seven."
+          "say": "After thirty, $31,361 of today's money. Still three times what you started with. Just not seven.",
+          "draw": [
+            {
+              "write": "× 3, not × 7",
+              "near": "realEnd",
+              "side": "above",
+              "tone": "good",
+              "when": "three times"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "The takeaway",
-      "narration": "So here is the one habit worth keeping. Before you use the rule of seventy two, take inflation out of the rate.",
-      "kicker": "Years to double",
-      "headline": "Use the rule of 72 on the rate after inflation",
-      "sides": [
-        {
-          "label": "on paper",
-          "number": "7%",
-          "note": "doubles in about 10 years",
-          "tone": "accent"
-        },
-        {
-          "label": "what it buys",
-          "number": "3.9%",
-          "note": "doubles in about 18 years",
-          "tone": "good"
-        }
-      ],
+      "title": "Take inflation out of the rate first",
+      "picture": "growth",
       "hidden": [
-        "right"
+        "simple",
+        "simpleEnd",
+        "extra",
+        "m10",
+        "m20",
+        "d7",
+        "dReal"
       ],
+      "labels": {
+        "dReal": "real growth"
+      },
+      "narration": "So here is the one habit worth keeping. Before you use the rule of seventy two, take inflation out of the rate.",
       "steps": [
         {
+          "show": [
+            "double",
+            "d7"
+          ],
           "focus": [
-            "left"
+            "d7",
+            "double"
           ],
           "say": "On paper, seven percent doubles your money in about 10 years."
         },
         {
           "show": [
-            "right"
+            "dReal"
           ],
-          "say": "But seven percent growth with three percent inflation is about 3.9 percent of real growth. Seventy two divided by that is about 19 years, and the exact answer is 18.2. That is how long it takes to double what your money can actually buy."
+          "focus": [
+            "dReal"
+          ],
+          "say": "But seven percent growth with three percent inflation is about 3.9 percent of real growth.",
+          "draw": [
+            {
+              "write": "72 ÷ 3.9 ≈ 19",
+              "near": "dReal",
+              "side": "right",
+              "tone": "good",
+              "when": "real growth"
+            }
+          ]
+        },
+        {
+          "focus": [
+            "dReal",
+            "real"
+          ],
+          "say": "The exact answer is 18.2 years. That is how long it takes to double what your money can actually buy."
         }
       ]
     }

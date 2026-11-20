@@ -54,15 +54,32 @@ pub struct MarkTargets {
     /// Whether the scene moves the boxes towards this step while it plays (a code scene's scroll): ink then follows
     /// the shift the scene gives at draw time instead of later steps' boxes.
     pub shifts: bool,
+    /// The middle of each item that is mostly one line, such as an svg path, where a cross or strike goes instead of
+    /// across its whole box.
+    pub spines: Vec<(String, Spine)>,
 }
 
 impl MarkTargets {
     /// Targets with just these boxes in an area.
     pub fn new(boxes: Vec<(String, Bx)>, area: Bx) -> MarkTargets {
-        MarkTargets { boxes, obstacles: None, lines: Vec::new(), area, box_of: None, clip: None, shifts: false }
+        MarkTargets {
+            boxes,
+            obstacles: None,
+            lines: Vec::new(),
+            area,
+            box_of: None,
+            clip: None,
+            shifts: false,
+            spines: Vec::new(),
+        }
     }
     pub fn get(&self, key: &str) -> Option<Bx> {
         self.boxes.iter().find(|(k, _)| k == key).map(|(_, b)| *b).or_else(|| self.box_of.as_ref().and_then(|f| f(key)))
+    }
+    /// The middle of the line that `keys` name, when they name one item that is mostly a line.
+    fn spine(&self, keys: &[String]) -> Option<Spine> {
+        let [key] = keys else { return None };
+        self.spines.iter().find(|(k, _)| k == key).map(|(_, s)| *s)
     }
     fn obstacles(&self) -> Vec<Bx> {
         self.obstacles.clone().unwrap_or_else(|| self.boxes.iter().map(|(_, b)| *b).collect())
@@ -75,6 +92,7 @@ impl MarkTargets {
         obstacles.extend(other.obstacles());
         self.boxes.extend(other.boxes);
         self.lines.extend(other.lines);
+        self.spines.extend(other.spines);
         self.obstacles = Some(obstacles);
         self
     }
@@ -453,22 +471,19 @@ impl Board {
         for (k, step) in steps.iter().enumerate() {
             let Some(mark) = step.get("mark").and_then(Value::as_str).and_then(Mark::parse) else { continue };
             let (Some(seg), Some(t)) = (segments.get(k + 1), all[k].as_ref()) else { continue };
+            let mut spine = None;
             let target = if code {
                 t.get(if step.get("token").is_some_and(|v| !v.is_null()) { "token" } else { "lines" })
             } else {
                 let first = focus_refs(step.get("focus")).into_iter().next();
-                let keys = first.map(|r| match refs.keys(step, &r) {
-                    RefKeys::Keys(k) => k,
-                    _ => Vec::new(),
-                });
-                union(
-                    keys.unwrap_or_default()
-                        .iter()
-                        .map(|key| t.get(key))
-                        .collect::<Vec<_>>()
-                        .iter()
-                        .map(Option::as_ref),
-                )
+                let keys = first
+                    .map(|r| match refs.keys(step, &r) {
+                        RefKeys::Keys(k) => k,
+                        _ => Vec::new(),
+                    })
+                    .unwrap_or_default();
+                spine = t.spine(&keys);
+                union(keys.iter().map(|key| t.get(key)).collect::<Vec<_>>().iter().map(Option::as_ref))
             };
             let Some(target) = target else { continue };
             let obstacles = t.obstacles();
@@ -489,7 +504,9 @@ impl Board {
                 let (tail, nb) = place_arrow(size, &clutter, &t.area);
                 (arrow_sketch(tail, &target, seed, PEN), Some(nb))
             } else {
-                let s = sketch_mark(mark, &target, &t.area, &obstacles, seed, PEN);
+                let s = spine
+                    .and_then(|sp| sketch_on_spine(mark, &sp, seed, PEN))
+                    .unwrap_or_else(|| sketch_mark(mark, &target, &t.area, &obstacles, seed, PEN));
                 let nb = note.as_ref().map(|_| place_note(mark, size, &s, &clutter, &t.area));
                 (s, nb)
             };
@@ -954,10 +971,17 @@ fn plan_ink(
             verb => {
                 let bs: Vec<Option<Bx>> = it.targets.iter().map(box_of).collect();
                 let Some(target) = union(bs.iter().map(Option::as_ref)) else { continue };
+                let spine = match it.targets.as_slice() {
+                    [InkTarget::Keys(keys)] => t.spine(keys),
+                    _ => None,
+                };
+                let mark = Mark::parse(verb).unwrap_or(Mark::Circle);
                 let mut s = if verb == "tick" {
                     tick_sketch(&target, seed, PEN)
+                } else if let Some(s) = spine.and_then(|sp| sketch_on_spine(mark, &sp, seed, PEN)) {
+                    s
                 } else {
-                    sketch_mark(Mark::parse(verb).unwrap_or(Mark::Circle), &target, &t.area, &obstacles, seed, PEN)
+                    sketch_mark(mark, &target, &t.area, &obstacles, seed, PEN)
                 };
                 if block.is_some() {
                     let sides: Vec<TextSide> = match side {

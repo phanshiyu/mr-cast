@@ -1,5 +1,6 @@
 {
   "title": "Finding the commit that broke checkout",
+  "look": "plain",
   "subtitle": "Letting git bisect search a hundred commits in seven steps",
   "scenes": [
     {

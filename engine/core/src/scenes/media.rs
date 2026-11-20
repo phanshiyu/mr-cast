@@ -66,24 +66,69 @@ pub fn downscale(src: &Pixmap, w: u32, h: u32) -> Option<Pixmap> {
     Some(out)
 }
 
-fn fonts() -> std::sync::Arc<resvg::usvg::fontdb::Database> {
+/// The family the bundled font at `index` (see `text::FONT_DATA`) goes by in resvg's font database. The three faces
+/// keep their own names; each fallback gets one of its own (Inter's and JetBrains Mono's share theirs with the Latin
+/// files), so a run of text can name the font that has its glyphs.
+pub fn svg_family(index: u8) -> String {
+    match index {
+        0 => "Inter Variable".into(),
+        1 => "JetBrains Mono".into(),
+        2 => "Caveat".into(),
+        i => format!("mr-cast fallback {i}"),
+    }
+}
+
+/// resvg's font database: every bundled font, with each one's id by its index in `text::FONT_DATA`.
+fn fonts() -> &'static (std::sync::Arc<resvg::usvg::fontdb::Database>, Vec<resvg::usvg::fontdb::ID>) {
+    use resvg::usvg::fontdb::{Database, Language, Source};
     use std::sync::OnceLock;
-    static DB: OnceLock<std::sync::Arc<resvg::usvg::fontdb::Database>> = OnceLock::new();
+    static DB: OnceLock<(std::sync::Arc<Database>, Vec<resvg::usvg::fontdb::ID>)> = OnceLock::new();
     DB.get_or_init(|| {
-        let mut db = resvg::usvg::fontdb::Database::new();
-        db.load_font_data(include_bytes!("../../../assets/fonts/inter-latin.ttf").to_vec());
-        db.load_font_data(include_bytes!("../../../assets/fonts/jetbrains-mono-latin.ttf").to_vec());
-        db.load_font_data(include_bytes!("../../../assets/fonts/caveat-latin-600.ttf").to_vec());
+        let mut db = Database::new();
+        let mut ids = Vec::new();
+        for (i, data) in crate::text::FONT_DATA.iter().enumerate() {
+            let mut loaded = Database::new();
+            loaded.load_font_source(Source::Binary(std::sync::Arc::new(*data)));
+            let mut face = loaded.faces().next().expect("bundled font").clone();
+            face.families = vec![(svg_family(i as u8), Language::English_UnitedStates)];
+            ids.push(db.push_face_info(face));
+        }
         db.set_sans_serif_family("Inter Variable");
         db.set_monospace_family("JetBrains Mono");
-        std::sync::Arc::new(db)
+        // A family no bundled font has falls back to the serif one: draw it in Inter rather than not at all.
+        db.set_serif_family("Inter Variable");
+        (std::sync::Arc::new(db), ids)
     })
-    .clone()
+}
+
+/// resvg's options: the bundled fonts, and a character a font lacks looked for along that face's chain of fallbacks,
+/// as the engine's own text does. resvg's own fallback takes the first font in the database that has the character,
+/// which for an arrow in Caveat is Inter, and when that font has every other character too it redraws the whole line
+/// in it.
+fn svg_options() -> resvg::usvg::Options<'static> {
+    let mut opt = resvg::usvg::Options { fontdb: fonts().0.clone(), ..Default::default() };
+    opt.font_resolver.select_fallback = Box::new(|c, used, _| {
+        let ids = &fonts().1;
+        let face = match ids.iter().position(|&id| id == used[0])? {
+            0 => crate::text::Face::Sans,
+            1 => crate::text::Face::Mono,
+            2 => crate::text::Face::Hand,
+            // A run already in a fallback (see `svg::text_runs`) is shaped whole in it, but only its own characters
+            // are kept.
+            _ => return None,
+        };
+        crate::text::chain(face)
+            .iter()
+            .map(|&i| (i, ids[i as usize]))
+            .find(|&(i, id)| !used.contains(&id) && crate::text::font_at(i).charmap().map(c) != 0)
+            .map(|(_, id)| id)
+    });
+    opt
 }
 
 /// Rasterizes SVG markup (a `w` by `h` pixel drawing) with resvg; None when it does not parse.
 pub fn raster_svg(svg: &str, w: u32, h: u32) -> Option<Pixmap> {
-    let opt = resvg::usvg::Options { fontdb: fonts(), ..Default::default() };
+    let opt = svg_options();
     let tree = resvg::usvg::Tree::from_str(svg, &opt).ok()?;
     let mut theirs = resvg::tiny_skia::Pixmap::new(w.max(1), h.max(1))?;
     resvg::render(&tree, resvg::tiny_skia::Transform::identity(), &mut theirs.as_mut());
@@ -125,15 +170,286 @@ pub fn drop_shadow_filter_in(id: &str, region: (f64, f64, f64, f64), shadows: &[
     s
 }
 
-/// The box of each element named in `ids` as resvg lays out SVG markup, in its root's user units; elements it draws
-/// nothing for are left out.
-pub fn svg_boxes(svg: &str, ids: &[String]) -> Vec<(String, (f64, f64, f64, f64))> {
-    let opt = resvg::usvg::Options { fontdb: fonts(), ..Default::default() };
+/// Where resvg lays out an element: its box, and when it is mostly one stroked line (a line, polyline, open path, or
+/// a group of them with little else, such as an arrow with its head), the point halfway along its longest line and the
+/// line's direction there (x, y, radians).
+pub struct SvgShape {
+    pub bbox: (f64, f64, f64, f64),
+    pub spine: Option<(f64, f64, f64)>,
+}
+
+/// The shape of each element named in `ids` as resvg lays out SVG markup, in its root's user units; elements it draws
+/// nothing for are left out. usvg keeps no node for a `<tspan>`, only its text's run of glyphs, so a tspan is found
+/// by painting it a colour of its own and taking the box of the glyphs drawn in that colour.
+pub fn svg_shapes(svg: &str, ids: &[String]) -> Vec<(String, SvgShape)> {
+    let opt = svg_options();
     let Ok(tree) = resvg::usvg::Tree::from_str(svg, &opt) else { return Vec::new() };
-    ids.iter()
-        .filter_map(|id| {
-            let b = tree.node_by_id(id)?.abs_bounding_box()?;
-            Some((id.clone(), (b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64)))
+    let mut found: Vec<Option<SvgShape>> = ids
+        .iter()
+        .map(|id| {
+            let node = tree.node_by_id(id)?;
+            let b = node.abs_bounding_box()?;
+            let bbox = (b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64);
+            Some(SvgShape { bbox, spine: spine_of_node(node, bbox.2 * bbox.3) })
         })
-        .collect()
+        .collect();
+    let mut marked = svg.to_string();
+    let mut colours = std::collections::HashMap::new();
+    for (i, id) in ids.iter().enumerate() {
+        if found[i].is_none() && colours.len() < 0x10000 {
+            let colour = [0x01, 0x7f ^ (colours.len() >> 8) as u8, colours.len() as u8];
+            if let Some(m) = mark_tspan(&marked, id, colour) {
+                marked = m;
+                colours.insert(colour, i);
+            }
+        }
+    }
+    if !colours.is_empty()
+        && let Ok(tree) = resvg::usvg::Tree::from_str(&marked, &opt)
+    {
+        let mut boxes: std::collections::HashMap<usize, resvg::usvg::Rect> = std::collections::HashMap::new();
+        span_boxes(tree.root(), false, &colours, &mut boxes);
+        for (i, b) in boxes {
+            let bbox = (b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64);
+            found[i] = Some(SvgShape { bbox, spine: None });
+        }
+    }
+    ids.iter().zip(found).filter_map(|(id, s)| Some((id.clone(), s?))).collect()
+}
+
+/// `svg` with the `<tspan>` whose id is `id` filled in `colour`, solid, or None if no tspan has that id.
+fn mark_tspan(svg: &str, id: &str, colour: [u8; 3]) -> Option<String> {
+    let at = svg.find(&format!(" id=\"{}\"", xml_escape(id)))?;
+    let start = svg[..at].rfind('<')?;
+    let end = at + svg[at..].find('>')?;
+    let tag = &svg[start..end];
+    let rest = tag.strip_prefix("<tspan")?;
+    if !rest.starts_with(char::is_whitespace) {
+        return None;
+    }
+    let mut attrs = rest.to_string();
+    for name in ["fill", "fill-opacity"] {
+        if let Some(a) = attrs.find(&format!(" {name}=\"")) {
+            let from = a + name.len() + 3;
+            let to = from + attrs[from..].find('"')? + 1;
+            attrs.replace_range(a..to, "");
+        }
+    }
+    let [r, g, b] = colour;
+    Some(format!("{}<tspan fill=\"#{r:02x}{g:02x}{b:02x}\"{attrs}{}", &svg[..start], &svg[end..]))
+}
+
+/// The box of the glyphs each marker colour paints, in the texts under `group`, by the index the colour stands for.
+fn span_boxes(
+    group: &resvg::usvg::Group,
+    in_text: bool,
+    colours: &std::collections::HashMap<[u8; 3], usize>,
+    out: &mut std::collections::HashMap<usize, resvg::usvg::Rect>,
+) {
+    use resvg::usvg::{Node, Paint};
+    for node in group.children() {
+        match node {
+            Node::Group(g) => span_boxes(g, in_text, colours, out),
+            Node::Text(t) => span_boxes(t.flattened(), true, colours, out),
+            Node::Path(p) if in_text => {
+                let Some(Paint::Color(c)) = p.fill().map(|f| f.paint()) else { continue };
+                let (Some(&i), Some(b)) = (colours.get(&[c.red, c.green, c.blue]), p.abs_bounding_box()) else {
+                    continue;
+                };
+                let b = match out.get(&i) {
+                    Some(o) => resvg::usvg::Rect::from_ltrb(
+                        o.left().min(b.left()),
+                        o.top().min(b.top()),
+                        o.right().max(b.right()),
+                        o.bottom().max(b.bottom()),
+                    )
+                    .unwrap_or(b),
+                    None => b,
+                };
+                out.insert(i, b);
+            }
+            _ => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::svg_shapes;
+
+    #[test]
+    fn a_tspan_has_the_box_of_its_own_words() {
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200"><g transform="translate(10 0)"><text id="line" x="20" y="100" font-size="40" font-family="Inter Variable" fill="#fff">The <tspan id="verb" fill="#3ddc97" fill-opacity="0.5">quick</tspan> fox <tspan id="end">jumps</tspan></text></g></svg>"##;
+        let ids: Vec<String> = ["line", "verb", "end", "none"].map(String::from).to_vec();
+        let boxes: std::collections::HashMap<_, _> =
+            svg_shapes(svg, &ids).into_iter().map(|(id, s)| (id, s.bbox)).collect();
+        let (line, verb, end) = (boxes["line"], boxes["verb"], boxes["end"]);
+        assert!(!boxes.contains_key("none"));
+        for (name, b) in [("verb", verb), ("end", end)] {
+            assert!(b.2 > 0.0 && b.3 > 0.0, "{name} has a box");
+            assert!(
+                b.0 >= line.0 && b.0 + b.2 <= line.0 + line.2 + 0.5,
+                "{name} lies along the line: {b:?} in {line:?}"
+            );
+            assert!(b.1 >= line.1 - 0.5 && b.1 + b.3 <= line.1 + line.3 + 0.5, "{name} sits on the line");
+        }
+        assert!(verb.0 > line.0 + 40.0, "the verb starts after \"The\": {verb:?}");
+        assert!(verb.0 + verb.2 < end.0, "the verb ends before the last word");
+        assert!(verb.2 < line.2 / 2.0, "the verb is one word of the line");
+    }
+}
+
+/// Each glyph resvg lays the text of SVG markup out in: the character it draws and the bundled font it comes from
+/// (see `text::FONT_DATA`), None for a missing glyph.
+#[cfg(test)]
+pub fn svg_glyph_fonts(svg: &str) -> Vec<(String, Option<u8>)> {
+    fn walk(g: &resvg::usvg::Group, out: &mut Vec<(String, Option<u8>)>) {
+        for n in g.children() {
+            match n {
+                resvg::usvg::Node::Group(g) => walk(g, out),
+                resvg::usvg::Node::Text(t) => {
+                    for g in t.layouted().iter().flat_map(|s| &s.positioned_glyphs) {
+                        let font = fonts().1.iter().position(|&id| id == g.font).map(|i| i as u8);
+                        out.push((g.text.clone(), font.filter(|_| g.id.0 != 0)));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let tree = resvg::usvg::Tree::from_str(svg, &svg_options()).expect("svg");
+    let mut out = Vec::new();
+    walk(tree.root(), &mut out);
+    out
+}
+
+/// How much of a line-like element may be filled area (heads, dots, a short label), as a share of the larger of its
+/// box's area and its line's length squared.
+const LINE_FILL_SHARE: f64 = 0.1;
+
+fn spine_of_node(node: &resvg::usvg::Node, box_area: f64) -> Option<(f64, f64, f64)> {
+    use crate::marks::geometry::{Pt, spine_of};
+    use resvg::usvg::Node;
+    use resvg::usvg::tiny_skia_path::{PathSegment, Point};
+    fn walk(node: &Node, area: &mut f64, lines: &mut Vec<Vec<Pt>>) {
+        let rect_area = |b: resvg::usvg::Rect| (b.width() * b.height()) as f64;
+        match node {
+            Node::Group(g) => g.children().iter().for_each(|c| walk(c, area, lines)),
+            Node::Path(p) if !p.is_visible() => {}
+            Node::Path(p) => {
+                let closed = p.data().segments().any(|s| matches!(s, PathSegment::Close));
+                if closed || p.stroke().is_none() {
+                    *area += p.abs_bounding_box().map_or(0.0, rect_area);
+                    return;
+                }
+                let tf = p.abs_transform();
+                let at = |q: Point| {
+                    let mut q = q;
+                    tf.map_point(&mut q);
+                    Pt { x: q.x as f64, y: q.y as f64 }
+                };
+                let first = lines.len();
+                let mut pts: Vec<Pt> = Vec::new();
+                let mut last = Point::zero();
+                for seg in p.data().segments() {
+                    match seg {
+                        PathSegment::MoveTo(q) => {
+                            if pts.len() > 1 {
+                                lines.push(std::mem::take(&mut pts));
+                            }
+                            pts.clear();
+                            pts.push(at(q));
+                            last = q;
+                        }
+                        PathSegment::LineTo(q) => {
+                            pts.push(at(q));
+                            last = q;
+                        }
+                        PathSegment::QuadTo(c, q) => {
+                            for i in 1..=16 {
+                                let t = i as f32 / 16.0;
+                                let u = 1.0 - t;
+                                pts.push(at(Point::from_xy(
+                                    u * u * last.x + 2.0 * u * t * c.x + t * t * q.x,
+                                    u * u * last.y + 2.0 * u * t * c.y + t * t * q.y,
+                                )));
+                            }
+                            last = q;
+                        }
+                        PathSegment::CubicTo(c1, c2, q) => {
+                            for i in 1..=24 {
+                                let t = i as f32 / 24.0;
+                                let u = 1.0 - t;
+                                let (a, b, c, d) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                                pts.push(at(Point::from_xy(
+                                    a * last.x + b * c1.x + c * c2.x + d * q.x,
+                                    a * last.y + b * c1.y + c * c2.y + d * q.y,
+                                )));
+                            }
+                            last = q;
+                        }
+                        PathSegment::Close => {}
+                    }
+                }
+                if pts.len() > 1 {
+                    lines.push(pts);
+                }
+                // A fill on an open path covers what its line encloses: nothing for a straight line, a lot for a bowl.
+                if p.fill().is_some() {
+                    *area += lines[first..].iter().map(|l| enclosed(l)).sum::<f64>();
+                }
+            }
+            Node::Text(t) => *area += rect_area(t.abs_bounding_box()),
+            Node::Image(i) => *area += i.abs_bounding_box().width() as f64 * i.abs_bounding_box().height() as f64,
+        }
+    }
+    // The area a polyline closed back to its start encloses (the shoelace formula).
+    fn enclosed(l: &[Pt]) -> f64 {
+        let n = l.len();
+        (0..n).map(|i| l[i].x * l[(i + 1) % n].y - l[(i + 1) % n].x * l[i].y).sum::<f64>().abs() / 2.0
+    }
+    let (mut area, mut lines) = (0.0, Vec::new());
+    walk(node, &mut area, &mut lines);
+    let length = |l: &Vec<Pt>| l.windows(2).map(|w| (w[1].x - w[0].x).hypot(w[1].y - w[0].y)).sum::<f64>();
+    let longest = lines.iter().max_by(|a, b| length(a).total_cmp(&length(b)))?;
+    let len = length(longest);
+    if area > LINE_FILL_SHARE * box_area.max(len * len) {
+        return None;
+    }
+    spine_of(longest).map(|s| (s.mid.x, s.mid.y, s.angle))
+}
+
+#[cfg(test)]
+mod shape_tests {
+    use super::*;
+
+    fn shapes(body: &str) -> Vec<(String, SvgShape)> {
+        let svg = format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"600\">{body}</svg>");
+        svg_shapes(&svg, &["curve".into(), "diag".into(), "card".into(), "frame".into(), "arrow".into(), "bowl".into()])
+    }
+
+    #[test]
+    fn lines_have_a_middle_and_shapes_do_not() {
+        let found = shapes(concat!(
+            r##"<path id="curve" d="M60 520 C 160 80, 420 80, 520 480" fill="none" stroke="#888" stroke-width="4"/>"##,
+            r##"<line id="diag" x1="600" y1="560" x2="920" y2="60" stroke="#888" stroke-width="4"/>"##,
+            r##"<rect id="card" x="980" y="40" width="180" height="120" fill="#888"/>"##,
+            r##"<rect id="frame" x="980" y="240" width="180" height="120" fill="none" stroke="#888"/>"##,
+            r##"<g id="arrow"><path d="M40 580 L 900 580" fill="none" stroke="#888" stroke-width="4"/>"##,
+            r##"<path d="M900 570 L 920 580 L 900 590 z" fill="#888"/></g>"##,
+            r##"<path id="bowl" d="M40 40 Q 240 440 440 40" stroke="#888"/>"##,
+        ));
+        let spine = |id: &str| found.iter().find(|(k, _)| k == id).unwrap().1.spine;
+        // Halfway along the curve is at its top, near x = 280, not the middle of its box.
+        let (x, y, _) = spine("curve").unwrap();
+        assert!((x - 280.0).abs() < 15.0 && y < 200.0, "curve middle at ({x}, {y})");
+        let (x, y, _) = spine("diag").unwrap();
+        assert!((x - 760.0).abs() < 1.0 && (y - 310.0).abs() < 1.0);
+        assert!(spine("card").is_none());
+        assert!(spine("frame").is_none());
+        // An open path with the default fill draws a filled bowl, a shape.
+        assert!(spine("bowl").is_none());
+        let (x, y, angle) = spine("arrow").unwrap();
+        assert!((x - 470.0).abs() < 1.0 && (y - 580.0).abs() < 1.0 && angle.abs() < 1e-6);
+    }
 }

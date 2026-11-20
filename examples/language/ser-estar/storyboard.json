@@ -1,254 +1,219 @@
 {
   "title": "Ser or estar",
   "subtitle": "Two Spanish verbs for “is”, and the two questions that pick one",
+  "tones": {
+    "good": "es, the verb ser",
+    "bad": "está, the verb estar"
+  },
+  "pictures": {
+    "two": "<svg viewBox=\"0 0 1200 640\"><text x=\"600\" y=\"70\" font-size=\"52\" text-anchor=\"middle\">¿Es o está?</text><line x1=\"600\" y1=\"120\" x2=\"600\" y2=\"620\" stroke=\"var(--muted)\" stroke-width=\"3\"/><g id=\"left\"><text x=\"300\" y=\"200\" font-size=\"72\" text-anchor=\"middle\" class=\"fill-good\">es</text><text x=\"300\" y=\"250\" font-size=\"28\" text-anchor=\"middle\" fill=\"var(--muted)\">from ser</text><text x=\"300\" y=\"310\" font-size=\"30\" text-anchor=\"middle\">what something is</text></g><g id=\"right\"><text x=\"900\" y=\"200\" font-size=\"72\" text-anchor=\"middle\" class=\"fill-bad\">está</text><text x=\"900\" y=\"250\" font-size=\"28\" text-anchor=\"middle\" fill=\"var(--muted)\">from estar</text><text x=\"900\" y=\"310\" font-size=\"30\" text-anchor=\"middle\">where it is, and how it is right now</text></g><g id=\"r0\"><text x=\"300\" y=\"420\" font-size=\"28\" text-anchor=\"middle\">what it is, what it is like,</text><text x=\"300\" y=\"458\" font-size=\"28\" text-anchor=\"middle\">days and times</text></g><g id=\"r1\"><text x=\"300\" y=\"560\" font-size=\"28\" text-anchor=\"middle\">where an event happens</text></g><g id=\"r2\"><text x=\"900\" y=\"420\" font-size=\"28\" text-anchor=\"middle\">where a thing or a person is</text></g><g id=\"r3\"><text x=\"900\" y=\"560\" font-size=\"28\" text-anchor=\"middle\">how it is right now</text></g></svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "Two verbs",
+      "title": "Spanish has two verbs for “is”",
+      "picture": "two",
       "narration": "In English, \"is\" is just \"is\". In Spanish you have to choose between two verbs, and learners pick the wrong one all the time.",
-      "kicker": "Spanish has two verbs for “is”",
-      "question": "¿Es o está?",
-      "sides": [
-        {
-          "label": "ser",
-          "term": "es",
-          "note": "what something **is**",
-          "tone": "accent"
-        },
-        {
-          "label": "estar",
-          "term": "está",
-          "note": "where it is, and how it is **right now**",
-          "tone": "warn"
-        }
-      ],
       "hidden": [
         "left",
-        "right"
+        "right",
+        "r0",
+        "r1",
+        "r2",
+        "r3"
       ],
+      "labels": {
+        "left": "ser",
+        "right": "estar"
+      },
       "steps": [
         {
           "show": [
             "left"
           ],
+          "focus": "left",
           "say": "Es comes from the verb ser. It says what something is, and what it is like."
         },
         {
           "show": [
             "right"
           ],
+          "focus": "right",
           "say": "Está comes from estar. It says where something is, and how it is right now."
         }
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "Side by side",
-      "title": "The same subject, both verbs",
-      "sides": [
-        {
-          "title": "es · ser",
-          "tone": "accent"
-        },
-        {
-          "title": "está · estar",
-          "tone": "warn"
-        }
-      ],
+      "title": "The same subject takes both verbs",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><text x=\"300\" y=\"60\" font-size=\"32\" text-anchor=\"middle\" class=\"fill-good\">es · ser</text><text x=\"900\" y=\"60\" font-size=\"32\" text-anchor=\"middle\" class=\"fill-bad\">está · estar</text><line x1=\"600\" y1=\"30\" x2=\"600\" y2=\"620\" stroke=\"var(--muted)\" stroke-width=\"3\"/><g id=\"a0\"><text x=\"300\" y=\"150\" font-size=\"36\" text-anchor=\"middle\">Ana <tspan class=\"fill-good\">es</tspan> alta.</text><text x=\"300\" y=\"188\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">Ana is tall.</text></g><g id=\"b0\"><text x=\"900\" y=\"150\" font-size=\"36\" text-anchor=\"middle\">Ana <tspan class=\"fill-bad\">está</tspan> cansada.</text><text x=\"900\" y=\"188\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">Ana is tired.</text></g><g id=\"a1\"><text x=\"300\" y=\"272\" font-size=\"36\" text-anchor=\"middle\">La sopa <tspan class=\"fill-good\">es</tspan> de tomate.</text><text x=\"300\" y=\"310\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">It is tomato soup.</text></g><g id=\"b1\"><text x=\"900\" y=\"272\" font-size=\"36\" text-anchor=\"middle\">La sopa <tspan class=\"fill-bad\">está</tspan> fría.</text><text x=\"900\" y=\"310\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">The soup is cold.</text></g><g id=\"a2\"><text x=\"300\" y=\"394\" font-size=\"36\" text-anchor=\"middle\">Madrid <tspan class=\"fill-good\">es</tspan> enorme.</text><text x=\"300\" y=\"432\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">Madrid is huge.</text></g><g id=\"b2\"><text x=\"900\" y=\"394\" font-size=\"36\" text-anchor=\"middle\">Madrid <tspan class=\"fill-bad\">está</tspan> en España.</text><text x=\"900\" y=\"432\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">Madrid is in Spain.</text></g><g id=\"a3\"><text x=\"300\" y=\"516\" font-size=\"36\" text-anchor=\"middle\">Hoy <tspan class=\"fill-good\">es</tspan> lunes.</text><text x=\"300\" y=\"554\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">Today is Monday.</text></g><g id=\"b3\"><text x=\"900\" y=\"516\" font-size=\"36\" text-anchor=\"middle\">Hoy <tspan class=\"fill-bad\">está</tspan> nublado.</text><text x=\"900\" y=\"554\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">It is cloudy today.</text></g></svg>",
       "narration": "Listen to the same subject with each verb.",
-      "rows": [
-        {
-          "label": "Ana",
-          "cells": [
-            "Ana [**es**]{accent} alta. · Ana is tall.",
-            "Ana [**está**]{warn} cansada. · Ana is tired."
-          ]
-        },
-        {
-          "label": "The soup",
-          "cells": [
-            "La sopa [**es**]{accent} de tomate. · It is tomato soup.",
-            "La sopa [**está**]{warn} fría. · The soup is cold."
-          ]
-        },
-        {
-          "label": "Madrid",
-          "cells": [
-            "Madrid [**es**]{accent} enorme. · Madrid is huge.",
-            "Madrid [**está**]{warn} en España. · Madrid is in Spain."
-          ]
-        },
-        {
-          "label": "Today",
-          "cells": [
-            "Hoy [**es**]{accent} lunes. · Today is Monday.",
-            "Hoy [**está**]{warn} nublado. · It is cloudy today."
-          ]
-        }
+      "hidden": [
+        "a0",
+        "b0",
+        "a1",
+        "b1",
+        "a2",
+        "b2",
+        "a3",
+        "b3"
       ],
+      "labels": {
+        "a0": "Ana es alta",
+        "b0": "Ana está cansada",
+        "a1": "tomato",
+        "b1": "cold",
+        "a2": "huge",
+        "b2": "in Spain",
+        "a3": "Monday",
+        "b3": "weather"
+      },
       "steps": [
         {
-          "focus": 0,
-          "say": "Ana es alta. Ana is tall. That is what she is like. Ana está cansada. Ana is tired. That is how she is right now."
+          "show": [
+            "a0"
+          ],
+          "focus": "a0",
+          "say": "Ana es alta. Ana is tall. That is what she is like."
         },
         {
-          "focus": 1,
-          "say": "The soup is tomato soup. That is what it is. But it is cold right now, so, está."
+          "show": [
+            "b0"
+          ],
+          "focus": "b0",
+          "say": "Ana está cansada. Ana is tired. That is how she is right now."
         },
         {
-          "focus": 2,
-          "say": "Madrid is huge, with es. But where Madrid is, in Spain, takes está. Even though it is never going to move.",
+          "show": [
+            "a1"
+          ],
+          "focus": "a1",
+          "say": "The soup is tomato soup. That is what it is."
+        },
+        {
+          "show": [
+            "b1"
+          ],
+          "focus": "b1",
+          "say": "But it is cold right now, so, está."
+        },
+        {
+          "show": [
+            "a2"
+          ],
+          "focus": "a2",
+          "say": "Madrid is huge, with es."
+        },
+        {
+          "show": [
+            "b2"
+          ],
+          "focus": "b2",
+          "say": "But where Madrid is, in Spain, takes está. Even though it is never going to move.",
           "draw": [
             {
-              "box": "2@está · estar",
+              "box": "b2",
               "when": "never going to move"
             }
           ]
         },
         {
-          "focus": 3,
-          "say": "Today is Monday takes es: days and times are what something is. But the weather right now takes está."
+          "show": [
+            "a3"
+          ],
+          "focus": "a3",
+          "say": "Today is Monday takes es: days and times are what something is."
+        },
+        {
+          "show": [
+            "b3"
+          ],
+          "focus": "b3",
+          "say": "But the weather right now takes está."
         }
       ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "The decision",
-      "title": "Which verb?",
+      "title": "Two questions pick the verb",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><g id=\"e-start\"><line x1=\"600\" y1=\"70\" x2=\"600\" y2=\"140\" stroke=\"var(--text)\" stroke-width=\"3\"/></g><g id=\"e-where-event\"><line x1=\"500\" y1=\"212\" x2=\"330\" y2=\"290\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"385\" y=\"251\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">yes</text></g><g id=\"e-where-now\"><line x1=\"700\" y1=\"212\" x2=\"870\" y2=\"290\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"815\" y=\"251\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">no</text></g><g id=\"e-event-ser\"><line x1=\"260\" y1=\"380\" x2=\"160\" y2=\"510\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"180\" y=\"445\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">yes</text></g><g id=\"e-event-estar\"><line x1=\"340\" y1=\"380\" x2=\"440\" y2=\"510\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"420\" y=\"445\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">no</text></g><g id=\"e-now-estar\"><line x1=\"860\" y1=\"380\" x2=\"760\" y2=\"510\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"780\" y=\"445\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">yes</text></g><g id=\"e-now-ser\"><line x1=\"940\" y1=\"380\" x2=\"1040\" y2=\"510\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"1020\" y=\"445\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">no</text></g><g id=\"start\"><rect x=\"390\" y=\"10\" width=\"420\" height=\"60\" rx=\"12\" stroke-width=\"3\"/><text x=\"600\" y=\"50\" font-size=\"28\" text-anchor=\"middle\" id=\"case\">A sentence with “is”</text></g><g id=\"where\"><polygon points=\"600,140 750,190 600,240 450,190\" stroke-width=\"3\"/><text x=\"600\" y=\"199\" font-size=\"26\" text-anchor=\"middle\">Says where?</text></g><g id=\"event\"><polygon points=\"300,280 450,330 300,380 150,330\" stroke-width=\"3\"/><text x=\"300\" y=\"339\" font-size=\"26\" text-anchor=\"middle\">An event?</text></g><g id=\"now\"><polygon points=\"900,280 1050,330 900,380 750,330\" stroke-width=\"3\"/><text x=\"900\" y=\"339\" font-size=\"26\" text-anchor=\"middle\">Right now?</text></g><g id=\"ser-event\"><rect x=\"15\" y=\"510\" width=\"270\" height=\"96\" rx=\"14\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"150\" y=\"550\" font-size=\"32\" text-anchor=\"middle\">es</text><text x=\"150\" y=\"586\" font-size=\"24\" text-anchor=\"middle\">where it happens</text></g><g id=\"estar-place\"><rect x=\"315\" y=\"510\" width=\"270\" height=\"96\" rx=\"14\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"450\" y=\"550\" font-size=\"32\" text-anchor=\"middle\">está</text><text x=\"450\" y=\"586\" font-size=\"24\" text-anchor=\"middle\">where it is</text></g><g id=\"estar-now\"><rect x=\"615\" y=\"510\" width=\"270\" height=\"96\" rx=\"14\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"750\" y=\"550\" font-size=\"32\" text-anchor=\"middle\">está</text><text x=\"750\" y=\"586\" font-size=\"24\" text-anchor=\"middle\">a state</text></g><g id=\"ser-is\"><rect x=\"915\" y=\"510\" width=\"270\" height=\"96\" rx=\"14\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"1050\" y=\"550\" font-size=\"32\" text-anchor=\"middle\">es</text><text x=\"1050\" y=\"586\" font-size=\"24\" text-anchor=\"middle\">what it is</text></g></svg>",
       "narration": "So here is the whole decision, as two questions.",
-      "nodes": [
-        {
-          "id": "start",
-          "label": "A sentence with “is”",
-          "shape": "step",
-          "caption": "which verb?"
-        },
-        {
-          "id": "where",
-          "label": "Says where?",
-          "shape": "decision"
-        },
-        {
-          "id": "event",
-          "label": "An event?",
-          "shape": "decision"
-        },
-        {
-          "id": "now",
-          "label": "How it is right now?",
-          "shape": "decision"
-        },
-        {
-          "id": "ser-event",
-          "label": "es · where it happens",
-          "shape": "terminal",
-          "tone": "accent"
-        },
-        {
-          "id": "estar-place",
-          "label": "está · where it is",
-          "shape": "terminal",
-          "tone": "warn"
-        },
-        {
-          "id": "estar-now",
-          "label": "está · a state",
-          "shape": "terminal",
-          "tone": "warn"
-        },
-        {
-          "id": "ser-is",
-          "label": "es · what it is",
-          "shape": "terminal",
-          "tone": "accent"
-        }
-      ],
-      "edges": [
-        {
-          "from": "start",
-          "to": "where"
-        },
-        {
-          "from": "where",
-          "to": "event",
-          "label": "yes"
-        },
-        {
-          "from": "where",
-          "to": "now",
-          "label": "no"
-        },
-        {
-          "from": "event",
-          "to": "ser-event",
-          "label": "yes"
-        },
-        {
-          "from": "event",
-          "to": "estar-place",
-          "label": "no"
-        },
-        {
-          "from": "now",
-          "to": "estar-now",
-          "label": "yes"
-        },
-        {
-          "from": "now",
-          "to": "ser-is",
-          "label": "no"
-        }
-      ],
+      "labels": {
+        "where": "say where",
+        "now": "passing state",
+        "estar-now": "right now",
+        "ser-is": "es",
+        "estar-place": "a place",
+        "event": "not an event",
+        "ser-event": "last branch"
+      },
       "steps": [
         {
+          "set": {
+            "case": "Ana es alta."
+          },
           "focus": [
             "start",
             "where",
-            "where->now",
+            "e-where-now",
             "now",
-            "now->ser-is",
+            "e-now-ser",
             "ser-is"
           ],
-          "callout": "Ana [**es**]{accent} alta.",
           "say": "Ana is tall. It does not say where, and it is not a passing state. So, es."
         },
         {
+          "set": {
+            "case": "Ana está cansada."
+          },
           "focus": [
             "now",
-            "now->estar-now",
+            "e-now-estar",
             "estar-now"
           ],
-          "callout": "Ana [**está**]{warn} cansada.",
           "say": "Ana is tired. That is how she is right now. Está."
         },
         {
+          "set": {
+            "case": "Madrid está en España."
+          },
           "focus": [
             "where",
-            "where->event",
+            "e-where-event",
             "event",
-            "event->estar-place",
+            "e-event-estar",
             "estar-place"
           ],
-          "callout": "Madrid [**está**]{warn} en España.",
           "say": "Madrid is in Spain. It says where, and Madrid is a place, not an event. Está."
         },
         {
+          "set": {
+            "case": "La fiesta es en mi casa."
+          },
           "focus": [
             "event",
-            "event->ser-event",
+            "e-event-ser",
             "ser-event"
           ],
-          "callout": "La fiesta [**es**]{accent} en mi casa.",
-          "say": "But this last branch is the one that trips everybody up."
+          "say": "But this last branch is the one that trips everybody up.",
+          "draw": [
+            {
+              "circle": "ser-event",
+              "when": "trips"
+            }
+          ]
         }
       ]
     },
     {
       "type": "svg",
       "chapter": "The trap",
-      "title": "Where a party is",
+      "title": "Where a party is takes es",
       "narration": "Here is the trap. Both of these sentences say where something is.",
-      "svg": "<svg viewBox=\"0 0 1600 760\"><g id=\"party\"><text id=\"s1\" x=\"800\" y=\"140\" font-size=\"60\" text-anchor=\"middle\">La fiesta <tspan id=\"s1-verb\" class=\"fill-accent\">es</tspan> <tspan id=\"s1-after\">en mi casa.</tspan></text><text id=\"s1-en\" x=\"800\" y=\"208\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">The party is at my house.</text></g><g id=\"keys\"><text id=\"s2\" x=\"800\" y=\"330\" font-size=\"60\" text-anchor=\"middle\">Las llaves <tspan id=\"s2-verb\" class=\"fill-warn\">están</tspan> <tspan id=\"s2-after\">en mi casa.</tspan></text><text id=\"s2-en\" x=\"800\" y=\"398\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">The keys are at my house.</text></g><g id=\"talk\"><text id=\"s3\" x=\"800\" y=\"560\" font-size=\"60\" text-anchor=\"middle\">La conferencia <tspan id=\"s3-verb\" class=\"fill-accent\">es</tspan> <tspan id=\"s3-after\">en el Aula Magna.</tspan></text><text id=\"s3-en\" x=\"800\" y=\"628\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">The talk is in the main hall.</text><text id=\"source\" x=\"800\" y=\"690\" font-size=\"26\" text-anchor=\"middle\" fill=\"var(--faint)\">Example from the Real Academia Española, Nueva gramática §37.8f</text></g></svg>",
+      "svg": "<svg viewBox=\"0 0 1600 760\"><g id=\"party\"><text id=\"s1\" x=\"800\" y=\"140\" font-size=\"60\" text-anchor=\"middle\">La fiesta <tspan id=\"s1-verb\" class=\"fill-good\">es</tspan> <tspan id=\"s1-after\">en mi casa.</tspan></text><text id=\"s1-en\" x=\"800\" y=\"208\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\">The party is at my house.</text></g><g id=\"keys\"><text id=\"s2\" x=\"800\" y=\"330\" font-size=\"60\" text-anchor=\"middle\">Las llaves <tspan id=\"s2-verb\" class=\"fill-bad\">están</tspan> <tspan id=\"s2-after\">en mi casa.</tspan></text><text id=\"s2-en\" x=\"800\" y=\"398\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\">The keys are at my house.</text></g><g id=\"talk\"><text id=\"s3\" x=\"800\" y=\"560\" font-size=\"60\" text-anchor=\"middle\">La conferencia <tspan id=\"s3-verb\" class=\"fill-good\">es</tspan> <tspan id=\"s3-after\">en el Aula Magna.</tspan></text><text id=\"s3-en\" x=\"800\" y=\"628\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\">The talk is in the main hall.</text><text id=\"source\" x=\"800\" y=\"690\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">Example from the Real Academia Española, Nueva gramática §37.8f</text></g></svg>",
       "labels": {
         "party": "the party",
         "keys": "the keys",
@@ -276,17 +241,23 @@
         },
         {
           "focus": "party",
-          "say": "The party is at my house. A party is not a thing sitting somewhere. It is an event, so where it happens takes ser. Es.",
+          "say": "The party is at my house. A party is not a thing sitting somewhere. It is an event.",
           "draw": [
-            {
-              "circle": "s1-verb",
-              "when": "Es."
-            },
             {
               "write": "an event: where it happens",
               "near": "s1-after",
               "side": "right",
-              "when": "where it happens"
+              "when": "an event"
+            }
+          ]
+        },
+        {
+          "focus": "s1-verb",
+          "say": "So where it happens takes ser. Es.",
+          "draw": [
+            {
+              "circle": "s1-verb",
+              "when": "Es."
             }
           ]
         },
@@ -296,7 +267,11 @@
           ],
           "focus": "talk",
           "camera": "talk",
-          "say": "The Royal Spanish Academy gives this example. The talk is in the main hall. It means the talk takes place there, so it is es.",
+          "say": "The Royal Spanish Academy gives this example. The talk is in the main hall."
+        },
+        {
+          "focus": "s3-verb",
+          "say": "It means the talk takes place there, so it is es.",
           "draw": [
             {
               "circle": "s3-verb",
@@ -315,58 +290,65 @@
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "Same word",
-      "title": "One adjective, two meanings",
-      "sides": [
-        {
-          "title": "with es",
-          "tone": "accent"
-        },
-        {
-          "title": "with está",
-          "tone": "warn"
-        }
-      ],
+      "title": "The verb can change what a word means",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><text x=\"300\" y=\"60\" font-size=\"32\" text-anchor=\"middle\" class=\"fill-good\">with es</text><text x=\"900\" y=\"60\" font-size=\"32\" text-anchor=\"middle\" class=\"fill-bad\">with está</text><line x1=\"600\" y1=\"30\" x2=\"600\" y2=\"620\" stroke=\"var(--muted)\" stroke-width=\"3\"/><g id=\"es0\"><text x=\"300\" y=\"170\" font-size=\"40\" text-anchor=\"middle\"><tspan class=\"fill-good\">es</tspan> aburrido</text><text x=\"300\" y=\"220\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\">boring</text></g><g id=\"esta0\"><text x=\"900\" y=\"170\" font-size=\"40\" text-anchor=\"middle\"><tspan class=\"fill-bad\">está</tspan> aburrido</text><text x=\"900\" y=\"220\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\"><tspan id=\"m0\">bored</tspan></text></g><g id=\"es1\"><text x=\"300\" y=\"340\" font-size=\"40\" text-anchor=\"middle\"><tspan class=\"fill-good\">es</tspan> listo</text><text x=\"300\" y=\"390\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\">clever</text></g><g id=\"esta1\"><text x=\"900\" y=\"340\" font-size=\"40\" text-anchor=\"middle\"><tspan class=\"fill-bad\">está</tspan> listo</text><text x=\"900\" y=\"390\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\"><tspan id=\"m1\">ready</tspan></text></g><g id=\"es2\"><text x=\"300\" y=\"510\" font-size=\"40\" text-anchor=\"middle\"><tspan class=\"fill-good\">es</tspan> rico</text><text x=\"300\" y=\"560\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\">rich</text></g><g id=\"esta2\"><text x=\"900\" y=\"510\" font-size=\"40\" text-anchor=\"middle\"><tspan class=\"fill-bad\">está</tspan> rico</text><text x=\"900\" y=\"560\" font-size=\"32\" text-anchor=\"middle\" fill=\"var(--muted)\"><tspan id=\"m2\">tasty</tspan></text></g></svg>",
       "narration": "And sometimes the verb changes what the word means.",
-      "rows": [
-        {
-          "label": "aburrido",
-          "cells": [
-            "[**es**]{accent} aburrido · boring",
-            "[**está**]{warn} aburrido · bored"
-          ]
-        },
-        {
-          "label": "listo",
-          "cells": [
-            "[**es**]{accent} listo · clever",
-            "[**está**]{warn} listo · ready"
-          ]
-        },
-        {
-          "label": "rico",
-          "cells": [
-            "[**es**]{accent} rico · rich",
-            "[**está**]{warn} rico · tasty"
-          ]
-        }
+      "hidden": [
+        "es0",
+        "esta0",
+        "es1",
+        "esta1",
+        "es2",
+        "esta2"
       ],
+      "labels": {
+        "es0": "es aburrido",
+        "esta0": "está aburrido",
+        "es1": "es listo",
+        "esta1": "está listo",
+        "es2": "es rico",
+        "esta2": "food",
+        "m2": "tasty"
+      },
       "steps": [
         {
-          "focus": 0,
+          "show": [
+            "es0",
+            "esta0"
+          ],
+          "focus": [
+            "es0",
+            "esta0"
+          ],
           "say": "Es aburrido means he is boring. Está aburrido means he is bored. Not the same thing at all."
         },
         {
-          "focus": 1,
+          "show": [
+            "es1",
+            "esta1"
+          ],
+          "focus": [
+            "es1",
+            "esta1"
+          ],
           "say": "Es listo, he is clever. Está listo, he is ready."
         },
         {
-          "focus": 2,
+          "show": [
+            "es2",
+            "esta2"
+          ],
+          "focus": [
+            "es2",
+            "esta2",
+            "m2"
+          ],
           "say": "And es rico is rich. But say the food está rica, and you mean it is tasty.",
           "draw": [
             {
-              "underline": "2@with está",
+              "underline": "m2",
               "when": "it is tasty"
             }
           ]
@@ -374,62 +356,69 @@
       ]
     },
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "Recap",
+      "title": "Four things to keep in your head",
+      "picture": "two",
       "narration": "So, four things to keep in your head.",
-      "kicker": "¿Es o está?",
-      "headline": "Ask two questions",
-      "items": [
-        "[**es**]{accent}: what it is, what it is like, days and times",
-        "[**es**]{accent}: where an event happens",
-        "[**está**]{warn}: where a thing or a person is",
-        "[**está**]{warn}: how it is right now"
-      ],
       "hidden": [
-        "0-3"
+        "r0",
+        "r1",
+        "r2",
+        "r3"
       ],
+      "labels": {
+        "r0": "days and times",
+        "r1": "event happens",
+        "r2": "a thing or a person",
+        "r3": "right now"
+      },
       "steps": [
         {
           "show": [
-            0
+            "r0"
           ],
+          "focus": "r0",
           "say": "Es for what something is, what it is like, and days and times.",
           "draw": [
             {
-              "tick": 0
+              "tick": "r0"
             }
           ]
         },
         {
           "show": [
-            1
+            "r1"
           ],
+          "focus": "r1",
           "say": "Es for where an event happens.",
           "draw": [
             {
-              "tick": 1
+              "tick": "r1"
             }
           ]
         },
         {
           "show": [
-            2
+            "r2"
           ],
+          "focus": "r2",
           "say": "Está for where a thing or a person is.",
           "draw": [
             {
-              "tick": 2
+              "tick": "r2"
             }
           ]
         },
         {
           "show": [
-            3
+            "r3"
           ],
+          "focus": "r3",
           "say": "And está for how it is right now. That covers almost every sentence you will meet.",
           "draw": [
             {
-              "tick": 3
+              "tick": "r3"
             }
           ]
         }

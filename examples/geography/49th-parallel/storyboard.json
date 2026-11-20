@@ -1,100 +1,116 @@
 {
   "title": "The 49th parallel",
   "subtitle": "Why the US and Canada share a straight line",
+  "tones": {
+    "good": "the border along 49° N",
+    "bad": "land the line left in question"
+  },
+  "pictures": {
+    "west": "<svg viewBox=\"0 0 1200 640\">\n<path id=\"coast\" d=\"M145,156 L153,157 L156,161 L155,165 L147,170 L155,170 L157,164 L156,159 L160,159 L166,156 L165,160 L161,169 L161,180 L159,183 L152,186 L148,186 L143,182 L150,181 L141,176 L137,167 L136,160 L137,155 L145,156 L145,156 M164,186 L166,189 L167,195 L163,196 L160,196 L165,200 L170,202 L168,204 L171,211 L175,211 L173,214 L177,215 L176,219 L171,216 L168,211 L156,199 L154,194 L156,192 L149,190 L156,187 L161,185 L164,186 L164,186 M260,268 L270,271 L296,278 L301,288 L308,297 L310,303 L314,306 L327,313 L331,317 L332,322 L335,326 L338,333 L339,330 L342,337 L339,338 L336,342 L325,338 L309,331 L304,328 L309,319 L310,316 L308,320 L299,320 L296,322 L289,317 L293,314 L288,311 L286,307 L283,307 L280,306 L276,306 L274,301 L282,299 L278,299 L275,297 L271,292 L266,290 L262,292 L260,286 L257,286 L254,283 L246,284 L246,279 L244,277 L245,274 L251,273 L254,275 L253,271 L248,268 L246,272 L242,272 L237,268 L236,266 L237,263 L241,260 L245,260 L249,262 L260,268 L260,268 M943,-45 L940,-30 L940,-9 L939,-3 L943,4 L948,8 L950,22 L952,12 L954,8 L962,7 L972,8 L976,16 L981,29 L984,39 L989,49 L990,54 L989,57 L986,63 L982,67 L989,63 L993,62 L1018,56 L1022,56 L1028,57 L1045,65 L1065,70 L1073,76 L1081,81 L1094,95 L1106,99 L1132,109 L1141,117 L1138,125 L1141,121 L1145,119 L1156,120 L1169,118 L1183,121 L1188,121 L1191,123 L1197,123 L1201,126 L1204,134 L1200,148 L1200,152 L1204,159 L1206,166 L1205,172 L1206,180 L1205,184 L1203,187 L1203,191 L1208,198 L1217,210 L1217,214 L1212,217 L1218,216 L1224,221 L1230,225 L1237,232 L1240,239 M1242,244 L1237,248 L1233,252 L1241,246 M352,320 L350,318 L346,321 L346,316 L344,313 L349,311 L351,307 L348,310 L342,309 L344,298 L341,301 L341,305 L337,307 L329,304 L326,301 L327,296 L331,301 L336,298 L332,299 L330,296 L329,289 L332,285 L328,282 L330,286 L328,288 L327,292 L324,295 L321,295 L317,294 L311,287 L308,280 L306,276 L309,268 L309,260 L307,267 L305,272 L302,273 L296,272 L295,267 L293,273 L290,272 L283,272 L277,271 L287,266 L274,266 L277,261 L274,260 L274,254 L272,259 L263,260 L257,258 L249,251 L250,245 L251,242 L255,236 L258,235 L271,234 L257,233 L251,241 L247,237 L246,231 L247,228 L249,224 L247,218 L255,212 L259,211 L260,214 L264,215 L270,222 L266,217 L261,212 L260,209 L264,203 L264,197 L264,201 L253,212 L249,214 L247,216 L241,231 L239,224 L236,219 L242,214 L242,210 L244,206 L237,212 L240,198 L242,195 L235,197 L232,188 L229,184 L225,181 L220,180 L219,175 L220,172 L225,170 L224,174 L232,179 L236,177 L240,179 L245,183 L239,177 L232,177 L229,174 L227,171 L228,166 L232,164 L228,163 L224,165 L218,172 L217,179 L212,181 L210,184 L205,179 L203,174 L200,173 L196,171 L196,164 L199,161 L200,156 L206,155 L209,153 L203,153 L199,154 L195,151 L193,149 L194,139 L196,137 L203,123 L210,113 L207,114 L205,110 L204,118 L200,126 L201,120 L201,116 L199,110 L199,106 L200,100 M1235,200 L1228,199 L1212,193 L1209,192 L1212,186 L1223,185 L1227,185 L1235,195 L1236,197 L1235,200 M182,145 L182,140 L185,140 L182,145 L182,145 M179,225 L178,219 L179,225 L179,225 M196,161 L193,165 L188,162 L192,157 L194,158 L196,161 L196,161 M204,187 L198,181 L190,175 L192,172 L202,178 L206,184 L204,187 L204,187 M197,127 L194,134 L190,136 L189,135 M232,194 L232,207 L229,215 L227,205 L227,200 L226,202 L220,198 L218,192 L221,183 L225,185 L230,188 L232,194 L232,194 M283,309 L280,310 L283,309 L283,309 M324,303 L320,301 L313,296 L318,297 L324,303 L324,303 M272,300 L265,297 L266,293 L270,293 L271,296 L272,300 L272,300 M302,285 L299,278 L300,275 L304,279 L302,285 L302,285 M223,208 L219,204 L217,201 L222,203 L223,208 L223,208 M245,241 L241,240 L240,235 L243,234 L245,237 L245,241 L245,241 M235,211 L234,202 L236,199 L236,209 L235,211 M216,192 L211,186 L216,192 L216,192 M219,188 L215,188 L217,181 L219,188 L219,188 M339,328 L336,322 L338,324 L339,328 L339,328 M340,324 L337,322 L334,317 L340,324 L340,324 M307,287 L305,284 L307,287 L307,287 M143,79 L140,79 L141,71 L145,74 L147,77 L143,79 L143,79 M143,88 L137,84 L140,82 L146,82 L145,86 L143,88 L143,88 M111,25 L107,25 L103,23 L106,21 L111,25 L111,25 M200,100 L199,103 L198,107 L200,118 L198,124 L197,127 M189,135 L183,134 L179,123 L185,118 L182,104 L177,97 L179,93 L164,100 L163,103 L160,110 L157,110 L155,105 L159,98 L162,91 L169,89 L161,88 L159,84 L155,83 L153,79 L152,76 L149,71 L146,70 L142,67 L142,62 L128,59 L129,53 L127,46 L124,44 L136,46 L127,39 L127,36 L134,36 L126,35 L124,37 L117,30 L116,25 L120,15 L114,23 L107,20 L103,20 L101,18 L97,11 L96,7 L93,5 L92,-3 L89,-8 L89,-13 L88,-10 L88,-7 L88,-3 L89,3 L95,21 L90,24 L87,20 L77,19 L78,13 L74,7 L79,3 L75,4 L72,-2 L72,2 L73,6 L66,5 L63,2 L54,-1 L55,2 L53,4 L57,4 L62,6 L67,10 L71,13 L74,18 L65,21 L62,24 L43,13 L36,7 L33,2 L26,-3 L22,-4 L15,-8 L-4,-17 L-1,-20 L1,-22 L-0,-27 L1,-30 L5,-28 L6,-20 L8,-26 L12,-27 L7,-28 L3,-32 L-7,-26 L-13,-23 L-18,-23 L-26,-24 L-38,-29 L-36,-32 L-38,-36 L-39,-33 L-44,-31 M132,111 L124,119 L125,115 L123,112 L132,111 L132,111 M173,125 L175,131 L171,131 L169,126 L168,120 L172,121 L173,125 L173,125 M157,92 L156,98 L151,98 L150,94 L145,93 L144,90 L151,80 L158,88 L157,92 L157,92 M181,112 L178,119 L176,121 L173,119 L171,118 L167,118 L164,123 L162,115 L166,109 L167,101 L174,97 L180,105 L181,112 L181,112 M130,64 L134,64 L138,66 L139,74 L133,70 L135,76 L135,80 L128,82 L125,81 L124,73 L121,67 L118,64 L120,62 L130,64 L130,64 M141,132 L146,132 L145,136 L142,137 L136,129 L133,122 L129,121 L132,117 L136,121 L138,124 L141,132 L141,132 M97,53 L100,59 L104,73 L104,77 L104,86 L100,87 L97,79 L99,74 L96,75 L93,73 L90,70 L89,66 L92,63 L89,61 L88,58 L82,63 L79,64 L79,55 L83,53 L87,47 L97,53 L97,53 M103,27 L112,28 L118,36 L121,44 L113,32 L111,36 L118,45 L118,50 L119,53 L115,54 L112,59 L108,62 L104,60 L107,49 L103,44 L101,29 L98,21 L103,27 L103,27 M81,24 L84,27 L82,31 L89,28 L93,29 L97,31 L97,38 L91,38 L97,41 L99,45 L98,49 L84,43 L83,49 L77,50 L73,43 L65,36 L63,33 L64,29 L67,28 L72,29 L73,26 L80,23 L81,24 M126,85 L134,86 L136,90 L136,93 L143,96 L147,99 L150,106 L156,113 L148,109 L146,113 L150,113 L155,116 L155,121 L159,121 L159,127 L160,134 L155,137 L152,131 L148,130 L146,124 L144,127 L140,122 L136,117 L139,115 L136,112 L138,109 L132,108 L127,106 L124,103 L130,102 L133,99 L132,95 L124,98 L127,91 L126,86 L126,85 M117,69 L121,71 L123,75 L120,77 L120,87 L118,92 L115,93 L112,90 L113,83 L111,77 L109,73 L109,69 L111,67 L117,69 L117,69 M359,687 L358,679 L361,683 M368,689 L361,673 L367,670 L379,670 L372,669 L368,668 L361,668 L359,674 L359,677 L350,670 L348,665 L351,668 L347,662 L346,658 L342,655 L333,643 L333,636 L331,628 L332,624 L331,615 L325,605 L320,600 L319,592 L321,585 L324,577 L324,571 L326,561 L324,553 L323,545 L320,540 L318,532 L318,525 L316,518 L320,501 L323,499 L324,490 L325,469 L326,466 L326,455 L329,429 L328,421 L328,412 L334,410 L337,409 L340,411 L343,411 L338,407 L334,407 L329,407 L326,407 L326,396 L328,402 L329,395 L326,392 L325,388 L330,385 L325,383 L323,377 L321,371 L319,363 L317,359 L314,355 L312,340 L327,347 L342,348 L349,350 L353,348 L355,356 L353,360 L347,366 L345,372 L350,371 L347,371 L348,366 L353,362 L356,357 L358,355 L358,359 L356,362 L357,369 L357,375 L353,377 L352,373 L347,380 L352,379 L356,379 L358,375 L362,372 L361,365 L361,361 L364,352 L360,346 L361,349 L358,347 L361,343 L358,339 L355,337 L359,336 L358,331 L357,327 L352,320 M353,331 L350,333 L348,331 L353,331 L353,331 M348,336 L345,332 L348,336 L348,336 M357,347 L358,351 L361,352 L357,352 L356,347 L353,344 L356,340 L358,343 L354,345 L357,347 L357,347 M351,378 L351,378 M361,371 L359,368 L361,371 L361,371 M359,365 L358,362 L359,365 L359,365 M352,338 L350,335 L352,338 L352,338\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<polygon id=\"oregon\" points=\"320.8,544 631.5,544 610.5,464 566.4,416 562.2,368 535.5,320 488.7,243.2 444.6,195.2 400.6,138.7 188.5,138.7 234.7,224 234.7,272 312.4,339.2 326,408\" class=\"tone-bad\" stroke-width=\"3\"/>\n<text id=\"oregon-name\" x=\"432\" y=\"432\" font-size=\"26\" text-anchor=\"middle\" class=\"fill-bad\">Oregon Country</text>\n<text id=\"us-name\" x=\"894\" y=\"576\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">United States</text>\n<text id=\"br-name\" x=\"831\" y=\"96\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">British land</text>\n<line id=\"line-1818\" x1=\"932.8\" y1=\"320\" x2=\"535.5\" y2=\"320\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"lat-1818\" x=\"734\" y=\"304\" font-size=\"26\" text-anchor=\"middle\" class=\"fill-good\">49° N</text>\n<line id=\"claim\" x1=\"188.5\" y1=\"138.7\" x2=\"400.6\" y2=\"138.7\" class=\"stroke-bad\" stroke-width=\"5\"/>\n<text id=\"claim-name\" x=\"415\" y=\"148\" font-size=\"26\" text-anchor=\"start\" class=\"fill-bad\">54°40′ N</text>\n<line id=\"line-1846\" x1=\"535.5\" y1=\"320\" x2=\"341.4\" y2=\"320\" class=\"stroke-good\" stroke-width=\"5\"/>\n<polyline id=\"water\" points=\"341.4,320 343.5,327.4 343.9,338.6 333.4,342.7 311.8,336.3\" fill=\"none\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"vi\" x=\"247\" y=\"278\" font-size=\"24\" text-anchor=\"end\">Vancouver Island</text>\n<g id=\"woods\"><circle cx=\"932.8\" cy=\"307.8\" r=\"7\" fill=\"var(--text)\"/><text id=\"woods-name\" x=\"947\" y=\"316\" font-size=\"24\" text-anchor=\"start\">Lake of the Woods</text></g>\n<g id=\"divide\"><circle cx=\"535.5\" cy=\"320\" r=\"7\" fill=\"var(--text)\"/><text id=\"divide-name\" x=\"536\" y=\"356\" font-size=\"24\" text-anchor=\"middle\">Rockies</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "A straight line",
+      "title": "A border drawn with a ruler",
       "narration": "For about two thousand kilometres, the border between the United States and Canada is a dead straight line.",
-      "kicker": "The US and Canada border",
-      "number": "2,000 km",
-      "note": "along one line of latitude, 49° N",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"peaks\"><polyline points=\"230,420 300,250 350,330 410,190 480,340 540,260 610,420\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"4\"/><polyline points=\"380,232 410,190 440,250\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\"/></g>\n<path id=\"river\" d=\"M860,90 C780,170 940,230 850,320 C770,400 930,470 860,580\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"6\"/>\n<text x=\"690\" y=\"190\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--muted)\">Canada</text>\n<text x=\"690\" y=\"480\" text-anchor=\"middle\" font-size=\"28\" fill=\"var(--muted)\">United States</text>\n<line id=\"line49\" x1=\"40\" y1=\"330\" x2=\"1160\" y2=\"330\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"lat\" x=\"60\" y=\"310\" font-size=\"28\" class=\"fill-good\">49° N</text>\n</svg>",
       "hidden": [
-        "note"
+        "line49",
+        "lat"
       ],
+      "labels": {
+        "line49": "border",
+        "lat": "forty ninth parallel",
+        "peaks": "mountains",
+        "river": "rivers"
+      },
       "steps": [
         {
           "show": [
-            "note"
+            "lat"
           ],
-          "say": "It follows the forty ninth parallel. It ignores rivers and mountains. So why there?"
+          "trace": [
+            {
+              "ref": "line49",
+              "when": "forty ninth"
+            }
+          ],
+          "focus": [
+            "line49",
+            "lat"
+          ],
+          "say": "It follows the forty ninth parallel, one line of latitude.",
+          "draw": [
+            {
+              "brace": "line49",
+              "note": "about 2,000 km",
+              "side": "below",
+              "when": "one line"
+            }
+          ]
+        },
+        {
+          "focus": [
+            "peaks",
+            "river"
+          ],
+          "say": "It ignores rivers and mountains.",
+          "draw": [
+            {
+              "circle": "river",
+              "when": "rivers"
+            },
+            {
+              "circle": "peaks",
+              "when": "mountains"
+            }
+          ]
+        },
+        {
+          "focus": "line49",
+          "say": "So why there?",
+          "draw": [
+            {
+              "write": "why here?",
+              "near": "lat",
+              "side": "above",
+              "when": "why"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "map",
+      "type": "svg",
       "chapter": "1818",
-      "title": "The first stretch",
+      "title": "A straight line across the plains",
+      "picture": "west",
       "narration": "In 1818 the United States and Britain, which still ran what is now Canada, needed a border across the plains.",
-      "view": {
-        "box": [
-          [
-            36,
-            -130
-          ],
-          [
-            60,
-            -80
-          ]
-        ]
-      },
-      "tint": {
-        "USA": "accent",
-        "CAN": "warn"
-      },
-      "places": [
-        {
-          "id": "us-name",
-          "at": [
-            40,
-            -100
-          ],
-          "dot": false,
-          "label": "United States"
-        },
-        {
-          "id": "br-name",
-          "at": [
-            55,
-            -100
-          ],
-          "dot": false,
-          "label": "British land"
-        },
-        {
-          "id": "woods",
-          "at": [
-            49.38,
-            -95.15
-          ],
-          "label": "Lake of the Woods",
-          "side": "right"
-        },
-        {
-          "id": "divide",
-          "at": [
-            49,
-            -114.07
-          ],
-          "label": "Rockies",
-          "side": "below",
-          "hidden": true
-        }
+      "hidden": [
+        "oregon",
+        "oregon-name",
+        "line-1818",
+        "lat-1818",
+        "claim",
+        "claim-name",
+        "line-1846",
+        "water",
+        "vi",
+        "divide"
       ],
-      "lines": [
-        {
-          "id": "line-1818",
-          "lat": 49,
-          "from": -95.15,
-          "to": -114.07,
-          "label": "49° N",
-          "tone": "good"
-        }
-      ],
+      "labels": {
+        "divide": "Rocky Mountains",
+        "woods": "Lake of the Woods",
+        "line-1818": "forty ninth parallel",
+        "us-name": "side",
+        "br-name": "side"
+      },
       "steps": [
         {
           "show": [
-            "divide"
+            "divide",
+            "lat-1818"
           ],
           "trace": [
             {
@@ -115,142 +131,46 @@
             "us-name",
             "br-name"
           ],
-          "callout": "about 1,380 km",
+          "draw": [
+            {
+              "write": "about 1,380 km",
+              "near": "line-1818",
+              "side": "below",
+              "when": "easy to agree"
+            }
+          ],
           "say": "A straight line was easy to agree on. Each side gave up the scraps of land on the wrong side of it."
         }
       ]
     },
     {
-      "type": "map",
+      "type": "svg",
       "chapter": "Oregon",
-      "title": "The land west of the Rockies",
+      "title": "West of the Rockies, a shared land",
+      "picture": "west",
       "narration": "West of the mountains, nobody could agree. So the two countries shared that land, which they called the Oregon Country.",
-      "view": {
-        "box": [
-          [
-            38,
-            -136
-          ],
-          [
-            60,
-            -100
-          ]
-        ]
+      "labels": {
+        "oregon": "Oregon Country",
+        "claim": "fifty four forty",
+        "claim-name": "all of it"
       },
-      "tint": {
-        "USA": "accent",
-        "CAN": "neutral"
-      },
-      "places": [
-        {
-          "id": "us-name",
-          "at": [
-            40,
-            -100
-          ],
-          "dot": false,
-          "label": "United States"
-        },
-        {
-          "id": "br-name",
-          "at": [
-            57,
-            -108
-          ],
-          "dot": false,
-          "label": "British land"
-        }
-      ],
-      "lines": [
-        {
-          "id": "line-1818",
-          "lat": 49,
-          "from": -95.15,
-          "to": -114.07,
-          "label": "49° N",
-          "tone": "good"
-        },
-        {
-          "id": "claim",
-          "lat": 54.666666666666664,
-          "from": -130.6,
-          "to": -120.5,
-          "label": "54°40′ N",
-          "tone": "bad",
-          "hidden": true
-        }
-      ],
-      "regions": [
-        {
-          "id": "oregon",
-          "outline": [
-            [
-              42,
-              -124.3
-            ],
-            [
-              42,
-              -109.5
-            ],
-            [
-              44.5,
-              -110.5
-            ],
-            [
-              46,
-              -112.6
-            ],
-            [
-              47.5,
-              -112.8
-            ],
-            [
-              49,
-              -114.07
-            ],
-            [
-              51.4,
-              -116.3
-            ],
-            [
-              52.9,
-              -118.4
-            ],
-            [
-              54.666666666666664,
-              -120.5
-            ],
-            [
-              54.666666666666664,
-              -130.6
-            ],
-            [
-              52,
-              -128.4
-            ],
-            [
-              50.5,
-              -128.4
-            ],
-            [
-              48.4,
-              -124.7
-            ],
-            [
-              46.25,
-              -124.05
-            ]
-          ],
-          "label": "Oregon Country",
-          "tone": "warn"
-        }
-      ],
+      "illustrative": true,
       "steps": [
         {
-          "focus": "oregon",
+          "show": [
+            "oregon",
+            "oregon-name"
+          ],
+          "focus": [
+            "oregon",
+            "oregon-name"
+          ],
           "say": "For almost thirty years, British fur traders and American settlers both moved in."
         },
         {
+          "show": [
+            "claim-name"
+          ],
           "trace": [
             {
               "ref": "claim",
@@ -259,6 +179,7 @@
           ],
           "focus": [
             "claim",
+            "claim-name",
             "oregon"
           ],
           "say": "Some Americans wanted all of it, right up to Russian Alaska, at fifty four forty."
@@ -276,92 +197,26 @@
       ]
     },
     {
-      "type": "map",
+      "type": "svg",
       "chapter": "1846",
-      "title": "On to the Pacific",
+      "title": "The same line, on to the Pacific",
+      "picture": "west",
       "narration": "So they split the difference.",
-      "view": {
-        "box": [
-          [
-            45.5,
-            -131
-          ],
-          [
-            53,
-            -112
-          ]
-        ]
+      "labels": {
+        "line-1846": "same straight line",
+        "water": "through the water",
+        "vi": "Vancouver Island"
       },
-      "places": [
-        {
-          "id": "divide",
-          "at": [
-            49,
-            -114.07
-          ],
-          "label": "Rockies",
-          "side": "below"
-        },
-        {
-          "id": "vi",
-          "at": [
-            49.75,
-            -125.9
-          ],
-          "dot": false,
-          "label": "Vancouver Island",
-          "hidden": true
-        }
-      ],
-      "lines": [
-        {
-          "id": "line-1818",
-          "lat": 49,
-          "from": -95.15,
-          "to": -114.07,
-          "label": "49° N",
-          "tone": "good"
-        },
-        {
-          "id": "line-1846",
-          "lat": 49,
-          "from": -114.07,
-          "to": -123.32,
-          "label": "1846",
-          "tone": "good"
-        }
-      ],
-      "routes": [
-        {
-          "id": "water",
-          "stops": [
-            [
-              49,
-              -123.32
-            ],
-            [
-              48.77,
-              -123.22
-            ],
-            [
-              48.42,
-              -123.2
-            ],
-            [
-              48.29,
-              -123.7
-            ],
-            [
-              48.49,
-              -124.73
-            ]
-          ],
-          "tone": "good",
-          "hidden": true
-        }
-      ],
       "steps": [
         {
+          "hide": [
+            "claim",
+            "claim-name"
+          ],
+          "tint": {
+            "oregon": "dim",
+            "oregon-name": "dim"
+          },
           "trace": [
             {
               "ref": "line-1846",
@@ -385,131 +240,38 @@
             "water",
             "vi"
           ],
+          "camera": {
+            "on": [
+              "water",
+              "vi"
+            ],
+            "zoom": 2.5
+          },
           "say": "At the coast it swings south through the water, so the whole of Vancouver Island stayed British."
         }
       ]
     },
     {
-      "type": "map",
+      "type": "svg",
       "chapter": "Point Roberts",
-      "title": "The leftover tip",
+      "title": "A tip the line cut off",
       "narration": "But a straight line drawn on a map does not care what it cuts.",
-      "view": {
-        "box": [
-          [
-            48.75,
-            -123.6
-          ],
-          [
-            49.25,
-            -122.6
-          ]
-        ]
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<path id=\"shore\" d=\"M855,343 L660,160 L540,183 L420,366 L360,183 L420,23 L270,23 L255,-183 M-15,571 L-270,434 M-495,91 L-15,571 L-15,571 M1005,800 L855,343\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<line id=\"line\" x1=\"1199.8\" y1=\"320\" x2=\"0.2\" y2=\"320\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"lat\" x=\"1050\" y=\"304\" font-size=\"26\" text-anchor=\"middle\" class=\"fill-good\">49° N</text>\n<polygon id=\"tip\" points=\"404.3,320 487.1,320 472.1,355.7 407.3,383.5 406.1,347.4\" class=\"tone-bad\" stroke-width=\"3\"/>\n<text id=\"roberts\" x=\"447\" y=\"453\" font-size=\"26\" text-anchor=\"middle\">Point Roberts</text>\n<polyline id=\"drive\" points=\"435,354.3 442.5,251.4 540,160 690,182.9 914.9,320\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"4\" stroke-dasharray=\"12 8\"/>\n<g id=\"blaine\"><circle cx=\"914.9\" cy=\"320\" r=\"7\" fill=\"var(--text)\"/><text id=\"blaine-name\" x=\"929\" y=\"356\" font-size=\"24\" text-anchor=\"start\">Blaine, WA</text></g>\n</svg>",
+      "hidden": [
+        "tip",
+        "roberts",
+        "drive",
+        "blaine"
+      ],
+      "labels": {
+        "tip": "tip",
+        "line": "slices",
+        "roberts": "Point Roberts",
+        "drive": "through Canada",
+        "blaine": "rest of their country"
       },
-      "places": [
-        {
-          "id": "roberts",
-          "at": [
-            48.955,
-            -123.062
-          ],
-          "dot": false,
-          "label": "Point Roberts",
-          "hidden": true
-        },
-        {
-          "id": "blaine",
-          "at": [
-            49,
-            -122.75
-          ],
-          "label": "Blaine, WA",
-          "side": "right",
-          "hidden": true
-        }
-      ],
-      "lines": [
-        {
-          "id": "line",
-          "lat": 49,
-          "from": -122.6,
-          "to": -123.32,
-          "label": "49° N",
-          "tone": "good"
-        }
-      ],
-      "regions": [
-        {
-          "id": "tip",
-          "outline": [
-            [
-              49,
-              -123.0905
-            ],
-            [
-              49,
-              -123.0353
-            ],
-            [
-              48.9844,
-              -123.0453
-            ],
-            [
-              48.9722,
-              -123.0885
-            ],
-            [
-              48.988,
-              -123.0893
-            ]
-          ],
-          "tone": "warn",
-          "hidden": true
-        }
-      ],
-      "routes": [
-        {
-          "id": "drive",
-          "stops": [
-            [
-              48.985,
-              -123.07
-            ],
-            [
-              49.03,
-              -123.065
-            ],
-            [
-              49.07,
-              -123
-            ],
-            [
-              49.06,
-              -122.9
-            ],
-            [
-              49,
-              -122.75
-            ]
-          ],
-          "label": "about 40 km by road",
-          "hidden": true
-        }
-      ],
       "steps": [
         {
-          "view": {
-            "box": [
-              [
-                48.86,
-                -123.32
-              ],
-              [
-                49.1,
-                -122.8
-              ]
-            ]
-          },
           "show": [
             "tip",
             "roberts"
@@ -522,29 +284,21 @@
           "say": "Near the coast it slices the tip off a Canadian peninsula. That tip, Point Roberts, is in the United States."
         },
         {
-          "tint": {
-            "tip": "accent"
-          },
           "focus": [
             "tip",
             "roberts"
           ],
-          "callout": "12.65 km², 1,191 people",
+          "draw": [
+            {
+              "write": "12.65 km², 1,191 people",
+              "near": "roberts",
+              "side": "below",
+              "when": "twelve square"
+            }
+          ],
           "say": "About twelve square kilometres, and some twelve hundred people."
         },
         {
-          "view": {
-            "box": [
-              [
-                48.85,
-                -123.3
-              ],
-              [
-                49.15,
-                -122.55
-              ]
-            ]
-          },
           "show": [
             "blaine"
           ],
@@ -559,7 +313,15 @@
             "tip",
             "blaine"
           ],
-          "say": "To drive home to the rest of their country, they cross the border twice, and about forty kilometres through Canada."
+          "say": "To drive home to the rest of their country, they cross the border twice, and about forty kilometres through Canada.",
+          "draw": [
+            {
+              "write": "about 40 km by road",
+              "near": "drive",
+              "side": "above",
+              "when": "forty kilometres"
+            }
+          ]
         }
       ]
     }

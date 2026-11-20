@@ -5,6 +5,7 @@
 
 import { inkBoard } from '../../shared/ink.mjs';
 import { plainText } from '../../shared/markup.mjs';
+import { lookOf } from '../../shared/normalize.mjs';
 import { STATE_TYPES } from '../../shared/state-steps.mjs';
 import { sceneSteps } from '../../shared/steps.mjs';
 import { tintEntries } from '../../shared/storyboard-json.mjs';
@@ -121,9 +122,10 @@ function checkPictures(sb, explain, warnings) {
     );
 }
 
-export function checkStyle(sb, { explain }, errors, warnings) {
-  if (sb.look !== undefined && sb.look !== 'board')
-    errors.push(`look: must be "board", or left out for the default look (got ${JSON.stringify(sb.look)})`);
+export function checkStyle(sb, { explain, drawnExplain = explain }, errors, warnings) {
+  if (sb.look !== undefined && sb.look !== 'board' && sb.look !== 'plain')
+    errors.push(`look: must be "board" or "plain", or left out for the default (got ${JSON.stringify(sb.look)})`);
+  const board = lookOf(sb, drawnExplain) === 'board';
   const tones = sb.tones;
   let meant = null;
   if (tones !== undefined) {
@@ -147,21 +149,17 @@ export function checkStyle(sb, { explain }, errors, warnings) {
       );
     checkStill(s, p, warnings);
     checkInkTime(s, p, warnings);
-    if (sb.look === 'board' && typeof s.type === 'string' && !DRAWN_ON_BOARD.includes(s.type))
-      slides.push(`${i} (${s.type})`);
+    if (board && typeof s.type === 'string' && !DRAWN_ON_BOARD.includes(s.type)) slides.push(`${i} (${s.type})`);
     for (const { tone, at } of tonesUsed(s)) {
       if (meant && !meant.has(tone) && !unmeant.has(tone)) unmeant.set(tone, `${p} ${at}`);
       if (!meant && !firstTone) firstTone = `${p} ${at}`;
     }
   });
   checkPictures(sb, explain, warnings);
-  if (slides.length)
+  const drawing = sb.scenes.some((s) => isObj(s) && s.type === 'svg') || sb.scenes.length >= PICTURE_SCENES;
+  if (slides.length && drawing)
     warnings.push(
-      `look: on the board, scene${slides.length > 1 ? 's' : ''} ${slides.join(', ')} ${slides.length > 1 ? 'are slides' : 'is a slide'} in the middle of a drawing; draw ${slides.length > 1 ? 'them' : 'it'} on the picture instead: points as labels written on with ink, rows as a handwritten list, numbers as bars drawn on. Real commands and code keep their terminal and code scenes`,
-    );
-  if (explain && sb.look === undefined && sb.scenes.length >= PICTURE_SCENES)
-    warnings.push(
-      'look: none; an explanation is easier to follow drawn by hand, on one picture that grows: set "look": "board" and draw it in svg scenes, keeping terminal and code scenes for real commands and code; see references/pictures.md',
+      `look: on the board, scene${slides.length > 1 ? 's' : ''} ${slides.join(', ')} ${slides.length > 1 ? 'are slides' : 'is a slide'} in the middle of a drawing; draw ${slides.length > 1 ? 'them' : 'it'} on the picture instead: points as labels written on with ink, rows as a handwritten list, numbers as bars drawn on. Real commands and code keep their terminal and code scenes, and "look": "plain" turns the board off`,
     );
   if (firstTone)
     warnings.push(
