@@ -6,6 +6,8 @@
 
 **Labels inside a coloured box are readable on the board.** The hatching is thinner, further apart and fainter.
 
+**A picture keeps what was moved.** When the next scene draws the same picture, a part the scene before moved, reshaped or relabelled stays as it ended instead of jumping back, and can be moved on from there. The warning about parts jumping back is gone.
+
 ## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).

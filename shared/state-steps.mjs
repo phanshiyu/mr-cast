@@ -188,14 +188,29 @@ const MODELS = {
     moveNames: () => [],
   },
   svg: {
+    // A scene that continues a picture starts with the moves, morphs and set text the scene before it ended on,
+    // which shared/pictures.mjs puts in its `carried`; a step's move is still from where the drawing puts the part.
     initial(scene) {
       const { ids } = svgOf(scene.svg);
+      const carried = (field) => {
+        const record = scene.carried?.[field];
+        return Object.fromEntries(
+          Object.entries(record && typeof record === 'object' ? record : {}).flatMap(([id, v]) =>
+            ids.has(id) && typeof v === 'string' ? [[`s:${id}`, v]] : [],
+          ),
+        );
+      };
       return {
-        values: Object.fromEntries(
-          [...ids].flatMap(([id, node]) => (node?.tag === 'text' ? [[`s:${id}`, textOf(node)]] : [])),
-        ),
+        values: {
+          ...Object.fromEntries(
+            [...ids].flatMap(([id, node]) => (node?.tag === 'text' ? [[`s:${id}`, textOf(node)]] : [])),
+          ),
+          ...carried('set'),
+        },
         places: {},
         hidden: Object.fromEntries(list(scene.hidden).flatMap((id) => (ids.has(id) ? [[`s:${id}`, true]] : []))),
+        transforms: carried('move'),
+        shapes: carried('morph'),
       };
     },
     // A step can rewrite a <text> element; the initial state holds each one's own text.
@@ -655,11 +670,11 @@ export function walkStates(scene) {
     }
   };
   let state = {
+    transforms: {},
+    shapes: {},
     ...model.initial(scene),
     tints: {},
     callout: typeof scene.callout === 'string' ? scene.callout : '',
-    transforms: {},
-    shapes: {},
     traces: {},
     spans: {},
     ...(model.sort ? { sort: scene.sort === true } : {}),

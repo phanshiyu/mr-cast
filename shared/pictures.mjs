@@ -1,8 +1,9 @@
 // Pictures: drawings a storyboard names once in `pictures` and svg scenes draw with `"picture": name` (ADR 47).
 // A scene that draws the same picture as the scene before it continues it: it starts with what the earlier scene
-// ended on shown and tinted, and the engine holds the picture still between the two.
+// ended on shown, tinted, moved, morphed and set, and the engine holds the picture still between the two.
 
 import { walkStates } from './state-steps.mjs';
+import { svgOf, textOf } from './svg.mjs';
 
 const isObj = (v) => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 
@@ -21,21 +22,38 @@ const continuesPicture = (scenes, i, storyboard) => {
   return i > 0 && name !== null && pictureOf(scenes[i - 1], storyboard) === name;
 };
 
-/** What a scene ends on, as the `hidden` ids and `tint` record a continuing scene starts from. */
+/**
+ * What a scene ends on, as the `hidden` ids and `tint` record a continuing scene starts from, and the moves, morphs
+ * and set text it carries, by element id.
+ */
 function endOf(scene) {
   const { states } = walkStates(scene);
   const last = states[states.length - 1];
-  if (!last) return { hidden: [], tint: {} };
+  if (!last) return { hidden: [], tint: {}, carried: {} };
   const id = (key) => key.slice(2);
+  const byId = (record, keep) =>
+    Object.fromEntries(
+      Object.entries(record)
+        .filter(([key, v]) => keep(id(key), v))
+        .map(([key, v]) => [id(key), String(v)]),
+    );
+  const { ids } = svgOf(scene.svg);
+  const carried = {
+    move: byId(last.transforms, (_, t) => t !== ''),
+    morph: byId(last.shapes, () => true),
+    set: byId(last.values, (name, v) => ids.get(name)?.tag === 'text' && String(v) !== textOf(ids.get(name))),
+  };
   return {
     hidden: Object.keys(last.hidden).map(id),
     tint: Object.fromEntries(Object.entries(last.tints).map(([key, tone]) => [id(key), tone])),
+    carried: Object.fromEntries(Object.entries(carried).filter(([, record]) => Object.keys(record).length)),
   };
 }
 
 /**
  * The storyboard with each picture scene's `svg` filled in from `pictures`, and each scene that continues a picture
- * starting from what the scene before it ended on, unless it sets its own `hidden` or `tint`. Returns the storyboard
+ * starting from what the scene before it ended on: what was shown and tinted, unless it sets its own `hidden` or
+ * `tint`, and, in `carried`, the parts moved, morphed and set, as `move`, `morph` and `set` records. Returns the storyboard
  * itself when it has no picture scenes.
  */
 export function expandPictures(storyboard) {
@@ -56,6 +74,7 @@ export function expandPictures(storyboard) {
         ...next,
         ...(scene.hidden === undefined ? { hidden: end.hidden } : {}),
         ...(scene.tint === undefined ? { tint: end.tint } : {}),
+        ...(Object.keys(end.carried).length ? { carried: end.carried } : {}),
       };
     }
     out.push(next);
@@ -65,8 +84,7 @@ export function expandPictures(storyboard) {
 
 /**
  * Problems with `pictures` and `picture`, as { at, message, level }: a picture that is not markup, a scene that names
- * a picture the storyboard lacks or draws one on a scene type other than svg, a scene with both `svg` and `picture`,
- * and, as a warning, a continuing scene whose picture jumps because the scene before it moved, morphed or set text.
+ * a picture the storyboard lacks or draws one on a scene type other than svg, and a scene with both `svg` and `picture`.
  */
 export function pictureProblems(storyboard) {
   const problems = [];
@@ -92,18 +110,6 @@ export function pictureProblems(storyboard) {
       });
     else if (scene.svg !== undefined)
       problems.push({ at, message: 'the scene has its own svg too; give it one or the other', level: 'error' });
-    else if (continuesPicture(scenes, i, storyboard)) {
-      const before = scenes[i - 1];
-      const changed = (Array.isArray(before.steps) ? before.steps : []).some(
-        (st) => isObj(st?.move) || isObj(st?.morph) || isObj(st?.set),
-      );
-      if (changed)
-        problems.push({
-          at,
-          message: `continues scene ${i - 1}'s picture, which moves, morphs or sets text; this scene starts from the drawing as written, so those parts jump back`,
-          level: 'warning',
-        });
-    }
   });
   return problems;
 }

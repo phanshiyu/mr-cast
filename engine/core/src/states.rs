@@ -532,6 +532,9 @@ pub struct ClosureModel<'a> {
     pub move_key: Option<&'a MoveKey<'a>>,
     /// An svg's morphs: whether path `id` can morph into `target` from this state.
     pub morph: Option<&'a MorphCheck<'a>>,
+    /// An svg's moves and morphs before any step: those a continued picture carries from the scene before.
+    pub initial_transforms: HashMap<String, String>,
+    pub initial_shapes: HashMap<String, String>,
 }
 
 impl Refs for ClosureModel<'_> {
@@ -542,7 +545,12 @@ impl Refs for ClosureModel<'_> {
 
 impl StateModel for ClosureModel<'_> {
     fn initial(&self, _scene: &Value) -> SceneState {
-        let mut s = SceneState { hidden: self.initial_hidden.clone(), ..SceneState::default() };
+        let mut s = SceneState {
+            hidden: self.initial_hidden.clone(),
+            transforms: self.initial_transforms.clone(),
+            shapes: self.initial_shapes.clone(),
+            ..SceneState::default()
+        };
         s.values.extend(self.initial_values.iter().cloned());
         s
     }

@@ -25,6 +25,11 @@ at the old density hid the label inside any tinted box.
   in the tint's colour reads on top of it.
 - **The worked examples are redrawn.** Each is svg scenes on the board, with real code and commands kept as code and
   terminal scenes. The scene-type demos in `examples/primitives` set `"look": "plain"`, since they show each scene type.
+- **Moves carry across a picture.** A scene that continues a picture starts with what the scene before it moved,
+  morphed and set text on as that scene ended, not as the drawing is written, so a pointer moved in one scene stays put
+  in the next and moves on from there. Redrawing the examples showed the old rule (ADR 47) made agents hide and show
+  copies of a pointer instead of moving it. `expandPictures` hands the scene what it carries, and a move is still
+  written from where the drawing puts the part. The warning about parts jumping back is gone.
 
 ## Consequences
 

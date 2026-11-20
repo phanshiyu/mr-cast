@@ -206,7 +206,6 @@ struct Svg {
 struct Draw<'a> {
     s: &'a StateFrame<'a>,
     focus: &'a FocusSpotlight<'a>,
-    initial: &'a crate::states::Values,
     frame: f64,
     scale: f64,
     traces: HashMap<String, f64>,
@@ -447,9 +446,8 @@ impl Draw<'_> {
             trace,
             flow,
         };
-        let rewritten = own.as_ref().is_some_and(|o| value.is_some_and(|v| self.me.states[0].values.get(o) != Some(v)))
-            && value.is_some();
-        let _ = self.initial;
+        // Text a step or a continued picture rewrote, rather than the drawing's own.
+        let rewritten = value.is_some_and(|v| value_text(v) != text_of(n));
         let children = if rewritten {
             xml_escape(&value_text(value.unwrap()))
         } else {
@@ -856,19 +854,8 @@ impl Svg {
         let spans = self.span_progress(sf, segments, k, frame);
         let named = self.named_progress(sf, segments, k, frame);
         let drawn = self.drawn_progress(sf, segments, k, frame);
-        let d = Draw {
-            s: sf,
-            focus,
-            initial: &self.states[0].values,
-            frame,
-            scale,
-            traces,
-            spans,
-            named,
-            drawn,
-            defs: RefCell::new(Vec::new()),
-            me: self,
-        };
+        let d =
+            Draw { s: sf, focus, frame, scale, traces, spans, named, drawn, defs: RefCell::new(Vec::new()), me: self };
         let root = &self.drawing.root;
         let base = Inherited {
             fill: root.attr("fill").is_some(),
@@ -1074,12 +1061,24 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     }
     let list = |k: &str| scene.get(k).and_then(Value::as_array).cloned().unwrap_or_default();
     let ids = drawing.id_map();
+    // A scene that continues a picture starts with the moves, morphs and set text the scene before it ended on, which
+    // shared/pictures.mjs puts in its `carried`.
+    let carried = |field: &str| -> Vec<(String, String)> {
+        let record = scene.get("carried").and_then(|c| c.get(field)).and_then(Value::as_object);
+        record
+            .into_iter()
+            .flatten()
+            .filter(|(id, _)| ids.contains_key(id.as_str()))
+            .filter_map(|(id, v)| Some((format!("s:{id}"), v.as_str()?.to_string())))
+            .collect()
+    };
     let mut initial_values = Vec::new();
     for (id, e) in &ids {
         if e.tag == "text" {
             initial_values.push((format!("s:{id}"), Value::String(text_of(e))));
         }
     }
+    initial_values.extend(carried("set").into_iter().map(|(k, v)| (k, Value::String(v))));
     let initial_hidden = list("hidden")
         .iter()
         .filter_map(Value::as_str)
@@ -1119,6 +1118,8 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         trace_key: &trace_key,
         move_key: Some(&move_key),
         morph: Some(&morph),
+        initial_transforms: carried("move").into_iter().collect(),
+        initial_shapes: carried("morph").into_iter().collect(),
     };
     let states = walk_states(&model, scene);
     let targets = crate::targets::target_steps_with(scene, |r| Some(resolve(r)).filter(|k| !k.is_empty()));
