@@ -6,6 +6,8 @@
 
 **Labels inside a coloured box are readable on the board.** The hatching is thinner, further apart and fainter.
 
+**Every character in a drawing's text shows.** Symbols the lettering lacks, such as `∞ π → ⋮`, subscripts and superscripts (`₂ ²⁵⁶ ᵏ`), are drawn from a font that has them, one character at a time, instead of as empty boxes or by switching the whole line to another font.
+
 ## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).
