@@ -255,6 +255,10 @@ struct Draw<'a> {
     /// How far each element a step shows has drawn on, from its start or the word that names it.
     drawn: HashMap<String, f64>,
     defs: RefCell<Vec<String>>,
+    /// Where each lit element's glow is worked out, in the element's own user units, by item key; None while the
+    /// frame is first laid out to find them, when `glowing` gathers the elements that glow.
+    regions: Option<HashMap<String, (f64, f64, f64, f64)>>,
+    glowing: RefCell<Vec<String>>,
     me: &'a Svg,
 }
 
@@ -319,13 +323,21 @@ impl Draw<'_> {
         self.spans.get(key).copied().unwrap_or(self.s.t)
     }
 
-    fn def_filter(&self, shadows: &[(f64, &str, f64)]) -> String {
+    fn def_filter(&self, key: &str, shadows: &[(f64, &str, f64)]) -> String {
         let id = format!("{}glow{}", self.me.prefix, self.defs.borrow().len());
-        // The glow's region is the drawing and the reach of its widest blur. Without one, resvg sizes its buffers for
-        // an effectively endless region and a frame with a lit shape takes seconds.
-        let [vx, vy, vw, vh] = self.me.drawing.view_box;
+        // The glow's region is the part of the lit element in the frame and the reach of its widest blur. resvg
+        // blurs all of a region, so one as big as the drawing made each lit shape blur a whole frame, and under a
+        // camera's zoom many frames; an element it could not find (a tspan) keeps the drawing.
         let reach = shadows.iter().map(|s| s.0).fold(0.0, f64::max) * 1.5;
-        let region = (vx - reach, vy - reach, vw + 2.0 * reach, vh + 2.0 * reach);
+        let [vx, vy, vw, vh] = self.me.drawing.view_box;
+        let (x, y, w, h) = match &self.regions {
+            Some(regions) => regions.get(key).copied().unwrap_or((vx, vy, vw, vh)),
+            None => {
+                self.glowing.borrow_mut().push(key.to_string());
+                (vx, vy, vw, vh)
+            }
+        };
+        let region = (x - reach, y - reach, w + 2.0 * reach, h + 2.0 * reach);
         self.defs.borrow_mut().push(drop_shadow_filter_in(&id, region, shadows));
         format!("url(#{id})")
     }
@@ -478,7 +490,7 @@ impl Draw<'_> {
                     props.set("stroke-width", fnum(sw * (1.0 + 0.9 * g)));
                 }
             } else if g > 0.0 {
-                let f = self.def_filter(&[(3.0 * g, ACCENT, 1.0), (16.0 * g, ACCENT, 0.45)]);
+                let f = self.def_filter(o, &[(3.0 * g, ACCENT, 1.0), (16.0 * g, ACCENT, 0.45)]);
                 props.set("filter", f);
             }
             let (was, is) = (self.s.before.transforms.get(o), self.s.now.transforms.get(o));
@@ -923,8 +935,47 @@ impl Svg {
         let spans = self.span_progress(sf, segments, k, frame);
         let named = self.named_progress(sf, segments, k, frame);
         let drawn = self.drawn_progress(sf, segments, k, frame);
-        let d =
-            Draw { s: sf, focus, frame, scale, traces, spans, named, drawn, defs: RefCell::new(Vec::new()), me: self };
+        let (w, h) = (self.box_w + 2.0 * BLEED, self.box_h + 2.0 * BLEED);
+        let rect = match view {
+            Some(v) if v.zoom != 1.0 => {
+                let z = v.zoom;
+                (v.x - self.box_w / (2.0 * z) - BLEED / z, v.y - self.box_h / (2.0 * z) - BLEED / z, w / z, h / z)
+            }
+            _ => (-BLEED, -BLEED, w, h),
+        };
+        let mut d = Draw {
+            s: sf,
+            focus,
+            frame,
+            scale,
+            traces,
+            spans,
+            named,
+            drawn,
+            defs: RefCell::new(Vec::new()),
+            regions: None,
+            glowing: RefCell::new(Vec::new()),
+            me: self,
+        };
+        let svg = self.compose(&d, rect, (scale, left, top));
+        if d.glowing.borrow().is_empty() {
+            return (svg, rect);
+        }
+        // Lit elements glow: lay the frame out to find where each is, then draw it again with each glow's region
+        // around its element.
+        let keys = std::mem::take(&mut *d.glowing.borrow_mut());
+        let ids: Vec<String> = keys.iter().map(|k| format!("{}{}", self.prefix, &k[2..])).collect();
+        let regions = media::svg_local_boxes(&svg, &ids, (w, h));
+        d.regions = Some(keys.into_iter().zip(regions).filter_map(|(k, r)| Some((k, r?))).collect());
+        d.defs.borrow_mut().clear();
+        (self.compose(&d, rect, (scale, left, top)), rect)
+    }
+
+    /// The SVG markup of the drawing as `d` draws it, showing `rect` of the content box.
+    fn compose(&self, d: &Draw, rect: (f64, f64, f64, f64), (scale, left, top): (f64, f64, f64)) -> String {
+        let frame = d.frame;
+        let focus = d.focus;
+        let (w, h) = (self.box_w + 2.0 * BLEED, self.box_h + 2.0 * BLEED);
         let root = &self.drawing.root;
         let base = Inherited {
             fill: root.attr("fill").is_some(),
@@ -968,14 +1019,6 @@ impl Svg {
             root_props.set(name, prefix_refs(name, &resolve_vars(value), &self.prefix));
         }
         root_props.set("transform", format!("translate({} {}) scale({})", fnum(left), fnum(top), fnum(scale)));
-        let (w, h) = (self.box_w + 2.0 * BLEED, self.box_h + 2.0 * BLEED);
-        let rect = match view {
-            Some(v) if v.zoom != 1.0 => {
-                let z = v.zoom;
-                (v.x - self.box_w / (2.0 * z) - BLEED / z, v.y - self.box_h / (2.0 * z) - BLEED / z, w / z, h / z)
-            }
-            _ => (-BLEED, -BLEED, w, h),
-        };
         let drawing = el("g", &root_props, &body);
         let svg = format!(
             "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{w}\" height=\"{h}\" viewBox=\"{} {} {} {}\"><defs>{}</defs>{}</svg>",
@@ -986,8 +1029,7 @@ impl Svg {
             d.defs.borrow().join(""),
             drawing
         );
-        let svg = if crate::look::board() { crate::look::swap_markup(&svg) } else { svg };
-        (svg, rect)
+        if crate::look::board() { crate::look::swap_markup(&svg) } else { svg }
     }
 
     /// The box of every element with an id where step k leaves the drawing, by item key ("s:<id>"), in the content
