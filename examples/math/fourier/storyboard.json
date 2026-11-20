@@ -1,141 +1,147 @@
 {
   "title": "A square wave from sine waves",
   "subtitle": "How smooth waves add up to a sharp jump, and the bump that never goes away",
+  "tones": {
+    "good": "the waves and their sum",
+    "bad": "where the sum misses the square wave"
+  },
+  "pictures": {
+    "waves": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"axes\"><line x1=\"80\" y1=\"320\" x2=\"1160\" y2=\"320\" stroke=\"var(--muted)\" stroke-width=\"2\"/><line x1=\"80\" y1=\"41\" x2=\"80\" y2=\"599\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<line x1=\"350\" y1=\"312\" x2=\"350\" y2=\"328\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"350\" y=\"360\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">1.57</text><line x1=\"620\" y1=\"312\" x2=\"620\" y2=\"328\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"620\" y=\"360\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">3.14</text><line x1=\"890\" y1=\"312\" x2=\"890\" y2=\"328\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"890\" y=\"360\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">4.71</text><line x1=\"1160\" y1=\"312\" x2=\"1160\" y2=\"328\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"1160\" y=\"360\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">6.28</text>\n<text x=\"66\" y=\"142\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">1</text><text x=\"66\" y=\"514\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">−1</text>\n<line x1=\"74\" y1=\"134\" x2=\"86\" y2=\"134\" stroke=\"var(--muted)\" stroke-width=\"2\"/><line x1=\"74\" y1=\"506\" x2=\"86\" y2=\"506\" stroke=\"var(--muted)\" stroke-width=\"2\"/></g>\n<path id=\"square\" d=\"M80,320 V134 H620 V506 H1160 V320\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"12 9\"/>\n<path id=\"sin1\" d=\"M80.0,320.0 L130.0,266.7 L166.4,230.4 L183.5,214.6 L200.2,200.3 L215.9,187.8 L231.2,176.7 L246.9,166.4 L262.3,157.7 L277.1,150.5 L292.0,144.5 L306.8,139.8 L321.2,136.6 L335.6,134.7 L350.0,134.0 L365.3,134.7 L381.1,137.0 L396.3,140.7 L412.1,146.0 L427.8,152.8 L444.1,161.2 L460.7,171.3 L477.4,182.8 L493.1,194.8 L509.8,208.7 L526.9,224.1 L544.9,241.2 L580.9,278.0 L649.7,352.0 L678.0,381.6 L708.2,411.3 L735.2,435.5 L751.4,448.7 L766.7,460.2 L781.6,470.2 L796.4,479.1 L810.8,486.6 L825.2,492.9 L839.1,497.9 L853.1,501.7 L870.2,504.8 L886.9,506.0 L903.5,505.4 L920.6,503.1 L937.3,499.0 L954.4,493.1 L971.9,485.3 L989.4,475.7 L1007.0,464.5 L1025.0,451.5 L1043.5,436.7 L1062.8,419.7 L1082.6,401.0 L1104.2,379.3 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<path id=\"sinA\" d=\"M80.0,320.0 L130.0,252.1 L166.4,205.9 L183.5,185.9 L200.2,167.6 L215.9,151.7 L231.2,137.5 L246.9,124.5 L262.3,113.4 L277.1,104.2 L292.0,96.6 L306.8,90.6 L321.2,86.5 L335.6,84.0 L350.0,83.2 L365.3,84.1 L381.1,87.0 L396.3,91.7 L412.1,98.5 L427.8,107.1 L444.1,117.8 L460.7,130.6 L477.4,145.3 L493.1,160.6 L509.8,178.3 L526.9,197.9 L544.9,219.7 L580.9,266.5 L649.7,360.7 L678.0,398.5 L708.2,436.3 L735.2,467.1 L751.4,483.9 L766.7,498.5 L781.6,511.2 L796.4,522.6 L810.8,532.1 L825.2,540.2 L839.1,546.5 L853.1,551.4 L870.2,555.3 L886.9,556.8 L903.5,556.1 L920.6,553.1 L937.3,547.9 L954.4,540.4 L971.9,530.4 L989.4,518.3 L1007.0,504.0 L1025.0,487.5 L1043.5,468.6 L1062.8,446.9 L1082.6,423.1 L1104.2,395.5 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<path id=\"next3\" d=\"M80.0,320.0 L98.5,295.0 L112.4,277.7 L125.0,264.2 L136.7,254.0 L148.4,246.6 L159.6,242.3 L170.4,241.1 L175.8,241.5 L181.7,242.7 L191.1,246.4 L200.6,252.1 L210.5,260.0 L221.3,270.6 L240.2,293.3 L286.1,354.7 L298.7,369.4 L310.0,380.4 L322.5,390.1 L334.3,396.0 L340.1,397.8 L345.9,398.7 L351.3,398.9 L357.2,398.3 L367.1,395.5 L377.4,390.1 L388.3,382.0 L399.5,371.3 L408.9,360.7 L419.8,347.3 L466.1,285.3 L478.7,270.6 L489.9,259.6 L501.7,250.5 L512.9,244.5 L518.8,242.6 L524.1,241.5 L529.5,241.1 L535.0,241.4 L545.3,243.9 L556.1,249.1 L566.9,256.9 L578.1,267.3 L588.0,278.2 L598.9,291.5 L634.0,339.0 L646.5,355.3 L659.1,369.8 L670.4,380.8 L681.7,389.5 L692.5,395.3 L703.3,398.4 L708.6,398.9 L714.0,398.7 L724.4,396.5 L735.2,391.4 L746.4,383.5 L758.1,372.7 L768.0,361.8 L778.9,348.5 L813.9,301.0 L826.6,284.7 L838.7,270.6 L849.5,260.0 L859.8,251.7 L870.2,245.7 L880.1,242.2 L890.0,241.1 L900.4,242.3 L910.7,246.2 L921.5,252.7 L932.3,261.6 L943.1,272.6 L954.8,286.4 L999.3,346.2 L1018.2,368.9 L1029.1,379.6 L1039.0,387.6 L1048.4,393.4 L1057.8,397.2 L1063.7,398.5 L1069.1,398.9 L1074.5,398.7 L1080.3,397.7 L1091.6,393.4 L1103.3,386.0 L1115.0,375.8 L1127.6,362.3 L1141.5,345.0 L1160.0,320.0\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"10 8\"/>\n<path id=\"wave\" d=\"M80.0,320.0 L130.0,252.1 L166.4,205.9 L183.5,185.9 L200.2,167.6 L215.9,151.7 L231.2,137.5 L246.9,124.5 L262.3,113.4 L277.1,104.2 L292.0,96.6 L306.8,90.6 L321.2,86.5 L335.6,84.0 L350.0,83.2 L365.3,84.1 L381.1,87.0 L396.3,91.7 L412.1,98.5 L427.8,107.1 L444.1,117.8 L460.7,130.6 L477.4,145.3 L493.1,160.6 L509.8,178.3 L526.9,197.9 L544.9,219.7 L580.9,266.5 L649.7,360.7 L678.0,398.5 L708.2,436.3 L735.2,467.1 L751.4,483.9 L766.7,498.5 L781.6,511.2 L796.4,522.6 L810.8,532.1 L825.2,540.2 L839.1,546.5 L853.1,551.4 L870.2,555.3 L886.9,556.8 L903.5,556.1 L920.6,553.1 L937.3,547.9 L954.4,540.4 L971.9,530.4 L989.4,518.3 L1007.0,504.0 L1025.0,487.5 L1043.5,468.6 L1062.8,446.9 L1082.6,423.1 L1104.2,395.5 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<path id=\"n2\" d=\"M80.0,320.0 L100.3,264.8 L115.5,225.5 L129.5,192.7 L142.6,165.7 L155.1,143.4 L167.8,125.4 L174.0,118.0 L180.3,111.8 L186.7,106.7 L192.9,102.6 L202.9,98.5 L212.8,96.8 L223.1,97.4 L233.9,100.4 L243.8,104.9 L254.6,111.3 L296.0,141.2 L314.0,152.2 L323.9,156.8 L333.4,159.9 L342.4,161.7 L351.3,162.1 L359.0,161.5 L367.1,159.8 L375.2,157.1 L383.3,153.6 L392.3,148.7 L401.8,142.7 L438.2,116.2 L453.5,106.4 L462.0,102.1 L470.2,99.1 L477.8,97.3 L485.0,96.7 L493.6,97.6 L501.7,100.0 L509.8,104.2 L517.8,110.2 L525.5,117.6 L533.6,127.1 L541.7,138.5 L549.8,151.7 L557.9,166.5 L566.0,183.0 L583.1,222.2 L600.6,267.2 L649.3,398.7 L664.1,435.0 L678.0,465.5 L686.1,481.1 L694.3,495.1 L702.4,507.4 L710.0,517.4 L717.7,525.7 L725.8,532.7 L733.4,537.6 L741.5,541.1 L750.0,543.0 L758.6,543.1 L767.6,541.6 L777.0,538.3 L786.1,533.9 L796.0,527.8 L835.1,499.5 L852.7,488.5 L862.1,483.9 L871.5,480.6 L880.5,478.6 L889.6,477.9 L898.6,478.5 L907.5,480.3 L917.0,483.6 L926.4,488.0 L944.5,499.1 L985.0,528.4 L995.8,534.8 L1005.6,539.4 L1016.4,542.5 L1026.8,543.2 L1036.7,541.7 L1046.2,537.8 L1052.4,534.0 L1058.8,529.0 L1065.0,522.9 L1071.3,515.7 L1083.9,498.0 L1097.0,475.2 L1110.1,448.3 L1124.0,415.6 L1139.3,376.4 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/><path id=\"n3\" d=\"M80.0,320.0 L94.4,261.3 L105.2,220.1 L115.1,186.2 L124.1,159.6 L133.1,137.5 L142.1,120.5 L146.6,113.9 L151.1,108.5 L155.6,104.4 L160.6,101.2 L165.9,99.4 L171.8,99.0 L178.1,100.5 L184.4,103.4 L190.3,107.3 L196.6,112.5 L220.8,135.8 L231.2,144.5 L242.5,151.6 L247.9,153.8 L253.3,155.3 L258.6,155.9 L264.5,155.6 L270.4,154.5 L276.6,152.3 L289.3,145.6 L314.9,127.9 L326.1,121.2 L338.3,116.4 L344.2,115.2 L350.0,114.8 L360.4,116.0 L370.7,119.7 L382.4,126.2 L407.1,143.3 L417.9,149.8 L429.2,154.4 L434.6,155.5 L440.0,155.9 L445.9,155.4 L451.7,154.0 L457.6,151.6 L463.4,148.3 L476.0,138.6 L500.3,115.3 L510.2,107.0 L515.6,103.4 L520.5,101.0 L525.5,99.4 L530.0,99.0 L535.8,99.8 L541.3,102.2 L546.6,106.3 L552.0,112.1 L557.5,119.7 L562.4,128.4 L567.8,139.5 L573.2,152.4 L584.0,183.3 L595.3,221.7 L607.0,266.7 L639.4,398.0 L649.7,435.8 L659.1,466.3 L670.4,496.4 L675.8,508.1 L681.2,518.1 L686.6,526.1 L692.0,532.4 L697.4,536.9 L703.3,539.9 L708.2,541.0 L713.6,540.7 L719.0,539.2 L724.4,536.6 L736.1,527.9 L761.8,503.4 L773.9,493.5 L780.7,489.3 L786.9,486.5 L793.7,484.6 L800.0,484.1 L805.4,484.5 L810.8,485.6 L822.1,490.2 L832.9,496.7 L857.6,513.8 L869.3,520.3 L879.6,524.0 L890.0,525.2 L895.8,524.8 L901.7,523.6 L913.9,518.8 L925.1,512.1 L950.8,494.4 L963.4,487.7 L969.6,485.5 L975.5,484.4 L981.4,484.1 L987.2,484.8 L997.6,488.4 L1008.8,495.5 L1019.2,504.2 L1043.5,527.5 L1055.2,536.3 L1061.4,539.4 L1067.8,540.9 L1073.6,540.7 L1079.0,539.0 L1083.9,536.0 L1088.4,532.0 L1092.9,526.7 L1097.5,520.3 L1106.5,503.5 L1115.9,480.4 L1124.9,453.8 L1134.8,419.9 L1145.6,378.7 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/><path id=\"n5\" d=\"M80.0,320.0 L95.8,216.4 L101.6,183.5 L107.5,155.5 L113.3,133.1 L119.2,116.5 L125.0,105.9 L127.7,102.8 L130.8,100.8 L133.6,100.1 L136.7,100.5 L139.8,102.1 L143.0,104.7 L149.8,112.8 L164.6,135.1 L171.4,143.8 L175.4,147.8 L179.0,150.5 L182.6,152.3 L186.2,153.3 L192.5,152.7 L198.8,149.7 L205.6,144.5 L219.5,131.3 L225.8,126.0 L232.5,121.9 L239.3,119.8 L246.1,120.0 L253.3,122.6 L260.4,126.9 L280.3,141.3 L286.6,144.5 L292.4,146.0 L299.6,146.0 L306.8,144.0 L314.4,139.9 L329.3,129.9 L336.0,126.0 L343.3,123.2 L350.0,122.3 L355.9,123.0 L362.1,125.1 L368.9,128.8 L383.8,138.8 L390.5,142.7 L397.3,145.4 L404.0,146.3 L410.3,145.5 L416.6,143.1 L423.8,138.7 L444.5,123.8 L451.7,120.6 L458.0,119.6 L464.3,120.6 L471.0,123.8 L478.3,129.2 L493.1,143.3 L499.4,148.5 L506.2,152.2 L512.0,153.4 L515.6,152.9 L519.2,151.6 L526.4,146.1 L534.0,137.0 L548.5,115.4 L554.3,107.6 L560.6,101.9 L563.3,100.5 L566.0,100.1 L569.6,101.0 L572.8,103.3 L575.9,107.1 L579.0,112.6 L585.3,128.7 L591.6,151.7 L597.9,181.2 L605.1,221.8 L631.7,398.6 L638.0,436.8 L643.9,467.9 L650.6,497.3 L657.3,519.0 L660.5,526.5 L664.1,532.9 L667.7,537.2 L671.3,539.4 L674.0,539.9 L676.7,539.5 L679.4,538.1 L682.5,535.7 L689.3,527.8 L704.6,504.9 L712.3,495.3 L716.3,491.4 L720.4,488.7 L723.9,487.2 L728.0,486.6 L733.9,487.8 L740.6,491.5 L746.9,496.7 L761.8,510.8 L769.0,516.2 L775.7,519.4 L782.0,520.4 L788.3,519.4 L795.5,516.2 L816.2,501.3 L823.4,496.9 L829.7,494.5 L836.0,493.7 L842.8,494.6 L849.5,497.3 L856.3,501.2 L871.1,511.2 L877.9,514.9 L884.2,517.0 L890.0,517.7 L896.8,516.8 L904.0,514.0 L910.7,510.1 L925.6,500.1 L933.2,496.0 L940.4,494.0 L947.6,494.0 L953.4,495.5 L959.8,498.7 L979.5,513.1 L986.8,517.4 L993.9,520.0 L1000.7,520.2 L1007.5,518.1 L1014.2,514.0 L1020.5,508.7 L1034.5,495.5 L1041.2,490.3 L1047.5,487.3 L1053.8,486.7 L1057.4,487.7 L1061.0,489.5 L1064.6,492.2 L1068.7,496.2 L1075.4,504.9 L1090.3,527.2 L1097.0,535.3 L1100.2,537.9 L1103.3,539.5 L1106.5,539.9 L1109.1,539.2 L1112.3,537.2 L1115.0,534.1 L1120.8,523.5 L1126.7,506.9 L1132.5,484.5 L1138.4,456.5 L1144.3,423.6 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<path id=\"n13\" d=\"M80.0,320.0 L86.3,212.7 L90.8,153.0 L93.0,131.3 L95.3,115.5 L97.5,105.5 L98.9,102.2 L100.3,100.7 L101.2,100.7 L102.5,101.8 L105.2,107.8 L112.8,135.8 L116.0,145.4 L118.7,150.5 L121.4,152.3 L123.7,151.3 L126.3,147.8 L137.2,125.3 L139.8,122.3 L142.1,121.4 L144.4,122.0 L146.6,123.9 L157.4,140.1 L160.1,142.7 L162.8,143.7 L165.1,143.3 L167.3,141.8 L178.1,129.0 L180.8,126.9 L183.5,126.1 L185.8,126.4 L188.0,127.5 L198.8,138.3 L201.5,140.1 L204.2,140.8 L206.4,140.6 L209.2,139.3 L219.5,130.2 L222.2,128.6 L224.9,128.0 L227.2,128.2 L229.9,129.3 L240.7,137.7 L245.6,139.5 L247.9,139.3 L250.6,138.4 L261.4,130.6 L266.3,128.9 L271.3,129.9 L282.0,137.2 L287.0,138.8 L289.7,138.6 L292.4,137.7 L302.8,131.0 L307.7,129.3 L312.6,130.2 L323.9,137.2 L329.3,138.6 L334.7,137.1 L345.9,130.3 L348.6,129.5 L351.3,129.5 L355.9,131.1 L365.8,137.3 L370.7,138.6 L375.2,137.6 L386.0,130.9 L391.4,129.3 L396.3,130.5 L406.7,137.2 L412.1,138.9 L417.1,137.7 L427.8,130.4 L430.6,129.2 L433.3,128.9 L435.9,129.3 L438.7,130.6 L449.5,138.4 L453.9,139.5 L458.4,138.2 L469.3,129.8 L471.9,128.4 L474.7,127.9 L476.9,128.3 L479.6,129.6 L490.4,139.0 L493.1,140.4 L495.3,140.8 L497.6,140.4 L500.3,139.0 L511.1,128.2 L513.8,126.5 L516.0,126.0 L518.3,126.5 L521.0,128.2 L531.8,141.0 L534.5,143.0 L536.8,143.7 L539.0,143.2 L541.7,141.1 L553.0,124.4 L555.7,122.0 L557.9,121.4 L560.1,122.3 L562.8,125.3 L573.7,147.8 L576.4,151.3 L578.6,152.3 L581.3,150.5 L584.0,145.4 L587.2,135.8 L594.8,107.8 L597.0,102.5 L598.4,100.9 L599.3,100.6 L600.6,101.5 L602.0,104.2 L604.3,113.0 L606.5,127.6 L609.2,153.0 L614.1,219.7 L624.5,398.6 L629.5,471.2 L632.1,500.7 L634.9,521.9 L637.5,534.5 L638.9,537.8 L640.3,539.3 L641.1,539.3 L642.5,538.2 L645.2,532.2 L652.9,504.2 L656.0,494.6 L658.7,489.5 L661.4,487.7 L663.6,488.7 L666.4,492.2 L677.1,514.7 L679.9,517.7 L682.1,518.6 L684.4,518.0 L687.1,515.6 L698.3,498.9 L701.0,496.8 L703.3,496.3 L705.5,497.0 L708.2,499.0 L719.0,511.8 L721.7,513.5 L723.9,514.0 L726.2,513.5 L728.9,511.8 L739.7,501.0 L742.4,499.6 L744.6,499.2 L746.9,499.6 L749.6,501.0 L760.4,510.4 L763.1,511.7 L765.4,512.1 L768.0,511.6 L770.8,510.2 L781.6,501.8 L786.1,500.5 L790.6,501.6 L801.4,509.4 L804.0,510.7 L806.7,511.1 L809.5,510.8 L812.1,509.6 L822.9,502.3 L827.9,501.1 L833.3,502.8 L843.6,509.5 L848.6,510.7 L854.0,509.1 L864.8,502.4 L869.3,501.4 L874.3,502.7 L884.2,508.9 L888.6,510.5 L891.4,510.5 L894.1,509.7 L905.3,502.9 L910.7,501.4 L916.1,502.8 L927.3,509.8 L932.3,510.7 L937.3,509.0 L947.6,502.3 L950.3,501.4 L953.0,501.2 L957.9,502.8 L968.8,510.1 L973.7,511.1 L978.6,509.4 L989.4,501.6 L992.1,500.7 L994.4,500.5 L999.3,502.3 L1010.1,510.7 L1012.9,511.8 L1015.1,512.0 L1017.8,511.4 L1020.5,509.8 L1030.8,500.7 L1033.6,499.4 L1035.8,499.2 L1038.5,499.9 L1041.2,501.7 L1052.0,512.5 L1054.3,513.6 L1056.5,513.9 L1059.2,513.1 L1061.9,511.0 L1072.7,498.2 L1074.9,496.7 L1077.2,496.3 L1079.9,497.3 L1082.6,499.9 L1093.4,516.1 L1095.7,518.0 L1097.9,518.6 L1100.2,517.7 L1102.8,514.7 L1113.6,492.2 L1116.3,488.7 L1118.6,487.7 L1121.3,489.5 L1124.0,494.6 L1127.2,504.2 L1134.8,532.2 L1137.5,538.2 L1138.9,539.3 L1139.7,539.3 L1141.1,537.8 L1142.5,534.5 L1144.7,524.5 L1147.0,508.7 L1149.2,487.0 L1153.7,427.3 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<path id=\"n50\" d=\"M80.0,320.0 L82.8,151.9 L84.0,114.0 L84.7,103.8 L85.4,100.7 L86.6,108.6 L89.3,144.8 L90.1,150.6 L90.8,152.1 L92.0,147.9 L94.8,125.6 L96.2,121.7 L97.5,125.2 L100.3,140.4 L101.6,143.3 L103.0,140.7 L105.8,128.4 L107.0,126.5 L108.3,128.6 L111.2,138.7 L112.4,140.3 L113.8,138.5 L116.6,129.9 L117.8,128.6 L119.2,130.1 L122.0,137.6 L123.2,138.7 L124.6,137.4 L127.4,130.8 L128.6,129.8 L130.0,131.0 L132.8,136.9 L134.0,137.8 L135.3,136.7 L138.2,131.4 L139.4,130.5 L140.8,131.5 L143.6,136.4 L144.8,137.2 L146.2,136.3 L149.0,131.7 L150.2,131.0 L151.6,131.9 L154.4,136.1 L155.6,136.8 L156.9,136.0 L159.8,132.0 L161.0,131.4 L162.3,132.2 L165.2,135.9 L166.4,136.5 L167.8,135.7 L170.6,132.2 L171.8,131.7 L173.1,132.4 L176.0,135.7 L177.2,136.2 L178.6,135.6 L181.4,132.4 L182.6,131.9 L183.9,132.5 L186.8,135.5 L188.0,136.0 L193.4,132.1 L198.8,135.9 L204.2,132.2 L209.6,135.7 L215.0,132.3 L220.4,135.6 L225.8,132.4 L231.2,135.5 L236.6,132.5 L242.0,135.5 L247.4,132.6 L252.8,135.4 L258.2,132.6 L263.6,135.4 L269.0,132.7 L274.4,135.3 L279.8,132.7 L285.2,135.3 L290.6,132.7 L296.0,135.2 L301.4,132.8 L306.8,135.2 L312.2,132.8 L317.6,135.2 L323.0,132.8 L328.4,135.2 L333.7,132.8 L339.2,135.2 L344.3,132.8 L350.0,135.2 L354.3,133.0 L355.8,132.8 L360.8,135.2 L366.3,132.8 L371.6,135.2 L377.1,132.8 L382.5,135.2 L387.9,132.8 L393.2,135.2 L398.6,132.8 L404.0,135.2 L409.4,132.7 L414.8,135.3 L420.2,132.7 L425.6,135.3 L431.0,132.7 L436.4,135.4 L441.8,132.6 L447.2,135.4 L452.6,132.6 L458.0,135.5 L463.4,132.5 L468.8,135.5 L474.2,132.4 L479.6,135.6 L485.0,132.3 L490.4,135.7 L495.8,132.2 L501.2,135.9 L506.6,132.1 L512.0,136.0 L513.2,135.5 L516.0,132.5 L517.4,131.9 L518.6,132.4 L521.5,135.6 L522.8,136.2 L524.0,135.7 L526.9,132.4 L528.2,131.7 L529.4,132.2 L532.3,135.7 L533.6,136.5 L534.8,135.9 L537.7,132.2 L539.0,131.4 L540.2,132.0 L543.1,136.0 L544.4,136.8 L545.6,136.1 L548.5,131.9 L549.8,131.0 L551.0,131.7 L553.8,136.3 L555.2,137.2 L556.4,136.4 L559.3,131.5 L560.6,130.5 L561.8,131.4 L564.6,136.7 L566.0,137.8 L567.2,136.9 L570.0,131.0 L571.4,129.8 L572.6,130.8 L575.5,137.4 L576.8,138.7 L578.0,137.6 L580.9,130.1 L582.2,128.6 L583.4,129.9 L586.3,138.5 L587.6,140.3 L588.8,138.7 L591.6,128.6 L593.0,126.5 L594.2,128.4 L597.0,140.7 L598.4,143.3 L599.8,140.4 L602.5,125.2 L603.8,121.7 L605.1,125.6 L608.0,147.9 L609.2,152.1 L609.9,150.6 L610.7,144.8 L613.4,108.6 L614.6,100.7 L615.3,103.8 L616.0,114.0 L617.2,151.9 L622.6,476.2 L623.9,523.1 L624.6,534.7 L625.4,539.3 L626.6,531.4 L629.3,495.2 L630.1,489.4 L630.8,487.9 L632.0,492.1 L634.9,514.4 L636.2,518.3 L637.5,514.8 L640.3,499.6 L641.6,496.7 L643.0,499.3 L645.8,511.6 L647.0,513.5 L648.4,511.4 L651.2,501.3 L652.4,499.7 L653.8,501.5 L656.6,510.1 L657.8,511.4 L659.1,509.9 L662.0,502.4 L663.2,501.3 L664.5,502.6 L667.4,509.2 L668.6,510.2 L670.0,509.0 L672.8,503.1 L674.0,502.2 L675.4,503.3 L678.2,508.6 L679.4,509.5 L680.8,508.5 L683.6,503.6 L684.8,502.8 L686.1,503.7 L689.0,508.3 L690.2,509.0 L691.6,508.1 L694.4,503.9 L695.6,503.2 L697.0,504.0 L699.8,508.0 L701.0,508.6 L702.4,507.8 L705.2,504.1 L706.4,503.5 L707.8,504.3 L710.6,507.8 L711.8,508.3 L713.2,507.6 L716.0,504.3 L717.2,503.8 L718.6,504.4 L721.4,507.6 L722.6,508.1 L723.9,507.5 L726.8,504.5 L728.0,504.0 L733.4,507.9 L738.8,504.1 L744.2,507.8 L749.6,504.3 L755.0,507.7 L760.4,504.4 L765.8,507.6 L771.2,504.5 L776.6,507.5 L782.0,504.5 L787.4,507.4 L792.8,504.6 L798.2,507.4 L803.6,504.6 L809.0,507.3 L814.4,504.7 L819.8,507.3 L825.2,504.7 L830.6,507.3 L836.0,504.8 L841.4,507.2 L846.8,504.8 L852.2,507.2 L857.6,504.8 L863.0,507.2 L868.4,504.8 L873.7,507.2 L879.2,504.8 L884.3,507.2 L890.0,504.8 L894.3,507.0 L895.8,507.2 L900.8,504.8 L906.3,507.2 L911.6,504.8 L917.1,507.2 L922.5,504.8 L927.9,507.2 L933.2,504.8 L938.6,507.2 L944.0,504.8 L949.4,507.3 L954.8,504.7 L960.2,507.3 L965.6,504.7 L971.0,507.3 L976.4,504.6 L981.8,507.4 L987.2,504.6 L992.6,507.4 L998.0,504.5 L1003.4,507.5 L1008.8,504.5 L1014.2,507.6 L1019.6,504.4 L1025.0,507.7 L1030.4,504.3 L1035.8,507.8 L1041.2,504.1 L1046.6,507.9 L1052.0,504.0 L1053.2,504.5 L1056.1,507.5 L1057.4,508.1 L1058.6,507.6 L1061.4,504.4 L1062.8,503.8 L1064.0,504.3 L1066.8,507.6 L1068.2,508.3 L1069.4,507.8 L1072.3,504.3 L1073.6,503.5 L1074.8,504.1 L1077.7,507.8 L1079.0,508.6 L1080.2,508.0 L1083.0,504.0 L1084.4,503.2 L1085.6,503.9 L1088.4,508.1 L1089.8,509.0 L1091.0,508.3 L1093.8,503.7 L1095.2,502.8 L1096.4,503.6 L1099.3,508.5 L1100.6,509.5 L1101.8,508.6 L1104.7,503.3 L1106.0,502.2 L1107.2,503.1 L1110.1,509.0 L1111.4,510.2 L1112.6,509.2 L1115.5,502.6 L1116.8,501.3 L1118.0,502.4 L1120.8,509.9 L1122.2,511.4 L1123.4,510.1 L1126.3,501.5 L1127.6,499.7 L1128.8,501.3 L1131.6,511.4 L1133.0,513.5 L1134.2,511.6 L1137.0,499.3 L1138.4,496.7 L1139.7,499.6 L1142.5,514.8 L1143.8,518.3 L1145.1,514.4 L1148.0,492.1 L1149.2,487.9 L1149.9,489.4 L1150.7,495.2 L1153.4,531.4 L1154.6,539.3 L1155.3,536.2 L1156.0,526.0 L1157.2,488.1 L1160.0,320.0\" fill=\"none\" class=\"stroke-good\" stroke-width=\"4\"/>\n<g id=\"mid\"><circle cx=\"350.0\" cy=\"83.2\" r=\"9\" class=\"tone-bad\"/><text id=\"mid-v\" x=\"350.0\" y=\"61.2\" text-anchor=\"middle\" font-size=\"28\" class=\"fill-bad\">1.27</text></g>\n<g id=\"edge\"><circle cx=\"148.8\" cy=\"227.8\" r=\"9\" class=\"tone-bad\"/><text id=\"edge-v\" x=\"148.8\" y=\"271.8\" text-anchor=\"middle\" font-size=\"28\" class=\"fill-bad\">0.50</text></g>\n<g id=\"peak13\"><circle cx=\"599.2\" cy=\"100.6\" r=\"9\" class=\"tone-bad\"/><text id=\"peak13-v\" x=\"581.2\" y=\"86.6\" text-anchor=\"end\" font-size=\"28\" class=\"fill-bad\">1.179</text></g>\n<g id=\"peak50\"><circle cx=\"614.6\" cy=\"100.7\" r=\"9\" class=\"tone-bad\"/><text id=\"peak50-v\" x=\"596.6\" y=\"86.7\" text-anchor=\"end\" font-size=\"28\" class=\"fill-bad\">1.179</text></g>\n<text id=\"question\" x=\"900\" y=\"64\" font-size=\"30\" text-anchor=\"middle\">Can smooth waves add up to a sharp jump?</text>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "The puzzle",
-      "narration": "Here is a strange claim. Take waves that are perfectly smooth, add enough of them, and you get a shape with a sharp jump in it.",
-      "kicker": "A puzzle",
-      "question": "Can smooth waves add up to a sharp jump?",
-      "sides": [
-        {
-          "label": "a sine wave",
-          "term": "smooth",
-          "note": "no corners anywhere",
-          "tone": "accent"
-        },
-        {
-          "label": "a square wave",
-          "term": "jumps",
-          "note": "straight down, in no time",
-          "tone": "warn"
-        }
-      ],
+      "title": "Smooth waves, and a shape that jumps",
+      "picture": "waves",
+      "narration": "Here is a strange claim. Add enough perfectly smooth waves, and you get a shape with a sharp jump in it.",
       "hidden": [
-        "left",
-        "right"
+        "sin1",
+        "sinA",
+        "next3",
+        "wave",
+        "n2",
+        "n3",
+        "n5",
+        "n13",
+        "n50",
+        "mid",
+        "edge",
+        "peak13",
+        "peak50",
+        "question",
+        "square"
       ],
+      "labels": {
+        "sin1": "sine wave",
+        "square": "square wave",
+        "question": "how could this ever work"
+      },
       "steps": [
         {
-          "show": [
-            "left"
+          "trace": [
+            {
+              "ref": "sin1",
+              "when": "bends"
+            }
           ],
+          "focus": "sin1",
           "say": "A sine wave bends gently, everywhere. It never has a corner."
         },
         {
-          "show": [
-            "right"
+          "trace": [
+            {
+              "ref": "square",
+              "when": "sits flat"
+            }
           ],
+          "focus": "square",
           "say": "A square wave sits flat, then jumps straight down, then jumps back up."
         },
         {
-          "focus": [
+          "show": [
             "question"
           ],
+          "focus": "question",
           "say": "Adding smooth things should give something smooth. So how could this ever work? Let us try it and see."
         }
       ]
     },
     {
-      "type": "plot",
+      "type": "svg",
       "chapter": "One wave",
-      "title": "The best single wave",
-      "narration": "The dashed grey line is our target, the square wave. It is one for half the time, then minus one.",
-      "x": {
-        "from": 0,
-        "to": 6.283185307179586,
-        "ticks": "pi"
-      },
-      "y": {
-        "from": -1.5,
-        "to": 1.5,
-        "ticks": 0.5,
-        "grid": true
-      },
-      "params": {
-        "a": 1
-      },
-      "functions": [
-        {
-          "id": "square",
-          "y": "sign(sin(x))",
-          "tone": "neutral",
-          "dashed": true,
-          "label": "square wave"
-        },
-        {
-          "id": "wave",
-          "y": "a * sin(x)",
-          "label": "{a:2} × sin x"
-        }
+      "title": "The best single wave is still wrong",
+      "picture": "waves",
+      "narration": "The dashed line is our target, the square wave. It is one for half the time, then minus one.",
+      "hidden": [
+        "sinA",
+        "next3",
+        "wave",
+        "n2",
+        "n3",
+        "n5",
+        "n13",
+        "n50",
+        "mid",
+        "edge",
+        "peak13",
+        "peak50",
+        "question"
       ],
-      "points": [
-        {
-          "id": "middle",
-          "at": [
-            "pi/2",
-            "a"
-          ],
-          "label": "{a:2}",
-          "side": "above",
-          "hidden": true
-        },
-        {
-          "id": "edge",
-          "at": [
-            0.4,
-            "a * sin(0.4)"
-          ],
-          "label": "{a * sin(0.4):2}",
-          "side": "right",
-          "tone": "warn",
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "sin1": "sin x",
+        "sinA": "stretch",
+        "mid": "middle",
+        "edge": "near the jump"
+      },
       "steps": [
         {
-          "trace": [
-            "wave"
-          ],
           "focus": [
-            "wave",
+            "sin1",
             "square"
           ],
           "say": "Start with the plainest wave there is, sin x. It goes up when the square wave is up, and down when it is down."
         },
         {
-          "set": {
-            "a": 1.2732395447351628
-          },
-          "focus": [
-            "wave"
+          "hide": [
+            "sin1"
           ],
-          "callout": "best height: 4 ÷ π = 1.27",
-          "say": "Now stretch it until it matches the target as well as one wave can. That happens at a height of four over pi, about 1.27."
+          "trace": [
+            {
+              "ref": "sinA",
+              "when": "stretch"
+            }
+          ],
+          "focus": "sinA",
+          "say": "Now stretch it until it matches the target as well as one wave can. That is a height of four over pi.",
+          "draw": [
+            {
+              "write": "best height: 4 ÷ π = 1.27",
+              "near": "sinA",
+              "side": "right",
+              "when": "four over pi"
+            }
+          ]
         },
         {
           "show": [
-            "middle"
+            "mid"
           ],
+          "erase": true,
           "focus": [
-            "middle"
+            "mid"
           ],
+          "tint": {
+            "mid": "bad"
+          },
           "say": "It is not a good match yet. In the middle it climbs to 1.27, too high.",
           "draw": [
             {
-              "circle": "middle",
-              "when": "too high"
+              "write": "too high",
+              "near": "mid",
+              "side": "right",
+              "when": "too high",
+              "tone": "bad"
             }
           ]
         },
@@ -151,252 +157,300 @@
             {
               "write": "too low",
               "near": "edge",
-              "side": "below",
-              "when": "far too low"
+              "side": "right",
+              "when": "far too low",
+              "tone": "bad"
             }
           ]
         }
       ]
     },
     {
-      "type": "plot",
+      "type": "svg",
       "chapter": "Adding waves",
-      "title": "Add faster, smaller waves",
+      "title": "Each faster, smaller wave fixes some of the error",
+      "picture": "waves",
       "narration": "To fix it, we add a second wave, three times as fast and one third as tall.",
-      "x": {
-        "from": 0,
-        "to": 6.283185307179586,
-        "ticks": "pi"
-      },
-      "y": {
-        "from": -1.5,
-        "to": 1.5,
-        "ticks": 0.5,
-        "grid": true
-      },
-      "params": {
-        "n": 1
-      },
-      "functions": [
-        {
-          "id": "square",
-          "y": "sign(sin(x))",
-          "tone": "neutral",
-          "dashed": true
-        },
-        {
-          "id": "next",
-          "y": "4 / (pi * (2*n + 1)) * sin((2*n + 1) * x)",
-          "label": "next wave",
-          "tone": "accent",
-          "dashed": true
-        },
-        {
-          "id": "wave",
-          "y": "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))",
-          "label": "waves added: {n:0}"
-        }
+      "hidden": [
+        "sin1",
+        "next3",
+        "wave",
+        "n2",
+        "n3",
+        "n5",
+        "n13",
+        "n50",
+        "edge",
+        "peak13",
+        "peak50",
+        "question"
       ],
-      "points": [
-        {
-          "id": "middle",
-          "at": [
-            "pi/2",
-            "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi/2)))"
-          ],
-          "label": "{sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi/2))):2}",
-          "side": "above"
-        }
-      ],
-      "callout": "sin x + sin 3x ÷ 3 + sin 5x ÷ 5 + …",
+      "labels": {
+        "next3": "small, fast wave",
+        "wave": "add it in",
+        "mid": "middle"
+      },
       "steps": [
         {
+          "hide": [
+            "edge"
+          ],
           "trace": [
-            "next"
+            {
+              "ref": "next3",
+              "when": "alone"
+            }
           ],
           "focus": [
-            "next"
+            "next3"
           ],
-          "say": "Here is that small, fast wave on its own. Notice it dips in the middle and rises near the edges, just where our first wave was wrong."
+          "say": "Here is that small, fast wave alone. It dips at the centre and rises at the edges, just where the first wave was wrong."
         },
         {
-          "set": {
-            "n": 2
-          },
           "hide": [
-            "next"
+            "next3",
+            "sinA"
           ],
+          "show": [
+            "wave"
+          ],
+          "morph": {
+            "wave": "n2"
+          },
+          "move": {
+            "mid": "translate(0 78.9)"
+          },
+          "set": {
+            "mid-v": "0.85"
+          },
           "focus": [
             "wave",
-            "middle"
+            "mid"
           ],
           "say": "Add it in. The middle drops from 1.27 to 0.85, now a little too low, and the shoulders lift."
         },
         {
+          "morph": {
+            "wave": "n3"
+          },
+          "move": {
+            "mid": "translate(0 31.6)"
+          },
           "set": {
-            "n": 3
+            "mid-v": "1.10"
           },
           "focus": [
             "wave",
-            "middle"
+            "mid"
           ],
           "say": "Then add one five times as fast and one fifth as tall. With it, the middle comes back up to 1.10."
         },
         {
+          "morph": {
+            "wave": "n5"
+          },
+          "move": {
+            "mid": "translate(0 39.1)"
+          },
           "set": {
-            "n": 5
+            "mid-v": "1.06"
           },
           "focus": [
             "wave",
-            "middle"
+            "mid"
           ],
-          "say": "Each wave fixes some of the last one's mistake. With five, the middle is 1.06 and the sides are getting steep."
+          "say": "Each wave fixes some of the last one's mistake. With five, the middle is 1.06 and the sides are getting steep.",
+          "draw": [
+            {
+              "write": "sin x + sin 3x ÷ 3 + sin 5x ÷ 5 + …",
+              "near": "wave",
+              "side": "below",
+              "when": "Each wave"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "The recipe",
-      "title": "How tall each wave is",
-      "kind": "bar",
-      "narration": "So what is the recipe? Measure how much each wave lines up with the square wave, and that tells you how tall to make it.",
-      "labels": [
-        "sin x",
-        "sin 3x",
-        "sin 5x",
-        "sin 7x",
-        "sin 9x",
-        "sin 11x"
+      "title": "Each wave is a third, a fifth, a seventh as tall",
+      "svg": "<svg viewBox=\"0 0 1200 640\"><line x1=\"50\" y1=\"560\" x2=\"1170\" y2=\"560\" stroke=\"var(--muted)\" stroke-width=\"3\"/><g id=\"k1\"><rect x=\"80\" y=\"139.8\" width=\"60\" height=\"420.2\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"110\" y=\"125.8\" font-size=\"24\" text-anchor=\"middle\">1.27</text><text x=\"110\" y=\"600\" font-size=\"24\" text-anchor=\"middle\">sin x</text></g><g id=\"k2\"><text x=\"206\" y=\"546\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">0</text><text x=\"206\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">sin 2x</text></g><g id=\"k3\"><rect x=\"272\" y=\"419.9\" width=\"60\" height=\"140.1\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"302\" y=\"405.9\" font-size=\"24\" text-anchor=\"middle\">0.42</text><text x=\"302\" y=\"600\" font-size=\"24\" text-anchor=\"middle\">sin 3x</text></g><g id=\"k4\"><text x=\"398\" y=\"546\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">0</text><text x=\"398\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">sin 4x</text></g><g id=\"k5\"><rect x=\"464\" y=\"476.0\" width=\"60\" height=\"84.0\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"494\" y=\"462.0\" font-size=\"24\" text-anchor=\"middle\">0.25</text><text x=\"494\" y=\"600\" font-size=\"24\" text-anchor=\"middle\">sin 5x</text></g><g id=\"k6\"><text x=\"590\" y=\"546\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">0</text><text x=\"590\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">sin 6x</text></g><g id=\"k7\"><rect x=\"656\" y=\"500.0\" width=\"60\" height=\"60.0\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"686\" y=\"486.0\" font-size=\"24\" text-anchor=\"middle\">0.18</text><text x=\"686\" y=\"600\" font-size=\"24\" text-anchor=\"middle\">sin 7x</text></g><g id=\"k8\"><text x=\"782\" y=\"546\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">0</text><text x=\"782\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">sin 8x</text></g><g id=\"k9\"><rect x=\"848\" y=\"513.3\" width=\"60\" height=\"46.7\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"878\" y=\"499.3\" font-size=\"24\" text-anchor=\"middle\">0.14</text><text x=\"878\" y=\"600\" font-size=\"24\" text-anchor=\"middle\">sin 9x</text></g><g id=\"k10\"><text x=\"974\" y=\"546\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">0</text><text x=\"974\" y=\"600\" font-size=\"24\" text-anchor=\"middle\" fill=\"var(--muted)\">sin 10x</text></g><g id=\"k11\"><rect x=\"1040\" y=\"521.8\" width=\"60\" height=\"38.2\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"1070\" y=\"507.8\" font-size=\"24\" text-anchor=\"middle\">0.12</text><text x=\"1070\" y=\"600\" font-size=\"24\" text-anchor=\"middle\">sin 11x</text></g></svg>",
+      "narration": "So what is the recipe? How much each wave lines up with the square wave tells you how tall to make it.",
+      "hidden": [
+        "k3",
+        "k5",
+        "k7",
+        "k9",
+        "k11",
+        "k2",
+        "k4",
+        "k6",
+        "k8",
+        "k10"
       ],
-      "series": [
-        {
-          "name": "height",
-          "values": [
-            1.273,
-            0,
-            0,
-            0,
-            0,
-            0
-          ],
-          "tone": "accent"
-        }
-      ],
-      "callout": "height = 4 ÷ (π × k)",
+      "labels": {
+        "k1": "first wave",
+        "k3": "three times",
+        "k5": "five times",
+        "k2": "two",
+        "k4": "four"
+      },
       "steps": [
         {
-          "focus": "sin x",
+          "focus": "k1",
           "say": "The first wave lines up best, so it is the tallest, 1.27."
         },
         {
-          "set": {
-            "height@sin 3x": 0.424,
-            "height@sin 5x": 0.255
-          },
+          "show": [
+            "k3",
+            "k5"
+          ],
+          "focus": [
+            "k3",
+            "k5"
+          ],
           "say": "The wave three times as fast gets a third of that. Five times as fast, a fifth."
         },
         {
-          "set": {
-            "height": [
-              1.273,
-              0.424,
-              0.255,
-              0.182,
-              0.141,
-              0.116
-            ]
-          },
-          "say": "And so on, smaller and smaller, forever."
+          "show": [
+            "k7",
+            "k9",
+            "k11"
+          ],
+          "focus": [
+            "k7",
+            "k9",
+            "k11"
+          ],
+          "say": "And so on, smaller and smaller, forever.",
+          "draw": [
+            {
+              "write": "height = 4 ÷ (π × k)",
+              "near": "k3",
+              "side": "above",
+              "when": "smaller and smaller"
+            }
+          ]
         },
         {
           "focus": [
-            "sin x",
-            "sin 3x"
+            "k1",
+            "k3",
+            "k5"
           ],
+          "say": "Notice the list skips from one to three to five. What about waves two or four times as fast?",
           "draw": [
             {
-              "write": "no sin 2x, no sin 4x",
-              "near": "height@sin 7x",
-              "side": "above",
+              "circle": "k2",
               "when": "two or four"
+            },
+            {
+              "circle": "k4"
             }
+          ]
+        },
+        {
+          "show": [
+            "k2",
+            "k4",
+            "k6",
+            "k8",
+            "k10"
           ],
-          "say": "Notice the list skips from one to three to five. What about waves two or four times as fast? They line up with the top half exactly as much as they fight it, so they cancel out. Their height is zero. Only the odd ones are in the recipe."
+          "focus": [
+            "k2",
+            "k4"
+          ],
+          "say": "They line up with the top half exactly as much as they fight it, so they cancel out. Their height is zero."
+        },
+        {
+          "focus": [
+            "k1",
+            "k3",
+            "k5",
+            "k7",
+            "k9",
+            "k11"
+          ],
+          "say": "Only the odd ones are in the recipe.",
+          "draw": [
+            {
+              "write": "odd waves only",
+              "near": "k9",
+              "side": "above",
+              "when": "odd ones"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "plot",
+      "type": "svg",
       "chapter": "The jump",
-      "title": "Zoom in on the jump",
-      "narration": "Here is the sum again, with the jump down at pi in the middle. Let us keep adding waves. With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is 1.02, almost exactly one.",
-      "x": {
-        "from": 0,
-        "to": 6.283185307179586,
-        "ticks": "pi"
-      },
-      "y": {
-        "from": -1.5,
-        "to": 1.5,
-        "ticks": 0.5,
-        "grid": true
-      },
-      "params": {
-        "n": 13
-      },
-      "functions": [
-        {
-          "id": "square",
-          "y": "sign(sin(x))",
-          "tone": "neutral",
-          "dashed": true
-        },
-        {
-          "id": "wave",
-          "y": "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * x))",
-          "label": "waves added: {n:0}"
-        }
+      "title": "More waves, but the bump stays",
+      "picture": "waves",
+      "narration": "Here is the sum again, with the jump down at pi in the middle. Let us keep adding waves.",
+      "hidden": [
+        "sin1",
+        "sinA",
+        "next3",
+        "n2",
+        "n3",
+        "n5",
+        "n13",
+        "n50",
+        "mid",
+        "edge",
+        "peak13",
+        "peak50",
+        "question"
       ],
-      "points": [
-        {
-          "id": "peak",
-          "at": [
-            "pi - pi/(2*n)",
-            "sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi - pi/(2*n))))"
-          ],
-          "label": "{sum(j, 1, n, 4 / (pi * (2*j - 1)) * sin((2*j - 1) * (pi - pi/(2*n)))):3}",
-          "side": "left",
-          "tone": "warn",
-          "hidden": true
-        }
-      ],
+      "labels": {
+        "peak13": "just before it",
+        "n50": "fifty",
+        "peak50": "bump"
+      },
       "steps": [
         {
+          "morph": {
+            "wave": "n13"
+          },
+          "focus": "wave",
+          "say": "With thirteen of them, the fastest is twenty five times as fast as the first, and the middle is 1.02, almost exactly one."
+        },
+        {
           "show": [
-            "peak"
+            "peak13"
           ],
           "camera": {
-            "on": "peak",
+            "on": "peak13",
             "zoom": 3
           },
           "focus": [
-            "peak"
+            "peak13"
           ],
           "say": "But look closely at the jump. Just before it, the sum shoots past one, up to 1.18."
         },
         {
-          "set": {
-            "n": 50
+          "morph": {
+            "wave": "n50"
           },
+          "hide": [
+            "peak13"
+          ],
+          "show": [
+            "peak50"
+          ],
           "focus": [
-            "peak"
+            "peak50"
           ],
           "say": "Surely more waves fix that. Here are fifty. The bump gets thinner and moves closer to the jump, but it is still 1.18 tall.",
           "draw": [
             {
               "write": "still there",
-              "near": "peak",
-              "side": "right",
+              "near": "peak50",
+              "side": "left",
               "when": "still"
             }
           ]
@@ -404,123 +458,163 @@
         {
           "camera": "all",
           "erase": true,
-          "callout": "overshoot: 9% of the jump",
           "focus": [
             "wave"
           ],
-          "say": "Everywhere else the sum gets as close as you like. At the jump, it always overshoots by about nine percent of the jump."
+          "say": "Everywhere else the sum gets as close as you like. At the jump, it always overshoots by about nine percent of the jump.",
+          "draw": [
+            {
+              "write": "overshoot: 9% of the jump",
+              "near": "peak50",
+              "side": "right",
+              "when": "overshoots"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "The bump that stays",
-      "title": "More waves, same overshoot",
+      "title": "The bump stays as tall, and only gets thinner",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<text x=\"190\" y=\"110\" font-size=\"28\" fill=\"var(--muted)\">top of the bump</text><text x=\"720\" y=\"110\" font-size=\"28\" fill=\"var(--muted)\">distance from the jump</text>\n<g id=\"row0\"><text x=\"150\" y=\"210\" font-size=\"28\" text-anchor=\"end\">5 waves</text>\n<g id=\"top0\"><rect x=\"190\" y=\"178\" width=\"354.7\" height=\"44\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"558.7\" y=\"210\" font-size=\"26\">1.182</text></g>\n<g id=\"dist0\"><rect x=\"720\" y=\"178\" width=\"345.6\" height=\"44\" stroke-width=\"3\"/><text x=\"1079.6\" y=\"210\" font-size=\"26\">0.314</text></g></g><g id=\"row1\"><text x=\"150\" y=\"310\" font-size=\"28\" text-anchor=\"end\">13 waves</text>\n<g id=\"top1\"><rect x=\"190\" y=\"278\" width=\"353.8\" height=\"44\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"557.8\" y=\"310\" font-size=\"26\">1.179</text></g>\n<g id=\"dist1\"><rect x=\"720\" y=\"278\" width=\"132.9\" height=\"44\" stroke-width=\"3\"/><text x=\"866.9\" y=\"310\" font-size=\"26\">0.121</text></g></g><g id=\"row2\"><text x=\"150\" y=\"410\" font-size=\"28\" text-anchor=\"end\">50 waves</text>\n<g id=\"top2\"><rect x=\"190\" y=\"378\" width=\"353.7\" height=\"44\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"557.7\" y=\"410\" font-size=\"26\">1.179</text></g>\n<g id=\"dist2\"><rect x=\"720\" y=\"378\" width=\"34.6\" height=\"44\" stroke-width=\"3\"/><text x=\"768.6\" y=\"410\" font-size=\"26\">0.031</text></g></g><g id=\"row3\"><text x=\"150\" y=\"510\" font-size=\"28\" text-anchor=\"end\">200 waves</text>\n<g id=\"top3\"><rect x=\"190\" y=\"478\" width=\"353.7\" height=\"44\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"557.7\" y=\"510\" font-size=\"26\">1.179</text></g>\n<g id=\"dist3\"><rect x=\"720\" y=\"478\" width=\"8.6\" height=\"44\" stroke-width=\"3\"/><text x=\"742.6\" y=\"510\" font-size=\"26\">0.008</text></g></g>\n<g id=\"limit\"><line x1=\"543.7\" y1=\"140\" x2=\"543.7\" y2=\"600\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"10 8\"/><text x=\"543.7\" y=\"630\" font-size=\"26\" text-anchor=\"middle\">1.179</text></g>\n<g id=\"one\"><line x1=\"490\" y1=\"140\" x2=\"490\" y2=\"600\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"490\" y=\"630\" font-size=\"24\" text-anchor=\"end\" fill=\"var(--muted)\">1  </text></g>\n</svg>",
       "narration": "Here are the numbers. For each count of waves, how high the bump climbs, and how far it sits from the jump.",
-      "columns": [
-        "waves",
-        "top of the bump",
-        "distance from the jump"
+      "hidden": [
+        "row0",
+        "row1",
+        "row2",
+        "row3",
+        "limit"
       ],
-      "rows": [
-        {
-          "cells": [
-            "5",
-            "1.182",
-            "0.314"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "13",
-            "1.179",
-            "0.121"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "50",
-            "1.179",
-            "0.031"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "200",
-            "1.179",
-            "0.008"
-          ],
-          "hidden": true
-        }
-      ],
-      "callout": "limit: 1.179",
+      "labels": {
+        "row0": "five waves",
+        "row1": "thirteen",
+        "row2": "fifty",
+        "row3": "two hundred",
+        "limit": "heads to",
+        "top3": "height"
+      },
       "steps": [
         {
           "show": [
-            0,
-            1
+            "row0",
+            "row1"
+          ],
+          "focus": [
+            "row0",
+            "row1"
           ],
           "say": "Five waves, 1.182. Thirteen, 1.179."
         },
         {
           "show": [
-            2,
-            3
+            "row2",
+            "row3"
+          ],
+          "focus": [
+            "row2",
+            "row3"
           ],
           "say": "Fifty, 1.179. Two hundred, 1.179. The height settles and stops falling."
         },
         {
           "focus": [
-            "col:distance from the jump"
+            "dist0",
+            "dist1",
+            "dist2",
+            "dist3"
           ],
           "say": "Meanwhile the bump squeezes toward the jump, a quarter as far away for four times the waves."
         },
         {
-          "focus": [
-            "col:top of the bump"
+          "show": [
+            "limit"
           ],
-          "tint": {
-            "top of the bump@3": "warn"
-          },
-          "say": "The height heads to 1.179, never to one. People call this the Gibbs phenomenon."
+          "focus": [
+            "limit",
+            "top3"
+          ],
+          "say": "The height heads to 1.179, never to one. People call this the Gibbs phenomenon.",
+          "draw": [
+            {
+              "write": "the Gibbs phenomenon",
+              "near": "dist3",
+              "side": "right",
+              "when": "Gibbs"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "What to keep",
+      "title": "Smooth waves can build a jump, almost",
+      "picture": "waves",
       "narration": "So, can smooth waves make a sharp jump? Almost.",
-      "kicker": "The answer",
-      "headline": "Smooth waves can build a jump, almost",
-      "items": [
-        "Each odd wave is a third, a fifth, a seventh as tall as the first",
-        "Each one fixes part of the mistake the others leave",
-        "At the jump the sum always overshoots by about 9%"
-      ],
       "hidden": [
-        "0-2"
+        "sin1",
+        "sinA",
+        "next3",
+        "wave",
+        "n2",
+        "n3",
+        "n5",
+        "n13",
+        "mid",
+        "edge",
+        "peak13",
+        "peak50",
+        "question"
       ],
+      "labels": {
+        "next3": "odd waves",
+        "n50": "every wave",
+        "peak50": "overshoot"
+      },
       "steps": [
         {
           "show": [
-            0
+            "next3"
           ],
-          "say": "The recipe is simple: the odd waves, each one a third, a fifth, a seventh as tall."
+          "focus": "next3",
+          "say": "The recipe is simple: the odd waves, each one a third, a fifth, a seventh as tall.",
+          "draw": [
+            {
+              "write": "odd waves: 1, 1/3, 1/5, 1/7 as tall",
+              "near": "next3",
+              "side": "below",
+              "when": "odd waves"
+            }
+          ]
+        },
+        {
+          "hide": [
+            "next3"
+          ],
+          "focus": "n50",
+          "say": "Every wave you add fixes part of what the others got wrong.",
+          "draw": [
+            {
+              "write": "each fixes part of the mistake",
+              "near": "n50",
+              "side": "below",
+              "when": "fixes"
+            }
+          ]
         },
         {
           "show": [
-            1
+            "peak50"
           ],
-          "say": "Every wave you add fixes part of what the others got wrong."
-        },
-        {
-          "show": [
-            2
-          ],
-          "say": "And right at the jump there is one mistake no amount of waves can fix: an overshoot of about nine percent, that only gets thinner."
+          "focus": "peak50",
+          "say": "But right at the jump, no amount of waves can fix one mistake: an overshoot of about nine percent, that only gets thinner.",
+          "draw": [
+            {
+              "circle": "peak50",
+              "when": "overshoot"
+            }
+          ]
         }
       ]
     }

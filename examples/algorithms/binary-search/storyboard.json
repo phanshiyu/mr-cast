@@ -1,306 +1,413 @@
 {
   "title": "Binary search",
   "subtitle": "Why a sorted list can be searched in a handful of looks",
+  "tones": {
+    "good": "where 72 is, and what is still in play",
+    "bad": "boxes checked or ruled out"
+  },
+  "pictures": {
+    "row": "<svg viewBox=\"0 0 1200 640\">\n<text id=\"goal\" x=\"30\" y=\"80\" font-size=\"30\">looking for 72</text>\n<g id=\"c0\"><rect x=\"30\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"63\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">2</text></g><text x=\"63\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0</text><g id=\"c1\"><rect x=\"102\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"135\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">5</text></g><text x=\"135\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">1</text><g id=\"c2\"><rect x=\"174\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"207\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">8</text></g><text x=\"207\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">2</text><g id=\"c3\"><rect x=\"246\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"279\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">12</text></g><text x=\"279\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">3</text><g id=\"c4\"><rect x=\"318\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"351\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">16</text></g><text x=\"351\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">4</text><g id=\"c5\"><rect x=\"390\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"423\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">23</text></g><text x=\"423\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">5</text><g id=\"c6\"><rect x=\"462\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"495\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">38</text></g><text x=\"495\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">6</text><g id=\"c7\"><rect x=\"534\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"567\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">45</text></g><text x=\"567\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">7</text><g id=\"c8\"><rect x=\"606\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"639\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">56</text></g><text x=\"639\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">8</text><g id=\"c9\"><rect x=\"678\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"711\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">67</text></g><text x=\"711\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">9</text><g id=\"c10\"><rect x=\"750\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"783\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">72</text></g><text x=\"783\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">10</text><g id=\"c11\"><rect x=\"822\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"855\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">79</text></g><text x=\"855\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">11</text><g id=\"c12\"><rect x=\"894\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"927\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">84</text></g><text x=\"927\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">12</text><g id=\"c13\"><rect x=\"966\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"999\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">91</text></g><text x=\"999\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">13</text><g id=\"c14\"><rect x=\"1038\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"1071\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">95</text></g><text x=\"1071\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">14</text><g id=\"c15\"><rect x=\"1110\" y=\"250\" width=\"66\" height=\"76\" rx=\"8\" stroke-width=\"3\"/><text x=\"1143\" y=\"299\" text-anchor=\"middle\" font-size=\"28\">99</text></g><text x=\"1143\" y=\"362\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">15</text>\n<g id=\"check0\"><text x=\"63\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">check</text><path d=\"M52 208 L74 208 L63 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"check1\"><text x=\"135\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">check</text><path d=\"M124 208 L146 208 L135 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"check2\"><text x=\"207\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">check</text><path d=\"M196 208 L218 208 L207 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"check10\"><text x=\"783\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">check</text><path d=\"M772 208 L794 208 L783 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"L0\"><path d=\"M39 412 L59 412 L49 382 Z\" fill=\"var(--text)\" stroke=\"none\"/><text x=\"49\" y=\"444\" text-anchor=\"middle\" font-size=\"26\">L</text></g><g id=\"L8\"><path d=\"M615 412 L635 412 L625 382 Z\" fill=\"var(--text)\" stroke=\"none\"/><text x=\"625\" y=\"444\" text-anchor=\"middle\" font-size=\"26\">L</text></g><g id=\"L10\"><path d=\"M759 412 L779 412 L769 382 Z\" fill=\"var(--text)\" stroke=\"none\"/><text x=\"769\" y=\"444\" text-anchor=\"middle\" font-size=\"26\">L</text></g><g id=\"R15\"><path d=\"M1147 412 L1167 412 L1157 382 Z\" fill=\"var(--text)\" stroke=\"none\"/><text x=\"1157\" y=\"444\" text-anchor=\"middle\" font-size=\"26\">R</text></g><g id=\"R10\"><path d=\"M787 412 L807 412 L797 382 Z\" fill=\"var(--text)\" stroke=\"none\"/><text x=\"797\" y=\"444\" text-anchor=\"middle\" font-size=\"26\">R</text></g><g id=\"mid7\"><text x=\"567\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">mid</text><path d=\"M556 208 L578 208 L567 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"mid11\"><text x=\"855\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">mid</text><path d=\"M844 208 L866 208 L855 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"mid9\"><text x=\"711\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">mid</text><path d=\"M700 208 L722 208 L711 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g><g id=\"mid10\"><text x=\"783\" y=\"190\" text-anchor=\"middle\" font-size=\"26\">mid</text><path d=\"M772 208 L794 208 L783 240 Z\" fill=\"var(--text)\" stroke=\"none\"/></g>\n</svg>",
+    "halving": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"look1\"><text x=\"20\" y=\"72\" font-size=\"24\">look 1</text><text x=\"20\" y=\"104\" font-size=\"22\" fill=\"var(--muted)\">16 left</text><rect x=\"150\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"180\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">2</text><rect x=\"216\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"246\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">5</text><rect x=\"282\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"312\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">8</text><rect x=\"348\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"378\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">12</text><rect x=\"414\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"444\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">16</text><rect x=\"480\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"510\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">23</text><rect x=\"546\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"576\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">38</text><rect x=\"612\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"642\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">45</text><rect x=\"678\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"708\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">56</text><rect x=\"744\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"774\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">67</text><rect x=\"810\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"840\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">72</text><rect x=\"876\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"906\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">79</text><rect x=\"942\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"972\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">84</text><rect x=\"1008\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"1038\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">91</text><rect x=\"1074\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"1104\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">95</text><rect x=\"1140\" y=\"40\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"1170\" y=\"86\" text-anchor=\"middle\" font-size=\"26\">99</text></g>\n<g id=\"look2\"><text x=\"20\" y=\"222\" font-size=\"24\">look 2</text><text x=\"20\" y=\"254\" font-size=\"22\" fill=\"var(--muted)\">8 left</text><rect x=\"678\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"708\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">56</text><rect x=\"744\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"774\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">67</text><rect x=\"810\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"840\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">72</text><rect x=\"876\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"906\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">79</text><rect x=\"942\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"972\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">84</text><rect x=\"1008\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"1038\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">91</text><rect x=\"1074\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"1104\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">95</text><rect x=\"1140\" y=\"190\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"1170\" y=\"236\" text-anchor=\"middle\" font-size=\"26\">99</text></g>\n<g id=\"look3\"><text x=\"20\" y=\"372\" font-size=\"24\">look 3</text><text x=\"20\" y=\"404\" font-size=\"22\" fill=\"var(--muted)\">3 left</text><rect x=\"678\" y=\"340\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"708\" y=\"386\" text-anchor=\"middle\" font-size=\"26\">56</text><rect x=\"744\" y=\"340\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"774\" y=\"386\" text-anchor=\"middle\" font-size=\"26\">67</text><rect x=\"810\" y=\"340\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"840\" y=\"386\" text-anchor=\"middle\" font-size=\"26\">72</text></g>\n<g id=\"look4\"><text x=\"20\" y=\"522\" font-size=\"24\">look 4</text><text x=\"20\" y=\"554\" font-size=\"22\" fill=\"var(--muted)\">1 left</text><rect x=\"810\" y=\"490\" width=\"60\" height=\"70\" rx=\"8\" stroke-width=\"3\"/><text x=\"840\" y=\"536\" text-anchor=\"middle\" font-size=\"26\">72</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Checking one by one",
       "title": "Looking for 72 the slow way",
-      "label": "list",
-      "narration": "Say you want to find seventy two in this list. If you do not know the list is in order, all you can do is check every box, starting from the first.",
-      "values": [
-        2,
-        5,
-        8,
-        12,
-        16,
-        23,
-        38,
-        45,
-        56,
-        67,
-        72,
-        79,
-        84,
-        91,
-        95,
-        99
+      "picture": "row",
+      "hidden": [
+        "check0",
+        "check1",
+        "check2",
+        "check10",
+        "L0",
+        "L8",
+        "L10",
+        "R15",
+        "R10",
+        "mid7",
+        "mid11",
+        "mid9",
+        "mid10"
       ],
-      "pointers": [
-        {
-          "name": "check",
-          "at": 0,
-          "tone": "bad"
-        }
-      ],
-      "ranges": [
-        {
-          "name": "sorted",
-          "from": 0,
-          "to": 15,
-          "tone": "good",
-          "hidden": true
-        }
-      ],
-      "callout": "target = **72**",
+      "labels": {
+        "check0": "check",
+        "c0": "two",
+        "c1": "five",
+        "c2": "eight",
+        "c10": "eleventh box",
+        "c15": "very end"
+      },
+      "narration": "Say you want to find seventy two in this list.",
       "steps": [
         {
-          "focus": [
-            "ptr:check",
-            0
+          "show": [
+            "check0"
           ],
+          "focus": "check0",
+          "say": "If you do not know the list is in order, all you can do is check every box, starting from the first."
+        },
+        {
+          "focus": "c0",
           "tint": {
-            "0": "bad"
+            "c0": "bad"
           },
           "say": "Is it two? No."
         },
         {
-          "move": {
-            "check": 1
-          },
+          "hide": [
+            "check0"
+          ],
+          "show": [
+            "check1"
+          ],
           "tint": {
-            "1": "bad"
+            "c1": "bad"
           },
           "say": "Is it five? No."
         },
         {
-          "move": {
-            "check": 2
-          },
+          "hide": [
+            "check1"
+          ],
+          "show": [
+            "check2"
+          ],
           "tint": {
-            "2": "bad"
+            "c2": "bad"
           },
           "say": "Eight? No."
         },
         {
-          "move": {
-            "check": 10
-          },
-          "tint": {
-            "10": "good",
-            "3-9": "bad"
-          },
-          "callout": "11 checks to reach 72",
-          "say": "And so on, until the eleventh box finally holds seventy two."
-        },
-        {
-          "focus": [
-            15
+          "hide": [
+            "check2"
           ],
-          "callout": "worst case: n checks",
-          "say": "If the number sits at the very end, or is not there at all, you check all sixteen. For four billion rows, that is four billion checks."
-        },
-        {
           "show": [
-            "range:sorted"
+            "check10"
           ],
           "tint": {
-            "0-15": "clear"
+            "c3": "bad",
+            "c4": "bad",
+            "c5": "bad",
+            "c6": "bad",
+            "c7": "bad",
+            "c8": "bad",
+            "c9": "bad",
+            "c10": "good"
           },
-          "callout": "the list **must** be sorted",
-          "say": "We can do much better, if the list is sorted. That one rule is the whole trick."
+          "say": "And so on, until the eleventh box finally holds seventy two.",
+          "draw": [
+            {
+              "write": "11 checks",
+              "near": "c10",
+              "side": "below",
+              "tone": "bad",
+              "when": "eleventh"
+            }
+          ]
+        },
+        {
+          "focus": "c15",
+          "erase": true,
+          "say": "If the number sits at the very end, or is not there at all, you check all sixteen.",
+          "draw": [
+            {
+              "circle": "c15",
+              "note": "worst case: n checks",
+              "tone": "bad",
+              "when": "all sixteen"
+            }
+          ]
+        },
+        {
+          "hide": [
+            "check10"
+          ],
+          "tint": {
+            "c0": "clear",
+            "c1": "clear",
+            "c2": "clear",
+            "c3": "clear",
+            "c4": "clear",
+            "c5": "clear",
+            "c6": "clear",
+            "c7": "clear",
+            "c8": "clear",
+            "c9": "clear",
+            "c10": "clear",
+            "c11": "clear",
+            "c12": "clear",
+            "c13": "clear",
+            "c14": "clear",
+            "c15": "clear"
+          },
+          "focus": [
+            "c0",
+            "c15"
+          ],
+          "erase": true,
+          "say": "We can do much better, if the list is sorted. That one rule is the whole trick.",
+          "draw": [
+            {
+              "brace": [
+                "c0",
+                "c15"
+              ],
+              "note": "sorted: small to big",
+              "side": "below",
+              "tone": "good",
+              "when": "sorted"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "The middle",
       "title": "Two pointers and a midpoint",
-      "label": "list",
+      "picture": "row",
+      "hidden": [
+        "check0",
+        "check1",
+        "check2",
+        "check10",
+        "L8",
+        "L10",
+        "R10",
+        "mid7",
+        "mid11",
+        "mid9",
+        "mid10"
+      ],
+      "labels": {
+        "L0": "L",
+        "R15": "R",
+        "mid7": "halfway",
+        "c7": "forty five"
+      },
       "narration": "Instead of starting at the front, put one pointer at each end.",
-      "values": [
-        2,
-        5,
-        8,
-        12,
-        16,
-        23,
-        38,
-        45,
-        56,
-        67,
-        72,
-        79,
-        84,
-        91,
-        95,
-        99
-      ],
-      "pointers": [
-        {
-          "name": "L",
-          "at": 0,
-          "tone": "good"
-        },
-        {
-          "name": "R",
-          "at": 15,
-          "tone": "accent"
-        },
-        {
-          "name": "mid",
-          "at": 7,
-          "tone": "warn",
-          "hidden": true
-        }
-      ],
-      "callout": "mid = L + ⌊(R − L) / 2⌋",
       "steps": [
         {
           "focus": [
-            "ptr:L",
-            "ptr:R"
+            "L0",
+            "R15"
           ],
           "say": "L marks the start, at index zero. R marks the end, at index fifteen."
         },
         {
           "show": [
-            "ptr:mid"
+            "mid7"
           ],
-          "callout": "mid = 0 + ⌊(15 − 0) / 2⌋ = 7",
-          "say": "Halfway between them is index seven."
+          "focus": "mid7",
+          "say": "Halfway between them is index seven.",
+          "draw": [
+            {
+              "write": "mid = 0 + ⌊(15 − 0) / 2⌋ = 7",
+              "near": "goal",
+              "side": "right",
+              "when": "halfway"
+            }
+          ]
         },
         {
-          "focus": 7,
-          "callout": "72 ? 45",
-          "say": "It holds forty five. Now ask one question. Is seventy two equal to it, smaller, or bigger?"
+          "focus": "c7",
+          "say": "It holds forty five. Now ask one question. Is seventy two equal to it, smaller, or bigger?",
+          "draw": [
+            {
+              "circle": "c7",
+              "note": "72 ? 45",
+              "when": "one question"
+            }
+          ]
         },
         {
           "focus": [
-            "ptr:L",
-            "ptr:R"
+            "L0",
+            "R15"
           ],
-          "callout": "(L + R) / 2 [can overflow]{bad}",
-          "say": "Why not just add L and R and halve it? On a huge list, that sum can get too big for the number type in Java or C, and wrap around. Taking half the gap from L never gets that big."
+          "erase": true,
+          "say": "Why not add L and R and halve that? On a huge list, the sum can overflow in Java or C.",
+          "draw": [
+            {
+              "write": "(L + R) / 2 can overflow",
+              "near": "goal",
+              "side": "right",
+              "tone": "bad",
+              "when": "overflow"
+            }
+          ]
+        },
+        {
+          "focus": "mid7",
+          "say": "Taking half the gap from L never gets that big.",
+          "draw": [
+            {
+              "write": "L + (R − L) / 2 cannot",
+              "near": "R15",
+              "side": "left",
+              "tone": "good",
+              "when": "half the gap"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Throwing half away",
       "title": "One look rules out half",
-      "label": "list",
+      "picture": "row",
+      "hidden": [
+        "check0",
+        "check1",
+        "check2",
+        "check10",
+        "L8",
+        "L10",
+        "R10",
+        "mid11",
+        "mid9",
+        "mid10"
+      ],
+      "labels": {
+        "c7": "forty five",
+        "c11": "seventy nine",
+        "mid11": "new middle",
+        "L8": "L",
+        "R10": "R"
+      },
       "narration": "Here is where the order pays off.",
-      "values": [
-        2,
-        5,
-        8,
-        12,
-        16,
-        23,
-        38,
-        45,
-        56,
-        67,
-        72,
-        79,
-        84,
-        91,
-        95,
-        99
-      ],
-      "pointers": [
-        {
-          "name": "L",
-          "at": 0,
-          "tone": "good"
-        },
-        {
-          "name": "R",
-          "at": 15,
-          "tone": "accent"
-        },
-        {
-          "name": "mid",
-          "at": 7,
-          "tone": "warn"
-        }
-      ],
-      "callout": "mid = 0 + ⌊(15 − 0) / 2⌋ = 7",
       "steps": [
         {
-          "focus": 7,
+          "focus": "c7",
           "say": "The target is bigger than forty five.",
           "draw": [
             {
-              "circle": 7
-            },
-            {
-              "write": "72 > 45",
-              "near": 7,
+              "circle": "c7",
+              "note": "72 > 45",
               "when": "bigger"
             }
           ]
         },
         {
           "tint": {
-            "0-7": "dim"
+            "c0": "bad",
+            "c1": "bad",
+            "c2": "bad",
+            "c3": "bad",
+            "c4": "bad",
+            "c5": "bad",
+            "c6": "bad",
+            "c7": "bad"
           },
-          "move": {
-            "L": 8
-          },
-          "callout": "L = mid + 1 = 8",
-          "say": "Every box left of it is even smaller. So none of those first eight can be the one. We cross them all out in one go, and L jumps to index eight.",
+          "focus": [
+            "c0",
+            "c7"
+          ],
+          "say": "Every box left of it is even smaller. So none of those first eight can be the one.",
           "draw": [
             {
-              "brace": "0-7",
+              "brace": [
+                "c0",
+                "c7"
+              ],
               "note": "all ≤ 45, so not here",
+              "side": "below",
               "when": "even smaller"
             }
           ]
         },
         {
-          "move": {
-            "mid": 11
-          },
-          "erase": true,
-          "callout": "mid = 8 + ⌊(15 − 8) / 2⌋ = 11",
-          "say": "Find the new middle. It is index eleven."
+          "hide": [
+            "L0"
+          ],
+          "show": [
+            "L8"
+          ],
+          "focus": "L8",
+          "say": "We cross them all out in one go, and L jumps to index eight."
         },
         {
-          "focus": 11,
+          "hide": [
+            "mid7"
+          ],
+          "show": [
+            "mid11"
+          ],
+          "erase": true,
+          "say": "Find the new middle. It is index eleven.",
+          "draw": [
+            {
+              "write": "mid = 8 + ⌊(15 − 8) / 2⌋ = 11",
+              "near": "goal",
+              "side": "right",
+              "when": "new middle"
+            }
+          ]
+        },
+        {
+          "focus": "c11",
           "say": "It holds seventy nine. The target is smaller.",
           "draw": [
             {
-              "circle": 11
-            },
-            {
-              "write": "72 < 79",
-              "near": 11,
+              "circle": "c11",
+              "note": "72 < 79",
               "when": "smaller"
             }
           ]
         },
         {
-          "focus": [
-            "11-15",
-            "ptr:R"
-          ],
           "tint": {
-            "11-15": "dim"
+            "c11": "bad",
+            "c12": "bad",
+            "c13": "bad",
+            "c14": "bad",
+            "c15": "bad"
           },
-          "move": {
-            "R": 10
-          },
-          "callout": "R = mid − 1 = 10",
+          "hide": [
+            "R15"
+          ],
+          "show": [
+            "R10"
+          ],
+          "focus": [
+            "R10",
+            "c11",
+            "c15"
+          ],
           "say": "So index eleven and everything right of it are out. R moves to index ten.",
           "draw": [
             {
-              "brace": "11-15",
+              "brace": [
+                "c11",
+                "c15"
+              ],
               "note": "out",
+              "side": "below",
               "when": "everything right"
             }
           ]
         },
         {
-          "focus": "8-10",
+          "hide": [
+            "mid11"
+          ],
+          "focus": [
+            "c8",
+            "c10"
+          ],
           "erase": true,
-          "callout": "16 → 8 → 3 left",
           "say": "Sixteen boxes went down to half, and now just three are left, after only two looks.",
           "draw": [
             {
-              "brace": "8-10",
-              "note": "still in play",
+              "brace": [
+                "c8",
+                "c10"
+              ],
+              "note": "16 → 8 → 3 left",
+              "side": "above",
+              "tone": "good",
               "when": "three are left"
             }
           ]
@@ -308,240 +415,231 @@
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Found it",
       "title": "Closing in on 72",
-      "label": "list",
-      "narration": "Three boxes are left: fifty six, sixty seven and seventy two.",
-      "values": [
-        2,
-        5,
-        8,
-        12,
-        16,
-        23,
-        38,
-        45,
-        56,
-        67,
-        72,
-        79,
-        84,
-        91,
-        95,
-        99
-      ],
-      "pointers": [
-        {
-          "name": "L",
-          "at": 8,
-          "tone": "good"
-        },
-        {
-          "name": "R",
-          "at": 10,
-          "tone": "accent"
-        },
-        {
-          "name": "mid",
-          "at": 9,
-          "tone": "warn",
-          "hidden": true
-        }
-      ],
-      "tint": {
-        "0-7": "dim",
-        "11-15": "dim"
+      "picture": "row",
+      "labels": {
+        "mid9": "middle",
+        "c9": "sixty seven",
+        "c10": "seventy two",
+        "L8": "L",
+        "c8": "fifty six"
       },
+      "narration": "Three boxes are left: fifty six, sixty seven and seventy two.",
       "steps": [
         {
           "show": [
-            "ptr:mid"
+            "mid9"
           ],
-          "callout": "mid = 8 + ⌊(10 − 8) / 2⌋ = 9",
-          "say": "The middle is index nine."
+          "focus": "mid9",
+          "say": "The middle is index nine.",
+          "draw": [
+            {
+              "write": "mid = 8 + ⌊(10 − 8) / 2⌋ = 9",
+              "near": "goal",
+              "side": "right",
+              "when": "middle"
+            }
+          ]
         },
         {
-          "focus": 9,
-          "callout": "[72 > 67]{good}",
-          "say": "It holds sixty seven, which is too small."
+          "focus": "c9",
+          "say": "It holds sixty seven, which is too small.",
+          "draw": [
+            {
+              "circle": "c9",
+              "note": "72 > 67",
+              "when": "too small"
+            }
+          ]
         },
         {
           "tint": {
-            "8-9": "dim"
+            "c8": "bad",
+            "c9": "bad"
           },
           "move": {
-            "L": 10
+            "L8": "translate(144 0)"
           },
-          "callout": "L = mid + 1 = 10",
+          "erase": true,
           "say": "So L moves past it, to index ten."
         },
         {
           "move": {
-            "mid": 10
+            "mid9": "translate(72 0)"
           },
-          "callout": "mid = 10 + ⌊(10 − 10) / 2⌋ = 10",
-          "say": "Now L and R meet, and the middle is index ten."
+          "say": "Now L and R meet, and the middle is index ten.",
+          "draw": [
+            {
+              "write": "mid = 10 + ⌊(10 − 10) / 2⌋ = 10",
+              "near": "goal",
+              "side": "right",
+              "when": "meet"
+            }
+          ]
         },
         {
-          "focus": 10,
+          "focus": "c10",
           "tint": {
-            "10": "good"
+            "c10": "good"
           },
-          "callout": "[72 = 72]{good} found",
-          "mark": "circle",
-          "note": "4 looks",
-          "say": "It holds seventy two. Found, on the fourth look."
+          "say": "It holds seventy two. Found, on the fourth look.",
+          "draw": [
+            {
+              "circle": "c10",
+              "note": "72 = 72: 4 looks",
+              "tone": "good",
+              "when": "found"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Halving",
-      "title": "What was left after each look",
-      "narration": "Line up what was still in play before each look.",
-      "indexes": false,
-      "arrays": [
-        {
-          "name": "look1",
-          "label": "look 1",
-          "values": [
-            2,
-            5,
-            8,
-            12,
-            16,
-            23,
-            38,
-            45,
-            56,
-            67,
-            72,
-            79,
-            84,
-            91,
-            95,
-            99
-          ]
-        },
-        {
-          "name": "look2",
-          "label": "look 2",
-          "values": [
-            56,
-            67,
-            72,
-            79,
-            84,
-            91,
-            95,
-            99
-          ],
-          "hidden": true
-        },
-        {
-          "name": "look3",
-          "label": "look 3",
-          "values": [
-            56,
-            67,
-            72
-          ],
-          "hidden": true
-        },
-        {
-          "name": "look4",
-          "label": "look 4",
-          "values": [
-            72
-          ],
-          "hidden": true
-        }
+      "title": "Each look leaves half or less",
+      "picture": "halving",
+      "hidden": [
+        "look2",
+        "look3",
+        "look4"
       ],
+      "labels": {
+        "look1": "sixteen boxes",
+        "look2": "half of them",
+        "look3": "three",
+        "look4": "one box"
+      },
+      "narration": "Line up what was still in play before each look.",
       "steps": [
         {
-          "focus": "array:look1",
-          "callout": "16 left",
+          "focus": "look1",
           "say": "Sixteen boxes before the first look."
         },
         {
           "show": [
-            "array:look2"
+            "look2"
           ],
-          "callout": "8 left",
+          "focus": "look2",
           "say": "Half of them before the second."
         },
         {
           "show": [
-            "array:look3"
+            "look3"
           ],
-          "callout": "3 left",
-          "say": "Three before the third. Each look also throws out the middle box, and the two sides are not always equal, so this search went sixteen, eight, three, one."
+          "focus": "look3",
+          "say": "Three before the third. Each look also throws out the middle box."
         },
         {
           "show": [
-            "array:look4"
+            "look4"
           ],
+          "focus": "look4",
           "tint": {
-            "look4[0]": "good"
+            "look4": "good"
           },
-          "callout": "1 left",
           "say": "And one box for the last look."
         },
         {
           "focus": [
-            "array:look1",
-            "array:look4"
+            "look1",
+            "look2",
+            "look3",
+            "look4"
           ],
-          "callout": "n / 2ᵏ = 1, so k = log₂ n",
-          "say": "In general, every look halves what is left. Halve n about log two of n times, and one box is left. So doubling the list adds just one more look."
+          "say": "Sixteen, eight, three, one. Every look halves what is left. Halve n about log two of n times, and one box is left.",
+          "draw": [
+            {
+              "write": "n halved k times = 1, so k = log₂ n",
+              "near": "look4",
+              "side": "right",
+              "tone": "good",
+              "when": "log two"
+            }
+          ]
+        },
+        {
+          "focus": "look1",
+          "say": "So doubling the list adds just one more look.",
+          "draw": [
+            {
+              "write": "32 boxes: one more look",
+              "near": "look3",
+              "side": "right",
+              "when": "one more look"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "At scale",
-      "title": "The most looks binary search needs",
-      "kind": "line",
-      "unit": "looks",
-      "better": "lower",
-      "narration": "Here is the most looks it can ever take, as the list grows.",
-      "labels": [
-        "16",
-        "1 thousand",
-        "1 million",
-        "1 billion",
-        "4 billion"
+      "title": "Four billion boxes, 32 looks",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"60\" y1=\"520\" x2=\"1160\" y2=\"520\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<text x=\"60\" y=\"610\" font-size=\"24\" fill=\"var(--muted)\">list size</text>\n<text x=\"60\" y=\"40\" font-size=\"24\" fill=\"var(--muted)\">most looks</text>\n<g id=\"n0\"><rect x=\"90\" y=\"460\" width=\"110\" height=\"60\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"145\" y=\"446\" text-anchor=\"middle\" font-size=\"28\">5</text><text x=\"145\" y=\"560\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">16</text></g><g id=\"n1\"><rect x=\"290\" y=\"400\" width=\"110\" height=\"120\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"345\" y=\"386\" text-anchor=\"middle\" font-size=\"28\">10</text><text x=\"345\" y=\"560\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">1 thousand</text></g><g id=\"n2\"><rect x=\"490\" y=\"280\" width=\"110\" height=\"240\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"545\" y=\"266\" text-anchor=\"middle\" font-size=\"28\">20</text><text x=\"545\" y=\"560\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">1 million</text></g><g id=\"n3\"><rect x=\"690\" y=\"160\" width=\"110\" height=\"360\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"745\" y=\"146\" text-anchor=\"middle\" font-size=\"28\">30</text><text x=\"745\" y=\"560\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">1 billion</text></g><g id=\"n4\"><rect x=\"890\" y=\"136\" width=\"110\" height=\"384\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"945\" y=\"122\" text-anchor=\"middle\" font-size=\"28\">32</text><text x=\"945\" y=\"560\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">4 billion</text></g>\n<g id=\"linear\"><rect x=\"1030\" y=\"20\" width=\"110\" height=\"500\" class=\"tone-bad\" stroke-width=\"3\"/><path d=\"M1030 20 L1060 4 L1085 24 L1110 4 L1140 20\" fill=\"none\" stroke=\"var(--bad)\" stroke-width=\"3\"/><text x=\"1085\" y=\"560\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">one by one</text></g>\n</svg>",
+      "hidden": [
+        "n1",
+        "n2",
+        "n3",
+        "n4",
+        "linear"
       ],
-      "series": [
-        {
-          "name": "most looks",
-          "values": [
-            5,
-            10,
-            20,
-            30,
-            32
-          ],
-          "tone": "good"
-        }
-      ],
-      "annotation": {
-        "at": "4 billion",
-        "text": "checking one by one: 4 billion"
+      "labels": {
+        "n0": "sixteen boxes",
+        "n2": "a million",
+        "n4": "thirty two",
+        "linear": "one by one"
       },
+      "narration": "Here is the most looks it can ever take, as the list grows.",
       "steps": [
         {
-          "focus": "16",
+          "focus": "n0",
           "say": "Sixteen boxes take at most five looks. Our search got lucky and needed four."
         },
         {
-          "focus": "1 million",
-          "say": "A million take at most twenty."
+          "show": [
+            "n1",
+            "n2"
+          ],
+          "focus": "n2",
+          "say": "A thousand take at most ten, and a million at most twenty."
         },
         {
-          "focus": "most looks@4 billion",
-          "say": "And four billion take at most thirty two, where checking one by one could take four billion."
+          "show": [
+            "n3",
+            "n4"
+          ],
+          "focus": "n4",
+          "say": "And four billion take at most thirty two."
+        },
+        {
+          "show": [
+            "linear"
+          ],
+          "focus": "linear",
+          "say": "Checking one by one, the worst case is a check for every box. That bar would run millions of times off the board.",
+          "draw": [
+            {
+              "write": "one by one:\n4,000,000,000 checks",
+              "at": [
+                0.2,
+                0.2
+              ],
+              "tone": "bad",
+              "id": "billions",
+              "when": "every box"
+            },
+            {
+              "arrow": [
+                "billions",
+                "linear"
+              ],
+              "tone": "bad",
+              "when": "off the board"
+            }
+          ]
         }
       ]
     }

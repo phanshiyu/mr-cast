@@ -1,217 +1,285 @@
 {
   "title": "How a support ticket gets resolved",
   "subtitle": "From a customer's message to a fix and back",
+  "tones": {
+    "good": "the customer hears back",
+    "bad": "time spent waiting"
+  },
+  "pictures": {
+    "office": "<svg viewBox=\"0 0 1200 640\"><defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--text)\" stroke=\"none\"/></marker><marker id=\"headGood\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"5\" markerHeight=\"5\" orient=\"auto-start-reverse\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--good)\" stroke=\"none\"/></marker></defs>\n<g id=\"gSupport\"><rect x=\"290\" y=\"16\" width=\"320\" height=\"600\" rx=\"18\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"12 10\"/><text x=\"450\" y=\"600\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">support team</text></g>\n<g id=\"gEng\"><rect x=\"670\" y=\"16\" width=\"320\" height=\"600\" rx=\"18\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"3\" stroke-dasharray=\"12 10\"/><text x=\"830\" y=\"600\" text-anchor=\"middle\" font-size=\"24\" fill=\"var(--muted)\">engineering</text></g>\n<g id=\"customer\"><circle cx=\"120\" cy=\"150\" r=\"30\" stroke-width=\"3\"/><path d=\"M68 255 Q68 192 120 192 Q172 192 172 255 Z\" stroke-width=\"3\"/><text x=\"120\" y=\"292\" text-anchor=\"middle\" font-size=\"26\">Customer</text><text x=\"120\" y=\"324\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">has a problem</text></g>\n<g id=\"agent\"><circle cx=\"450\" cy=\"150\" r=\"30\" stroke-width=\"3\"/><path d=\"M398 255 Q398 192 450 192 Q502 192 502 255 Z\" stroke-width=\"3\"/><text x=\"450\" y=\"292\" text-anchor=\"middle\" font-size=\"26\">Support agent</text><text x=\"450\" y=\"324\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">owns the ticket</text></g>\n<g id=\"engineer\"><circle cx=\"830\" cy=\"150\" r=\"30\" stroke-width=\"3\"/><path d=\"M778 255 Q778 192 830 192 Q882 192 882 255 Z\" stroke-width=\"3\"/><text x=\"830\" y=\"292\" text-anchor=\"middle\" font-size=\"26\">On-call engineer</text><text x=\"830\" y=\"324\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">fixes real bugs</text></g>\n<g id=\"guides\"><rect x=\"380\" y=\"400\" width=\"140\" height=\"80\" rx=\"10\" stroke-width=\"3\"/><line x1=\"400\" y1=\"428\" x2=\"500\" y2=\"428\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"400\" y1=\"450\" x2=\"480\" y2=\"450\" stroke=\"var(--muted)\" stroke-width=\"3\"/><text x=\"450\" y=\"516\" text-anchor=\"middle\" font-size=\"26\">Help guides</text><text x=\"450\" y=\"546\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">known fixes</text></g>\n<g id=\"tracker\"><rect x=\"760\" y=\"400\" width=\"140\" height=\"80\" rx=\"10\" stroke-width=\"3\"/><line x1=\"780\" y1=\"428\" x2=\"880\" y2=\"428\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"780\" y1=\"450\" x2=\"860\" y2=\"450\" stroke=\"var(--muted)\" stroke-width=\"3\"/><text x=\"830\" y=\"516\" text-anchor=\"middle\" font-size=\"26\">Bug tracker</text><text x=\"830\" y=\"546\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">one issue per bug</text></g>\n<g id=\"billing\"><rect x=\"1030\" y=\"110\" width=\"160\" height=\"110\" rx=\"10\" stroke-width=\"3\"/><text x=\"1110\" y=\"156\" text-anchor=\"middle\" font-size=\"24\">billing</text><text x=\"1110\" y=\"188\" text-anchor=\"middle\" font-size=\"24\">system</text></g>\n<g id=\"e1\"><line x1=\"180\" y1=\"215\" x2=\"384\" y2=\"215\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"282\" y=\"200\" text-anchor=\"middle\" font-size=\"22\">writes in</text></g>\n<g id=\"e2\"><line x1=\"450\" y1=\"338\" x2=\"450\" y2=\"392\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"8 6\" marker-end=\"url(#head)\"/><text x=\"464\" y=\"372\" font-size=\"22\">checks first</text></g>\n<g id=\"e3\"><line x1=\"512\" y1=\"215\" x2=\"768\" y2=\"215\" stroke=\"var(--text)\" stroke-width=\"3\" marker-start=\"url(#head)\" marker-end=\"url(#head)\"/><text x=\"640\" y=\"200\" text-anchor=\"middle\" font-size=\"22\">works with</text></g>\n<g id=\"e4\"><line x1=\"830\" y1=\"338\" x2=\"830\" y2=\"392\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"844\" y=\"372\" font-size=\"22\">files</text></g>\n<g id=\"e5\"><line x1=\"890\" y1=\"165\" x2=\"1022\" y2=\"165\" stroke=\"var(--text)\" stroke-width=\"3\" marker-end=\"url(#head)\"/><text x=\"956\" y=\"150\" text-anchor=\"middle\" font-size=\"22\">tax rate</text></g>\n<g id=\"reply\"><path d=\"M380 300 Q300 470 120 340\" fill=\"none\" stroke=\"var(--good)\" stroke-width=\"4\" marker-end=\"url(#headGood)\"/><text x=\"130\" y=\"470\" font-size=\"22\" class=\"fill-good\">new invoice</text><text x=\"130\" y=\"500\" font-size=\"22\" class=\"fill-good\">and apology</text></g>\n<g id=\"tC\"><rect x=\"72\" y=\"30\" width=\"96\" height=\"58\" rx=\"8\" stroke-width=\"3\"/><text x=\"120\" y=\"67\" text-anchor=\"middle\" font-size=\"22\">ticket</text></g><g id=\"tA\"><rect x=\"402\" y=\"30\" width=\"96\" height=\"58\" rx=\"8\" stroke-width=\"3\"/><text x=\"450\" y=\"67\" text-anchor=\"middle\" font-size=\"22\">ticket</text></g><g id=\"tE\"><rect x=\"782\" y=\"30\" width=\"96\" height=\"58\" rx=\"8\" stroke-width=\"3\"/><text x=\"830\" y=\"67\" text-anchor=\"middle\" font-size=\"22\">ticket</text></g><g id=\"tB\"><rect x=\"1062\" y=\"30\" width=\"96\" height=\"58\" rx=\"8\" stroke-width=\"3\"/><text x=\"1110\" y=\"67\" text-anchor=\"middle\" font-size=\"22\">ticket</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "The idea",
-      "kicker": "How a support ticket gets resolved",
-      "headline": "A customer's problem travels through three teams before it comes back as an answer.",
-      "items": [
-        "The customer writes in once and never has to repeat the story",
-        "A support agent owns the ticket from start to finish",
-        "Engineering joins only when the agent finds a real bug",
-        "The customer hears back at every handover"
+      "title": "Three groups pass one problem along",
+      "picture": "office",
+      "hidden": [
+        "gSupport",
+        "gEng",
+        "customer",
+        "agent",
+        "engineer",
+        "guides",
+        "tracker",
+        "billing",
+        "e1",
+        "e2",
+        "e3",
+        "e4",
+        "e5",
+        "reply",
+        "tC",
+        "tA",
+        "tE",
+        "tB"
       ],
-      "narration": "When a customer reports a problem, three groups of people pass it along until it is fixed. Here is who they are and how the ticket moves between them."
+      "labels": {
+        "customer": "customer",
+        "agent": "support agent",
+        "engineer": "engineering",
+        "gSupport": "support",
+        "gEng": "engineering"
+      },
+      "narration": "When a customer reports a problem, three groups of people pass it along until it is fixed.",
+      "steps": [
+        {
+          "show": [
+            "customer"
+          ],
+          "focus": "customer",
+          "say": "The customer writes in once, and never has to repeat the story."
+        },
+        {
+          "show": [
+            "gSupport",
+            "agent"
+          ],
+          "focus": "agent",
+          "say": "A support agent owns the ticket from start to finish."
+        },
+        {
+          "show": [
+            "gEng",
+            "engineer"
+          ],
+          "focus": [
+            "gEng",
+            "engineer"
+          ],
+          "say": "Engineering joins only when the agent finds a real bug."
+        },
+        {
+          "focus": [
+            "customer",
+            "agent"
+          ],
+          "say": "And the customer hears back at every handover.",
+          "draw": [
+            {
+              "arrow": [
+                "agent",
+                "customer"
+              ],
+              "note": "hears back",
+              "tone": "good",
+              "when": "hears back"
+            }
+          ]
+        }
+      ]
     },
     {
-      "type": "graph",
+      "type": "svg",
       "chapter": "Who is involved",
-      "layout": "TB",
-      "nodes": [
-        {
-          "id": "customer",
-          "label": "Customer",
-          "icon": "user",
-          "caption": "reports a problem",
-          "tone": "good",
-          "group": "Customer"
-        },
-        {
-          "id": "agent",
-          "label": "Support agent",
-          "icon": "headset",
-          "caption": "owns the ticket",
-          "highlight": true,
-          "group": "Support team"
-        },
-        {
-          "id": "guides",
-          "label": "Help guides",
-          "icon": "book-open",
-          "caption": "known fixes",
-          "group": "Support team"
-        },
-        {
-          "id": "engineer",
-          "label": "On-call engineer",
-          "icon": "laptop",
-          "caption": "fixes real bugs",
-          "group": "Engineering"
-        },
-        {
-          "id": "tracker",
-          "label": "Bug tracker",
-          "icon": "bug",
-          "caption": "one issue per bug",
-          "group": "Engineering"
-        }
-      ],
-      "edges": [
-        {
-          "from": "customer",
-          "to": "agent",
-          "label": "writes to the help desk"
-        },
-        {
-          "from": "agent",
-          "to": "guides",
-          "label": "checks first",
-          "style": "dashed"
-        },
-        {
-          "from": "agent",
-          "to": "engineer",
-          "label": "works with",
-          "direction": "both"
-        },
-        {
-          "from": "engineer",
-          "to": "tracker",
-          "label": "files",
-          "direction": "none"
-        }
-      ],
+      "title": "One owner, and help when it is a bug",
+      "picture": "office",
+      "labels": {
+        "tC": "problem",
+        "e1": "help desk",
+        "tA": "lands with one support agent",
+        "guides": "help guides",
+        "e2": "checks",
+        "e3": "work on the problem together",
+        "tracker": "bug"
+      },
       "narration": "The customer sits outside. The support team owns the ticket, and engineering helps when the problem is a bug.",
       "steps": [
         {
-          "focus": "customer",
+          "show": [
+            "tC"
+          ],
+          "focus": [
+            "customer",
+            "tC"
+          ],
           "say": "The story starts with one customer who has a problem."
         },
         {
-          "focus": "customer->agent",
+          "show": [
+            "e1",
+            "tA"
+          ],
+          "hide": [
+            "tC"
+          ],
+          "focus": [
+            "e1",
+            "tA",
+            "agent"
+          ],
           "say": "The customer writes to the help desk, and the message lands with one support agent."
         },
         {
           "focus": "agent",
           "say": "That agent owns the ticket until it is resolved, whoever else helps.",
-          "mark": "circle",
-          "note": "one owner, start to finish"
+          "draw": [
+            {
+              "circle": "agent",
+              "note": "one owner, start to finish",
+              "when": "owns"
+            }
+          ]
         },
         {
-          "focus": [
-            "agent->guides",
+          "show": [
+            "e2",
             "guides"
           ],
+          "focus": [
+            "e2",
+            "guides"
+          ],
+          "erase": true,
           "say": "The agent checks the help guides first, because most problems already have a known fix."
         },
         {
+          "show": [
+            "e3",
+            "e4",
+            "tracker"
+          ],
           "focus": [
-            "agent-engineer",
-            "group:Engineering"
+            "e3",
+            "engineer",
+            "tracker"
           ],
           "say": "When the guides have no answer, the agent and the on-call engineer work on the problem together."
         }
       ]
     },
     {
-      "type": "sequence",
+      "type": "svg",
       "chapter": "One ticket",
-      "title": "A wrong invoice",
-      "participants": [
-        {
-          "id": "customer",
-          "label": "Customer",
-          "icon": "user",
-          "caption": "pays the bill",
-          "tone": "good"
-        },
-        {
-          "id": "agent",
-          "label": "Support agent",
-          "icon": "headset",
-          "caption": "owns the ticket",
-          "highlight": true
-        },
-        {
-          "id": "engineer",
-          "label": "Engineer",
-          "icon": "laptop",
-          "caption": "on call"
-        },
-        {
-          "id": "billing",
-          "label": "Billing system",
-          "icon": "receipt",
-          "caption": "sends invoices"
-        }
-      ],
-      "messages": [
-        {
-          "from": "customer",
-          "to": "agent",
-          "label": "my invoice is wrong"
-        },
-        {
-          "from": "agent",
-          "to": "agent",
-          "label": "check the account",
-          "note": "guides cover refunds, not this"
-        },
-        {
-          "from": "agent",
-          "to": "engineer",
-          "label": "escalate with details"
-        },
-        {
-          "from": "engineer",
-          "to": "billing",
-          "label": "fix the tax rate"
-        },
-        {
-          "from": "billing",
-          "to": "engineer",
-          "label": "invoice reissued",
-          "kind": "return"
-        },
-        {
-          "from": "engineer",
-          "to": "agent",
-          "label": "fixed and checked",
-          "kind": "return"
-        },
-        {
-          "from": "agent",
-          "to": "customer",
-          "label": "new invoice and apology",
-          "kind": "async",
-          "highlight": true
-        }
-      ],
+      "title": "A wrong invoice, from report to fix",
+      "picture": "office",
+      "labels": {
+        "customer": "customer",
+        "agent": "agent",
+        "guides": "guides",
+        "tE": "hands the ticket",
+        "engineer": "engineer",
+        "e5": "tax rate",
+        "billing": "billing system",
+        "tB": "reissues",
+        "reply": "new invoice"
+      },
       "narration": "Follow one ticket through the people who touch it.",
       "steps": [
         {
+          "show": [
+            "tC"
+          ],
+          "hide": [
+            "tA"
+          ],
           "focus": [
             "customer",
-            "0-1"
+            "tC"
           ],
-          "say": "The customer reports a wrong invoice, and the agent checks the account first."
+          "say": "The customer reports a wrong invoice.",
+          "draw": [
+            {
+              "write": "\"my invoice is wrong\"",
+              "near": "tC",
+              "side": "right",
+              "when": "wrong invoice"
+            }
+          ]
         },
         {
+          "hide": [
+            "tC"
+          ],
+          "show": [
+            "tA"
+          ],
+          "focus": [
+            "agent",
+            "tA"
+          ],
+          "erase": true,
+          "say": "The agent checks the account first. The guides cover refunds, not this.",
+          "draw": [
+            {
+              "cross": "guides",
+              "when": "not this"
+            }
+          ]
+        },
+        {
+          "hide": [
+            "tA"
+          ],
+          "show": [
+            "tE"
+          ],
+          "focus": [
+            "agent",
+            "tE",
+            "engineer",
+            "e3"
+          ],
+          "erase": true,
+          "say": "So the agent hands the ticket to the engineer, with every detail already gathered."
+        },
+        {
+          "show": [
+            "billing",
+            "e5"
+          ],
           "focus": [
             "engineer",
-            "2"
+            "e5",
+            "billing"
           ],
-          "say": "The guides do not cover the problem. So the agent hands the ticket to the engineer, with every detail already gathered."
+          "say": "The engineer corrects the tax rate in the billing system."
         },
         {
-          "focus": "3-4",
-          "say": "The engineer corrects the tax rate and the billing system reissues the invoice."
-        },
-        {
+          "hide": [
+            "tE"
+          ],
+          "show": [
+            "tB"
+          ],
           "focus": [
-            "5-6",
+            "billing",
+            "tB"
+          ],
+          "say": "And the billing system reissues the invoice."
+        },
+        {
+          "hide": [
+            "tB"
+          ],
+          "show": [
+            "tA",
+            "reply"
+          ],
+          "focus": [
+            "agent",
+            "tA",
+            "reply",
             "customer"
           ],
           "say": "The fix goes back to the agent, who tells the customer and sends the new invoice."
@@ -219,114 +287,168 @@
       ]
     },
     {
-      "type": "flow",
+      "type": "svg",
       "chapter": "Handovers",
-      "title": "Who holds the ticket",
-      "steps": [
-        {
-          "actor": "Customer",
-          "icon": "user",
-          "tone": "good",
-          "action": "Describes the problem once",
-          "say": "The customer describes the problem once, in their own words."
-        },
-        {
-          "actor": "Support agent",
-          "icon": "headset",
-          "tone": "accent",
-          "action": "Reproduces it and writes the steps down",
-          "say": "The agent makes the problem happen again, and writes down the exact steps."
-        },
-        {
-          "actor": "Engineer",
-          "icon": "laptop",
-          "action": "Fixes the cause, not the symptom",
-          "say": "The engineer fixes the cause, so the next customer never sees the problem."
-        },
-        {
-          "actor": "Support agent",
-          "icon": "headset",
-          "tone": "accent",
-          "action": "Confirms the fix with the customer",
-          "say": "The agent confirms the fix with the customer and closes the ticket."
-        }
+      "title": "Each handover adds what the next person needs",
+      "picture": "office",
+      "hidden": [
+        "tA",
+        "tE",
+        "tB",
+        "reply"
       ],
-      "narration": "At each handover the ticket gains something the next person needs."
-    },
-    {
-      "type": "timeline",
-      "chapter": "How long it takes",
-      "title": "A typical escalated ticket",
-      "unit": "h",
-      "events": [
-        {
-          "at": 0,
-          "label": "Ticket opened",
-          "detail": "customer writes in",
-          "tone": "neutral"
-        },
-        {
-          "at": 1,
-          "label": "First reply",
-          "detail": "agent acknowledges",
-          "tone": "good"
-        },
-        {
-          "at": 3,
-          "label": "Escalated",
-          "detail": "engineer joins",
-          "tone": "warn"
-        },
-        {
-          "at": 20,
-          "label": "Fix shipped",
-          "detail": "invoice reissued",
-          "tone": "accent"
-        },
-        {
-          "at": 22,
-          "label": "Ticket closed",
-          "detail": "customer confirms",
-          "tone": "good"
-        }
-      ],
-      "spans": [
-        {
-          "from": 0,
-          "to": 1,
-          "label": "first reply target",
-          "tone": "good"
-        },
-        {
-          "from": 3,
-          "to": 20,
-          "label": "waiting on engineering",
-          "tone": "warn"
-        }
-      ],
-      "narration": "A ticket like this spends most of its open time waiting on engineering.",
+      "labels": {
+        "tC": "ticket",
+        "customer": "customer",
+        "agent": "agent",
+        "engineer": "engineer"
+      },
+      "narration": "At each handover the ticket gains something the next person needs.",
       "steps": [
         {
           "focus": [
-            "0-1",
-            "span:first reply target"
+            "customer",
+            "tC"
+          ],
+          "say": "The customer describes the problem once, in their own words.",
+          "draw": [
+            {
+              "write": "what went wrong",
+              "near": "tC",
+              "side": "right",
+              "when": "describes"
+            }
+          ]
+        },
+        {
+          "move": {
+            "tC": "translate(330 0)"
+          },
+          "erase": true,
+          "focus": [
+            "agent",
+            "tC"
+          ],
+          "say": "The agent makes the problem happen again, and writes down the exact steps.",
+          "draw": [
+            {
+              "write": "+ exact steps",
+              "near": "tC",
+              "side": "right",
+              "when": "writes down"
+            }
+          ]
+        },
+        {
+          "move": {
+            "tC": "translate(710 0)"
+          },
+          "erase": true,
+          "focus": [
+            "engineer",
+            "tC"
+          ],
+          "say": "The engineer fixes the cause, so the next customer never sees the problem.",
+          "draw": [
+            {
+              "write": "+ the cause, fixed",
+              "near": "tC",
+              "side": "right",
+              "when": "fixes the cause"
+            }
+          ]
+        },
+        {
+          "move": {
+            "tC": "translate(330 0)"
+          },
+          "erase": true,
+          "tint": {
+            "tC": "good"
+          },
+          "focus": [
+            "agent",
+            "customer",
+            "tC"
+          ],
+          "say": "The agent confirms the fix with the customer and closes the ticket.",
+          "draw": [
+            {
+              "arrow": [
+                "agent",
+                "customer"
+              ],
+              "note": "confirmed, closed",
+              "tone": "good",
+              "when": "confirms"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "svg",
+      "chapter": "How long it takes",
+      "title": "Most of the wait is on engineering",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"90\" y1=\"330\" x2=\"1142\" y2=\"330\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<text x=\"90\" y=\"600\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">0 h</text><line x1=\"90\" y1=\"560\" x2=\"90\" y2=\"574\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"366\" y=\"600\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">6 h</text><line x1=\"366\" y1=\"560\" x2=\"366\" y2=\"574\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"642\" y=\"600\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">12 h</text><line x1=\"642\" y1=\"560\" x2=\"642\" y2=\"574\" stroke=\"var(--muted)\" stroke-width=\"2\"/><text x=\"918\" y=\"600\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">18 h</text><line x1=\"918\" y1=\"560\" x2=\"918\" y2=\"574\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<line x1=\"90\" y1=\"567\" x2=\"1102\" y2=\"567\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<g id=\"firstSpan\"><rect x=\"90\" y=\"318\" width=\"46\" height=\"24\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"90\" y=\"520\" font-size=\"22\" class=\"fill-good\">first reply target: 1 h</text></g>\n<g id=\"waitSpan\"><rect x=\"228\" y=\"318\" width=\"782\" height=\"24\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"619\" y=\"510\" text-anchor=\"middle\" font-size=\"24\" class=\"fill-bad\">waiting on engineering: 17 h</text></g>\n<g id=\"opened\"><line x1=\"90\" y1=\"282\" x2=\"90\" y2=\"330\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"80\" y=\"236\" text-anchor=\"start\" font-size=\"24\">Ticket opened</text><text x=\"80\" y=\"264\" text-anchor=\"start\" font-size=\"22\" fill=\"var(--muted)\">customer writes in</text></g>\n<g id=\"replied\"><line x1=\"136\" y1=\"330\" x2=\"136\" y2=\"378\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"136\" y=\"418\" text-anchor=\"middle\" font-size=\"24\">First reply</text><text x=\"136\" y=\"446\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">agent acknowledges</text></g>\n<g id=\"escalated\"><line x1=\"228\" y1=\"192\" x2=\"228\" y2=\"330\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"228\" y=\"146\" text-anchor=\"middle\" font-size=\"24\">Escalated</text><text x=\"228\" y=\"174\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">engineer joins</text></g>\n<g id=\"shipped\"><line x1=\"1010\" y1=\"282\" x2=\"1010\" y2=\"330\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"1010\" y=\"236\" text-anchor=\"middle\" font-size=\"24\">Fix shipped</text><text x=\"1010\" y=\"264\" text-anchor=\"middle\" font-size=\"22\" fill=\"var(--muted)\">invoice reissued</text></g>\n<g id=\"closed\"><line x1=\"1102\" y1=\"330\" x2=\"1102\" y2=\"378\" stroke=\"var(--text)\" stroke-width=\"3\"/><text x=\"1112\" y=\"418\" text-anchor=\"end\" font-size=\"24\">Ticket closed</text><text x=\"1112\" y=\"446\" text-anchor=\"end\" font-size=\"22\" fill=\"var(--muted)\">customer confirms</text></g>\n</svg>",
+      "hidden": [
+        "replied",
+        "escalated",
+        "shipped",
+        "closed",
+        "firstSpan",
+        "waitSpan"
+      ],
+      "labels": {
+        "replied": "hears back",
+        "firstSpan": "within an hour",
+        "escalated": "hands the ticket to engineering",
+        "waitSpan": "seventeen hours",
+        "shipped": "ships the fix",
+        "closed": "closes the ticket",
+        "opened": "ticket"
+      },
+      "narration": "A ticket like this spends most of its open time waiting on engineering.",
+      "steps": [
+        {
+          "focus": "opened",
+          "say": "The clock starts when the customer writes in."
+        },
+        {
+          "show": [
+            "replied",
+            "firstSpan"
+          ],
+          "focus": [
+            "replied",
+            "firstSpan"
           ],
           "say": "The customer hears back within an hour."
         },
         {
-          "focus": 2,
+          "show": [
+            "escalated"
+          ],
+          "focus": "escalated",
           "say": "Three hours in, the agent hands the ticket to engineering."
         },
         {
+          "show": [
+            "waitSpan",
+            "shipped"
+          ],
           "focus": [
-            "span:waiting on engineering",
-            3
+            "waitSpan",
+            "shipped"
           ],
           "say": "Then seventeen hours pass while engineering finds and ships the fix."
         },
         {
-          "focus": 4,
-          "say": "The agent closes the ticket once the customer confirms."
+          "show": [
+            "closed"
+          ],
+          "focus": "closed",
+          "say": "The agent closes the ticket once the customer confirms, twenty two hours after it opened."
         }
       ]
     }

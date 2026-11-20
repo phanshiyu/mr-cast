@@ -104,7 +104,7 @@ Worked explanations with real numbers, each with the scenes it uses: [examples](
 
 Write every narration and `say` in plain words. Stop using jargon and speak coherently. State it more simply and concisely, like one human talking to another.
 
-Read [pictures](references/pictures.md) before you write the scenes: how to keep one picture on screen and change it with every sentence. An explanation is drawn by hand on a board, so draw it in svg scenes.
+Read [pictures](references/pictures.md) before you write the scenes: how to keep one picture on screen and change it with every sentence.
 
 The voice reads the narration and each step's `say` aloud, and each scene lasts as long as its words take. It reads "e.g.", "5s", "200 ms", an arrow and "v0.14" as words. Markup in spoken text is read as plain words.
 

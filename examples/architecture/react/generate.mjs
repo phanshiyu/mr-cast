@@ -53,10 +53,11 @@ ${wip('wip-main', 990, 236, 960, 296)}
 ${wip('wip-card', 990, 540, 974, 560)}
 </svg>`;
 
-
 // Scenes 2 and 3: the JSX you write, the call it becomes, and the object the call returns.
 const mono = (x, y, lines, extra = '') =>
-  lines.map((l, i) => `<text x="${x}" y="${y + i * 34}" font-size="24" font-family="mono"${extra}>${l}</text>`).join('');
+  lines
+    .map((l, i) => `<text x="${x}" y="${y + i * 34}" font-size="24" font-family="mono"${extra}>${l}</text>`)
+    .join('');
 const arrow = (id, x1, y1, x2, y2, extra = '') =>
   `<g id="${id}"><line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--text)" stroke-width="4" marker-end="url(#head)"/>${extra}</g>`;
 const head = `<defs><marker id="head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--text)" stroke="none"/></marker></defs>`;
@@ -134,7 +135,9 @@ ${item('c1', 660, 190, 'changes the real page')}${item('c2', 660, 300, 'runs sta
 // Scene 11: one update from setState to pixels.
 const stage = (id, i, name, what) => {
   const x = 20 + i * 236;
-  const link = i ? `<line x1="${x - 40}" y1="250" x2="${x - 6}" y2="250" stroke="var(--text)" stroke-width="4" marker-end="url(#head)"/>` : '';
+  const link = i
+    ? `<line x1="${x - 40}" y1="250" x2="${x - 6}" y2="250" stroke="var(--text)" stroke-width="4" marker-end="url(#head)"/>`
+    : '';
   return `<g id="${id}">${link}<rect x="${x}" y="200" width="196" height="100" rx="14" stroke-width="3"/><text x="${x + 98}" y="258" text-anchor="middle" font-size="24">${name}</text>${what.map((w, j) => `<text x="${x + 98}" y="${360 + j * 34}" text-anchor="middle" font-size="22" fill="var(--muted)">${w}</text>`).join('')}</g>`;
 };
 const path = `<svg viewBox="0 0 1200 640">${head}
@@ -152,15 +155,33 @@ const storyboard = {
       type: 'svg',
       chapter: 'Touching the DOM',
       title: 'Why touching the page is slow',
-      narration:
-        'Every web page is a tree of elements the browser keeps in memory, called the DOM.',
+      narration: 'Every web page is a tree of elements the browser keeps in memory, called the DOM.',
       svg: dom,
-      labels: { code: 'inner HTML', ul: 'the list', reflow: 'reflow', node: 'one list item', window: 'the whole page', li0: 'list item' },
+      labels: {
+        code: 'inner HTML',
+        ul: 'the list',
+        reflow: 'reflow',
+        node: 'one list item',
+        window: 'the whole page',
+        li0: 'list item',
+      },
       hidden: ['reflow', 'node'],
       steps: [
-        { focus: ['code', 'ul'], tint: { ul: 'bad' }, say: 'Changing it by hand is slow. Say our code replaces the list’s inner HTML.' },
-        { show: ['reflow'], focus: 'reflow', say: 'The browser now has to work out every size and position again, then repaint. That is called a reflow.' },
-        { show: ['node'], focus: 'node', say: 'And each element is not a small thing. One list item carries hundreds of properties, styles and listeners.' },
+        {
+          focus: ['code', 'ul'],
+          tint: { ul: 'bad' },
+          say: 'Changing it by hand is slow. Say our code replaces the list’s inner HTML.',
+        },
+        {
+          show: ['reflow'],
+          focus: 'reflow',
+          say: 'The browser now has to work out every size and position again, then repaint. That is called a reflow.',
+        },
+        {
+          show: ['node'],
+          focus: 'node',
+          say: 'And each element is not a small thing. One list item carries hundreds of properties, styles and listeners.',
+        },
         {
           focus: ['li0', 'li1', 'li2', 'li3', 'li4'],
           draw: [{ brace: ['li0', 'li4'], note: '50 changes = 50 reflows', side: 'below', when: 'fifty times' }],
@@ -181,8 +202,16 @@ const storyboard = {
       hidden: ['compile', 'call', 'returns', 'element'],
       narration: 'This looks like HTML, but it is not.',
       steps: [
-        { show: ['compile', 'call'], focus: 'call', say: 'Before your code runs, a compiler such as Babel rewrites it into a call.' },
-        { focus: 'fn', draw: [{ circle: 'fn', when: 'jsx' }], say: 'The tag becomes a call to a function named jsx, with the props and the text as arguments.' },
+        {
+          show: ['compile', 'call'],
+          focus: 'call',
+          say: 'Before your code runs, a compiler such as Babel rewrites it into a call.',
+        },
+        {
+          focus: 'fn',
+          draw: [{ circle: 'fn', when: 'jsx' }],
+          say: 'The tag becomes a call to a function named jsx, with the props and the text as arguments.',
+        },
         { focus: ['you', 'call'], say: 'So JSX is only a nicer way to write a function call.' },
       ],
     },
@@ -193,7 +222,11 @@ const storyboard = {
       picture: 'jsx',
       narration: 'And that call does not draw a button.',
       steps: [
-        { show: ['returns', 'element'], focus: 'element', say: 'It returns a plain object that describes one: a React element.' },
+        {
+          show: ['returns', 'element'],
+          focus: 'element',
+          say: 'It returns a plain object that describes one: a React element.',
+        },
         { focus: ['eltype', 'elprops'], say: 'It says the type is a button, and holds the props.' },
         {
           focus: 'element',
@@ -216,13 +249,22 @@ const storyboard = {
         { show: ['card3B'], focus: 'card3B', tint: { card3B: 'good' }, say: 'And there is a new Card 3.' },
         {
           focus: ['treeA', 'treeB'],
-          draw: [{ write: `any two trees: n³ steps\n1,000 nodes → ${diffSteps}`, at: [0.02, 0.03], tone: 'bad', when: 'n cubed' }],
+          draw: [
+            {
+              write: `any two trees: n³ steps\n1,000 nodes → ${diffSteps}`,
+              at: [0.02, 0.03],
+              tone: 'bad',
+              when: 'n cubed',
+            },
+          ],
           say: 'Finding the fewest changes between any two trees takes about n cubed steps. For a thousand elements, a billion.',
         },
         {
           focus: ['card2B', 'card3B'],
           erase: true,
-          draw: [{ write: 'React’s two rules: about n steps', at: [0.02, 0.03], tone: 'good', when: 'two simple rules' }],
+          draw: [
+            { write: 'React’s two rules: about n steps', at: [0.02, 0.03], tone: 'good', when: 'two simple rules' },
+          ],
           say: 'So React cheats, with two simple rules, and gets it down to about one step per element.',
         },
       ],
@@ -241,7 +283,11 @@ const storyboard = {
           draw: [{ cross: 'oldDiv', when: 'throws' }, { cross: 'oldCounter' }],
           say: 'Rule one: if a div became a span, React does not look inside. It throws the old part away.',
         },
-        { focus: ['newSpan', 'newCounter'], tint: { newSpan: 'good', newCounter: 'good' }, say: 'And it builds the new one, so the counter starts over.' },
+        {
+          focus: ['newSpan', 'newCounter'],
+          tint: { newSpan: 'good', newCounter: 'good' },
+          say: 'And it builds the new one, so the counter starts over.',
+        },
         { show: ['rule2'], focus: 'rule2', say: 'Rule two: in a list, keys say which item is which.' },
         {
           focus: 'cat',
@@ -263,10 +309,17 @@ const storyboard = {
         { show: ['fDash'], focus: ['fApp', 'fDash'], say: 'Rendering App calls render on Dashboard.' },
         { show: ['fSide'], focus: 'fSide', say: 'Which calls Sidebar.' },
         { show: ['fNav'], focus: 'fNav', say: 'Which calls NavList. Each call waits for the one below it.' },
-        { show: ['click'], focus: ['click', 'fNav'], tint: { click: 'bad' }, say: 'Now the user clicks. But the page’s one thread is busy.' },
+        {
+          show: ['click'],
+          focus: ['click', 'fNav'],
+          tint: { click: 'bad' },
+          say: 'Now the user clicks. But the page’s one thread is busy.',
+        },
         {
           focus: ['fApp', 'fDash', 'fSide', 'fNav', 'click'],
-          draw: [{ brace: ['fNav', 'fApp'], note: 'cannot stop halfway', side: 'right', tone: 'bad', when: 'cannot pause' }],
+          draw: [
+            { brace: ['fNav', 'fApp'], note: 'cannot stop halfway', side: 'right', tone: 'bad', when: 'cannot pause' },
+          ],
           say: 'These calls cannot pause. The click waits until every one returns.',
         },
       ],
@@ -278,11 +331,23 @@ const storyboard = {
       picture: 'stack',
       narration: 'Here is what that costs.',
       steps: [
-        { show: ['axis', 'oneFrame'], focus: 'oneFrame', say: 'The screen wants a new frame sixty times a second, about every sixteen point seven milliseconds.' },
+        {
+          show: ['axis', 'oneFrame'],
+          focus: 'oneFrame',
+          say: 'The screen wants a new frame sixty times a second, about every sixteen point seven milliseconds.',
+        },
         { show: ['renderBar'], focus: 'renderBar', say: 'This update takes forty milliseconds.' },
         { show: ['clickT'], focus: 'clickT', say: 'And the click lands five milliseconds in.' },
-        { show: ['due1', 'due2'], focus: ['due1', 'due2'], say: 'Two frames go by with nothing new drawn. The page freezes.' },
-        { show: ['handled'], focus: 'handled', say: 'Only at forty milliseconds does the click get its turn. Typing feels sticky.' },
+        {
+          show: ['due1', 'due2'],
+          focus: ['due1', 'due2'],
+          say: 'Two frames go by with nothing new drawn. The page freezes.',
+        },
+        {
+          show: ['handled'],
+          focus: 'handled',
+          say: 'Only at forty milliseconds does the click get its turn. Typing feels sticky.',
+        },
       ],
     },
     {
@@ -291,13 +356,35 @@ const storyboard = {
       title: 'Fiber: a call stack React controls',
       narration: 'React 16 rewrote this as Fiber. Each component gets a small object, a fiber, with three links.',
       svg: fiber,
-      labels: { 'wip-app': 'work in progress', child1: 'child link', sib: 'sibling link', child2: 'child link', ret3: 'return link', ret2: 'return link', ret1: 'parent' },
+      labels: {
+        'wip-app': 'work in progress',
+        child1: 'child link',
+        sib: 'sibling link',
+        child2: 'child link',
+        ret3: 'return link',
+        ret2: 'return link',
+        ret1: 'parent',
+      },
       hidden: ['wip-app', 'wip-header', 'wip-main', 'wip-card'],
       steps: [
         { focus: ['child1', 'sib', 'ret1'], say: 'Its first child, its next sibling, and its parent, called return.' },
-        { show: ['wip-app'], focus: ['wip-app', 'app'], say: 'A loop holds one pointer, work in progress. It starts at App.' },
-        { hide: ['wip-app'], show: ['wip-header'], focus: ['child1', 'header'], say: 'It does App’s work, then follows the child link down to Header.' },
-        { hide: ['wip-header'], show: ['wip-main'], focus: ['sib', 'main'], say: 'Header has no child, so it follows the sibling link across to Main.' },
+        {
+          show: ['wip-app'],
+          focus: ['wip-app', 'app'],
+          say: 'A loop holds one pointer, work in progress. It starts at App.',
+        },
+        {
+          hide: ['wip-app'],
+          show: ['wip-header'],
+          focus: ['child1', 'header'],
+          say: 'It does App’s work, then follows the child link down to Header.',
+        },
+        {
+          hide: ['wip-header'],
+          show: ['wip-main'],
+          focus: ['sib', 'main'],
+          say: 'Header has no child, so it follows the sibling link across to Main.',
+        },
         {
           tint: { main: 'bad' },
           focus: ['main', 'wip-main'],
@@ -312,8 +399,18 @@ const storyboard = {
           focus: ['child2', 'card'],
           say: 'Once the click is handled, it picks up right where it left off, down to Card.',
         },
-        { hide: ['wip-card'], show: ['wip-main'], focus: ['ret3', 'main'], say: 'Card has no child and no sibling, so it climbs the return link to Main.' },
-        { hide: ['wip-main'], show: ['wip-app'], focus: ['ret2', 'app'], say: 'Main has no sibling either, so up again to App. The walk is done.' },
+        {
+          hide: ['wip-card'],
+          show: ['wip-main'],
+          focus: ['ret3', 'main'],
+          say: 'Card has no child and no sibling, so it climbs the return link to Main.',
+        },
+        {
+          hide: ['wip-main'],
+          show: ['wip-app'],
+          focus: ['ret2', 'app'],
+          say: 'Main has no sibling either, so up again to App. The walk is done.',
+        },
       ],
     },
     {
@@ -322,12 +419,32 @@ const storyboard = {
       title: 'Two phases of every update',
       svg: phases,
       hidden: ['r1', 'r2', 'r3', 'c1', 'c2', 'c3', 'c4'],
-      labels: { r1: 'calls your components', c1: 'applies them', r2: 'pause', c2: 'never stops', r3: 'never touches', c3: 'in one go', c4: 'refs' },
+      labels: {
+        r1: 'calls your components',
+        c1: 'applies them',
+        r2: 'pause',
+        c2: 'never stops',
+        r3: 'never touches',
+        c3: 'in one go',
+        c4: 'refs',
+      },
       narration: 'Every update now happens in two phases.',
       steps: [
-        { show: ['r1', 'c1'], focus: ['r1', 'c1'], say: 'Render calls your components and works out what changed. Commit applies them.' },
-        { show: ['r2', 'c2'], focus: ['r2', 'c2'], say: 'Render can pause, give up, or start again. Commit never stops once it begins.' },
-        { show: ['r3', 'c3'], focus: ['r3', 'c3'], say: 'Render never touches the page. Commit changes it all in one go.' },
+        {
+          show: ['r1', 'c1'],
+          focus: ['r1', 'c1'],
+          say: 'Render calls your components and works out what changed. Commit applies them.',
+        },
+        {
+          show: ['r2', 'c2'],
+          focus: ['r2', 'c2'],
+          say: 'Render can pause, give up, or start again. Commit never stops once it begins.',
+        },
+        {
+          show: ['r3', 'c3'],
+          focus: ['r3', 'c3'],
+          say: 'Render never touches the page. Commit changes it all in one go.',
+        },
         { show: ['c4'], focus: 'c4', say: 'And straight after, commit updates refs and runs layout effects.' },
       ],
     },
@@ -341,7 +458,11 @@ const storyboard = {
       narration: 'React keeps two trees: the one on screen, and the one it is building.',
       steps: [
         { focus: ['root', 'ptrA', 'treeA'], say: 'The root’s current pointer marks tree A, the one the user sees.' },
-        { show: ['treeB', 'card3B'], focus: 'treeB', say: 'In the background, render builds tree B. The user sees none of it.' },
+        {
+          show: ['treeB', 'card3B'],
+          focus: 'treeB',
+          say: 'In the background, render builds tree B. The user sees none of it.',
+        },
         {
           hide: ['ptrA'],
           show: ['ptrB'],
@@ -349,7 +470,10 @@ const storyboard = {
           focus: ['root', 'ptrB', 'treeB'],
           say: 'When it is done, commit swaps one pointer. Tree B is now current.',
         },
-        { focus: 'treeA', say: 'So the user never sees a half finished page. Tree A is kept, to build the next update in.' },
+        {
+          focus: 'treeA',
+          say: 'So the user never sees a half finished page. Tree A is kept, to build the next update in.',
+        },
       ],
     },
     {
@@ -362,9 +486,23 @@ const storyboard = {
       narration: 'Let’s follow one update from start to finish.',
       steps: [
         { focus: 'code', say: 'Your code calls set state.' },
-        { show: ['scheduler'], focus: 'scheduler', say: 'The scheduler decides how urgent it is. A click beats a background fetch.' },
-        { show: ['reconciler'], focus: 'reconciler', tint: { reconciler: 'good' }, say: 'The reconciler builds the new tree and finds what changed. This is render, and it can pause.' },
-        { show: ['reactDom'], focus: 'reactDom', tint: { reactDom: 'good' }, say: 'React DOM applies the changes in one go. This is commit.' },
+        {
+          show: ['scheduler'],
+          focus: 'scheduler',
+          say: 'The scheduler decides how urgent it is. A click beats a background fetch.',
+        },
+        {
+          show: ['reconciler'],
+          focus: 'reconciler',
+          tint: { reconciler: 'good' },
+          say: 'The reconciler builds the new tree and finds what changed. This is render, and it can pause.',
+        },
+        {
+          show: ['reactDom'],
+          focus: 'reactDom',
+          tint: { reactDom: 'good' },
+          say: 'React DOM applies the changes in one go. This is commit.',
+        },
         { show: ['browser'], focus: 'browser', say: 'And the browser paints the new frame.' },
       ],
     },

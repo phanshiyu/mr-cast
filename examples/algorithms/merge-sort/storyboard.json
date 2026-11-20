@@ -1,556 +1,559 @@
 {
   "title": "Merge sort",
   "subtitle": "Split the list to single items, then zip them back in order",
+  "tones": {
+    "good": "pieces already in order",
+    "bad": "checking every pair: n² steps"
+  },
+  "pictures": {
+    "tree": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"row0\"><text x=\"20\" y=\"60\" font-size=\"24\" fill=\"var(--muted)\">the list</text><g id=\"a0\"><rect x=\"381\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"417\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"a1\"><rect x=\"459\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"495\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"a2\"><rect x=\"537\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"573\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">89</text></g><g id=\"a3\"><rect x=\"615\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"651\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"a4\"><rect x=\"693\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"729\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"a5\"><rect x=\"771\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"807\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"a6\"><rect x=\"849\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"885\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">77</text></g><g id=\"a7\"><rect x=\"927\" y=\"20\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"963\" y=\"61\" text-anchor=\"middle\" font-size=\"28\">35</text></g></g>\n<g id=\"row1\"><text x=\"20\" y=\"148\" font-size=\"24\" fill=\"var(--muted)\">halves</text><g id=\"b0\"><rect x=\"366\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"402\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"b1\"><rect x=\"444\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"480\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"b2\"><rect x=\"522\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"558\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">89</text></g><g id=\"b3\"><rect x=\"600\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"636\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"b4\"><rect x=\"708\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"744\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"b5\"><rect x=\"786\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"822\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"b6\"><rect x=\"864\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"900\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">77</text></g><g id=\"b7\"><rect x=\"942\" y=\"108\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"978\" y=\"149\" text-anchor=\"middle\" font-size=\"28\">35</text></g></g>\n<g id=\"row2\"><text x=\"20\" y=\"236\" font-size=\"24\" fill=\"var(--muted)\">quarters</text><g id=\"c0\"><rect x=\"336\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"372\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"c1\"><rect x=\"414\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"450\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"c2\"><rect x=\"522\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"558\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">89</text></g><g id=\"c3\"><rect x=\"600\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"636\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"c4\"><rect x=\"708\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"744\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"c5\"><rect x=\"786\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"822\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"c6\"><rect x=\"894\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"930\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">77</text></g><g id=\"c7\"><rect x=\"972\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"1008\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">35</text></g></g>\n<g id=\"row3\"><text x=\"20\" y=\"324\" font-size=\"24\" fill=\"var(--muted)\">single items</text><g id=\"d0\"><rect x=\"276\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"312\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"d1\"><rect x=\"384\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"420\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"d2\"><rect x=\"492\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"528\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">89</text></g><g id=\"d3\"><rect x=\"600\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"636\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"d4\"><rect x=\"708\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"744\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"d5\"><rect x=\"816\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"852\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"d6\"><rect x=\"924\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"960\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">77</text></g><g id=\"d7\"><rect x=\"1032\" y=\"284\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"1068\" y=\"325\" text-anchor=\"middle\" font-size=\"28\">35</text></g></g>\n<g id=\"row4\"><text x=\"20\" y=\"412\" font-size=\"24\" fill=\"var(--muted)\">pairs</text><g id=\"P0\"><rect x=\"336\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"372\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"P1\"><rect x=\"414\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"450\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"P2\"><rect x=\"522\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"558\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"P3\"><rect x=\"600\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"636\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">89</text></g><g id=\"P4\"><rect x=\"708\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"744\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"P5\"><rect x=\"786\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"822\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"P6\"><rect x=\"894\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"930\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">35</text></g><g id=\"P7\"><rect x=\"972\" y=\"372\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"1008\" y=\"413\" text-anchor=\"middle\" font-size=\"28\">77</text></g></g>\n<g id=\"row5\"><text x=\"20\" y=\"500\" font-size=\"24\" fill=\"var(--muted)\">fours</text><g id=\"F0\"><rect x=\"366\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"402\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"F1\"><rect x=\"444\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"480\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"F2\"><rect x=\"522\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"558\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"F3\"><rect x=\"600\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"636\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">89</text></g><g id=\"F4\"><rect x=\"708\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"744\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"F5\"><rect x=\"786\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"822\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">35</text></g><g id=\"F6\"><rect x=\"864\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"900\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"F7\"><rect x=\"942\" y=\"460\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"978\" y=\"501\" text-anchor=\"middle\" font-size=\"28\">77</text></g></g>\n<g id=\"row6\"><text x=\"20\" y=\"588\" font-size=\"24\" fill=\"var(--muted)\">sorted</text><g id=\"S0\"><rect x=\"381\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"417\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"S1\"><rect x=\"459\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"495\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">13</text></g><g id=\"S2\"><rect x=\"537\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"573\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">28</text></g><g id=\"S3\"><rect x=\"615\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"651\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">35</text></g><g id=\"S4\"><rect x=\"693\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"729\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">51</text></g><g id=\"S5\"><rect x=\"771\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"807\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">62</text></g><g id=\"S6\"><rect x=\"849\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"885\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">77</text></g><g id=\"S7\"><rect x=\"927\" y=\"548\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"963\" y=\"589\" text-anchor=\"middle\" font-size=\"28\">89</text></g></g>\n<g id=\"one\"><rect x=\"960\" y=\"196\" width=\"72\" height=\"60\" rx=\"8\" stroke-width=\"3\"/><text x=\"996\" y=\"237\" text-anchor=\"middle\" font-size=\"28\">42</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "The idea",
       "title": "The easiest list to sort",
-      "narration": "Sorting a whole list at once feels hard, because every number competes with every other number.",
-      "arrays": [
-        {
-          "name": "list",
-          "label": "unsorted",
-          "values": [
-            51,
-            13,
-            89,
-            4,
-            62,
-            28,
-            77,
-            35
-          ]
-        },
-        {
-          "name": "one",
-          "label": "one item",
-          "values": [
-            42
-          ],
-          "hidden": true
-        }
+      "picture": "tree",
+      "hidden": [
+        "row1",
+        "row2",
+        "row3",
+        "row4",
+        "row5",
+        "row6",
+        "one"
       ],
+      "labels": {
+        "row0": "eight numbers",
+        "one": "forty two"
+      },
+      "narration": "Sorting a whole list at once feels hard, because every number competes with every other number.",
       "steps": [
         {
-          "focus": "array:list",
+          "focus": "row0",
           "say": "Here are eight numbers in no order at all."
         },
         {
           "show": [
-            "array:one"
+            "one"
           ],
+          "focus": "one",
           "say": "But what is the easiest list in the world to sort? A list with just one item."
         },
         {
-          "focus": "one[0]",
           "tint": {
-            "one[0]": "good"
+            "one": "good"
           },
-          "callout": "sorted? [yes, trivially]{good}",
-          "say": "Is forty two sorted? Yes. A single item is always in order."
+          "focus": "one",
+          "say": "Is forty two sorted? Yes. A single item is always in order.",
+          "draw": [
+            {
+              "write": "sorted, trivially",
+              "near": "one",
+              "side": "below",
+              "tone": "good",
+              "when": "always in order"
+            }
+          ]
         },
         {
           "focus": [
-            "array:list",
-            "one[0]"
+            "row0",
+            "one"
           ],
-          "callout": "break down, then stitch back",
           "say": "Merge sort uses that. It breaks the list down until every piece is one item, then stitches the pieces back together in order."
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Divide",
       "title": "Split in half, again and again",
-      "narration": "Step one is to divide.",
-      "indexes": false,
-      "arrays": [
-        {
-          "name": "level0",
-          "label": "the list",
-          "values": [
-            51,
-            13,
-            89,
-            4,
-            62,
-            28,
-            77,
-            35
-          ]
-        },
-        {
-          "name": "level1",
-          "label": "halves",
-          "values": [
-            51,
-            13,
-            89,
-            4,
-            62,
-            28,
-            77,
-            35
-          ],
-          "splits": [
-            4
-          ],
-          "hidden": true
-        },
-        {
-          "name": "level2",
-          "label": "quarters",
-          "values": [
-            51,
-            13,
-            89,
-            4,
-            62,
-            28,
-            77,
-            35
-          ],
-          "splits": [
-            2,
-            4,
-            6
-          ],
-          "hidden": true
-        },
-        {
-          "name": "level3",
-          "label": "single items",
-          "values": [
-            51,
-            13,
-            89,
-            4,
-            62,
-            28,
-            77,
-            35
-          ],
-          "splits": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ],
-          "hidden": true
-        }
+      "picture": "tree",
+      "hidden": [
+        "row1",
+        "row2",
+        "row3",
+        "row4",
+        "row5",
+        "row6",
+        "one"
       ],
+      "labels": {
+        "row1": "cut the list in two",
+        "row2": "each half",
+        "row3": "single item",
+        "row0": "list"
+      },
+      "narration": "Step one is to divide.",
       "steps": [
         {
           "show": [
-            "array:level1"
+            "row1"
           ],
+          "focus": "row1",
           "say": "Find the middle, and cut the list in two."
         },
         {
           "show": [
-            "array:level2"
+            "row2"
           ],
+          "focus": "row2",
           "say": "Cut each half in two again."
         },
         {
           "show": [
-            "array:level3"
+            "row3"
           ],
+          "focus": "row3",
           "tint": {
-            "array:level3": "good"
+            "d0": "good",
+            "d1": "good",
+            "d2": "good",
+            "d3": "good",
+            "d4": "good",
+            "d5": "good",
+            "d6": "good",
+            "d7": "good"
           },
           "say": "And again, until every piece is a single item. That is where the splitting stops."
         },
         {
           "focus": [
-            "array:level0",
-            "array:level3"
+            "row0",
+            "row3"
           ],
-          "callout": "nothing has moved yet",
-          "say": "Notice that no number has changed places yet. We have only pulled them apart."
+          "say": "Notice that no number has changed places yet. We have only pulled them apart.",
+          "draw": [
+            {
+              "write": "nothing has moved yet",
+              "near": "row3",
+              "side": "right",
+              "when": "no number"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "First merges",
       "title": "Merging single items into pairs",
-      "narration": "Step two is to merge. Start with the first two single items.",
-      "indexes": false,
-      "arrays": [
-        {
-          "name": "singles",
-          "label": "single items",
-          "values": [
-            51,
-            13,
-            89,
-            4
-          ],
-          "splits": [
-            1,
-            2,
-            3
-          ]
-        },
-        {
-          "name": "pairs",
-          "label": "merged pairs",
-          "values": [
-            "",
-            "",
-            "",
-            ""
-          ],
-          "splits": [
-            2
-          ]
-        }
+      "picture": "tree",
+      "hidden": [
+        "one",
+        "row5",
+        "row6",
+        "P0",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "P5",
+        "P6",
+        "P7"
       ],
+      "labels": {
+        "d0": "fifty one",
+        "d1": "thirteen",
+        "d2": "eighty nine",
+        "d3": "four",
+        "P0": "thirteen goes first",
+        "P1": "fifty one"
+      },
+      "narration": "Step two is to merge. Start with the first two single items.",
       "steps": [
         {
-          "focus": "singles[0-1]",
-          "callout": "[13 < 51]{good}",
-          "say": "Compare fifty one and thirteen. Thirteen is smaller."
+          "focus": [
+            "d0",
+            "d1"
+          ],
+          "say": "Compare fifty one and thirteen. Thirteen is smaller.",
+          "draw": [
+            {
+              "circle": "d1",
+              "note": "13 < 51",
+              "when": "smaller"
+            }
+          ]
         },
         {
-          "set": {
-            "pairs[0]": 13
-          },
+          "show": [
+            "P0"
+          ],
+          "focus": "P0",
           "tint": {
-            "singles[1]": "dim"
+            "d1": "dim"
           },
           "say": "So thirteen goes first."
         },
         {
-          "set": {
-            "pairs[1]": 51
-          },
+          "show": [
+            "P1"
+          ],
+          "focus": "P1",
           "tint": {
-            "singles[0]": "dim",
-            "pairs[0-1]": "good"
+            "d0": "dim",
+            "P0": "good",
+            "P1": "good"
           },
-          "callout": "",
+          "erase": true,
           "say": "Then fifty one. That pair is sorted."
         },
         {
-          "focus": "singles[2-3]",
-          "callout": "[4 < 89]{good}",
-          "say": "Same for eighty nine and four. Four is smaller."
+          "focus": [
+            "d2",
+            "d3"
+          ],
+          "say": "Same for eighty nine and four. Four is smaller.",
+          "draw": [
+            {
+              "circle": "d3",
+              "note": "4 < 89",
+              "when": "smaller"
+            }
+          ]
         },
         {
-          "set": {
-            "pairs[2]": 4,
-            "pairs[3]": 89
-          },
+          "show": [
+            "P2",
+            "P3"
+          ],
+          "focus": [
+            "P2",
+            "P3",
+            "d2",
+            "d3"
+          ],
           "tint": {
-            "singles[2-3]": "dim",
-            "pairs[2-3]": "good"
+            "d2": "dim",
+            "d3": "dim",
+            "P2": "good",
+            "P3": "good"
           },
-          "callout": "",
+          "erase": true,
           "say": "So four goes first, then eighty nine."
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "The zipper",
       "title": "Merging two sorted pairs",
+      "picture": "tree",
+      "hidden": [
+        "one",
+        "row6",
+        "P4",
+        "P5",
+        "P6",
+        "P7",
+        "F0",
+        "F1",
+        "F2",
+        "F3",
+        "F4",
+        "F5",
+        "F6",
+        "F7"
+      ],
+      "labels": {
+        "P0": "thirteen",
+        "P1": "fifty one",
+        "P2": "four",
+        "P3": "eighty nine",
+        "F0": "four takes the first spot",
+        "F3": "leftover eighty nine"
+      },
       "narration": "Now merge the two sorted pairs. Both are already in order, so we only ever look at the front of each one.",
-      "arrays": [
-        {
-          "name": "left",
-          "values": [
-            13,
-            51
-          ]
-        },
-        {
-          "name": "right",
-          "values": [
-            4,
-            89
-          ]
-        },
-        {
-          "name": "out",
-          "label": "merged",
-          "values": [
-            "",
-            "",
-            "",
-            ""
-          ]
-        }
-      ],
-      "pointers": [
-        {
-          "name": "p1",
-          "array": "left",
-          "at": 0,
-          "tone": "accent"
-        },
-        {
-          "name": "p2",
-          "array": "right",
-          "at": 0,
-          "tone": "warn"
-        }
-      ],
       "steps": [
         {
           "focus": [
-            "left[0]",
-            "right[0]"
+            "P0",
+            "P2"
           ],
-          "callout": "[4 < 13]{good}",
-          "say": "Compare thirteen and four. Four is smaller."
+          "erase": true,
+          "say": "Compare thirteen and four. Four is smaller.",
+          "draw": [
+            {
+              "circle": "P2",
+              "note": "4 < 13",
+              "when": "smaller"
+            }
+          ]
         },
         {
-          "set": {
-            "out[0]": 4
-          },
+          "show": [
+            "F0"
+          ],
+          "focus": [
+            "F0",
+            "P3"
+          ],
           "tint": {
-            "right[0]": "dim"
+            "P2": "dim"
           },
-          "move": {
-            "p2": 1
-          },
-          "say": "So four takes the first spot, and p two moves on to eighty nine."
+          "say": "So four takes the first spot, and the right pair moves on to eighty nine."
         },
         {
           "focus": [
-            "left[0]",
-            "right[1]"
+            "P0",
+            "P3"
           ],
-          "callout": "[13 < 89]{good}",
-          "say": "Compare thirteen and eighty nine. Thirteen wins."
+          "erase": true,
+          "say": "Compare thirteen and eighty nine. Thirteen wins.",
+          "draw": [
+            {
+              "circle": "P0",
+              "note": "13 < 89",
+              "when": "wins"
+            }
+          ]
         },
         {
-          "set": {
-            "out[1]": 13
-          },
+          "show": [
+            "F1"
+          ],
+          "focus": [
+            "F1",
+            "P1"
+          ],
           "tint": {
-            "left[0]": "dim"
+            "P0": "dim"
           },
-          "move": {
-            "p1": 1
-          },
-          "say": "Thirteen takes the next spot, and p one moves on to fifty one."
+          "say": "Thirteen takes the next spot, and the left pair moves on to fifty one."
         },
         {
           "focus": [
-            "left[1]",
-            "right[1]"
+            "P1",
+            "P3"
           ],
-          "callout": "[51 < 89]{good}",
-          "say": "Fifty one against eighty nine. Fifty one wins."
+          "erase": true,
+          "say": "Fifty one against eighty nine. Fifty one wins.",
+          "draw": [
+            {
+              "circle": "P1",
+              "note": "51 < 89",
+              "when": "wins"
+            }
+          ]
         },
         {
-          "set": {
-            "out[2]": 51
-          },
+          "show": [
+            "F2"
+          ],
+          "focus": [
+            "F2"
+          ],
           "tint": {
-            "left[1]": "dim"
+            "P1": "dim"
           },
-          "move": {
-            "p1": 2
-          },
-          "callout": "left is empty",
           "say": "Now the left pair is used up."
         },
         {
-          "set": {
-            "out[3]": 89
-          },
+          "show": [
+            "F3"
+          ],
+          "focus": "F3",
           "tint": {
-            "right[1]": "dim",
-            "array:out": "good"
+            "P3": "dim",
+            "F0": "good",
+            "F1": "good",
+            "F2": "good",
+            "F3": "good"
           },
-          "move": {
-            "p2": 2
-          },
-          "callout": "[4, 13, 51, 89]{good}",
-          "say": "So the leftover eighty nine just copies over. It is like two sorted decks of cards feeding one sorted pile."
+          "erase": true,
+          "say": "So the leftover eighty nine just copies over. It is like two sorted decks of cards feeding one sorted pile.",
+          "draw": [
+            {
+              "brace": [
+                "F0",
+                "F1",
+                "F2",
+                "F3"
+              ],
+              "note": "4, 13, 51, 89",
+              "side": "right",
+              "tone": "good",
+              "when": "one sorted pile"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "array",
+      "type": "svg",
       "chapter": "Why n log n",
-      "title": "Merging all the way back up",
+      "title": "Every level moves all eight once",
+      "picture": "tree",
+      "labels": {
+        "row4": "merging into pairs",
+        "row5": "pairs into fours",
+        "row6": "last merge",
+        "row1": "halving",
+        "row3": "three levels"
+      },
       "narration": "The same zipper runs at every level, until the whole list is back together.",
-      "indexes": false,
-      "arrays": [
+      "steps": [
         {
-          "name": "ones",
-          "label": "single items",
-          "values": [
-            51,
-            13,
-            89,
-            4,
-            62,
-            28,
-            77,
-            35
+          "show": [
+            "P4",
+            "P5",
+            "P6",
+            "P7"
           ],
-          "splits": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
+          "focus": "row4",
+          "tint": {
+            "P4": "good",
+            "P5": "good",
+            "P6": "good",
+            "P7": "good"
+          },
+          "say": "Merging into pairs moves all eight numbers once.",
+          "draw": [
+            {
+              "write": "8 moves",
+              "near": "row4",
+              "side": "right",
+              "when": "all eight"
+            }
           ]
         },
         {
-          "name": "twos",
-          "label": "pairs",
-          "values": [
-            13,
-            51,
-            4,
-            89,
-            28,
-            62,
-            35,
-            77
-          ],
-          "splits": [
-            2,
-            4,
-            6
-          ],
-          "hidden": true
-        },
-        {
-          "name": "fours",
-          "label": "fours",
-          "values": [
-            4,
-            13,
-            51,
-            89,
-            28,
-            35,
-            62,
-            77
-          ],
-          "splits": [
-            4
-          ],
-          "hidden": true
-        },
-        {
-          "name": "all",
-          "label": "sorted",
-          "values": [
-            4,
-            13,
-            28,
-            35,
-            51,
-            62,
-            77,
-            89
-          ],
-          "hidden": true
-        }
-      ],
-      "steps": [
-        {
           "show": [
-            "array:twos"
+            "F4",
+            "F5",
+            "F6",
+            "F7"
           ],
-          "callout": "8 moves",
-          "say": "Merging into pairs moves all eight numbers once."
-        },
-        {
-          "show": [
-            "array:fours"
-          ],
-          "callout": "8 moves",
-          "say": "Merging pairs into fours moves all eight again."
-        },
-        {
-          "show": [
-            "array:all"
-          ],
+          "focus": "row5",
           "tint": {
-            "array:all": "good"
+            "F4": "good",
+            "F5": "good",
+            "F6": "good",
+            "F7": "good"
           },
-          "callout": "8 moves",
-          "say": "And the last merge moves all eight one more time. The list is sorted."
+          "say": "Merging pairs into fours moves all eight again.",
+          "draw": [
+            {
+              "write": "8 moves",
+              "near": "row5",
+              "side": "right",
+              "when": "all eight"
+            }
+          ]
+        },
+        {
+          "show": [
+            "row6"
+          ],
+          "focus": "row6",
+          "tint": {
+            "row6": "good"
+          },
+          "say": "And the last merge moves all eight one more time. The list is sorted.",
+          "draw": [
+            {
+              "write": "8 moves",
+              "near": "row6",
+              "side": "right",
+              "when": "all eight"
+            }
+          ]
         },
         {
           "focus": [
-            "array:twos",
-            "array:fours",
-            "array:all"
+            "row1",
+            "row2",
+            "row3"
           ],
-          "callout": "3 levels × 8 = 24 = log₂ 8 × 8",
-          "say": "Halving eight items takes three levels, which is log two of eight. Each level does about n work. So the total is n times log n."
+          "erase": true,
+          "say": "Halving eight items takes three levels, which is log two of eight.",
+          "draw": [
+            {
+              "brace": [
+                "row1",
+                "row3"
+              ],
+              "note": "3 levels = log₂ 8",
+              "side": "right",
+              "when": "three levels"
+            }
+          ]
+        },
+        {
+          "focus": [
+            "row4",
+            "row5",
+            "row6"
+          ],
+          "say": "Each level does about n work. So the total is n times log n.",
+          "draw": [
+            {
+              "brace": [
+                "row4",
+                "row6"
+              ],
+              "note": "3 × 8 = 24 moves",
+              "side": "right",
+              "tone": "good",
+              "when": "n times log n"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "Compared",
-      "title": "Work as the list grows",
-      "kind": "line",
-      "unit": "steps",
-      "better": "lower",
+      "title": "n log n stays low as n grows",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"40\" y1=\"540\" x2=\"1180\" y2=\"540\" stroke=\"var(--muted)\" stroke-width=\"3\"/>\n<text x=\"150\" y=\"584\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">n = 8</text><text x=\"370\" y=\"584\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">n = 16</text><text x=\"590\" y=\"584\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">n = 32</text><text x=\"810\" y=\"584\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">n = 64</text><text x=\"1030\" y=\"584\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">n = 128</text>\n<g id=\"sq\"><g id=\"sq0\"><rect x=\"60\" y=\"537.0\" width=\"80\" height=\"3.0\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"100\" y=\"525.0\" text-anchor=\"middle\" font-size=\"24\">64</text></g><g id=\"sq1\"><rect x=\"280\" y=\"533.1\" width=\"80\" height=\"6.9\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"320\" y=\"521.1\" text-anchor=\"middle\" font-size=\"24\">256</text></g><g id=\"sq2\"><rect x=\"500\" y=\"512.5\" width=\"80\" height=\"27.5\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"540\" y=\"500.5\" text-anchor=\"middle\" font-size=\"24\">1,024</text></g><g id=\"sq3\"><rect x=\"720\" y=\"430.0\" width=\"80\" height=\"110.0\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"760\" y=\"418.0\" text-anchor=\"middle\" font-size=\"24\">4,096</text></g><g id=\"sq4\"><rect x=\"940\" y=\"100.0\" width=\"80\" height=\"440.0\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"980\" y=\"88.0\" text-anchor=\"middle\" font-size=\"24\">16,384</text></g></g>\n<g id=\"nlog\"><g id=\"nl0\"><rect x=\"150\" y=\"537.0\" width=\"80\" height=\"3.0\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"190\" y=\"525.0\" text-anchor=\"middle\" font-size=\"24\">24</text></g><g id=\"nl1\"><rect x=\"370\" y=\"537.0\" width=\"80\" height=\"3.0\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"410\" y=\"525.0\" text-anchor=\"middle\" font-size=\"24\">64</text></g><g id=\"nl2\"><rect x=\"590\" y=\"535.7\" width=\"80\" height=\"4.3\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"630\" y=\"523.7\" text-anchor=\"middle\" font-size=\"24\">160</text></g><g id=\"nl3\"><rect x=\"810\" y=\"529.7\" width=\"80\" height=\"10.3\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"850\" y=\"517.7\" text-anchor=\"middle\" font-size=\"24\">384</text></g><g id=\"nl4\"><rect x=\"1030\" y=\"515.9\" width=\"80\" height=\"24.1\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"1070\" y=\"503.9\" text-anchor=\"middle\" font-size=\"24\">896</text></g></g>\n<g id=\"key\"><text x=\"40\" y=\"60\" font-size=\"28\" class=\"fill-bad\">n²: every pair</text><text x=\"40\" y=\"100\" font-size=\"28\" class=\"fill-good\">n log n: merge sort</text></g>\n</svg>",
+      "hidden": [
+        "sq",
+        "nlog"
+      ],
+      "labels": {
+        "sq": "n squared",
+        "nlog": "n log n",
+        "sq4": "sixteen thousand",
+        "nl4": "nine hundred"
+      },
       "narration": "Compare that with a simple sort that checks every pair, which takes about n squared steps.",
-      "labels": [
-        "n = 8",
-        "n = 16",
-        "n = 32",
-        "n = 64",
-        "n = 128"
-      ],
-      "series": [
-        {
-          "name": "n²",
-          "values": [
-            64,
-            256,
-            1024,
-            4096,
-            16384
-          ],
-          "tone": "bad"
-        },
-        {
-          "name": "n log₂ n",
-          "values": [
-            24,
-            64,
-            160,
-            384,
-            896
-          ],
-          "tone": "good"
-        }
-      ],
       "steps": [
         {
-          "focus": "series:n²",
+          "show": [
+            "sq"
+          ],
+          "focus": [
+            "sq",
+            "sq4"
+          ],
           "say": "n squared shoots up. At a hundred twenty eight items it is over sixteen thousand."
         },
         {
-          "focus": "series:n log₂ n",
+          "show": [
+            "nlog"
+          ],
+          "focus": [
+            "nlog",
+            "nl4"
+          ],
           "say": "n log n climbs gently, to under nine hundred."
         },
         {
-          "focus": "n log₂ n@n = 128",
-          "say": "That is about ninety five percent less work. And merge sort gets this every time. Unlike quicksort, it has no bad pivot days."
+          "focus": [
+            "sq4",
+            "nl4"
+          ],
+          "say": "That is about ninety five percent less work. And merge sort gets this every time. Unlike quicksort, it has no bad pivot days.",
+          "draw": [
+            {
+              "circle": "nl4",
+              "note": "95% less work",
+              "tone": "good",
+              "when": "ninety five percent"
+            }
+          ]
         }
       ]
     }

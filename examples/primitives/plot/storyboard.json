@@ -1,6 +1,5 @@
 {
   "title": "Plot scene",
-  "look": "plain",
   "subtitle": "Curves that reshape as a parameter changes, and a marker that rides a growing line",
   "scenes": [
     {

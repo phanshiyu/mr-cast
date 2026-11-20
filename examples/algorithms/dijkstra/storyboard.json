@@ -1,133 +1,43 @@
 {
   "title": "Dijkstra's shortest path",
   "subtitle": "Pick the cheapest place, then look for shortcuts",
+  "tones": {
+    "good": "settled costs and the cheapest route",
+    "bad": "guesses crossed out for a cheaper one"
+  },
+  "pictures": {
+    "map": "<svg viewBox=\"0 0 1200 640\">\n<defs><marker id=\"head\" viewBox=\"0 0 10 10\" refX=\"8\" refY=\"5\" markerWidth=\"4\" markerHeight=\"4\" orient=\"auto\"><path d=\"M0,0 L10,5 L0,10 z\" fill=\"var(--muted)\" stroke=\"none\"/></marker></defs>\n<g id=\"SA\"><line x1=\"125.5\" y1=\"300.7\" x2=\"279.9\" y2=\"173.1\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"221.6\" y=\"264.0\" text-anchor=\"middle\" font-size=\"28\">4</text></g><g id=\"SB\"><line x1=\"125.5\" y1=\"359.3\" x2=\"279.9\" y2=\"486.9\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"188.4\" y=\"454.0\" text-anchor=\"middle\" font-size=\"28\">2</text></g><g id=\"BA\"><line x1=\"320.0\" y1=\"474.0\" x2=\"320.0\" y2=\"192.0\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"346.0\" y=\"339.0\" text-anchor=\"middle\" font-size=\"28\">1</text></g><g id=\"BC\"><line x1=\"366.0\" y1=\"520.0\" x2=\"508.0\" y2=\"520.0\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"440.0\" y=\"555.0\" text-anchor=\"middle\" font-size=\"28\">5</text></g><g id=\"AC\"><line x1=\"344.6\" y1=\"178.9\" x2=\"532.2\" y2=\"476.0\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"418.0\" y=\"352.9\" text-anchor=\"middle\" font-size=\"28\">2</text></g><g id=\"AE\"><line x1=\"366.0\" y1=\"140.0\" x2=\"508.0\" y2=\"140.0\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"440.0\" y=\"175.0\" text-anchor=\"middle\" font-size=\"28\">6</text></g><g id=\"CE\"><line x1=\"560.0\" y1=\"474.0\" x2=\"560.0\" y2=\"192.0\" stroke=\"var(--muted)\" stroke-width=\"4\" marker-end=\"url(#head)\"/><text x=\"586.0\" y=\"339.0\" text-anchor=\"middle\" font-size=\"28\">1</text></g>\n<g id=\"S\"><circle cx=\"90\" cy=\"330\" r=\"42\" stroke-width=\"3\"/><text x=\"90\" y=\"341\" text-anchor=\"middle\" font-size=\"32\">S</text></g><g id=\"A\"><circle cx=\"320\" cy=\"140\" r=\"42\" stroke-width=\"3\"/><text x=\"320\" y=\"151\" text-anchor=\"middle\" font-size=\"32\">A</text></g><g id=\"B\"><circle cx=\"320\" cy=\"520\" r=\"42\" stroke-width=\"3\"/><text x=\"320\" y=\"531\" text-anchor=\"middle\" font-size=\"32\">B</text></g><g id=\"C\"><circle cx=\"560\" cy=\"520\" r=\"42\" stroke-width=\"3\"/><text x=\"560\" y=\"531\" text-anchor=\"middle\" font-size=\"32\">C</text></g><g id=\"E\"><circle cx=\"560\" cy=\"140\" r=\"42\" stroke-width=\"3\"/><text x=\"560\" y=\"151\" text-anchor=\"middle\" font-size=\"32\">E</text></g>\n<g id=\"table\"><text x=\"690\" y=\"160\" font-size=\"26\" fill=\"var(--muted)\">place</text><text id=\"hCost\" x=\"790\" y=\"160\" font-size=\"26\" fill=\"var(--muted)\">cost so far</text><text id=\"hFrom\" x=\"1020\" y=\"160\" font-size=\"26\" fill=\"var(--muted)\">from</text><text id=\"hDone\" x=\"1116\" y=\"160\" font-size=\"26\" fill=\"var(--muted)\">done</text>\n<line x1=\"660\" y1=\"180\" x2=\"1190\" y2=\"180\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"766\" y1=\"120\" x2=\"766\" y2=\"600\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"1006\" y1=\"120\" x2=\"1006\" y2=\"600\" stroke=\"var(--muted)\" stroke-width=\"3\"/><line x1=\"1104\" y1=\"120\" x2=\"1104\" y2=\"600\" stroke=\"var(--muted)\" stroke-width=\"3\"/></g>\n<text id=\"rowS\" x=\"690\" y=\"240\" font-size=\"30\">S</text><text id=\"dS0\" x=\"790\" y=\"240\" font-size=\"30\">0</text><path id=\"okS\" d=\"M1124 226 L1136 240 L1160 210\" fill=\"none\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"rowA\" x=\"690\" y=\"322\" font-size=\"30\">A</text><path id=\"dA0\" d=\"M810 312 C816 301 828 301 828 312 C828 323 816 323 810 312 C804 301 792 301 792 312 C792 323 804 323 810 312 Z\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><line id=\"xdA0\" x1=\"784\" y1=\"312\" x2=\"834\" y2=\"312\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dA1\" x=\"862\" y=\"322\" font-size=\"30\">4</text><line id=\"xdA1\" x1=\"856\" y1=\"312\" x2=\"888\" y2=\"312\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dA2\" x=\"934\" y=\"322\" font-size=\"30\">3</text><text id=\"pA0\" x=\"1030\" y=\"322\" font-size=\"30\">S</text><line id=\"xpA0\" x1=\"1024\" y1=\"312\" x2=\"1056\" y2=\"312\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"pA1\" x=\"1080\" y=\"322\" font-size=\"30\">B</text><path id=\"okA\" d=\"M1124 308 L1136 322 L1160 292\" fill=\"none\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"rowB\" x=\"690\" y=\"404\" font-size=\"30\">B</text><path id=\"dB0\" d=\"M810 394 C816 383 828 383 828 394 C828 405 816 405 810 394 C804 383 792 383 792 394 C792 405 804 405 810 394 Z\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><line id=\"xdB0\" x1=\"784\" y1=\"394\" x2=\"834\" y2=\"394\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dB1\" x=\"862\" y=\"404\" font-size=\"30\">2</text><text id=\"pB0\" x=\"1030\" y=\"404\" font-size=\"30\">S</text><path id=\"okB\" d=\"M1124 390 L1136 404 L1160 374\" fill=\"none\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"rowC\" x=\"690\" y=\"486\" font-size=\"30\">C</text><path id=\"dC0\" d=\"M810 476 C816 465 828 465 828 476 C828 487 816 487 810 476 C804 465 792 465 792 476 C792 487 804 487 810 476 Z\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><line id=\"xdC0\" x1=\"784\" y1=\"476\" x2=\"834\" y2=\"476\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dC1\" x=\"862\" y=\"486\" font-size=\"30\">7</text><line id=\"xdC1\" x1=\"856\" y1=\"476\" x2=\"888\" y2=\"476\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dC2\" x=\"934\" y=\"486\" font-size=\"30\">5</text><text id=\"pC0\" x=\"1030\" y=\"486\" font-size=\"30\">B</text><line id=\"xpC0\" x1=\"1024\" y1=\"476\" x2=\"1056\" y2=\"476\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"pC1\" x=\"1080\" y=\"486\" font-size=\"30\">A</text><path id=\"okC\" d=\"M1124 472 L1136 486 L1160 456\" fill=\"none\" class=\"stroke-good\" stroke-width=\"5\"/>\n<text id=\"rowE\" x=\"690\" y=\"568\" font-size=\"30\">E</text><path id=\"dE0\" d=\"M810 558 C816 547 828 547 828 558 C828 569 816 569 810 558 C804 547 792 547 792 558 C792 569 804 569 810 558 Z\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><line id=\"xdE0\" x1=\"784\" y1=\"558\" x2=\"834\" y2=\"558\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dE1\" x=\"862\" y=\"568\" font-size=\"30\">9</text><line id=\"xdE1\" x1=\"856\" y1=\"558\" x2=\"888\" y2=\"558\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"dE2\" x=\"934\" y=\"568\" font-size=\"30\">6</text><text id=\"pE0\" x=\"1030\" y=\"568\" font-size=\"30\">A</text><line id=\"xpE0\" x1=\"1024\" y1=\"558\" x2=\"1056\" y2=\"558\" class=\"stroke-bad\" stroke-width=\"4\"/><text id=\"pE1\" x=\"1080\" y=\"568\" font-size=\"30\">C</text><path id=\"okE\" d=\"M1124 554 L1136 568 L1160 538\" fill=\"none\" class=\"stroke-good\" stroke-width=\"5\"/>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "graph",
-      "layout": "TB",
+      "type": "svg",
       "chapter": "The map",
-      "narration": "Say you want the cheapest way to get from S to E. Each arrow is a one way road, and its number is what that road costs.",
-      "callout": "cheapest S → E?",
-      "nodes": [
-        {
-          "id": "S",
-          "label": "S",
-          "shape": "terminal",
-          "badge": "0"
-        },
-        {
-          "id": "A",
-          "label": "A",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "B",
-          "label": "B",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "C",
-          "label": "C",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "E",
-          "label": "E",
-          "shape": "terminal",
-          "badge": "∞"
-        }
-      ],
-      "edges": [
-        {
-          "from": "S",
-          "to": "A",
-          "label": "4"
-        },
-        {
-          "from": "S",
-          "to": "B",
-          "label": "2"
-        },
-        {
-          "from": "B",
-          "to": "A",
-          "label": "1"
-        },
-        {
-          "from": "B",
-          "to": "C",
-          "label": "5"
-        },
-        {
-          "from": "A",
-          "to": "C",
-          "label": "2"
-        },
-        {
-          "from": "A",
-          "to": "E",
-          "label": "6"
-        },
-        {
-          "from": "C",
-          "to": "E",
-          "label": "1"
-        }
-      ],
-      "table": {
-        "columns": [
-          "Node",
-          "Distance",
-          "Previous",
-          "Visited"
-        ],
-        "rows": [
-          {
-            "cells": [
-              "S",
-              "0",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "A",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "B",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "C",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "E",
-              "∞",
-              "–",
-              "No"
-            ]
-          }
-        ]
+      "title": "Which way from S to E is cheapest?",
+      "picture": "map",
+      "labels": {
+        "S": "S",
+        "E": "E",
+        "SA": "S to A",
+        "AE": "A to E",
+        "SB": "S to B",
+        "BC": "B to C",
+        "CE": "C to E",
+        "table": "table"
       },
+      "narration": "Say you want the cheapest way to get from S to E.",
       "steps": [
+        {
+          "focus": [
+            "SA",
+            "SB",
+            "BA",
+            "BC",
+            "AC",
+            "AE",
+            "CE"
+          ],
+          "say": "Each arrow is a one way road, and its number is what that road costs."
+        },
         {
           "focus": [
             "S",
@@ -137,20 +47,34 @@
         },
         {
           "focus": [
-            "S->A",
-            "A->E"
+            "SA",
+            "AE"
           ],
           "say": "One way is S to A, then A to E. That costs four plus six, which is ten.",
-          "callout": "S → A → E: 4 + 6 = 10"
+          "draw": [
+            {
+              "write": "S → A → E: 4 + 6 = 10",
+              "near": "AE",
+              "side": "above",
+              "when": "four plus six"
+            }
+          ]
         },
         {
           "focus": [
-            "S->B",
-            "B->C",
-            "C->E"
+            "SB",
+            "BC",
+            "CE"
           ],
           "say": "Another is S to B, B to C, then C to E. That costs two plus five plus one, which is eight.",
-          "callout": "S → B → C → E: 2 + 5 + 1 = 8"
+          "draw": [
+            {
+              "write": "S → B → C → E: 2 + 5 + 1 = 8",
+              "near": "BC",
+              "side": "below",
+              "when": "two plus five"
+            }
+          ]
         },
         {
           "focus": [
@@ -160,410 +84,302 @@
             "C",
             "E"
           ],
-          "say": "Checking every route works on five places. On a real road map with millions of crossings, there are far too many routes to try.",
-          "callout": ""
+          "erase": true,
+          "say": "Checking every route works on five places. On a real road map with millions of crossings, there are far too many routes to try."
+        },
+        {
+          "show": [
+            "table",
+            "rowS",
+            "rowA",
+            "rowB",
+            "rowC",
+            "rowE"
+          ],
+          "focus": "table",
+          "say": "Dijkstra's method keeps a table instead."
         },
         {
           "focus": [
-            "Distance@S",
-            "Distance@A",
-            "Distance@B",
-            "Distance@C",
-            "Distance@E",
-            "Previous@S",
-            "Previous@A",
-            "Previous@B",
-            "Previous@C",
-            "Previous@E",
-            "Visited@S",
-            "Visited@A",
-            "Visited@B",
-            "Visited@C",
-            "Visited@E"
+            "hCost",
+            "hFrom",
+            "hDone"
           ],
-          "say": "Dijkstra's method keeps a table instead. For each place it notes the cheapest cost found so far, the place you came from, and whether that cost is settled."
+          "say": "For each place it notes the cheapest cost found so far, the place you came from, and whether that cost is settled."
         }
+      ],
+      "hidden": [
+        "table",
+        "rowS",
+        "dS0",
+        "okS",
+        "rowA",
+        "dA0",
+        "xdA0",
+        "dA1",
+        "xdA1",
+        "dA2",
+        "pA0",
+        "xpA0",
+        "pA1",
+        "okA",
+        "rowB",
+        "dB0",
+        "xdB0",
+        "dB1",
+        "pB0",
+        "okB",
+        "rowC",
+        "dC0",
+        "xdC0",
+        "dC1",
+        "xdC1",
+        "dC2",
+        "pC0",
+        "xpC0",
+        "pC1",
+        "okC",
+        "rowE",
+        "dE0",
+        "xdE0",
+        "dE1",
+        "xdE1",
+        "dE2",
+        "pE0",
+        "xpE0",
+        "pE1",
+        "okE"
       ]
     },
     {
-      "type": "graph",
-      "layout": "TB",
+      "type": "svg",
       "chapter": "The first pick",
-      "narration": "Start S at zero, since it costs nothing to stay put. Every other place starts at infinity, because we have no route to it yet.",
-      "callout": "pick the smallest unvisited",
-      "nodes": [
-        {
-          "id": "S",
-          "label": "S",
-          "shape": "terminal",
-          "badge": "0"
-        },
-        {
-          "id": "A",
-          "label": "A",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "B",
-          "label": "B",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "C",
-          "label": "C",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "E",
-          "label": "E",
-          "shape": "terminal",
-          "badge": "∞"
-        }
-      ],
-      "edges": [
-        {
-          "from": "S",
-          "to": "A",
-          "label": "4"
-        },
-        {
-          "from": "S",
-          "to": "B",
-          "label": "2"
-        },
-        {
-          "from": "B",
-          "to": "A",
-          "label": "1"
-        },
-        {
-          "from": "B",
-          "to": "C",
-          "label": "5"
-        },
-        {
-          "from": "A",
-          "to": "C",
-          "label": "2"
-        },
-        {
-          "from": "A",
-          "to": "E",
-          "label": "6"
-        },
-        {
-          "from": "C",
-          "to": "E",
-          "label": "1"
-        }
-      ],
-      "table": {
-        "columns": [
-          "Node",
-          "Distance",
-          "Previous",
-          "Visited"
-        ],
-        "rows": [
-          {
-            "cells": [
-              "S",
-              "0",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "A",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "B",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "C",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "E",
-              "∞",
-              "–",
-              "No"
-            ]
-          }
-        ]
+      "title": "Visit the cheapest place first",
+      "picture": "map",
+      "labels": {
+        "dS0": "zero",
+        "dA0": "infinity",
+        "dB0": "infinity",
+        "okS": "final",
+        "dA1": "four",
+        "dB1": "two",
+        "okB": "settled"
       },
+      "narration": "First, write a starting guess for every place.",
       "steps": [
         {
+          "show": [
+            "dS0"
+          ],
+          "focus": "dS0",
+          "say": "S starts at zero, since it costs nothing to stay put."
+        },
+        {
+          "show": [
+            "dA0",
+            "dB0",
+            "dC0",
+            "dE0"
+          ],
+          "focus": [
+            "dA0",
+            "dB0",
+            "dC0",
+            "dE0"
+          ],
+          "say": "Every other place starts at infinity, because we have no route to it yet."
+        },
+        {
+          "show": [
+            "okS"
+          ],
           "tint": {
-            "S": "warn"
-          },
-          "set": {
-            "Visited@S": "Yes"
+            "S": "good",
+            "dS0": "good"
           },
           "focus": [
             "S",
-            "row:S"
+            "dS0",
+            "okS"
           ],
           "say": "S is the smallest, so we visit it first, and its zero is final."
         },
         {
-          "set": {
-            "A": "4",
-            "Distance@A": "4",
-            "Previous@A": "S"
-          },
-          "callout": "0 + 4 = 4",
-          "say": "From S, the road to A costs four. So A drops from infinity to four, and we note that it came from S."
+          "show": [
+            "xdA0",
+            "dA1",
+            "pA0"
+          ],
+          "focus": [
+            "SA",
+            "dA0",
+            "xdA0",
+            "dA1",
+            "pA0"
+          ],
+          "say": "From S, the road to A costs four. So A drops from infinity to four, and we note that it came from S.",
+          "draw": [
+            {
+              "write": "0 + 4 = 4",
+              "near": "SA",
+              "side": "left",
+              "when": "costs four"
+            }
+          ]
         },
         {
-          "set": {
-            "B": "2",
-            "Distance@B": "2",
-            "Previous@B": "S"
-          },
-          "callout": "0 + 2 = 2",
-          "say": "The road to B costs two. So B is two, also from S."
+          "show": [
+            "xdB0",
+            "dB1",
+            "pB0"
+          ],
+          "focus": [
+            "SB",
+            "dB0",
+            "xdB0",
+            "dB1",
+            "pB0"
+          ],
+          "say": "The road to B costs two. So B is two, also from S.",
+          "draw": [
+            {
+              "write": "0 + 2 = 2",
+              "near": "SB",
+              "side": "left",
+              "when": "costs two"
+            }
+          ]
         },
         {
           "focus": [
-            "row:A",
-            "row:B",
-            "row:C",
-            "row:E"
+            "dA1",
+            "dB1",
+            "dC0",
+            "dE0"
           ],
-          "callout": "unvisited: A 4, B 2, C ∞, E ∞",
+          "erase": true,
           "say": "Now the greedy rule. Of the places not yet visited, pick the one with the smallest cost."
         },
         {
+          "show": [
+            "okB"
+          ],
           "tint": {
-            "B": "warn"
+            "B": "good",
+            "dB1": "good"
           },
-          "set": {
-            "Visited@B": "Yes"
-          },
-          "callout": "[B = 2 is final]{good}",
-          "say": "That is B, at two. No road costs less than nothing, so no other way can reach B for less than two. Its cost is settled."
+          "focus": [
+            "B",
+            "dB1",
+            "okB"
+          ],
+          "say": "That is B, at two. No road costs less than nothing, so no other way can reach B for less.",
+          "draw": [
+            {
+              "circle": "dB1",
+              "note": "final",
+              "tone": "good",
+              "when": "for less"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "graph",
-      "layout": "TB",
+      "type": "svg",
       "chapter": "Finding a shortcut",
+      "title": "A detour through B is cheaper",
+      "picture": "map",
+      "labels": {
+        "dA1": "four",
+        "BA": "B to A",
+        "dA2": "three",
+        "pA1": "comes from B",
+        "dC1": "seven",
+        "BC": "B to C"
+      },
       "narration": "Now we look at the roads leaving B.",
-      "callout": "if d(u) + w(u, v) < d(v), then d(v) = d(u) + w(u, v)",
-      "nodes": [
-        {
-          "id": "S",
-          "label": "S",
-          "shape": "terminal",
-          "badge": "0"
-        },
-        {
-          "id": "A",
-          "label": "A",
-          "shape": "terminal",
-          "badge": "4"
-        },
-        {
-          "id": "B",
-          "label": "B",
-          "shape": "terminal",
-          "badge": "2"
-        },
-        {
-          "id": "C",
-          "label": "C",
-          "shape": "terminal",
-          "badge": "∞"
-        },
-        {
-          "id": "E",
-          "label": "E",
-          "shape": "terminal",
-          "badge": "∞"
-        }
-      ],
-      "edges": [
-        {
-          "from": "S",
-          "to": "A",
-          "label": "4"
-        },
-        {
-          "from": "S",
-          "to": "B",
-          "label": "2"
-        },
-        {
-          "from": "B",
-          "to": "A",
-          "label": "1"
-        },
-        {
-          "from": "B",
-          "to": "C",
-          "label": "5"
-        },
-        {
-          "from": "A",
-          "to": "C",
-          "label": "2"
-        },
-        {
-          "from": "A",
-          "to": "E",
-          "label": "6"
-        },
-        {
-          "from": "C",
-          "to": "E",
-          "label": "1"
-        }
-      ],
-      "table": {
-        "columns": [
-          "Node",
-          "Distance",
-          "Previous",
-          "Visited"
-        ],
-        "rows": [
-          {
-            "cells": [
-              "S",
-              "0",
-              "–",
-              "Yes"
-            ]
-          },
-          {
-            "cells": [
-              "A",
-              "4",
-              "S",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "B",
-              "2",
-              "S",
-              "Yes"
-            ]
-          },
-          {
-            "cells": [
-              "C",
-              "∞",
-              "–",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "E",
-              "∞",
-              "–",
-              "No"
-            ]
-          }
-        ]
-      },
-      "tint": {
-        "S": "warn",
-        "B": "warn"
-      },
       "steps": [
         {
-          "focus": [
-            "B->A",
-            "Distance@A"
-          ],
+          "focus": "dA1",
           "say": "We already know a way to A that costs four, straight from S.",
           "draw": [
             {
-              "circle": "Distance@A",
+              "circle": "dA1",
               "note": "via S",
               "when": "four"
             }
           ]
         },
         {
-          "set": {
-            "A": "3",
-            "Distance@A": {
-              "before": "4",
-              "after": "3"
-            },
-            "Previous@A": "B"
-          },
+          "focus": [
+            "SB",
+            "BA",
+            "dA1"
+          ],
           "say": "But going S to B, then B to A, costs two plus one, which is three. Three is less than four.",
           "draw": [
             {
-              "arrow": [
-                "B",
-                "A"
-              ],
-              "note": "2 + 1 = 3",
+              "write": "2 + 1 = 3",
+              "near": "BA",
+              "side": "right",
               "when": "two plus one"
             },
             {
-              "write": "3 < 4 ✓",
-              "near": "Distance@A",
+              "write": "3 < 4",
+              "near": "dA1",
+              "side": "below",
               "tone": "good",
               "when": "three is less"
             }
           ]
         },
         {
-          "focus": [
-            "row:A",
-            "A"
+          "show": [
+            "xdA1",
+            "dA2",
+            "xpA0",
+            "pA1"
           ],
-          "say": "So we cross out four, write three, and note that A now comes from B. This is called relaxing a road. We found a shortcut, so we replace the old guess.",
+          "focus": [
+            "dA2",
+            "pA1"
+          ],
+          "erase": true,
+          "say": "So we cross out four, write three, and note that A now comes from B."
+        },
+        {
+          "focus": "BA",
+          "say": "This is called relaxing a road. We found a shortcut, so we replace the old guess.",
           "draw": [
             {
-              "underline": "Previous@A",
-              "note": "came from B",
-              "when": "comes from B"
+              "write": "relax: keep the cheaper",
+              "near": "BA",
+              "side": "right",
+              "tone": "good",
+              "when": "relaxing"
             }
           ]
         },
         {
-          "set": {
-            "C": "7",
-            "Distance@C": "7",
-            "Previous@C": "B"
-          },
+          "show": [
+            "xdC0",
+            "dC1",
+            "pC0"
+          ],
+          "focus": [
+            "BC",
+            "xdC0",
+            "dC1",
+            "pC0"
+          ],
           "erase": true,
           "say": "The road from B to C costs five, so C becomes seven, by way of B.",
           "draw": [
             {
-              "arrow": [
-                "B",
-                "C"
-              ],
-              "note": "2 + 5 = 7 < ∞",
+              "write": "2 + 5 = 7",
+              "near": "BC",
+              "side": "below",
               "when": "costs five"
             }
           ]
@@ -571,261 +387,193 @@
       ]
     },
     {
-      "type": "graph",
-      "layout": "TB",
+      "type": "svg",
       "chapter": "Reaching E",
+      "title": "Repeat until E is settled",
+      "picture": "map",
+      "labels": {
+        "A": "A",
+        "C": "C",
+        "E": "E",
+        "AC": "through A",
+        "CE": "through C",
+        "pE1": "E came from C",
+        "pA1": "A from B"
+      },
       "narration": "We keep repeating the same two moves: pick the cheapest unvisited place, then relax the roads leaving it.",
-      "callout": "unvisited: A 3, C 7, E ∞",
-      "nodes": [
-        {
-          "id": "S",
-          "label": "S",
-          "shape": "terminal",
-          "badge": "0"
-        },
-        {
-          "id": "A",
-          "label": "A",
-          "shape": "terminal",
-          "badge": "3"
-        },
-        {
-          "id": "B",
-          "label": "B",
-          "shape": "terminal",
-          "badge": "2"
-        },
-        {
-          "id": "C",
-          "label": "C",
-          "shape": "terminal",
-          "badge": "7"
-        },
-        {
-          "id": "E",
-          "label": "E",
-          "shape": "terminal",
-          "badge": "∞"
-        }
-      ],
-      "edges": [
-        {
-          "from": "S",
-          "to": "A",
-          "label": "4"
-        },
-        {
-          "from": "S",
-          "to": "B",
-          "label": "2"
-        },
-        {
-          "from": "B",
-          "to": "A",
-          "label": "1"
-        },
-        {
-          "from": "B",
-          "to": "C",
-          "label": "5"
-        },
-        {
-          "from": "A",
-          "to": "C",
-          "label": "2"
-        },
-        {
-          "from": "A",
-          "to": "E",
-          "label": "6"
-        },
-        {
-          "from": "C",
-          "to": "E",
-          "label": "1"
-        }
-      ],
-      "table": {
-        "columns": [
-          "Node",
-          "Distance",
-          "Previous",
-          "Visited"
-        ],
-        "rows": [
-          {
-            "cells": [
-              "S",
-              "0",
-              "–",
-              "Yes"
-            ]
-          },
-          {
-            "cells": [
-              "A",
-              "3",
-              "B",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "B",
-              "2",
-              "S",
-              "Yes"
-            ]
-          },
-          {
-            "cells": [
-              "C",
-              "7",
-              "B",
-              "No"
-            ]
-          },
-          {
-            "cells": [
-              "E",
-              "∞",
-              "–",
-              "No"
-            ]
-          }
-        ]
-      },
-      "tint": {
-        "S": "warn",
-        "B": "warn"
-      },
       "steps": [
         {
+          "show": [
+            "okA"
+          ],
           "tint": {
-            "A": "warn"
+            "A": "good",
+            "dA2": "good"
           },
-          "set": {
-            "Visited@A": "Yes"
-          },
-          "callout": "[A = 3 is final]{good}",
+          "focus": [
+            "A",
+            "dA2",
+            "okA"
+          ],
           "say": "A is cheapest at three, so we visit it."
         },
         {
-          "set": {
-            "C": "5",
-            "Distance@C": {
-              "before": "7",
-              "after": "5"
-            },
-            "Previous@C": "A"
-          },
+          "show": [
+            "xdC1",
+            "dC2",
+            "xpC0",
+            "pC1"
+          ],
+          "focus": [
+            "AC",
+            "xdC1",
+            "dC2",
+            "xpC0",
+            "pC1"
+          ],
           "say": "Through A, C costs three plus two, which is five. That beats seven.",
           "draw": [
             {
-              "arrow": [
-                "A",
-                "C"
-              ],
-              "note": "3 + 2 = 5 < 7",
+              "write": "3 + 2 = 5",
+              "near": "AC",
+              "side": "right",
               "when": "three plus two"
             }
           ]
         },
         {
-          "set": {
-            "E": "9",
-            "Distance@E": "9",
-            "Previous@E": "A"
-          },
+          "show": [
+            "xdE0",
+            "dE1",
+            "pE0"
+          ],
+          "focus": [
+            "AE",
+            "xdE0",
+            "dE1",
+            "pE0"
+          ],
           "say": "And E costs three plus six, which is nine.",
           "draw": [
             {
-              "arrow": [
-                "A",
-                "E"
-              ],
-              "note": "3 + 6 = 9 < ∞",
+              "write": "3 + 6 = 9",
+              "near": "AE",
+              "side": "above",
               "when": "three plus six"
             }
           ]
         },
         {
+          "show": [
+            "okC"
+          ],
           "tint": {
-            "C": "warn"
+            "C": "good",
+            "dC2": "good"
           },
-          "set": {
-            "Visited@C": "Yes"
-          },
+          "focus": [
+            "C",
+            "dC2",
+            "okC"
+          ],
           "erase": true,
-          "callout": "unvisited: C 5, E 9",
           "say": "C is next, at five."
         },
         {
-          "set": {
-            "E": "6",
-            "Distance@E": {
-              "before": "9",
-              "after": "6"
-            },
-            "Previous@E": "C"
-          },
+          "show": [
+            "xdE1",
+            "dE2",
+            "xpE0",
+            "pE1"
+          ],
+          "focus": [
+            "CE",
+            "xdE1",
+            "dE2",
+            "xpE0",
+            "pE1"
+          ],
           "say": "Through C, E costs five plus one, which is six. Six beats nine.",
           "draw": [
             {
-              "arrow": [
-                "C",
-                "E"
-              ],
-              "note": "5 + 1 = 6 < 9",
+              "write": "5 + 1 = 6",
+              "near": "CE",
+              "side": "right",
               "when": "five plus one"
             }
           ]
         },
         {
+          "show": [
+            "okE"
+          ],
           "tint": {
-            "E": "warn"
+            "E": "good",
+            "dE2": "good"
           },
-          "set": {
-            "Visited@E": "Yes"
-          },
+          "focus": [
+            "E",
+            "dE2",
+            "okE"
+          ],
           "erase": true,
-          "callout": "[E = 6 is final]{good}",
           "say": "Now E is the cheapest place left, so its cost of six is settled, and we can stop."
         },
         {
-          "tint": {
-            "C->E": "good",
-            "A->C": "good",
-            "B->A": "good",
-            "S->B": "good"
-          },
           "focus": [
-            "C->E",
-            "A->C",
-            "B->A",
-            "S->B",
-            "Previous@A",
-            "Previous@B",
-            "Previous@C",
-            "Previous@E"
+            "pA1",
+            "pB0",
+            "pC1",
+            "pE1"
           ],
-          "callout": "E ← C ← A ← B ← S",
-          "say": "To read the route, follow the previous column backward. E came from C, C from A, A from B, and B from S."
+          "say": "To read the route, follow the from column backward. E came from C, C from A, A from B, and B from S.",
+          "draw": [
+            {
+              "write": "E ← C ← A ← B ← S",
+              "near": "hCost",
+              "side": "above",
+              "tone": "good",
+              "when": "backward"
+            },
+            {
+              "circle": "pE1",
+              "when": "E came from"
+            },
+            {
+              "circle": "pC1"
+            },
+            {
+              "circle": "pA1"
+            },
+            {
+              "circle": "pB0"
+            }
+          ]
         },
         {
+          "tint": {
+            "CE": "good",
+            "AC": "good",
+            "BA": "good",
+            "SB": "good"
+          },
           "focus": [
-            "S",
-            "B",
-            "A",
-            "C",
-            "E",
-            "C->E",
-            "A->C",
-            "B->A",
-            "S->B"
+            "CE",
+            "AC",
+            "BA",
+            "SB"
           ],
-          "callout": "[S → B → A → C → E costs 6]{good}",
-          "say": "Turn that around, and the cheapest route is S, B, A, C, E, for a total of six."
+          "erase": true,
+          "say": "Turn that around, and the cheapest route is S, B, A, C, E, for a total of six.",
+          "draw": [
+            {
+              "write": "S → B → A → C → E = 6",
+              "near": "BC",
+              "side": "below",
+              "tone": "good",
+              "when": "cheapest route"
+            }
+          ]
         }
       ]
     }

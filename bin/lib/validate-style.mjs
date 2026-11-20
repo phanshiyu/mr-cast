@@ -149,8 +149,7 @@ export function checkStyle(sb, { explain, drawnExplain = explain }, errors, warn
       );
     checkStill(s, p, warnings);
     checkInkTime(s, p, warnings);
-    if (board && typeof s.type === 'string' && !DRAWN_ON_BOARD.includes(s.type))
-      slides.push(`${i} (${s.type})`);
+    if (board && typeof s.type === 'string' && !DRAWN_ON_BOARD.includes(s.type)) slides.push(`${i} (${s.type})`);
     for (const { tone, at } of tonesUsed(s)) {
       if (meant && !meant.has(tone) && !unmeant.has(tone)) unmeant.set(tone, `${p} ${at}`);
       if (!meant && !firstTone) firstTone = `${p} ${at}`;

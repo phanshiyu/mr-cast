@@ -1,237 +1,257 @@
 {
   "title": "Raspberry Pi 5 against Pi 4",
   "subtitle": "Is the upgrade worth it? A spec-by-spec scorecard from the product briefs",
+  "tones": {
+    "good": "what the Pi 5 wins or adds",
+    "bad": "what the upgrade costs"
+  },
+  "pictures": {
+    "boards": "<svg viewBox=\"0 0 1200 640\">\n<g id=\"pi4\"><rect x=\"40\" y=\"50\" width=\"456\" height=\"300\" rx=\"18\" stroke-width=\"4\"/>\n<circle cx=\"60\" cy=\"70\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><circle cx=\"476\" cy=\"70\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><circle cx=\"60\" cy=\"330\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><circle cx=\"476\" cy=\"330\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<g><g><rect x=\"80\" y=\"64\" width=\"360\" height=\"34\" rx=\"6\" stroke-width=\"3\"/></g><circle cx=\"89\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"107\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"125\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"143\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"161\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"179\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"197\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"215\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"233\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"251\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"269\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"287\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"305\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"323\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"341\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"359\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"377\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"395\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"413\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"431\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/></g>\n<g><rect x=\"180\" y=\"160\" width=\"120\" height=\"110\" rx=\"6\" stroke-width=\"3\"/><text x=\"240\" y=\"223\" font-size=\"22\" text-anchor=\"middle\">processor</text></g>\n<g><rect x=\"420\" y=\"114\" width=\"96\" height=\"60\" rx=\"6\" stroke-width=\"3\"/><text x=\"468\" y=\"152\" font-size=\"22\" text-anchor=\"middle\">USB</text></g><g><rect x=\"420\" y=\"190\" width=\"96\" height=\"60\" rx=\"6\" stroke-width=\"3\"/><text x=\"468\" y=\"228\" font-size=\"22\" text-anchor=\"middle\">USB</text></g><g><rect x=\"420\" y=\"266\" width=\"96\" height=\"70\" rx=\"6\" stroke-width=\"3\"/><text x=\"468\" y=\"309\" font-size=\"22\" text-anchor=\"middle\">LAN</text></g>\n<g><rect x=\"100\" y=\"312\" width=\"80\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><text x=\"140\" y=\"343\" font-size=\"22\" text-anchor=\"middle\">power</text></g><g><rect x=\"200\" y=\"320\" width=\"60\" height=\"38\" rx=\"6\" stroke-width=\"3\"/></g><g><rect x=\"280\" y=\"320\" width=\"60\" height=\"38\" rx=\"6\" stroke-width=\"3\"/></g>\n</g><text x=\"268\" y=\"410\" font-size=\"22\" text-anchor=\"middle\" font-size=\"36\">Pi 4</text>\n<g id=\"pi5\"><rect x=\"684\" y=\"50\" width=\"456\" height=\"300\" rx=\"18\" stroke-width=\"4\"/>\n<circle cx=\"704\" cy=\"70\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><circle cx=\"1120\" cy=\"70\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><circle cx=\"704\" cy=\"330\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/><circle cx=\"1120\" cy=\"330\" r=\"9\" fill=\"none\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<g><g><rect x=\"724\" y=\"64\" width=\"360\" height=\"34\" rx=\"6\" stroke-width=\"3\"/></g><circle cx=\"733\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"751\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"769\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"787\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"805\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"823\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"841\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"859\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"877\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"895\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"913\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"931\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"949\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"967\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"985\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"1003\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"1021\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"1039\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"1057\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/><circle cx=\"1075\" cy=\"81\" r=\"4\" fill=\"var(--muted)\"/></g>\n<g><rect x=\"824\" y=\"160\" width=\"120\" height=\"110\" rx=\"6\" stroke-width=\"3\"/><text x=\"884\" y=\"223\" font-size=\"22\" text-anchor=\"middle\">processor</text></g>\n<g><rect x=\"1064\" y=\"114\" width=\"96\" height=\"60\" rx=\"6\" stroke-width=\"3\"/><text x=\"1112\" y=\"152\" font-size=\"22\" text-anchor=\"middle\">USB</text></g><g><rect x=\"1064\" y=\"190\" width=\"96\" height=\"60\" rx=\"6\" stroke-width=\"3\"/><text x=\"1112\" y=\"228\" font-size=\"22\" text-anchor=\"middle\">USB</text></g><g><rect x=\"1064\" y=\"266\" width=\"96\" height=\"70\" rx=\"6\" stroke-width=\"3\"/><text x=\"1112\" y=\"309\" font-size=\"22\" text-anchor=\"middle\">LAN</text></g>\n<g><rect x=\"744\" y=\"312\" width=\"80\" height=\"46\" rx=\"6\" stroke-width=\"3\"/><text x=\"784\" y=\"343\" font-size=\"22\" text-anchor=\"middle\">power</text></g><g><rect x=\"844\" y=\"320\" width=\"60\" height=\"38\" rx=\"6\" stroke-width=\"3\"/></g><g><rect x=\"924\" y=\"320\" width=\"60\" height=\"38\" rx=\"6\" stroke-width=\"3\"/></g>\n</g><text x=\"912\" y=\"410\" font-size=\"22\" text-anchor=\"middle\" font-size=\"36\">Pi 5</text>\n<g id=\"button\"><circle cx=\"718\" cy=\"290\" r=\"14\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"740\" y=\"298\" font-size=\"22\" class=\"tone-good\">power button</text></g>\n<g id=\"rtc\"><rect x=\"714\" y=\"116\" width=\"40\" height=\"26\" rx=\"4\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"762\" y=\"138\" font-size=\"22\" class=\"tone-good\">clock</text></g>\n<g id=\"pcie\"><rect x=\"704\" y=\"180\" width=\"26\" height=\"82\" rx=\"4\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"740\" y=\"232\" font-size=\"22\" class=\"tone-good\">PCIe</text></g>\n<g id=\"rp1\"><rect x=\"964\" y=\"170\" width=\"84\" height=\"90\" rx=\"6\" class=\"tone-good\" stroke-width=\"3\"/><text x=\"1006\" y=\"223\" font-size=\"22\" text-anchor=\"middle\" class=\"tone-good\">RP1</text></g>\n<text id=\"source\" x=\"600\" y=\"500\" text-anchor=\"middle\" font-size=\"26\" fill=\"var(--muted)\">every number: Raspberry Pi’s own product briefs</text>\n<g id=\"v1\"><text x=\"684\" y=\"480\" font-size=\"22\" font-size=\"26\">buying new? get the Pi 5</text></g>\n<g id=\"v2\"><text x=\"684\" y=\"530\" font-size=\"22\" font-size=\"26\">desktop, fast drive, two cameras?</text><text x=\"684\" y=\"566\" font-size=\"22\" font-size=\"26\">upgrade</text></g>\n<g id=\"v3\"><text x=\"40\" y=\"480\" font-size=\"22\" font-size=\"26\">already doing its job? keep it</text></g>\n<g id=\"v4\"><text x=\"684\" y=\"616\" font-size=\"22\" font-size=\"26\" class=\"tone-bad\">upgrading? budget for a 5 A supply</text></g>\n</svg>"
+  },
   "scenes": [
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "The question",
-      "narration": "The Raspberry Pi five is out, and plenty of people still run a Pi four. So is the upgrade worth it?",
-      "kicker": "Raspberry Pi 5 against Raspberry Pi 4",
-      "question": "Is the upgrade worth it?",
-      "note": "Every number here is from Raspberry Pi’s own product briefs",
+      "title": "Is the Pi 5 worth the upgrade?",
+      "picture": "boards",
       "hidden": [
-        "note"
+        "button",
+        "rtc",
+        "pcie",
+        "rp1",
+        "v1",
+        "v2",
+        "v3",
+        "v4",
+        "source"
       ],
+      "labels": {
+        "pi4": "Pi four",
+        "pi5": "Pi five"
+      },
+      "narration": "The Raspberry Pi five is out, and plenty of people still run a Pi four.",
       "steps": [
         {
+          "focus": [
+            "pi4",
+            "pi5"
+          ],
+          "say": "So is the upgrade worth it?"
+        },
+        {
           "show": [
-            "note"
+            "source"
+          ],
+          "focus": [
+            "source"
           ],
           "say": "Every number in this video comes from the two boards’ official product briefs. No rumours."
         }
       ]
     },
     {
-      "type": "table",
+      "type": "svg",
       "chapter": "Scorecard",
-      "title": "Spec by spec",
+      "title": "Six rows to the Pi 5, one to the Pi 4",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<text id=\"t4\" x=\"510\" y=\"60\" text-anchor=\"middle\" font-size=\"34\">Pi 4: 0</text><text id=\"t5\" x=\"950\" y=\"60\" text-anchor=\"middle\" font-size=\"34\">Pi 5: 0</text>\n<line x1=\"20\" y1=\"90\" x2=\"1180\" y2=\"90\" stroke=\"var(--muted)\" stroke-width=\"2\"/>\n<g id=\"row0\"><text x=\"20\" y=\"140\" font-size=\"22\" fill=\"var(--muted)\">Processor</text><text id=\"a0\" x=\"300\" y=\"140\" font-size=\"22\">Cortex-A72 at 1.8 GHz</text><text id=\"b0\" x=\"740\" y=\"140\" font-size=\"22\">Cortex-A76 at 2.4 GHz</text></g>\n<g id=\"row1\"><text x=\"20\" y=\"202\" font-size=\"22\" fill=\"var(--muted)\">Graphics</text><text id=\"a1\" x=\"300\" y=\"202\" font-size=\"22\">OpenGL ES 3.0</text><text id=\"b1\" x=\"740\" y=\"202\" font-size=\"22\">VideoCore VII, Vulkan 1.2</text></g>\n<g id=\"row2\"><text x=\"20\" y=\"264\" font-size=\"22\" fill=\"var(--muted)\">Memory</text><text id=\"a2\" x=\"300\" y=\"264\" font-size=\"22\">LPDDR4, 1 GB to 8 GB</text><text id=\"b2\" x=\"740\" y=\"264\" font-size=\"22\">LPDDR4X-4267, 1 GB to 16 GB</text></g>\n<g id=\"row3\"><text x=\"20\" y=\"326\" font-size=\"22\" fill=\"var(--muted)\">Camera and display</text><text id=\"a3\" x=\"300\" y=\"326\" font-size=\"22\">one 2-lane camera, one 2-lane display</text><text id=\"b3\" x=\"740\" y=\"326\" font-size=\"22\">two 4-lane, camera or display</text></g>\n<g id=\"row4\"><text x=\"20\" y=\"388\" font-size=\"22\" fill=\"var(--muted)\">USB and network</text><text id=\"a4\" x=\"300\" y=\"388\" font-size=\"22\">2 × USB 3.0, 2 × USB 2.0, Gigabit</text><text id=\"b4\" x=\"740\" y=\"388\" font-size=\"22\">2 × USB 3.0, 2 × USB 2.0, Gigabit</text></g>\n<g id=\"row5\"><text x=\"20\" y=\"450\" font-size=\"22\" fill=\"var(--muted)\">Power supply</text><text id=\"a5\" x=\"300\" y=\"450\" font-size=\"22\">5 V, 3 A</text><text id=\"b5\" x=\"740\" y=\"450\" font-size=\"22\">5 V, 5 A</text></g>\n<g id=\"row6\"><text x=\"20\" y=\"512\" font-size=\"22\" fill=\"var(--muted)\">Works up to</text><text id=\"a6\" x=\"300\" y=\"512\" font-size=\"22\">50 °C</text><text id=\"b6\" x=\"740\" y=\"512\" font-size=\"22\">70 °C</text></g>\n<g id=\"row7\"><text x=\"20\" y=\"574\" font-size=\"22\" fill=\"var(--muted)\">Made until at least</text><text id=\"a7\" x=\"300\" y=\"574\" font-size=\"22\">January 2034</text><text id=\"b7\" x=\"740\" y=\"574\" font-size=\"22\">January 2036</text></g>\n</svg>",
+      "hidden": [
+        "row1",
+        "row2",
+        "row3",
+        "row4",
+        "row5",
+        "row6",
+        "row7"
+      ],
+      "labels": {
+        "row0": "processor",
+        "row1": "graphics",
+        "row2": "memory",
+        "row3": "camera and display ports",
+        "row4": "USB",
+        "row5": "power",
+        "row6": "hotter",
+        "row7": "made"
+      },
       "narration": "Let’s go down the spec sheet one row at a time, and give each row to whichever board wins it.",
-      "columns": [
-        "Spec",
-        "Pi 4",
-        "Pi 5"
-      ],
-      "rows": [
-        {
-          "cells": [
-            "Processor",
-            "Cortex-A72 at 1.8 GHz",
-            "Cortex-A76 at 2.4 GHz"
-          ]
-        },
-        {
-          "cells": [
-            "Graphics",
-            "OpenGL ES 3.0",
-            "VideoCore VII, Vulkan 1.2"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Memory",
-            "LPDDR4, 1 GB to 8 GB",
-            "LPDDR4X-4267, 1 GB to 16 GB"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Camera and display",
-            "one 2-lane camera, one 2-lane display",
-            "two 4-lane, camera or display"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "USB and network",
-            "2 × USB 3.0, 2 × USB 2.0, Gigabit",
-            "2 × USB 3.0, 2 × USB 2.0, Gigabit"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Power supply",
-            "5 V, 3 A",
-            "5 V, 5 A"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Works up to",
-            "50 °C",
-            "70 °C"
-          ],
-          "hidden": true
-        },
-        {
-          "cells": [
-            "Made until at least",
-            "January 2034",
-            "January 2036"
-          ],
-          "hidden": true
-        }
-      ],
-      "callout": "Pi 4: **0** · Pi 5: **0**",
       "steps": [
         {
-          "focus": 0,
+          "focus": [
+            "row0",
+            "t5"
+          ],
           "tint": {
-            "Pi 5@0": "good"
+            "b0": "good"
           },
-          "callout": "Pi 4: **0** · Pi 5: **1**",
-          "say": "The processor. The Pi five has a newer core, the A seventy six, and runs it at 2.4 gigahertz instead of 1.8. First point goes to the five."
+          "set": {
+            "t5": "Pi 5: 1"
+          },
+          "say": "The processor. The Pi five has a newer core, the A seventy six, at 2.4 gigahertz instead of 1.8. First point to the five."
         },
         {
           "show": [
-            1,
-            2
+            "row1",
+            "row2"
           ],
           "focus": [
-            1,
-            2
+            "row1",
+            "row2"
           ],
           "tint": {
-            "Pi 5@1": "good",
-            "Pi 5@2": "good"
+            "b1": "good",
+            "b2": "good"
           },
-          "callout": "Pi 4: **0** · Pi 5: **3**",
-          "say": "Graphics and memory both go to the five as well: a new graphics chip that runs Vulkan, newer memory, and up to sixteen gigabytes of it."
+          "set": {
+            "t5": "Pi 5: 3"
+          },
+          "say": "Graphics and memory go to the five as well: a new graphics chip that runs Vulkan, and up to sixteen gigabytes of newer memory."
         },
         {
           "show": [
-            3
+            "row3"
           ],
-          "focus": 3,
+          "focus": [
+            "row3"
+          ],
           "tint": {
-            "Pi 5@3": "good"
+            "b3": "good"
           },
-          "callout": "Pi 4: **0** · Pi 5: **4**",
-          "say": "The two camera and display ports are now twice as wide, and each one takes either a camera or a screen."
+          "set": {
+            "t5": "Pi 5: 4"
+          },
+          "say": "The two camera and display ports are now twice as wide, and each takes a camera or a screen."
         },
         {
           "show": [
-            4
+            "row4"
           ],
-          "focus": 4,
+          "focus": [
+            "row4"
+          ],
           "tint": {
-            "4": "dim"
+            "row4": "dim"
           },
           "say": "USB and networking are the same on both. That one is a tie."
         },
         {
           "show": [
-            5
+            "row5"
           ],
-          "focus": 5,
+          "focus": [
+            "row5",
+            "t4"
+          ],
           "tint": {
-            "Pi 4@5": "good"
+            "a5": "good"
           },
-          "callout": "Pi 4: **1** · Pi 5: **4**",
+          "set": {
+            "t4": "Pi 4: 1"
+          },
           "say": "Power is where the four wins. The five wants a five amp supply, so your old 3 amp charger may not cut it."
         },
         {
           "show": [
-            6,
-            7
+            "row6",
+            "row7"
           ],
           "focus": [
-            6,
-            7
+            "row6",
+            "row7",
+            "t4",
+            "t5"
           ],
           "tint": {
-            "Pi 5@6": "good",
-            "Pi 5@7": "good"
+            "b6": "good",
+            "b7": "good"
           },
-          "callout": "Pi 4: **1** · Pi 5: **6**",
-          "say": "The five is rated to run hotter, up to 70 degrees, and it will be made for two years longer. Final score, 6 to 1."
+          "set": {
+            "t5": "Pi 5: 6"
+          },
+          "say": "The five runs hotter, up to 70 degrees, and will be made two years longer. Final score, 6 to 1."
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "How much faster",
-      "title": "Processor speed, as times the Pi 4",
-      "kind": "bar",
-      "unit": "×",
-      "better": "higher",
+      "title": "Two to three times, mostly from the core",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"160\" y1=\"580\" x2=\"1040\" y2=\"580\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<path id=\"bar4\" d=\"M250 440 H470 V580 H250 Z\" stroke-width=\"3\"/>\n<path id=\"bar5\" d=\"M650 440 H870 V580 H650 Z\" stroke-width=\"3\"/>\n<path id=\"bar5clock\" d=\"M650 393.38 H870 V580 H650 Z\"/><path id=\"bar5two\" d=\"M650 300 H870 V580 H650 Z\"/><path id=\"bar5three\" d=\"M650 160 H870 V580 H650 Z\"/>\n<text x=\"360\" y=\"620\" text-anchor=\"middle\" font-size=\"30\">Pi 4</text><text x=\"760\" y=\"620\" text-anchor=\"middle\" font-size=\"30\">Pi 5</text>\n<text x=\"360\" y=\"556\" text-anchor=\"middle\" font-size=\"30\">1×</text>\n<text id=\"x5\" x=\"760\" y=\"556\" text-anchor=\"middle\" font-size=\"30\">1×</text>\n<g id=\"two\"><line x1=\"620\" y1=\"300\" x2=\"900\" y2=\"300\" stroke=\"var(--text)\" stroke-width=\"3\" stroke-dasharray=\"10 8\"/><text x=\"910\" y=\"308\" font-size=\"22\" font-size=\"26\">at least 2×</text></g>\n</svg>",
+      "hidden": [
+        "bar5clock",
+        "bar5two",
+        "bar5three",
+        "two"
+      ],
+      "labels": {
+        "bar5": "Pi five",
+        "bar4": "Pi four",
+        "x5": "third faster",
+        "two": "twice as fast"
+      },
       "narration": "Now the big one. How much faster is it, really? Start with both boards at the same height.",
-      "labels": [
-        "Pi 4",
-        "Pi 5"
-      ],
-      "series": [
-        {
-          "name": "times the Pi 4",
-          "values": [
-            1,
-            1
-          ]
-        }
-      ],
-      "callout": "Pi 4 = 1",
       "steps": [
         {
-          "set": {
-            "times the Pi 4": [
-              1,
-              1.333
-            ]
+          "morph": {
+            "bar5": "bar5clock"
           },
-          "focus": "Pi 5",
-          "callout": "2.4 ÷ 1.8 GHz = 1.333×",
-          "say": "The clock alone is 2.4 against 1.8. That makes it only a third faster."
+          "set": {
+            "x5": "1.333×"
+          },
+          "focus": [
+            "bar5",
+            "x5"
+          ],
+          "say": "The clock alone is 2.4 against 1.8. That makes it only a third faster.",
+          "draw": [
+            {
+              "write": "2.4 ÷ 1.8 GHz",
+              "near": "bar5",
+              "side": "right",
+              "when": "clock alone"
+            }
+          ]
         },
         {
-          "set": {
-            "times the Pi 4": [
-              1,
-              2
-            ]
+          "morph": {
+            "bar5": "bar5two"
           },
-          "focus": "Pi 5",
-          "callout": "newer core: at least 2×",
+          "show": [
+            "two"
+          ],
+          "set": {
+            "x5": "2×"
+          },
+          "focus": [
+            "bar5",
+            "two"
+          ],
+          "erase": true,
           "say": "But each tick of the newer core gets more done. Raspberry Pi says the five is at least twice as fast."
         },
         {
-          "set": {
-            "times the Pi 4": [
-              1,
-              3
-            ]
+          "morph": {
+            "bar5": "bar5three"
           },
-          "focus": "Pi 5",
-          "callout": "Raspberry Pi’s claim: 2 to 3×",
-          "say": "And up to three times, depending on the job. That is their number, not a test we ran, but most of it comes from the core, not the clock.",
+          "set": {
+            "x5": "2 to 3×"
+          },
+          "focus": [
+            "bar5",
+            "x5"
+          ],
+          "say": "And up to three times, depending on the job."
+        },
+        {
+          "focus": [
+            "bar5"
+          ],
+          "say": "That is their number, not a test we ran. But most of it comes from the core, not the clock.",
           "draw": [
             {
               "write": "mostly the newer core,\nnot the clock",
-              "near": "Pi 5",
-              "side": "left",
+              "near": "bar4",
+              "side": "above",
+              "tone": "good",
               "when": "most of it"
             }
           ]
@@ -239,198 +259,202 @@
       ]
     },
     {
-      "type": "compare",
+      "type": "svg",
       "chapter": "What is new",
-      "title": "Things only the Pi 5 has",
-      "sides": [
-        {
-          "title": "Pi 4"
-        },
-        {
-          "title": "Pi 5",
-          "tone": "accent"
-        }
+      "title": "Four things only the Pi 5 has",
+      "picture": "boards",
+      "hidden": [
+        "button",
+        "rtc",
+        "pcie",
+        "rp1",
+        "v1",
+        "v2",
+        "v3",
+        "v4",
+        "source"
       ],
+      "labels": {
+        "button": "power button",
+        "rtc": "real time clock",
+        "pcie": "PCI Express",
+        "rp1": "chip"
+      },
       "narration": "Then there are the things the Pi four simply does not have.",
-      "rows": [
-        {
-          "label": "Power button",
-          "cells": [
-            "No",
-            "Yes"
-          ],
-          "verdict": [
-            null,
-            "good"
-          ]
-        },
-        {
-          "label": "Clock that keeps time when off",
-          "cells": [
-            "No",
-            "Yes, with a small battery"
-          ],
-          "verdict": [
-            null,
-            "good"
-          ]
-        },
-        {
-          "label": "PCI Express, for fast drives",
-          "cells": [
-            "No",
-            "One lane, with an add-on board"
-          ],
-          "verdict": [
-            null,
-            "good"
-          ]
-        },
-        {
-          "label": "Its own input and output chip",
-          "cells": [
-            "No",
-            "Yes, made by Raspberry Pi"
-          ],
-          "verdict": [
-            null,
-            "good"
-          ]
-        }
-      ],
       "steps": [
         {
-          "focus": 0,
+          "show": [
+            "button"
+          ],
+          "focus": [
+            "button"
+          ],
           "say": "A power button. Finally. No more pulling the cable out."
         },
         {
-          "focus": 1,
+          "show": [
+            "rtc"
+          ],
+          "focus": [
+            "rtc"
+          ],
           "say": "A real time clock, so it knows the time even after it was switched off, if you add a little battery."
         },
         {
-          "focus": 2,
-          "say": "A PCI Express slot. With an add-on board you can plug in a fast solid state drive instead of booting from a memory card.",
+          "show": [
+            "pcie"
+          ],
+          "focus": [
+            "pcie"
+          ],
+          "say": "A PCI Express slot. With an add-on board you can plug in a fast solid state drive instead of a memory card.",
           "draw": [
             {
-              "circle": "2@Pi 5",
+              "circle": "pcie",
               "when": "solid state drive"
             }
           ]
         },
         {
-          "focus": 3,
+          "show": [
+            "rp1"
+          ],
+          "focus": [
+            "rp1"
+          ],
           "say": "And a chip Raspberry Pi designed itself, which handles most of the plugs and pins, and more than doubles the USB speed overall."
         }
       ]
     },
     {
-      "type": "chart",
+      "type": "svg",
       "chapter": "Price",
-      "title": "List price in US dollars, by memory size",
-      "kind": "bar",
-      "prefix": "$",
-      "better": "lower",
+      "title": "Ten dollars more at every size",
+      "svg": "<svg viewBox=\"0 0 1200 640\">\n<line x1=\"60\" y1=\"560\" x2=\"1160\" y2=\"560\" stroke=\"var(--text)\" stroke-width=\"3\"/>\n<g id=\"g1\"><rect x=\"170\" y=\"469\" width=\"90\" height=\"91\" rx=\"4\" stroke-width=\"3\"/><text x=\"215\" y=\"457\" font-size=\"22\" text-anchor=\"middle\">$35</text>\n<rect x=\"270\" y=\"469\" width=\"90\" height=\"91\" rx=\"4\" stroke-width=\"3\"/>\n<rect id=\"extra1\" x=\"270\" y=\"443\" width=\"90\" height=\"26\" rx=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"315\" y=\"431\" font-size=\"22\" text-anchor=\"middle\">$45</text>\n<text x=\"265\" y=\"600\" font-size=\"22\" text-anchor=\"middle\" font-size=\"26\">1 GB</text></g>\n<g id=\"g2\"><rect x=\"430\" y=\"384.5\" width=\"90\" height=\"175.5\" rx=\"4\" stroke-width=\"3\"/><text x=\"475\" y=\"372.5\" font-size=\"22\" text-anchor=\"middle\">$67.50</text>\n<rect x=\"530\" y=\"384.5\" width=\"90\" height=\"175.5\" rx=\"4\" stroke-width=\"3\"/>\n<rect id=\"extra2\" x=\"530\" y=\"358.5\" width=\"90\" height=\"26\" rx=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"575\" y=\"346.5\" font-size=\"22\" text-anchor=\"middle\">$77.50</text>\n<text x=\"525\" y=\"600\" font-size=\"22\" text-anchor=\"middle\" font-size=\"26\">2 GB</text></g>\n<g id=\"g4\"><rect x=\"690\" y=\"300\" width=\"90\" height=\"260\" rx=\"4\" stroke-width=\"3\"/><text x=\"735\" y=\"288\" font-size=\"22\" text-anchor=\"middle\">$100</text>\n<rect x=\"790\" y=\"300\" width=\"90\" height=\"260\" rx=\"4\" stroke-width=\"3\"/>\n<rect id=\"extra4\" x=\"790\" y=\"274\" width=\"90\" height=\"26\" rx=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"835\" y=\"262\" font-size=\"22\" text-anchor=\"middle\">$110</text>\n<text x=\"785\" y=\"600\" font-size=\"22\" text-anchor=\"middle\" font-size=\"26\">4 GB</text></g>\n<g id=\"g8\"><rect x=\"950\" y=\"131\" width=\"90\" height=\"429\" rx=\"4\" stroke-width=\"3\"/><text x=\"995\" y=\"119\" font-size=\"22\" text-anchor=\"middle\">$165</text>\n<rect x=\"1050\" y=\"131\" width=\"90\" height=\"429\" rx=\"4\" stroke-width=\"3\"/>\n<rect id=\"extra8\" x=\"1050\" y=\"105\" width=\"90\" height=\"26\" rx=\"4\" class=\"tone-bad\" stroke-width=\"3\"/><text x=\"1095\" y=\"93\" font-size=\"22\" text-anchor=\"middle\">$175</text>\n<text x=\"1045\" y=\"600\" font-size=\"22\" text-anchor=\"middle\" font-size=\"26\">8 GB</text></g>\n<g><text x=\"60\" y=\"60\" font-size=\"22\" font-size=\"26\" fill=\"var(--muted)\">left: Pi 4</text><text x=\"60\" y=\"96\" font-size=\"22\" font-size=\"26\" fill=\"var(--muted)\">right: Pi 5</text></g>\n</svg>",
+      "labels": {
+        "g1": "one gigabyte",
+        "g2": "two",
+        "g4": "four",
+        "g8": "eight gigabytes",
+        "extra8": "six percent"
+      },
       "narration": "So what does it cost? Here are the list prices for the memory sizes both boards come in.",
-      "labels": [
-        "1 GB",
-        "2 GB",
-        "4 GB",
-        "8 GB"
-      ],
-      "series": [
-        {
-          "name": "Pi 4",
-          "values": [
-            35,
-            67.5,
-            100,
-            165
-          ]
-        },
-        {
-          "name": "Pi 5",
-          "values": [
-            45,
-            77.5,
-            110,
-            175
-          ]
-        }
-      ],
       "steps": [
         {
-          "focus": "1 GB",
-          "callout": "+$10",
-          "say": "At one gigabyte, the five is 10 dollars more."
+          "focus": [
+            "g1",
+            "extra1"
+          ],
+          "tint": {
+            "extra1": "bad"
+          },
+          "say": "At one gigabyte, the five is 10 dollars more.",
+          "draw": [
+            {
+              "write": "+$10",
+              "near": "extra1",
+              "side": "right",
+              "tone": "bad",
+              "when": "dollars more"
+            }
+          ]
         },
         {
           "focus": [
-            "2 GB",
-            "4 GB"
+            "g2",
+            "g4"
           ],
-          "callout": "+$10",
           "say": "At two and four gigabytes, also ten dollars more."
         },
         {
-          "focus": "8 GB",
-          "callout": "+$10, 6.1% more",
-          "say": "And at eight gigabytes, ten dollars again. On a 165 dollar board that is only about six percent."
+          "focus": [
+            "g8",
+            "extra8"
+          ],
+          "say": "And at eight gigabytes, ten dollars again. On a 165 dollar board that is only about six percent.",
+          "draw": [
+            {
+              "write": "+6.1%",
+              "near": "g8",
+              "side": "above",
+              "tone": "bad",
+              "when": "six percent"
+            }
+          ]
         }
       ]
     },
     {
-      "type": "text",
+      "type": "svg",
       "chapter": "Verdict",
-      "narration": "So here is my verdict.",
-      "kicker": "The verdict",
-      "number": "$10 more",
-      "note": "for two to three times the speed, by Raspberry Pi’s count",
-      "items": [
-        "Buying new? Get the Pi 5",
-        "Want a desktop, a fast drive or two cameras? Upgrade",
-        "Pi 4 already doing its job? Keep it",
-        "Upgrading? Budget for a 5 A power supply"
-      ],
+      "title": "Buy the 5, keep a working 4",
+      "picture": "boards",
       "hidden": [
-        "0-3"
+        "v1",
+        "v2",
+        "v3",
+        "v4",
+        "source"
       ],
+      "labels": {
+        "v1": "buying a new board",
+        "v2": "desktop",
+        "v3": "home server",
+        "v4": "power supply",
+        "pi4": "Pi four"
+      },
+      "narration": "So here is my verdict.",
       "steps": [
         {
           "show": [
-            0
+            "v1"
+          ],
+          "focus": [
+            "v1"
           ],
           "say": "If you are buying a new board, the extra ten dollars is easily worth it. Get the five.",
           "draw": [
             {
-              "tick": 0
+              "tick": "v1"
             }
           ]
         },
         {
           "show": [
-            1
+            "v2"
+          ],
+          "focus": [
+            "v2"
           ],
           "say": "If you want a small desktop, a fast drive, or two cameras, upgrade.",
           "draw": [
             {
-              "tick": 1
+              "tick": "v2"
             }
           ]
         },
         {
           "show": [
-            2
+            "v3"
+          ],
+          "focus": [
+            "v3",
+            "pi4"
           ],
           "say": "But if your Pi four already runs your home server just fine, there is no need to throw it out."
         },
         {
           "show": [
-            3
+            "v4"
+          ],
+          "focus": [
+            "v4"
           ],
           "say": "And if you do upgrade, plan on a bigger power supply.",
           "draw": [
             {
-              "underline": 3,
+              "underline": "v4",
+              "tone": "bad",
               "when": "bigger power supply"
             }
           ]
