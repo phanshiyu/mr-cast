@@ -491,7 +491,7 @@ impl Draw<'_> {
         }
         props.set("fill", format!("url(#{id})"));
         let fo: f64 = props.get("fill-opacity").and_then(|v| v.parse().ok()).unwrap_or(1.0);
-        props.set("fill-opacity", fnum(fo * (alpha * 3.2).clamp(0.5, 0.95)));
+        props.set("fill-opacity", fnum(fo * (alpha * 1.6).clamp(0.22, 0.4)));
     }
 
     fn motion_shape(
@@ -990,8 +990,8 @@ fn hex_alpha(c: &str) -> Option<(String, f64)> {
 }
 
 /// On the board, the hatching's spacing and line width, in screen px.
-const HATCH_GAP_PX: f64 = 11.0;
-const HATCH_WIDTH_PX: f64 = 3.0;
+const HATCH_GAP_PX: f64 = 16.0;
+const HATCH_WIDTH_PX: f64 = 2.0;
 
 /// On the board, how far a hand-drawn side bows at most, how far its ends stray, and how far the pen runs past the
 /// corner it started from, in screen px.
