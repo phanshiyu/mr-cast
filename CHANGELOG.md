@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.33.1
+
+**Drawings with a lit part render many times faster.** A glow blurred the whole drawing for each lit part, and under a camera's zoom many frames' worth of it; it now blurs only the part around what glows that is on screen. The camera and motion demos render in under a minute instead of 10 and 6, and the release's example videos no longer time out.
+
 ## 0.33.0
 
 **Explanations are drawn on the board by default.** An explanation with no `look` is drawn by hand on the board; `"look": "plain"` turns it off. Videos of a branch stay plain unless they set `"look": "board"`. The worked examples are redrawn on the board (ADR 0050).

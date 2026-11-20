@@ -170,6 +170,38 @@ pub fn drop_shadow_filter_in(id: &str, region: (f64, f64, f64, f64), shadows: &[
     s
 }
 
+/// The box of each element named in `ids`, in its own user units (those a filter on it with
+/// `filterUnits="userSpaceOnUse"` is in), cut to the part of it inside the `size` of the canvas, as resvg lays out
+/// SVG markup; None for one it draws nothing for or that is wholly outside the canvas.
+pub fn svg_local_boxes(svg: &str, ids: &[String], size: (f64, f64)) -> Vec<Option<(f64, f64, f64, f64)>> {
+    let opt = svg_options();
+    let Ok(tree) = resvg::usvg::Tree::from_str(svg, &opt) else { return vec![None; ids.len()] };
+    ids.iter()
+        .map(|id| {
+            let node = tree.node_by_id(id)?;
+            let b = node.abs_bounding_box()?;
+            let (x0, y0) = ((b.x() as f64).max(0.0), (b.y() as f64).max(0.0));
+            let (x1, y1) = ((b.right() as f64).min(size.0), (b.bottom() as f64).min(size.1));
+            if x1 <= x0 || y1 <= y0 {
+                return None;
+            }
+            // A group's own transform is part of the space its filter is in, a shape's is its parent's.
+            let t = match node {
+                resvg::usvg::Node::Group(g) => g.abs_transform(),
+                _ => node.abs_transform(),
+            }
+            .invert()?;
+            let corners = [(x0, y0), (x1, y0), (x0, y1), (x1, y1)].map(|(x, y)| {
+                let (x, y) = (x as f32, y as f32);
+                ((t.sx * x + t.kx * y + t.tx) as f64, (t.ky * x + t.sy * y + t.ty) as f64)
+            });
+            let (lx, ly) = corners.iter().fold((f64::MAX, f64::MAX), |(a, b), c| (a.min(c.0), b.min(c.1)));
+            let (hx, hy) = corners.iter().fold((f64::MIN, f64::MIN), |(a, b), c| (a.max(c.0), b.max(c.1)));
+            Some((lx, ly, hx - lx, hy - ly))
+        })
+        .collect()
+}
+
 /// Where resvg lays out an element: its box, and when it is mostly one stroked line (a line, polyline, open path, or
 /// a group of them with little else, such as an arrow with its head), the point halfway along its longest line and the
 /// line's direction there (x, y, radians).
@@ -426,6 +458,36 @@ mod shape_tests {
     fn shapes(body: &str) -> Vec<(String, SvgShape)> {
         let svg = format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"600\">{body}</svg>");
         svg_shapes(&svg, &["curve".into(), "diag".into(), "card".into(), "frame".into(), "arrow".into(), "bowl".into()])
+    }
+
+    #[test]
+    fn a_glow_region_is_its_element_in_its_own_units_and_in_frame() {
+        let svg = concat!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 800 400">"##,
+            r##"<rect id="plain" x="20" y="20" width="100" height="50"/>"##,
+            r##"<g transform="translate(300 100)"><rect id="moved" x="10" y="10" width="40" height="40"/></g>"##,
+            r##"<g id="group" transform="translate(500 0)"><rect x="0" y="0" width="60" height="60"/></g>"##,
+            r##"<rect id="huge" x="-1000" y="-1000" width="4000" height="1100"/>"##,
+            r##"<rect id="away" x="900" y="0" width="50" height="50"/></svg>"##,
+        );
+        let ids = ["plain", "moved", "group", "huge", "away", "none"].map(String::from);
+        let boxes = svg_local_boxes(svg, &ids, (400.0, 200.0));
+        let near = |b: Option<(f64, f64, f64, f64)>, want: (f64, f64, f64, f64)| {
+            let b = b.expect("a box");
+            assert!(
+                [(b.0, want.0), (b.1, want.1), (b.2, want.2), (b.3, want.3)].iter().all(|(a, w)| (a - w).abs() < 0.5),
+                "{b:?} is not {want:?}"
+            );
+        };
+        // Each in the units of the element itself, not the canvas's half-size pixels.
+        near(boxes[0], (20.0, 20.0, 100.0, 50.0));
+        // A shape's parent moves it: its box is in its parent's units, before the move.
+        near(boxes[1], (10.0, 10.0, 40.0, 40.0));
+        // A group's own transform is part of its filter's space.
+        near(boxes[2], (0.0, 0.0, 60.0, 60.0));
+        // Only the part of it the frame shows, which is all a glow can be seen in.
+        near(boxes[3], (0.0, 0.0, 800.0, 100.0));
+        assert!(boxes[4].is_none() && boxes[5].is_none());
     }
 
     #[test]
