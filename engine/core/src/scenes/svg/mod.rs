@@ -20,6 +20,7 @@ use crate::marks::{MarkTargets, NoRefs, Pen, Refs};
 use crate::states::{ClosureModel, SceneState, StateFrame, TintMix, walk_states};
 use crate::steps::FocusSpotlight;
 use crate::steps::{Emphasis, current_step};
+use crate::text::Face;
 use crate::timing::{FPS, STEP_SETTLE_FRAMES, Segment};
 use motion::{PairedShape, pair_shapes, trace_length, tween_shape, tween_transform};
 use serde_json::Value;
@@ -162,6 +163,34 @@ impl Props {
     fn remove(&mut self, k: &str) {
         self.0.retain(|(n, _)| n != k);
     }
+}
+
+/// The face text in `font-family` `font` is drawn in: JetBrains Mono for a mono family, else the board's handwriting
+/// on the board and Inter off it.
+fn face_of(font: &str) -> Face {
+    if font.to_lowercase().contains("mono") {
+        Face::Mono
+    } else if crate::look::board() {
+        Face::Hand
+    } else {
+        Face::Sans
+    }
+}
+
+/// Text as markup, each run of characters `face` lacks in a `tspan` naming the bundled font that has them, as Chrome
+/// and the engine's own text fall back per character. Left to itself resvg falls back for the whole line.
+fn text_runs(text: &str, face: Face) -> String {
+    crate::text::font_runs(face, text)
+        .into_iter()
+        .map(|(font, from, to)| {
+            let run = xml_escape(&text[from..to]);
+            if font == face as u8 {
+                run
+            } else {
+                format!("<tspan font-family=\"{}\">{run}</tspan>", media::svg_family(font))
+            }
+        })
+        .collect()
 }
 
 fn el(tag: &str, props: &Props, children: &str) -> String {
@@ -356,21 +385,16 @@ impl Draw<'_> {
         if let Some(t) = &cls.stroke {
             props.set_default("stroke", tone_color(t));
         }
+        if tag == "tspan"
+            && let Some(f) = a("font-family")
+        {
+            props.set("font-family", media::svg_family(face_of(f) as u8));
+        }
         if tag == "text" {
             if !has_fill {
                 props.set("fill", palette("text"));
             }
-            let font = a("font-family").unwrap_or(&up.font);
-            props.set(
-                "font-family",
-                if font.to_lowercase().contains("mono") {
-                    "JetBrains Mono"
-                } else if crate::look::board() {
-                    "Caveat"
-                } else {
-                    "Inter Variable"
-                },
-            );
+            props.set("font-family", media::svg_family(face_of(a("font-family").unwrap_or(&up.font)) as u8));
         } else if AREAS.contains(&tag) {
             if !has_fill {
                 props.set("fill", palette("surface"));
@@ -480,8 +504,9 @@ impl Draw<'_> {
             flow,
             runs,
         };
+        let face = face_of(&next.font);
         let children = if rewritten {
-            xml_escape(&value_text(value.unwrap()))
+            text_runs(&value_text(value.unwrap()), face)
         } else {
             n.children
                 .iter()
@@ -490,8 +515,9 @@ impl Draw<'_> {
                     // The text's own words, between its tspans, are a run of their own.
                     Node::Text(t) if tag == "text" && runs && run_opacity != 1.0 => {
                         let o = fnum(run_opacity);
-                        format!("<tspan fill-opacity=\"{o}\" stroke-opacity=\"{o}\">{}</tspan>", xml_escape(t))
+                        format!("<tspan fill-opacity=\"{o}\" stroke-opacity=\"{o}\">{}</tspan>", text_runs(t, face))
                     }
+                    Node::Text(t) if tag == "text" || tag == "tspan" => text_runs(t, face),
                     _ => self.draw(c, &format!("{key}.{i}"), &next),
                 })
                 .collect::<String>()
@@ -1193,5 +1219,34 @@ struct SvgRefs<'a>(&'a Drawing);
 impl Refs for SvgRefs<'_> {
     fn resolve(&self, r: &Value) -> Option<Vec<String>> {
         r.as_str().filter(|id| self.0.has(id)).map(|id| vec![format!("s:{id}")])
+    }
+}
+
+#[cfg(test)]
+mod font_tests {
+    use super::*;
+
+    /// Every character of svg text is drawn: in the face where it has the glyph, and only the rest in a fallback.
+    #[test]
+    fn text_falls_back_per_character() {
+        for face in [Face::Hand, Face::Mono, Face::Sans] {
+            let text = "a → b ∞ π xᵏ H₂O ⋮ 2²⁵⁶";
+            let svg = format!(
+                r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 100"><text x="10" y="60" font-size="40" font-family="{}">{}</text></svg>"#,
+                media::svg_family(face as u8),
+                text_runs(text, face)
+            );
+            let glyphs = media::svg_glyph_fonts(&svg);
+            assert_eq!(glyphs.iter().map(|g| g.0.as_str()).collect::<String>().replace(' ', ""), text.replace(' ', ""));
+            for (c, font) in glyphs {
+                let font = font.unwrap_or_else(|| panic!("{face:?} draws no glyph for {c}"));
+                if c.chars().all(|c| c.is_ascii_alphanumeric()) {
+                    assert_eq!(font, face as u8, "{face:?} draws {c} in font {font}");
+                }
+            }
+        }
+        // Caveat has ² but not ⁵ or ⁶: the figures of 2²⁵⁶ come from one font, so they line up.
+        let fonts: Vec<u8> = crate::text::font_runs(Face::Hand, "2²⁵⁶").iter().map(|r| r.0).collect();
+        assert_eq!(fonts, [Face::Hand as u8, 3]);
     }
 }

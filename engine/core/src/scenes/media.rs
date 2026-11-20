@@ -66,24 +66,69 @@ pub fn downscale(src: &Pixmap, w: u32, h: u32) -> Option<Pixmap> {
     Some(out)
 }
 
-fn fonts() -> std::sync::Arc<resvg::usvg::fontdb::Database> {
+/// The family the bundled font at `index` (see `text::FONT_DATA`) goes by in resvg's font database. The three faces
+/// keep their own names; each fallback gets one of its own (Inter's and JetBrains Mono's share theirs with the Latin
+/// files), so a run of text can name the font that has its glyphs.
+pub fn svg_family(index: u8) -> String {
+    match index {
+        0 => "Inter Variable".into(),
+        1 => "JetBrains Mono".into(),
+        2 => "Caveat".into(),
+        i => format!("mr-cast fallback {i}"),
+    }
+}
+
+/// resvg's font database: every bundled font, with each one's id by its index in `text::FONT_DATA`.
+fn fonts() -> &'static (std::sync::Arc<resvg::usvg::fontdb::Database>, Vec<resvg::usvg::fontdb::ID>) {
+    use resvg::usvg::fontdb::{Database, Language, Source};
     use std::sync::OnceLock;
-    static DB: OnceLock<std::sync::Arc<resvg::usvg::fontdb::Database>> = OnceLock::new();
+    static DB: OnceLock<(std::sync::Arc<Database>, Vec<resvg::usvg::fontdb::ID>)> = OnceLock::new();
     DB.get_or_init(|| {
-        let mut db = resvg::usvg::fontdb::Database::new();
-        db.load_font_data(include_bytes!("../../../assets/fonts/inter-latin.ttf").to_vec());
-        db.load_font_data(include_bytes!("../../../assets/fonts/jetbrains-mono-latin.ttf").to_vec());
-        db.load_font_data(include_bytes!("../../../assets/fonts/caveat-latin-600.ttf").to_vec());
+        let mut db = Database::new();
+        let mut ids = Vec::new();
+        for (i, data) in crate::text::FONT_DATA.iter().enumerate() {
+            let mut loaded = Database::new();
+            loaded.load_font_source(Source::Binary(std::sync::Arc::new(*data)));
+            let mut face = loaded.faces().next().expect("bundled font").clone();
+            face.families = vec![(svg_family(i as u8), Language::English_UnitedStates)];
+            ids.push(db.push_face_info(face));
+        }
         db.set_sans_serif_family("Inter Variable");
         db.set_monospace_family("JetBrains Mono");
-        std::sync::Arc::new(db)
+        // A family no bundled font has falls back to the serif one: draw it in Inter rather than not at all.
+        db.set_serif_family("Inter Variable");
+        (std::sync::Arc::new(db), ids)
     })
-    .clone()
+}
+
+/// resvg's options: the bundled fonts, and a character a font lacks looked for along that face's chain of fallbacks,
+/// as the engine's own text does. resvg's own fallback takes the first font in the database that has the character,
+/// which for an arrow in Caveat is Inter, and when that font has every other character too it redraws the whole line
+/// in it.
+fn svg_options() -> resvg::usvg::Options<'static> {
+    let mut opt = resvg::usvg::Options { fontdb: fonts().0.clone(), ..Default::default() };
+    opt.font_resolver.select_fallback = Box::new(|c, used, _| {
+        let ids = &fonts().1;
+        let face = match ids.iter().position(|&id| id == used[0])? {
+            0 => crate::text::Face::Sans,
+            1 => crate::text::Face::Mono,
+            2 => crate::text::Face::Hand,
+            // A run already in a fallback (see `svg::text_runs`) is shaped whole in it, but only its own characters
+            // are kept.
+            _ => return None,
+        };
+        crate::text::chain(face)
+            .iter()
+            .map(|&i| (i, ids[i as usize]))
+            .find(|&(i, id)| !used.contains(&id) && crate::text::font_at(i).charmap().map(c) != 0)
+            .map(|(_, id)| id)
+    });
+    opt
 }
 
 /// Rasterizes SVG markup (a `w` by `h` pixel drawing) with resvg; None when it does not parse.
 pub fn raster_svg(svg: &str, w: u32, h: u32) -> Option<Pixmap> {
-    let opt = resvg::usvg::Options { fontdb: fonts(), ..Default::default() };
+    let opt = svg_options();
     let tree = resvg::usvg::Tree::from_str(svg, &opt).ok()?;
     let mut theirs = resvg::tiny_skia::Pixmap::new(w.max(1), h.max(1))?;
     resvg::render(&tree, resvg::tiny_skia::Transform::identity(), &mut theirs.as_mut());
@@ -129,7 +174,7 @@ pub fn drop_shadow_filter_in(id: &str, region: (f64, f64, f64, f64), shadows: &[
 /// nothing for are left out. usvg keeps no node for a `<tspan>`, only its text's run of glyphs, so a tspan is found
 /// by painting it a colour of its own and taking the box of the glyphs drawn in that colour.
 pub fn svg_boxes(svg: &str, ids: &[String]) -> Vec<(String, (f64, f64, f64, f64))> {
-    let opt = resvg::usvg::Options { fontdb: fonts(), ..Default::default() };
+    let opt = svg_options();
     let Ok(tree) = resvg::usvg::Tree::from_str(svg, &opt) else { return Vec::new() };
     let mut found: Vec<Option<(f64, f64, f64, f64)>> = ids
         .iter()
@@ -240,4 +285,28 @@ mod tests {
         assert!(verb.0 + verb.2 < end.0, "the verb ends before the last word");
         assert!(verb.2 < line.2 / 2.0, "the verb is one word of the line");
     }
+}
+
+/// Each glyph resvg lays the text of SVG markup out in: the character it draws and the bundled font it comes from
+/// (see `text::FONT_DATA`), None for a missing glyph.
+#[cfg(test)]
+pub fn svg_glyph_fonts(svg: &str) -> Vec<(String, Option<u8>)> {
+    fn walk(g: &resvg::usvg::Group, out: &mut Vec<(String, Option<u8>)>) {
+        for n in g.children() {
+            match n {
+                resvg::usvg::Node::Group(g) => walk(g, out),
+                resvg::usvg::Node::Text(t) => {
+                    for g in t.layouted().iter().flat_map(|s| &s.positioned_glyphs) {
+                        let font = fonts().1.iter().position(|&id| id == g.font).map(|i| i as u8);
+                        out.push((g.text.clone(), font.filter(|_| g.id.0 != 0)));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let tree = resvg::usvg::Tree::from_str(svg, &svg_options()).expect("svg");
+    let mut out = Vec::new();
+    walk(tree.root(), &mut out);
+    out
 }
