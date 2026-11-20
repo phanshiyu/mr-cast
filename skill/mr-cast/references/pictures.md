@@ -9,7 +9,7 @@ A viewer follows a video that keeps one picture in front of them and changes it 
 - **Real things, briefly.** The actual command, error or output, a few lines at a time, where it comes up.
 - **Honest sketches.** A diagram that is not real data gets `"illustrative": true`.
 - **End on the opening picture, fixed.** Draw the picture you started with once more, now showing what the fix changes.
-- **Drawn by hand.** `"look": "board"` on the storyboard draws an explanation by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line. On the board every scene is an svg on the picture, except real commands and code, which keep their terminal and code scenes: a point is a label written on with ink as it is said, rows a handwritten list, a number a bar drawn on. A chart, table, text or sequence scene there is a slide in the middle of a drawing; `validate` warns about one.
+- **Drawn by hand.** An explanation is drawn by hand on a dark board: titles lettered on in orange, green for what is normal and orange for the problem, svg pictures drawn on line by line. On the board every scene is an svg on the picture, except real commands and code, which keep their terminal and code scenes: a point is a label written on with ink as it is said, rows a handwritten list, a number a bar drawn on. A chart, table, text or sequence scene there is a slide in the middle of a drawing; `validate` warns about one. `"look": "plain"` on the storyboard turns the board off; a video of a branch is plain unless it sets `"look": "board"`.
 - **A beat after each reveal.** One or two short sentences per step, then let the drawing land before the next.
 
 ## Example
@@ -17,7 +17,6 @@ A viewer follows a video that keeps one picture in front of them and changes it 
 ```json
 {
   "title": "Retries that bring a server down",
-  "look": "board",
   "tones": { "good": "first tries", "bad": "retries" },
   "pictures": {
     "queue": "<svg viewBox=\"0 0 1200 340\"><rect id=\"server\" x=\"860\" y=\"90\" width=\"260\" height=\"160\" fill=\"none\" stroke=\"var(--text)\" stroke-width=\"3\"/><text id=\"name\" x=\"990\" y=\"300\" font-size=\"30\" text-anchor=\"middle\" fill=\"var(--muted)\">the server</text><g id=\"calls\"><rect x=\"80\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-good\"/><rect x=\"200\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-good\"/></g><g id=\"retries\"><rect x=\"320\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-bad\"/><rect x=\"440\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-bad\"/><rect x=\"560\" y=\"130\" width=\"90\" height=\"80\" class=\"tone-bad\"/></g><line id=\"path\" x1=\"680\" y1=\"170\" x2=\"850\" y2=\"170\" stroke-width=\"3\"/></svg>"

@@ -1,5 +1,6 @@
 {
   "title": "The life of a pull request",
+  "look": "plain",
   "subtitle": "Every state a pull request can be in, and what moves it",
   "scenes": [
     {

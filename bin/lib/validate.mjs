@@ -15,7 +15,7 @@ import { checkReview } from './validate-review.mjs';
 import { checkSpokenCounts } from './validate-counts.mjs';
 import { checkFit, checkSpokenMarkup, checkUnseenCode, codeLinesOnScreen } from './validate-fit.mjs';
 import { expandBriefParts } from '../../shared/files.mjs';
-import { intentAsText, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
+import { intentAsText, isExplanation, normalizeStoryboard, upgradeScenes } from '../../shared/normalize.mjs';
 import { pictureProblems } from '../../shared/pictures.mjs';
 import { checkStyle } from './validate-style.mjs';
 import { isGapRow, upgradeTests } from '../../shared/tests.mjs';
@@ -782,7 +782,7 @@ async function validateScenes(
   const branch = mode === 'diff' && !quick;
   checkBrief(sb, hunks ?? {}, { branch, map, root }, errors, warnings);
   checkMix(sb, hunks ?? {}, { branch, map }, warnings);
-  checkStyle(sb, { explain: mode === 'explain' }, errors, warnings);
+  checkStyle(sb, { explain: mode === 'explain', drawnExplain: isExplanation(hunks) }, errors, warnings);
   await checkMermaid(diagrams, errors, warnings);
   // The layouts trust the schema, so text is fitted only once everything else is valid.
   let core = [];

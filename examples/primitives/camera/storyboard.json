@@ -1,5 +1,6 @@
 {
   "title": "The camera",
+  "look": "plain",
   "subtitle": "Zoom in on a detail, follow what moves, and pull back to the whole scene",
   "scenes": [
     {

@@ -126,21 +126,23 @@ test('a longer explanation without a picture, or one that does not end on its pi
   );
 });
 
-test('validate takes look "board" and refuses any other look', async () => {
-  const ok = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'board' }));
-  assert.ok(!ok.errors.some((e) => e.startsWith('look')));
+test('validate takes look "board" or "plain" and refuses any other look', async () => {
+  for (const look of ['board', 'plain']) {
+    const ok = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look }));
+    assert.ok(!ok.errors.some((e) => e.startsWith('look')));
+  }
   const bad = await check(storyboard([svgScene('The decoder fills the array', [{ say: 'One.' }])], { look: 'chalk' }));
-  assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board"')));
+  assert.ok(bad.errors.some((e) => e.startsWith('look: must be "board" or "plain"')));
 });
 
 test('on the board, validate warns about a scene that is not drawn on the picture', async () => {
   const table = { type: 'table', title: 'Who is hit by this', columns: ['a'], rows: [['b']], narration: 'Hit.' };
   const res = await check(
-    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'board' }),
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
   );
   assert.ok(res.warnings.some((w) => w.startsWith('look: on the board, scene 1 (table) is a slide')));
   const plain = await check(
-    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table]),
+    storyboard([svgScene('The decoder fills the array', [{ show: ['fit'], say: 'One.' }]), table], { look: 'plain' }),
   );
   assert.ok(!plain.warnings.some((w) => w.includes('on the board')));
 });
@@ -163,12 +165,11 @@ test('validate warns about handwriting the scene ends before the pen finishes', 
   assert.ok(!short.warnings.some((w) => w.includes('still writing')));
 });
 
-test('a longer explanation without the board look is told about it', async () => {
-  const five = Array.from({ length: 5 }, (_, i) =>
-    svgScene(`Step ${i} of the array fills`, [{ show: ['fit'], say: 'One.' }]),
-  );
-  const plain = await check(storyboard(five));
-  assert.ok(plain.warnings.some((w) => w.startsWith('look: none')));
-  const board = await check(storyboard(five, { look: 'board' }));
-  assert.ok(!board.warnings.some((w) => w.startsWith('look: none')));
+test('an explanation is drawn on the board unless it asks for plain, and a branch is plain unless it asks', () => {
+  const sb = (look) => ({ title: 'T', scenes: [], ...(look ? { look } : {}) });
+  assert.equal(normalizeStoryboard(sb(), {}).look, 'board');
+  assert.equal(normalizeStoryboard(sb('plain'), {}).look, undefined);
+  const diff = { 'a.ts': { status: 'modified' } };
+  assert.equal(normalizeStoryboard(sb(), diff).look, undefined);
+  assert.equal(normalizeStoryboard(sb('board'), diff).look, 'board');
 });

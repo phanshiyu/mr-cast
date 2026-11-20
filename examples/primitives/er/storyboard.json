@@ -1,5 +1,6 @@
 {
   "title": "How a blog stores its posts",
+  "look": "plain",
   "subtitle": "Five tables, and the lines between them",
   "scenes": [
     {

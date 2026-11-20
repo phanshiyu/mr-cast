@@ -1,5 +1,6 @@
 {
   "title": "Charts that move",
+  "look": "plain",
   "subtitle": "A bar chart race, a donut whose slices change, and stacked bars, with made-up numbers",
   "scenes": [
     {

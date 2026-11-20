@@ -1,5 +1,6 @@
 {
   "title": "Drawings",
+  "look": "plain",
   "subtitle": "Shapes and points the other scenes cannot place",
   "scenes": [
     {

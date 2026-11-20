@@ -1,5 +1,6 @@
 {
   "title": "What a program holds",
+  "look": "plain",
   "subtitle": "A copy that is not a copy, and a call stack",
   "scenes": [
     {

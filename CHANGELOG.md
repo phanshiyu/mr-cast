@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+**Explanations are drawn on the board by default.** An explanation with no `look` is drawn by hand on the board; `"look": "plain"` turns it off. Videos of a branch stay plain unless they set `"look": "board"`. The worked examples are redrawn on the board (ADR 0050).
+
+**Labels inside a coloured box are readable on the board.** The hatching is thinner, further apart and fainter.
+
 ## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).

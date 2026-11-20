@@ -1,5 +1,6 @@
 {
   "title": "Maps",
+  "look": "plain",
   "subtitle": "Countries, borders and routes on a real world map",
   "scenes": [
     {

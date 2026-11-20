@@ -1,5 +1,6 @@
 {
   "title": "Where to keep a signed-in session",
+  "look": "plain",
   "subtitle": "A signed cookie or a session kept on the server, side by side",
   "scenes": [
     {
