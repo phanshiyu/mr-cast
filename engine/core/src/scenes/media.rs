@@ -126,14 +126,118 @@ pub fn drop_shadow_filter_in(id: &str, region: (f64, f64, f64, f64), shadows: &[
 }
 
 /// The box of each element named in `ids` as resvg lays out SVG markup, in its root's user units; elements it draws
-/// nothing for are left out.
+/// nothing for are left out. usvg keeps no node for a `<tspan>`, only its text's run of glyphs, so a tspan is found
+/// by painting it a colour of its own and taking the box of the glyphs drawn in that colour.
 pub fn svg_boxes(svg: &str, ids: &[String]) -> Vec<(String, (f64, f64, f64, f64))> {
     let opt = resvg::usvg::Options { fontdb: fonts(), ..Default::default() };
     let Ok(tree) = resvg::usvg::Tree::from_str(svg, &opt) else { return Vec::new() };
-    ids.iter()
-        .filter_map(|id| {
+    let mut found: Vec<Option<(f64, f64, f64, f64)>> = ids
+        .iter()
+        .map(|id| {
             let b = tree.node_by_id(id)?.abs_bounding_box()?;
-            Some((id.clone(), (b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64)))
+            Some((b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64))
         })
-        .collect()
+        .collect();
+    let mut marked = svg.to_string();
+    let mut colours = std::collections::HashMap::new();
+    for (i, id) in ids.iter().enumerate() {
+        if found[i].is_none() && colours.len() < 0x10000 {
+            let colour = [0x01, 0x7f ^ (colours.len() >> 8) as u8, colours.len() as u8];
+            if let Some(m) = mark_tspan(&marked, id, colour) {
+                marked = m;
+                colours.insert(colour, i);
+            }
+        }
+    }
+    if !colours.is_empty()
+        && let Ok(tree) = resvg::usvg::Tree::from_str(&marked, &opt)
+    {
+        let mut boxes: std::collections::HashMap<usize, resvg::usvg::Rect> = std::collections::HashMap::new();
+        span_boxes(tree.root(), false, &colours, &mut boxes);
+        for (i, b) in boxes {
+            found[i] = Some((b.x() as f64, b.y() as f64, b.width() as f64, b.height() as f64));
+        }
+    }
+    ids.iter().zip(found).filter_map(|(id, b)| Some((id.clone(), b?))).collect()
+}
+
+/// `svg` with the `<tspan>` whose id is `id` filled in `colour`, solid, or None if no tspan has that id.
+fn mark_tspan(svg: &str, id: &str, colour: [u8; 3]) -> Option<String> {
+    let at = svg.find(&format!(" id=\"{}\"", xml_escape(id)))?;
+    let start = svg[..at].rfind('<')?;
+    let end = at + svg[at..].find('>')?;
+    let tag = &svg[start..end];
+    let rest = tag.strip_prefix("<tspan")?;
+    if !rest.starts_with(char::is_whitespace) {
+        return None;
+    }
+    let mut attrs = rest.to_string();
+    for name in ["fill", "fill-opacity"] {
+        if let Some(a) = attrs.find(&format!(" {name}=\"")) {
+            let from = a + name.len() + 3;
+            let to = from + attrs[from..].find('"')? + 1;
+            attrs.replace_range(a..to, "");
+        }
+    }
+    let [r, g, b] = colour;
+    Some(format!("{}<tspan fill=\"#{r:02x}{g:02x}{b:02x}\"{attrs}{}", &svg[..start], &svg[end..]))
+}
+
+/// The box of the glyphs each marker colour paints, in the texts under `group`, by the index the colour stands for.
+fn span_boxes(
+    group: &resvg::usvg::Group,
+    in_text: bool,
+    colours: &std::collections::HashMap<[u8; 3], usize>,
+    out: &mut std::collections::HashMap<usize, resvg::usvg::Rect>,
+) {
+    use resvg::usvg::{Node, Paint};
+    for node in group.children() {
+        match node {
+            Node::Group(g) => span_boxes(g, in_text, colours, out),
+            Node::Text(t) => span_boxes(t.flattened(), true, colours, out),
+            Node::Path(p) if in_text => {
+                let Some(Paint::Color(c)) = p.fill().map(|f| f.paint()) else { continue };
+                let (Some(&i), Some(b)) = (colours.get(&[c.red, c.green, c.blue]), p.abs_bounding_box()) else {
+                    continue;
+                };
+                let b = match out.get(&i) {
+                    Some(o) => resvg::usvg::Rect::from_ltrb(
+                        o.left().min(b.left()),
+                        o.top().min(b.top()),
+                        o.right().max(b.right()),
+                        o.bottom().max(b.bottom()),
+                    )
+                    .unwrap_or(b),
+                    None => b,
+                };
+                out.insert(i, b);
+            }
+            _ => {}
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::svg_boxes;
+
+    #[test]
+    fn a_tspan_has_the_box_of_its_own_words() {
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="800" height="200" viewBox="0 0 800 200"><g transform="translate(10 0)"><text id="line" x="20" y="100" font-size="40" font-family="Inter Variable" fill="#fff">The <tspan id="verb" fill="#3ddc97" fill-opacity="0.5">quick</tspan> fox <tspan id="end">jumps</tspan></text></g></svg>"##;
+        let ids: Vec<String> = ["line", "verb", "end", "none"].map(String::from).to_vec();
+        let boxes: std::collections::HashMap<_, _> = svg_boxes(svg, &ids).into_iter().collect();
+        let (line, verb, end) = (boxes["line"], boxes["verb"], boxes["end"]);
+        assert!(!boxes.contains_key("none"));
+        for (name, b) in [("verb", verb), ("end", end)] {
+            assert!(b.2 > 0.0 && b.3 > 0.0, "{name} has a box");
+            assert!(
+                b.0 >= line.0 && b.0 + b.2 <= line.0 + line.2 + 0.5,
+                "{name} lies along the line: {b:?} in {line:?}"
+            );
+            assert!(b.1 >= line.1 - 0.5 && b.1 + b.3 <= line.1 + line.3 + 0.5, "{name} sits on the line");
+        }
+        assert!(verb.0 > line.0 + 40.0, "the verb starts after \"The\": {verb:?}");
+        assert!(verb.0 + verb.2 < end.0, "the verb ends before the last word");
+        assert!(verb.2 < line.2 / 2.0, "the verb is one word of the line");
+    }
 }

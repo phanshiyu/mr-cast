@@ -45,7 +45,15 @@ const FLOW_SPEED: f64 = 1.4;
 const ACCENT: &str = "#7c8cff";
 
 fn is_leaf(tag: &str) -> bool {
-    AREAS.contains(&tag) || LINES.contains(&tag) || tag == "text" || tag == "use"
+    AREAS.contains(&tag) || LINES.contains(&tag) || tag == "text" || tag == "tspan" || tag == "use"
+}
+
+/// Whether a node is a tspan with an id, or holds one.
+fn named_tspan(node: &Node) -> bool {
+    match node {
+        Node::Elem(e) => (e.tag == "tspan" && e.attr("id").is_some()) || e.children.iter().any(named_tspan),
+        Node::Text(_) => false,
+    }
 }
 
 pub(crate) fn tone_color(tone: &str) -> &'static str {
@@ -182,6 +190,9 @@ struct Inherited {
     font: String,
     trace: Option<f64>,
     flow: bool,
+    /// Inside a text drawn run by run: each run, a tspan or the text's own words, carries its light and tint as
+    /// its fill's opacity, so one word can be lit or dimmed apart from the rest of its sentence.
+    runs: bool,
 }
 
 struct TintMixed(TintMix);
@@ -304,9 +315,11 @@ impl Draw<'_> {
             None => up.emphasis,
         };
         let own_tint = own.as_ref().map(|o| self.at(o).tint(o));
+        let own_tint = own_tint.filter(|t| !t.tones.is_empty() || t.dim > 0.0);
+        let tinted = own_tint.is_some();
         let tint: Option<Arc<TintMixed>> = match own_tint {
-            Some(t) if !t.tones.is_empty() || t.dim > 0.0 => Some(Arc::new(TintMixed(t))),
-            _ => up.tint.clone(),
+            Some(t) => Some(Arc::new(TintMixed(t))),
+            None => up.tint.clone(),
         };
         let mut props = Props::default();
         for (name, value) in &n.attrs {
@@ -323,8 +336,9 @@ impl Draw<'_> {
         let has_fill = up.fill || a("fill").is_some() || cls.tone.is_some() || cls.fill.is_some();
         let has_stroke = up.stroke || a("stroke").is_some() || cls.tone.is_some() || cls.stroke.is_some();
         let tag = n.tag.as_str();
+        let texty = tag == "text" || tag == "tspan";
         if let Some(tone) = &cls.tone {
-            if tag == "text" {
+            if texty {
                 props.set_default("fill", tone_color(tone));
             } else {
                 let fill = if LINES.contains(&tag) && tag != "path" {
@@ -374,11 +388,13 @@ impl Draw<'_> {
         }
         let value = if tag == "text" { own.as_ref().and_then(|o| self.s.now.values.get(o)) } else { None };
         let changed = tag == "text" && own.as_ref().is_some_and(|o| self.s.before.values.get(o) != value);
+        // A tspan takes its text's tint from the text, keeping a colour of its own.
         if is_leaf(tag)
+            && (tag != "tspan" || tinted)
             && let Some(t) = &tint
             && let Some(tone) = t.0.main_tone()
         {
-            if tag == "text" {
+            if texty {
                 props.set("fill", tone_color(tone));
             } else {
                 if !LINES.contains(&tag) || tag == "path" {
@@ -405,18 +421,35 @@ impl Draw<'_> {
             }
             None => self.at(o).shown(o),
         });
-        let leaf_opacity =
-            if is_leaf(tag) { emphasis.opacity * tint.as_ref().map_or(1.0, |t| t.0.dim_opacity()) } else { 1.0 };
+        // Text a step or a continued picture rewrote, rather than the drawing's own.
+        let rewritten = value.is_some_and(|v| value_text(v) != text_of(n));
+        // A text with a tspan a step can name is lit run by run: an svg renderer takes no opacity on a tspan, and a
+        // dimmed text would dim the word lit inside it.
+        let runs = if tag == "text" { !rewritten && n.children.iter().any(named_tspan) } else { up.runs };
+        let run_opacity = emphasis.opacity * tint.as_ref().map_or(1.0, |t| t.0.dim_opacity());
+        let leaf_opacity = if is_leaf(tag) && !runs { run_opacity } else { 1.0 };
         let base_opacity: f64 = a("opacity").and_then(|v| v.trim().parse().ok()).unwrap_or(1.0);
         let opacity = base_opacity * shown * leaf_opacity * if changed { 0.35 + 0.65 * self.s.t } else { 1.0 };
-        if opacity != 1.0 {
+        if tag == "tspan" {
+            if runs {
+                let fill: f64 = a("fill-opacity").and_then(|v| v.trim().parse().ok()).unwrap_or(1.0);
+                let o = opacity * run_opacity;
+                props.remove("opacity");
+                if o * fill != 1.0 {
+                    props.set("fill-opacity", fnum(o * fill));
+                }
+                if o != 1.0 {
+                    props.set("stroke-opacity", fnum(o));
+                }
+            }
+        } else if opacity != 1.0 {
             props.set("opacity", fnum(opacity));
         }
         if let Some(o) = &own {
             let g = self.focus.emphasis(o).glow;
             if g > 0.0 && crate::look::board() {
                 // On the board nothing glows: what a step lights is gone over again, a heavier line.
-                if tag != "text" {
+                if !texty {
                     let sw: f64 = props.get("stroke-width").and_then(|v| v.parse().ok()).unwrap_or(2.0);
                     props.set("stroke-width", fnum(sw * (1.0 + 0.9 * g)));
                 }
@@ -445,13 +478,23 @@ impl Draw<'_> {
             font: a("font-family").map_or_else(|| up.font.clone(), String::from),
             trace,
             flow,
+            runs,
         };
-        // Text a step or a continued picture rewrote, rather than the drawing's own.
-        let rewritten = value.is_some_and(|v| value_text(v) != text_of(n));
         let children = if rewritten {
             xml_escape(&value_text(value.unwrap()))
         } else {
-            n.children.iter().enumerate().map(|(i, c)| self.draw(c, &format!("{key}.{i}"), &next)).collect::<String>()
+            n.children
+                .iter()
+                .enumerate()
+                .map(|(i, c)| match c {
+                    // The text's own words, between its tspans, are a run of their own.
+                    Node::Text(t) if tag == "text" && runs && run_opacity != 1.0 => {
+                        let o = fnum(run_opacity);
+                        format!("<tspan fill-opacity=\"{o}\" stroke-opacity=\"{o}\">{}</tspan>", xml_escape(t))
+                    }
+                    _ => self.draw(c, &format!("{key}.{i}"), &next),
+                })
+                .collect::<String>()
         };
         if tag == "text"
             && let Some(t) = trace
@@ -865,6 +908,7 @@ impl Svg {
             font: root.attr("font-family").unwrap_or("").to_string(),
             trace: None,
             flow: false,
+            runs: false,
         };
         let parts = &root.children;
         let stagger = STAGGER.min((STAGGER_END - START) / (parts.len().saturating_sub(1)).max(1) as f64);
