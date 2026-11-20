@@ -6,6 +6,8 @@
 
 **Labels inside a coloured box are readable on the board.** The hatching is thinner, further apart and fainter.
 
+**A cross or strike on a line marks the line, not its whole box.** On an svg line, curve or arrow, `cross` draws a small X at the middle of the line and `strike` a short slash across it there; boxes and shapes are crossed out as before.
+
 ## 0.32.0
 
 **Videos are paced like someone explaining.** The voice is a little slower and takes a breath between sentences, and the long silences between steps are gone: measured against hand-made explainers, mr-cast spoke faster and then sat silent for 1.7 s at every step. Videos voiced before are voiced again the first time (ADR 0047).

@@ -15,7 +15,7 @@ use crate::camera::View;
 use crate::chrome::callout::HeaderCallout;
 use crate::chrome::callout::header_box;
 use crate::chrome::shell::{Aside, Shell};
-use crate::marks::geometry::Bx;
+use crate::marks::geometry::{Bx, Pt, SPINE_MARK, Spine};
 use crate::marks::{MarkTargets, NoRefs, Pen, Refs};
 use crate::states::{ClosureModel, SceneState, StateFrame, TintMix, walk_states};
 use crate::steps::FocusSpotlight;
@@ -954,11 +954,17 @@ impl Svg {
         let mut ids = Vec::new();
         collect_ids(&self.drawing.root, &mut ids);
         let named: Vec<String> = ids.iter().map(|id| format!("{}{id}", self.prefix)).collect();
-        let boxes = media::svg_boxes(&svg, &named)
-            .into_iter()
-            .map(|(id, (x, y, w, h))| (format!("s:{}", &id[self.prefix.len()..]), Bx::new(x - BLEED, y - BLEED, w, h)))
-            .collect();
-        MarkTargets::new(boxes, Bx::new(0.0, 0.0, self.box_w, self.box_h))
+        let (mut boxes, mut spines) = (Vec::new(), Vec::new());
+        for (id, shape) in media::svg_shapes(&svg, &named) {
+            let key = format!("s:{}", &id[self.prefix.len()..]);
+            let (x, y, w, h) = shape.bbox;
+            // A line shorter than the mark itself is crossed out across its box, as a shape is.
+            if let Some((mx, my, angle)) = shape.spine.filter(|_| w.max(h) > SPINE_MARK) {
+                spines.push((key.clone(), Spine { mid: Pt { x: mx - BLEED, y: my - BLEED }, angle }));
+            }
+            boxes.push((key, Bx::new(x - BLEED, y - BLEED, w, h)));
+        }
+        MarkTargets { spines, ..MarkTargets::new(boxes, Bx::new(0.0, 0.0, self.box_w, self.box_h)) }
     }
 }
 
