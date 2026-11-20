@@ -828,6 +828,7 @@ impl CodeView {
             box_of: Some(box_of),
             clip: Some(Bx::new(0.0, viewport_top, bw, self.viewport_h as f64)),
             shifts: true,
+            spines: Vec::new(),
         })
     }
 }
