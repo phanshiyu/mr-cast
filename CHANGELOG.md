@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.33.0
 
 **Explanations are drawn on the board by default.** An explanation with no `look` is drawn by hand on the board; `"look": "plain"` turns it off. Videos of a branch stay plain unless they set `"look": "board"`. The worked examples are redrawn on the board (ADR 0050).
 
