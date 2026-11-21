@@ -6,7 +6,7 @@ license = "Apache-2.0"
 version.workspace = true
 
 [dependencies]
-fancy-regex = "0.14"
+fancy-regex = "0.20"
 serde = { version = "1", features = ["derive"] }
 # float_roundtrip: the homograph weights must parse to the same doubles Python's json gives.
 serde_json = { version = "1", features = ["float_roundtrip"] }
