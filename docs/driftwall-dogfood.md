@@ -1,97 +1,98 @@
-# driftwall dogfood: mr-cast
+# Architecture contract and driftwall review: mr-cast
 
-This project was used to test [driftwall](https://github.com/phanshiyu/driftwall), a linter that
-fails the build when code drifts from an architecture diagram. `docs/architecture.mmd` is the
-diagram `driftwall init` derived from this repository's code with no hand-written input: one node
-per architectural unit, one edge per dependency it found in the source. An independent review
-agent then checked the result against the code. This page records what it found.
+`docs/architecture.mmd` is this project's architecture as a design: a small set of components,
+each with one responsibility, grouped in layers, and arrows for the dependencies the design
+**allows**. The `%% map` lines in the same file assign every source file to a component, and the
+`%%` comments record why each non-obvious arrow exists, which directions are forbidden, the debt
+the code has today, and the rules a tool cannot check yet. The reasoning behind each component and
+violation is in [`architecture-notes.md`](architecture-notes.md).
 
-- driftwall commit `f14a200` (binary `driftwall-r5`), reviewed 2026-11-23.
-- The `.arch` tag files `init` writes are not committed; the diagram is a snapshot, not yet an
-  enforced contract. See [Reproduce](#reproduce) to regenerate it or adopt it.
+[driftwall](https://github.com/phanshiyu/driftwall) checks the contract: it parses every source
+file (tree-sitter), resolves each import to a file and a component, and reports every dependency
+the design does not allow. Arrows marked `-->|test|` allow only test code to cross.
 
-## Verdict
+Reviewed 2026-11-23 with driftwall `daaf073`.
 
-**Satisfactory** after 4 review rounds (rounds 1 to 3 unsatisfactory, round 4 satisfactory).
+## Review
 
-- Precision and recall: 551 of 551 JS/TS/HTML/CSS cross-node import sites in both directions, plus
-  Rust `use` paths sampled by hand; 1,666 sites in total.
-- Granularity: 74 nodes, one per Rust module of the engine crates and per web module or directory.
-- Earlier rounds found: the engine as one 118-file node; imports of the generated
-  `shared/world/ne-*.mjs` reported as missing; the Vite alias `mrc-wasm` reported as a missing
-  package; JSDoc `import()` types unread. All fixed in driftwall.
+An independent review agent judged the contract against a six-point rubric: right components,
+complete mapping, real layers, arrows that allow only the intended dependencies (debt stays visible
+as violations), fidelity to the project's own docs, and usefulness to a newcomer. **Satisfactory in
+round 2.** Round 1 rejected a 34-component draft as a second inventory: the engine core was cut into
+eleven small pieces while `scenes` (29% of the code) stayed whole. The redesign follows ADR 42's
+concerns (22 components for three languages and three runtimes) and stopped allowing
+`web-engine --> layout`, which pulled the layout chain into the browser player for a six-line helper.
 
-## Observations for this project
+The remaining debt has four root causes: the core targets/states → scenes cycle, `src/fit/report.ts`
+living below the code it runs, a CLI summary helper importing a check, and `formatPayload`. The web
+app reaches the Rust engine only through the `mrc-wasm` alias to git-ignored wasm-pack output.
 
-- The web app reaches the Rust engine only through `mrc-wasm` (`src/player/CanvasPlayer.tsx:5`),
-  an alias to `engine/wasm/pkg`, the git-ignored wasm-pack output. driftwall shows it as
-  `alias-target-missing`; the edge appears once the package is built.
-- Cycles: `fit` ↔ `utils` (runtime both ways), `engine-core-scenes` ↔ `states`,
-  `engine-core-scenes` ↔ `targets`, `engine-core-camera` ↔ `marks`.
-- `engine-core-scenes` depends on 21 other modules.
-- `scripts/engine-dump.mjs` bundles `src/fit`, `src/engine` and `shared` from an esbuild stdin
-  template; tests reach `src/utils` only by bundling it. No static tool can see those dependencies.
+## What lint reports today
 
-## Measured
+22 components, 58 arrows (43 implemented, 15 test).
+**31 violations** in 4 groups, 0 warnings. Each violation is a
+place where the code breaks the design; the notes give the fix for each.
 
-| | |
-|---|---|
-| Nodes | 74 |
-| Edges | 209 |
-| Source files mapped | 449 |
-| Import sites behind the edges | 1697 (runtime 1613, type-only 78, asset 6; 219 test-only) |
-| init + lint + brief wall time | 2 s |
-| Files driftwall cannot read | none |
-| Files excluded (generated, vendored, minified) | generated 3 |
-| Files ignored by `.driftwallignore` | 0 |
-| Skipped references (visible, not edges) | dynamic-specifier 45, embed-non-source 23, file-reference-missing 7, alias-target-missing 1 |
-| Unresolved imports | 0 |
+- **fit → layout** (25):
+  - `src/fit/report.ts:6`
+  - `src/fit/report.ts:11`
+  - `src/fit/report.ts:12`
+  - `src/fit/report.ts:13`
+  - `src/fit/report.ts:14`
+  - `src/fit/report.ts:15`
+  - and 19 more
+- **core-steps → core-scenes** (4):
+  - `engine/core/src/states.rs:589`
+  - `engine/core/src/targets/mod.rs:19`
+  - `engine/core/src/targets/mod.rs:20`
+  - `engine/core/src/targets/mod.rs:21`
+- **cli-workspace → cli-validate** (1):
+  - `bin/lib/summary.mjs:10`
+- **web-engine → layout** (1):
+  - `src/engine/highlight.ts:7`
 
-## Structure facts computed from the graph
+## Components
 
-- Highest fan-out: `engine-core-scenes` (21), `engine-core-chrome` (13), `engine-core-marks` (11), `engine-dizione-engine` (11), `engine-cli-main` (10).
-- Highest fan-in: `engine-core-timing` (14), `shared` (12), `engine-core-color` (11), `engine-core-display` (10), `engine-core-model` (10).
-- Dependency cycles through production code (runtime, asset or embed imports outside tests):
-  - `engine-core-arrays` ↔ `engine-core-chrome` ↔ `engine-core-scenes` ↔ `engine-core-states` ↔ `engine-core-targets`
-  - `engine-core-camera` ↔ `engine-core-marks`
-  - `src-fit` ↔ `src-utils`
+| Component | Responsibility | Files |
+|---|---|---|
+| `cli` | argv parsing and command orchestration | 2 |
+| `cli-base` | UserError, JSON, git, diff parsing, cache and lock | 7 |
+| `cli-engine` | drives the Rust engine, its stills, and the voice-over with its settings | 8 |
+| `cli-serve` | the local server for play and plan | 2 |
+| `cli-validate` | the storyboard checks and their suggestions | 27 |
+| `cli-workspace` | the CLI's on-disk state and content: runs, processes, pruning, updates, skill install, snippets, change maps, images and plans | 13 |
+| `core-api` | Project, build_frame and render_frame, and the rasterizer | 2 |
+| `core-draw` | display list, icons, diagram paths, board look, fonts, text fitting, colours, easing, the palette, and step light and motion | 10 |
+| `core-scenes` | one module per scene type behind one registry, with the chrome every scene shares | 66 |
+| `core-script` | the props model, timing, markup, speech, focus and chapters | 6 |
+| `core-steps` | what a step's focus names, how steps change a scene, pen marks, ink and the camera | 8 |
+| `dizione` | English text to tiny-voca phoneme tokens | 13 |
+| `engine-cli` | mr-cast-engine commands (render, still, sheet, probe, voice) and the MP4 encoder | 8 |
+| `engine-wasm` | the browser player's renderer, core behind wasm-bindgen | 1 |
+| `fit` | the places text goes: slots, shell box, callout and source fit | 5 |
+| `layout` | the TS scene layouts validate runs (the fit report is mapped to fit until it moves) | 29 |
+| `shared` | storyboard semantics both runtimes run: timing, steps, targets, textfit, normalize | 75 |
+| `tests` | the node test suites and the Rust fixture tests against the JS | 77 |
+| `tooling` | repo scripts, vite config, index.html, the agent verify skill, the evaluation harness and the example generators | 72 |
+| `types` | the storyboard schema and the palette and frame tokens | 2 |
+| `web-app` | the page shell, the panels and the canvas player with its timeline | 12 |
+| `web-engine` | syntax colours handed to the engine | 4 |
 
-## Skipped references
+## What driftwall cannot see
 
-References driftwall saw but did not turn into edges, with the reason. First five per reason;
-`driftwall brief --format json` lists all of them.
+- Files in languages it does not read: none.
+- References it saw but could not turn into dependencies: dynamic-specifier 45, embed-non-source 23, alias-target-missing 1, file-reference-missing 7 (`driftwall brief` lists each one).
+- Anything that is not an import: subprocess calls, file paths in strings, network calls, and the
+  rules listed under "Not expressible yet" in the contract.
 
-- **alias-target-missing** (1):
-  - `src/player/CanvasPlayer.tsx:5` `mrc-wasm`
-- **dynamic-specifier** (45):
-  - `.claude/skills/verify/scripts/sync-check.mjs:26` `path.join(REPO, 'shared/timing.mjs')`
-  - `.claude/skills/verify/scripts/sync-check.mjs:30` `path.join(REPO, 'shared/steps.mjs')`
-  - `.claude/skills/verify/scripts/sync-check.mjs:39` `path.join(REPO, 'shared/normalize.mjs')`
-  - `.claude/skills/verify/scripts/sync-check.mjs:63` `pathToFileURL(fromRepo.resolve('sharp')).href`
-  - `bin/lib/engine.mjs:106` ``data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString(`
-- **embed-non-source** (23):
-  - `engine/cli/src/voice.rs:497` `../tests/fixtures/voice-splits.json`
-  - `engine/core/src/icons.rs:78` `../data/lucide.json`
-  - `engine/core/src/scenes/map/mod.rs:112` `../../../data/world-110m.json`
-  - `engine/core/src/scenes/map/mod.rs:114` `../../../data/world-50m.json`
-  - `engine/core/src/text.rs:37` `../../assets/fonts/inter-latin.ttf`
-- **file-reference-missing** (7):
-  - `test/code-typing.test.mjs:20` `../examples/primitives/code-typing/`
-  - `test/install-skill.test.mjs:14` `..`
-  - `test/intent-alias.test.mjs:7` `..`
-  - `test/map-scene.test.mjs:239` `..`
-  - `test/primitives.test.mjs:8` `..`
-
-## Reproduce
+## Use it
 
 ```sh
-# install driftwall, then from the repository root:
-driftwall init . --contract docs/architecture.mmd   # writes .arch tags and the diagram
-driftwall lint --contract docs/architecture.mmd     # exit 0: code matches the diagram
-driftwall brief --contract docs/architecture.mmd    # nodes, edges, blind spots
-driftwall neighbors <node> --contract docs/architecture.mmd
+driftwall lint --contract docs/architecture.mmd            # violations, exit 1 if any
+driftwall where <file> --contract docs/architecture.mmd    # which component owns a file
+driftwall neighbors <component> --contract docs/architecture.mmd
 ```
 
-To enforce the diagram, commit the `.arch` files, edit `docs/architecture.mmd` into the
-architecture you intend (drop edges you consider violations, group nodes into subgraphs), and run
-`driftwall lint --strict --contract docs/architecture.mmd` in CI.
+Fix a violation by changing the code, or, if the design should change, by editing the contract in
+review. Add `driftwall lint --contract docs/architecture.mmd` to CI once the violations are fixed
+or accepted.
