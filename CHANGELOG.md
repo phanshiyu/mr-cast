@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.33.2
+
+Dependency updates. CI released this version because a package that ships with mr-cast changed.
+
+- `lucide-react` 1.74.0 to 1.77.0
+
 ## 0.33.1
 
 **Drawings with a lit part render many times faster.** A glow blurred the whole drawing for each lit part, and under a camera's zoom many frames' worth of it; it now blurs only the part around what glows that is on screen. The camera and motion demos render in under a minute instead of 10 and 6, and the release's example videos no longer time out.
