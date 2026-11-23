@@ -1,0 +1,289 @@
+%% driftwall architecture contract.
+%% Solid arrow  (-->)  = implemented dependency, enforced.
+%% Dotted arrow (-.->) = planned dependency, tolerated until built.
+flowchart LR
+
+  bin["bin"]
+  bin-lib["bin/lib"]
+  claude[".claude"]
+  engine-cli-aac["engine/cli/src/aac"]
+  engine-cli-audio["engine/cli/src/audio"]
+  engine-cli-encode["engine/cli/src/encode"]
+  engine-cli-h264["engine/cli/src/h264"]
+  engine-cli-main["engine/cli/src/main"]
+  engine-cli-mp4["engine/cli/src/mp4"]
+  engine-cli-sheet["engine/cli/src/sheet"]
+  engine-cli-voice["engine/cli/src/voice"]
+  engine-core-anim["engine/core/src/anim"]
+  engine-core-arrays["engine/core/src/arrays"]
+  engine-core-camera["engine/core/src/camera"]
+  engine-core-chapters["engine/core/src/chapters"]
+  engine-core-chrome["engine/core/src/chrome"]
+  engine-core-color["engine/core/src/color"]
+  engine-core-diagram["engine/core/src/diagram"]
+  engine-core-display["engine/core/src/display"]
+  engine-core-focus["engine/core/src/focus"]
+  engine-core-icons["engine/core/src/icons"]
+  engine-core-lib["engine/core/src/lib"]
+  engine-core-look["engine/core/src/look"]
+  engine-core-marks["engine/core/src/marks"]
+  engine-core-markup["engine/core/src/markup"]
+  engine-core-model["engine/core/src/model"]
+  engine-core-raster["engine/core/src/raster"]
+  engine-core-review["engine/core/src/review"]
+  engine-core-scenes["engine/core/src/scenes"]
+  engine-core-speech["engine/core/src/speech"]
+  engine-core-states["engine/core/src/states"]
+  engine-core-steps["engine/core/src/steps"]
+  engine-core-targets["engine/core/src/targets"]
+  engine-core-tests["engine/core/tests"]
+  engine-core-text["engine/core/src/text"]
+  engine-core-textfit["engine/core/src/textfit"]
+  engine-core-theme["engine/core/src/theme"]
+  engine-core-timing["engine/core/src/timing"]
+  engine-dizione-align["engine/dizione/src/align"]
+  engine-dizione-convert["engine/dizione/src/convert"]
+  engine-dizione-engine["engine/dizione/src/engine"]
+  engine-dizione-g2p["engine/dizione/src/g2p"]
+  engine-dizione-homographs["engine/dizione/src/homographs"]
+  engine-dizione-lib["engine/dizione/src/lib"]
+  engine-dizione-morphology["engine/dizione/src/morphology"]
+  engine-dizione-normalize["engine/dizione/src/normalize"]
+  engine-dizione-py["engine/dizione/src/py"]
+  engine-dizione-rx["engine/dizione/src/rx"]
+  engine-dizione-sentence["engine/dizione/src/sentence"]
+  engine-dizione-symbols["engine/dizione/src/symbols"]
+  engine-dizione-tables["engine/dizione/src/tables"]
+  engine-dizione-tests["engine/dizione/tests"]
+  engine-wasm["engine/wasm"]
+  examples["examples"]
+  quality["quality"]
+  root["."]
+  scripts["scripts"]
+  shared["shared"]
+  src-App["src/App"]
+  src-GuidePanel["src/GuidePanel"]
+  src-PlanPage["src/PlanPage"]
+  src-QuickParts["src/QuickParts"]
+  src-ReadingPanel["src/ReadingPanel"]
+  src-assets["src/assets"]
+  src-components["src/components"]
+  src-engine["src/engine"]
+  src-fit["src/fit"]
+  src-fonts["src/fonts"]
+  src-main["src/main"]
+  src-player["src/player"]
+  src-src["src/index.css"]
+  src-types["src/types"]
+  src-utils["src/utils"]
+  test["test"]
+
+  bin --> bin-lib
+  bin --> shared
+  bin-lib --> shared
+  bin-lib --> src-types
+  engine-cli-audio --> engine-core-lib
+  engine-cli-audio --> engine-core-model
+  engine-cli-audio --> engine-core-timing
+  engine-cli-encode --> engine-cli-aac
+  engine-cli-encode --> engine-cli-audio
+  engine-cli-encode --> engine-cli-h264
+  engine-cli-encode --> engine-cli-mp4
+  engine-cli-encode --> engine-core-lib
+  engine-cli-main --> engine-cli-aac
+  engine-cli-main --> engine-cli-audio
+  engine-cli-main --> engine-cli-encode
+  engine-cli-main --> engine-cli-h264
+  engine-cli-main --> engine-cli-mp4
+  engine-cli-main --> engine-cli-sheet
+  engine-cli-main --> engine-cli-voice
+  engine-cli-main --> engine-core-lib
+  engine-cli-main --> engine-core-model
+  engine-cli-main --> engine-core-timing
+  engine-cli-sheet --> engine-core-display
+  engine-cli-sheet --> engine-core-lib
+  engine-cli-sheet --> engine-core-text
+  engine-cli-sheet --> engine-core-theme
+  engine-cli-sheet --> engine-core-timing
+  engine-cli-voice --> engine-dizione-lib
+  engine-cli-voice --> engine-dizione-symbols
+  engine-core-arrays --> engine-core-marks
+  engine-core-arrays --> engine-core-states
+  engine-core-arrays --> engine-core-timing
+  engine-core-camera --> engine-core-display
+  engine-core-camera --> engine-core-marks
+  engine-core-camera --> engine-core-steps
+  engine-core-camera --> engine-core-timing
+  engine-core-chapters --> engine-core-timing
+  engine-core-chrome --> engine-core-anim
+  engine-core-chrome --> engine-core-color
+  engine-core-chrome --> engine-core-display
+  engine-core-chrome --> engine-core-icons
+  engine-core-chrome --> engine-core-look
+  engine-core-chrome --> engine-core-markup
+  engine-core-chrome --> engine-core-model
+  engine-core-chrome --> engine-core-states
+  engine-core-chrome --> engine-core-steps
+  engine-core-chrome --> engine-core-text
+  engine-core-chrome --> engine-core-textfit
+  engine-core-chrome --> engine-core-theme
+  engine-core-chrome --> engine-core-timing
+  engine-core-diagram --> engine-core-color
+  engine-core-diagram --> engine-core-display
+  engine-core-diagram --> engine-core-text
+  engine-core-display --> engine-core-color
+  engine-core-display --> engine-core-text
+  engine-core-focus --> engine-core-model
+  engine-core-icons --> engine-core-color
+  engine-core-icons --> engine-core-display
+  engine-core-lib --> engine-core-chapters
+  engine-core-lib --> engine-core-chrome
+  engine-core-lib --> engine-core-display
+  engine-core-lib --> engine-core-look
+  engine-core-lib --> engine-core-model
+  engine-core-lib --> engine-core-raster
+  engine-core-lib --> engine-core-scenes
+  engine-core-lib --> engine-core-textfit
+  engine-core-lib --> engine-core-timing
+  engine-core-look --> engine-core-color
+  engine-core-look --> engine-core-display
+  engine-core-look --> engine-core-text
+  engine-core-marks --> engine-core-anim
+  engine-core-marks --> engine-core-camera
+  engine-core-marks --> engine-core-color
+  engine-core-marks --> engine-core-display
+  engine-core-marks --> engine-core-focus
+  engine-core-marks --> engine-core-markup
+  engine-core-marks --> engine-core-model
+  engine-core-marks --> engine-core-steps
+  engine-core-marks --> engine-core-text
+  engine-core-marks --> engine-core-theme
+  engine-core-marks --> engine-core-timing
+  engine-core-raster --> engine-core-color
+  engine-core-raster --> engine-core-display
+  engine-core-raster --> engine-core-text
+  engine-core-review --> engine-core-color
+  engine-core-review --> engine-core-model
+  engine-core-scenes --> engine-core-anim
+  engine-core-scenes --> engine-core-arrays
+  engine-core-scenes --> engine-core-camera
+  engine-core-scenes --> engine-core-chrome
+  engine-core-scenes --> engine-core-color
+  engine-core-scenes --> engine-core-diagram
+  engine-core-scenes --> engine-core-display
+  engine-core-scenes --> engine-core-focus
+  engine-core-scenes --> engine-core-icons
+  engine-core-scenes --> engine-core-look
+  engine-core-scenes --> engine-core-marks
+  engine-core-scenes --> engine-core-markup
+  engine-core-scenes --> engine-core-model
+  engine-core-scenes --> engine-core-review
+  engine-core-scenes --> engine-core-states
+  engine-core-scenes --> engine-core-steps
+  engine-core-scenes --> engine-core-targets
+  engine-core-scenes --> engine-core-text
+  engine-core-scenes --> engine-core-textfit
+  engine-core-scenes --> engine-core-theme
+  engine-core-scenes --> engine-core-timing
+  engine-core-states --> engine-core-anim
+  engine-core-states --> engine-core-color
+  engine-core-states --> engine-core-marks
+  engine-core-states --> engine-core-scenes
+  engine-core-states --> engine-core-steps
+  engine-core-states --> engine-core-timing
+  engine-core-steps --> engine-core-anim
+  engine-core-steps --> engine-core-timing
+  engine-core-targets --> engine-core-arrays
+  engine-core-targets --> engine-core-marks
+  engine-core-targets --> engine-core-markup
+  engine-core-targets --> engine-core-scenes
+  engine-core-targets --> engine-core-states
+  engine-core-targets --> engine-core-timing
+  engine-core-tests --> engine-core-anim
+  engine-core-tests --> engine-core-marks
+  engine-core-tests --> engine-core-model
+  engine-core-tests --> engine-core-speech
+  engine-core-tests --> engine-core-textfit
+  engine-core-tests --> engine-core-timing
+  engine-core-text --> engine-core-textfit
+  engine-core-textfit --> engine-core-markup
+  engine-core-theme --> engine-core-color
+  engine-core-timing --> engine-core-markup
+  engine-core-timing --> engine-core-model
+  engine-core-timing --> engine-core-speech
+  engine-dizione-convert --> engine-dizione-align
+  engine-dizione-convert --> engine-dizione-py
+  engine-dizione-convert --> engine-dizione-symbols
+  engine-dizione-engine --> engine-dizione-align
+  engine-dizione-engine --> engine-dizione-convert
+  engine-dizione-engine --> engine-dizione-g2p
+  engine-dizione-engine --> engine-dizione-homographs
+  engine-dizione-engine --> engine-dizione-morphology
+  engine-dizione-engine --> engine-dizione-normalize
+  engine-dizione-engine --> engine-dizione-py
+  engine-dizione-engine --> engine-dizione-rx
+  engine-dizione-engine --> engine-dizione-sentence
+  engine-dizione-engine --> engine-dizione-symbols
+  engine-dizione-engine --> engine-dizione-tables
+  engine-dizione-homographs --> engine-dizione-py
+  engine-dizione-homographs --> engine-dizione-tables
+  engine-dizione-lib --> engine-dizione-engine
+  engine-dizione-lib --> engine-dizione-symbols
+  engine-dizione-morphology --> engine-dizione-py
+  engine-dizione-morphology --> engine-dizione-symbols
+  engine-dizione-normalize --> engine-dizione-convert
+  engine-dizione-normalize --> engine-dizione-py
+  engine-dizione-normalize --> engine-dizione-rx
+  engine-dizione-normalize --> engine-dizione-symbols
+  engine-dizione-normalize --> engine-dizione-tables
+  engine-dizione-sentence --> engine-dizione-symbols
+  engine-dizione-tables --> engine-dizione-convert
+  engine-dizione-tables --> engine-dizione-py
+  engine-dizione-tables --> engine-dizione-symbols
+  engine-dizione-tests --> engine-dizione-lib
+  engine-wasm --> engine-core-lib
+  examples --> shared
+  quality --> shared
+  root --> src-main
+  shared --> src-types
+  src-App --> shared
+  src-App --> src-GuidePanel
+  src-App --> src-PlanPage
+  src-App --> src-QuickParts
+  src-App --> src-ReadingPanel
+  src-App --> src-player
+  src-App --> src-types
+  src-App --> src-utils
+  src-GuidePanel --> shared
+  src-PlanPage --> shared
+  src-PlanPage --> src-types
+  src-ReadingPanel --> shared
+  src-ReadingPanel --> src-components
+  src-components --> src-types
+  src-engine --> shared
+  src-engine --> src-types
+  src-engine --> src-utils
+  src-fit --> shared
+  src-fit --> src-components
+  src-fit --> src-types
+  src-fit --> src-utils
+  src-fonts --> src-assets
+  src-main --> src-App
+  src-main --> src-fonts
+  src-main --> src-src
+  src-player --> src-engine
+  src-player --> src-types
+  src-player --> src-utils
+  src-utils --> shared
+  src-utils --> src-components
+  src-utils --> src-fit
+  src-utils --> src-types
+  test --> bin
+  test --> bin-lib
+  test --> examples
+  test --> quality
+  test --> scripts
+  test --> shared
+  test --> src-player
+  test --> src-types
+  test --> src-utils
