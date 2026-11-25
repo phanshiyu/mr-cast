@@ -1,6 +1,6 @@
 # Architecture contract and driftwall review: mr-cast
 
-`docs/architecture.mmd` is this project's architecture as a design: a small set of components,
+`architecture.mmd` is this project's architecture as a design: a small set of components,
 each with one responsibility, grouped in layers, and arrows for the dependencies the design
 **allows**. The `%% map` lines in the same file assign every source file to a component, and the
 `%%` comments record why each non-obvious arrow exists, which directions are forbidden, the debt
@@ -88,11 +88,11 @@ place where the code breaks the design; the notes give the fix for each.
 ## Use it
 
 ```sh
-driftwall lint --contract docs/architecture.mmd            # violations, exit 1 if any
-driftwall where <file> --contract docs/architecture.mmd    # which component owns a file
-driftwall neighbors <component> --contract docs/architecture.mmd
+driftwall lint --contract architecture.mmd            # violations, exit 1 if any
+driftwall where <file> --contract architecture.mmd    # which component owns a file
+driftwall neighbors <component> --contract architecture.mmd
 ```
 
 Fix a violation by changing the code, or, if the design should change, by editing the contract in
-review. Add `driftwall lint --contract docs/architecture.mmd` to CI once the violations are fixed
+review. Add `driftwall lint --contract architecture.mmd` to CI once the violations are fixed
 or accepted.
