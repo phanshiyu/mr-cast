@@ -21,6 +21,35 @@ env:
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
 
 jobs:
+  # Whether anything Rust could depend on changed: the Rust jobs are skipped for a pull request that touches none of it.
+  # shared/ is here because scripts/engine-dump.mjs bundles it into the engine's data, and the Rust fixture tests compare
+  # the engine with the JavaScript. Every push and manual start runs them.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.diff.outputs.rust }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA" HEAD | tee "$RUNNER_TEMP/changed.txt"
+          if grep -Eq '^(engine/|rust-toolchain\.toml$|\.github/|scripts/build-wasm\.mjs$|scripts/engine-dump\.mjs$|shared/)' "$RUNNER_TEMP/changed.txt"; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rust=false" >> "$GITHUB_OUTPUT"
+          fi
+
   typecheck:
     name: Typecheck, lint, format and unused code
     runs-on: ubuntu-26.04
@@ -51,6 +80,8 @@ jobs:
 
   rust:
     name: Engine (fmt, clippy, tests, wasm)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     env:
@@ -97,6 +128,8 @@ jobs:
   # stops building fails here, not in a release. Its tests include the MP4 writer and a render through the encoders.
   engine-platforms:
     name: Engine on ${{ matrix.platform }}
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.os }}
     # The Intel macOS runner takes about 40 minutes to build the engine and its encoders. The test build uses the ci
     # profile (engine/Cargo.toml): the release profile aborts on panic, which tests can't use, so cargo would compile
@@ -301,13 +334,14 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [typecheck, build, rust, engine-platforms, test, validate, audit, render, package]
+    needs: [changes, typecheck, build, rust, engine-platforms, test, validate, audit, render, package]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
+      # The two Rust jobs are skipped when a pull request touches nothing Rust depends on; any other job must succeed.
       - name: Every job passed
         env:
-          RESULTS: ${{ toJSON(needs.*.result) }}
+          RESULTS: ${{ toJSON(needs) }}
         run: |
           echo "$RESULTS"
-          node -e 'const r = JSON.parse(process.env.RESULTS); process.exit(r.every((x) => x === "success") ? 0 : 1)'
+          node -e 'const r = JSON.parse(process.env.RESULTS); const skippable = ["rust", "engine-platforms"]; process.exit(Object.entries(r).every(([job, { result }]) => result === "success" || (result === "skipped" && skippable.includes(job))) ? 0 : 1)'
