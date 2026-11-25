@@ -1,19 +1,19 @@
 %% mr-cast architecture contract. driftwall enforces it in `pnpm check` (ADR 51).
-%%
+
 %% Start here. mr-cast is three stacks:
 %%  - the Node CLI (bin/), which the user runs,
 %%  - the browser page (src/), which `play` and `plan` serve,
 %%  - the Rust engine (engine/), which draws every frame, both into the MP4 and inside the page.
 %% Inside a stack, code imports only downward: each `%% order` line lists a stack's layers from the top.
 %% A solid arrow is an import the design allows, and an import without an arrow fails lint. -->|test| allows test code only.
-%%
+
 %% The stacks meet in three places, and none of them is an import, so none is an arrow:
 %%  - CLI -> engine: bin/lib/engine.mjs writes props JSON and spawns the mr-cast-engine binary (engine/cli).
 %%  - page -> engine: src/player/CanvasPlayer.tsx imports `mrc-wasm`, a vite alias to the wasm-pack build of engine/wasm.
 %%    driftwall resolves the alias into engine/wasm/, so that one is an arrow (web-app --> engine-wasm).
 %%  - CLI -> src: esbuild bundles src/utils/report.ts into `validate` (bin/lib/validate-fit.mjs) and src/engine/highlight.ts
 %%    into `render` (bin/lib/engine.mjs). The CLI never imports src/ but types.
-%%
+
 %% Pictures: `driftwall render --depth 1` is the three-stack overview, `driftwall render --focus engine` one stack.
 %% CONTRIBUTING.md and engine/README.md keep generated copies that `pnpm check` keeps current.
 %% Reasoning behind the cut: docs/architecture-notes.md.
@@ -111,7 +111,7 @@ flowchart LR
   %%   to its StateModel, so core-steps never imports core-scenes.
   %% tests -->|test| ...: test/ imports whatever it exercises; engine/core/tests check timing, speech, text fitting, springs, easings
   %%   and pen geometry against the JS's own output; engine/dizione/tests check the phonemizer.
-  %%
+
   %% Not expressible yet (lint cannot check these, review them by hand):
   %% - marks <-> camera inside core-steps: marks::Pen holds a Board and a Camera, and camera.rs imports marks. Accepted as one
   %%   subsystem (engine/README.md). If it is ever split, put Pen in a module above both.
