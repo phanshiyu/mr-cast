@@ -62,3 +62,12 @@ export function codeRows(hunk, code) {
 
 /** The hunk id a stage's `code` names, from `hunk` or `snippet`, or undefined. */
 export const codeHunkId = (code) => (typeof code?.hunk === 'string' ? code.hunk : code?.snippet);
+
+/** Pretty-printed JSON when the payload parses, otherwise the raw text. */
+export function formatPayload(payload) {
+  try {
+    return { text: JSON.stringify(JSON.parse(payload), null, 2), language: 'json' };
+  } catch {
+    return { text: payload, language: 'plain' };
+  }
+}

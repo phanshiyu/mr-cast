@@ -6,3 +6,4 @@ export declare function codeRows(
   code: FlowCode,
 ): { problem: string | null; rows: { index: number; lit: boolean }[]; first: number | null };
 export declare function codeHunkId(code: FlowCode | undefined): string | undefined;
+export declare function formatPayload(payload: string): { text: string; language: string };
