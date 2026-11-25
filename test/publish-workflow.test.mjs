@@ -82,7 +82,14 @@ test('no job that can write, publish or hold an id-token restores or saves a cac
   // CodeQL reads a cache option anywhere in a composite action as a cache a privileged job can poison, so the jobs
   // here call a setup action that has none; ../setup (with the pnpm store cached) is for CI's unprivileged jobs.
   assert.equal(hasCache(uncachedSetup), false);
-  assert.match(fs.readFileSync(new URL('../.github/actions/setup/action.yml', import.meta.url), 'utf8'), /cache: true/);
+  const cachedSetup = fs.readFileSync(new URL('../.github/actions/setup/action.yml', import.meta.url), 'utf8');
+  assert.match(cachedSetup, /actions\/cache\/restore@/);
+  // Only a push to main saves the store, after pruning it; a pull request restores and never saves.
+  assert.match(cachedSetup, /pnpm store prune/);
+  assert.match(
+    cachedSetup,
+    /if: github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'[^\n]*\n\s+uses: actions\/cache\/save@/,
+  );
   const privileged = Object.entries(jobs).filter(([, text]) => /(contents|id-token): write|secrets\./.test(text));
   assert.ok(privileged.length >= 4);
   for (const [name, text] of privileged) {

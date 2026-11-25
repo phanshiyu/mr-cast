@@ -1,5 +1,5 @@
 name: Set up mr-cast
-description: Install pnpm (the version in package.json), Node, and the locked dependencies, with the pnpm store cached.
+description: Install pnpm (the version in package.json), Node, and the locked dependencies, with the pnpm store restored from the cache. Only a push to main saves the store, pruned, so pull requests restore and never save.
 inputs:
   node-version:
     description: Node version; defaults to .nvmrc
@@ -9,11 +9,31 @@ runs:
   using: composite
   steps:
     - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-      with:
-        cache: true
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: ${{ inputs.node-version }}
         node-version-file: ${{ inputs.node-version == '' && '.nvmrc' || '' }}
+    - name: Find the pnpm store
+      id: store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+    - name: Restore the pnpm store
+      id: restore
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: pnpm-store-${{ runner.os }}-${{ runner.arch }}-
     - run: pnpm install --frozen-lockfile
       shell: bash
+    # Prune first, so the saved store holds only what this lockfile needs and does not grow with every update.
+    - name: Prune the pnpm store
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+      shell: bash
+      run: pnpm store prune
+    - name: Save the pnpm store
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: ${{ steps.restore.outputs.cache-primary-key }}

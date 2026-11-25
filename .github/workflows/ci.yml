@@ -15,10 +15,41 @@ concurrency:
 
 env:
   MR_CAST_NO_UPDATE_CHECK: '1'
+  # Incremental builds only fill the cache with files a clean CI build never reuses.
+  CARGO_INCREMENTAL: '0'
   # What the audits compare with: a pull request's base, the commit a push replaced, or itself when started by hand.
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
 
 jobs:
+  # Whether anything Rust could depend on changed: the Rust jobs are skipped for a pull request that touches none of it.
+  # shared/ is here because scripts/engine-dump.mjs bundles it into the engine's data, and the Rust fixture tests compare
+  # the engine with the JavaScript. Every push and manual start runs them.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.diff.outputs.rust }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git diff --name-only "$BASE_SHA" HEAD | tee "$RUNNER_TEMP/changed.txt"
+          if grep -Eq '^(engine/|rust-toolchain\.toml$|\.github/|scripts/build-wasm\.mjs$|scripts/engine-dump\.mjs$|shared/)' "$RUNNER_TEMP/changed.txt"; then
+            echo "rust=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "rust=false" >> "$GITHUB_OUTPUT"
+          fi
+
   typecheck:
     name: Typecheck, lint, format and unused code
     runs-on: ubuntu-26.04
@@ -49,8 +80,13 @@ jobs:
 
   rust:
     name: Engine (fmt, clippy, tests, wasm)
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    env:
+      # Debug info only slows the dev-profile clippy and test builds and grows the cache.
+      CARGO_PROFILE_DEV_DEBUG: '0'
     defaults:
       run:
         working-directory: engine
@@ -60,6 +96,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: ${{ github.job }}-wasm32-unknown-unknown-x86_64-unknown-linux-gnu
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       # The dizione port's fixtures need the phonemizer data the voice model ships (5 MB), checked by hash.
@@ -86,8 +128,12 @@ jobs:
   # stops building fails here, not in a release. Its tests include the MP4 writer and a render through the encoders.
   engine-platforms:
     name: Engine on ${{ matrix.platform }}
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.os }}
-    # The Intel macOS runner takes about 40 minutes to build the engine and its encoders.
+    # The Intel macOS runner takes about 40 minutes to build the engine and its encoders. The test build uses the ci
+    # profile (engine/Cargo.toml): the release profile aborts on panic, which tests can't use, so cargo would compile
+    # every dependency twice. The exact release build runs in the package job on a push to main, and in publish.yml.
     timeout-minutes: 75
     strategy:
       fail-fast: false
@@ -105,14 +151,19 @@ jobs:
       - uses: ./.github/actions/rust
         with:
           targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: ${{ github.job }}-${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       - name: Build and test
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
           OPENH264_NO_ASM: '1'
         run: |
-          cargo build --release --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
-          cargo test --release --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
+          cargo test --profile ci --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
 
   test:
     name: Unit tests (Node ${{ matrix.node }})
@@ -172,6 +223,7 @@ jobs:
         node: ['24', '26']
     env:
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      MR_CAST_ENGINE: ${{ github.workspace }}/engine/target/ci/mr-cast-engine
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
@@ -181,7 +233,14 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
-      - run: cargo build --release --locked --manifest-path engine/Cargo.toml
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: render-x86_64-unknown-linux-gnu
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
+      # The ci profile builds the same engine without LTO, so the smoke test starts sooner; MR_CAST_ENGINE points at it.
+      - run: cargo build --profile ci --locked --manifest-path engine/Cargo.toml
       - name: Cache the voice model
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -221,12 +280,24 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: package-x86_64-unknown-linux-gnu
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       # As publish.yml does for every platform: the engine goes into the package under engine/bin/<platform>-<arch>.
+      # A pull request packs the ci profile build (no LTO, so it is quicker); a push to main packs the exact release
+      # build publish.yml makes, so a failure that only happens with LTO shows up before a publish.
       - name: Build the engine into engine/bin
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
-          cargo build --release --locked -p mr-cast-engine --manifest-path engine/Cargo.toml
+          profile=ci
+          [ "$EVENT" != push ] || profile=release
+          cargo build --profile "$profile" --locked -p mr-cast-engine --manifest-path engine/Cargo.toml
           mkdir -p engine/bin/linux-x64
-          cp engine/target/release/mr-cast-engine engine/bin/linux-x64/
+          cp "engine/target/$profile/mr-cast-engine" engine/bin/linux-x64/
       - run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
       - name: The package holds the engine and the player's wasm, and no Rust sources or build output
         run: |
@@ -263,13 +334,14 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [typecheck, build, rust, engine-platforms, test, validate, audit, render, package]
+    needs: [changes, typecheck, build, rust, engine-platforms, test, validate, audit, render, package]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
+      # The two Rust jobs are skipped when a pull request touches nothing Rust depends on; any other job must succeed.
       - name: Every job passed
         env:
-          RESULTS: ${{ toJSON(needs.*.result) }}
+          RESULTS: ${{ toJSON(needs) }}
         run: |
           echo "$RESULTS"
-          node -e 'const r = JSON.parse(process.env.RESULTS); process.exit(r.every((x) => x === "success") ? 0 : 1)'
+          node -e 'const r = JSON.parse(process.env.RESULTS); const skippable = ["rust", "engine-platforms"]; process.exit(Object.entries(r).every(([job, { result }]) => result === "success" || (result === "skipped" && skippable.includes(job))) ? 0 : 1)'
