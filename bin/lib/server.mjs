@@ -294,7 +294,8 @@ export async function startServer({
     try {
       handle(req, res);
     } catch (err) {
-      console.error(`mr-cast: ${req.method} ${req.url} failed · ${err.message}`);
+      // The request path is left out: it is the client's, and could forge a log line.
+      console.error(`mr-cast: a request failed · ${err.message}`);
       if (!res.headersSent) send(res, 500, 'internal error');
       else res.destroy();
     }
