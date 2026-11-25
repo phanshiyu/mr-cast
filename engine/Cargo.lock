@@ -893,17 +893,6 @@ dependencies = [
 
 [[package]]
 name = "kurbo"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c62026ae44756f8a599ba21140f350303d4f08dcdcc71b5ad9c9bb8128c13c62"
-dependencies = [
- "arrayvec",
- "euclid",
- "smallvec",
-]
-
-[[package]]
-name = "kurbo"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b60dfc32f652b926df6192e55525b16d186c69d47876c3ead4da5cc9f8450e2"
@@ -1171,7 +1160,7 @@ dependencies = [
  "dugong",
  "euclid",
  "indexmap",
- "kurbo 0.13.1",
+ "kurbo",
  "libm",
  "manatee",
  "memchr",
@@ -1286,7 +1275,7 @@ name = "mrc_core"
 version = "0.1.0"
 dependencies = [
  "fancy-regex",
- "kurbo 0.11.3",
+ "kurbo",
  "merman",
  "resvg",
  "serde",
@@ -2190,7 +2179,7 @@ version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f12b12995e3638c70618c1facb1ce65302f6a6f706b675f07c58a5d7391120e"
 dependencies = [
- "kurbo 0.13.1",
+ "kurbo",
  "siphasher",
 ]
 
@@ -2647,7 +2636,7 @@ dependencies = [
  "fontdb",
  "harfrust",
  "imagesize",
- "kurbo 0.13.1",
+ "kurbo",
  "log",
  "pico-args",
  "roxmltree",
