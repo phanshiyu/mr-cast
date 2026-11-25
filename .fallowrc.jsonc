@@ -7,7 +7,7 @@
     "bin/lib/voice-child.mjs",
     "bin/lib/update-check.mjs",
     "src/main.tsx",
-    "src/fit/report.ts",
+    "src/utils/report.ts",
     "src/engine/highlight.ts",
     "scripts/*.mjs",
     "examples/**/generate.mjs",

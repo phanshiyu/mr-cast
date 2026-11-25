@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Keeps the rule that a scene never cuts its text. Text is fitted only in layout code that `validate` also
-// runs (src/fit/report.ts), and drawn line by line with FitText, so nothing may clip or ellipsize it.
+// runs (src/utils/report.ts), and drawn line by line with FitText, so nothing may clip or ellipsize it.
 // Runs with `pnpm typecheck`.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -28,7 +28,7 @@ const RULES = [
   {
     where: /^src\/components\//,
     bad: /\b(fitText|fitTextAt|fitLines|wrapRuns)\b/,
-    fix: 'fit text in a layout function under src/utils that src/fit/report.ts also calls, so validate sees the same fit; components only draw fits',
+    fix: 'fit text in a layout function under src/utils that src/utils/report.ts also calls, so validate sees the same fit; components only draw fits',
   },
 ];
 

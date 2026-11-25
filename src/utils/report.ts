@@ -3,36 +3,36 @@ import { sceneFiles, sceneParts } from '../../shared/files.mjs';
 export { loadWorld, needsWorld } from '../../shared/map.mjs';
 import type { Fit } from '../../shared/textfit.mjs';
 import type { HunkMap, ImageManifest, Scene, Storyboard } from '../types';
-import { cameraFor, layoutImage, viewAt } from '../utils/imageLayout';
+import { cameraFor, layoutImage, viewAt } from './imageLayout';
 import { cameraShots, frameShot } from '../../shared/camera.mjs';
 import { sceneDurationInFrames, sceneSegments } from '../../shared/timing.mjs';
 import { contentBox } from '../components/theme';
-import { calloutFits } from './callout';
-import { fitSceneGraph, graphAreas } from '../utils/graphLayout';
-import { layoutArray } from '../utils/arrayLayout';
-import { layoutChart } from '../utils/chartLayout';
-import { layoutBarRows, layoutPie } from '../utils/chartShapes';
-import { layoutCompare } from '../utils/compareLayout';
-import { frameRows, layoutCode, shownLines, unseenLines } from '../utils/codeLayout';
-import { erScale, layoutEr } from '../utils/erLayout';
-import { layoutFiles, treeRows } from '../utils/filesLayout';
-import { layoutParts } from '../utils/partsLayout';
-import { layoutFlow } from '../utils/flowLayout';
-import { layoutText, textStates } from '../utils/textLayout';
-import { layersScale, layoutLayers } from '../utils/layersLayout';
-import { layoutMemory } from '../utils/memoryLayout';
-import { layoutSequence, sequenceScale } from '../utils/sequenceLayout';
-import { layoutState, stateScale } from '../utils/stateLayout';
-import { layoutTableStates, stateRows } from '../utils/tableLayout';
+import { calloutFits } from '../fit/callout';
+import { fitSceneGraph, graphAreas } from './graphLayout';
+import { layoutArray } from './arrayLayout';
+import { layoutChart } from './chartLayout';
+import { layoutBarRows, layoutPie } from './chartShapes';
+import { layoutCompare } from './compareLayout';
+import { frameRows, layoutCode, shownLines, unseenLines } from './codeLayout';
+import { erScale, layoutEr } from './erLayout';
+import { layoutFiles, treeRows } from './filesLayout';
+import { layoutParts } from './partsLayout';
+import { layoutFlow } from './flowLayout';
+import { layoutText, textStates } from './textLayout';
+import { layersScale, layoutLayers } from './layersLayout';
+import { layoutMemory } from './memoryLayout';
+import { layoutSequence, sequenceScale } from './sequenceLayout';
+import { layoutState, stateScale } from './stateLayout';
+import { layoutTableStates, stateRows } from './tableLayout';
 import { sceneStates } from '../../shared/state-steps.mjs';
-import { layoutReview } from '../utils/reviewLayout';
-import { layoutReading } from '../utils/readingLayout';
+import { layoutReview } from './reviewLayout';
+import { layoutReading } from './readingLayout';
 import { readingOrder } from '../../shared/reading.mjs';
-import { layoutTests } from '../utils/testsLayout';
-import { layoutTerminal } from '../utils/terminalLayout';
-import { layoutTimeline, timelineScale } from '../utils/timelineLayout';
-import { headerBox, shellFits } from './shell';
-import { sourceFit } from './source';
+import { layoutTests } from './testsLayout';
+import { layoutTerminal } from './terminalLayout';
+import { layoutTimeline, timelineScale } from './timelineLayout';
+import { headerBox, shellFits } from '../fit/shell';
+import { sourceFit } from '../fit/source';
 import {
   arrayTargets,
   erTargets,
@@ -48,9 +48,9 @@ import {
   tableTargets,
   testsTargets,
   timelineTargets,
-} from '../utils/sceneTargets';
-import type { Box, MarkTargets } from '../utils/penGeometry';
-import { chartStepTargets } from '../utils/chartTargets';
+} from './sceneTargets';
+import type { Box, MarkTargets } from './penGeometry';
+import { chartStepTargets } from './chartTargets';
 
 /** A layout the scene draws at `scale`, so each text in it lands on screen at its fitted size times the scale. */
 class Scaled {

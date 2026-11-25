@@ -17,7 +17,7 @@ const inside = (r, b) =>
 
 /**
  * A lit ref the camera leaves wholly or partly out of view, for the scene types whose step boxes are known without
- * rendering (`stages`, from src/fit/report.ts). A ref is named as the step wrote it.
+ * rendering (`stages`, from src/utils/report.ts). A ref is named as the step wrote it.
  */
 export function checkCameraCrops(storyboard, hunks, stages, warnings) {
   storyboard.scenes.forEach((scene, i) => {

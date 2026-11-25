@@ -1,6 +1,6 @@
 # Text fit and inline markup
 
-Every text a scene draws is fitted to its place by `shared/textfit.mjs`: it wraps to the lines its slot allows, then shrinks to the slot's smallest readable size. A scene never cuts a word or ends a text in an ellipsis. Text that still does not fit at the smallest size is drawn at that size, running a little past its box, and `validate` fails, naming the scene, the item, the exact text and a fix. `validate` runs the player's own layout code (`src/fit/report.ts`, bundled with esbuild), so it and the video agree. Display text takes inline markup: `**bold**`, `` `code` ``, `==marked==` and `[words]{tone}`.
+Every text a scene draws is fitted to its place by `shared/textfit.mjs`: it wraps to the lines its slot allows, then shrinks to the slot's smallest readable size. A scene never cuts a word or ends a text in an ellipsis. Text that still does not fit at the smallest size is drawn at that size, running a little past its box, and `validate` fails, naming the scene, the item, the exact text and a fix. `validate` runs the player's own layout code (`src/utils/report.ts`, bundled with esbuild), so it and the video agree. Display text takes inline markup: `**bold**`, `` `code` ``, `==marked==` and `[words]{tone}`.
 
 ## Sub-features
 

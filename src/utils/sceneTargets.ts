@@ -1,5 +1,5 @@
 // Where the state scenes draw each item at each step, in their content box: what a pen mark and ink keep off and
-// draw on. The scenes draw from these, and `validate` reads them through src/fit/report.ts, so both see one layout.
+// draw on. The scenes draw from these, and `validate` reads them through src/utils/report.ts, so both see one layout.
 
 import { sceneStates } from '../../shared/state-steps.mjs';
 import { svgGeometry, svgOf, svgStage } from '../../shared/svg.mjs';
