@@ -104,12 +104,6 @@ dependencies = [
 
 [[package]]
 name = "bitflags"
-version = "1.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
-
-[[package]]
-name = "bitflags"
 version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
@@ -404,9 +398,9 @@ dependencies = [
 
 [[package]]
 name = "dugong"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e73195173b1a7575c33d3504223334700c59ca842bc895b8ee4d64707143b39"
+checksum = "a76274e60c76cfe5eb809869b706ec0d427c5c5781dbd1ab65c267626fab0ff3"
 dependencies = [
  "dugong-graphlib",
  "rustc-hash",
@@ -416,9 +410,9 @@ dependencies = [
 
 [[package]]
 name = "dugong-graphlib"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "533189757c8b5ba83e739bad85c91a4846aa1c6d538f4982e9f9e9e04b1bbeae"
+checksum = "49aff7cb470b59ad2c92a90f376d2a56edf982e3191f971f46c5692c50a87684"
 dependencies = [
  "hashbrown 0.17.2",
  "rustc-hash",
@@ -482,9 +476,9 @@ dependencies = [
 
 [[package]]
 name = "fancy-regex"
-version = "0.14.0"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e24cb5a94bcae1e5408b0effca5cd7172ea3c5755049c5f3af4cd283a165298"
+checksum = "0a2e16b9a584b602f1e0e5e22c30ca0906786088c27500653e432d086def8b53"
 dependencies = [
  "bit-set 0.8.0",
  "regex-automata",
@@ -633,7 +627,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "865dcc4105d51c323d8fedbb2d75b5e9c8ecddf5613f74c82f851d0afbc97114"
 dependencies = [
- "bitflags 2.13.2",
+ "bitflags",
  "bytemuck",
  "read-fonts 0.46.0",
  "smallvec",
@@ -814,7 +808,7 @@ dependencies = [
  "image-webp",
  "moxcms",
  "num-traits",
- "png 0.18.1",
+ "png",
  "zune-core",
  "zune-jpeg",
 ]
@@ -893,17 +887,6 @@ dependencies = [
 
 [[package]]
 name = "kurbo"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c62026ae44756f8a599ba21140f350303d4f08dcdcc71b5ad9c9bb8128c13c62"
-dependencies = [
- "arrayvec",
- "euclid",
- "smallvec",
-]
-
-[[package]]
-name = "kurbo"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b60dfc32f652b926df6192e55525b16d186c69d47876c3ead4da5cc9f8450e2"
@@ -976,9 +959,9 @@ checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "manatee"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92c11d4f209c48a4e4d0f6d941a81a27f682d909219dd3d3fb76b8c76212378f"
+checksum = "3b13dd38e6b5e9d099849ecf473c887fa99532ccc92aca25be0ef8fec92cb209"
 dependencies = [
  "indexmap",
  "libm",
@@ -1030,9 +1013,9 @@ dependencies = [
 
 [[package]]
 name = "merman"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93988c6bd2dc53a422d020835a3f547a63a7ed671568ca63bcd6814063176346"
+checksum = "4f9848959ed141728e224aaba721ef824b19352ac82c1213f24152a06dbfd5b7"
 dependencies = [
  "merman-analysis",
  "merman-ascii",
@@ -1048,9 +1031,9 @@ dependencies = [
 
 [[package]]
 name = "merman-analysis"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb246a18d406c959612bad1f2d5e98e83e0fde5184afcbe2c9730a2aeb8431df"
+checksum = "9df8b3c3bc1a0023b9239aaf9db5f4383ed32ff5ac81de83c694b354f657ca3c"
 dependencies = [
  "merman-core",
  "merman-model",
@@ -1061,12 +1044,13 @@ dependencies = [
 
 [[package]]
 name = "merman-ascii"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "837360a821ed73efe39298b9663a5fc17fade8c2ea3f8696227a5a13aba37c62"
+checksum = "01788fbca30fa4d1f38f9a8763254a8711034c3a43f0ab38cbdbe9d8f7aab126"
 dependencies = [
  "dugong",
  "merman-model",
+ "pulldown-cmark",
  "rustc-hash",
  "ryu-js",
  "serde",
@@ -1078,9 +1062,9 @@ dependencies = [
 
 [[package]]
 name = "merman-core"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0804cc914fa0850509423bc2ca0ac26c14c7bf6c5bd17be6db0c88cf7b020b4"
+checksum = "91173dcd1eb1f0e5942429297b38867e22c1918a9dc23fc95ec515186144ee9a"
 dependencies = [
  "cssparser",
  "granit-parser",
@@ -1099,9 +1083,9 @@ dependencies = [
 
 [[package]]
 name = "merman-editor-core"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8fb46be6927e9b81990e635026d0c7780c8351be8768fbb432414372ab7016f"
+checksum = "715da862a80bf1493dae9ffe869304c06f97c402386e286813e5f172dcbb00d6"
 dependencies = [
  "merman-analysis",
  "merman-core",
@@ -1111,18 +1095,18 @@ dependencies = [
 
 [[package]]
 name = "merman-elk-layered"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f261eaea69f2c0054ea56d4c5fc4be63677f2c8b99edece33ad61344e168110f"
+checksum = "897499a47993ef5999ce9d9498210a95e0ab6fe7b0814cb4513a7418ba66d132"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "merman-layout-elk"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "642faf8a3bbd9102b8b540c275e25590c43111854006f630dd0998df7847c325"
+checksum = "668cd869cdfd7b774b6e7d4ff7d1d477b29dd47f61cd96ee9d24e69a2441584b"
 dependencies = [
  "merman-elk-layered",
  "thiserror",
@@ -1130,9 +1114,9 @@ dependencies = [
 
 [[package]]
 name = "merman-markup"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d88fb230a4468263334b7855838b017104d0bc19f6b2f4f9105709181c0a84"
+checksum = "ce03974f937dc170850da04a02221d4a2c06da519ab637e5b5f7a2c13c05424f"
 dependencies = [
  "html5ever",
  "htmlize",
@@ -1144,9 +1128,9 @@ dependencies = [
 
 [[package]]
 name = "merman-model"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "556fb9f241be9774cc559910efc321f9f1729ed6f2df95a8c0736b10a0c89f92"
+checksum = "1c4af8ea8e627cdd4c95b01355d6e30e157c0b92175cf2a973b736e402c348b3"
 dependencies = [
  "htmlize",
  "indexmap",
@@ -1160,9 +1144,9 @@ dependencies = [
 
 [[package]]
 name = "merman-render"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39e7aa2f5a70da01c564a50dfde940dbdd9dac1e1913e44cccc617818c07c060"
+checksum = "bb626fa6363caa109dd459e48e0f1b9df495be762248a8cf4aafd0b9366f9b73"
 dependencies = [
  "base64",
  "cssparser",
@@ -1171,7 +1155,7 @@ dependencies = [
  "dugong",
  "euclid",
  "indexmap",
- "kurbo 0.13.1",
+ "kurbo",
  "libm",
  "manatee",
  "memchr",
@@ -1196,9 +1180,9 @@ dependencies = [
 
 [[package]]
 name = "merman-theme-contract"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cee9500467a9c953ee9d694075603262f542c1fd78f58271bd9032cf8a63845"
+checksum = "db3434b63ebf143f086a633a3f95ac0044959a8a04252041e22bef4c96bc6cf4"
 dependencies = [
  "serde",
  "serde_json",
@@ -1208,9 +1192,9 @@ dependencies = [
 
 [[package]]
 name = "merman-unicode-linebreak"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c96582eadcdcc0283f3e019b6daace2eec0bd6f58bd8133c3549c9459b4a2670"
+checksum = "fdf56ac6bf384e8187604351dca20f412bb186be11a9b44dd42e4d5b3f4189e6"
 
 [[package]]
 name = "metrics"
@@ -1275,7 +1259,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "tiny-skia 0.11.4",
+ "tiny-skia",
  "tract-core",
  "tract-hir",
  "tract-onnx",
@@ -1286,13 +1270,13 @@ name = "mrc_core"
 version = "0.1.0"
 dependencies = [
  "fancy-regex",
- "kurbo 0.11.3",
+ "kurbo",
  "merman",
  "resvg",
  "serde",
  "serde_json",
  "swash",
- "tiny-skia 0.11.4",
+ "tiny-skia",
  "unicode-normalization",
 ]
 
@@ -1609,24 +1593,11 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "png"
-version = "0.17.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82151a2fc869e011c153adc57cf2789ccb8d9906ce52c0b39a6b5697749d7526"
-dependencies = [
- "bitflags 1.3.2",
- "crc32fast",
- "fdeflate",
- "flate2",
- "miniz_oxide 0.8.9",
-]
-
-[[package]]
-name = "png"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60769b8b31b2a9f263dae2776c37b1b28ae246943cf719eb6946a1db05128a61"
 dependencies = [
- "bitflags 2.13.2",
+ "bitflags",
  "crc32fast",
  "fdeflate",
  "flate2",
@@ -1728,7 +1699,7 @@ version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
 dependencies = [
- "bitflags 2.13.2",
+ "bitflags",
  "memchr",
  "unicase",
 ]
@@ -1862,7 +1833,7 @@ version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
- "bitflags 2.13.2",
+ "bitflags",
 ]
 
 [[package]]
@@ -1871,7 +1842,7 @@ version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "580c875845b41ecb1564ad1ae4703044cef774145e3d7a94dc2b3fa7c97868fd"
 dependencies = [
- "bitflags 2.13.2",
+ "bitflags",
 ]
 
 [[package]]
@@ -1902,7 +1873,7 @@ dependencies = [
  "pico-args",
  "rgb",
  "svgtypes",
- "tiny-skia 0.12.0",
+ "tiny-skia",
  "usvg",
 ]
 
@@ -1963,7 +1934,7 @@ version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5e76742e5294153d4dde1207dbec5bdd81eef6fabdc0d2118babadabfd858aa"
 dependencies = [
- "bitflags 2.13.2",
+ "bitflags",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -2190,7 +2161,7 @@ version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f12b12995e3638c70618c1facb1ce65302f6a6f706b675f07c58a5d7391120e"
 dependencies = [
- "kurbo 0.13.1",
+ "kurbo",
  "siphasher",
 ]
 
@@ -2280,21 +2251,6 @@ dependencies = [
 
 [[package]]
 name = "tiny-skia"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83d13394d44dae3207b52a326c0c85a8bf87f1541f23b0d143811088497b09ab"
-dependencies = [
- "arrayref",
- "arrayvec",
- "bytemuck",
- "cfg-if",
- "log",
- "png 0.17.16",
- "tiny-skia-path 0.11.4",
-]
-
-[[package]]
-name = "tiny-skia"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47ffee5eaaf5527f630fb0e356b90ebdec84d5d18d937c5e440350f88c5a91ea"
@@ -2304,19 +2260,8 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "log",
- "png 0.18.1",
- "tiny-skia-path 0.12.0",
-]
-
-[[package]]
-name = "tiny-skia-path"
-version = "0.11.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9e7fc0c2e86a30b117d0462aa261b72b7a99b7ebd7deb3a14ceda95c5bdc93"
-dependencies = [
- "arrayref",
- "bytemuck",
- "strict-num",
+ "png",
+ "tiny-skia-path",
 ]
 
 [[package]]
@@ -2647,7 +2592,7 @@ dependencies = [
  "fontdb",
  "harfrust",
  "imagesize",
- "kurbo 0.13.1",
+ "kurbo",
  "log",
  "pico-args",
  "roxmltree",
@@ -2656,7 +2601,7 @@ dependencies = [
  "skrifa 0.49.0",
  "strict-num",
  "svgtypes",
- "tiny-skia-path 0.12.0",
+ "tiny-skia-path",
  "unicode-bidi",
  "unicode-script",
  "unicode-vo",
