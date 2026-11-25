@@ -1,7 +1,18 @@
 # mr-cast designed contract: design notes
 
-Contract: `docs/architecture.mmd` .
-Result (reworked): 22 nodes, 31 errors (4 root causes), 0 warnings, no unmapped files, no stale-map. See the rework section; the first-design sections it replaced are removed.
+Contract: `architecture.mmd` at the repository root, checked by `pnpm check` (ADR 51).
+Result: 22 nodes in 6 stacks, `driftwall lint --strict` clean. The 31 errors the first check found (4 root causes, listed below) are fixed.
+
+## Stacks, layers and order (ADR 51)
+
+The 22 nodes did not change. What changed is how they are grouped and what lint enforces between them:
+
+- Every node sits in a layer boundary, and every layer in a stack: `cli-stack`, `page`, `fit-check`, `foundation`, `engine` and `dev`.
+  `driftwall render --depth 1` draws the 6 stacks, which is the picture in CONTRIBUTING.md, and `--focus engine` draws the engine's layers in engine/README.md.
+- One `%% order` line per stack (CLI, page and fit check down to the foundation, the foundation, the engine) replaces the
+  "Forbidden directions" prose. An arrow that points up a layer is now a contract error, so the order cannot be silenced by drawing an arrow.
+  The rest of that prose (which part may import which) was already enforced, because an import without an arrow fails lint.
+- `dev` (tooling and tests) is in no order chain: tests import every stack.
 
 ## Sources used
 
@@ -38,9 +49,9 @@ The first design had 34 nodes, 12 of them in engine-core cut by file; the review
 `bin/lib/` and `engine/core/src/` are flat directories whose files belong to different nodes, so those maps are file lists (or `name*` patterns). A new file there fails lint as `unmapped-file` until someone places it in a node; that is intended, it forces the placement decision.
 `layout` and `fit` form their own subgraph (validate's TS fit check, bundled by the CLI); `src/fit/report.ts` stays mapped to `fit` until the move in the debt list.
 
-## Violation list (31 sites, 4 root causes)
+## Violation list (31 sites, 4 root causes, all fixed)
 
-All genuine. All four fixes applied together to a scratch copy (deleted): `lint --strict` clean (lint-checked, not compiled or run).
+Fixed by the change "Remove the 4 upward imports". Kept as the record of why the code moved. All genuine. All four fixes applied together to a scratch copy (deleted): `lint --strict` clean (lint-checked, not compiled or run).
 
 1. core-steps --> core-scenes, 4 imports: `states.rs:589` (`scenes::svg::motion::parse_transform`) and `targets/mod.rs:19, 20, 21` (`scenes::text::resolve_value`,
    `table::resolve`, `chart::resolve`). PROJECT OBSERVATION: upward imports, the legs of the chrome/scenes/states/targets/arrays cycle (scenes imports targets 38 times, states 23).
@@ -61,7 +72,7 @@ Debt lint cannot report is in the contract's "Not expressible yet" block (marks 
 
 1. DRIFTWALL DEFECT (cannot express the design; a fix is reported under way): an alias to a git-ignored build output never becomes an edge, even though the tool names the owner.
    Repro: `vite.config.ts` has `resolve: { alias: { 'mrc-wasm': path.resolve('engine/wasm/pkg/mrc_wasm.js') } }`; `engine/wasm/pkg` is git-ignored output; `src/player/CanvasPlayer.tsx:5`
-   does `import init, { Player } from 'mrc-wasm'`; the contract maps `engine/wasm/` to `engine-wasm`. `driftwall neighbors web-app --contract docs/architecture.mmd` prints
+   does `import init, { Player } from 'mrc-wasm'`; the contract maps `engine/wasm/` to `engine-wasm`. `driftwall neighbors web-app --contract architecture.mmd` prints
    `skipped: src/player/CanvasPlayer.tsx:5 mrc-wasm (alias-target-missing) ... the target lies in the directory of node engine-wasm`, yet no edge web-app --> engine-wasm is recorded. Consequences:
    the declared `web-app -.-> engine-wasm` stays dotted forever (never `planned-realized`), and any other node importing `mrc-wasm` passes lint. Suggested: when the message can name the owner node, emit that edge
    (kind from the import), so the edge is checked and a solid edge can be declared.

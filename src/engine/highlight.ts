@@ -4,7 +4,7 @@
 
 import type { HunkMap, Storyboard } from '../types';
 import { isHunkCell, resolveHunkCell } from '../../shared/compare.mjs';
-import { formatPayload } from '../utils/flowLayout';
+import { formatPayload } from '../../shared/flow-code.mjs';
 import { plainCodeColor, tokenColor, tokenizeHunkLines, tokenizeLines } from '../utils/highlight';
 
 /** A line of code as [text, CSS colour] pieces. */

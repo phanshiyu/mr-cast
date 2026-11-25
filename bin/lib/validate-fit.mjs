@@ -1,5 +1,5 @@
 // Checks that every text a scene draws fits where the scene draws it, and that its markup is well formed.
-// It runs the player's own layout code (src/fit/report.ts, bundled here with esbuild), so `validate` and
+// It runs the player's own layout code (src/utils/report.ts, bundled here with esbuild), so `validate` and
 // the rendered video can never disagree about which text fits.
 
 import fs from 'node:fs';
@@ -14,7 +14,7 @@ import { READABLE_PX } from '../../shared/textfit.mjs';
 import { checkCameraCrops } from './validate-camera.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const ENTRY = path.join(ROOT, 'src/fit/report.ts');
+const ENTRY = path.join(ROOT, 'src/utils/report.ts');
 
 let loaded;
 /** The report module, bundled from the player's source on first use. */

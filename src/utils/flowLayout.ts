@@ -1,4 +1,4 @@
-import { codeHunkId, codeRows } from '../../shared/flow-code.mjs';
+import { codeHunkId, codeRows, formatPayload } from '../../shared/flow-code.mjs';
 import { fitBlock, fitLines, fitText, measure, type Fit } from '../../shared/textfit.mjs';
 import { CODE_TAB_SIZE, contentBox } from '../components/theme';
 import { SLOTS, sized } from '../fit/slots';
@@ -23,15 +23,6 @@ const PAYLOAD_PAD = 52;
 const HEADLINE_PAD = 64;
 /** Share of the strip each actor may take, leaving room for the arrow and "step N/M". */
 const STRIP_SHARE = 0.4;
-
-/** Pretty-printed JSON when the payload parses, otherwise the raw text. */
-export function formatPayload(payload: string): { text: string; language: string } {
-  try {
-    return { text: JSON.stringify(JSON.parse(payload), null, 2), language: 'json' };
-  } catch {
-    return { text: payload, language: 'plain' };
-  }
-}
 
 /** The file bar above real code, and the padding around it. */
 const CODE_BAR_H = 64;

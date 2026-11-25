@@ -1,0 +1,212 @@
+%% mr-cast architecture contract. driftwall enforces it in `pnpm check` (ADR 51).
+%%
+%% Start here. mr-cast is three stacks:
+%%  - the Node CLI (bin/), which the user runs,
+%%  - the browser page (src/), which `play` and `plan` serve,
+%%  - the Rust engine (engine/), which draws every frame, both into the MP4 and inside the page.
+%% Inside a stack, code imports only downward: each `%% order` line lists a stack's layers from the top.
+%% A solid arrow is an import the design allows, and an import without an arrow fails lint. -->|test| allows test code only.
+%%
+%% The stacks meet in three places, and none of them is an import, so none is an arrow:
+%%  - CLI -> engine: bin/lib/engine.mjs writes props JSON and spawns the mr-cast-engine binary (engine/cli).
+%%  - page -> engine: src/player/CanvasPlayer.tsx imports `mrc-wasm`, a vite alias to the wasm-pack build of engine/wasm.
+%%    driftwall resolves the alias into engine/wasm/, so that one is an arrow (web-app --> engine-wasm).
+%%  - CLI -> src: esbuild bundles src/utils/report.ts into `validate` (bin/lib/validate-fit.mjs) and src/engine/highlight.ts
+%%    into `render` (bin/lib/engine.mjs). The CLI never imports src/ but types.
+%%
+%% Pictures: `driftwall render --depth 1` is the three-stack overview, `driftwall render --focus engine` one stack.
+%% CONTRIBUTING.md and engine/README.md keep generated copies that `pnpm check` keeps current.
+%% Reasoning behind the cut: docs/architecture-notes.md.
+flowchart LR
+  subgraph cli-stack["Node CLI (bin/): the commands the user runs"]
+    subgraph cli-top["Entry"]
+      cli["cli: bin/mr-cast.mjs reads argv and runs the command"]
+    end
+    subgraph cli-commands["Commands"]
+      cli-validate["cli-validate: the storyboard checks and their suggestions"]
+      cli-engine["cli-engine: drives the Rust engine: render, stills, and the voice-over with its settings"]
+      cli-serve["cli-serve: the local server for play and plan"]
+    end
+    subgraph cli-state["Workspace"]
+      cli-workspace["cli-workspace: what the CLI keeps on disk: runs, processes, pruning, updates, skill install, snippets, change maps, images and plans"]
+    end
+    subgraph cli-helpers["Helpers"]
+      cli-base["cli-base: UserError, JSON, git, diff parsing, cache and lock"]
+    end
+  end
+
+  subgraph page["Browser page (src/): the player that play serves"]
+    subgraph page-app["App"]
+      web-app["web-app: the page shell, the panels and the canvas player with its timeline"]
+    end
+    subgraph page-bridge["Engine bridge"]
+      web-engine["web-engine: the syntax colours handed to the engine"]
+    end
+  end
+
+  subgraph fit-check["Fit check (src/utils, src/fit): validate's TS copy of the engine's layouts, bundled by the CLI"]
+    subgraph fit-layouts["Layouts"]
+      layout["layout: one TS layout per scene type, and the report validate runs over them"]
+    end
+    subgraph fit-places["Places"]
+      fit["fit: where text goes: slots, shell box, callout and source fit"]
+    end
+  end
+
+  subgraph foundation["Shared by the CLI and the page"]
+    subgraph found-rules["Storyboard rules"]
+      shared["shared: storyboard semantics both runtimes run: timing, steps, targets, text fit, normalize"]
+    end
+    subgraph found-schema["Schema"]
+      types["types: the storyboard schema and the palette and frame tokens"]
+    end
+  end
+
+  subgraph engine["Rust engine (engine/): draws every frame"]
+    subgraph engine-bins["Binaries"]
+      engine-cli["engine-cli: the mr-cast-engine commands (render, still, sheet, probe, voice) and the MP4 encoder"]
+      engine-wasm["engine-wasm: the page's renderer, the core behind wasm-bindgen"]
+      dizione["dizione: English text to tiny-voca phoneme tokens"]
+    end
+    subgraph core-composition["Composition"]
+      core-api["core-api: Project, build_frame and render_frame, and the rasterizer"]
+    end
+    subgraph core-scene-types["Scene types"]
+      core-scenes["core-scenes: one module per scene type behind one registry, the chrome every scene shares, and the dispatch from a scene's type to its refs"]
+    end
+    subgraph core-refs["Refs, steps and the pen"]
+      core-steps["core-steps: what a step's focus names, how steps change a scene, pen marks, ink and the camera"]
+    end
+    subgraph core-drawing["Drawing"]
+      core-draw["core-draw: display list, icons, diagram paths, board look, fonts, text fitting, colours, easing, the palette, and step light and motion"]
+    end
+    subgraph core-model["Script model"]
+      core-script["core-script: the props model, timing, markup, speech, focus and chapters"]
+    end
+  end
+
+  subgraph dev["Tooling and tests"]
+    tooling["tooling: repo scripts, vite config, index.html, the agent verify skill, the evaluation harness and the example generators"]
+    tests["tests: the node test suites and the Rust tests that check the engine against the JS"]
+  end
+
+  %% order: cli-top > cli-commands > cli-state > cli-helpers > foundation
+  %% order: page-app > page-bridge > foundation
+  %% order: fit-layouts > fit-places > foundation
+  %% order: found-rules > found-schema
+  %% order: engine-bins > core-composition > core-scene-types > core-refs > core-drawing > core-model
+
+  %% Why an arrow is there, where it is not obvious:
+  %% cli --> every command, cli-workspace, cli-base and shared: bin/mr-cast.mjs parses argv and orchestrates every command.
+  %% cli-serve --> cli-engine: the server names the voice clips (AUDIO_NAME of voice.mjs).
+  %% cli-engine --> cli-workspace: voice-child.mjs registers itself in the process registry (procs.mjs), ADR 27.
+  %% cli-workspace --> types and shared --> types: type-only (JSDoc and .d.mts).
+  %% web-app owns src/utils/timing.ts and captions.ts (the playback timeline and caption pages); they import no layout.
+  %% web-engine owns src/utils/highlight.ts, the Prism highlighter whose colours the engine draws code in.
+  %% tooling --> web-app, shared: index.html loads src/main.tsx; the evaluation harness and example generators import shared.
+  %% engine-cli --> core-script, core-draw: main.rs reads Props and timing; sheet.rs draws its labels with the core's text and display list.
+  %% engine-cli --> dizione: voice.rs speaks clips with tiny-voca, whose phonemizer is dizione.
+  %% core-scenes --> core-steps: a scene is built from refs, states, the pen and the camera (engine/README.md); nothing below imports scenes.
+  %%   The steps code reaches a scene's own resolver only through scenes/refs.rs, and the svg scene hands its transform check
+  %%   to its StateModel, so core-steps never imports core-scenes.
+  %% tests -->|test| ...: test/ imports whatever it exercises; engine/core/tests check timing, speech, text fitting, springs, easings
+  %%   and pen geometry against the JS's own output; engine/dizione/tests check the phonemizer.
+  %%
+  %% Not expressible yet (lint cannot check these, review them by hand):
+  %% - marks <-> camera inside core-steps: marks::Pen holds a Board and a Camera, and camera.rs imports marks. Accepted as one
+  %%   subsystem (engine/README.md). If it is ever split, put Pen in a module above both.
+  %% - Bundled, not imported: the esbuild bundles above, and scripts/engine-dump.mjs, which bundles src/fit, src/engine and shared
+  %%   from an esbuild stdin template. test/ reaches src/utils only by bundling it too.
+  %% - Type-only edges are written as solid arrows: a value import from types would pass.
+  %% - core-script, core-draw and the core crate have no threads, files or processes, so they build for wasm32. Not an import rule:
+  %%   std::fs or std::thread in them would pass.
+  %% - The props JSON between bin/lib/engine.mjs and model.rs is a contract between two languages, not an import.
+  %% - core-draw keeps global state that Project::new sets (look::set_board): a dependency by side effect.
+  %% - core-scenes is one registry with a module per scene type; sibling scene modules import each other (graph -> table and
+  %%   text, map -> svg and media, files -> tests), and chrome sits inside it. Lint sees one node, so those are unchecked.
+  %% - dizione ports a Python package module by module; its modules are acyclic but lint sees one node.
+
+  %% map cli: bin/mr-cast.mjs, bin/mr-cast
+  %% map cli-validate: bin/lib/validate*.mjs, bin/lib/suggest.mjs, bin/lib/tones.mjs, bin/lib/highlight.mjs
+  %% map cli-engine: bin/lib/engine.mjs, bin/lib/render.mjs, bin/lib/stills.mjs, bin/lib/voice*.mjs, bin/lib/tiny-voca.mjs, bin/lib/settings.mjs
+  %% map cli-serve: bin/lib/server.mjs, bin/lib/serving.mjs
+  %% map cli-workspace: bin/lib/runs.mjs, bin/lib/procs.mjs, bin/lib/prune.mjs, bin/lib/summary.mjs, bin/lib/update*.mjs, bin/lib/upgrade.mjs, bin/lib/install-skill.mjs, bin/lib/schema.mjs, bin/lib/explain.mjs, bin/lib/change-map.mjs, bin/lib/images.mjs, bin/lib/plan.mjs
+  %% map cli-base: bin/lib/errors.mjs, bin/lib/json.mjs, bin/lib/git.mjs, bin/lib/diff.mjs, bin/lib/cache.mjs, bin/lib/lock.mjs, bin/lib/public-fetch.mjs
+  %% map web-app: src/main.tsx, src/App.tsx, src/GuidePanel.tsx, src/PlanPage.tsx, src/QuickParts.tsx, src/ReadingPanel.tsx, src/fonts.ts, src/index.css, src/assets/, src/player/, src/utils/timing.ts, src/utils/captions.ts
+  %% map web-engine: src/engine/, src/utils/highlight.ts, src/utils/prismDocker.ts
+  %% map layout: src/utils/
+  %% map fit: src/fit/
+  %% map shared: shared/
+  %% map types: src/types.ts, src/components/theme.ts
+  %% map tooling: scripts/, .claude/, vite.config.ts, index.html, quality/, examples/
+  %% map tests: test/, engine/core/tests/, engine/dizione/tests/
+  %% map engine-cli: engine/cli/src/
+  %% map engine-wasm: engine/wasm/
+  %% map dizione: engine/dizione/src/
+  %% map core-api: engine/core/src/lib.rs, engine/core/src/raster.rs
+  %% map core-scenes: engine/core/src/scenes/, engine/core/src/chrome/, engine/core/src/review.rs
+  %% map core-steps: engine/core/src/targets/, engine/core/src/arrays.rs, engine/core/src/states.rs, engine/core/src/marks/, engine/core/src/camera.rs
+  %% map core-draw: engine/core/src/display.rs, engine/core/src/icons.rs, engine/core/src/diagram.rs, engine/core/src/look.rs, engine/core/src/text.rs, engine/core/src/textfit.rs, engine/core/src/color.rs, engine/core/src/anim.rs, engine/core/src/theme.rs, engine/core/src/steps.rs
+  %% map core-script: engine/core/src/model.rs, engine/core/src/markup.rs, engine/core/src/speech.rs, engine/core/src/timing.rs, engine/core/src/focus.rs, engine/core/src/chapters.rs
+
+  cli --> cli-validate
+  cli --> cli-engine
+  cli --> cli-serve
+  cli --> cli-workspace
+  cli --> cli-base
+  cli --> shared
+  cli-serve --> cli-workspace
+  cli-serve --> cli-engine
+  cli-engine --> cli-workspace
+  cli-engine --> cli-base
+  cli-engine --> shared
+  cli-workspace --> cli-base
+  cli-workspace --> shared
+  cli-workspace --> types
+  cli-validate --> shared
+  web-app --> web-engine
+  web-app --> shared
+  web-app --> types
+  web-app --> engine-wasm
+  web-engine --> shared
+  web-engine --> types
+  layout --> fit
+  layout --> shared
+  layout --> types
+  fit --> shared
+  fit --> types
+  shared --> types
+  tooling --> web-app
+  tooling --> shared
+  engine-cli --> dizione
+  engine-cli --> core-api
+  engine-cli --> core-script
+  engine-cli --> core-draw
+  engine-wasm --> core-api
+  core-api --> core-scenes
+  core-api --> core-draw
+  core-api --> core-script
+  core-scenes --> core-steps
+  core-scenes --> core-draw
+  core-scenes --> core-script
+  core-steps --> core-draw
+  core-steps --> core-script
+  core-draw --> core-script
+  tests -->|test| shared
+  tests -->|test| cli-validate
+  tests -->|test| cli-engine
+  tests -->|test| layout
+  tests -->|test| cli-workspace
+  tests -->|test| cli-serve
+  tests -->|test| cli
+  tests -->|test| cli-base
+  tests -->|test| core-script
+  tests -->|test| core-draw
+  tests -->|test| core-steps
+  tests -->|test| tooling
+  tests -->|test| dizione
+  tests -->|test| types
+  tests -->|test| web-app
+
+  %% exports core-api: FrameRenderer, Pixmap, Project, build_frame, frame_size, render_frame, render_frame_into, render_frame_with, render_list, render_list_into
+  %% exports dizione: DATA_FILES, NothingToPronounce, Phonemized, Phonemizer, SYMBOLS, is_phone

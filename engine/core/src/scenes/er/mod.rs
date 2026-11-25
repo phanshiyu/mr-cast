@@ -19,10 +19,10 @@ use crate::display::{BoxStyle, DisplayList, PathBuilder, Shadow, Stroke};
 use crate::icons;
 use crate::marks::geometry::{Bx, Pt as MPt};
 use crate::marks::{LayoutBoxes, Pen, Stage, around};
+use crate::scenes::refs::SceneRefs;
+use crate::scenes::refs::target_steps;
 use crate::steps::Emphasis;
 use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
-use crate::targets::SceneRefs;
-use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in, line_metrics};
 use crate::theme::{
     ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, ADD_BG, BORDER, BORDER_STRONG, DEL, FAINT, MUTED, RAISED, TEXT, content_box,

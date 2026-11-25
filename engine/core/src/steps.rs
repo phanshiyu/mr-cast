@@ -91,7 +91,7 @@ pub fn as_bright_as(own: Emphasis, others: &[Emphasis]) -> Emphasis {
     Emphasis { opacity: others.iter().fold(own.opacity, |m, e| m.max(e.opacity)), ..own }
 }
 
-/// Emphasis by item key for a scene whose steps take `focus` (`focusSpotlight`); `steps` is `targets::target_steps`.
+/// Emphasis by item key for a scene whose steps take `focus` (`focusSpotlight`); `steps` is `scenes::refs::target_steps`.
 pub struct FocusSpotlight<'a> {
     spot: Spotlight,
     steps: std::borrow::Cow<'a, std::collections::HashMap<String, Vec<usize>>>,

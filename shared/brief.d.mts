@@ -28,3 +28,5 @@ export declare function coreOnScreen(
   lines: ReadonlyMap<string, ReadonlySet<number>>,
 ): CoreOnScreen[];
 export declare function coreOnScreenLine(core: readonly CoreOnScreen[] | undefined): string;
+export declare function runsOf(scenes: unknown[]): { type: string; from: number; length: number }[];
+export declare function mixLine(scenes: unknown): string | null;
