@@ -13,9 +13,9 @@ use crate::color::Color;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
 use crate::marks::geometry::{Bx, Pt as MPt};
 use crate::marks::{Board, LayoutBoxes, MarkTargets, Stage, StepRefs};
+use crate::scenes::refs::target_steps;
 use crate::states::{SceneState, StateFrame, hex_alpha, js_string, list, ordered_entries, walk_states};
 use crate::steps::{FocusSpotlight, as_bright_as, brighter};
-use crate::targets::target_steps;
 
 use crate::steps::Emphasis;
 use crate::textfit::{Fit, Slot, fit_text};
@@ -593,7 +593,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     let layout = layout_memory(scene, &states, box_size)?;
     let stage = Stage::centred(box_size, (layout.width, layout.height), layout.scale);
     let marks: Vec<MarkTargets> = states[1..].iter().map(|st| stage.targets(&layout.boxes(st), box_size)).collect();
-    let refs = crate::targets::SceneRefs(scene);
+    let refs = crate::scenes::refs::SceneRefs(scene);
     let step_refs = StepRefs::Scene(&refs);
     let board = Board::new(scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
     let camera = Camera::new(scene, &step_refs, box_size);

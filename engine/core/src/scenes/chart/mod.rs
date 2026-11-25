@@ -280,7 +280,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         Body::Column(column::Column::new(&scene, box_w, box_h, &cstates))
     };
     let marks = targets::step_targets(&scene, &body, &cstates[1..], (box_w, box_h));
-    let refs = crate::targets::SceneRefs(input.scene);
+    let refs = crate::scenes::refs::SceneRefs(input.scene);
     let step_refs = StepRefs::Scene(&refs);
     let board = Board::new(input.scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
     let camera = Camera::new(input.scene, &step_refs, (box_w, box_h));
@@ -362,7 +362,7 @@ impl SceneView for ChartView {
             frame,
             before,
             now,
-            focus: Focus::new(crate::targets::target_steps(&self.raw), f.segments, frame),
+            focus: Focus::new(crate::scenes::refs::target_steps(&self.raw), f.segments, frame),
             segments: f.segments,
             sf,
         };

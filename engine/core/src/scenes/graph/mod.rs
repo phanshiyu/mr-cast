@@ -22,10 +22,10 @@ use crate::diagram::{bez, end_dir, marker, skia, start_dir, strike, trim};
 use crate::display::{BoxStyle, DisplayList, Shadow, Stroke};
 use crate::marks::geometry::{Bx, Pt};
 use crate::marks::{Board, LayoutBoxes, MarkTargets, Stage, StepRefs, around};
+use crate::scenes::refs::target_steps;
 use crate::states::{SceneState, StateFrame, walk_states};
 use crate::steps::Emphasis;
 use crate::steps::{FocusSpotlight as Focus, as_bright_as, brighter};
-use crate::targets::target_steps;
 use crate::text::{Face, Style, baseline_in};
 use crate::textfit::Fit;
 use crate::theme::{ACCENT, ACCENT_GLOW, ACCENT_SOFT, ADD, BORDER_STRONG, DEL, MUTED, RAISED, TEXT, content_box, tone};
@@ -135,7 +135,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             None => graph.clone(),
         })
         .collect();
-    let refs = crate::targets::SceneRefs(json);
+    let refs = crate::scenes::refs::SceneRefs(json);
     let step_refs = StepRefs::Scene(&refs);
     let board = Board::new(json, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
     let camera = Camera::new(json, &step_refs, header_box(json));

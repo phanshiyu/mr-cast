@@ -511,6 +511,8 @@ pub fn hex_alpha(alpha: f64) -> f32 {
 
 /// The key an svg `move` names, or None.
 pub type MoveKey<'a> = dyn Fn(&str) -> Option<String> + Sync + 'a;
+/// Whether an svg `move` target parses as a transform.
+pub type TransformCheck<'a> = dyn Fn(&str) -> bool + Sync + 'a;
 /// Whether path `id` can morph into `target` from a state.
 pub type MorphCheck<'a> = dyn Fn(&SceneState, &str, &str) -> bool + Sync + 'a;
 
@@ -530,6 +532,8 @@ pub struct ClosureModel<'a> {
     pub trace_key: &'a (dyn Fn(&Value) -> Option<String> + Sync),
     /// An svg's moves: the key a move names, or None.
     pub move_key: Option<&'a MoveKey<'a>>,
+    /// An svg's moves: whether a move's target is a transform it can play.
+    pub move_valid: Option<&'a TransformCheck<'a>>,
     /// An svg's morphs: whether path `id` can morph into `target` from this state.
     pub morph: Option<&'a MorphCheck<'a>>,
     /// An svg's moves and morphs before any step: those a continued picture carries from the scene before.
@@ -574,7 +578,9 @@ impl StateModel for ClosureModel<'_> {
     }
     /// An svg step's `move` (a transform, played across its `when` words) and `morph` (a path into another's shape).
     fn apply_extra(&self, _scene: &Value, step: &Value, next: &mut SceneState) {
-        if let (Some(mv), Some(move_key)) = (step.get("move").and_then(Value::as_object), self.move_key) {
+        if let (Some(mv), Some(move_key), Some(move_valid)) =
+            (step.get("move").and_then(Value::as_object), self.move_key, self.move_valid)
+        {
             for (name, value) in mv {
                 let Some(key) = move_key(name) else { continue };
                 let (to, when) = match value {
@@ -586,7 +592,7 @@ impl StateModel for ClosureModel<'_> {
                     _ => (None, None),
                 };
                 let Some(to) = to else { continue };
-                if crate::scenes::svg::motion::parse_transform(to).is_some() {
+                if move_valid(to) {
                     next.transforms.insert(key.clone(), to.trim().to_string());
                     if let Some(w) = when {
                         next.spans.insert(key, w);

@@ -23,6 +23,7 @@ pub mod mermaid;
 pub mod placeholder;
 pub mod plot;
 pub mod reading;
+pub mod refs;
 pub mod review;
 pub mod sequence;
 pub mod state;

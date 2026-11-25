@@ -1,33 +1,13 @@
 //! What a step's `focus` can point at: a port of shared/targets.mjs. A ref resolves to item keys such as "n:api",
 //! "m:2" or "b:0"; a scene lights every item whose key a step's refs resolve to, and pen marks, ink and the camera
 //! aim at the same keys. Each scene type's entry of TARGETS lives in a submodule here or, for types that resolve
-//! through their own typed layout, in the scene's module; [`resolve_ref`] dispatches on the scene's type.
+//! through their own typed layout, in the scene's module; `scenes::refs::resolve_ref` dispatches on the scene's type.
 
 pub mod diagrams;
 pub mod graph;
 
-use crate::marks::Refs;
 use serde_json::Value;
 use std::collections::HashMap;
-
-/// A type's own resolution (`TARGETS[type].resolve`), without the index-as-text fallback.
-pub fn resolve(scene: &Value, r: &Value) -> Option<Vec<String>> {
-    match scene.get("type").and_then(Value::as_str)? {
-        "graph" | "er" | "state" => graph::resolve(scene, r),
-        "sequence" | "timeline" | "layers" => diagrams::resolve(scene, r),
-        "array" | "memory" => crate::arrays::resolve(scene, r),
-        "text" => crate::scenes::text::resolve_value(scene, r),
-        "table" => crate::scenes::table::resolve(scene, r),
-        "chart" => crate::scenes::chart::resolve(scene, r),
-        _ => None,
-    }
-}
-
-/// The item keys a ref names, or None when the scene has nothing it names (`resolveRef`): an index written as text,
-/// "2", means the index when nothing in the scene is named "2".
-pub fn resolve_ref(scene: &Value, r: &Value) -> Option<Vec<String>> {
-    with_fallback(r, |r| resolve(scene, r))
-}
 
 /// `resolveRef` over any resolution.
 pub fn with_fallback(r: &Value, resolve: impl Fn(&Value) -> Option<Vec<String>>) -> Option<Vec<String>> {
@@ -36,15 +16,6 @@ pub fn with_fallback(r: &Value, resolve: impl Fn(&Value) -> Option<Vec<String>>)
         (!t.is_empty() && t.bytes().all(|b| b.is_ascii_digit()))
             .then(|| resolve(&Value::from(t.parse::<u64>().ok()?)))?
     })
-}
-
-/// A scene's refs, for pen marks, ink and the camera (`marks::Refs`), by its type's entry here.
-pub struct SceneRefs<'a>(pub &'a Value);
-
-impl Refs for SceneRefs<'_> {
-    fn resolve(&self, r: &Value) -> Option<Vec<String>> {
-        resolve(self.0, r)
-    }
 }
 
 /// A step's `focus` refs, one or a list (`focusRefs`).
@@ -78,11 +49,6 @@ pub fn step_targets_with(scene: &Value, resolve: impl Fn(&Value) -> Option<Vec<S
         .collect()
 }
 
-/// `stepTargets` by the scene type's entry.
-pub fn step_targets(scene: &Value) -> Vec<Vec<String>> {
-    step_targets_with(scene, |r| resolve(scene, r))
-}
-
 /// For each item key, the steps that light it, in order (`targetSteps`), by any resolution.
 pub fn target_steps_with(
     scene: &Value,
@@ -95,11 +61,6 @@ pub fn target_steps_with(
         }
     }
     out
-}
-
-/// `targetSteps` by the scene type's entry.
-pub fn target_steps(scene: &Value) -> HashMap<String, Vec<usize>> {
-    target_steps_with(scene, |r| resolve(scene, r))
 }
 
 /// `Number.isInteger(ref) && ref >= 0 && ref < count`, for a ref written as a number.

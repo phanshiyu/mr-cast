@@ -129,7 +129,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
             Stage { left: 0.0, top, scale: l.scale }.targets(&layout::table_boxes(l), (bw, box_h))
         })
         .collect();
-    let refs = crate::targets::SceneRefs(input.scene);
+    let refs = crate::scenes::refs::SceneRefs(input.scene);
     let step_refs = StepRefs::Scene(&refs);
     let board = Board::new(input.scene, input.segments, &step_refs, &|k| marks.get(k).cloned(), &|_| None);
     let camera = Camera::new(input.scene, &step_refs, crate::chrome::callout::header_box(input.scene));
@@ -141,7 +141,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         columns: scene.columns,
         highlight: scene.highlight,
         has_steps: !scene.steps.is_empty(),
-        targets: crate::targets::target_steps(input.scene),
+        targets: crate::scenes::refs::target_steps(input.scene),
         states,
         layouts,
         callout,

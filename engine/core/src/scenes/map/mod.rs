@@ -640,6 +640,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         check_value: &check_value,
         trace_key: &trace_key,
         move_key: None,
+        move_valid: None,
         morph: None,
         initial_transforms: HashMap::new(),
         initial_shapes: HashMap::new(),

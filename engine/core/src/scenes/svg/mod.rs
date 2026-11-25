@@ -1216,6 +1216,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
     };
     let root_is = |name: &str| drawing.root.attr("id") == Some(name);
     let move_key = |name: &str| ids.contains_key(name).then(|| format!("s:{name}")).filter(|_| !root_is(name));
+    let move_valid = |to: &str| motion::parse_transform(to).is_some();
     let morph = |next: &SceneState, id: &str, target: &str| -> bool {
         let (Some(a), Some(b)) = (ids.get(id), ids.get(target)) else { return false };
         if a.tag != "path" || b.tag != "path" {
@@ -1235,6 +1236,7 @@ pub fn prepare(input: &SceneInput) -> Result<Box<dyn SceneView>, String> {
         check_value: &check_value,
         trace_key: &trace_key,
         move_key: Some(&move_key),
+        move_valid: Some(&move_valid),
         morph: Some(&morph),
         initial_transforms: carried("move").into_iter().collect(),
         initial_shapes: carried("morph").into_iter().collect(),

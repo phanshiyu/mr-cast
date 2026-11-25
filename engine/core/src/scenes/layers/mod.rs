@@ -21,9 +21,9 @@ use crate::diagram::polyline;
 use crate::display::{BoxStyle, DisplayList, Paint, PathBuilder, Shadow, Stroke};
 use crate::marks::geometry::Bx;
 use crate::marks::{LayoutBoxes, Pen, Stage};
+use crate::scenes::refs::SceneRefs;
+use crate::scenes::refs::target_steps;
 use crate::steps::{Emphasis, FocusSpotlight, as_bright_as, brighter};
-use crate::targets::SceneRefs;
-use crate::targets::target_steps;
 use crate::text::{Face, line_metrics};
 use crate::textfit::Fit;
 use crate::theme::{

@@ -1,6 +1,6 @@
 //! The way a layers scene's request token travels: a port of shared/layers.mjs.
 
-use crate::targets::{resolve_ref, step_targets};
+use crate::scenes::refs::{resolve_ref, step_targets};
 use serde_json::Value;
 
 use crate::states::list;
