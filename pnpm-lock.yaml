@@ -218,6 +218,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.3.0(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0))
+      driftwall:
+        specifier: 0.4.0
+        version: 0.4.0
       fallow:
         specifier: 3.46.0
         version: 3.46.0
@@ -1381,6 +1384,11 @@ packages:
 
   dompurify@3.4.18:
     resolution: {integrity: sha512-ofe3wI/uNm68HInABYFJYqQxRw1EaKAjNdrFVKqjUY+UZurvNd2L/HuQe097s/4RivWiZyP6tT7aoT8atjfhwg==}
+
+  driftwall@0.4.0:
+    resolution: {integrity: sha512-jhA26+DG/HT5loLh+v2JglVvrxXMwGua8203mADt41VWBFsA2hRnP+pDAx8VTfmZsaToLVW97LKRTVgjoFd5jA==}
+    engines: {node: '>=14.18', npm: '>=6'}
+    hasBin: true
 
   elkjs@0.12.1:
     resolution: {integrity: sha512-IhMYKHE4S2vtx0QrhBP3lYOIKDeIiJXBrdq9MGYkuB8ZHqhrBnHNfSUndjXFewrX1CPK8chwq+2NA0K0hliYuw==}
@@ -2596,6 +2604,10 @@ snapshots:
   dompurify@3.4.18:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
+
+  driftwall@0.4.0:
+    dependencies:
+      detect-libc: 2.1.2
 
   elkjs@0.12.1: {}
 
