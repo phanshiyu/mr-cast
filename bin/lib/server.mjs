@@ -50,6 +50,8 @@ function sendFile(req, res, file, headers = {}) {
   fs.open(file, 'r', (openErr, fd) => {
     if (openErr) return send(res, 404, 'not found');
     fs.fstat(fd, (err, st) => {
+      // The client went away, or the server closed, while the file opened: piping to the dead response would throw.
+      if (res.destroyed) return fs.close(fd, () => {});
       if (err || !st.isFile()) {
         fs.close(fd, () => {});
         return send(res, 404, 'not found');
