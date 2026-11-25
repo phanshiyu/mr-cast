@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateStoryboard } from '../bin/lib/validate.mjs';
 import { formatOutline, formatValidation } from '../bin/lib/summary.mjs';
-import { mixLine } from '../bin/lib/validate-mix.mjs';
+import { mixLine } from '../shared/brief.mjs';
 
 const line = (type, newLine, text) => ({
   type,

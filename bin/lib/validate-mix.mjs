@@ -7,6 +7,7 @@
 import { shownHunkIds } from '../../shared/shown-hunks.mjs';
 import { isTestFile } from '../../shared/test-files.mjs';
 import { plainText } from '../../shared/markup.mjs';
+import { runsOf } from '../../shared/brief.mjs';
 
 /** A run of this many scenes of one type in a row is reported. */
 const RUN_MIN = 4;
@@ -29,30 +30,6 @@ const named = (items) =>
     ? `${items.slice(0, LIST_MAX).join(', ')} and ${items.length - LIST_MAX} more`
     : items.join(', ');
 const fold = (text) => plainText(text).replace(/\s+/g, ' ').trim().toLowerCase();
-
-/** The runs of one type in a row, as { type, from, length } with `from` a scene index. */
-function runsOf(scenes) {
-  const runs = [];
-  scenes.forEach((s, i) => {
-    const type = isObj(s) && isStr(s.type) ? s.type : null;
-    const last = runs.at(-1);
-    if (last && type !== null && last.type === type) last.length++;
-    else runs.push({ type, from: i, length: 1 });
-  });
-  return runs.filter((r) => r.type !== null);
-}
-
-/** `scenes: 9 · code 7, text 1, state 1 · longest run: 7 code`, or null when no scene has a type. */
-export function mixLine(scenes) {
-  if (!Array.isArray(scenes)) return null;
-  const runs = runsOf(scenes);
-  if (!runs.length) return null;
-  const counts = new Map();
-  for (const s of scenes) if (isObj(s) && isStr(s.type)) counts.set(s.type, (counts.get(s.type) ?? 0) + 1);
-  const byCount = [...counts].sort((a, b) => b[1] - a[1]).map(([type, n]) => `${type} ${n}`);
-  const longest = runs.reduce((a, b) => (b.length > a.length ? b : a));
-  return `scenes: ${[...counts.values()].reduce((a, b) => a + b, 0)} · ${byCount.join(', ')} · longest run: ${longest.length} ${longest.type}`;
-}
 
 function checkRuns(scenes, warnings) {
   for (const r of runsOf(scenes))

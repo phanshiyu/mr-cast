@@ -217,3 +217,32 @@ export function guideMarkdown(storyboard, hunks, { branch, base } = {}) {
   const against = branch && base ? `This is \`${branch}\` against \`${base}\`.\n\n` : '';
   return `${GUIDE_HEADING}${oneLine(storyboard.title)}\n\n${against}${sections(storyboard.brief, hunks).join('\n').trimEnd()}\n`;
 }
+
+const typeOf = (s) => (object(s) && typeof s.type === 'string' && s.type.trim().length > 0 ? s.type : null);
+
+/** The runs of one type in a row, as { type, from, length } with `from` a scene index. */
+export function runsOf(scenes) {
+  const runs = [];
+  scenes.forEach((s, i) => {
+    const type = typeOf(s);
+    const last = runs.at(-1);
+    if (last && type !== null && last.type === type) last.length++;
+    else runs.push({ type, from: i, length: 1 });
+  });
+  return runs.filter((r) => r.type !== null);
+}
+
+/** `scenes: 9 · code 7, text 1, state 1 · longest run: 7 code`, or null when no scene has a type. */
+export function mixLine(scenes) {
+  if (!Array.isArray(scenes)) return null;
+  const runs = runsOf(scenes);
+  if (!runs.length) return null;
+  const counts = new Map();
+  for (const s of scenes) {
+    const type = typeOf(s);
+    if (type !== null) counts.set(type, (counts.get(type) ?? 0) + 1);
+  }
+  const byCount = [...counts].sort((a, b) => b[1] - a[1]).map(([type, n]) => `${type} ${n}`);
+  const longest = runs.reduce((a, b) => (b.length > a.length ? b : a));
+  return `scenes: ${[...counts.values()].reduce((a, b) => a + b, 0)} · ${byCount.join(', ')} · longest run: ${longest.length} ${longest.type}`;
+}
