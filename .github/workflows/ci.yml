@@ -87,7 +87,9 @@ jobs:
   engine-platforms:
     name: Engine on ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
-    # The Intel macOS runner takes about 40 minutes to build the engine and its encoders.
+    # The Intel macOS runner takes about 40 minutes to build the engine and its encoders. The test build uses the ci
+    # profile (engine/Cargo.toml): the release profile aborts on panic, which tests can't use, so cargo would compile
+    # every dependency twice. The exact release build runs in the package job on a push to main, and in publish.yml.
     timeout-minutes: 75
     strategy:
       fail-fast: false
@@ -111,8 +113,7 @@ jobs:
           TARGET: ${{ matrix.target }}
           OPENH264_NO_ASM: '1'
         run: |
-          cargo build --release --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
-          cargo test --release --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
+          cargo test --profile ci --locked -p mr-cast-engine --target "$TARGET" --manifest-path engine/Cargo.toml
 
   test:
     name: Unit tests (Node ${{ matrix.node }})
@@ -172,6 +173,7 @@ jobs:
         node: ['24', '26']
     env:
       XDG_CACHE_HOME: ${{ github.workspace }}/.cache
+      MR_CAST_ENGINE: ${{ github.workspace }}/engine/target/ci/mr-cast-engine
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup
@@ -181,7 +183,8 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
-      - run: cargo build --release --locked --manifest-path engine/Cargo.toml
+      # The ci profile builds the same engine without LTO, so the smoke test starts sooner; MR_CAST_ENGINE points at it.
+      - run: cargo build --profile ci --locked --manifest-path engine/Cargo.toml
       - name: Cache the voice model
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -222,11 +225,17 @@ jobs:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
       # As publish.yml does for every platform: the engine goes into the package under engine/bin/<platform>-<arch>.
+      # A pull request packs the ci profile build (no LTO, so it is quicker); a push to main packs the exact release
+      # build publish.yml makes, so a failure that only happens with LTO shows up before a publish.
       - name: Build the engine into engine/bin
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
-          cargo build --release --locked -p mr-cast-engine --manifest-path engine/Cargo.toml
+          profile=ci
+          [ "$EVENT" != push ] || profile=release
+          cargo build --profile "$profile" --locked -p mr-cast-engine --manifest-path engine/Cargo.toml
           mkdir -p engine/bin/linux-x64
-          cp engine/target/release/mr-cast-engine engine/bin/linux-x64/
+          cp "engine/target/$profile/mr-cast-engine" engine/bin/linux-x64/
       - run: pnpm pack --pack-destination "$RUNNER_TEMP/pack"
       - name: The package holds the engine and the player's wasm, and no Rust sources or build output
         run: |

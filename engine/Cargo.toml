@@ -14,6 +14,15 @@ panic = "abort"
 # Symbols are not needed to run, and are most of the size the package ships per platform.
 strip = true
 
+# CI's build and test profile: release speed, but panics unwind (tests need that) and no LTO, so one compile
+# serves cargo test and the binaries the smoke jobs run. Releases use the release profile above.
+[profile.ci]
+inherits = "release"
+panic = "unwind"
+lto = false
+codegen-units = 16
+strip = false
+
 # Pixel loops are slow unoptimised; tests and debug runs still finish quickly with this.
 [profile.dev.package."*"]
 opt-level = 2
