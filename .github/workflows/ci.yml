@@ -15,6 +15,8 @@ concurrency:
 
 env:
   MR_CAST_NO_UPDATE_CHECK: '1'
+  # Incremental builds only fill the cache with files a clean CI build never reuses.
+  CARGO_INCREMENTAL: '0'
   # What the audits compare with: a pull request's base, the commit a push replaced, or itself when started by hand.
   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
 
@@ -51,6 +53,9 @@ jobs:
     name: Engine (fmt, clippy, tests, wasm)
     runs-on: ubuntu-26.04
     timeout-minutes: 30
+    env:
+      # Debug info only slows the dev-profile clippy and test builds and grows the cache.
+      CARGO_PROFILE_DEV_DEBUG: '0'
     defaults:
       run:
         working-directory: engine
@@ -60,6 +65,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: ${{ github.job }}-wasm32-unknown-unknown-x86_64-unknown-linux-gnu
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       - run: cargo fmt --check
       - run: cargo clippy --all-targets --locked -- -D warnings
       # The dizione port's fixtures need the phonemizer data the voice model ships (5 MB), checked by hash.
@@ -107,6 +118,12 @@ jobs:
       - uses: ./.github/actions/rust
         with:
           targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: ${{ github.job }}-${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       - name: Build and test
         shell: bash
         env:
@@ -183,6 +200,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: render-x86_64-unknown-linux-gnu
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       # The ci profile builds the same engine without LTO, so the smoke test starts sooner; MR_CAST_ENGINE points at it.
       - run: cargo build --profile ci --locked --manifest-path engine/Cargo.toml
       - name: Cache the voice model
@@ -224,6 +247,12 @@ jobs:
         with:
           targets: wasm32-unknown-unknown
           wasm-bindgen: 'true'
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: engine -> target
+          key: package-x86_64-unknown-linux-gnu
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+          cache-workspace-crates: false
       # As publish.yml does for every platform: the engine goes into the package under engine/bin/<platform>-<arch>.
       # A pull request packs the ci profile build (no LTO, so it is quicker); a push to main packs the exact release
       # build publish.yml makes, so a failure that only happens with LTO shows up before a publish.
