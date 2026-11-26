@@ -23,7 +23,7 @@ pub fn re(pattern: &str) -> Re {
 
 /// A match: its groups by number or name, with byte offsets into the text it was found in.
 pub struct M<'t> {
-    pub caps: Captures<'t>,
+    pub caps: Captures<'t, str>,
     pub text: &'t str,
 }
 
