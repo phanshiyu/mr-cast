@@ -808,8 +808,8 @@ impl MemoryView {
                 y + 1.5 + ((HEAD_H - c.title.height) / 2.0) as f32,
                 TextOpts::new(accent),
             );
-            for ri in 0..c.rows.len() {
-                self.row(dl, ci, ri, s, row_emphasis(&c.rows[ri].key));
+            for (ri, row) in c.rows.iter().enumerate() {
+                self.row(dl, ci, ri, s, row_emphasis(&row.key));
             }
         });
     }
@@ -963,8 +963,8 @@ impl SceneView for MemoryView {
                         });
                     }
                 }
-                for ci in 0..l.cards.len() {
-                    self.card(dl, ci, &s, shown(&l.cards[ci].key), card_emphasis(ci), &row_emphasis);
+                for (ci, card) in l.cards.iter().enumerate() {
+                    self.card(dl, ci, &s, shown(&card.key), card_emphasis(ci), &row_emphasis);
                 }
                 // Over the cards again: the stub of each arrow inside the card it leaves, and its head.
                 for d in &drawn {
