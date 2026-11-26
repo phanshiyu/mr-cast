@@ -10,12 +10,12 @@ version.workspace = true
 mermaid = ["dep:merman"]
 
 [dependencies]
-merman = { version = "0.10", optional = true }
+merman = { version = "0.11", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
-tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd", "png-format"] }
+tiny-skia = { version = "0.12", default-features = false, features = ["std", "simd", "png-format"] }
 swash = "0.2"
-kurbo = "0.11"
-fancy-regex = "0.14"
+kurbo = "0.13"
+fancy-regex = "0.20"
 unicode-normalization = "0.1"
 resvg = { version = "0.50", default-features = false, features = ["text"] }

@@ -152,6 +152,7 @@ fn shader(paint: &Paint, opacity: f32, transform: Transform) -> Option<Shader<'s
         ),
         Paint::Radial { center, radius, stops: s } => RadialGradient::new(
             Point::from_xy(0.0, 0.0),
+            0.0,
             Point::from_xy(0.0, 0.0),
             1.0,
             stops(s),
