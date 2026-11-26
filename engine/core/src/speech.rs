@@ -5,7 +5,7 @@
 use fancy_regex::{Captures, Regex};
 use std::sync::OnceLock;
 
-type Replace = fn(&Captures) -> String;
+type Replace = fn(&Captures<str>) -> String;
 type Behind = fn(&str) -> bool;
 
 struct Form {
